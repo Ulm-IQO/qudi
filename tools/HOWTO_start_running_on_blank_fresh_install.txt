@@ -1,0 +1,2 @@
+The necessary base tools (Anaconda, etc) can be found on the fileserver at:
+QOall/Software/qudi_setup/
