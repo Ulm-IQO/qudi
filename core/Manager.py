@@ -141,7 +141,8 @@ class Manager(QtCore.QObject):
             for key in self.startupGui:
                 try:
                     # self.loadModule( baseclass, module, instanceName, config=None)
-                    self.loadModule('gui', self.startupGui[key]['module'], key, self.startupGui[key])
+                    modObj = self.loadModule('gui', self.startupGui[key]['module'])
+                    self.configureModule(modObj, 'gui', self.startupGui[key]['module'], key, self.startupGui[key])
                 except:
                     raise
         except:
@@ -317,48 +318,62 @@ class Manager(QtCore.QObject):
 
 ## Module loading
 
-    def loadModule(self, baseclass, module, instanceName, config=None):
+    def loadModule(self, baseName, module):
         """Create a new instance of a module. For this to work properly, there must be 
         a python module called yxz.abc.moduleName which contains a class called moduleName.
         """
         
-        self.logger.print_logMsg('Loading module ".%s.%s" as "%s"' % (baseclass, module, instanceName))
+        self.logger.print_logMsg('Loading module ".%s.%s"' % (baseName, module))
+        if baseName not in ['hardware', 'logic', 'gui']:
+            raise Exception('You are trying to cheat the system with some category "%s"' % baseName)
+        
+        ## load the python module
+        mod = __import__('%s.%s' % (baseName, module), fromlist=['*'])
+        return mod
+
+    def configureModule(self, moduleObject, baseName, className, instanceName, configuration = {} ):
+        """ The heavy lifting.
+        """
+        self.logger.print_logMsg('Configuring "%s" as "%s"' % (className, instanceName) )
         with self.lock:
-            if baseclass == 'hardware':
+            if baseName == 'hardware':
                 if instanceName in self.hardware:
                     raise Exception('Hadware already exists with name "%s"' % instanceName)
-            elif baseclass == 'logic':
+            elif baseName == 'logic':
                 if instanceName in self.logic:
                     raise Exception('Logic already exists with name "%s"' % instanceName)
-            elif baseclass == 'gui':
+            elif baseName == 'gui':
                 if instanceName in self.gui:
                     raise Exception('GUI already exists with name "%s"' % instanceName)
             else:
-                raise Exception('You are trying to cheat the system with some category "%s"' % baseclass)
-            if config is None:
-                config = {}
+                raise Exception('You are trying to cheat the system with some category "%s"' % baseName)
         
-        ## load the python module
-        mod = __import__('%s.%s' % (baseclass, module), fromlist=['*'])
-        modclass = getattr(mod, module)
+        if configuration is None:
+            configuration = {}
+
+        modclass = getattr(moduleObject, className)
         
         #FIXME: Check if the class we just obtained has the right inheritance
 
         # Create object from class (Manager, Name, config)
-        instance = modclass(self, instanceName, config)
+        instance = modclass(self, instanceName, configuration)
 
         with self.lock:
-            if baseclass == 'hardware':
+            if baseName == 'hardware':
                 self.hardware[instanceName] = instance
-            elif baseclass == 'logic':
+            elif baseName == 'logic':
                 self.logic[instanceName] = instance
-            elif baseclass == 'gui':
+            elif baseName == 'gui':
                 self.gui[instanceName] = instance
             else:
                 raise Exception('We checked this already, there is no way that we should get base class "%s" here' % baseclass)
         
         self.sigModulesChanged.emit()
         return instance
+
+    def startAllConfiguredModules(self):
+        #FIXME: actually load all the modules in the correct order and connect the interfaces
+        pass
     
     def reloadAll(self):
         """Reload all python code"""
