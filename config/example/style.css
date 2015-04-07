@@ -1,0 +1,35 @@
+/* Checkable buttons glow green when they are depressed */
+QPushButton:checked {
+    color: #090;
+    border-radius: 3px; 
+    border-color: #090; 
+    border-style: inset; 
+    border-width: 2px; 
+    background: #CCC; 
+}
+
+/* Make boundaries between dock widgets more visible. */
+QDockWidget::title { 
+    background: #77F; 
+    border-radius: 3px; 
+    border-color: #77F; 
+    border-style: outset; 
+    border-width: 1px; 
+    font-weight: bold
+}
+
+/* Make splitter handles more visible */
+QSplitter::handle {
+    background-color: #666
+}
+
+QSplitter::handle:hover {
+    background-color: #66A
+}
+
+
+
+/* Make splitter handles between dock widgets more visible */
+QMainWindow::separator {
+    background-color: #666
+}
