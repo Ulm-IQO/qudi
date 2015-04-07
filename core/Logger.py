@@ -29,49 +29,6 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     (This function is intended to be called within except: blocks)"""
     pgdebug.printExc(msg, indent, prefix)
 
-
-#def logMsg(msg, **kwargs):
-#    """msg: the text of the log message
-#       msgTypes: user, status, error, warning (status is default)
-#       importance: 0-9 (0 is low importance, 9 is high, 5 is default)
-#       other supported keywords:
-#          exception: a tuple (type, exception, traceback) as returned by sys.exc_info()
-#          docs: a list of strings where documentation related to the message can be found
-#          reasons: a list of reasons (as strings) for the message
-#          traceback: a list of formatted callstack/trackback objects (formatting a traceback/callstack returns a list of strings), usually looks like [['line 1', 'line 2', 'line3'], ['line1', 'line2']]
-#       Feel free to add your own keyword arguments. These will be saved in the log.txt file, but will not affect the content or way that messages are displayed.
-#        """
-#    global LOG
-#    if LOG is not None:
-#        try:
-#            LOG.logMsg(msg, **kwargs)
-#        except:
-#            print("Error logging message:")
-#            print("    " + "\n    ".join(msg.split("\n")))
-#            print("    " + str(kwargs))
-#            sys.excepthook(*sys.exc_info())
-#    else:
-#        print("Can't log message; no log created yet.")
-#        print(kwargs)
-#        
-#    
-#def logExc(msg, *args, **kwargs):
-#    """Calls logMsg, but adds in the current exception and callstack. Must be called within an except block, and should only be called if the exception is not re-raised. Unhandled exceptions, or exceptions that reach the top of the callstack are automatically logged, so logging an exception that will be re-raised can cause the exception to be logged twice. Takes the same arguments as logMsg."""
-#    global LOG
-#    if LOG is not None:
-#        try:
-#            LOG.logExc(msg, *args, **kwargs)
-#        except:
-#            print("Error logging exception:")
-#            print("    " + "\n    ".join(msg.split("\n")))
-#            print("    " + str(kwargs))
-#            sys.excepthook(*sys.exc_info())
-#    else:
-#        print("Can't log error message; no log created yet.")
-#        print(args)
-#        print(kwargs)
-#
-
 class Logger(QtCore.QObject):
 
     def __init__(self, manager):
@@ -158,7 +115,7 @@ class Logger(QtCore.QObject):
         self.saveEntry({name:entry})
         
         if entry['msgType'] == 'error':
-            #FIXME:  should besome sort of visible alert
+            #FIXME:  there should be some sort of visible alert
             pass
         
     def logExc(self, *args, **kwargs):
@@ -209,9 +166,10 @@ class Logger(QtCore.QObject):
             return "tempLog.txt"
         else:
             return self.logFile.name()
+
     def getLogDir(self):
         return None
     
-    def saveEntry(self, entry):  
+    def saveEntry(self, entry):
         with self.lock:
             configfile.appendConfigFile(entry, self.fileName())
