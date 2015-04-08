@@ -352,7 +352,7 @@ class Manager(QtCore.QObject):
           @param path string
         """
         oldBaseDir = self.baseDir
-         dirName = os.path.dirName(path)
+        dirName = os.path.dirName(path)
         if not os.path.exists(dirName):
             os.makedirs(dirName)
         self.baseDir = dirName

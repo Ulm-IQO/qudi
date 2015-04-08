@@ -75,7 +75,7 @@ if interactive:
     print("Interactive mode; not starting event loop.")
     
     ## import some things useful on the command line
-    from .util.debug import *
+#    from .util.debug import *
     import numpy as np
 
     ### Use CLI history and tab completion
