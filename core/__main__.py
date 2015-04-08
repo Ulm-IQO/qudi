@@ -5,14 +5,14 @@ Copyright 2010  Luke Campagnola
 Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 
-print("Loading ACQ4...")
+print("Loading QuDi...")
 if __package__ is None:
     import core
     __package__ = 'core'
 from pyqtgraph.Qt import QtGui, QtCore
 
 from .Manager import *
-from numpy import *
+import numpy as np
 
 # Pull some args out
 if "--profile" in sys.argv:
@@ -43,17 +43,6 @@ gc = GarbageCollector(interval=1.0, debug=False)
 ## Create Manager. This configures devices and creates the main manager window.
 man = Manager(argv=sys.argv[1:])
 
-# If example config was loaded, offer more help to the user.
-message = """\
-<center><b>Demo mode:</b><br>\
-ACQ4 is running from an example configuration file at:<br><pre>%s</pre><br>\
-This configuration defines several simulated devices that allow you to test the capabilities of ACQ4.<br>\
-See the <a href="http://acq4.org/documentation/userGuide/configuration.html">ACQ4 documentation</a> \
-for more information.</center>
-""" % man.configFile
-if man.configFile.endswith(os.path.join('example', 'default.cfg')):
-    pass
-
 ## for debugging with pdb
 #QtCore.pyqtRemoveInputHook()
 
@@ -61,7 +50,8 @@ if man.configFile.endswith(os.path.join('example', 'default.cfg')):
 import pyqtgraph as pg
 interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
 
-## Run python code periodically to allow interactive debuggers to interrupt the qt event loop
+## Run python code periodically to allow interactive debuggers to interrupt
+## the qt event loop
 timer = QtCore.QTimer()
 def donothing(*args):
     #print "-- beat --"
@@ -75,7 +65,6 @@ if interactive:
     print("Interactive mode; not starting event loop.")
     
     ## import some things useful on the command line
-#    from .util.debug import *
     import numpy as np
 
     ### Use CLI history and tab completion
@@ -102,9 +91,12 @@ if interactive:
 else:
     if profile:
         import cProfile
-        cProfile.run('app.exec_()', sort='cumulative')    
-        pg.exit()  # pg.exit() causes python to exit before Qt has a chance to clean up. 
-                   # this avoids otherwise irritating exit crashes.
+        cProfile.run('app.exec_()', sort='cumulative')  
+        # pg.exit() causes python to exit before Qt has
+        # a chance to clean up.
+        # this avoids otherwise irritating exit crashes.
+        pg.exit()
+
     elif callgraph:
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
@@ -112,6 +104,7 @@ else:
             app.exec_()
     else:
         app.exec_()
-        pg.exit()  # pg.exit() causes python to exit before Qt has a chance to clean up. 
-                   # this avoids otherwise irritating exit crashes.
-    
+        # pg.exit() causes python to exit before Qt has a chance to clean up. 
+        # this avoids otherwise irritating exit crashes.
+        pg.exit()
+

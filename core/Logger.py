@@ -38,7 +38,9 @@ class Logger(QtCore.QObject):
         self.msgCount = 0
         self.logCount=0
         self.logFile = None
-        configfile.writeConfigFile('', self.fileName())  ## start a new temp log file, destroying anything left over from the last session.
+        ## start a new temp log file, destroying anything left over
+        ## from the last session.
+        configfile.writeConfigFile('', self.fileName())  
         self.lock = Mutex()
         exceptionHandling.register(self.exceptionCallback)
 
@@ -48,10 +50,14 @@ class Logger(QtCore.QObject):
         ## unhandled exceptions generate an error message by default, but this
         ## can be overridden
         global blockLogging
-        if not blockLogging:  ## if an error occurs *while* trying to log another exception, disable any further logging to prevent recursion.
+        ## if an error occurs *while* trying to log another exception,
+        ## disable any further logging to prevent recursion.
+        if not blockLogging:
             try:
                 blockLogging = True
-                self.logMsg("Unexpected error: ", exception=args, msgType='error')
+                self.logMsg("Unexpected error: ",
+                            exception=args,
+                            msgType='error')
                 ex_type, ex_value, ex_traceback = args
                 print(ex_type)
                 if ex_type == KeyboardInterrupt:
@@ -62,8 +68,8 @@ class Logger(QtCore.QObject):
             finally:
                 blockLogging = False
 
-       
-    def queuedLogMsg(self, args):  ## called indirectly when logMsg is called from a non-gui thread
+    ## called indirectly when logMsg is called from a non-gui thread 
+    def queuedLogMsg(self, args):
         self.logMsg(*args[0], **args[1])
         
     def print_logMsg(self, msg, **kwargs):
@@ -75,19 +81,19 @@ class Logger(QtCore.QObject):
            msgTypes: user, status, error, warning (status is default)
            importance: 0-9 (0 is low importance, 9 is high, 5 is default)
            other keywords:
-              exception: a tuple (type, exception, traceback) as returned by sys.exc_info()
-              docs: a list of strings where documentation related to the message can be found
+              exception: a tuple (type, exception, traceback) as returned by
+              sys.exc_info()
+              docs: a list of strings where documentation related to the message
+              can be found
               reasons: a list of reasons (as strings) for the message
-              traceback: a list of formatted callstack/trackback objects (formatting a traceback/callstack returns a list of strings), usually looks like [['line 1', 'line 2', 'line3'], ['line1', 'line2']]
-           Feel free to add your own keyword arguments. These will be saved in the log.txt file, but will not affect the content or way that messages are displayed.
+              traceback: a list of formatted callstack/trackback objects
+              (formatting a traceback/callstack returns a list of strings),
+              usually looks like
+              [['line 1', 'line 2', 'line3'], ['line1', 'line2']]
+           Feel free to add your own keyword arguments.
+           These will be saved in the log.txt file,
+           but will not affect the content or way that messages are displayed.
         """
-
-        ## for thread-safetyness:
-        #isGuiThread = QtCore.QThread.currentThread() == QtCore.QCoreApplication.instance().thread()
-        #if not isGuiThread:
-        #    self.sigLogMessage.emit(((msg, importance, msgType), kwargs))
-        #    return
-        
         currentDir = None
         
         now = str(time.strftime('%Y.%m.%d %H:%M:%S'))
@@ -119,10 +125,12 @@ class Logger(QtCore.QObject):
             pass
         
     def logExc(self, *args, **kwargs):
-        """Calls logMsg, but adds in the current exception and callstack. Must be called within an except block,
-        and should only be called if the exception is not re-raised.
-        Unhandled exceptions, or exceptions that reach the top of the callstack are automatically logged,
-        so logging an exception that will be re-raised can cause the exception to be logged twice.
+        """Calls logMsg, but adds in the current exception and callstack.
+        Must be called within an except block, and should only be called if the
+        exception is not re-raised.
+        Unhandled exceptions, or exceptions that reach the top of the callstack
+        are automatically logged, so logging an exception that will be re-raised
+        can cause the exception to be logged twice.
         Takes the same arguments as logMsg."""
         kwargs['exception'] = sys.exc_info()
         kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]

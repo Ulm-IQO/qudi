@@ -10,18 +10,21 @@ The class is responsible for:
     - Invoking/managing modules
     - Creating and executing acquisition tasks. 
 """
+import os
+import sys
+import gc
+import getopt
+import glob
 
-
-import os, sys, gc
-
-import time, atexit, weakref
+import time
+import atexit
+import weakref
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
+import pyqtgraph.configfile as configfile
 
 from .util import ptime
-import pyqtgraph.configfile as configfile
 from .util.Mutex import Mutex
-import getopt, glob
 from collections import OrderedDict
 import pyqtgraph as pg
 from .Logger import *
@@ -30,7 +33,8 @@ class Manager(QtCore.QObject):
     """Manager class is responsible for:
       - Loading/configuring device modules and storing their handles
       - Providing unified timestamps
-      - Making sure all devices/modules are properly shut down at the end of the program
+      - Making sure all devices/modules are properly shut down
+        at the end of the program
 
       @signal sigConfigChanged
       @signal sigModulesChanged
@@ -48,10 +52,12 @@ class Manager(QtCore.QObject):
     
     def __init__(self, configFile=None, argv=None):
         """Constructor for QuDi main management class
-          @param configFile string path to configuration file
-          @param argv list(string) command line arguments
+
+          @param string configFile: path to configuration file
+          @param list argv: command line arguments
         """
-        self.lock = Mutex(recursive=True)  ## used for keeping some basic methods thread-safe
+        ## used for keeping some basic methods thread-safe
+        self.lock = Mutex(recursive=True)
         self.config = OrderedDict()
         
         self.hardware = OrderedDict()
@@ -80,7 +86,15 @@ class Manager(QtCore.QObject):
             
             if argv is not None:
                 try:
-                    opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:nD', ['config=', 'config-name=', 'module=', 'base-dir=', 'storage-dir=', 'disable=', 'no-manager', 'disable-all'])
+                    opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:nD',
+                    ['config=',
+                    'config-name=',
+                    'module=',
+                    'base-dir=',
+                    'storage-dir=',
+                    'disable=',
+                    'no-manager',
+                    'disable-all'])
                 except getopt.GetoptError as err:
                     print(str(err))
                     print("""
@@ -147,20 +161,28 @@ class Manager(QtCore.QObject):
                     except:
                         raise
             except:
-                printExc("\nError while acting on command line options: (but continuing on anyway..)")
+                printExc("\nError while acting on command line options: "
+                "(but continuing on anyway..)")
             ## load startup things from config here
             for key in self.startupGui:
                 try:
                     # self.loadModule( baseclass, module, instanceName, config=None)
-                    modObj = self.loadModule('gui', self.startupGui[key]['module'])
-                    self.configureModule(modObj, 'gui', self.startupGui[key]['module'], key, self.startupGui[key])
+                    modObj = self.loadModule('gui',
+                                            self.startupGui[key]['module'])
+                    self.configureModule(modObj,
+                                        'gui',
+                                        self.startupGui[key]['module'],
+                                        key,
+                                        self.startupGui[key])
                 except:
                     raise
         except:
             printExc("Error while configuring Manager:")
         finally:
             if len(self.logic) == 0 and len(self.gui) == 0 :
-                self.logger.logMsg('No modules loaded during startup. Not much is happening.', importance=9)
+                self.logger.logMsg('No modules loaded during startup. ' 
+                                    'Not much is happening.',
+                                    importance=9)
             
     def _getConfigFile(self):
         ## search all the default locations to find a configuration file.
@@ -173,12 +195,13 @@ class Manager(QtCore.QObject):
     
     def _appDataDir(self):
         """Get the system specific application data directory.
-          @return string path to application directory
+
+          @return string: path to application directory
         """
         # return the user application data directory
         if sys.platform == 'win32':
-            # resolves to "C:/Documents and Settings/User/Application Data/acq4" on XP
-            # and "C:\User\Username\AppData\Roaming" on win7
+            # resolves to "C:/Documents and Settings/User/Application Data/"
+            # on XP and "C:\User\Username\AppData\Roaming" on win7
             return os.path.join(os.environ['APPDATA'], 'qudi')
         elif sys.platform == 'darwin':
             return os.path.expanduser('~/Library/Preferences/qudi')
@@ -188,7 +211,8 @@ class Manager(QtCore.QObject):
             
     def readConfig(self, configFile):
         """Read configuration file and sort entries into categories.
-          @param configFile string path to configuration file
+
+          @param string configFile: path to configuration file
         """
         print("============= Starting Manager configuration from %s =================" % configFile)
         self.logger.logMsg("Starting Manager configuration from %s" % configFile)
@@ -203,12 +227,16 @@ class Manager(QtCore.QObject):
         
     def configure(self, cfg):
         """Sort modules from configuration into categories
-          @param cfg dict dictionary from configuration file
 
-          There are the main categories hardware, logic, gui, startup and global.
-          startup modules can be logic or gui and are loaded directly on startup.
+          @param dict cfg: dictionary from configuration file
+
+          There are the main categories hardware, logic, gui, startup
+          and global.
+          startup modules can be logic or gui and are loaded
+          directly on startup.
           global contains settings for the whole application.
-          hardware, logic and gui contain configuration of and for loadable modules.
+          hardware, logic and gui contain configuration of and
+          for loadable modules.
         """
         
         for key in cfg:
@@ -282,7 +310,10 @@ class Manager(QtCore.QObject):
         self.sigConfigChanged.emit()
 
     def listConfigurations(self):
-        """Return a list of the named configurations available"""
+        """Return a list of the named configurations available
+
+          @return list: user configurations
+        """
         with self.lock:
             if 'configurations' in self.config:
                 return list(self.config['configurations'].keys())
@@ -298,9 +329,11 @@ class Manager(QtCore.QObject):
 
     def readConfigFile(self, fileName, missingOk=True):
         """Actually check if the configuration file exists and read it
-          @param fileName string path to configuration file
-          @param missingOk bool suppress exception if file does not exist
-          @return dict configuration from file
+
+          @param string fileName: path to configuration file
+          @param bool missingOk: suppress exception if file does not exist
+
+          @return dict: configuration from file
         """
         with self.lock:
             fileName = self.configFileName(fileName)
@@ -314,42 +347,44 @@ class Manager(QtCore.QObject):
             
     def writeConfigFile(self, data, fileName):
         """Write a file into the currently used config directory.
-          @param data dict dictionary to write into file
-          @param fileName string path for filr to be written
-          @return ??
+
+          @param dict data: dictionary to write into file
+          @param string fileName: path for filr to be written
         """
         with self.lock:
             fileName = self.configFileName(fileName)
             dirName = os.path.dirname(fileName)
             if not os.path.exists(dirName):
                 os.makedirs(dirName)
-            return configfile.writeConfigFile(data, fileName)
+            configfile.writeConfigFile(data, fileName)
     
     def appendConfigFile(self, data, fileName):
         """Append configuration to a file in the currently used config directory.
-          @param data dict dictionary to write into file
-          @param fileName string path for filr to be written
-          @return ??
+
+          @param dict data: dictionary to write into file
+          @param string fileName: path for filr to be written
         """
         with self.lock:
             fileName = self.configFileName(fileName)
             if os.path.exists(fileName):
-                return configfile.appendConfigFile(data, fileName)
+                configfile.appendConfigFile(data, fileName)
             else:
                 raise Exception("Could not find file %s" % fileName)
         
         
     def configFileName(self, name):
         """Get the full path of a configuration file from its filename.
-          @param name string filename of file in configuration directory
-          @return string full path to file
+
+          @param string name: filename of file in configuration directory
+          @return string: full path to file
         """
         with self.lock:
             return os.path.join(self.configDir, name)
 
     def setBaseDir(self, path):
         """Set base directory for data
-          @param path string
+
+          @param string path: base directory path
         """
         oldBaseDir = self.baseDir
         dirName = os.path.dirName(path)
@@ -364,9 +399,11 @@ class Manager(QtCore.QObject):
 
     def loadModule(self, baseName, module):
         """Load a python module that is a loadable QuDi module.
-          @param baseName string the module base package (hardware, logic, or gui)
-          @param module the python module name inside the base package
-          @return object the loaded python module
+
+          @param string baseName: the module base package (hardware, logic, or gui)
+          @param string module: the python module name inside the base package
+
+          @return object: the loaded python module
         """
         
         self.logger.print_logMsg('Loading module ".%s.%s"' % (baseName, module))
@@ -379,12 +416,14 @@ class Manager(QtCore.QObject):
 
     def configureModule(self, moduleObject, baseName, className, instanceName, configuration = {} ):
         """Instantiate an object from the class that makes up a QuDi module from a loaded python module object.
-          @param moduleObject object loaded python module
-          @param baseName string module base package (hardware, logic or gui)
-          @param className string name of the class we want an object from (same as module name usually)
-          @param instanceName string unique name thet the QuDi module instance was given in the configuration
-          @param configuration dict configuration options for the QuDi module
-          @return object QuDi module instance (object of class derived from Base)
+
+          @param object moduleObject: loaded python module
+          @param string baseName: module base package (hardware, logic or gui)
+          @param string className: name of the class we want an object from (same as module name usually)
+          @param string instanceName: unique name thet the QuDi module instance was given in the configuration
+          @param dict configuration: configuration options for the QuDi module
+
+          @return object: QuDi module instance (object of class derived from Base)
 
           This method will add the resulting QuDi module instance to internal bookkeeping.
         """
@@ -420,13 +459,16 @@ class Manager(QtCore.QObject):
             elif baseName == 'gui':
                 self.gui[instanceName] = instance
             else:
-                raise Exception('We checked this already, there is no way that we should get base class "%s" here' % baseclass)
+                raise Exception('We checked this already, there is no way that '
+                                'we should get base class "%s" here'
+                                % baseclass)
         
         self.sigModulesChanged.emit()
         return instance
 
     def startAllConfiguredModules(self):
-        """Connect all QuDi modules from the currently laoded configuration and activat them.
+        """Connect all QuDi modules from the currently laoded configuration and
+            activate them.
         """
         #FIXME: actually load all the modules in the correct order and connect the interfaces
         pass
