@@ -11,8 +11,10 @@ if __package__ is None:
     __package__ = 'core'
 from pyqtgraph.Qt import QtGui, QtCore
 
-from .Manager import *
+from .Manager import Manager
 import numpy as np
+import pyqtgraph as pg
+import sys
 
 # Pull some args out
 if "--profile" in sys.argv:
