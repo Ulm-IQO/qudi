@@ -30,7 +30,14 @@ class Manager(QtCore.QObject):
     """Manager class is responsible for:
       - Loading/configuring device modules and storing their handles
       - Providing unified timestamps
-      - Making sure all devices/modules are properly shut down at the end of the program"""
+      - Making sure all devices/modules are properly shut down at the end of the program
+
+      @signal sigConfigChanged
+      @signal sigModulesChanged
+      @signal sigModuleHasQuit
+      @signal sigBaseDirChanged
+      @signal sigAbortAll
+      """
       
     sigConfigChanged = QtCore.Signal()
     sigModulesChanged = QtCore.Signal() 
@@ -40,6 +47,10 @@ class Manager(QtCore.QObject):
     sigAbortAll = QtCore.Signal()  # User requested abort all tasks via ESC key
     
     def __init__(self, configFile=None, argv=None):
+        """Constructor for QuDi main management class
+          @param configFile string path to configuration file
+          @param argv list(string) command line arguments
+        """
         self.lock = Mutex(recursive=True)  ## used for keeping some basic methods thread-safe
         self.config = OrderedDict()
         
@@ -161,6 +172,9 @@ class Manager(QtCore.QObject):
         raise Exception("Could not find config file in: %s" % CONFIGPATH)
     
     def _appDataDir(self):
+        """Get the system specific application data directory.
+          @return string path to application directory
+        """
         # return the user application data directory
         if sys.platform == 'win32':
             # resolves to "C:/Documents and Settings/User/Application Data/acq4" on XP
@@ -173,7 +187,9 @@ class Manager(QtCore.QObject):
 
             
     def readConfig(self, configFile):
-        """Read configuration file, create device objects, add devices to list"""
+        """Read configuration file and sort entries into categories.
+          @param configFile string path to configuration file
+        """
         print("============= Starting Manager configuration from %s =================" % configFile)
         self.logger.logMsg("Starting Manager configuration from %s" % configFile)
         cfg = configfile.readConfigFile(configFile)
@@ -186,7 +202,14 @@ class Manager(QtCore.QObject):
         self.logger.logMsg('Manager configuration complete.')
         
     def configure(self, cfg):
-        """Load the hardware, logic, gui, stylesheet, and storageDir defined in cfg"""
+        """Sort modules from configuration into categories
+          @param cfg dict dictionary from configuration file
+
+          There are the main categories hardware, logic, gui, startup and global.
+          startup modules can be logic or gui and are loaded directly on startup.
+          global contains settings for the whole application.
+          hardware, logic and gui contain configuration of and for loadable modules.
+        """
         
         for key in cfg:
             try:
@@ -274,6 +297,11 @@ class Manager(QtCore.QObject):
         self.configure(cfg)
 
     def readConfigFile(self, fileName, missingOk=True):
+        """Actually check if the configuration file exists and read it
+          @param fileName string path to configuration file
+          @param missingOk bool suppress exception if file does not exist
+          @return dict configuration from file
+        """
         with self.lock:
             fileName = self.configFileName(fileName)
             if os.path.isfile(fileName):
@@ -285,7 +313,11 @@ class Manager(QtCore.QObject):
                     raise Exception('Config file "%s" not found.' % fileName)
             
     def writeConfigFile(self, data, fileName):
-        """Write a file into the currently used config directory."""
+        """Write a file into the currently used config directory.
+          @param data dict dictionary to write into file
+          @param fileName string path for filr to be written
+          @return ??
+        """
         with self.lock:
             fileName = self.configFileName(fileName)
             dirName = os.path.dirname(fileName)
@@ -294,6 +326,11 @@ class Manager(QtCore.QObject):
             return configfile.writeConfigFile(data, fileName)
     
     def appendConfigFile(self, data, fileName):
+        """Append configuration to a file in the currently used config directory.
+          @param data dict dictionary to write into file
+          @param fileName string path for filr to be written
+          @return ??
+        """
         with self.lock:
             fileName = self.configFileName(fileName)
             if os.path.exists(fileName):
@@ -303,12 +340,19 @@ class Manager(QtCore.QObject):
         
         
     def configFileName(self, name):
+        """Get the full path of a configuration file from its filename.
+          @param name string filename of file in configuration directory
+          @return string full path to file
+        """
         with self.lock:
             return os.path.join(self.configDir, name)
 
     def setBaseDir(self, path):
+        """Set base directory for data
+          @param path string
+        """
         oldBaseDir = self.baseDir
-        dirName = os.path.dirName(path)
+         dirName = os.path.dirName(path)
         if not os.path.exists(dirName):
             os.makedirs(dirName)
         self.baseDir = dirName
@@ -319,8 +363,10 @@ class Manager(QtCore.QObject):
 ## Module loading
 
     def loadModule(self, baseName, module):
-        """Create a new instance of a module. For this to work properly, there must be 
-        a python module called yxz.abc.moduleName which contains a class called moduleName.
+        """Load a python module that is a loadable QuDi module.
+          @param baseName string the module base package (hardware, logic, or gui)
+          @param module the python module name inside the base package
+          @return object the loaded python module
         """
         
         self.logger.print_logMsg('Loading module ".%s.%s"' % (baseName, module))
@@ -332,7 +378,15 @@ class Manager(QtCore.QObject):
         return mod
 
     def configureModule(self, moduleObject, baseName, className, instanceName, configuration = {} ):
-        """ The heavy lifting.
+        """Instantiate an object from the class that makes up a QuDi module from a loaded python module object.
+          @param moduleObject object loaded python module
+          @param baseName string module base package (hardware, logic or gui)
+          @param className string name of the class we want an object from (same as module name usually)
+          @param instanceName string unique name thet the QuDi module instance was given in the configuration
+          @param configuration dict configuration options for the QuDi module
+          @return object QuDi module instance (object of class derived from Base)
+
+          This method will add the resulting QuDi module instance to internal bookkeeping.
         """
         self.logger.print_logMsg('Configuring "%s" as "%s"' % (className, instanceName) )
         with self.lock:
@@ -372,6 +426,8 @@ class Manager(QtCore.QObject):
         return instance
 
     def startAllConfiguredModules(self):
+        """Connect all QuDi modules from the currently laoded configuration and activat them.
+        """
         #FIXME: actually load all the modules in the correct order and connect the interfaces
         pass
     
@@ -385,7 +441,7 @@ class Manager(QtCore.QObject):
         self.logger.print_logMsg("Reloaded all libraries under %s." %path, msgType='status')
         
     def quit(self):
-        """Nicely request that all devices and modules shut down"""
+        """Nicely request that all modules shut down"""
         #QtCore.QObject.connect(app, QtCore.SIGNAL('lastWindowClosed()'), q)
         if not self.alreadyQuit:  ## Need this because multiple triggers can call this function during quit
             self.alreadyQuit = True
