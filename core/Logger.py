@@ -142,7 +142,8 @@ class Logger(QtCore.QObject):
         ## convert exc_info to serializable dictionary
         if entry.get('exception', None) is not None:
             exc_info = entry.pop('exception')
-            entry['exception'] = self.exceptionToDict(*exc_info, topTraceback=entry.get('traceback', []))
+            entry['exception'] = self.exceptionToDict(*exc_info, 
+                                        topTraceback=entry.get('traceback', []))
         else:
             entry['exception'] = None
 
