@@ -1,3 +1,9 @@
+class InterfaceImplementationError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class MWInterface():
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
@@ -8,7 +14,7 @@ class MWInterface():
         <blank line>
         @return int: error code (0:OK, -1:error)
         """ 
-        self.logMsg("This is MWInterface>on: Please implement this function.", messageType='status')
+        raise InterfaceImplementationError('MWInterface>on')
         return -1
     
     def off(self):
@@ -16,7 +22,7 @@ class MWInterface():
         <blank line>
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("This is MWInterface>off: Please implement this function.", messageType='status')
+        raise InterfaceImplementationError('MWInterface>off')
         return -1
         
     def power(self,power=None):
@@ -27,7 +33,7 @@ class MWInterface():
         @return float: the power set at the device
         """
         # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>power: Please implement this function.", messageType='status')
+        raise InterfaceImplementationError('MWInterface>power')
         return 0.0
     
     def get_power(self):
@@ -35,8 +41,7 @@ class MWInterface():
         <blank line>
         @return float: the power set at the device
         """
-        # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>get_power: Please implement this function.", messageType='status')
+        raise InterfaceImplementationError('MWInterface>get_power')
         return 0.0
         
     def set_power(self,power=None):
@@ -46,6 +51,5 @@ class MWInterface():
         <blank line>
         @return int: error code (0:OK, -1:error)
         """
-        # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>set_power: Please implement this function.", messageType='status')
+        raise InterfaceImplementationError('MWInterface>set_power')
         return -1

@@ -1,5 +1,3 @@
-
-from pyqtgraph.Qt import QtCore, QtGui
 from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
 from visa import instrument
@@ -10,22 +8,43 @@ class MWSMIQ(Base,MWInterface):
     """
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, configuation=config, callback_dict = {})
-        self._gpib_address = "dummy"
-        self._gpib_timeout = 20
+        Base.__init__(self, manager, name, 
+                      configuation=config, callback_dict = {})
+        if 'gpib_address' in config.keys():
+            self._gpib_address = config['gpib_address']
+        else:
+            self.logMsg("This is MWSMIQ: did not find >>gpib_address<< in \
+            configration.", 
+                        messageType='error')
+        
+        if 'gpib_timeout' in config.keys():
+            self._gpib_timeout = config['gpib_timeout']
+        else:
+            self.logMsg("This is MWSMIQ: did not find >>gpib_timeout<< in \
+            configration.", 
+                        messageType='error')
+            
         try: 
             self._gpib_connetion = instrument(self._gpib_address, 
                                               timeout=self._gpib_timeout)
         except:
-            self.logMsg("This is MWSMIQ: could not connect to the GPIB address >>{}<<.".format(self._gpib_address), messageType='error')
+            self.logMsg("This is MWSMIQ: could not connect to the GPIB \
+            address >>{}<<.".format(self._gpib_address), 
+                        messageType='error')
             raise
+            
+        self.logMsg("MWSMIQ initialised and connected to hardware.", 
+                    messageType='status')
         
     def on(self):
         """ Switches on any preconfigured microwave output. 
         <blank line>
         @return int: error code (0:OK, -1:error)
         """ 
-        self.logMsg("This is MWInterface>on: Please implement this function.", messageType='status')
+        
+        self._gpib_connetion.write(':OUTP ON')
+        self._gpib_connetion.write('*WAI')
+        
         return 0
     
     def off(self):
@@ -33,8 +52,13 @@ class MWSMIQ(Base,MWInterface):
         <blank line>
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("This is MWInterface>off: Please implement this function.", messageType='status')
-        return -1
+        
+        if self._gpib_connetion.ask(':FREQ:MODE?') == 'LIST':
+            self._gpib_connetion.write(':FREQ:MODE CW')
+        self._gpib_connetion.write(':OUTP OFF')
+        self._gpib_connetion.write('*WAI')
+        
+        return 0
         
     def power(self,power=None):
         """ Sets and gets the microwave output power. 
@@ -44,7 +68,9 @@ class MWSMIQ(Base,MWInterface):
         @return float: the power set at the device
         """
         # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>power: Please implement this function.", messageType='status')
+        self.logMsg("This is MWSMIQ>power: Bad implementation, \
+        use get and set.", 
+                    messageType='error')
         return 0.0
     
     def get_power(self):
@@ -52,9 +78,8 @@ class MWSMIQ(Base,MWInterface):
         <blank line>
         @return float: the power set at the device
         """
-        # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>get_power: Please implement this function.", messageType='status')
-        return 0.0
+        
+        return float(self._gpib_connetion.ask(':POW?'))
         
     def set_power(self,power=None):
         """ Sets the microwave output power. 
@@ -63,6 +88,5 @@ class MWSMIQ(Base,MWInterface):
         <blank line>
         @return int: error code (0:OK, -1:error)
         """
-        # This is not a good way to implement it!
-        self.logMsg("This is MWInterface>set_power: Please implement this function.", messageType='status')
-        return -1
+        self._gpib_connetion.write(':POW {:f}'.format(power))
+        return 0
