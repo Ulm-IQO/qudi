@@ -27,7 +27,7 @@ from .util import ptime
 from .util.Mutex import Mutex
 from collections import OrderedDict
 import pyqtgraph as pg
-from .Logger import *
+from .Logger import Logger, LOG, printExc
 
 class Manager(QtCore.QObject):
     """Manager class is responsible for:
@@ -81,7 +81,7 @@ class Manager(QtCore.QObject):
         try:
             global LOG
             LOG = Logger(self)
-            print(LOG)
+            #print(LOG)
             self.logger = LOG
             
             if argv is not None:

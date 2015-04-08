@@ -5,10 +5,15 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 class TrayIcon(Base):
     def __init__(self, manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, configuation=config, callback_dict = {})
+        Base.__init__(self,
+                    manager,
+                    name,
+                    configuation=config,
+                    callback_dict = {}
+                    )
 
-        self.__tray = SystemTrayIcon()
-        self.__tray.show()
+        self._tray = SystemTrayIcon()
+        self._tray.show()
 
 class RightClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):

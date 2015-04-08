@@ -2,7 +2,6 @@ import time
 import traceback
 import sys, os
 
-from pyqtgraph.debug import *
 import pyqtgraph.debug as pgdebug
 import pyqtgraph.configfile as configfile
 from pyqtgraph.Qt import QtCore
