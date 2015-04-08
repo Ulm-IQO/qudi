@@ -12,5 +12,15 @@ class ManagerGui(Base):
 
     def initUI(self):
         self._mw.setGeometry(300,300,300,300)
-        self._mw.setWindowTitle('TEST')
+        self._mw.setWindowTitle('Manager')
+        self.cwdget = QtGui.QWidget()
+        self.button = QtGui.QPushButton('Load All Modules')
+        self.button.clicked.connect(self.handleButton)
+        self.layout = QtGui.QVBoxLayout()
+        self.layout.addWidget(self.button)
+        self.cwdget.setLayout(self.layout)
+        self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
+
+    def handleButton(self):
+        self._manager.startAllConfiguredModules()

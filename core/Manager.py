@@ -243,14 +243,14 @@ class Manager(QtCore.QObject):
             try:
                 ## hardware
                 if key == 'hardware':
-                    for k in cfg['hardware']:
-                        if self.disableAllDevs or k in self.disableDevs:
-                            self.logger.print_logMsg("    --> Ignoring device '%s' -- disabled by request" % k)
+                    for m in cfg['hardware']:
+                        if self.disableAllDevs or m in self.disableDevs:
+                            self.logger.print_logMsg("    --> Ignoring device '%s' -- disabled by request" % m)
                             continue
-                            if 'module' in cfg['hardware'][k]:
-                                definedHardware[k] = cfg['hardware'][k]
-                            else: 
-                                self.logger.print_logMsg("    --> Ignoring device '%s' -- no module specified" % k)
+                        if 'module' in cfg['hardware'][m]:
+                            self.definedHardware[m] = cfg['hardware'][m]
+                        else: 
+                            self.logger.print_logMsg("    --> Ignoring device '%s' -- no module specified" % m)
 
                 ## logic
                 elif key == 'logic':
@@ -258,7 +258,7 @@ class Manager(QtCore.QObject):
                         if 'module' in cfg['logic'][m]:
                             self.definedLogic[m] = cfg['logic'][m]
                         else:
-                            self.logger.print_logMsg("    --> Ignoring logic '%s' -- no module specified" % k)
+                            self.logger.print_logMsg("    --> Ignoring logic '%s' -- no module specified" % m)
                         
                 ## GUI
                 elif key == 'gui':
@@ -266,7 +266,7 @@ class Manager(QtCore.QObject):
                         if 'module' in cfg['gui'][m]:
                             self.definedGui[m] = cfg['gui'][m]
                         else:
-                            self.logger.print_logMsg("    --> Ignoring GUI '%s' -- no module specified" % k)
+                            self.logger.print_logMsg("    --> Ignoring GUI '%s' -- no module specified" % m)
 
                 ## load on startup
                 elif key == 'startup':
@@ -276,13 +276,13 @@ class Manager(QtCore.QObject):
                                 if 'module' in cfg['startup']['gui'][m]:
                                     self.startupGui[m] = cfg['startup']['gui'][m]
                                 else:
-                                    self.logger.print_logMsg("    --> Ignoring startup logic '%s' -- no module specified" % k)
+                                    self.logger.print_logMsg("    --> Ignoring startup logic '%s' -- no module specified" % m)
                         elif skey == 'logic':
                             for m in cfg['startup']['logic']:
                                 if 'module' in cfg['startup']['logic'][m]:
                                     self.startupLogic[m] = cfg['startup']['logic'][m]
                                 else:
-                                    self.logger.print_logMsg("    --> Ignoring startup GUI '%s' -- no module specified" % k)
+                                    self.logger.print_logMsg("    --> Ignoring startup GUI '%s' -- no module specified" % m)
 
                 ## global config
                 elif key == 'global':
@@ -471,8 +471,62 @@ class Manager(QtCore.QObject):
             activate them.
         """
         #FIXME: actually load all the modules in the correct order and connect the interfaces
-        pass
-    
+        print("HW:", self.definedHardware)
+        print("LG:", self.definedLogic)
+        print("GU:", self.definedGui)
+        ## Hardware
+        for key in self.definedHardware:
+            if 'module' in self.definedHardware[key]:
+                try:
+                    modObj = self.loadModule(
+                                        'hardware',
+                                        self.definedHardware[key]['module'])
+                    self.configureModule(modObj,
+                                        'hardware',
+                                        self.definedHardware[key]['module'],
+                                        key,
+                                        self.definedHardware[key])
+                except:
+                    raise
+            else:
+                self.logger.logMsg('Not a loadable hardware module: %s' % key,
+                                    msgType='error')
+        ## Logic
+        for key in self.definedLogic:
+            if 'module' in self.definedLogic[key]:
+                try:
+                    modObj = self.loadModule(
+                                        'logic',
+                                        self.definedLogic[key]['module'])
+                    self.configureModule(modObj,
+                                        'logic',
+                                        self.definedLogic[key]['module'],
+                                        key,
+                                        self.definedLogic[key])
+                except:
+                    raise
+            else:
+                self.logger.logMsg('Not a loadable logic module: %s' % key,
+                                    msgType='error')
+        ## GUI
+        for key in self.definedGui:
+            if 'module' in self.definedGui[key]:
+                try:
+                    modObj = self.loadModule(
+                                        'gui',
+                                         self.definedGui[key]['module'])
+                    self.configureModule(modObj,
+                                        'gui',
+                                        self.definedGui[key]['module'],
+                                        key,
+                                        self.definedGui[key])
+                except:
+                    raise
+            else:
+                self.logger.logMsg('Not a loadable gui module: %s' % key,
+                                    msgType='error')
+
+
     def reloadAll(self):
         """Reload all python code"""
         #path = os.path.split(os.path.abspath(__file__))[0]
