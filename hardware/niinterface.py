@@ -31,10 +31,10 @@ class niinterface(Base,SlowCounterInterface):
         self.testing()
         
     def testing(self):
-        self.set_up_clock(clock_frequency = 1000, clock_channel = 'Dev1/Ctr0')
-        self.set_up_counter(counter_channel = 'Dev1/Ctr1', photon_source= 'Dev1/PFI8')
+        self.set_up_clock(clock_frequency = 100, clock_channel = '/Dev1/Ctr0')
+        self.set_up_counter(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8')
         for i in range(5):
-            print(self.get_counter)
+            print(self.get_counter(samples=100))
         self.close_counter()
         self.close_clock()
         
@@ -50,7 +50,7 @@ class niinterface(Base,SlowCounterInterface):
         daq.DAQmxCreateTask('', daq.byref(self._clock_daq_task))    # create task for pulse_out, here the parameter self.pulse_out_task has to be passed by reference (passing a pointer) 
         daq.DAQmxCreateCOPulseChanFreq( self._clock_daq_task,      # the task to which to add the channels that this function creates
                             		    self._clock_channel,  # use this counter; the name to assign to the created channel
-										'',    # name to assign to channel (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
+										'Clock Task',    # name to assign to channel (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
 										daq.DAQmx_Val_Hz, #units
 										daq.DAQmx_Val_Low, #idle state
 										0, #initial delay
@@ -63,6 +63,8 @@ class niinterface(Base,SlowCounterInterface):
                                     daq.DAQmx_Val_ContSamps,  #continuous running
                                     1000) #buffer length
                                     
+        daq.DAQmxStartTask(self._clock_daq_task) 
+                           
         return 0
     
     def set_up_counter(self, counter_channel = 'dummy', photon_source = 'dummy'):
@@ -85,14 +87,17 @@ class niinterface(Base,SlowCounterInterface):
         #    you choose)
         daq.DAQmxCreateCISemiPeriodChan(self._counter_daq_task,    # The task to which to add the channels that this function creates
                                         self._counter_channel,  # use this counter; the name to assign to the created channel
-                                        '',  #name
+                                        'Counting Task',  #name
                                         0,  #expected minimum value
                                         self._MaxCounts/2./self._clock_frequency,    #expected maximum value
                                         daq.DAQmx_Val_Ticks, #units of width measurement, here photon ticks
                                         '')   
         
-        hook=str(self._clock_channel+'InternalOutput')
-        hook=self._clock_channel
+        hook=self._clock_channel+'InternalOutput'
+#        import ctypes
+#        hook=ctypes.c_char_p(hook.encode('ascii'))
+#        hook=daq.CtypesString().from_param(hook)
+#        hook="Dev1/Ctr0InternalOutput"
         print (hook)
         # set the pulses to counter self._trace_counter_in
         daq.DAQmxSetCISemiPeriodTerm( self._counter_daq_task, self._counter_channel, hook)
@@ -108,6 +113,8 @@ class niinterface(Base,SlowCounterInterface):
         
         #unread data in buffer will be overwritten
         daq.DAQmxSetReadOverWrite(self._counter_daq_task, daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
+        
+        daq.DAQmxStartTask(self._counter_daq_task) 
         
         return -1
         
