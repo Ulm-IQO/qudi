@@ -17,7 +17,7 @@ class niinterface(Base,SlowCounterInterface):
         self._modclass = 'niinterface'
         self._modtype = 'slowcounterinterface'
         
-        self.logMsg("The following configuration was found.", 
+        self.logMsg('The following configuration was found.', 
                     messageType='status')
                     
         self._MaxCounts = 1e7
@@ -25,10 +25,10 @@ class niinterface(Base,SlowCounterInterface):
         
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg("{}: {}".format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]), 
                         messageType='status')
                         
-        self.testing()
+#        self.testing()
         
     def testing(self):
         self.set_up_clock(clock_frequency = 100, clock_channel = '/Dev1/Ctr0')
