@@ -2,9 +2,10 @@
 
 from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
-from visa import instrument
+import visa
 
-class MWSMIQ(Base,MWInterface):
+
+class mwsourcesmiq(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -12,6 +13,8 @@ class MWSMIQ(Base,MWInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
+                      
+        # checking for the right configuration
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
@@ -20,14 +23,17 @@ class MWSMIQ(Base,MWInterface):
                         messageType='error')
         
         if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = config['gpib_timeout']
+            self._gpib_timeout = int(config['gpib_timeout'])
         else:
+            self._gpib_timeout = 10
             self.logMsg("This is MWSMIQ: did not find >>gpib_timeout<< in \
-            configration.", 
+            configration. I will set it to 10 seconds.", 
                         messageType='error')
-            
+        
+        # trying to load the visa connection to the module
+        rm = visa.ResourceManager()
         try: 
-            self._gpib_connetion = instrument(self._gpib_address, 
+            self._gpib_connetion = rm.open_resource(self._gpib_address, 
                                               timeout=self._gpib_timeout)
         except:
             self.logMsg("This is MWSMIQ: could not connect to the GPIB \

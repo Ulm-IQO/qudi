@@ -76,7 +76,7 @@ def messageHandler(msgType, msg):
         logf = "crash.log"
             
         fh = open(logf, 'a')
-        fh.write(msg+'\n')
+        fh.write(str(msg)+'\n')
         fh.write('\n'.join(traceback.format_stack()))
         fh.close()
     except:
