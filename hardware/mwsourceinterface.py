@@ -46,7 +46,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>get_power')
         return 0.0
         
-    def set_power(self,power=None):
+    def set_power(self,power=0):
         """ Sets the microwave output power. 
         <blank line>
         @param float power: this power is set at the device
@@ -54,4 +54,32 @@ class MWInterface():
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MWInterface>set_power')
+        return -1
+        
+    def get_frequency(self):
+        """ Gets the frequency of the microwave output. 
+        <blank line>
+        @return float: the power set at the device
+        """
+        raise InterfaceImplementationError('MWInterface>get_frequency')
+        return 0.0
+        
+    def set_frequency(self,frequency=0):
+        """ Sets the frequency of the microwave output. 
+        <blank line>
+        @param float power: this power is set at the device
+        <blank line>
+        @return int: error code (0:OK, -1:error)
+        """
+        raise InterfaceImplementationError('MWInterface>set_frequency')
+        return -1
+        
+    def set_cw(self,frequency=None, power=None, useinterleave=None):
+        """ Sets the microwave output to CW. 
+        <blank line>
+        @param float power: this power is set at the device
+        <blank line>
+        @return int: error code (0:OK, -1:error)
+        """
+        raise InterfaceImplementationError('MWInterface>set_cw')
         return -1

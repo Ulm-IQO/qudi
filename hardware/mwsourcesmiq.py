@@ -90,5 +90,26 @@ class MWSMIQ(Base,MWInterface):
         <blank line>
         @return int: error code (0:OK, -1:error)
         """
+        
         self._gpib_connetion.write(':POW {:f}'.format(power))
+        return 0
+        
+        
+    def get_frequency(self):
+        """ Gets the frequency of the microwave output. 
+        <blank line>
+        @return float: the power set at the device
+        """
+        
+        return float(self._gpib_connetion.ask(':FREQ?'))
+        
+    def set_frequency(self,frequency=0):
+        """ Sets the frequency of the microwave output. 
+        <blank line>
+        @param float power: this power is set at the device
+        <blank line>
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._gpib_connetion.write(':FREQ {:e}'.format(frequency))
         return 0
