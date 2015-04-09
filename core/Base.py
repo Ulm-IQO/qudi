@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Base class for all loadable modules
 
 #* do not die during module loading in any case, and therefore do nothing!!!

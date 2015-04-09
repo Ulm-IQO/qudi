@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
 from visa import instrument

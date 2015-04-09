@@ -1,4 +1,5 @@
-# Manager gui (test)
+# -*- coding: utf-8 -*-
+# Cosole from pyqtgraph
 
 from core.Base import Base
 from pyqtgraph.Qt import QtCore, QtGui

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time
 import traceback
 import sys, os
@@ -25,12 +26,25 @@ original_excepthook = sys.excepthook
 
 def printExc(msg='', indent=4, prefix='|', msgType='error'):
     """Print an error message followed by an indented exception backtrace
-    (This function is intended to be called within except: blocks)"""
+
+      @param string msg: message to be logged
+      @param int indent: indentation depth in characters
+      @param string prefix: prefix for backtrace lines
+      @param string msgType: type of message (user, status, warning, error)
+
+    (This function is intended to be called within except: blocks)
+    """
     pgdebug.printExc(msg, indent, prefix)
 
 class Logger(QtCore.QObject):
-
+    """Class that does all the log handling in QuDi.
+    """
     def __init__(self, manager):
+        """Create a logger instance for a manager object.
+
+          @param object manager: instance of the Manager class that this logger
+            belongs to
+        """
         super().__init__()
         path = os.path.dirname(__file__)
         self.manager = manager
@@ -43,9 +57,12 @@ class Logger(QtCore.QObject):
         self.lock = Mutex()
         exceptionHandling.register(self.exceptionCallback)
 
-    def exceptionCallback(self,*args):
+    def exceptionCallback(self, *args):
+        """Exception logging function.
+
+          @param list args: contents of exception (typt, value, backtrace)
+        """
         ## Called whenever there is an unhandled exception.
-    
         ## unhandled exceptions generate an error message by default, but this
         ## can be overridden
         global blockLogging
@@ -69,26 +86,36 @@ class Logger(QtCore.QObject):
 
     ## called indirectly when logMsg is called from a non-gui thread 
     def queuedLogMsg(self, args):
+        """Deferred message logging function.
+
+          @param list args: arguments for logMsg()
+        """
         self.logMsg(*args[0], **args[1])
         
     def print_logMsg(self, msg, **kwargs):
+        """Print message to stdout and log it.
+
+          @param list kwargs: paamteers for logMsg()
+        """
         print(msg)
         self.logMsg(msg, **kwargs)
 
     def logMsg(self, msg, importance=5, msgType='status', **kwargs):
-        """msg: the text of the log message
-           msgTypes: user, status, error, warning (status is default)
-           importance: 0-9 (0 is low importance, 9 is high, 5 is default)
-           other keywords:
-              exception: a tuple (type, exception, traceback) as returned by
+        """Function for adding messages to log.
+
+          @param string msg: the text of the log message
+          @param string msgTypes: user, status, error, warning (status is default)
+          @param int importance: 0-9 (0 is low importance, 9 is high, 5 is default)
+          @param tuple exception: a tuple (type, exception, traceback) as returned by
               sys.exc_info()
-              docs: a list of strings where documentation related to the message
+          @param list(string) docs: a list of strings where documentation related to the message
               can be found
-              reasons: a list of reasons (as strings) for the message
-              traceback: a list of formatted callstack/trackback objects
+          @param list(string) reasons: a list of reasons (as strings) for the message
+          @paam list traceback: a list of formatted callstack/trackback objects
               (formatting a traceback/callstack returns a list of strings),
               usually looks like
               [['line 1', 'line 2', 'line3'], ['line1', 'line2']]
+
            Feel free to add your own keyword arguments.
            These will be saved in the log.txt file,
            but will not affect the content or way that messages are displayed.
@@ -125,19 +152,27 @@ class Logger(QtCore.QObject):
         
     def logExc(self, *args, **kwargs):
         """Calls logMsg, but adds in the current exception and callstack.
+
+          @param list args: arguments for logMsg()
+          @param dict kwargs: dictionary containing exception information.
+
         Must be called within an except block, and should only be called if the
         exception is not re-raised.
         Unhandled exceptions, or exceptions that reach the top of the callstack
         are automatically logged, so logging an exception that will be re-raised
         can cause the exception to be logged twice.
-        Takes the same arguments as logMsg."""
+        Takes the same arguments as logMsg.
+        """
         kwargs['exception'] = sys.exc_info()
         kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
         self.logMsg(*args, **kwargs)
         
     def processEntry(self, entry):
+        """Convert excpetion into serializable form.
+            
+            @param dict entry: log file entry
+        """
         ## pre-processing common to saveEntry and displayEntry
-
         ## convert exc_info to serializable dictionary
         if entry.get('exception', None) is not None:
             exc_info = entry.pop('exception')
@@ -147,6 +182,15 @@ class Logger(QtCore.QObject):
             entry['exception'] = None
 
     def exceptionToDict(self, exType, exc, tb, topTraceback):
+        """Convert exception object to dictionary.
+          
+          @param exType: exception type
+          @param exc: exception object
+          @param tb: traceback object
+          @param topTraceback: ??
+          
+          @return dict: dictionary containing traceback and exception information
+        """
         #lines = (traceback.format_stack()[:-skip] 
             #+ ["  ---- exception caught ---->\n"] 
             #+ traceback.format_tb(sys.exc_info()[2])
@@ -169,6 +213,10 @@ class Logger(QtCore.QObject):
         return excDict
     
     def fileName(self):
+        """Get file name of log file.
+         
+          @return string: path to log file
+        """
         ## return the log file currently used
         if self.logFile is None:
             return "tempLog.txt"
@@ -176,8 +224,17 @@ class Logger(QtCore.QObject):
             return self.logFile.name()
 
     def getLogDir(self):
+        """Get log directory.
+
+          @return string: path to log directory
+        """
         return None
     
     def saveEntry(self, entry):
+        """Append log entry to log file.
+
+          @param dict entry: log file entry
+        """
         with self.lock:
             configfile.appendConfigFile(entry, self.fileName())
+

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # a tray Icon for QuDi
 
 from core.Base import Base
