@@ -31,7 +31,8 @@ class LeftClickMenu(QtGui.QMenu):
 class SystemTrayIcon(QtGui.QSystemTrayIcon):
     def __init__(self, parent=None):
         QtGui.QSystemTrayIcon.__init__(self, parent)
-        self.setIcon(QtGui.QIcon.fromTheme("document-save"))
+        self.logo=QtGui.QIcon('artwork/qudi_trayicon.png')
+        self.setIcon(self.logo)
         self.right_menu = RightClickMenu()
         self.left_menu = LeftClickMenu()
         self.setContextMenu(self.right_menu)

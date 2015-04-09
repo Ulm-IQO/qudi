@@ -77,7 +77,7 @@ class Base(QtCore.QObject, Fysom):
         return _configuration
 
     def logMsg(self, message, messageType='status'):
-        self._manager.logger.logMsg('%s.%s: %s' % (_modclass, _modtype, message), msgType=messageType)
+        self._manager.logger.logMsg('%s.%s: %s' % (self._modclass, self._modtype, message), msgType=messageType)
 
     @staticmethod
     def identify():

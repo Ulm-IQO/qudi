@@ -13,6 +13,8 @@ class mwsourcesmiq(Base,MWInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
+        self._modclass = 'mwsourcedummy'
+        self._modtype = 'mwsource'
                       
         # checking for the right configuration
         if 'gpib_address' in config.keys():
