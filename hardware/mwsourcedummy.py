@@ -82,7 +82,7 @@ class mwsourcedummy(Base,MWInterface):
         
         self.logMsg("mwsourcedummy>get_frequency", messageType='warning')
                     
-        return random.uniform(-10, 10)
+        return random.uniform(0, 1e6)
         
     def set_frequency(self,frequency=0):
         """ Sets the frequency of the microwave output. 

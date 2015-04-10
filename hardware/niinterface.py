@@ -20,6 +20,11 @@ class niinterface(Base,SlowCounterInterface):
         self.logMsg('The following configuration was found.', 
                     messageType='status')
                     
+        # checking for the right configuration
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key,config[key]), 
+                        messageType='status')
+                        
         self._MaxCounts = 1e7
         self._RWTimeout = 5
         self._counter_daq_task = None
@@ -53,12 +58,7 @@ class niinterface(Base,SlowCounterInterface):
             self._samples_number=10
             self.logMsg('No samples_number configured tanking 10 instead.', \
             messageType='warning')
-            
-        # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
-                        
+                                    
         self.testing()
         
     def testing(self):
