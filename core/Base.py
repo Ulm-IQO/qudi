@@ -39,7 +39,7 @@ class Base(QtCore.QObject, Fysom):
                 {'name': 'lock', 'src': 'running', 'dst': 'locked' },
                 {'name': 'block', 'src': 'idle', 'dst': 'blocked' },
                 {'name': 'block', 'src': 'running', 'dst': 'blocked' },
-                {'name': 'blocktolock', 'src': 'locked', 'dst': 'blocked' },
+                {'name': 'locktoblock', 'src': 'locked', 'dst': 'blocked' },
                 {'name': 'unlock', 'src': 'locked', 'dst': 'idle' },
                 {'name': 'unblock', 'src': 'blocked', 'dst': 'idle' },
                 {'name': 'runlock', 'src': 'locked', 'dst': 'running' },
