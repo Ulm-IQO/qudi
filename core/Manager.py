@@ -631,11 +631,45 @@ class Manager(QtCore.QObject):
                                 continue
 
                             ## Finally set the connection object
-                            self.logic[logicmodule].connection['in'][c]['object'] = self.hardware['destmod']
+                            self.logic[logicmodule].connection['in'][c]['object'] = self.hardware[destmod]
                                     
                         ## connect to logic module
                         elif destmod in self.logic:
-                            self.logic[destmod].
+                            if 'out' not in  self.logic[destmod].connection:
+                                self.logger.logMsg(
+                                    'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
+                                    msgType='error')
+                                continue
+                            outputs = self.logic[destmod].connection['out']
+                            if destcon not in outputs:
+                                self.logger.logMsg(
+                                    'OUT connector not declared',
+                                    msgType='error')
+                                continue
+                            if outputs[destcon] is not OrderedDict:
+                                self.logger.logMsg(
+                                    'not a dict',
+                                    msgType='error')
+                                continue
+                            if 'class' not in outputs[destcon]:
+                                self.logger.logMsg(
+                                    'no class key in dict',
+                                    msgType='error')
+                                continue
+                            if outputs[destcon]['class'] is not str:
+                                self.logger.logMsg(
+                                    'class value no string',
+                                    msgType='error')
+                                continue
+                            if not issubclass(self.logic[destmod], outputs[destcon]['class']):
+                                self.logger.logMsg(
+                                    'not the correct class for declared interface',
+                                    msgType='error')
+                                continue
+
+                            ## Finally set the connection object
+                            self.logic[logicmodule].connection['in'][c]['object'] = self.logic[destmod]
+ 
                         else:
                             self.logger.logMsg(
                                 'Unique name %s is neither in hardware or logic module list. Cannot connect %s (%s) to it.' % (connections[c], logicmodule, thismodule[module]),
@@ -644,6 +678,9 @@ class Manager(QtCore.QObject):
                     self.logger.logMsg(
                         'Logic module %s (%s) connection configuration is broken.' % (logicmodule, thismodule[module] ),
                         msgType='error')
+                ## FIXME Check for any disconnected modules and add their dummies
+
+                ## FIXME Call Activate on all deactivated modules
 
     def reloadAll(self):
         """Reload all python code"""
