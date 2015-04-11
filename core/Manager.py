@@ -533,7 +533,7 @@ class Manager(QtCore.QObject):
                 self.logger.logMsg('Not a loadable gui module: %s' % key,
                                     msgType='error')
         ## Connect ALL the things!
-        for logicmodule in definedLogic:
+        for logicmodule in self.definedLogic:
             thismodule = self.definedLogic[logicmodule]
             if logicmodule not in self.logic:
                 self.logger.logMsg(
