@@ -6,13 +6,15 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 class TrayIcon(Base):
     def __init__(self, manager, name, config = {}, **kwargs):
+        callback = {'onactivate': self.initUI}
         Base.__init__(self,
                     manager,
                     name,
-                    configuation=config,
-                    callback_dict = {}
+                    config,
+                    callback
                     )
 
+    def initUI(self, e=None):
         self._tray = SystemTrayIcon()
         self._tray.show()
 

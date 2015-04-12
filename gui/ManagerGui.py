@@ -7,11 +7,15 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 class ManagerGui(Base):
     def __init__(self, manager, name, config, **kwargs):
-        self._mw = QtGui.QMainWindow()
-        Base.__init__(self, manager, name, configuration=config)
-        self.initUI()
+        c_dict = {'onactivate': self.initUI}
+        Base.__init__(self,
+                    manager,
+                    name,
+                    config,
+                    c_dict)
 
-    def initUI(self):
+    def initUI(self, e=None):
+        self._mw = QtGui.QMainWindow()
         self._mw.setGeometry(300,300,300,300)
         self._mw.setWindowTitle('Manager')
         self.cwdget = QtGui.QWidget()

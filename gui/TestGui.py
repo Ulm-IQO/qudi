@@ -7,17 +7,20 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 class TestGui(Base):
     def __init__(self, manager, name, config, **kwargs):
-        self._mw = QtGui.QMainWindow()
-        Base.__init__(self, manager, name, configuration=config)
+        c_dict = {'onactivate': self.initUI}
+        Base.__init__(self,
+                    manager,
+                    name,
+                    config,
+                    c_dict)
         
         # get text from config
         self.buttonText = 'No Text configured'
         if 'text' in config:
             self.buttonText = config['text']
 
-        self.initUI()
-
-    def initUI(self):
+    def initUI(self, e=None):
+        self._mw = QtGui.QMainWindow()
         self._mw.setGeometry(300,300,500,100)
         self._mw.setWindowTitle('TEST')
         self.cwdget = QtGui.QWidget()

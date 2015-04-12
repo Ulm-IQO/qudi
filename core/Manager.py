@@ -174,6 +174,7 @@ class Manager(QtCore.QObject):
                                         self.startupGui[key]['module'],
                                         key,
                                         self.startupGui[key])
+                    self.gui[key].activate()
                 except:
                     raise
         except:
@@ -491,6 +492,7 @@ class Manager(QtCore.QObject):
                     self.logger.logExc(
                             'Error while loading hardware module: %s' % key,
                              msgType='error')
+                    continue
             else:
                 self.logger.logMsg('Not a loadable hardware module: %s' % key,
                                     msgType='error')
@@ -510,6 +512,7 @@ class Manager(QtCore.QObject):
                     self.logger.logExc(
                                 'Error while loading logic module: %s' % key,
                                 msgType='error')
+                    continue
             else:
                 self.logger.logMsg('Not a loadable logic module: %s' % key,
                                     msgType='error')
@@ -529,10 +532,12 @@ class Manager(QtCore.QObject):
                     self.logger.logExc(
                             'Error while loading GUI module: %s' % key,
                              msgType='error')
+                    continue
             else:
                 self.logger.logMsg('Not a loadable gui module: %s' % key,
                                     msgType='error')
         ## Connect ALL the things!
+        print('Connecting ALL the things!!')
         for logicmodule in self.definedLogic:
             thismodule = self.definedLogic[logicmodule]
             if logicmodule not in self.logic:
@@ -678,9 +683,46 @@ class Manager(QtCore.QObject):
                     self.logger.logMsg(
                         'Logic module %s (%s) connection configuration is broken.' % (logicmodule, thismodule[module] ),
                         msgType='error')
-                ## FIXME Check for any disconnected modules and add their dummies
-
-                ## FIXME Call Activate on all deactivated modules
+        ## FIXME Check for any disconnected modules and add their dummies
+        ## FIXME Call Activate on all deactivated modules
+        print('Activation starting!')
+        for key in self.hardware:
+            if self.hardware[key].getState() != 'deactivated':
+                self.logger.logMsg(
+                    'module %s not deactivated anymore' % key,
+                    msgType='error')
+                continue
+            try:
+                self.hardware[key].activate()
+            except:
+                self.logger.logExc(
+                    '%s: error during activation:' % key,
+                    msgType='error')
+                        
+        for key in self.logic:
+            if self.logic[key].getState() != 'deactivated':
+                self.logger.logMsg(
+                    'module %s not deactivated anymore' % key,
+                    msgType='error')
+                continue
+            try:
+                self.logic[key].activate()
+            except:
+                self.logger.logExc(
+                    '%s: error during activation:' % key,
+                    msgType='error')
+        for key in self.gui:
+            if self.gui[key].getState() != 'deactivated':
+                self.logger.logMsg(
+                    'module %s not deactivated anymore' % key,
+                    msgType='error')
+                continue
+            try:
+                self.gui[key].activate()
+            except:
+                self.logger.logExc(
+                    '%s: error during activation:' % key,
+                    msgType='error')
 
     def reloadAll(self):
         """Reload all python code"""

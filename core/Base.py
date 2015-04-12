@@ -21,13 +21,22 @@ class Base(QtCore.QObject, Fysom):
     _modclass = 'base'
     _modtype = 'base'
 
-    def __init__(self, manager, name, configuration = {}, callback_dict = {}, **kwargs):
+    def __init__(self, manager, name, configuration = {}, callbacks = {}, **kwargs):
+        """ Initialise Base class object and set up its state machine.
+
+          @param object self: tthe object being initialised
+          @param object manager: the manager object that 
+          @param str name: uniqu name for this object
+          @param dict configuration: parameters from the configuration file
+          @param dict callbacks: dictionary specifying functions to be run on state machine transitions
+
+        """
 
         # Qt signal/slot capabilities
         QtCore.QObject.__init__(self)
         
         # State machine definition
-        __baseStateList = {
+        _baseStateList = {
             'initial': 'deactivated',
             'events': [
                 {'name': 'activate', 'src': 'deactivated', 'dst': 'idle' },
@@ -45,10 +54,10 @@ class Base(QtCore.QObject, Fysom):
                 {'name': 'runlock', 'src': 'locked', 'dst': 'running' },
                 {'name': 'runblock', 'src': 'blocked', 'dst': 'running' }
             ],
-            'callbacks': callback_dict
+            'callbacks': callbacks
         }
 
-        Fysom.__init__(self, __baseStateList)
+        Fysom.__init__(self, _baseStateList)
 
         self._manager = manager
         self._name = name
@@ -71,7 +80,7 @@ class Base(QtCore.QObject, Fysom):
     # Do not replace these in subclasses
 
     def getState(self):
-        return self._state.current
+        return self.current
 
     def getConfguration(self):
         return _configuration
