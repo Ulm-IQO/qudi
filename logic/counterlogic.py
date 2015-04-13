@@ -56,8 +56,7 @@ class counterlogic(genericlogic):
             if threading.current_thread().stop_request.isSet():
                 break
             self.countdata=np.roll(self.countdata, -self._counting_samples)
-            self.countdata[-self._counting_samples-1:] = \
-            self._counting_device.get_counter(samples=self._counting_samples)
+            self.countdata[-self._counting_samples:] = self._counting_device.get_counter(samples=self._counting_samples)
             
         self._counting_device.close_counter()
         self._counting_device.close_clock()

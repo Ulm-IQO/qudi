@@ -48,7 +48,7 @@ class mwsourcesmiq(Base,MWInterface):
         
     def on(self):
         """ Switches on any preconfigured microwave output. 
-        <blank line>
+        
         @return int: error code (0:OK, -1:error)
         """ 
         
@@ -59,7 +59,7 @@ class mwsourcesmiq(Base,MWInterface):
     
     def off(self):
         """ Switches off any microwave output. 
-        <blank line>
+        
         @return int: error code (0:OK, -1:error)
         """
         
@@ -72,9 +72,9 @@ class mwsourcesmiq(Base,MWInterface):
         
     def power(self,power=None):
         """ Sets and gets the microwave output power. 
-        <blank line>
+        
         @param float power: if defined, this power is set at the device
-        <blank line>
+        
         @return float: the power set at the device
         """
         # This is not a good way to implement it!
@@ -85,7 +85,7 @@ class mwsourcesmiq(Base,MWInterface):
     
     def get_power(self):
         """ Gets the microwave output power. 
-        <blank line>
+        
         @return float: the power set at the device
         """
         
@@ -93,9 +93,9 @@ class mwsourcesmiq(Base,MWInterface):
         
     def set_power(self,power=None):
         """ Sets the microwave output power. 
-        <blank line>
+        
         @param float power: this power is set at the device
-        <blank line>
+        
         @return int: error code (0:OK, -1:error)
         """
         
@@ -105,7 +105,7 @@ class mwsourcesmiq(Base,MWInterface):
         
     def get_frequency(self):
         """ Gets the frequency of the microwave output. 
-        <blank line>
+        
         @return float: the power set at the device
         """
         
@@ -113,9 +113,9 @@ class mwsourcesmiq(Base,MWInterface):
         
     def set_frequency(self,frequency=0):
         """ Sets the frequency of the microwave output. 
-        <blank line>
+        
         @param float power: this power is set at the device
-        <blank line>
+        
         @return int: error code (0:OK, -1:error)
         """
         

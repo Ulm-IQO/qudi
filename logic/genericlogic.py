@@ -116,7 +116,7 @@ class genericlogic(Base):
         """
         pass
 
-    def run(self):
+    def runme(self):
         """NEVER CALL THIS METHOD DIRECTLY. Use start() and stop() instead. Override it to implement your measurement.
         Don't forget to offer_pause() once in a while.
         Also, include the line "if self.stop_request.isSet(): break" in your main loop if you can accept thread stop.

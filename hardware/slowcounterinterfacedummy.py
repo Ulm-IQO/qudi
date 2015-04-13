@@ -33,14 +33,14 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
-            self.logMsg('No clock_frequency configured tanking 100 Hz instead.', \
+            self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
             messageType='warning')
             
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
-            self.logMsg('No samples_number configured tanking 10 instead.', \
+            self.logMsg('No samples_number configured taking 10 instead.', \
             messageType='warning')
             
     

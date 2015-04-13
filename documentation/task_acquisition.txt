@@ -1,0 +1,9 @@
+Mathias Metsch: Laser scanning
+Jochen Scheuer: Magnet (Micos) + Interface
+Christoph Müller: Magnet (PI) + Interface
+Thomas Unden: Microwelle + Interface
+Alex Stark: dll-Anbindung, FastComTec, CounterGUI
+Florian Frank: Microwelle
+Kay Jahnke: NiDAQ
+Jan binder: ManagerGUI, Manager
+Michael Ferner: Qualitätskontrolle
