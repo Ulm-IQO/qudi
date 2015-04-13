@@ -15,6 +15,7 @@ import sys
 import gc
 import getopt
 import glob
+import re
 
 import time
 import atexit
@@ -169,7 +170,8 @@ class Manager(QtCore.QObject):
                     # self.loadModule( baseclass, module, instanceName, config=None)
                     modObj = self.loadModule('gui',
                                             self.startupGui[key]['module'])
-                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                    pkgName = re.escape(modObj.__package__)
+                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
                     self.configureModule(modObj,
                                         'gui',
                                         modName,
@@ -484,7 +486,8 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'hardware',
                                         self.definedHardware[key]['module'])
-                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                    pkgName = re.escape(modObj.__package__)
+                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
                     self.configureModule(modObj,
                                         'hardware',
                                         modName,
@@ -505,7 +508,8 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'logic',
                                         self.definedLogic[key]['module'])
-                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                    pkgName = re.escape(modObj.__package__)
+                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
                     self.configureModule(modObj,
                                         'logic',
                                         modName,
@@ -526,7 +530,9 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'gui',
                                          self.definedGui[key]['module'])
-                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                    pkgName = re.escape(modObj.__package__)
+                    pkgName = re.escape(modObj.__package__)
+                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
                     self.configureModule(modObj,
                                         'gui',
                                         modName,
