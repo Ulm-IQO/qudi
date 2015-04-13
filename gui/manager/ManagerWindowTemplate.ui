@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>358</width>
+    <height>298</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QPushButton" name="loadAllButton">
+      <property name="text">
+       <string>Load all modules</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QListView" name="loadedModuleView"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>358</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuMenu">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+    <addaction name="actionLoad_configuration"/>
+    <addaction name="actionSave_configuration"/>
+    <addaction name="separator"/>
+    <addaction name="action_Load_all_modules"/>
+    <addaction name="actionStart_all_modules"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <addaction name="menuMenu"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLoad_configuration">
+   <property name="text">
+    <string>Load configuration</string>
+   </property>
+  </action>
+  <action name="actionSave_configuration">
+   <property name="text">
+    <string>Save configuration</string>
+   </property>
+  </action>
+  <action name="action_Load_all_modules">
+   <property name="text">
+    <string> Load all modules</string>
+   </property>
+  </action>
+  <action name="actionStart_all_modules">
+   <property name="text">
+    <string>Start all modules</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
