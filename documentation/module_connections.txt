@@ -1,5 +1,5 @@
 
-Every module derived from Base has an OrderedDict "connection" which has to
+Every module derived from Base has an OrderedDict "connector" which has to
 contain its connection possibilities.
 
 In the constructor __init__ of each derived class, this OrderedDict needs to be
@@ -8,12 +8,12 @@ updated to reflect if a connection interface is provided.
 The connection interface is implemented as an Interface class that is inherited
 by the class wishing to provide an interface.
 
-The interface class constructor should check for the "connection" OrderedDict
+The interface class constructor should check for the "connector" OrderedDict
 and add the appropriate entries representing it.
 
-The format of the "connection" OrderedDict is:
+The format of the "connector" OrderedDict is:
 
-connection = OrderedDict
+connector = OrderedDict
     in:
         uniqueName1:
             class: InterfaceClass1
@@ -25,12 +25,12 @@ connection = OrderedDict
         uniqueNameX:
             class: InterfaceClassX
 
-The Base class supplies the "connection" dict and its top level keys
+The Base class supplies the "connector" dict and its top level keys
 "in" and "out".
 
 Interface class constructors add everything below that.
 Controlling something means adding an Interface under "in"
-in the "connection" dict.
+in the "connector^" dict.
 
 In the configuration file, add the following structure to your module
 to get your things connected
@@ -42,7 +42,7 @@ logic:
             mw2: 'mykrowave.2'
 
 This will add a reference to the module loaded as "mykrowave" into
-the "connection" dict of the "odmrlogic" module loaded as "stuff" at
+the "connector" dict of the "odmrlogic" module loaded as "stuff" at
     in:
         mw1:
             object: referenceToMycrowave

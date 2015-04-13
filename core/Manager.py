@@ -566,11 +566,11 @@ class Manager(QtCore.QObject):
                         'Logic module %s (%s) connection configuration is broken: no module defined.' % (logicmodule, thismodule['module'] ),
                         msgType='error')
                     continue
-#                if thismodule['connect'] is not dict:
-#                    self.logger.logMsg(
-#                        'Logic module %s (%s) connection configuration is broken: connect is not a dict.' % (logicmodule, thismodule['module'] ),
-#                        msgType='error')
-#                    continue
+                if not isinstance(thismodule['connect'], OrderedDict):
+                    self.logger.logMsg(
+                        'Logic module %s (%s) connection configuration is broken: connect is not a dict.' % (logicmodule, thismodule['module'] ),
+                        msgType='error')
+                    continue
 
                 connections = thismodule['connect']
                 for c in connections:
@@ -579,21 +579,21 @@ class Manager(QtCore.QObject):
                             'IN connector %s of module %s loaded as %s is supposed to get connected but is not declared in the module.' % (c, thismodule['module'], logicmodule),
                             msgType='error')
                         continue
-#                    if self.logic[logicmodule].connector['in'][c] is not OrderedDict:
-#                        self.logger.logMsg(
-#                            'No dict.',
-#                            msgType='error')
-#                        continue
+                    if not isinstance(self.logic[logicmodule].connector['in'][c], OrderedDict):
+                        self.logger.logMsg(
+                            'No dict.',
+                            msgType='error')
+                        continue
                     if 'class' not in self.logic[logicmodule].connector['in'][c]:
                         self.logger.logMsg(
                             'no class key in connection declaration',
                             msgType='error')
                         continue
-#                    if self.logic[logicmodule].connector['in'][c]['class'] is not str:
-#                        self.logger.logMsg(
-#                            'value for class key is not a string',
-#                            msgType='error')
-#                        continue
+                    if not isinstance(self.logic[logicmodule].connector['in'][c]['class'], basestring):
+                        self.logger.logMsg(
+                            'value for class key is not a string',
+                            msgType='error')
+                        continue
                     if 'object' not in self.logic[logicmodule].connector['in'][c]:
                         self.logger.logMsg(
                             'no object key in connection declaration',
@@ -604,11 +604,11 @@ class Manager(QtCore.QObject):
                             'object is not None, i.e. is already connected',
                             msgType='error')
                         continue
-#                    if connections[c] is not str:
-#                        self.logger.logMsg(
-#                            'Logic module %s (%s) connection configuration is broken, value for key %s is not a string.' % (logicmodule, thismodule['module'], c ),
-#                            msgType='error')
-#                        continue
+                    if not isinstance(connections[c], str):
+                        self.logger.logMsg(
+                            'Logic module %s (%s) connection configuration is broken, value for key %s is not a string.' % (logicmodule, thismodule['module'], c ),
+                            msgType='error')
+                        continue
                     if '.' not in connections[c]:
                         self.logger.logMsg(
                             'Logic module %s (%s) connection configuration is broken, value %s for key %s does not contain a dot.' % (logicmodule, thismodule[module], connections[c], c ),
@@ -634,21 +634,21 @@ class Manager(QtCore.QObject):
                                 'OUT connector not declared',
                                 msgType='error')
                             continue
-#                        if outputs[destcon] is not OrderedDict:
-#                            self.logger.logMsg(
-#                                'not a dict',
-#                                msgType='error')
-#                            continue
+                        if not isinstance(outputs[destcon], OrderedDict):
+                            self.logger.logMsg(
+                                'not a dict',
+                                msgType='error')
+                            continue
                         if 'class' not in outputs[destcon]:
                             self.logger.logMsg(
                                 'no class key in dict',
                                 msgType='error')
                             continue
-#                        if outputs[destcon]['class'] is not str:
-#                            self.logger.logMsg(
-#                                'class value no string',
-#                                msgType='error')
-#                            continue
+                        if not isinstance(outputs[destcon]['class'], str):
+                            self.logger.logMsg(
+                                'class value no string',
+                                msgType='error')
+                            continue
 #                        if not issubclass(self.hardware[destmod].__class__, outputs[destcon]['class']):
 #                            self.logger.logMsg(
 #                                'not the correct class for declared interface',
@@ -674,16 +674,16 @@ class Manager(QtCore.QObject):
                                 'OUT connector not declared',
                                 msgType='error')
                             continue
-#                        if outputs[destcon] is not OrderedDict:
-#                            self.logger.logMsg(
-#                                'not a dict',
-#                                msgType='error')
-#                            continue
-#                        if 'class' not in outputs[destcon]:
-#                            self.logger.logMsg(
-#                                'no class key in dict',
-#                                msgType='error')
-#                            continue
+                        if not isinstance(outputs[destcon], OrderedDict):
+                            self.logger.logMsg(
+                                'not a dict',
+                                msgType='error')
+                            continue
+                        if 'class' not in outputs[destcon]:
+                            self.logger.logMsg(
+                                'no class key in dict',
+                                msgType='error')
+                            continue
                         if outputs[destcon]['class'] is not str:
                             self.logger.logMsg(
                                 'class value no string',
