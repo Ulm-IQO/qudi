@@ -2,6 +2,7 @@
 
 from core.Base import Base
 from hardware.slowcounterinterface import SlowCounterInterface
+from collections import OrderedDict
 import random
 import time
 
@@ -16,6 +17,9 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         Base.__init__(self, manager, name, configuation=config)
         self._modclass = 'niinterface'
         self._modtype = 'slowcounterinterface'
+
+        self.connector['out']['counter'] = OrderedDict()
+        self.connector['out']['counter']['class'] = 'slowcounterinterface'
         
         self.logMsg('The following configuration was found.', 
                     messageType='status')

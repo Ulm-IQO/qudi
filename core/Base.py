@@ -16,6 +16,7 @@
 
 from pyqtgraph.Qt import QtCore
 from fysom import Fysom
+from collections import OrderedDict
 
 class Base(QtCore.QObject, Fysom):
     _modclass = 'base'
@@ -56,8 +57,12 @@ class Base(QtCore.QObject, Fysom):
             ],
             'callbacks': callbacks
         }
-
+        ## initialise state machine
         Fysom.__init__(self, _baseStateList)
+        ## add connection base
+        self.connector = OrderedDict()
+        self.connector['in'] = OrderedDict()
+        self.connector['out'] = OrderedDict()
 
         self._manager = manager
         self._name = name

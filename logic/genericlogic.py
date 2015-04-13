@@ -10,8 +10,8 @@ class genericlogic(Base):
     microwave hardware.
     """
     
-    def __init__(self, manager, name, configuation, **kwargs):
-        Base.__init__(self, manager, name, configuation=configuation, **kwargs)
+    def __init__(self, manager, name, configuation, callbacks, **kwargs):
+        Base.__init__(self, manager, name, configuation, callbacks, **kwargs)
         self._modclass = 'genericlogic'
         self._modtype = 'genericlogic'
         
@@ -45,6 +45,8 @@ class genericlogic(Base):
             try:
                 self.thread = threading.Thread(target=self.runme,
                                         name=self._modclass + '.' + self._modtype + time.strftime('_%y%m%d_%M_%S'))
+                self.thread.stop_request = threading.Event()
+                self.thread.stop_request.clear()
                 break
             except Exception as e:
                 ## we've had problems with a "can't start new thread" exception. therefore we retry here

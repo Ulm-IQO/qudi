@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from logic.genericlogic import genericlogic
+from collections import OrderedDict
 import threading
 import numpy as np
 
@@ -10,10 +11,16 @@ class counterlogic(genericlogic):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        genericlogic.__init__(self, manager, name, configuation=config, **kwargs)
+        ## declare actions for state transitions
+        state_actions = {'onactivate': self.activation}
+        genericlogic.__init__(self, manager, name, config, state_actions, **kwargs)
         self._modclass = 'counterlogic'
         self._modtype = 'logic'
-        
+        ## declare connectors
+        self.connector['in']['counter1'] = OrderedDict()
+        self.connector['in']['counter1']['class'] = 'slowcounterinterface'
+        self.connector['in']['counter1']['object'] = None
+
         self.logMsg('The following configuration was found.', 
                     messageType='status')
                             
@@ -24,12 +31,11 @@ class counterlogic(genericlogic):
                         
         self._count_length = 300
         self._counting_samples = 10
-        self.countdata=np.zeros((self._count_length,))
                         
-        # very buggy and quite horrible way to get the niinterface class
-        # Jan, please fix this
-        from hardware.niinterface import niinterface
-        self._counting_device=niinterface(manager, name, config)
+    def activation(self, e):
+        self.countdata = np.zeros((self._count_length,))
+        self._counting_device = self.connector['in']['counter1']['object']
+        print("Counting device is", self._counting_device)
         
         self.testing()
     
