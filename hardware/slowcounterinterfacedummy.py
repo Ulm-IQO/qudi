@@ -15,8 +15,8 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
     
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuation=config)
-        self._modclass = 'niinterface'
-        self._modtype = 'slowcounterinterface'
+        self._modclass = 'slowcounterinterface'
+        self._modtype = 'hardware'
 
         self.connector['out']['counter'] = OrderedDict()
         self.connector['out']['counter']['class'] = 'slowcounterinterface'
@@ -90,8 +90,8 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         @return float: the photon counts per second
         """
         
-        self.logMsg('slowcounterinterfacedummy>get_counter', 
-                    messageType='warning')
+#        self.logMsg('slowcounterinterfacedummy>get_counter', 
+#                    messageType='warning')
                     
         if samples == None:
             samples = int(self._samples_number)

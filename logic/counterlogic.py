@@ -20,6 +20,10 @@ class counterlogic(genericlogic):
         self.connector['in']['counter1'] = OrderedDict()
         self.connector['in']['counter1']['class'] = 'slowcounterinterface'
         self.connector['in']['counter1']['object'] = None
+        
+        self.connector['out']['counterlogic'] = OrderedDict()
+        self.connector['out']['counterlogic']['class'] = 'counterlogic'
+        
 
         self.logMsg('The following configuration was found.', 
                     messageType='status')
