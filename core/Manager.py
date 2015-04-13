@@ -169,9 +169,10 @@ class Manager(QtCore.QObject):
                     # self.loadModule( baseclass, module, instanceName, config=None)
                     modObj = self.loadModule('gui',
                                             self.startupGui[key]['module'])
+                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     self.configureModule(modObj,
                                         'gui',
-                                        self.startupGui[key]['module'],
+                                        modName,
                                         key,
                                         self.startupGui[key])
                     self.gui[key].activate()
@@ -483,12 +484,13 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'hardware',
                                         self.definedHardware[key]['module'])
+                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     self.configureModule(modObj,
                                         'hardware',
-                                        self.definedHardware[key]['module'],
+                                        modName,
                                         key,
                                         self.definedHardware[key])
-                except Exception as e:
+                except:
                     self.logger.logExc(
                             'Error while loading hardware module: %s' % key,
                              msgType='error')
@@ -503,9 +505,10 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'logic',
                                         self.definedLogic[key]['module'])
+                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     self.configureModule(modObj,
                                         'logic',
-                                        self.definedLogic[key]['module'],
+                                        modName,
                                         key,
                                         self.definedLogic[key])
                 except:
@@ -523,9 +526,10 @@ class Manager(QtCore.QObject):
                     modObj = self.loadModule(
                                         'gui',
                                          self.definedGui[key]['module'])
+                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     self.configureModule(modObj,
                                         'gui',
-                                        self.definedGui[key]['module'],
+                                        modName,
                                         key,
                                         self.definedGui[key])
                 except:
