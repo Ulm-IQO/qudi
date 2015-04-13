@@ -470,281 +470,228 @@ class Manager(QtCore.QObject):
         self.sigModulesChanged.emit()
         return instance
 
+    def connectModule(self, logicmodule):
+        thismodule = self.definedLogic[logicmodule]
+        if logicmodule not in self.logic:
+            self.logger.logMsg(
+                'Loading of logic module %s as %s was not successful, not connecting it.' % (thismodule['module'], logicmodule),
+                msgType='error')
+            return
+        if 'connect' not in thismodule:
+            return
+        if 'in' not in  self.logic[logicmodule].connector:
+            self.logger.logMsg(
+                'Module %s loaded as %s is supposed to get connected but it does not declare any IN connectors.' % (thismodule['module'], logicmodule),
+                msgType='error')
+            return
+        if 'module' not in thismodule:
+            self.logger.logMsg(
+                'Logic module %s (%s) connection configuration is broken: no module defined.' % (logicmodule, thismodule['module'] ),
+                msgType='error')
+            return
+        if not isinstance(thismodule['connect'], OrderedDict):
+            self.logger.logMsg(
+                'Logic module %s (%s) connection configuration is broken: connect is not a dict.' % (logicmodule, thismodule['module'] ),
+                msgType='error')
+            return
+
+        connections = thismodule['connect']
+        for c in connections:
+            if c not in self.logic[logicmodule].connector['in']:
+                self.logger.logMsg(
+                    'IN connector %s of module %s loaded as %s is supposed to get connected but is not declared in the module.' % (c, thismodule['module'], logicmodule),
+                    msgType='error')
+                return 
+            if not isinstance(self.logic[logicmodule].connector['in'][c], OrderedDict):
+                self.logger.logMsg(
+                    'No dict.',
+                    msgType='error')
+                return
+            if 'class' not in self.logic[logicmodule].connector['in'][c]:
+                self.logger.logMsg(
+                    'no class key in connection declaration',
+                    msgType='error')
+                return
+            if not isinstance(self.logic[logicmodule].connector['in'][c]['class'], basestring):
+                self.logger.logMsg(
+                    'value for class key is not a string',
+                    msgType='error')
+                return
+            if 'object' not in self.logic[logicmodule].connector['in'][c]:
+                self.logger.logMsg(
+                    'no object key in connection declaration',
+                    msgType='error')
+                return
+            if self.logic[logicmodule].connector['in'][c]['object'] is not None:
+                self.logger.logMsg(
+                    'object is not None, i.e. is already connected',
+                    msgType='error')
+                return
+            if not isinstance(connections[c], str):
+                self.logger.logMsg(
+                    'Logic module %s (%s) connection configuration is broken, value for key %s is not a string.' % (logicmodule, thismodule['module'], c ),
+                    msgType='error')
+                return
+            if '.' not in connections[c]:
+                self.logger.logMsg(
+                    'Logic module %s (%s) connection configuration is broken, value %s for key %s does not contain a dot.' % (logicmodule, thismodule[module], connections[c], c ),
+                    msgType='error')
+                return
+            destmod = connections[c].split('.')[0]
+            destcon = connections[c].split('.')[1]
+            if destmod in self.hardware and destmod in self.logic:
+                self.logger.logMsg(
+                    'Unique name %s is in both hardware and logic module list. Connection is not well defined, cannot connect %s (%s) to  it.' % (destmod, logicmodule, thismodule[module]),
+                    msgType='error')
+                return
+            ## connect to hardware module
+            elif destmod in self.hardware:
+                if 'out' not in  self.hardware[destmod].connector:
+                    self.logger.logMsg(
+                        'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
+                        msgType='error')
+                    return
+                outputs = self.hardware[destmod].connector['out']
+                if destcon not in outputs:
+                    self.logger.logMsg(
+                        'OUT connector not declared',
+                        msgType='error')
+                    return
+                if not isinstance(outputs[destcon], OrderedDict):
+                    self.logger.logMsg(
+                        'not a dict',
+                        msgType='error')
+                    return
+                if 'class' not in outputs[destcon]:
+                    self.logger.logMsg(
+                        'no class key in dict',
+                        msgType='error')
+                    return
+                if not isinstance(outputs[destcon]['class'], str):
+                    self.logger.logMsg(
+                        'class value no string',
+                        msgType='error')
+                    return
+#                if not issubclass(self.hardware[destmod].__class__, outputs[destcon]['class']):
+#                    self.logger.logMsg(
+#                        'not the correct class for declared interface',
+#                        msgType='error')
+#                    return
+
+                ## Finally set the connection object
+                self.logger.logMsg(
+                        'Connecting %s.IN.%s to hardware %s.%s'%(logicmodule, c, destmod, destcon),
+                        msgType='status')
+                self.logic[logicmodule].connector['in'][c]['object'] = self.hardware[destmod]
+                        
+            ## connect to logic module
+            elif destmod in self.logic:
+                if 'out' not in  self.logic[destmod].connector:
+                    self.logger.logMsg(
+                        'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
+                        msgType='error')
+                    return
+                outputs = self.logic[destmod].connector['out']
+                if destcon not in outputs:
+                    self.logger.logMsg(
+                        'OUT connector not declared',
+                        msgType='error')
+                    return
+                if not isinstance(outputs[destcon], OrderedDict):
+                    self.logger.logMsg(
+                        'not a dict',
+                        msgType='error')
+                    return
+                if 'class' not in outputs[destcon]:
+                    self.logger.logMsg(
+                        'no class key in dict',
+                        msgType='error')
+                    return
+                if outputs[destcon]['class'] is not str:
+                    self.logger.logMsg(
+                        'class value no string',
+                        msgType='error')
+                    return
+#                if not issubclass(self.logic[destmod].__class__, outputs[destcon]['class']):
+#                    self.logger.logMsg(
+#                        'not the correct class for declared interface',
+#                        msgType='error')
+#                    continue
+
+                ## Finally set the connection object
+                self.logger.logMsg(
+                        'Connecting %s.IN.%s to logic %s.%s'%(logicmodule, c, destmod, destcon),
+                        msgType='status')
+                self.logic[logicmodule].connector['in'][c]['object'] = self.logic[destmod]
+
+            else:
+                self.logger.logMsg(
+                    'Unique name %s is neither in hardware or logic module list. Cannot connect %s (%s) to it.' % (connections[c], logicmodule, thismodule['module']),
+                    msgType='error')
+
+    def loadConfigureModule(self, base, target, key):
+        if 'module' in target[key]:
+            try:
+                modObj = self.loadModule(
+                                    base,
+                                    target[key]['module'])
+                pkgName = re.escape(modObj.__package__)
+                modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
+                self.configureModule(modObj,
+                                    base,
+                                    modName,
+                                    key,
+                                    target[key])
+            except:
+                self.logger.logExc(
+                        'Error while loading %s module: %s' % (base, key),
+                         msgType='error')
+                return
+        else:
+            self.logger.logMsg('Not a loadable %s module: %s' % (base, key),
+                                msgType='error')
+
+    def activateModule(self, target, key):
+        if target[key].getState() != 'deactivated':
+            self.logger.logMsg(
+                'module %s not deactivated anymore' % key,
+                msgType='error')
+            return
+        try:
+            target[key].activate()
+        except:
+            self.logger.logExc(
+                '%s: error during activation:' % key,
+                msgType='error')
+
     def startAllConfiguredModules(self):
         """Connect all QuDi modules from the currently laoded configuration and
             activate them.
         """
         ##FIXME: actually load all the modules in the correct order 
         ## and connect the interfaces
-        #print("HW:", self.definedHardware)
-        #print("LG:", self.definedLogic)
-        #print("GU:", self.definedGui)
         ## Hardware
         for key in self.definedHardware:
-            if 'module' in self.definedHardware[key]:
-                try:
-                    modObj = self.loadModule(
-                                        'hardware',
-                                        self.definedHardware[key]['module'])
-                    pkgName = re.escape(modObj.__package__)
-                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
-                    self.configureModule(modObj,
-                                        'hardware',
-                                        modName,
-                                        key,
-                                        self.definedHardware[key])
-                except:
-                    self.logger.logExc(
-                            'Error while loading hardware module: %s' % key,
-                             msgType='error')
-                    continue
-            else:
-                self.logger.logMsg('Not a loadable hardware module: %s' % key,
-                                    msgType='error')
+            self.loadConfigureModule('hardware', self.definedHardware, key)
         ## Logic
         for key in self.definedLogic:
-            if 'module' in self.definedLogic[key]:
-                try:
-                    modObj = self.loadModule(
-                                        'logic',
-                                        self.definedLogic[key]['module'])
-                    pkgName = re.escape(modObj.__package__)
-                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
-                    self.configureModule(modObj,
-                                        'logic',
-                                        modName,
-                                        key,
-                                        self.definedLogic[key])
-                except:
-                    self.logger.logExc(
-                                'Error while loading logic module: %s' % key,
-                                msgType='error')
-                    continue
-            else:
-                self.logger.logMsg('Not a loadable logic module: %s' % key,
-                                    msgType='error')
+            self.loadConfigureModule('logic', self.definedLogic, key)
         ## GUI
         for key in self.definedGui:
-            if 'module' in self.definedGui[key]:
-                try:
-                    modObj = self.loadModule(
-                                        'gui',
-                                         self.definedGui[key]['module'])
-                    pkgName = re.escape(modObj.__package__)
-                    pkgName = re.escape(modObj.__package__)
-                    modName = re.sub('^%s\.' % pkgName, '', modObj.__name__)
-                    self.configureModule(modObj,
-                                        'gui',
-                                        modName,
-                                        key,
-                                        self.definedGui[key])
-                except:
-                    self.logger.logExc(
-                            'Error while loading GUI module: %s' % key,
-                             msgType='error')
-                    continue
-            else:
-                self.logger.logMsg('Not a loadable gui module: %s' % key,
-                                    msgType='error')
+            self.loadConfigureModule('gui', self.definedGui, key)
         ## Connect ALL the things!
         print('Connecting ALL the things!!')
         for logicmodule in self.definedLogic:
-            thismodule = self.definedLogic[logicmodule]
-            if logicmodule not in self.logic:
-                self.logger.logMsg(
-                    'Loading of logic module %s as %s was not successful, not connecting it.' % (thismodule['module'], logicmodule),
-                    msgType='error')
-                continue
-            if 'connect' in thismodule:
-                if 'in' not in  self.logic[logicmodule].connector:
-                    self.logger.logMsg(
-                        'Module %s loaded as %s is supposed to get connected but it does not declare any IN connectors.' % (thismodule['module'], logicmodule),
-                        msgType='error')
-                    continue
-                if 'module' not in thismodule:
-                    self.logger.logMsg(
-                        'Logic module %s (%s) connection configuration is broken: no module defined.' % (logicmodule, thismodule['module'] ),
-                        msgType='error')
-                    continue
-                if not isinstance(thismodule['connect'], OrderedDict):
-                    self.logger.logMsg(
-                        'Logic module %s (%s) connection configuration is broken: connect is not a dict.' % (logicmodule, thismodule['module'] ),
-                        msgType='error')
-                    continue
-
-                connections = thismodule['connect']
-                for c in connections:
-                    if c not in self.logic[logicmodule].connector['in']:
-                        self.logger.logMsg(
-                            'IN connector %s of module %s loaded as %s is supposed to get connected but is not declared in the module.' % (c, thismodule['module'], logicmodule),
-                            msgType='error')
-                        continue
-                    if not isinstance(self.logic[logicmodule].connector['in'][c], OrderedDict):
-                        self.logger.logMsg(
-                            'No dict.',
-                            msgType='error')
-                        continue
-                    if 'class' not in self.logic[logicmodule].connector['in'][c]:
-                        self.logger.logMsg(
-                            'no class key in connection declaration',
-                            msgType='error')
-                        continue
-                    if not isinstance(self.logic[logicmodule].connector['in'][c]['class'], basestring):
-                        self.logger.logMsg(
-                            'value for class key is not a string',
-                            msgType='error')
-                        continue
-                    if 'object' not in self.logic[logicmodule].connector['in'][c]:
-                        self.logger.logMsg(
-                            'no object key in connection declaration',
-                            msgType='error')
-                        continue
-                    if self.logic[logicmodule].connector['in'][c]['object'] is not None:
-                        self.logger.logMsg(
-                            'object is not None, i.e. is already connected',
-                            msgType='error')
-                        continue
-                    if not isinstance(connections[c], str):
-                        self.logger.logMsg(
-                            'Logic module %s (%s) connection configuration is broken, value for key %s is not a string.' % (logicmodule, thismodule['module'], c ),
-                            msgType='error')
-                        continue
-                    if '.' not in connections[c]:
-                        self.logger.logMsg(
-                            'Logic module %s (%s) connection configuration is broken, value %s for key %s does not contain a dot.' % (logicmodule, thismodule[module], connections[c], c ),
-                            msgType='error')
-                        continue
-                    destmod = connections[c].split('.')[0]
-                    destcon = connections[c].split('.')[1]
-                    if destmod in self.hardware and destmod in self.logic:
-                        self.logger.logMsg(
-                            'Unique name %s is in both hardware and logic module list. Connection is not well defined, cannot connect %s (%s) to  it.' % (destmod, logicmodule, thismodule[module]),
-                            msgType='error')
-                        continue
-                    ## connect to hardware module
-                    elif destmod in self.hardware:
-                        if 'out' not in  self.hardware[destmod].connector:
-                            self.logger.logMsg(
-                                'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
-                                msgType='error')
-                            continue
-                        outputs = self.hardware[destmod].connector['out']
-                        if destcon not in outputs:
-                            self.logger.logMsg(
-                                'OUT connector not declared',
-                                msgType='error')
-                            continue
-                        if not isinstance(outputs[destcon], OrderedDict):
-                            self.logger.logMsg(
-                                'not a dict',
-                                msgType='error')
-                            continue
-                        if 'class' not in outputs[destcon]:
-                            self.logger.logMsg(
-                                'no class key in dict',
-                                msgType='error')
-                            continue
-                        if not isinstance(outputs[destcon]['class'], str):
-                            self.logger.logMsg(
-                                'class value no string',
-                                msgType='error')
-                            continue
-#                        if not issubclass(self.hardware[destmod].__class__, outputs[destcon]['class']):
-#                            self.logger.logMsg(
-#                                'not the correct class for declared interface',
-#                                msgType='error')
-#                            continue
-
-                        ## Finally set the connection object
-                        self.logger.logMsg(
-                                'Connecting %s.IN.%s to hardware %s.%s'%(logicmodule, c, destmod, destcon),
-                                msgType='status')
-                        self.logic[logicmodule].connector['in'][c]['object'] = self.hardware[destmod]
-                                
-                    ## connect to logic module
-                    elif destmod in self.logic:
-                        if 'out' not in  self.logic[destmod].connector:
-                            self.logger.logMsg(
-                                'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
-                                msgType='error')
-                            continue
-                        outputs = self.logic[destmod].connector['out']
-                        if destcon not in outputs:
-                            self.logger.logMsg(
-                                'OUT connector not declared',
-                                msgType='error')
-                            continue
-                        if not isinstance(outputs[destcon], OrderedDict):
-                            self.logger.logMsg(
-                                'not a dict',
-                                msgType='error')
-                            continue
-                        if 'class' not in outputs[destcon]:
-                            self.logger.logMsg(
-                                'no class key in dict',
-                                msgType='error')
-                            continue
-                        if outputs[destcon]['class'] is not str:
-                            self.logger.logMsg(
-                                'class value no string',
-                                msgType='error')
-                            continue
-#                        if not issubclass(self.logic[destmod].__class__, outputs[destcon]['class']):
-#                            self.logger.logMsg(
-#                                'not the correct class for declared interface',
-#                                msgType='error')
-#                            continue
-
-                        ## Finally set the connection object
-                        self.logger.logMsg(
-                                'Connecting %s.IN.%s to logic %s.%s'%(logicmodule, c, destmod, destcon),
-                                msgType='status')
-                        self.logic[logicmodule].connector['in'][c]['object'] = self.logic[destmod]
-
-                    else:
-                        self.logger.logMsg(
-                            'Unique name %s is neither in hardware or logic module list. Cannot connect %s (%s) to it.' % (connections[c], logicmodule, thismodule['module']),
-                            msgType='error')
+            self.connectModule(logicmodule)
         ## FIXME Check for any disconnected modules and add their dummies
         ## FIXME Call Activate on all deactivated modules
         print('Activation starting!')
         for key in self.hardware:
-            if self.hardware[key].getState() != 'deactivated':
-                self.logger.logMsg(
-                    'module %s not deactivated anymore' % key,
-                    msgType='error')
-                continue
-            try:
-                self.hardware[key].activate()
-            except:
-                self.logger.logExc(
-                    '%s: error during activation:' % key,
-                    msgType='error')
-                        
+            self.activateModule(self.hardware, key)
         for key in self.logic:
-            if self.logic[key].getState() != 'deactivated':
-                self.logger.logMsg(
-                    'module %s not deactivated anymore' % key,
-                    msgType='error')
-                continue
-            try:
-                self.logic[key].activate()
-            except:
-                self.logger.logExc(
-                    '%s: error during activation:' % key,
-                    msgType='error')
+            self.activateModule(self.logic, key)
         for key in self.gui:
-            if self.gui[key].getState() != 'deactivated':
-                self.logger.logMsg(
-                    'module %s not deactivated anymore' % key,
-                    msgType='error')
-                continue
-            try:
-                self.gui[key].activate()
-            except:
-                self.logger.logExc(
-                    '%s: error during activation:' % key,
-                    msgType='error')
+            self.activateModule(self.gui, key)
 
     def reloadAll(self):
         """Reload all python code"""

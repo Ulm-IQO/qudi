@@ -19,6 +19,7 @@ from fysom import Fysom
 from collections import OrderedDict
 
 class Base(QtCore.QObject, Fysom):
+    sigStateChanged = QtCore.Signal(str, object)  #(module name, state change)
     _modclass = 'base'
     _modtype = 'base'
 
