@@ -537,7 +537,7 @@ class Manager(QtCore.QObject):
             destbase = ''
             if destmod in self.tree['loaded']['hardware'] and destmod in self.tree['loaded']['logic']:
                 self.logger.logMsg(
-                    'Unique name %s is in both hardware and logic module list. Connection is not well defined, cannot connect %s (%s) to  it.' % (destmod, logicmodule, thismodule[module]),
+                    'Unique name %s is in both hardware and logic module list. Connection is not well defined, cannot connect %s (%s) to  it.' % (destmod, mkey, thismodule[module]),
                     msgType='error')
                 return
             ## connect to hardware module
@@ -547,13 +547,13 @@ class Manager(QtCore.QObject):
                 destbase = 'logic'
             else:
                 self.logger.logMsg(
-                    'Unique name %s is neither in hardware or logic module list. Cannot connect %s (%s) to it.' % (connections[c], logicmodule, thismodule['module']),
+                    'Unique name %s is neither in hardware or logic module list. Cannot connect %s (%s) to it.' % (connections[c], mkey, thismodule['module']),
                     msgType='error')
                 return
 
             if 'out' not in self.tree['loaded'][destbase][destmod].connector:
                 self.logger.logMsg(
-                    'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], logicmodule, destmod),
+                    'Module %s loaded as %s is supposed to get connected to module loaded as %s but that does not declare any OUT connectors.' % (thismodule['module'], mkey, destmod),
                     msgType='error')
                 return
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
