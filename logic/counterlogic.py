@@ -35,6 +35,7 @@ class counterlogic(genericlogic):
                         messageType='status')
                         
         self._count_length = 300
+        self._count_frequency = 50
         self._counting_samples = 1
         self._smooth_window_length = 10
         self._binned_counting = True
@@ -67,7 +68,27 @@ class counterlogic(genericlogic):
             while self.running:
                 time.sleep(0.01)
                 
-        self._count_length = length
+        self._count_length = int(length)
+        
+        # if the counter was running, restart it
+        if restart:
+            self.startme()
+        
+        return 0
+        
+    def set_count_frequency(self, frequency = 50):
+        
+        # do I need to restart the counter?
+        restart = False
+        
+        # if the counter is running, stop it
+        if self.running:
+            restart = True
+            self.stopme()
+            while self.running:
+                time.sleep(0.01)
+                
+        self._count_frequency = int(frequency)
         
         # if the counter was running, restart it
         if restart:
@@ -78,9 +99,15 @@ class counterlogic(genericlogic):
     def get_count_length(self):
         return self._count_length
     
+    def get_count_frequency(self):
+        return self._count_frequency
+        
+    def get_counting_samples(self):
+        return self._counting_samples
+    
     def runme(self):
         
-        self._counting_device.set_up_clock(clock_frequency = 50, clock_channel = '/Dev1/Ctr0')
+        self._counting_device.set_up_clock(clock_frequency = self._count_frequency, clock_channel = '/Dev1/Ctr0')
         self._counting_device.set_up_counter(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8')
         
         self.countdata=np.zeros((self._count_length,))
@@ -90,9 +117,10 @@ class counterlogic(genericlogic):
             self.running = True
             if self._my_stop_request.isSet():
                 break
+            
             if self._binned_counting:
                 self.countdata=np.roll(self.countdata, -1)
-                self.countdata[-self._counting_samples:] = np.average(self._counting_device.get_counter(samples=self._counting_samples))
+                self.countdata[-1] = np.average(self._counting_device.get_counter(samples=self._counting_samples))
                 self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
                 self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
             else:
