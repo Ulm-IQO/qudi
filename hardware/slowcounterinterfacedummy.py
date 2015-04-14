@@ -113,7 +113,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg('slowcounterinterfacedummy>set_up_clock', 
+        self.logMsg('slowcounterinterfacedummy>close_counter', 
                     messageType='warning')
         return 0
         
@@ -123,6 +123,6 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg('slowcounterinterfacedummy>set_up_clock', 
+        self.logMsg('slowcounterinterfacedummy>close_clock', 
                     messageType='warning')
         return 0

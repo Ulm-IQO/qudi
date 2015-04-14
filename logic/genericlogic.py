@@ -15,20 +15,17 @@ class genericlogic(Base):
         self._modclass = 'genericlogic'
         self._modtype = 'genericlogic'
         
-        self.logMsg('The following configuration was found.', 
-                    messageType='status')
-        
-        # checking for the right configuration
-        for key in configuation.keys():
-            self.logMsg('{}: {}'.format(key,configuation[key]), 
-                        messageType='status')
+#        self.logMsg('The following configuration was found.', 
+#                    messageType='status')
+#        
+#        # checking for the right configuration
+#        for key in configuation.keys():
+#            self.logMsg('{}: {}'.format(key,configuation[key]), 
+#                        messageType='status')
                         
-        self.is_tracker_client = True
-        self.pause_order = 5
-        self.default_join_timeout = 20
-        self.default_track_timeout = 600
-        self.stop_request = threading.Event()
-        self.stop_request.clear()
+        self.default_join_timeout = 10
+        self._my_stop_request = threading.Event()
+        self._my_stop_request.clear()
         self.thread = None
         
     
@@ -36,8 +33,8 @@ class genericlogic(Base):
         """Start the worker thread with target=run()"""
         ## try to clean up
         self.stopme()
-        self.stop_request.clear()
-        self.logMsg('Active threads: {0:d}'.format(threading.activeCount()), 
+        self._my_stop_request.clear()
+        self.logMsg('Active threads at start: {0:d}'.format(threading.activeCount()), 
                         messageType='status')
 
         ## allocate new thread
@@ -45,22 +42,17 @@ class genericlogic(Base):
             try:
                 self.thread = threading.Thread(target=self.runme,
                                         name=self._modclass + '.' + self._modtype + time.strftime('_%y%m%d_%M_%S'))
-                self.thread.stop_request = threading.Event()
-                self.thread.stop_request.clear()
+#                self.thread.stop_request = threading.Event()
+#                self.thread.stop_request.clear()
                 break
             except Exception as e:
                 ## we've had problems with a "can't start new thread" exception. therefore we retry here
                 self.log.exception(str(e))
                 self.logMsg('Error creating a new thread: {!s}'.format(str(e)), 
                             messageType='error')
-                self.logMsg('Active threads: {0:d}'.format(threading.activeCount()), 
+                self.logMsg('Active threads at start error: {0:d}'.format(threading.activeCount()), 
                             messageType='status')
-                time.sleep(5)
-        ## set flags for tracker
-        # TODO: maybe subclass thread and add these parameters, here we're storing data twice. but not now...
-        self.thread.is_tracker_client = self.is_tracker_client
-        self.thread.pause_order = self.pause_order
-#        self.thread.command_queue = Queue.Queue()
+                time.sleep(1)
 
         ## offer a pause, and then start
         self.offer_pause()
@@ -69,7 +61,7 @@ class genericlogic(Base):
     def stopme(self):
         """Stop the worker thread"""
         self.logMsg('setting stop request...', messageType='status')
-        self.stop_request.set() ##if run() is not executed in extra thread, stop() still should abort run() by setting this flag
+        self._my_stop_request.set() ##if run() is not executed in extra thread, stop() still should abort run() by setting this flag
         if self.thread is None:
             self.logMsg('no thread to stop, returning, ...', messageType='status')
             return
@@ -81,7 +73,7 @@ class genericlogic(Base):
             return
         self.logMsg('waiting for thread to finish ...', messageType='status')
         self.thread.join(self.default_join_timeout)        
-        self.logMsg('Active threads: {0:d}'.format(threading.activeCount()), 
+        self.logMsg('Active threads at stop: {0:d}'.format(threading.activeCount()), 
                     messageType='status')
 
     def offer_pause(self):
@@ -122,7 +114,7 @@ class genericlogic(Base):
         Also, include the line "if self.stop_request.isSet(): break" in your main loop if you can accept thread stop.
         """
         while(True):
-            if self.stop_request.isSet():
+            if self._my_stop_request.isSet():
                 self.logMsg('Stopping thread', messageType='status')
                 break
             
