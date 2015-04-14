@@ -21,6 +21,7 @@ class CounterGui(Base):
         
         self._modclass = 'countergui'
         self._modtype = 'gui'
+        
         ## declare connectors
         self.connector['in']['counterlogic1'] = OrderedDict()
         self.connector['in']['counterlogic1']['class'] = 'counterlogic'
@@ -35,12 +36,15 @@ class CounterGui(Base):
                         messageType='status')
 
     def initUI(self, e=None):
-        #QtGui.QApplication.setGraphicsSystem('raster')
+        """ Definition and initialisation of the GUI plus staring the measurement.
+        """
+
         self._counting_logic = self.connector['in']['counterlogic1']['object']
         print("Counting logic is", self._counting_logic)
         
         print(self._counting_logic.get_count_length())
         
+        # setting up the window
         self._app = QtGui.QApplication([])
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: Slow Counter')
@@ -48,16 +52,19 @@ class CounterGui(Base):
         self._cw = QtGui.QWidget()
         self._mw.setCentralWidget(self._cw)
         
+        # creating a plot in pyqtgraph and configuring it
         self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
         
         self._pw.setLabel('left', 'Value', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='#')
                 
+        # defining buttons
         self._start_stop_button = QtGui.QPushButton('Stop')
         self._start_stop_button.released.connect(self.start_clicked)
         self._save_button = QtGui.QPushButton('Save')
         self._save_button.released.connect(self.save_clicked)
         
+        # defining the parameters to edit
         self._count_length_label = QtGui.QLabel('Count lenght (s):')
         self._count_length_display = QtGui.QSpinBox()
         self._count_length_display.setRange(1,1e6)
@@ -76,6 +83,7 @@ class CounterGui(Base):
         self._oversampling_display.valueChanged.connect(self.oversampling_changed)
         self._oversampling_display.setValue(self._counting_logic.get_counting_samples())
         
+        # creating a layout for the parameters to live in and aranging it nicely
         self._hbox_layout = QtGui.QHBoxLayout()
         self._hbox_layout.addWidget(self._count_length_label)
         self._hbox_layout.addWidget(self._count_length_display)
@@ -89,19 +97,20 @@ class CounterGui(Base):
         self._hbox_layout.addWidget(self._save_button)
         self._hbox_layout.addWidget(self._start_stop_button)
         
-        
+        # creating the label for the current counts and right alignment
         self._counts_label = QtGui.QLabel('xxx')
         self._counts_label.setFont(QtGui.QFont('Arial', 50, QtGui.QFont.Bold))
         self._hbox_counter = QtGui.QHBoxLayout()
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._counts_label)
-#        self._hbox_counter.addStretch(1)
         
+        # kombining the layouts with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
         self._vbox_layout.addLayout(self._hbox_counter)
         self._vbox_layout.addWidget(self._pw)
         self._vbox_layout.addLayout(self._hbox_layout)
         
+        # applying all the GUI elements to the window
         self._cw.setLayout(self._vbox_layout)
         self._mw.show()
         
@@ -111,9 +120,11 @@ class CounterGui(Base):
         self._curve2 = self._pw.plot()
         self._curve2.setPen('r', width=4)
         
+        # setting the x axis length correctly
         self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
-        self._counting_logic.startme()
         
+        # starting the physical measurement
+        self._counting_logic.startme()
         
         ## Start a timer to rapidly update the plot in pw
         self._t = QtCore.QTimer()
@@ -122,12 +133,16 @@ class CounterGui(Base):
         
 
     def updateData(self):
+        """ The function that grabs the data and sends it to the plot.
+        """
         if self._counting_logic.running:
             self._counts_label.setText('{0:,.0f}'.format(self._counting_logic.countdata[-1]))
             self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(1, self._counting_logic.get_count_length()+1))
             self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(1, self._counting_logic.get_count_length()+1))
 
     def start_clicked(self):
+        """ Handling the Start button to stop and restart the counter.
+        """
         if self._counting_logic.running:
             self._start_stop_button.setText('Start')
             self._counting_logic.stopme()
@@ -136,16 +151,24 @@ class CounterGui(Base):
             self._counting_logic.startme()
     
     def save_clicked(self):
+        """ Handling the save button to save the data into a file.
+        """
         print ("Saving not implemented yet.")
     
     def count_length_changed(self):
+        """ Handling the change of the count_length and sending it to the measurement.
+        """
         print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._count_length_display.value())
         self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
         
     def count_frequency_changed(self):
+        """ Handling the change of the count_frequency and sending it to the measurement.
+        """
         print ('count_frequency_changed: {0:d}'.format(self._count_frequency_display.value()))
         self._counting_logic.set_count_frequency(self._count_frequency_display.value())
         
     def oversampling_changed(self):
+        """ Handling the change of the oversampling and sending it to the measurement.
+        """
         print ("Oversampling not implemented yet.")
