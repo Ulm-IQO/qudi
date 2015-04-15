@@ -40,13 +40,17 @@ class counterlogic(genericlogic):
         self._smooth_window_length = 10
         self._binned_counting = True
         
-        self.running = False
                         
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
         self.countdata = np.zeros((self._count_length,))
         self.countdata_smoothed=np.zeros((self._count_length,))
+        self.rawdata=np.zeros((self._counting_samples,))
+        
+        self.running = False
+        self._saving = False
+        
         self._counting_device = self.connector['in']['counter1']['object']
         print("Counting device is", self._counting_device)
         
@@ -136,6 +140,37 @@ class counterlogic(genericlogic):
         @return int: counting_samples
         """
         return self._counting_samples
+        
+    def get_saving_state(self):
+        """ Returns if the data is saved in the moment.
+        
+        @return bool: saving state
+        """
+        
+        return self._saving
+        
+    def start_saving(self):
+        """ Starts saving the data in a list.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._data_to_save=[]
+        self._saving_start_time=time.time()
+        self._saving=True
+        return 0
+    
+    def save_data(self):
+        """ Stops saving the data and writes it to a file.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._saving=True
+        self._saving_stop_time=time.time()
+        
+        print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
+        return 0
     
     def runme(self):
         """ The actual measurement method which is run in a thread.
@@ -148,6 +183,7 @@ class counterlogic(genericlogic):
         # initialising the data arrays
         self.countdata=np.zeros((self._count_length,))
         self.countdata_smoothed=np.zeros((self._count_length,))
+        self.rawdata=np.zeros((self._counting_samples,))
         
         while True:
             # set a status variable, to signify the measurment is running
@@ -157,12 +193,15 @@ class counterlogic(genericlogic):
             if self._my_stop_request.isSet():
                 break
             
+            # read the current counter value
+            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+            
             # if we don't want to use oversampling
             if self._binned_counting:
+                # remember the new count data in circular array
+                self.countdata[0] = np.average(self.rawdata)
                 # move the array to the left to make space for the new data
                 self.countdata=np.roll(self.countdata, -1)
-                # read and save the new count data
-                self.countdata[-1] = np.average(self._counting_device.get_counter(samples=self._counting_samples))
                 # also move the smoothing array
                 self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
                 # calculate the median and save it
@@ -170,10 +209,14 @@ class counterlogic(genericlogic):
             # if oversampling is necessary
             else:
                 self.countdata=np.roll(self.countdata, -self._counting_samples)
-                self.countdata[-self._counting_samples:] = self._counting_device.get_counter(samples=self._counting_samples)
+                self.countdata[-self._counting_samples:] = self.rawdata
                 self.countdata_smoothed = np.roll(self.countdata_smoothed, -self._counting_samples)
                 self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
                 
+            # save the data if necessary
+            if self._saving:
+                # append tuple to data stream (timestamp, average counts)
+                self._data_to_save.append(np.array((time.time()-self._saving_start_time, np.average(self.rawdata))))
         # switch the state variable off again
         self.running = False
         

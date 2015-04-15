@@ -41,9 +41,7 @@ class CounterGui(Base):
 
         self._counting_logic = self.connector['in']['counterlogic1']['object']
         print("Counting logic is", self._counting_logic)
-        
-        print(self._counting_logic.get_count_length())
-        
+                
         # setting up the window
         self._app = QtGui.QApplication([])
         self._mw = QtGui.QMainWindow()
@@ -61,27 +59,27 @@ class CounterGui(Base):
         # defining buttons
         self._start_stop_button = QtGui.QPushButton('Stop')
         self._start_stop_button.released.connect(self.start_clicked)
-        self._save_button = QtGui.QPushButton('Save')
+        self._save_button = QtGui.QPushButton('Start Saving Data')
         self._save_button.released.connect(self.save_clicked)
         
         # defining the parameters to edit
         self._count_length_label = QtGui.QLabel('Count lenght (s):')
         self._count_length_display = QtGui.QSpinBox()
         self._count_length_display.setRange(1,1e6)
+        self._count_length_display.setValue(self._counting_logic.get_count_length())
         self._count_length_display.valueChanged.connect(self.count_length_changed)
-        self._count_length_display.setValue(int(self._counting_logic.get_count_length()))
         
         self._count_frequency_label = QtGui.QLabel('Count frequency (Hz):')
         self._count_frequency_display = QtGui.QSpinBox()
         self._count_frequency_display.setRange(1,1e6)
-        self._count_frequency_display.valueChanged.connect(self.count_frequency_changed)
         self._count_frequency_display.setValue(self._counting_logic.get_count_frequency())
+        self._count_frequency_display.valueChanged.connect(self.count_frequency_changed)
         
         self._oversampling_label = QtGui.QLabel('Oversampling (#):')
         self._oversampling_display = QtGui.QSpinBox()
         self._oversampling_display.setRange(1,1e4)
-        self._oversampling_display.valueChanged.connect(self.oversampling_changed)
         self._oversampling_display.setValue(self._counting_logic.get_counting_samples())
+        self._oversampling_display.valueChanged.connect(self.oversampling_changed)
         
         # creating a layout for the parameters to live in and aranging it nicely
         self._hbox_layout = QtGui.QHBoxLayout()
@@ -153,7 +151,12 @@ class CounterGui(Base):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        print ("Saving not implemented yet.")
+        if self._counting_logic.get_saving_state():
+            self._save_button.setText('Start Saving Data')
+            self._counting_logic.save_data()
+        else:
+            self._save_button.setText('Save')
+            self._counting_logic.start_saving()
     
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
