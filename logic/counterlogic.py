@@ -166,7 +166,7 @@ class counterlogic(genericlogic):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._saving=True
+        self._saving=False
         self._saving_stop_time=time.time()
         
         print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
