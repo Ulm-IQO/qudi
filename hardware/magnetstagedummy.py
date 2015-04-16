@@ -2,6 +2,7 @@
 
 from core.Base import Base
 from hardware.magnetstageinterface import MagnetStageInterface
+from collections import OrderedDict
 
 class MagnetStageDummy(Base,MagnetStageInterface):
     """This is the Interface class to define the controls for the simple 
@@ -16,7 +17,24 @@ class MagnetStageDummy(Base,MagnetStageInterface):
     vel_z = 0.
     vel_phi = 0.
     
-    
+    def __init__(self, manager, name, config, **kwargs):
+        Base.__init__(self, manager, name, configuation=config)
+        self._modclass = 'magnetinterface'
+        self._modtype = 'hardware'
+
+        self.connector['out']['magnet'] = OrderedDict()
+        self.connector['out']['magnet']['class'] = 'magnetinterface'
+        
+        self.logMsg('The following configuration was found.', 
+                    messageType='status')
+                    
+        # checking for the right configuration
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key,config[key]), 
+                        messageType='status')
+
+#       TODO: here there should be checks if configuration is set and sensible
+            
     def step_x(self, step = 0.):
         """Moves stage in x-direction
         
