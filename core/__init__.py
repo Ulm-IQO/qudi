@@ -5,7 +5,7 @@ import os
 import sys
 
 # Set up a list of paths to search for configuration files 
-# (used if no config is explicitly specified)
+# (used if no config is explicitly specified).
 
 # First we check the parent directory of the current module.
 # This path is used when running directly from a source checkout
@@ -34,13 +34,13 @@ if 'PyQt4' in sys.modules:
         try:
             v = sip.getapi(api)
             if v != 2:
-                raise Exception("We require the use of API version 2 for " 
-                                "QString and QVariant, but %s=%s. "
-                                "Correct this by calling \"import sip; "
-                                "sip.setapi('QString', 2); "
-                                "sip.setapi('QVariant', 2);\" "
-                                "_before_ importing PyQt4."
-                                % (api, v))
+                raise Exception("We require the usage of API version 2 for "
+                                "QString and QVariant, but {0}={1}. "
+                                "Correct this by calling\n\n import sip;\n "
+                                "sip.setapi('QString', 2);\n "
+                                "sip.setapi('QVariant', 2);\n\n "
+                                "_before_ importing PyQt4.".format(str(api),str(v))
+                                )
             else:
                 set_api = False
         except ValueError:
@@ -54,19 +54,27 @@ if set_api:
         sip.setapi('QString', 2)
         sip.setapi('QVariant', 2)
     except ImportError:
+        print('Import Error in core/__init__.py: no sip module found. '
+               'Implement the error handling!')
         pass  # no sip; probably pyside will be imported later..
 
 # Import pyqtgraph, get QApplication instance
 import pyqtgraph as pg
 pg.setConfigOptions(useWeave=False)
+
+
+# Every Qt application must have ONE AND ONLY ONE QApplication object. The 
+# command mkQpp makes a QApplication object, which is a class to manage the GUI
+# application's control flow, events and main settings:
+
 app = pg.mkQApp()
 
-## rename any orphaned .pyc files -- these are probably leftover from 
-## a module being moved and may interfere with expected operation.
+# rename any orphaned .pyc files -- these are probably leftover from 
+# a module being moved and may interfere with expected operation.
 modDir = os.path.abspath(os.path.split(__file__)[0])
 pg.renamePyc(modDir)
 
-## Install a simple message handler for Qt errors:
+# Install a simple message handler for Qt errors:
 def messageHandler(msgType, msg):
     import traceback
     print("Qt Error: (traceback follows)")
@@ -92,5 +100,5 @@ def messageHandler(msgType, msg):
             app.processEvents()
         except:
             pass
-    
+
 pg.QtCore.qInstallMsgHandler(messageHandler)
