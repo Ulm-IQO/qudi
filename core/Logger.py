@@ -123,8 +123,8 @@ class Logger(QtCore.QObject):
         currentDir = None
         
         now = str(time.strftime('%Y.%m.%d %H:%M:%S'))
-        name = 'LogEntry_' + str(self.msgCount)
         self.msgCount += 1
+        name = 'LogEntry_' + str(self.msgCount)
         entry = {
             #'docs': None,
             #'reasons': None,

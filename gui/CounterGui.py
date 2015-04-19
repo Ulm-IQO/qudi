@@ -10,6 +10,9 @@ import time
 
 
 class CounterGui(Base):
+    sigStartCounter = QtCore.Signal()
+    sigStopCounter = QtCore.Signal()
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
@@ -43,7 +46,6 @@ class CounterGui(Base):
         print("Counting logic is", self._counting_logic)
                 
         # setting up the window
-        self._app = QtGui.QApplication([])
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: Slow Counter')
         self._mw.resize(800,550)
@@ -57,7 +59,7 @@ class CounterGui(Base):
         self._pw.setLabel('bottom', 'Time', units='#')
                 
         # defining buttons
-        self._start_stop_button = QtGui.QPushButton('Stop')
+        self._start_stop_button = QtGui.QPushButton('Start')
         self._start_stop_button.released.connect(self.start_clicked)
         self._save_button = QtGui.QPushButton('Start Saving Data')
         self._save_button.released.connect(self.save_clicked)
@@ -122,12 +124,16 @@ class CounterGui(Base):
         self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
         
         # starting the physical measurement
-        self._counting_logic.startme()
-        
+        # self._counting_logic.startme()
+        self.sigStartCounter.connect(self._counting_logic.startCount)
+        self.sigStopCounter.connect(self._counting_logic.stopCount)
+
         ## Start a timer to rapidly update the plot in pw
-        self._t = QtCore.QTimer()
-        self._t.timeout.connect(self.updateData)
-        self._t.start(50)
+        #self._t = QtCore.QTimer()
+        #self._t.timeout.connect(self.updateData)
+        #self._t.start(50)
+
+        self._counting_logic.sigCounterUpdated.connect(self.updateData)
         
 
     def updateData(self):
@@ -143,11 +149,11 @@ class CounterGui(Base):
         """
         if self._counting_logic.running:
             self._start_stop_button.setText('Start')
-            self._counting_logic.stopme()
+            self.sigStopCounter.emit()
         else:
             self._start_stop_button.setText('Stop')
-            self._counting_logic.startme()
-    
+            self.sigStartCounter.emit()
+
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """

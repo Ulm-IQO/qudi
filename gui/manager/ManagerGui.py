@@ -6,23 +6,24 @@ from pyqtgraph.Qt import QtCore, QtGui
 from .ManagerWindowTemplate import Ui_MainWindow
 
 class ManagerGui(Base):
+    sigStartAll = QtCore.Signal()
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation}
-        Base.__init__(self,
-                    manager,
-                    name,
-                    config,
-                    c_dict)
+        Base.__init__(self, manager, name, config, c_dict)
 
     def activation(self, e=None):
         self._mw = ManagerMainWindow()
         # Connect up the buttons.
-        self._mw.loadAllButton.clicked.connect(self.handleLoadAllButton)
+        self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
+        self._mw.loadAllButton.clicked.connect(self.threadId)
+        self._mw.actionQuit.triggered.connect(self._manager.quit)
+        self._mw.actionQuit.triggered.connect(self.threadId)
+        self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.action_Load_all_modules.triggered.connect(self.threadId)
         self._mw.show()
-        
 
-    def handleLoadAllButton(self):
-        self._manager.startAllConfiguredModules()
+    def threadId(self):
+        print('Thread: ', QtCore.QThread.currentThreadId())
 
 class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):

@@ -20,6 +20,7 @@ from collections import OrderedDict
 
 class Base(QtCore.QObject, Fysom):
     sigStateChanged = QtCore.Signal(str, object)  #(module name, state change)
+    sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'
     _modtype = 'base'
 
@@ -91,8 +92,8 @@ class Base(QtCore.QObject, Fysom):
     def getConfguration(self):
         return _configuration
 
-    def logMsg(self, message, messageType='status'):
-        self._manager.logger.logMsg('%s.%s: %s' % (self._modclass, self._modtype, message), msgType=messageType)
+    def logMsg(self, message, importance=5, messageType='status', **kwargs):
+        self.sigLogMessage.emit( (('%s.%s: %s' % (self._modclass, self._modtype, message), messageType), kwargs) )
 
     @staticmethod
     def identify():

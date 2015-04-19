@@ -20,9 +20,9 @@ class TrayIcon(Base):
 
 class RightClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
-        QtGui.QMenu.__init__(self, "Edit", parent)
-        self.icon = QtGui.QIcon.fromTheme("edit-cut")
-        self.addAction(QtGui.QAction(self.icon, "&Cut", self))
+        QtGui.QMenu.__init__(self, "quit", parent)
+        self.icon = QtGui.QIcon.fromTheme("quit")
+        self.addAction(QtGui.QAction(self.icon, "&Quit", self))
 
 class LeftClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):

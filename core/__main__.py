@@ -66,7 +66,7 @@ interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
 # the qt event loop
 timer = QtCore.QTimer()
 def donothing(*args):
-    #print "-- beat --"
+    print('-- beat -- thread:', QtCore.QThread.currentThreadId())
     x = 0
     for i in range(0, 100):
         x += i

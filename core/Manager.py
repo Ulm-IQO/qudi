@@ -29,6 +29,8 @@ from .util.Mutex import Mutex   # Mutex provides access serialization between th
 from collections import OrderedDict
 import pyqtgraph as pg
 from .Logger import Logger, LOG, printExc
+from .ThreadManager import ThreadManager
+from .Base import Base
 
 class Manager(QtCore.QObject):
     """Manager class is responsible for:
@@ -90,13 +92,15 @@ class Manager(QtCore.QObject):
         self.disableDevs = []
         self.disableAllDevs = False
         self.alreadyQuit = False
-        
+
         try:
+            # Logging
             global LOG
             LOG = Logger(self)
             #print(LOG)
             self.logger = LOG
             
+            # Command Line parameters
             if argv is not None:
                 try:
                     opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:nD',
@@ -125,9 +129,16 @@ class Manager(QtCore.QObject):
             else:
                 opts = []
             
-            QtCore.QObject.__init__(self)  # performs init of super() QtCore.QObject
+            # Qt setup
+            QtCore.QObject.__init__(self)
             atexit.register(self.quit)
-    
+
+            # Thread management
+            self.tm = ThreadManager()
+            self.tm.sigLogMessage.connect(self.logger.queuedLogMsg)
+            #mthread = self.tm.newThread('manager')
+            #self.moveToThread(mthread)
+            #mthread.start()
             
             # Handle command line options
             loadModules = []
@@ -477,9 +488,14 @@ class Manager(QtCore.QObject):
         modclass = getattr(moduleObject, className)
         
         #FIXME: Check if the class we just obtained has the right inheritance
+        if not issubclass(modclass, Base):
+            raise Exception('Bad inheritance, for instance %s from %s.%s.' % (instanceName, baseName, className))
 
         # Create object from class (Manager, Name, config)
         instance = modclass(self, instanceName, configuration)
+
+        # Connect to log
+        instance.sigLogMessage.connect(self.logger.queuedLogMsg)
 
         with self.lock:
             if baseName in ['hardware', 'logic', 'gui']:
@@ -634,6 +650,11 @@ class Manager(QtCore.QObject):
                 modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
                 self.configureModule(modObj, base, modName, key,
                                      self.tree['defined'][base][key])
+                ## start main loop for qt objects
+                if base == 'logic':
+                    modthread = self.tm.newThread('mod-' + base + '-' + key)
+                    self.tree['loaded'][base][key].moveToThread(modthread)
+                    modthread.start()
             except:
                 self.logger.logExc('Error while loading {0} module: {1}'.format(base, key),
                                    msgType='error')
@@ -670,7 +691,7 @@ class Manager(QtCore.QObject):
                 self.loadConfigureModule(thing, key)
 
         # Connect ALL the things!
-        print('Connecting ALL the things!!')
+        self.logger.print_logMsg('Connecting ALL the things!!')
         for mkey in self.tree['defined']['logic']:
             self.connectModule('logic', mkey)
         for mkey in self.tree['defined']['gui']:
@@ -678,10 +699,11 @@ class Manager(QtCore.QObject):
 
         # FIXME Check for any disconnected modules and add their dummies
         # FIXME Call Activate on all deactivated modules
-        print('Activation starting!')
+        self.logger.print_logMsg('Activation starting!')
         for thing in ['hardware', 'logic', 'gui']:
             for key in self.tree['loaded'][thing]:
                 self.activateModule(thing, key)
+        self.logger.print_logMsg('Activation finished.')
 
     def reloadAll(self):
         """Reload all python code."""
@@ -704,7 +726,9 @@ class Manager(QtCore.QObject):
             self.logger.print_logMsg("Closing windows..", msgType='status')
             QtGui.QApplication.instance().closeAllWindows()
             QtGui.QApplication.instance().processEvents()
-            print("\n  QuDi is closed!  Ciao.")
+            self.logger.print_logMsg("Stopping threads..", msgType='status')
+            self.tm.quitAllThreads()
+            print("\n    ciao.")
         QtGui.QApplication.quit()
 
 
