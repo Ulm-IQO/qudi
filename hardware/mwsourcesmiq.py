@@ -22,7 +22,7 @@ class mwsourcesmiq(Base,MWInterface):
         else:
             self.logMsg("This is MWSMIQ: did not find >>gpib_address<< in \
             configration.", 
-                        messageType='error')
+                        msgType='error')
         
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
@@ -30,7 +30,7 @@ class mwsourcesmiq(Base,MWInterface):
             self._gpib_timeout = 10
             self.logMsg("This is MWSMIQ: did not find >>gpib_timeout<< in \
             configration. I will set it to 10 seconds.", 
-                        messageType='error')
+                        msgType='error')
         
         # trying to load the visa connection to the module
         rm = visa.ResourceManager()
@@ -40,11 +40,11 @@ class mwsourcesmiq(Base,MWInterface):
         except:
             self.logMsg("This is MWSMIQ: could not connect to the GPIB \
             address >>{}<<.".format(self._gpib_address), 
-                        messageType='error')
+                        msgType='error')
             raise
             
         self.logMsg("MWSMIQ initialised and connected to hardware.", 
-                    messageType='status')
+                    msgType='status')
         
     def on(self):
         """ Switches on any preconfigured microwave output. 
@@ -80,7 +80,7 @@ class mwsourcesmiq(Base,MWInterface):
         # This is not a good way to implement it!
         self.logMsg("This is MWSMIQ>power: Bad implementation, \
         use get and set.", 
-                    messageType='error')
+                    msgType='error')
         return 0.0
     
     def get_power(self):

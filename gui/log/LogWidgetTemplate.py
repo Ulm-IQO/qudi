@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './trash/LogWidgetTemplate.ui'
+# Form implementation generated from reading ui file 'LogWidgetTemplate.ui'
 #
-# Created: Mon Apr 13 15:35:35 2015
+# Created: Sun Apr 19 22:57:11 2015
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -106,6 +106,9 @@ class Ui_Form(object):
         item_1 = QtGui.QTreeWidgetItem(item_0)
         item_1.setCheckState(0, QtCore.Qt.Checked)
         item_1.setFlags(QtCore.Qt.ItemIsUserCheckable|QtCore.Qt.ItemIsEnabled)
+        item_1 = QtGui.QTreeWidgetItem(item_0)
+        item_1.setCheckState(0, QtCore.Qt.Checked)
+        item_1.setFlags(QtCore.Qt.ItemIsUserCheckable|QtCore.Qt.ItemIsEnabled)
         self.verticalLayout.addWidget(self.filterTree)
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setSpacing(0)
@@ -158,9 +161,10 @@ class Ui_Form(object):
         self.filterTree.topLevelItem(0).setText(0, _translate("Form", "Current directory only", None))
         self.filterTree.topLevelItem(1).setText(0, _translate("Form", "All message types:", None))
         self.filterTree.topLevelItem(1).child(0).setText(0, _translate("Form", "user", None))
-        self.filterTree.topLevelItem(1).child(1).setText(0, _translate("Form", "status", None))
-        self.filterTree.topLevelItem(1).child(2).setText(0, _translate("Form", "warning", None))
-        self.filterTree.topLevelItem(1).child(3).setText(0, _translate("Form", "error", None))
+        self.filterTree.topLevelItem(1).child(1).setText(0, _translate("Form", "thread", None))
+        self.filterTree.topLevelItem(1).child(2).setText(0, _translate("Form", "status", None))
+        self.filterTree.topLevelItem(1).child(3).setText(0, _translate("Form", "warning", None))
+        self.filterTree.topLevelItem(1).child(4).setText(0, _translate("Form", "error", None))
         self.filterTree.setSortingEnabled(__sortingEnabled)
         self.label_2.setText(_translate("Form", "Low", None))
         self.label.setText(_translate("Form", "Importance Filter:", None))

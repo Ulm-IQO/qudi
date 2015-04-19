@@ -71,17 +71,17 @@ class Base(QtCore.QObject, Fysom):
         self._configuration = configuration
 
     def activate(self):
-        self.logMsg("Please implement this function.", messageType='status')
+        self.logMsg("Please implement this function.", msgType='status')
 
     def deactivate(self):
-        self.logMsg("Please implement this function.", messageType='status')
+        self.logMsg("Please implement this function.", msgType='status')
 
     def getStatusVariableList(self):
-        self.logMsg("Please implement this function.", messageType='status')
+        self.logMsg("Please implement this function.", msgType='status')
         return list()
 
     def getStatusVariables(self):
-        self.logMsg("Please implement this function.", messageType='status')
+        self.logMsg("Please implement this function.", msgType='status')
         return dict()
 
     # Do not replace these in subclasses
@@ -92,8 +92,8 @@ class Base(QtCore.QObject, Fysom):
     def getConfguration(self):
         return _configuration
 
-    def logMsg(self, message, importance=5, messageType='status', **kwargs):
-        self.sigLogMessage.emit( (('%s.%s: %s' % (self._modclass, self._modtype, message), messageType), kwargs) )
+    def logMsg(self, message, **kwargs):
+        self.sigLogMessage.emit(('%s.%s: %s' % (self._modclass, self._modtype, message), kwargs))
 
     @staticmethod
     def identify():

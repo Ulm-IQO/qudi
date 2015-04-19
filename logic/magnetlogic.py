@@ -27,12 +27,12 @@ class magnetlogic(genericlogic):
         
 
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                             
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
 
 #       Borders of magnet have to be defined in config                   
         self._x_min = 0.

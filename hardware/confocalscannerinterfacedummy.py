@@ -22,19 +22,19 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         self.connector['out']['confocalscanner']['class'] = 'confocalscannerinterface'
         
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                     
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
     
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
             self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
-            messageType='warning')
+            msgType='warning')
             
     
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
@@ -50,7 +50,7 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
             self._clock_frequency = float(clock_frequency)
             
         self.logMsg('confocalscannerinterfacedummy>set_up_scanner_clock', 
-                    messageType='warning')
+                    msgType='warning')
                     
         time.sleep(0.5)
         
@@ -68,7 +68,7 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         """
         
         self.logMsg('confocalscannerinterfacedummy>set_up_scanner', 
-                    messageType='warning')
+                    msgType='warning')
                     
         time.sleep(0.5)
         
@@ -84,7 +84,7 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         """
         
 #        self.logMsg('slowcounterinterfacedummy>get_counter', 
-#                    messageType='warning')
+#                    msgType='warning')
         length = 100
         count_data = np.empty((length,), dtype=np.uint32)
         
@@ -112,7 +112,7 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         """
         
         self.logMsg('confocalscannerinterfacedummy>close_scanner', 
-                    messageType='warning')
+                    msgType='warning')
         return 0
         
     def close_scanner_clock(self,power=0):
@@ -122,5 +122,5 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         """
         
         self.logMsg('confocalscannerinterfacedummy>close_scanner_clock', 
-                    messageType='warning')
+                    msgType='warning')
         return 0

@@ -31,12 +31,12 @@ class CounterGui(Base):
         self.connector['in']['counterlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                             
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.

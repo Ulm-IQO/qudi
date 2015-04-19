@@ -22,26 +22,26 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         self.connector['out']['counter']['class'] = 'slowcounterinterface'
         
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                     
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
     
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
             self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
-            messageType='warning')
+            msgType='warning')
             
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
             self.logMsg('No samples_number configured taking 10 instead.', \
-            messageType='warning')
+            msgType='warning')
             
     
     def set_up_clock(self, clock_frequency = None, clock_channel = None):
@@ -57,7 +57,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
             self._clock_frequency = float(clock_frequency)
             
         self.logMsg('slowcounterinterfacedummy>set_up_clock', 
-                    messageType='warning')
+                    msgType='warning')
                     
         time.sleep(0.5)
         
@@ -75,7 +75,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         """
         
         self.logMsg('slowcounterinterfacedummy>set_up_counter', 
-                    messageType='warning')
+                    msgType='warning')
                     
         time.sleep(0.5)
         
@@ -91,7 +91,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         """
         
 #        self.logMsg('slowcounterinterfacedummy>get_counter', 
-#                    messageType='warning')
+#                    msgType='warning')
                     
         if samples == None:
             samples = int(self._samples_number)
@@ -114,7 +114,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         """
         
         self.logMsg('slowcounterinterfacedummy>close_counter', 
-                    messageType='warning')
+                    msgType='warning')
         return 0
         
     def close_clock(self,power=0):
@@ -124,5 +124,5 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         """
         
         self.logMsg('slowcounterinterfacedummy>close_clock', 
-                    messageType='warning')
+                    msgType='warning')
         return 0

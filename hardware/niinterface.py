@@ -18,12 +18,12 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._modtype = 'slowcounterinterface'
         
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                     
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
                         
         self._MaxCounts = 1e7
         self._RWTimeout = 5
@@ -33,31 +33,31 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
         else:
-            self.logMsg('No clock_channel configured.', messageType='error')
+            self.logMsg('No clock_channel configured.', msgType='error')
             
         if 'counter_channel' in config.keys():
             self._counter_channel=config['counter_channel']
         else:
-            self.logMsg('No counter_channel configured.', messageType='error')
+            self.logMsg('No counter_channel configured.', msgType='error')
             
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
-            self.logMsg('No photon_source configured.', messageType='error')
+            self.logMsg('No photon_source configured.', msgType='error')
             
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
             self.logMsg('No clock_frequency configured tanking 100 Hz instead.', \
-            messageType='warning')
+            msgType='warning')
             
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
             self.logMsg('No samples_number configured tanking 10 instead.', \
-            messageType='warning')
+            msgType='warning')
                                     
         self.testing()
         
@@ -82,7 +82,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         if self._clock_daq_task != None:            
             self.logMsg('Another clock is already running, close this one first.', \
-            messageType='error')
+            msgType='error')
             return -1
         
         self._clock_daq_task = daq.TaskHandle()  # create handle for task, this task will generate pulse signal for photon counting
@@ -123,11 +123,11 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         if self._clock_daq_task == None and clock_channel == None:            
             self.logMsg('No clock running, call set_up_clock before starting the counter.', \
-            messageType='error')
+            msgType='error')
             return -1
         if self._counter_daq_task != None:            
             self.logMsg('Another counter is already running, close this one first.', \
-            messageType='error')
+            msgType='error')
             return -1
             
         self._counter_daq_task = daq.TaskHandle()  # this task will count photons with binning defined by pulse_out_task
@@ -186,7 +186,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         if self._counter_daq_task == None:            
             self.logMsg('No counter running, call set_up_counter before reading it.', \
-            messageType='error')
+            msgType='error')
             return np.ones((samples,), dtype=np.uint32) * -1.
             
         if samples == None:
@@ -244,7 +244,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         if self._scanner_clock_daq_task != None:            
             self.logMsg('Another clock is already running, close this one first.', \
-            messageType='error')
+            msgType='error')
             return -1
         
         self._scanner_clock_daq_task = daq.TaskHandle()  # create handle for task, this task will generate pulse signal for photon counting
@@ -286,11 +286,11 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         if self._scanner_clock_daq_task == None and clock_channel == None:            
             self.logMsg('No clock running, call set_up_clock before starting the counter.', \
-            messageType='error')
+            msgType='error')
             return -1
         if self._scanner_counter_daq_task != None:            
             self.logMsg('Another counter is already running, close this one first.', \
-            messageType='error')
+            msgType='error')
             return -1
             
         if counter_channel != None:

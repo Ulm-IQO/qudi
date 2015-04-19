@@ -15,19 +15,19 @@ class mwsourcedummy(Base,MWInterface):
         self._modtype = 'mwsource'
         
         self.logMsg("The following configuration was found.", 
-                    messageType='status')
+                    msgType='status')
         
         # checking for the right configuration
         for key in config.keys():
             self.logMsg("{}: {}".format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
         
         # trying to load the visa connection
         try: 
             import visa
         except:
             self.logMsg("No visa connection installed. Please install pyvisa.", 
-                        messageType='error')
+                        msgType='error')
             
         
     def on(self):
@@ -36,7 +36,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """ 
         
-        self.logMsg("mwsourcedummy>on", messageType='warning')
+        self.logMsg("mwsourcedummy>on", msgType='warning')
         
         return 0
     
@@ -46,7 +46,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>off", messageType='warning')
+        self.logMsg("mwsourcedummy>off", msgType='warning')
         
         return 0
     
@@ -56,7 +56,7 @@ class mwsourcedummy(Base,MWInterface):
         @return float: the power set at the device
         """
         
-        self.logMsg("mwsourcedummy>get_power", messageType='warning')
+        self.logMsg("mwsourcedummy>get_power", msgType='warning')
                     
         return random.uniform(-10, 10)
         
@@ -69,7 +69,7 @@ class mwsourcedummy(Base,MWInterface):
         """
         
         self.logMsg("mwsourcedummy>set_power, power: {f}".format(power), 
-                    messageType='warning')
+                    msgType='warning')
                     
         return 0
         
@@ -80,7 +80,7 @@ class mwsourcedummy(Base,MWInterface):
         @return float: the power set at the device
         """
         
-        self.logMsg("mwsourcedummy>get_frequency", messageType='warning')
+        self.logMsg("mwsourcedummy>get_frequency", msgType='warning')
                     
         return random.uniform(0, 1e6)
         
@@ -93,6 +93,6 @@ class mwsourcedummy(Base,MWInterface):
         """
         
         self.logMsg("mwsourcedummy>set_frequency, frequency: {f}".format(power), 
-                    messageType='warning')
+                    msgType='warning')
                     
         return 0

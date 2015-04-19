@@ -92,7 +92,8 @@ class Logger(QtCore.QObject):
 
           @param list args: arguments for logMsg()
         """
-        self.logMsg(*args[0], **args[1])
+        #print(args)
+        self.logMsg(args[0], **args[1])
         
     def print_logMsg(self, msg, **kwargs):
         """Print message to stdout and log it.

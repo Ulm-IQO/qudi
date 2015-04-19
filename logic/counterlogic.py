@@ -34,12 +34,12 @@ class counterlogic(genericlogic):
         self.lock = Mutex()
 
         self.logMsg('The following configuration was found.', 
-                    messageType='status')
+                    msgType='status')
                             
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        messageType='status')
+                        msgType='status')
                         
         self._count_length = 300
         self._count_frequency = 50

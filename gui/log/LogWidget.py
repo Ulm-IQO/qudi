@@ -11,10 +11,13 @@ import re
 
 
 class LogWidget(QtGui.QWidget):
+    """A widget to show log entries and filter them.
+    """
     
     sigDisplayEntry = QtCore.Signal(object) ## for thread-safetyness
     sigAddEntry = QtCore.Signal(object) ## for thread-safetyness
     sigScrollToAnchor = QtCore.Signal(object)  # for internal use.
+
     Stylesheet = """
         body {color: #000; font-family: sans;}
         .entry {}
@@ -46,6 +49,11 @@ class LogWidget(QtGui.QWidget):
         </html> """ % Stylesheet
 
     def __init__(self, parent):
+        """Creates the log widget.
+
+        @param object parent: Qt parent object for log widet
+
+        """
         QtGui.QWidget.__init__(self, parent)
         self.ui = LogWidgetTemplate.Ui_Form()
         self.ui.setupUi(self)
@@ -55,7 +63,6 @@ class LogWidget(QtGui.QWidget):
         self.entries = [] ## stores all log entries in memory
         self.cache = {} ## for storing html strings of entries that have already been processed
         self.displayedEntries = []
-        #self.currentEntries = None ## recordArray that stores currently displayed entries -- so that if filters get more restrictive we can just refilter this list instead of filtering everything
         self.typeFilters = []
         self.importanceFilter = 0
         self.dirFilter = False
@@ -80,7 +87,12 @@ class LogWidget(QtGui.QWidget):
         
         
     def loadFile(self, f):
-        """Load the file, f. f must be able to be read by configfile.py"""
+        """Load a log file for display.
+
+          @param str f: path to file that should be laoded.
+
+        f must be able to be read by pyqtgraph configfile.py
+        """
         log = configfile.readConfigFile(f)
         self.entries = []
         self.entryArrayBuffer = np.zeros(len(log),dtype=[
@@ -96,14 +108,27 @@ class LogWidget(QtGui.QWidget):
         for k,v in log.items():
             v['id'] = k[9:]  ## record unique ID to facilitate HTML generation (javascript needs this ID)
             self.entries.append(v)
-            self.entryArray[i] = np.array([(i, v.get('importance', 5), v.get('msgType', 'status'), v.get('currentDir', ''), v.get('entryId', v['id']))], dtype=[('index', 'int32'), ('importance', 'int32'), ('msgType', '|S10'), ('directory', '|S100'), ('entryId', 'int32')])
+            self.entryArray[i] = np.array(
+                    [(i,
+                    v.get('importance', 5),
+                    v.get('msgType', 'status'),
+                    v.get('currentDir', ''),
+                    v.get('entryId', v['id']))
+                    ],
+                    dtype=[('index', 'int32'),
+                    ('importance', 'int32'),
+                    ('msgType', '|S10'),
+                    ('directory', '|S100'),
+                    ('entryId', 'int32')]
+                )
             i += 1
             
         self.filterEntries() ## puts all entries through current filters and displays the ones that pass
         
     def addEntry(self, entry):
+        """Add a log entry to the list.
+        """
         ## All incoming messages begin here
-
         ## for thread-safetyness:
         isGuiThread = QtCore.QThread.currentThread() == QtCore.QCoreApplication.instance().thread()
         if not isGuiThread:
@@ -116,8 +141,21 @@ class LogWidget(QtGui.QWidget):
         entryDir = entry.get('currentDir', None)
         if entryDir is None:
             entryDir = ''
-            
-        arr = np.array([(i, entry['importance'], entry['msgType'], entryDir, entry['id'])], dtype = [('index', 'int32'), ('importance', 'int32'), ('msgType', '|S10'), ('directory', '|S100'), ('entryId', 'int32')])
+        arr = np.array(
+                [(i,
+                entry['importance'],
+                entry['msgType'],
+                entryDir,
+                entry['id']
+                )],
+                dtype = [
+                    ('index', 'int32'),
+                    ('importance', 'int32'),
+                    ('msgType', '|S10'),
+                    ('directory', '|S100'),
+                    ('entryId', 'int32')
+                ]
+            )
         
         ## make more room if needed
         if len(self.entryArrayBuffer) == len(self.entryArray):
@@ -167,23 +205,20 @@ class LogWidget(QtGui.QWidget):
     def filterEntries(self):
         """Runs each entry in self.entries through the filters and displays if it makes it through."""
         ### make self.entries a record array, then filtering will be much faster (to OR true/false arrays, + them)
-        typeMask = self.entryArray['msgType'] == ''
+        typeMask = self.entryArray['msgType'] == b''
         for t in self.typeFilters:
-            typeMask += self.entryArray['msgType'] == t
+            typeMask += self.entryArray['msgType'] == t.encode('ascii')
         mask = (self.entryArray['importance'] > self.importanceFilter) * typeMask
-        if self.dirFilter != False:
-            d = np.ascontiguousarray(self.entryArray['directory'])
-            j = len(self.dirFilter)
-            i = len(d)
-            d = d.view(np.byte).reshape(i, 100)[:, :j]
-            d = d.reshape(i*j).view('|S%d' % j)
-            mask *= (d == self.dirFilter)
-            
-            
+        #if self.dirFilter != False:
+        #    d = np.ascontiguousarray(self.entryArray['directory'])
+        #    j = len(self.dirFilter)
+        #    i = len(d)
+        #    d = d.view(np.byte).reshape(i, 100)[:, :j]
+        #    d = d.reshape(i*j).view('|S%d' % j)
+        #    mask *= (d == self.dirFilter)
         self.ui.output.clear()
         self.ui.output.document().setDefaultStyleSheet(self.Stylesheet)
         indices = list(self.entryArray[mask]['index'])
-        inds = indices
         self.displayEntry([self.entries[i] for i in indices])
                           
     def checkDisplay(self, entry):
@@ -393,7 +428,7 @@ class LogWidget(QtGui.QWidget):
             if 'tracebackHtml' in e:
                 doc = re.sub(r'<a href="exc:%s">(<[^>]+>)*Show traceback %s(<[^>]+>)*</a>'%(str(e['id']), str(e['id'])), e['tracebackHtml'], doc)
         f = open(fileName, 'w')
-        f.write(doc.encode('utf-8'))
+        f.write(doc)
         f.close()
         
     def linkClicked(self, url):
