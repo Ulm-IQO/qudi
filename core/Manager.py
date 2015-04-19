@@ -671,6 +671,8 @@ class Manager(QtCore.QObject):
           @param string key: module which is going to be activated.
             
         """
+        if self.tree['loaded'][base][key].getState() != 'deactivated' and key in self.tree['start'][base]:
+            return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
             self.logger.logMsg('{0} module {1} not deactivated anymore'.format(base, key),
                                msgType='error')

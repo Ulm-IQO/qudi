@@ -39,6 +39,8 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
 class Logger(QtCore.QObject):
     """Class that does all the log handling in QuDi.
     """
+    sigLoggedMessage = QtCore.Signal(object)
+    
     def __init__(self, manager):
         """Create a logger instance for a manager object.
 
@@ -145,10 +147,7 @@ class Logger(QtCore.QObject):
             entry['msgType'] = entry['exception']['msgType']
         
         self.saveEntry({name:entry})
-        
-        if entry['msgType'] == 'error':
-            #FIXME:  there should be some sort of visible alert
-            pass
+        self.sigLoggedMessage.emit(entry)
         
     def logExc(self, *args, **kwargs):
         """Calls logMsg, but adds in the current exception and callstack.
