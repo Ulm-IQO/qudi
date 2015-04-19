@@ -18,6 +18,47 @@ import sys
 
 import core
 
+class AppWatchdog(QtCore.QObject):
+    """This class periodically runs a function for debugging and handles
+      application exit.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.alreadyQuit = False
+        # Run python code periodically to allow interactive debuggers to interrupt
+        # the qt event loop
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.donothing)
+        self.timer.start(1000)
+
+    def donothing(self):
+        """This function does nothing for debugging purposes.
+        """
+        #print('-- beat -- thread:', QtCore.QThread.currentThreadId())
+        x = 0
+        for i in range(0, 100):
+            x += i
+
+    def quitApplication(self, manager):
+        """Clean up threads and windows, quit application.
+
+          @param object manager: manager belonging to this application
+
+        """
+        if not self.alreadyQuit:    # Need this because multiple triggers can 
+                                    # call this function during quit.
+            self.alreadyQuit = True
+            self.timer.stop()
+            manager.logger.print_logMsg("Closing windows..", msgType='status')
+            QtGui.QApplication.instance().closeAllWindows()
+            QtGui.QApplication.instance().processEvents()
+            manager.logger.print_logMsg("Stopping threads..", msgType='status')
+            manager.tm.quitAllThreads()
+            QtGui.QApplication.instance().processEvents()
+            print("\n  QuDi is closed!  Ciao.")
+        QtGui.QApplication.quit()
+
 # Possibility to start the program with additional parameters. In the normal 
 # command line or the console, you can start the program as
 #
@@ -55,23 +96,14 @@ gc = GarbageCollector(interval=1.0, debug=False)
 # All additional arguments in sys.argv, which were not used and executed here
 # are passed to the main device handler, the Manager.
 man = Manager(argv=sys.argv[1:])
+watchdog = AppWatchdog()
+man.sigManagerQuit.connect(watchdog.quitApplication)
 
 ## for debugging with pdb
 #QtCore.pyqtRemoveInputHook()
 
 # Start Qt event loop unless running in interactive mode and not using PySide.
 interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
-
-# Run python code periodically to allow interactive debuggers to interrupt
-# the qt event loop
-timer = QtCore.QTimer()
-def donothing(*args):
-    print('-- beat -- thread:', QtCore.QThread.currentThreadId())
-    x = 0
-    for i in range(0, 100):
-        x += i
-timer.timeout.connect(donothing)
-timer.start(1000)
 
 if interactive:
     print("Interactive mode; not starting event loop.")
@@ -120,3 +152,4 @@ else:
         # pg.exit() causes python to exit before Qt has a chance to clean up. 
         # This avoids otherwise irritating exit crashes.
         pg.exit()
+

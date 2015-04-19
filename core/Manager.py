@@ -20,7 +20,7 @@ import re
 import time
 import atexit
 import weakref
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore
 import pyqtgraph.reload as reload
 import pyqtgraph.configfile as configfile
 
@@ -60,7 +60,8 @@ class Manager(QtCore.QObject):
                                                 # all objects in python. Here 
                                                 # you should receive the
                                                 # (directory name).
-    sigAbortAll = QtCore.Signal()  # User requested abort all tasks via ESC key
+    sigAbortAll = QtCore.Signal()
+    sigManagerQuit = QtCore.Signal(object)
     
     def __init__(self, configFile=None, argv=None):
         """Constructor for QuDi main management class
@@ -129,7 +130,7 @@ class Manager(QtCore.QObject):
             else:
                 opts = []
             
-            # Qt setup
+            # Initialize parent class QObject
             QtCore.QObject.__init__(self)
             atexit.register(self.quit)
 
@@ -718,19 +719,7 @@ class Manager(QtCore.QObject):
         
     def quit(self):
         """Nicely request that all modules shut down."""
-        
-        #QtCore.QObject.connect(app, QtCore.SIGNAL('lastWindowClosed()'), q)
-        if not self.alreadyQuit:    # Need this because multiple triggers can 
-                                    # call this function during quit.
-            self.alreadyQuit = True
-            self.logger.print_logMsg("Closing windows..", msgType='status')
-            QtGui.QApplication.instance().closeAllWindows()
-            QtGui.QApplication.instance().processEvents()
-            self.logger.print_logMsg("Stopping threads..", msgType='status')
-            self.tm.quitAllThreads()
-            print("\n    ciao.")
-        QtGui.QApplication.quit()
-
+        self.sigManagerQuit.emit(self)
 
     # Staticmethods are used to group functions which have some logical 
     # connection with a class but they They behave like plain functions except 

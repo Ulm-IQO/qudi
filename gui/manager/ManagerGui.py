@@ -15,15 +15,9 @@ class ManagerGui(Base):
         self._mw = ManagerMainWindow()
         # Connect up the buttons.
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
-        self._mw.loadAllButton.clicked.connect(self.threadId)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
-        self._mw.actionQuit.triggered.connect(self.threadId)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
-        self._mw.action_Load_all_modules.triggered.connect(self.threadId)
         self._mw.show()
-
-    def threadId(self):
-        print('Thread: ', QtCore.QThread.currentThreadId())
 
 class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
