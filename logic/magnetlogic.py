@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from logic.genericlogic import genericlogic
+from logic.GenericLogic import GenericLogic
 from collections import OrderedDict
 import threading
 import numpy as np
 import time
 
-class magnetlogic(genericlogic):
+class MagnetLogic(GenericLogic):
     """This is the Interface class to define the controls for the simple 
     magnet hardware.
     """
@@ -14,7 +14,7 @@ class magnetlogic(genericlogic):
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
-        genericlogic.__init__(self, manager, name, config, state_actions, **kwargs)
+        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
         self._modclass = 'magnetlogic'
         self._modtype = 'logic'
         ## declare connectors
@@ -23,7 +23,7 @@ class magnetlogic(genericlogic):
         self.connector['in']['magnet']['object'] = None
         
         self.connector['out']['magnetlogic'] = OrderedDict()
-        self.connector['out']['magnetlogic']['class'] = 'magnetlogic'
+        self.connector['out']['magnetlogic']['class'] = 'MagnetLogic'
         
 
         self.logMsg('The following configuration was found.', 

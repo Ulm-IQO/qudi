@@ -7,7 +7,7 @@ from collections import OrderedDict
 import numpy as np
 import time
 
-class CounterLogic(GenericLogic):
+class ConfocalTestLogic(GenericLogic):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -22,12 +22,12 @@ class CounterLogic(GenericLogic):
         self._modtype = 'logic'
 
         ## declare connectors
-        self.connector['in']['counter1'] = OrderedDict()
-        self.connector['in']['counter1']['class'] = 'SlowCounterInterface'
-        self.connector['in']['counter1']['object'] = None
+        self.connector['in']['confocalscanner1'] = OrderedDict()
+        self.connector['in']['confocalscanner1']['class'] = 'ConfocalScannerInterface'
+        self.connector['in']['confocalscanner1']['object'] = None
         
-        self.connector['out']['counterlogic'] = OrderedDict()
-        self.connector['out']['counterlogic']['class'] = 'CounterLogic'
+        self.connector['out']['scannerlogic'] = OrderedDict()
+        self.connector['out']['scannerlogic']['class'] = 'ConfocalTestLogic'
         
         #locking for thread safety
         self.lock = Mutex()

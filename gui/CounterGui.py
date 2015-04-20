@@ -26,7 +26,7 @@ class CounterGui(Base):
         
         ## declare connectors
         self.connector['in']['counterlogic1'] = OrderedDict()
-        self.connector['in']['counterlogic1']['class'] = 'counterlogic'
+        self.connector['in']['counterlogic1']['class'] = 'CounterLogic'
         self.connector['in']['counterlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 

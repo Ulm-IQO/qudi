@@ -36,6 +36,20 @@ class ConfocalScannerInterface():
         raise InterfaceImplementationError('ConfocalScannerInterface>set_up_scanner')
         return -1
         
+    def scanner_set_pos(self, x = None, y = None, z = None, a = None):
+        """Move stage to x, y, z, a (where a is the fourth voltage channel).
+        
+        @param float x: postion in x-direction (volts)
+        @param float y: postion in y-direction (volts)
+        @param float z: postion in z-direction (volts)
+        @param float a: postion in a-direction (volts)
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        raise InterfaceImplementationError('ConfocalScannerInterface>scanner_set_pos')
+        return -1
+        
     def scan_line(self, voltages = None):
         """ Scans a line and returns the counts on that line. 
         

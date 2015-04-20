@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from core.Base import Base
-from hardware.slowcounterinterface import SlowCounterInterface
+from hardware.SlowCounterInterface import SlowCounterInterface
 from collections import OrderedDict
 import random
 import time
 
 import numpy as np
 
-class slowcounterinterfacedummy(Base,SlowCounterInterface):
+class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -19,7 +19,7 @@ class slowcounterinterfacedummy(Base,SlowCounterInterface):
         self._modtype = 'hardware'
 
         self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'slowcounterinterface'
+        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

@@ -2,14 +2,14 @@
 # unstable: Kay Jahnke
 
 from core.Base import Base
-from hardware.slowcounterinterface import SlowCounterInterface
-from hardware.confocalscannerinterface import ConfocalScannerInterface
+from hardware.SlowCounterInterface import SlowCounterInterface
+from hardware.ConfocalScannerInterface import ConfocalScannerInterface
 from collections import OrderedDict
 
 import PyDAQmx as daq
 import numpy as np
 
-class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
+class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
     """unstable: Kay Jahnke
 	This is the Interface class to define the controls for the simple 
     microwave hardware.
@@ -27,7 +27,10 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._modtype = 'slowcounterinterface'
         
         self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'slowcounterinterface'
+        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
+        
+        self.connector['out']['confocalscanner'] = OrderedDict()
+        self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
         
         
         self.logMsg('The following configuration was found.', 
@@ -45,8 +48,14 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_clock_daq_task = None
         self._scanner_ao_task = None
         self._scanner_counter_daq_task = None
+        self._line_length = None
         self._min_voltage = -10.
         self._max_voltage = 10.
+        
+        self.current_x = 0.
+        self.current_y = 0.
+        self.current_z = 0.
+        self.current_a = 0.
         
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
@@ -83,6 +92,8 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         print('Testing the NIInterface')
         self.set_up_scanner_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
         self.set_up_scanner(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/ao0:3')
+        
+#        print(self.scan_line(voltages=1))
         
         minv=-10
         maxv=10
@@ -371,23 +382,87 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxSetCICtrTimebaseSrc(self._scanner_counter_daq_task, 
                                      self._scanner_counter_channel, 
                                      self._photon_source )
+                                     
+        # set task timing to use a sampling clock
+        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
+        
+        return 0
+    
+    def scanner_set_pos(self, x = None, y = None, z = None, a = None):
+        """Move stage to x, y, z, a (where a is the fourth voltage channel).
+        
+        @param float x: postion in x-direction (volts)
+        @param float y: postion in y-direction (volts)
+        @param float z: postion in z-direction (volts)
+        @param float a: postion in a-direction (volts)
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        if x != None:
+            self.current_x = x
+        if y != None:
+            self.current_y = y
+        if z != None:
+            self.current_z = z
+        if a != None:
+            self.current_a = a
+            
+        self._write_scanner_ao(voltages = \
+            self.scanner_position_to_volt((self.current_x,
+                                           self.current_y,
+                                           self.current_z,
+                                           self.current_a)), 
+            start=True)
         
         return 0
         
-        
-    def scan_line(self, voltages = None):
-        """ Scans a line and returns the counts on that line. 
+    def _write_scanner_ao(self, voltages, length=1 ,start=False):
+        """Writes a set of voltages to the analoque outputs.
         
         @param float[][4] voltages: array of 4-part tuples defining the voltage points
+        @param int length: number of tuples to write
+        @param bool start: write imediately (True) or wait for start of task (False)
         
-        @return float[]: the photon counts per second
+        @return int: error code (0:OK, -1:error)
+        """
+        self._AONwritten = daq.int32()
+        
+        daq.DAQmxWriteAnalogF64(self._scanner_ao_task,
+                                self._line_length,  # length of command
+                                start, # start task immediately (True), or wait for software start (False)
+                                self._RWTimeout,
+                                daq.DAQmx_Val_GroupByChannel,
+                                voltages,
+                                daq.byref(self._AONwritten), None)
+        
+        return self._AONwritten.value
+    
+    def scanner_position_to_volt(self, positions = None):
+        """ Converts a set of position pixels to acutal voltages.
+        
+        @param float[][4] positions: array of 4-part tuples defining the pixels
+        
+        @return float[][4]: array of 4-part tuples of corresponing voltages
         """
         
-        # number of points to scan
-        length = 40
+        if not isinstance( positions, (frozenset, list, set, tuple, np.ndarray, ) ):
+            self.logMsg('Given voltage list is no array type.', \
+            msgType='error')
+            return np.array([-1.])
+            
+        return positions
         
-        # set task timing to use a sampling clock
-        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
+        
+    def set_up_line(self, length=100):
+        """ Sets up the analoque output for scanning a line.
+        
+        @param int length: length of the line in pixel
+        
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self._line_length = length
         
         if length < np.inf:
             daq.DAQmxCfgSampClkTiming(self._scanner_ao_task,   # set up sample clock for task timing
@@ -395,12 +470,12 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
                                       self._scanner_clock_frequency, # maximum expected clock frequency
                                       daq.DAQmx_Val_Falling, 
                                       daq.DAQmx_Val_FiniteSamps, # generate sample on falling edge, generate finite number of samples
-                                      length) # samples to generate
+                                      self._line_length) # samples to generate
         
         # set timing for scanner pulse and count task.
         daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, 
                                    daq.DAQmx_Val_FiniteSamps, 
-                                   length+1)
+                                   self._line_length+1)
                                    
         # read samples from beginning of acquisition, do not overwrite
         daq.DAQmxSetReadRelativeTo(self._scanner_counter_daq_task, 
@@ -410,16 +485,28 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxSetReadOverWrite(self._scanner_counter_daq_task, 
                                   daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
         
-        self._AONwritten = daq.int32()
-        start = False
+        return 0
         
-        daq.DAQmxWriteAnalogF64(self._scanner_ao_task,
-                                length,  # length of command
-                                start, # start task immediately (True), or wait for software start (False)
-                                self._RWTimeout,
-                                daq.DAQmx_Val_GroupByChannel,
-                                voltages,
-                                daq.byref(self._AONwritten), None)
+    def scan_line(self, voltages = None):
+        """ Scans a line and returns the counts on that line. 
+        
+        @param float[][4] voltages: array of 4-part tuples defining the voltage points
+        
+        @return float[]: the photon counts per second
+        """
+        
+        if not isinstance( voltages, (frozenset, list, set, tuple, np.ndarray, ) ):
+            self.logMsg('Given voltage list is no array type.', \
+            msgType='error')
+            return np.array([-1.])
+                
+        if len(voltages) != self._line_length:
+            self.set_up_line(length=len(voltages))
+        
+        written_voltages = self._write_scanner_ao(voltages=\
+            self.scanner_position_to_volt(voltages), 
+            length=self._line_length, 
+            start=False)
         
         #start tasks
         daq.DAQmxStartTask(self._scanner_ao_task)
@@ -428,14 +515,14 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout)
         
         # count data will be written here
-        self._scan_data = np.empty((length,), dtype=np.uint32)
+        self._scan_data = np.empty((self._line_length,), dtype=np.uint32)
         #number of samples which were read will be stored here
         n_read_samples = daq.int32() 
         daq.DAQmxReadCounterU32(self._scanner_counter_daq_task,   #read from this task
-                                length,    #read number of "line_points" samples
+                                self._line_length,    #read number of "line_points" samples
                                 self._RWTimeout,
                                 self._scan_data, #write into this array
-                                length,   #length of array to write into
+                                self._line_length,   #length of array to write into
                                 daq.byref(n_read_samples), None)  #number of samples which were read
 
         daq.DAQmxStopTask(self._scanner_counter_daq_task)

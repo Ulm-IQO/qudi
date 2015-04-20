@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from core.Base import Base
-from hardware.confocalscannerinterface import ConfocalScannerInterface
+from hardware.ConfocalScannerInterface import ConfocalScannerInterface
 from collections import OrderedDict
 import random
 import time
 
 import numpy as np
 
-class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
+class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -19,7 +19,7 @@ class confocalscannerinterfacedummy(Base,ConfocalScannerInterface):
         self._modtype = 'hardware'
 
         self.connector['out']['confocalscanner'] = OrderedDict()
-        self.connector['out']['confocalscanner']['class'] = 'confocalscannerinterface'
+        self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')
