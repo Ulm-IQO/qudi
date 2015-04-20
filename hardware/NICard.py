@@ -52,6 +52,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._min_voltage = -10.
         self._max_voltage = 10.
         
+        self._x_range=[-10.,10.]
+        self._y_range=[-10.,10.]
+        self._z_range=[-10.,10.]
+        self._a_range=[-10.,10.]
+        
         self.current_x = 0.
         self.current_y = 0.
         self.current_z = 0.
@@ -89,23 +94,24 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 #        self.testing()
         
     def testing(self, e=None):
-        print('Testing the NIInterface')
-        self.set_up_scanner_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
-        self.set_up_scanner(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/ao0:3')
-        
-#        print(self.scan_line(voltages=1))
-        
-        minv=-10
-        maxv=10
-        res=40
-        line = np.vstack((np.linspace(minv,maxv,res),
-                          np.linspace(minv,maxv,res), 
-                          np.linspace(minv,maxv,res),
-                          np.linspace(minv,maxv,res)) )
-        for i in range(5):
-            print(self.scan_line(voltages=line))
-        self.close_scanner()
-        self.close_scanner_clock()
+        pass
+#        print('Testing the NIInterface')
+#        self.set_up_scanner_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
+#        self.set_up_scanner(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/ao0:3')
+#        
+##        print(self.scan_line(voltages=1))
+#        
+#        minv=-10
+#        maxv=10
+#        res=40
+#        line = np.vstack((np.linspace(minv,maxv,res),
+#                          np.linspace(minv,maxv,res), 
+#                          np.linspace(minv,maxv,res),
+#                          np.linspace(minv,maxv,res)) )
+#        for i in range(5):
+#            print(self.scan_line(voltages=line))
+#        self.close_scanner()
+#        self.close_scanner_clock()
         
 ################################## Counter ###################################
         
@@ -382,9 +388,6 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxSetCICtrTimebaseSrc(self._scanner_counter_daq_task, 
                                      self._scanner_counter_channel, 
                                      self._photon_source )
-                                     
-        # set task timing to use a sampling clock
-        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
         return 0
     
@@ -400,19 +403,39 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """
         
         if x != None:
-            self.current_x = x
-        if y != None:
-            self.current_y = y
-        if z != None:
-            self.current_z = z
-        if a != None:
-            self.current_a = a
+            if x < self._x_range[0] or x > self._x_range[1]:                
+                self.logMsg('You want to set x out of range: {0:f}.'.format(x), 
+                            msgType='error')
+                return -1
+            self.current_x = np.float(x)
             
+        if y != None:
+            if y < self._y_range[0] or y > self._y_range[1]:                
+                self.logMsg('You want to set y out of range: {0:f}.'.format(y), 
+                            msgType='error')
+                return -1
+            self.current_y = np.float(y)
+            
+        if z != None:
+            if z < self._z_range[0] or z > self._z_range[1]:                
+                self.logMsg('You want to set z out of range: {0:f}.'.format(z), 
+                            msgType='error')
+                return -1
+            self.current_z = np.float(z)
+            
+        if a != None:
+            if a < self._a_range[0] or a > self._a_range[1]:                
+                self.logMsg('You want to set a out of range: {0:f}.'.format(a), 
+                            msgType='error')
+                return -1
+            self.current_a = np.float(a)
+            
+        my_position = np.vstack((self.current_x,
+                                 self.current_y,
+                                 self.current_z,
+                                 self.current_a))
         self._write_scanner_ao(voltages = \
-            self.scanner_position_to_volt((self.current_x,
-                                           self.current_y,
-                                           self.current_z,
-                                           self.current_a)), 
+            self.scanner_position_to_volt(my_position), 
             start=True)
         
         return 0
@@ -426,10 +449,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+        
         self._AONwritten = daq.int32()
         
         daq.DAQmxWriteAnalogF64(self._scanner_ao_task,
-                                self._line_length,  # length of command
+                                length,  # length of command
                                 start, # start task immediately (True), or wait for software start (False)
                                 self._RWTimeout,
                                 daq.DAQmx_Val_GroupByChannel,
@@ -499,20 +523,25 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self.logMsg('Given voltage list is no array type.', \
             msgType='error')
             return np.array([-1.])
-                
-        if len(voltages) != self._line_length:
-            self.set_up_line(length=len(voltages))
+        
+        if np.shape(voltages)[1] != self._line_length:
+            self.set_up_line(np.shape(voltages)[1])
+            
+        # set task timing to use a sampling clock
+        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
         written_voltages = self._write_scanner_ao(voltages=\
             self.scanner_position_to_volt(voltages), 
             length=self._line_length, 
             start=False)
         
+        print('written samples: {0:d} of {1:d}'.format(written_voltages,np.shape(voltages)[1]))
+        
         #start tasks
         daq.DAQmxStartTask(self._scanner_ao_task)
         daq.DAQmxStartTask(self._scanner_counter_daq_task)
         
-        daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout)
+        daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout*self._line_length)
         
         # count data will be written here
         self._scan_data = np.empty((self._line_length,), dtype=np.uint32)

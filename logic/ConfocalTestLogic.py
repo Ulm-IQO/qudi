@@ -40,197 +40,36 @@ class ConfocalTestLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
                         
-        self._count_length = 300
-        self._count_frequency = 50
-        self._counting_samples = 1
-        self._smooth_window_length = 10
-        self._binned_counting = True
         
                         
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
-        self.countdata = np.zeros((self._count_length,))
-        self.countdata_smoothed=np.zeros((self._count_length,))
-        self.rawdata=np.zeros((self._counting_samples,))
-        
         self.running = False
         self.stopRequested = False
-        self._saving = False
         
-        self._counting_device = self.connector['in']['counter1']['object']
-        print("Counting device is", self._counting_device)
+        self._scanning_device = self.connector['in']['confocalscanner1']['object']
+        print("Counting device is", self._scanning_device)
 
-        #QSignals
-        self.sigCountNext.connect(self.countLoopBody, QtCore.Qt.QueuedConnection)
-        
+    def start_scanner(self):
+        # setting up the scanner
+        self._scanning_device.set_up_scanner_clock(clock_frequency = 50., clock_channel = '/Dev1/Ctr2')
+        self._scanning_device.set_up_scanner(counter_channel = '/Dev1/Ctr3', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/AO0:3')
     
-    def set_count_length(self, length = 300):
-        """ Sets the length of the counted bins.
-        
-        @param int length: the length of the array to be set.
-        
-        @return int: error code (0:OK, -1:error)
-        
-        This makes sure, the counter is stopped first and restarted afterwards.
-        """
-        
-        # do I need to restart the counter?
-        restart = False
-        
-        # if the counter is running, stop it
-        if self.running:
-            restart = True
-            self.stopCount()
-            while self.running:
-                time.sleep(0.01)
-                
-        self._count_length = int(length)
-        
-        # if the counter was running, restart it
-        if restart:
-            self.startCount()
-        
-        return 0
-        
-    def set_count_frequency(self, frequency = 50):
-        """ Sets the frequency with which the data is acquired.
-        
-        @param int frequency: the frequency of counting in Hz.
-        
-        @return int: error code (0:OK, -1:error)
-        
-        This makes sure, the counter is stopped first and restarted afterwards.
-        """
-        
-        # do I need to restart the counter?
-        restart = False
-        
-        # if the counter is running, stop it
-        if self.running:
-            restart = True
-            self.stopCount()
-            while self.running:
-                time.sleep(0.01)
-                
-        self._count_frequency = int(frequency)
-        
-        # if the counter was running, restart it
-        if restart:
-            self.startCount()
-        
-        return 0
-        
-    def get_count_length(self):
-        """ Returns the currently set length of the counting array.
-        
-        @return int: count_length
-        """
-        return self._count_length
     
-    def get_count_frequency(self):
-        """ Returns the currently set frequency of counting (resolution).
+    def kill_scanner(self):
+        self._scanning_device.close_scanner()
+        self._scanning_device.close_scanner_clock()
         
-        @return int: count_frequency
-        """
-        return self._count_frequency
+    def scan_line(self):
+        minv=-10
+        maxv=10
+        res=100
+        line = np.vstack((np.linspace(minv,maxv,res),
+                          np.linspace(minv,maxv,res), 
+                          np.linspace(minv,maxv,res),
+                          np.linspace(minv,maxv,res)) )
+        self.counts_from_line = self._scanning_device.scan_line(voltages=line)
         
-    def get_counting_samples(self):
-        """ Returns the currently set number of samples counted per readout.
-        
-        @return int: counting_samples
-        """
-        return self._counting_samples
-        
-    def get_saving_state(self):
-        """ Returns if the data is saved in the moment.
-        
-        @return bool: saving state
-        """
-        
-        return self._saving
-        
-    def start_saving(self):
-        """ Starts saving the data in a list.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        
-        self._data_to_save=[]
-        self._saving_start_time=time.time()
-        self._saving=True
-        return 0
-    
-    def save_data(self):
-        """ Stops saving the data and writes it to a file.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        
-        self._saving=False
-        self._saving_stop_time=time.time()
-        
-        print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
-        return 0
-
-    def startCount(self):
-        # setting up the counter
-        self._counting_device.set_up_clock(clock_frequency = self._count_frequency, clock_channel = '/Dev1/Ctr0')
-        self._counting_device.set_up_counter(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8')
-        
-        # initialising the data arrays
-        self.countdata=np.zeros((self._count_length,))
-        self.countdata_smoothed=np.zeros((self._count_length,))
-        self.rawdata=np.zeros((self._counting_samples,))
-        
-        self.sigCountNext.emit()
- 
-    def stopCount(self):
-        with self.lock:
-            self.stopRequested = True
-
-    def countLoopBody(self):
-        """ The actual measurement method which is run in a thread.
-        """
-        
-        # set a status variable, to signify the measurment is running
-        self.running = True
-        
-        # check for aborts of the thread in break if necessary 
-        if self.stopRequested:
-            with self.lock:
-                # switch the state variable off again
-                self.running = False
-                # close off the actual counter
-                self._counting_device.close_counter()
-                self._counting_device.close_clock()
-                self.stopRequested = False
-                return
-        
-        # read the current counter value
-        self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-        
-        # if we don't want to use oversampling
-        if self._binned_counting:
-            # remember the new count data in circular array
-            self.countdata[0] = np.average(self.rawdata)
-            # move the array to the left to make space for the new data
-            self.countdata=np.roll(self.countdata, -1)
-            # also move the smoothing array
-            self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
-            # calculate the median and save it
-            self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
-        # if oversampling is necessary
-        else:
-            self.countdata=np.roll(self.countdata, -self._counting_samples)
-            self.countdata[-self._counting_samples:] = self.rawdata
-            self.countdata_smoothed = np.roll(self.countdata_smoothed, -self._counting_samples)
-            self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
-            
-        # save the data if necessary
-        if self._saving:
-            # append tuple to data stream (timestamp, average counts)
-            self._data_to_save.append(np.array((time.time()-self._saving_start_time, np.average(self.rawdata))))
-        # call this again from event loop
-        self.sigCounterUpdated.emit()
-        self.sigCountNext.emit()
+    def go_to_pos(self, x = None, y = None, z = None, a = None):
+        self._scanning_device.scanner_set_pos(x = x, y = y, z = z, a = a)
