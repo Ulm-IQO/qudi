@@ -141,7 +141,7 @@ class magnetstagepi(Base,MagnetStageInterface):
         return -1
         
     
-    def move(self, x = 0., y = 0., z = 0., phi = 0.):
+    def move(self, x = None, y = None, z = None, phi = None):
         """Moves stage to absolute position
         
         @param float x: move to absolute position in x-direction
@@ -151,24 +151,29 @@ class magnetstagepi(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        movex = int(x*10000.)
-        movey = int(y*10000.)
-        movez = int(z*10000.)
-        self._serial_connection_xyz.write(self._x_axis+'SP%s'%movex)
-        self._serial_connection_xyz.write(self._x_axis+'MP')
-        self._serial_connection_xyz.write(self._y_axis+'SP%s'%movey)
-        self._serial_connection_xyz.write(self._y_axis+'MP')
-        self._serial_connection_xyz.write(self._z_axis+'SP%s'%movez)
-        self._serial_connection_xyz.write(self._z_axis+'MP')
+        if x != None:
+            movex = int(x*10000.)
+            self._serial_connection_xyz.write(self._x_axis+'SP%s'%movex)
+            self._serial_connection_xyz.write(self._x_axis+'MP')
+        if y != None:
+            movey = int(y*10000.)
+            self._serial_connection_xyz.write(self._y_axis+'SP%s'%movey)
+            self._serial_connection_xyz.write(self._y_axis+'MP')
+        if z != None:
+            movez = int(z*10000.)
+            self._serial_connection_xyz.write(self._z_axis+'SP%s'%movez)
+            self._serial_connection_xyz.write(self._z_axis+'MP')
             
         [a,b,c] = self._in_movement_xyz()
         while a != 0 or b != 0 or c != 0:
             print ('xyz-stage moving...')
             [a,b,c] = self._in_movement_xyz()
             time.sleep(0.2)
-                        
-        movephi = phi
-        self._move_absolute_rot(movephi)
+            
+        if phi != None:                
+            movephi = phi
+            self._move_absolute_rot(movephi)
+            
         print ('stage ready')
         return 0
         
