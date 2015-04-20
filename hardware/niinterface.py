@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# unstable: Kay Jahnke
 
 from core.Base import Base
 from hardware.slowcounterinterface import SlowCounterInterface
@@ -9,7 +10,8 @@ import PyDAQmx as daq
 import numpy as np
 
 class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
-    """This is the Interface class to define the controls for the simple 
+    """unstable: Kay Jahnke
+	This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
     
