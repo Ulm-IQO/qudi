@@ -12,38 +12,34 @@ class MagnetStageMicos(Base,MagnetStageInterface):
     """unstable: Jochen Scheuer. This is the hardware class to define the controls for the Micos stage of PI.
     """
 
-# -------- This has to go into the config file and then loaded in the __init__ -------  
-	  
-	MICOSA = instrument('COM8') # x, y
-	MICOSB = instrument('COM5') # z, phi
-
-	MICOSA.term_chars = '\n'
-	MICOSB.term_chars = '\n'
-
-	MICOSA.baud_rate = 57600
-	MICOSB.baud_rate = 57600
-# --------
-
-# 	Create class variables to store the current value of the position.
+# 	Creating class variables to store the current value of the position.
 	x_store=-1
 	y_store=-1
 	z_store=-1
 	phi_store=-1
 
+#Questions:
+#	Are values put in the right way in config????
+#	change return values to sensible values???
+#	After moving files what has to be changed, where?
+
+#Christoph:
+# 	make on activate method which asks for values with get_pos()
+#	checks for sensible values???
+#	introduce dead-times while waiting?
+# 	check if sensible value and check for float!!!! in interface
+#	put together everything to one step???
+
+
 #Things to be changed in logic:
-#	Make init sensible
 #	Name of modules for steps
 #	getpos
 #	kill strgc method
 
+#changes:
 #	change time for waiting until next command is sent
-#	change return values to sensible values
-# 	make on activate method which asks for values with get_pos()
 # 	change prints to log messages
-#	checks for sensible values???
-#	introduce dead-times
 #	wait in calibrate or implement get_cal
-# 	check if sensible value and check for float!!!! in interface
 #	make subfolder with __init__ for subfolder check GUI
 #	
 
@@ -62,6 +58,48 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
+
+#		here the COM port is read from the config file
+        if 'magnet_connection_micos_xy' in config.keys():
+			MICOSA = instrument(config['magnet_connection_micos_xy']) # x, y
+		else:
+			MICOSA = instrument('COM8') # x, y
+            self.logMsg('No magent_connection_micos_xy configured taking COM8 instead.', \
+            msgType='warning')
+		if 'magnet_connection_micos_zphi' in config.keys():		 
+			MICOSB = instrument(config['magent_connection_micos_zphi']) # z, phi
+		else:
+			MICOSB = instrument('COM5') # z, phi
+            self.logMsg('No magent_connection_micos_zphi configured taking COM5 instead.', \
+            msgType='warning')
+
+#		here the variables for the term are read in
+        if 'magnet_term_chars_xy' in config.keys():
+			MICOSA.term_chars = config['magnet_term_chars_xy']
+		else:
+			MICOSA.term_chars = '\n'
+            self.logMsg('No magnet_term_chars_xy configured taking '\\n' instead.', \
+            msgType='warning')
+        if 'magnet_term_chars_zphi' in config.keys():
+			MICOSA.term_chars = config['magnet_term_chars_zphi']
+		else:
+			MICOSB.term_chars = '\n'
+            self.logMsg('No magnet_term_chars_zphi configured taking '\\n' instead.', \
+            msgType='warning')
+
+#		here the variables for the baud rate are read in
+        if 'magnet_baud_rate_xy' in config.keys():
+			MICOSA.baud_rate = config['magnet_baud_rate_xy']
+		else:
+			MICOSA.baud_rate = 57600
+            self.logMsg('No magnet_baud_rate_xy configured taking '57600' instead.', \
+            msgType='warning')
+        if 'magnet_baud_rate_zphi' in config.keys():
+			MICOSB.baud_rate = config['magnet_baud_rate_zphi']
+		else:
+			MICOSB.baud_rate = 57600
+            self.logMsg('No magnet_baud_rate_zphi configured taking '57600' instead.', \
+            msgType='warning')
 
             
     def step_x(self, step = 0.):
