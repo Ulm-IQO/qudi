@@ -53,7 +53,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>get_frequency')
         return 0.0
         
-    def set_frequency(self,frequency=0):
+    def set_frequency(self,frequency=0.):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
