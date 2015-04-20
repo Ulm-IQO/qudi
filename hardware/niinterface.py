@@ -3,6 +3,7 @@
 from core.Base import Base
 from hardware.slowcounterinterface import SlowCounterInterface
 from hardware.confocalscannerinterface import ConfocalScannerInterface
+from collections import OrderedDict
 
 import PyDAQmx as daq
 import numpy as np
@@ -13,9 +14,19 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        ## declare actions for state transitions
+        c_dict = {'onactivate': self.testing}
+        Base.__init__(self,
+                    manager,
+                    name,
+                    config,
+                    c_dict)
         self._modclass = 'niinterface'
         self._modtype = 'slowcounterinterface'
+        
+        self.connector['out']['counter'] = OrderedDict()
+        self.connector['out']['counter']['class'] = 'slowcounterinterface'
+        
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -25,10 +36,15 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
                         
-        self._MaxCounts = 1e7
+        self._max_counts = 1e7
         self._RWTimeout = 5
         self._counter_daq_task = None
         self._clock_daq_task = None
+        self._scanner_clock_daq_task = None
+        self._scanner_ao_task = None
+        self._scanner_counter_daq_task = None
+        self._min_voltage = -10.
+        self._max_voltage = 10.
         
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
@@ -58,16 +74,25 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
             self._samples_number=10
             self.logMsg('No samples_number configured tanking 10 instead.', \
             msgType='warning')
-                                    
-        self.testing()
+            
+#        self.testing()
         
-    def testing(self):
-        self.set_up_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
-        self.set_up_counter(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8')
+    def testing(self, e=None):
+        print('Testing the NIInterface')
+        self.set_up_scanner_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
+        self.set_up_scanner(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/ao0:3')
+        
+        minv=-10
+        maxv=10
+        res=40
+        line = np.vstack((np.linspace(minv,maxv,res),
+                          np.linspace(minv,maxv,res), 
+                          np.linspace(minv,maxv,res),
+                          np.linspace(minv,maxv,res)) )
         for i in range(5):
-            print(self.get_counter(samples=self._samples_number))
-        self.close_counter()
-        self.close_clock()
+            print(self.scan_line(voltages=line))
+        self.close_scanner()
+        self.close_scanner_clock()
         
 ################################## Counter ###################################
         
@@ -153,7 +178,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
                                         self._counter_channel,  # use this counter; the name to assign to the created channel
                                         'Counting Task',  #name
                                         0,  #expected minimum value
-                                        self._MaxCounts/2./self._clock_frequency,    #expected maximum value
+                                        self._max_counts/2./self._clock_frequency,    #expected maximum value
                                         daq.DAQmx_Val_Ticks, #units of width measurement, here photon ticks
                                         '')   
         
@@ -274,7 +299,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         return 0
         
     
-    def set_up_scanner(self, counter_channel = None, photon_source = None, clock_channel = None):
+    def set_up_scanner(self, counter_channel = None, photon_source = None, clock_channel = None, scanner_ao_channels = None):
         """ Configures the actual scanner with a given clock. 
         
         @param string counter_channel: if defined, this is the physical channel of the counter
@@ -299,9 +324,12 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
             self._photon_source = photon_source
         
         if clock_channel != None:
-            my_clock_channel = clock_channel
+            self._my_scanner_clock_channel = clock_channel
         else: 
-            my_clock_channel = self._scanner_clock_channel
+            self._my_scanner_clock_channel = self._scanner_clock_channel
+            
+        if scanner_ao_channels != None:
+            self._scanner_ao_channels = scanner_ao_channels
         
         # init ao channels / task for scanner, should always be active
         # the type definition for the task, an unsigned integer datatype (uInt32):
@@ -316,26 +344,26 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
                                      self._min_voltage,          # min voltage
                                      self._max_voltage,           # max voltage
                                      daq.DAQmx_Val_Volts,'')       # units is Volt
-       
-       # set task timing to on demand, i.e. when demanded by software
-       daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
-       #self.set_scanner_command_length(self._DefaultAOLength)
-       
-       self._scanner_counter_daq_task = daq.TaskHandle()
-       daq.DAQmxCreateTask('', daq.byref(self._scanner_counter_daq_task))
-       
-       daq.DAQmxCreateCIPulseWidthChan(self._scanner_counter_daq_task,    #add to this task
-                                       self._scanner_counter_channel,  #use this counter
-                                       '',  #name
-                                       0,  #expected minimum value
-                                       self._max_counts*self._clock_frequency),    #expected maximum value
-                                       daq.DAQmx_Val_Ticks,     #units of width measurement, here photon ticks
-                                       daq.DAQmx_Val_Rising, '')   ) #start pulse width measurement on rising edge
+        
+        # set task timing to on demand, i.e. when demanded by software
+        daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
+        #self.set_scanner_command_length(self._DefaultAOLength)
+        
+        self._scanner_counter_daq_task = daq.TaskHandle()
+        daq.DAQmxCreateTask('', daq.byref(self._scanner_counter_daq_task))
+        
+        daq.DAQmxCreateCIPulseWidthChan(self._scanner_counter_daq_task,    #add to this task
+                                        self._scanner_counter_channel,  #use this counter
+                                        '',  #name
+                                        0,  #expected minimum value
+                                        self._max_counts*self._scanner_clock_frequency,    #expected maximum value
+                                        daq.DAQmx_Val_Ticks,     #units of width measurement, here photon ticks
+                                        daq.DAQmx_Val_Rising, '') #start pulse width measurement on rising edge
 
         #set the pulses to counter self._trace_counter_in
         daq.DAQmxSetCIPulseWidthTerm(self._scanner_counter_daq_task, 
                                      self._scanner_counter_channel, 
-                                     my_clock_channel+'InternalOutput')
+                                     self._my_scanner_clock_channel+'InternalOutput')
                                      
         #set the timebase for width measurement as self._photon_source
         daq.DAQmxSetCICtrTimebaseSrc(self._scanner_counter_daq_task, 
@@ -354,15 +382,15 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         """
         
         # number of points to scan
-        length = 100
+        length = 40
         
         # set task timing to use a sampling clock
         daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
-        if length < numpy.inf:
+        if length < np.inf:
             daq.DAQmxCfgSampClkTiming(self._scanner_ao_task,   # set up sample clock for task timing
-                                      self._scanner_clock_daq_task+'InternalOutput',       # use these pulses as clock
-                                      self._count_frequency, # maximum expected clock frequency
+                                      self._my_scanner_clock_channel+'InternalOutput',       # use these pulses as clock
+                                      self._scanner_clock_frequency, # maximum expected clock frequency
                                       daq.DAQmx_Val_Falling, 
                                       daq.DAQmx_Val_FiniteSamps, # generate sample on falling edge, generate finite number of samples
                                       length) # samples to generate
@@ -388,7 +416,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
                                 start, # start task immediately (True), or wait for software start (False)
                                 self._RWTimeout,
                                 daq.DAQmx_Val_GroupByChannel,
-                                data,
+                                voltages,
                                 daq.byref(self._AONwritten), None)
         
         #start tasks
@@ -398,7 +426,7 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout)
         
         # count data will be written here
-        self._scan_data = numpy.empty((length,), dtype=numpy.uint32)
+        self._scan_data = np.empty((length,), dtype=np.uint32)
         #number of samples which were read will be stored here
         n_read_samples = daq.int32() 
         daq.DAQmxReadCounterU32(self._scanner_counter_daq_task,   #read from this task
@@ -410,8 +438,8 @@ class niinterface(Base,SlowCounterInterface,ConfocalScannerInterface):
 
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
         daq.DAQmxStopTask(self._scanner_ao_task)
-	
-	return _scan_data
+        
+        return self._scan_data
         
         
     def close_scanner(self):

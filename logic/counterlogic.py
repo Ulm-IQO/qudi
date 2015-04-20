@@ -4,7 +4,6 @@ from logic.genericlogic import genericlogic
 from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
-import threading
 import numpy as np
 import time
 
