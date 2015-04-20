@@ -6,7 +6,6 @@ from pyqtgraph.Qt import QtCore, QtGui
 from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
-import time
 
 
 class CounterGui(Base):

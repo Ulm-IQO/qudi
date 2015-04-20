@@ -56,7 +56,7 @@ class SlowCounterInterface():
         raise InterfaceImplementationError('SlowCounterInterface>close_counter')
         return -1
         
-    def close_clock(self,power=0):
+    def close_clock(self):
         """ Closes the clock and cleans up afterwards. 
         
         @return int: error code (0:OK, -1:error)
