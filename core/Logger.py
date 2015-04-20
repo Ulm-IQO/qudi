@@ -37,15 +37,15 @@ def printExc(msg='', indent=4, prefix='|', msgType='error'):
     pgdebug.printExc(msg, indent, prefix)
 
 class Logger(QtCore.QObject):
-    """Class that does all the log handling in QuDi.
-    """
+    """Class that does all the log handling in QuDi."""
+    
     sigLoggedMessage = QtCore.Signal(object)
     
     def __init__(self, manager):
         """Create a logger instance for a manager object.
 
           @param object manager: instance of the Manager class that this logger
-            belongs to
+                                 belongs to.
         """
         super().__init__()
         path = os.path.dirname(__file__)
@@ -53,8 +53,9 @@ class Logger(QtCore.QObject):
         self.msgCount = 0
         self.logCount=0
         self.logFile = None
-        ## start a new temp log file, destroying anything left over
-        ## from the last session.
+        
+        # Start a new temp log file, destroying anything left over from the 
+        # last session.
         configfile.writeConfigFile('', self.fileName())  
         self.lock = Mutex()
         exceptionHandling.register(self.exceptionCallback)
@@ -64,29 +65,28 @@ class Logger(QtCore.QObject):
 
           @param list args: contents of exception (typt, value, backtrace)
         """
-        ## Called whenever there is an unhandled exception.
-        ## unhandled exceptions generate an error message by default, but this
-        ## can be overridden
+        # Called whenever there is an unhandled exception.
+        # unhandled exceptions generate an error message by default, but this
+        # can be overridden.
         global blockLogging
-        ## if an error occurs *while* trying to log another exception,
-        ## disable any further logging to prevent recursion.
+        # If an error occurs *while* trying to log another exception, disable
+        # any further logging to prevent recursion.
         if not blockLogging:
             try:
                 blockLogging = True
-                self.logMsg("Unexpected error: ",
-                            exception=args,
+                self.logMsg('Unexpected error: ', exception=args, 
                             msgType='error')
                 ex_type, ex_value, ex_traceback = args
                 print(ex_type)
                 if ex_type == KeyboardInterrupt:
                     self.manager.quit()
             except:
-                print("Error: Exception could no be logged.")
+                print('Error: Exception could no be logged.')
                 original_excepthook(*sys.exc_info())
             finally:
                 blockLogging = False
 
-    ## called indirectly when logMsg is called from a non-gui thread 
+    # Called indirectly when logMsg is called from a non-gui thread 
     def queuedLogMsg(self, args):
         """Deferred message logging function.
 
@@ -109,10 +109,10 @@ class Logger(QtCore.QObject):
           @param string msg: the text of the log message
           @param string msgTypes: user, status, error, warning (status is default)
           @param int importance: 0-9 (0 is low importance, 9 is high, 5 is default)
-          @param tuple exception: a tuple (type, exception, traceback) as returned by
-              sys.exc_info()
-          @param list(string) docs: a list of strings where documentation related to the message
-              can be found
+          @param tuple exception: a tuple (type, exception, traceback) as 
+                                  returned by 'sys.exc_info()'
+          @param list(string) docs: a list of strings where documentation 
+                                    related to the message can be found
           @param list(string) reasons: a list of reasons (as strings) for the message
           @paam list traceback: a list of formatted callstack/trackback objects
               (formatting a traceback/callstack returns a list of strings),
@@ -143,7 +143,7 @@ class Logger(QtCore.QObject):
             
         self.processEntry(entry)
         
-        ## Allow exception to override values in the entry
+        # Allow exception to override values in the entry
         if entry.get('exception', None) is not None and 'msgType' in entry['exception']:
             entry['msgType'] = entry['exception']['msgType']
         
@@ -159,8 +159,8 @@ class Logger(QtCore.QObject):
         Must be called within an except block, and should only be called if the
         exception is not re-raised.
         Unhandled exceptions, or exceptions that reach the top of the callstack
-        are automatically logged, so logging an exception that will be re-raised
-        can cause the exception to be logged twice.
+        are automatically logged, so logging an exception that will be 
+        re-raised can cause the exception to be logged twice.
         Takes the same arguments as logMsg.
         """
         kwargs['exception'] = sys.exc_info()
