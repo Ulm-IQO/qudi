@@ -158,11 +158,11 @@ class ConfocalLogic(GenericLogic):
                 YL = q * np.ones(X.shape)
                 ZL = self.z * np.ones(X.shape)      #todo: tilt_correction
                 
-            line = np.stack( (XL, YL, ZL, AL) )
+            line = np.vstack( (XL, YL, ZL, AL) )
             
             line_counts = self._scanning_device.scan_line(line)
             return_XL = np.linspace(XL[-1], XL[0], self.return_slowness)   #passt das so?
-            return_line = np.stack( (return_XL, YL, ZL, AL) )
+            return_line = np.vstack( (return_XL, YL, ZL, AL) )
             return_line_counts=self._scanning_device.scan_line(return_line)
             
             self.image[i,:] = line_counts
