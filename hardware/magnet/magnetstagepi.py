@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# unstable: Christoph Müller
 
 from core.Base import Base
 from hardware.magnetstageinterface import MagnetStageInterface
@@ -9,8 +10,9 @@ import visa
 
 
 
-class magnetstagepi(Base,MagnetStageInterface):
-    """This is the Interface class to define the controls for the simple 
+class MagnetStagePI(Base,MagnetStageInterface):
+    """unstable: Christoph Müller
+    This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
     
