@@ -9,8 +9,8 @@ import pyqtgraph as pg
 
 
 class ConfocalTestGui(Base):
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
+    signal_start_scan = QtCore.Signal()
+    signal_stop_scan = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -52,7 +52,7 @@ class ConfocalTestGui(Base):
         self._mw.setCentralWidget(self._cw)
         
         # defining buttons
-        self._start_stop_button = QtGui.QPushButton('Start Line Scan')
+        self._start_stop_button = QtGui.QPushButton('Start Scan')
         self._start_stop_button.released.connect(self.start_clicked)
         
         # defining the parameters to edit
@@ -94,12 +94,37 @@ class ConfocalTestGui(Base):
         self._hbox_layout.addWidget(self._a_label)
         self._hbox_layout.addWidget(self._a_display)
         
+        # funny gifs
+        self.movie_screen = QtGui.QLabel()  
+#        self.movie_screen.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.movie_screen.setFixedHeight(300)
+        self.movie_screen.setFixedWidth(300)
+        self.movie_screen.setAlignment(QtCore.Qt.AlignCenter)
+        self.movie_screen.setStyleSheet('QLabel {background-color: white; color: red;}')
+        # Add the QMovie object to the label
+        self.idle_movie = QtGui.QMovie('artwork/idle_smiley.gif', QtCore.QByteArray(), self)
+        self.idle_movie.setCacheMode(QtGui.QMovie.CacheAll)
+        self.idle_movie.setSpeed(100)
+#        self.idle_movie.setBackgroundColor(QtGui.QColor(255,255,255))
+        self.idle_movie.start()
+        self.active_movie = QtGui.QMovie('artwork/active_smiley.gif', QtCore.QByteArray(), self)
+        self.active_movie.setCacheMode(QtGui.QMovie.CacheAll)
+        self.active_movie.setSpeed(100)
+        self.active_movie.start()
+        self.movie_screen.setMovie(self.idle_movie)
+        
+        self._hbox_layout_icon = QtGui.QHBoxLayout()
+        self._hbox_layout_icon.addStretch(1)
+        self._hbox_layout_icon.addWidget(self.movie_screen)
+        self._hbox_layout_icon.addStretch(1)
+        
         
         # kombining the layouts with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
         self._vbox_layout.addLayout(self._hbox_layout)
         self._vbox_layout.addWidget(self._start_stop_button)
         self._vbox_layout.addStretch(1)
+        self._vbox_layout.addLayout(self._hbox_layout_icon)
         
         # applying all the GUI elements to the window
         self._cw.setLayout(self._vbox_layout)
@@ -107,8 +132,9 @@ class ConfocalTestGui(Base):
         
         # starting the physical measurement
         self._scanning_logic.start_scanner()
-#        self.sigStartCounter.connect(self._counting_logic.startCount)
-#        self.sigStopCounter.connect(self._counting_logic.stopCount)
+        self.signal_start_scan.connect(self._scanning_logic.start_scanning)
+        self.signal_stop_scan.connect(self._scanning_logic.stop_scanning)
+        self._scanning_logic.signal_scan_updated.connect(self.update_state)
 #
 #
 #        self._counting_logic.sigCounterUpdated.connect(self.updateData)
@@ -117,9 +143,24 @@ class ConfocalTestGui(Base):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-#        self._start_stop_button.setText('Start')
-        self._scanning_logic.scan_line()
+        if self._scanning_logic.running:
+            self._start_stop_button.setText('Start Scan')
+            self.signal_stop_scan.emit()
+        else:
+            self._start_stop_button.setText('Stop Scan')
+            self.signal_start_scan.emit()
 
+
+    def update_state(self):
+        """ Displaying the state.
+        """
+        if self._scanning_logic.running:
+            self.movie_screen.setStyleSheet('QLabel {background-color: white; color: red;}')
+            self.movie_screen.setMovie(self.active_movie)
+        else:
+            self.movie_screen.setStyleSheet('QLabel {background-color: white; color: red;}')
+            self.movie_screen.setMovie(self.idle_movie)
+            
     
     def x_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.

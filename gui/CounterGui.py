@@ -36,6 +36,7 @@ class CounterGui(Base):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
+                        
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
