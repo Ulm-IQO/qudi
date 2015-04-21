@@ -113,7 +113,6 @@ class ConfocalLogic(GenericLogic):
         @param bool zscan: (True: xz_scan, False: xy_scan) 
         """
        
-        # if zscan = False: perform xy scan    , ifn zscan = True: perform xz scan 
         x1, x2 = self.image_x_range[0], self.image_x_range[1]
         y1, y2 = self.image_y_range[0], self.image_y_range[1]
         z1, z2 = self.image_z_range[0], self.image_z_range[1]
@@ -138,9 +137,6 @@ class ConfocalLogic(GenericLogic):
             else:
                 Y = np.linspace(y1, y2, res)
                 X = np.linspace(x1, x2, int(res*(x2-x1)/(y2-y1)))
-        else:
-            print('I do not know wether I should scan xy or xz')
-            return -1    # should that be here?
         
         if zscan:
             image_vert_axis = Z
@@ -165,11 +161,9 @@ class ConfocalLogic(GenericLogic):
                 
             line = np.stack( (XL, YL, ZL, AL) )
             
-#            self._scanning_device.set_up_line(length = len(XL))   #passt das so?
             line_counts = self._scanning_device.scan_line(line)
             return_XL = np.linspace(XL[-1], XL[0], self.return_slowness)   #passt das so?
             return_line = np.stack( (return_XL, YL, ZL, AL) )
-#            self._scanning_device.set_up_line(length = len(return_line))
             return_line_counts=self._scanning_device.scan_line(return_line)
             
             self.image[i,:] = line_counts
