@@ -138,6 +138,7 @@ class ConfocalLogic(GenericLogic):
             image_vert_axis = Y
         
         self.image = np.zeros((len(image_vert_axis), len(X)))
+#        self.return_image = np.zeros((len(image_vert_axis), len(X)))
         
         for i,q in enumerate(image_vert_axis):
             # here threading?
@@ -153,33 +154,15 @@ class ConfocalLogic(GenericLogic):
                 
             line = np.stack( (XL, YL, ZL, AL) )
             
-            self._scanning_device.set_up_line(length = len(XL))   #passt das so?
+#            self._scanning_device.set_up_line(length = len(XL))   #passt das so?
             line_counts = self._scanning_device.scan_line(line)
             return_XL = np.linspace(XL[-1], XL[0], self.return_slowness)   #passt das so?
             return_line = np.stack( (return_XL, YL, ZL, AL) )
-            self._scanning_device.set_up_line(length = len(return_line))
-            self._scanning_device.scan_line(return_line)
+#            self._scanning_device.set_up_line(length = len(return_line))
+            return_line_counts=self._scanning_device.scan_line(return_line)
             
             self.image[i,:] = line_counts
+#            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         
         self.go_to_pos(x = curr_x, y = curr_y, z = curr_z, a = 0.)
-                
-            
-        
-            
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
