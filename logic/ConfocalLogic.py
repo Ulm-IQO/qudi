@@ -43,7 +43,24 @@ class ConfocalLogic(GenericLogic):
         self._photon_source= '/Dev1/PFI8'
         self._scanner_ao_channels = '/Dev1/AO0:3'
         self.return_slowness = 10
-                       
+        
+        
+        self.x_min = 0.
+        self.x_max = 200.
+        self.y_min = 0.
+        self.y_max = 200.
+        self.z_min = -10.
+        self.z_max = 10.
+        
+        self.x = (self.x_min + self.x_max) / 2.
+        self.y = (self.y_min + self.y_max) / 2.
+        self.z = 0.
+        self.image_x_range = [self.x_min, self.x_max]
+        self.image_y_range = [self.y_min, self.y_max]
+        self.image_z_range = [self.z_min, self.z_max]
+        self.res = 100
+        self.zres = 100
+                    
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -88,25 +105,18 @@ class ConfocalLogic(GenericLogic):
 #                          np.linspace(minv,maxv,res),
 #                          np.linspace(minv,maxv,res)) )
 #        self.counts_from_line = self._scanning_device.scan_line(voltages=line)
+
         
-    def scan_image(self, curr_x = None, curr_y = None, curr_z = None, x1 = None, x2 = None, y1 = None, y2 = None, z1 = None, z2 = None, res = None, zres = None):
-        """scanning an image
+    def scan_image(self, zscan = False):
+        """scanning an image in either xz or xy
         
-        @param float curr_x: current x-position of the scanner (microns)
-        @param float curr_y: current y-position of the scanner (microns)
-        @param float curr_z: current z-position of the scanner (microns)
-        @param float curr_a: current a-position of the scanner (microns)
-        @param float x1: start value image in x-direction (microns)
-        @param float x2: stop value image in x-direction (microns)
-        @param float y1: start value image in y-direction (microns)
-        @param float y2: stop value image in y-direction (microns)
-        @param float z1: start value image in z-direction (microns)
-        @param float z2: stop value image in z-direction (microns)
-        @param int res: resolution in xy-direction
-        @param int zres: resolution in z-direction 
+        @param bool zscan: (True: xz_scan, False: xy_scan) 
         """
-        zscan = False
-        # if zres = None: perform xy scan    , ifn zres != None: perform xz scan 
+       
+        # if zscan = False: perform xy scan    , ifn zscan = True: perform xz scan 
+        x1, x2 = self.image_x_range[0], self.image_x_range[1]
+        y1, y2 = self.image_y_range[0], self.image_y_range[1]
+        z1, z2 = self.image_z_range[0], self.image_z_range[1]
         
         if x2 < x1:
             print('x2 should be larger than x1')
@@ -136,6 +146,9 @@ class ConfocalLogic(GenericLogic):
             image_vert_axis = Z
         else:
             image_vert_axis = Y
+
+        XL = X
+        AL = np.zeros(X.shape)
         
         self.image = np.zeros((len(image_vert_axis), len(X)))
 #        self.return_image = np.zeros((len(image_vert_axis), len(X)))
@@ -143,14 +156,12 @@ class ConfocalLogic(GenericLogic):
         for i,q in enumerate(image_vert_axis):
             # here threading?
         
-            XL = X
-            AL = np.zeros(X.shape)
             if zscan:
-                YL = curr_y * np.ones(X.shape)
+                YL = self.y * np.ones(X.shape)
                 ZL = q * np.ones(X.shape)           #todo: tilt_correction
             else:
                 YL = q * np.ones(X.shape)
-                ZL = curr_z * np.ones(X.shape)      #todo: tilt_correction
+                ZL = self.z * np.ones(X.shape)      #todo: tilt_correction
                 
             line = np.stack( (XL, YL, ZL, AL) )
             
@@ -165,4 +176,4 @@ class ConfocalLogic(GenericLogic):
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         
-        self.go_to_pos(x = curr_x, y = curr_y, z = curr_z, a = 0.)
+        self.go_to_pos(x = self.x, y = self.y, self.z, a = 0.)
