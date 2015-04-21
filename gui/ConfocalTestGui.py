@@ -42,7 +42,7 @@ class ConfocalTestGui(Base):
         """
 
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        print("Counting logic is", self._scanning_logic)
+        print("Scanning logic is", self._scanning_logic)
                 
         # setting up the window
         self._mw = QtGui.QMainWindow()

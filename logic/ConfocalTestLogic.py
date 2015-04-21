@@ -2,17 +2,13 @@
 
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
-from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-import time
 
 class ConfocalTestLogic(GenericLogic):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
-    sigCounterUpdated = QtCore.Signal()
-    sigCountNext = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -29,9 +25,7 @@ class ConfocalTestLogic(GenericLogic):
         self.connector['out']['scannerlogic'] = OrderedDict()
         self.connector['out']['scannerlogic']['class'] = 'ConfocalTestLogic'
         
-        #locking for thread safety
-        self.lock = Mutex()
-
+        
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                             
@@ -44,12 +38,9 @@ class ConfocalTestLogic(GenericLogic):
                         
     def activation(self, e):
         """ Initialisation performed during activation of the module.
-        """
-        self.running = False
-        self.stopRequested = False
-        
+        """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        print("Counting device is", self._scanning_device)
+        print("Scanning device is", self._scanning_device)
 
     def start_scanner(self):
         # setting up the scanner

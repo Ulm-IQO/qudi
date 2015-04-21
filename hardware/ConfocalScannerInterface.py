@@ -68,7 +68,7 @@ class ConfocalScannerInterface():
         raise InterfaceImplementationError('ConfocalScannerInterface>set_up_scanner')
         return -1
         
-    def scanner_set_pos(self, x = None, y = None, z = None, a = None):
+    def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
         
         @param float x: postion in x-direction (volts)
@@ -93,10 +93,10 @@ class ConfocalScannerInterface():
         raise InterfaceImplementationError('ConfocalScannerInterface>set_up_line')
         return [0.0]
 
-    def scan_line(self, voltages = None):
+    def scan_line(self, positions = None):
         """ Scans a line and returns the counts on that line. 
         
-        @param float[][4] voltages: array of 4-part tuples defining the voltage points
+        @param float[][4] voltages: array of 4-part tuples defining the positions pixels
         
         @return float[]: the photon counts per second
         """
@@ -104,7 +104,7 @@ class ConfocalScannerInterface():
         raise InterfaceImplementationError('ConfocalScannerInterface>scan_line')
         return [0.0]
         
-    def scanner_position_to_volt(self, positions = None):
+    def _scanner_position_to_volt(self, positions = None):
         """ Converts a set of position pixels to acutal voltages.
         
         @param float[][4] positions: array of 4-part tuples defining the pixels
