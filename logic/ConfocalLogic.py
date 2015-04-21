@@ -120,14 +120,13 @@ class ConfocalLogic(GenericLogic):
         if x2 < x1:
             print('x2 should be larger than x1')
             return -1
-        if zres != None and res != None:
+        if zscan:
             X = np.linspace(x1, x2, res)
             if z2 < z1:
                 print('z2 should be larger than z1')
                 return -1
             Z = np.linspace(z1, z2, zres)
-            zscan = True
-        elif res != None:
+        else:
             if y2 < y1:
                 print('y2 should be larger than y1')
                 return -1
