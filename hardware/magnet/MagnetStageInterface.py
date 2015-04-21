@@ -12,48 +12,32 @@ class MagnetStageInterface():
     """
     
     
-    def step_x(self, step = 0.):
-        """Moves stage in x-direction
+    def step(self, x = None, y = None, z = None, phi = None):
+        """Moves stage in given direction (relative movement)
         
-        @param float step: amount of realtive movement
+        @param float x: amount of realtive movement in x direction
+        @param float y: amount of realtive movement in y direction
+        @param float z: amount of realtive movement in z direction
+        @param float phi: amount of realtive movement in phi direction
         
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MagnetStageInterface>step_x')
         return -1
-    
-    
-    def step_y(self, step = 0.):
-        """Moves stage in y-direction
         
-        @param float step: amount of realtive movement
+    
+    def move(self, x = None, y = None, z = None, phi = None):
+        """Moves stage to absolute position (absolute movement)
+        
+        @param float x: move to absolute position in x-direction
+        @param float y: move to absolute position in y-direction
+        @param float z: move to absolute position in z-direction
+        @param float phi: move to absolute position in phi-direction
         
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('MagnetStageInterface>step_y')
+        raise InterfaceImplementationError('MagnetStageInterface>move')
         return -1
-    
-    
-    def step_z(self, step = 0.):
-        """Moves stage in z-direction
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>step_z')
-        return -1
-        
-    
-    def step_phi(self, step = 0.):
-        """Turns stage around angle phi
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>step_phi')
-        return -1         
     
 
     def abort(self):
@@ -83,20 +67,6 @@ class MagnetStageInterface():
         @return int status: status of the stage      
         """
         raise InterfaceImplementationError('MWInterface>get_status')
-        return -1
-        
-    
-    def move(self, x = 0., y = 0., z = 0., phi = 0.):
-        """Moves stage to absolute position
-        
-        @param float x: move to absolute position in x-direction
-        @param float y: move to absolute position in y-direction
-        @param float z: move to absolute position in z-direction
-        @param float phi: move to absolute position in phi-direction
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>move')
         return -1
         
         
@@ -140,10 +110,10 @@ class MagnetStageInterface():
         return -1
     
     
-    def get_velocity(self, dimension = 'x'):
+    def get_velocity(self, dimension = ''):
         """ Gets the velocity of the given dimension
         
-        @param str dimension: name of chosen dimension
+        @param str dimension: name of chosen dimension (x, y, z or phi)
         
         @return float velocity: velocity of chosen dimension
         """
@@ -151,7 +121,7 @@ class MagnetStageInterface():
         return 0.0
         
         
-    def set_velocity(self, dimension = 'x', vel = 0.):
+    def set_velocity(self, dimension = 'x', vel = None): #vllt hier auch vel_x, vel_y, vel_z, vel_phi ?
         """Write new value for velocity in chosen dimension
         
         @param str dimension: name of chosen dimension
