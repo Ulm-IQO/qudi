@@ -63,4 +63,4 @@ class ConfocalTestLogic(GenericLogic):
         self.counts_from_line = self._scanning_device.scan_line(voltages=line)
         
     def go_to_pos(self, x = None, y = None, z = None, a = None):
-        self._scanning_device.scanner_set_pos(x = x, y = y, z = z, a = a)
+        self._scanning_device.scanner_set_position(x = x, y = y, z = z, a = a)

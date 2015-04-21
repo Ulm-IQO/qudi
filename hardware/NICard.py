@@ -23,7 +23,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                     name,
                     config,
                     c_dict)
-        self._modclass = 'niinterface'
+        self._modclass = 'nicard'
         self._modtype = 'slowcounterinterface'
         
         self.connector['out']['counter'] = OrderedDict()
@@ -51,7 +51,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._line_length = None
         self._voltage_range = [-10., 10.]
         
-        self._position_range=[[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
+        self._position_range=[[0., 100.], [0., 100.], [-100., 100.], [-100., 100.]]
         
         self._current_position = [0., 0., 0., 0.]
         
@@ -88,23 +88,15 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
     def testing(self, e=None):
         pass
-#        print('Testing the NIInterface')
-#        self.set_up_scanner_clock(clock_frequency = self._clock_frequency, clock_channel = '/Dev1/Ctr0')
-#        self.set_up_scanner(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/ao0:3')
-#        
-##        print(self.scan_line(voltages=1))
-#        
-#        minv=-10
-#        maxv=10
-#        res=40
+#        minv=0
+#        maxv=100
+#        res=20
 #        line = np.vstack((np.linspace(minv,maxv,res),
 #                          np.linspace(minv,maxv,res), 
 #                          np.linspace(minv,maxv,res),
 #                          np.linspace(minv,maxv,res)) )
-#        for i in range(5):
-#            print(self.scan_line(voltages=line))
-#        self.close_scanner()
-#        self.close_scanner_clock()
+#        print (line)
+#        print(self._scanner_position_to_volt(positions = line))
         
 ################################## Counter ###################################
         
@@ -452,7 +444,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         return 0
     
-    def scanner_set_pos(self, x = None, y = None, z = None, a = None):
+    def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
         
         @param float x: postion in x-direction (volts)
@@ -493,7 +485,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             
         my_position = np.vstack(self._current_position)
         self._write_scanner_ao(voltages = \
-            self.scanner_position_to_volt(my_position), 
+            self._scanner_position_to_volt(my_position), 
             start=True)
         
         return 0
@@ -520,7 +512,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         return self._AONwritten.value
     
-    def scanner_position_to_volt(self, positions = None):
+    def _scanner_position_to_volt(self, positions = None):
         """ Converts a set of position pixels to acutal voltages.
         
         @param float[][4] positions: array of 4-part tuples defining the pixels
@@ -532,8 +524,25 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self.logMsg('Given voltage list is no array type.', \
             msgType='error')
             return np.array([-1.,-1.,-1.,-1.])
-            
-        return positions
+        
+        volts = np.vstack( ( \
+        (self._voltage_range[1]-self._voltage_range[0])\
+        / (self._position_range[0][1]-self._position_range[0][0])\
+        * (positions[0]-self._position_range[0][0])\
+        + self._voltage_range[0],\
+        (self._voltage_range[1]-self._voltage_range[0])\
+        / (self._position_range[1][1]-self._position_range[1][0])\
+        * (positions[1]-self._position_range[1][0])\
+        + self._voltage_range[0],\
+        (self._voltage_range[1]-self._voltage_range[0])\
+        / (self._position_range[2][1]-self._position_range[2][0])\
+        * (positions[2]-self._position_range[2][0])\
+        + self._voltage_range[0],\
+        (self._voltage_range[1]-self._voltage_range[0])\
+        / (self._position_range[3][1]-self._position_range[3][0])\
+        * (positions[3]-self._position_range[3][0])\
+        + self._voltage_range[0] ) )
+        return volts
         
         
     def set_up_line(self, length=100):
@@ -589,7 +598,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
         written_voltages = self._write_scanner_ao(voltages=\
-            self.scanner_position_to_volt(voltages), 
+            self._scanner_position_to_volt(voltages), 
             length=self._line_length, 
             start=False)
         

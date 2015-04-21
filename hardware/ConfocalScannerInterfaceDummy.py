@@ -150,7 +150,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         return 0
         
         
-    def scanner_set_pos(self, x = None, y = None, z = None, a = None):
+    def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
         
         @param float x: postion in x-direction (volts)
@@ -212,16 +212,6 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
                     
         
         return count_data
-        
-    def scanner_position_to_volt(self, positions = None):
-        """ Converts a set of position pixels to acutal voltages.
-        
-        @param float[][4] positions: array of 4-part tuples defining the pixels
-        
-        @return float[][4]: array of 4-part tuples of corresponing voltages
-        """
-        
-        return positions
     
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards. 

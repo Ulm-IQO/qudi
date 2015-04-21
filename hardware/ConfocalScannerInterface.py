@@ -103,14 +103,6 @@ class ConfocalScannerInterface():
         
         raise InterfaceImplementationError('ConfocalScannerInterface>scan_line')
         return [0.0]
-        
-    def _scanner_position_to_volt(self, positions = None):
-        """ Converts a set of position pixels to acutal voltages.
-        
-        @param float[][4] positions: array of 4-part tuples defining the pixels
-        
-        @return float[][4]: array of 4-part tuples of corresponing voltages
-        """
     
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards. 
