@@ -49,18 +49,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_ao_task = None
         self._scanner_counter_daq_task = None
         self._line_length = None
-        self._min_voltage = -10.
-        self._max_voltage = 10.
+        self._voltage_range = [-10., 10.]
         
-        self._x_range=[-10.,10.]
-        self._y_range=[-10.,10.]
-        self._z_range=[-10.,10.]
-        self._a_range=[-10.,10.]
+        self._position_range=[[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
         
-        self.current_x = 0.
-        self.current_y = 0.
-        self.current_z = 0.
-        self.current_a = 0.
+        self._current_position = [0., 0., 0., 0.]
         
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
@@ -218,7 +211,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         daq.DAQmxStartTask(self._counter_daq_task) 
         
-        return -1
+        return 0
         
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter. 
@@ -277,6 +270,72 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
 ############################ Confocal Scanner ################################
 
+    def get_position_range(self):
+        """ Returns the physical range of the scanner.
+        
+        @return float [4][2]: array of 4 ranges with an array containing lower and upper limit
+        """ 
+        return self._position_range
+        
+    def set_position_range(self, myrange=[[0,1],[0,1],[0,1],[0,1]]):
+        """ Sets the physical range of the scanner.
+        
+        @param float [4][2] myrange: array of 4 ranges with an array containing lower and upper limit
+        
+        @return int: error code (0:OK, -1:error)
+        """ 
+        
+        if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+            self.logMsg('Given range is no array type.', \
+            msgType='error')
+            return -1
+            
+        if len(myrange) != 4:
+            self.logMsg('Given range should have dimension 4, but has {0:d} instead.'.format(len(myrange)), \
+            msgType='error')
+            return -1
+            
+        for pos in myrange:
+            if len(pos) != 2:
+                self.logMsg('Given range limit {1:d} should have dimension 2, but has {0:d} instead.'.format(len(pos),pos), \
+                msgType='error')
+                return -1
+            if pos[0]>pos[1]:
+                self.logMsg('Given range limit {0:d} has the wrong order.'.format(pos), \
+                msgType='error')
+                return -1
+                
+        self._position_range = myrange    
+            
+        return 0
+        
+    def set_voltage_range(self, myrange=[-10.,10.]):
+        """ Sets the voltage range of the NI Card.
+        
+        @param float [2] myrange: array containing lower and upper limit
+        
+        @return int: error code (0:OK, -1:error)
+        """ 
+        
+        if not isinstance( myrange, (frozenset, list, set, tuple, np.ndarray, ) ):
+            self.logMsg('Given range is no array type.', \
+            msgType='error')
+            return -1
+            
+        if len(myrange) != 2:
+            self.logMsg('Given range should have dimension 2, but has {0:d} instead.'.format(len(myrange)), \
+            msgType='error')
+            return -1
+            
+        if myrange[0]>myrange[1]:
+            self.logMsg('Given range limit {0:d} has the wrong order.'.format(myrange), \
+            msgType='error')
+            return -1
+                
+        self._voltage_range = myrange    
+            
+        return 0
+
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
         
@@ -324,6 +383,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @param string counter_channel: if defined, this is the physical channel of the counter
         @param string photon_source: if defined, this is the physical channel where the photons are to count from
         @param string clock_channel: if defined, this specifies the clock for the counter
+        @param string scanner_ao_channels: if defined, this specifies the analoque output channels
         
         @return int: error code (0:OK, -1:error)
         """
@@ -360,8 +420,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxCreateAOVoltageChan(self._scanner_ao_task,           # add to this task
                                      self._scanner_ao_channels, 
                                      '',  # use sanncer ao_channels, name = ''
-                                     self._min_voltage,          # min voltage
-                                     self._max_voltage,           # max voltage
+                                     self._voltage_range[0],          # min voltage
+                                     self._voltage_range[1],           # max voltage
                                      daq.DAQmx_Val_Volts,'')       # units is Volt
         
         # set task timing to on demand, i.e. when demanded by software
@@ -371,6 +431,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_counter_daq_task = daq.TaskHandle()
         daq.DAQmxCreateTask('', daq.byref(self._scanner_counter_daq_task))
         
+        # TODO: change this to DAQmxCreateCISemiPeriodChan
         daq.DAQmxCreateCIPulseWidthChan(self._scanner_counter_daq_task,    #add to this task
                                         self._scanner_counter_channel,  #use this counter
                                         '',  #name
@@ -403,37 +464,34 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """
         
         if x != None:
-            if x < self._x_range[0] or x > self._x_range[1]:                
+            if x < self._position_range[0][0] or x > self._position_range[0][1]:                
                 self.logMsg('You want to set x out of range: {0:f}.'.format(x), 
                             msgType='error')
                 return -1
-            self.current_x = np.float(x)
+            self._current_position[0] = np.float(x)
             
         if y != None:
-            if y < self._y_range[0] or y > self._y_range[1]:                
+            if y < self._position_range[1][0] or y > self._position_range[1][1]:                
                 self.logMsg('You want to set y out of range: {0:f}.'.format(y), 
                             msgType='error')
                 return -1
-            self.current_y = np.float(y)
+            self._current_position[1] = np.float(y)
             
         if z != None:
-            if z < self._z_range[0] or z > self._z_range[1]:                
+            if z < self._position_range[2][0] or z > self._position_range[2][1]:                
                 self.logMsg('You want to set z out of range: {0:f}.'.format(z), 
                             msgType='error')
                 return -1
-            self.current_z = np.float(z)
+            self._current_position[2] = np.float(z)
             
         if a != None:
-            if a < self._a_range[0] or a > self._a_range[1]:                
+            if a < self._position_range[3][0] or a > self._position_range[3][1]:                
                 self.logMsg('You want to set a out of range: {0:f}.'.format(a), 
                             msgType='error')
                 return -1
-            self.current_a = np.float(a)
+            self._current_position[3] = np.float(a)
             
-        my_position = np.vstack((self.current_x,
-                                 self.current_y,
-                                 self.current_z,
-                                 self.current_a))
+        my_position = np.vstack(self._current_position)
         self._write_scanner_ao(voltages = \
             self.scanner_position_to_volt(my_position), 
             start=True)
@@ -473,7 +531,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         if not isinstance( positions, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.logMsg('Given voltage list is no array type.', \
             msgType='error')
-            return np.array([-1.])
+            return np.array([-1.,-1.,-1.,-1.])
             
         return positions
         
@@ -556,6 +614,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
         daq.DAQmxStopTask(self._scanner_ao_task)
+        
+        # set task timing to on demand, i.e. when demanded by software
+        daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
         
         return self._scan_data
         
