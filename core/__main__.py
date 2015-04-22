@@ -82,9 +82,9 @@ else:
 
 
 # Enable stack trace output when a crash is detected
-#import faulthandler
-#faulthandler.disable()
-#faulthandler.enable(all_threads=True)
+import faulthandler
+faulthandler.disable()
+faulthandler.enable(all_threads=True)
 
 
 # Disable garbage collector to improve stability. 
