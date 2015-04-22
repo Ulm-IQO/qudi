@@ -164,7 +164,7 @@ class ConfocalLogic(GenericLogic):
         return [self._current_x, self._current_y, self._current_z]
         
         
-    def scan_line(self, zscan = False):
+    def scan_line(self):
         """scanning an image in either xz or xy
         
         @param bool zscan: (True: xz_scan, False: xy_scan) 
@@ -200,7 +200,7 @@ class ConfocalLogic(GenericLogic):
         return_line = np.vstack( (self.return_XL, return_YL, return_ZL, self.return_AL) )
         return_line_counts = self._scanning_device.scan_line(return_line)
             
-        if zscan:
+        if self.zscan:
                 self.xz_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
         else:
                 self.xy_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
