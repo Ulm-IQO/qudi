@@ -45,10 +45,11 @@ class ConfocalLogic(GenericLogic):
         self._clock_frequency = 500.
         self.return_slowness = 100
         
-        self.zscan = False
+        self._zscan = False
         
         #locking for thread safety
         self.lock = Mutex()
+        
         self.running = False
         self.stopRequested = False
                     
@@ -66,6 +67,7 @@ class ConfocalLogic(GenericLogic):
         self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
         self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
         self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
+        self._current_a = 0.0
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
@@ -73,7 +75,7 @@ class ConfocalLogic(GenericLogic):
         self.z_resolution = 10
         
         self._scan_counter = 0         
-        self.signal_scan_lines_next.connect(self.scan_line, QtCore.Qt.QueuedConnection)
+        self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         
         self.testing()
         
@@ -86,13 +88,25 @@ class ConfocalLogic(GenericLogic):
         self.start_scanning()
         self.kill_scanner()
         
-    def set_clock_frequency(self):
-        return 0
+    def set_clock_frequency(self, clock_frequency):
+        self._clock_frequency = int(clock_frequency)
+        if not self.running:
+            self.kill_scanner()
+            self.start_scanner()
+            return 0
+        else:
+            return -1
         
-    def start_scanning(self):
+    def start_scanning(self, zscan = False):
         self._scan_counter = 0
+        self._zscan=zscan
         self.initialize_image()
+        self.start_scanner()
         self.signal_scan_lines_next.emit()
+        
+    def stop_scanning(self):
+        with self.lock:
+            self.stopRequested = True
         
     def initialize_image(self):
         
@@ -103,34 +117,34 @@ class ConfocalLogic(GenericLogic):
         if x2 < x1:
             print('x2 should be larger than x1')
             return -1
-        if self.zscan:
-            self.X = np.linspace(x1, x2, self.xy_resolution)
+        if self._zscan:
+            self._X = np.linspace(x1, x2, self.xy_resolution)
             if z2 < z1:
                 print('z2 should be larger than z1')
                 return -1
-            self.Z = np.linspace(z1, z2, self.z_resolution)
+            self._Z = np.linspace(z1, z2, self.z_resolution)
         else:
             if y2 < y1:
                 print('y2 should be larger than y1')
                 return -1
             if (x2-x1) >= (y2-y1):
-                self.X = np.linspace(x1, x2, self.xy_resolution)
-                self.Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
+                self._X = np.linspace(x1, x2, self.xy_resolution)
+                self._Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
             else:
-                self.Y = np.linspace(y1, y2, self.xy_resolution)
-                self.X = np.linspace(x1, x2, int(self.xy_resolution*(x2-x1)/(y2-y1)))
+                self._Y = np.linspace(y1, y2, self.xy_resolution)
+                self._X = np.linspace(x1, x2, int(self.xy_resolution*(x2-x1)/(y2-y1)))
         
-        self.XL = self.X
-        self.AL = np.zeros(self.XL.shape)
-        self.return_XL = np.linspace(self.XL[-1], self.XL[0], self.return_slowness)
-        self.return_AL = np.zeros(self.return_XL.shape)
+        self._XL = self._X
+        self._AL = np.zeros(self._XL.shape)
+        self._return_XL = np.linspace(self._XL[-1], self._XL[0], self.return_slowness)
+        self._return_AL = np.zeros(self._return_XL.shape)
         
-        if self.zscan:
-            self.image_vert_axis = self.Z
-            self.xz_image = np.zeros((len(self.image_vert_axis), len(self.X)))
+        if self._zscan:
+            self._image_vert_axis = self._Z
+            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X)))
         else:
-            self.image_vert_axis = self.Y
-            self.xy_image = np.zeros((len(self.image_vert_axis), len(self.X)))        
+            self._image_vert_axis = self._Y
+            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X)))        
 
     def start_scanner(self):
         """setting up the scanner device
@@ -154,7 +168,22 @@ class ConfocalLogic(GenericLogic):
         @param float z: postion in z-direction (microns)
         @param float a: postion in a-direction (microns)
         """
-        self._scanning_device.scanner_set_position(x = x, y = y, z = z, a = a)
+        
+        if x != None:
+            self._current_x = x
+        if y != None:
+            self._current_y = y
+        if z != None:
+            self._current_z = z
+        
+        if not self.running:
+            self._scanning_device.scanner_set_position(x = self._current_x, 
+                                                       y = self._current_y, 
+                                                       z = self._current_z, 
+                                                       a = self._current_a)
+            return 0
+        else:
+            return -1
         
     
     def get_position(self):
@@ -164,7 +193,7 @@ class ConfocalLogic(GenericLogic):
         return [self._current_x, self._current_y, self._current_z]
         
         
-    def scan_line(self):
+    def _scan_line(self):
         """scanning an image in either xz or xy
         
         @param bool zscan: (True: xz_scan, False: xy_scan) 
@@ -183,24 +212,24 @@ class ConfocalLogic(GenericLogic):
                 self.signal_image_updated.emit()
                 return
 
-        if self.zscan:
-            YL = self._current_y * np.ones(self.X.shape)
-            ZL = self._scan_counter * np.ones(self.X.shape)           #todo: tilt_correction
-            return_YL = self._current_y * np.ones(self.return_XL.shape)
-            return_ZL = ZL = self._scan_counter * np.ones(self.return_XL.shape)
+        if self._zscan:
+            YL = self._current_y * np.ones(self._X.shape)
+            ZL = self._scan_counter * np.ones(self._X.shape)           #todo: tilt_correction
+            return_YL = self._current_y * np.ones(self._return_XL.shape)
+            return_ZL = ZL = self._scan_counter * np.ones(self._return_XL.shape)
         else:
-            YL = self._scan_counter * np.ones(self.X.shape)
-            ZL = self._current_z * np.ones(self.X.shape)      #todo: tilt_correction
-            return_YL = self._scan_counter * np.ones(self.return_XL.shape)
-            return_ZL = self._current_z * np.ones(self.return_XL.shape)
+            YL = self._scan_counter * np.ones(self._X.shape)
+            ZL = self._current_z * np.ones(self._X.shape)      #todo: tilt_correction
+            return_YL = self._scan_counter * np.ones(self._return_XL.shape)
+            return_ZL = self._current_z * np.ones(self._return_XL.shape)
                 
-        line = np.vstack( (self.XL, YL, ZL, self.AL) )
+        line = np.vstack( (self._XL, YL, ZL, self._AL) )
             
         line_counts = self._scanning_device.scan_line(line)
-        return_line = np.vstack( (self.return_XL, return_YL, return_ZL, self.return_AL) )
+        return_line = np.vstack( (self._return_XL, return_YL, return_ZL, self._return_AL) )
         return_line_counts = self._scanning_device.scan_line(return_line)
             
-        if self.zscan:
+        if self._zscan:
                 self.xz_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
         else:
                 self.xy_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
@@ -211,10 +240,10 @@ class ConfocalLogic(GenericLogic):
         self.signal_image_updated.emit()
         self._scan_counter += 1
         
-        if self._scan_counter < np.size(self.image_vert_axis):            
+        if self._scan_counter < np.size(self._image_vert_axis):            
             self.signal_scan_lines_next.emit()
         else:
             self.running = False
             self.signal_image_updated.emit()
-            self._scan_counter = 0 
-            self.set_position(x = self._current_x, y = self._current_y, z = self._current_z, a = 0.)
+            self.set_position()
+            self.
