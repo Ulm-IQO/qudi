@@ -246,4 +246,4 @@ class ConfocalLogic(GenericLogic):
             self.running = False
             self.signal_image_updated.emit()
             self.set_position()
-            self.
+            
