@@ -217,6 +217,9 @@ class Manager(QtCore.QObject):
         """
         from . import CONFIGPATH
         for path in CONFIGPATH:
+            cf = os.path.join(path, 'custom.cfg')
+            if os.path.isfile(cf):
+                return cf
             cf = os.path.join(path, 'default.cfg')
             if os.path.isfile(cf):
                 return cf
