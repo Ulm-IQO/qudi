@@ -36,7 +36,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 #        for key in config.keys():
 #            print('{}: {}'.format(key,config[key]))
                         
-        self._max_counts = 1e7
+        self._max_counts = 3e7
         self._RWTimeout = 5
         self._counter_daq_task = None
         self._clock_daq_task = None
@@ -491,16 +491,16 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxCreateTask('', daq.byref(self._scanner_counter_daq_task))
         
         # TODO: change this to DAQmxCreateCISemiPeriodChan
-        daq.DAQmxCreateCIPulseWidthChan(self._scanner_counter_daq_task,    #add to this task
+        daq.DAQmxCreateCISemiPeriodChan(self._scanner_counter_daq_task,    #add to this task
                                         self._scanner_counter_channel,  #use this counter
                                         '',  #name
                                         0,  #expected minimum value
-                                        self._max_counts*self._scanner_clock_frequency,    #expected maximum value
+                                        self._max_counts/self._scanner_clock_frequency,    #expected maximum value
                                         daq.DAQmx_Val_Ticks,     #units of width measurement, here photon ticks
-                                        daq.DAQmx_Val_Rising, '') #start pulse width measurement on rising edge
+                                        '')
 
         #set the pulses to counter self._trace_counter_in
-        daq.DAQmxSetCIPulseWidthTerm(self._scanner_counter_daq_task, 
+        daq.DAQmxSetCISemiPeriodTerm(self._scanner_counter_daq_task, 
                                      self._scanner_counter_channel, 
                                      self._my_scanner_clock_channel+'InternalOutput')
                                      
@@ -633,7 +633,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         # set timing for scanner pulse and count task.
         daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, 
                                    daq.DAQmx_Val_FiniteSamps, 
-                                   self._line_length+1)
+                                   2*self._line_length+1)
                                    
         # read samples from beginning of acquisition, do not overwrite
         daq.DAQmxSetReadRelativeTo(self._scanner_counter_daq_task, 
@@ -678,14 +678,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout*self._line_length)
         
         # count data will be written here
-        self._scan_data = np.empty((self._line_length,), dtype=np.uint32)
+        self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
         #number of samples which were read will be stored here
         n_read_samples = daq.int32() 
         daq.DAQmxReadCounterU32(self._scanner_counter_daq_task,   #read from this task
-                                self._line_length,    #read number of "line_points" samples
+                                2*self._line_length,    #read number of "line_points" samples
                                 self._RWTimeout,
                                 self._scan_data, #write into this array
-                                self._line_length,   #length of array to write into
+                                2*self._line_length,   #length of array to write into
                                 daq.byref(n_read_samples), None)  #number of samples which were read
 
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
@@ -694,7 +694,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         # set task timing to on demand, i.e. when demanded by software
         daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
         
-        return self._scan_data
+        
+        self._real_data = np.empty((self._line_length,), dtype=np.uint32)
+        self._real_data = self._scan_data[::2]
+        self._real_data += self._scan_data[1::2]
+        
+        return self._real_data*(self._scanner_clock_frequency*0.5)
         
         
     def close_scanner(self):

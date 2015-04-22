@@ -86,13 +86,15 @@ class ConfocalTestLogic(GenericLogic):
                 
         minv=0
         maxv=100
-        res=100
+        res=10
         line = np.vstack((np.linspace(minv,maxv,res),
                           np.linspace(minv,maxv,res), 
                           np.linspace(minv,maxv,res),
                           np.linspace(minv,maxv,res)) )
         self.counts_from_line = self._scanning_device.scan_line(voltages=line)
         self._current_line +=1
+        
+        print (self.counts_from_line)
         
         # call this again from event loop
         self.signal_scan_updated.emit()
