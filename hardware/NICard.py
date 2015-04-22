@@ -17,7 +17,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
     
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.testing}
+        c_dict = {'onactivate': self.activation}
         Base.__init__(self,
                     manager,
                     name,
@@ -31,11 +31,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         self.connector['out']['confocalscanner'] = OrderedDict()
         self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
-        
-#        # checking for the right configuration
-#        for key in config.keys():
-#            print('{}: {}'.format(key,config[key]))
-                        
+                                
         self._max_counts = 3e7
         self._RWTimeout = 5
         self._counter_daq_task = None
@@ -44,12 +40,18 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_ao_task = None
         self._scanner_counter_daq_task = None
         self._line_length = None
-        self._voltage_range = [-10., 10.]
         
-        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
-        
+        self._voltage_range = [-10., 10.]        
+        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]        
         self._current_position = [0., 0., 0., 0.]
         
+            
+        if 'scanner_ao_channels' in config.keys():
+            self._scanner_ao_channels=config['scanner_ao_channels']
+        else:
+            self._scanner_ao_channels = '/Dev1/AO0:3'
+            self.logMsg('No scanner_ao_channels configured, using {} instead.'.format(self._scanner_ao_channels), msgType='error')
+            
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
         else:
@@ -95,11 +97,6 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self._samples_number=10
             self.logMsg('No samples_number configured tanking 10 instead.', \
             msgType='warning')
-            
-        if 'scanner_ao_channels' in config.keys():
-            self._scanner_ao_channels=config['scanner_ao_channels']
-        else:
-            self.logMsg('No scanner_ao_channels configured.', msgType='error')
             
         if 'x_range' in config.keys():
             if float(config['x_range'][0]) < float(config['x_range'][1]):
@@ -153,17 +150,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             
 #        self.testing()
         
-    def testing(self, e=None):
-        pass
-#        minv=0
-#        maxv=100
-#        res=20
-#        line = np.vstack((np.linspace(minv,maxv,res),
-#                          np.linspace(minv,maxv,res), 
-#                          np.linspace(minv,maxv,res),
-#                          np.linspace(minv,maxv,res)) )
-#        print (line)
-#        print(self._scanner_position_to_volt(positions = line))
+    def activation(self, e=None): 
+        """ Starts up the NI Card at activation.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._start_analoque_output()
+        
         
 ################################## Counter ###################################
         
@@ -391,8 +385,45 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return -1
                 
-        self._voltage_range = myrange    
+        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:            
+            self.logMsg('A Scanner is already running, close this one first.', \
+            msgType='error')
+            return -1
             
+        self._voltage_range = myrange
+            
+        return 0
+        
+    def _start_analoque_output(self):
+        """ Starts or restarts the analoque output.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:            
+            self.logMsg('A Scanner is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
+        if self._scanner_ao_task != None:
+            daq.DAQmxStopTask(self._scanner_ao_task)
+            daq.DAQmxClearTask(self._scanner_ao_task)
+            self._scanner_ao_task = None
+    
+        # init ao channels / task for scanner, should always be active
+        # the type definition for the task, an unsigned integer datatype (uInt32):
+        self._scanner_ao_task = daq.TaskHandle()
+        
+        daq.DAQmxCreateTask('', daq.byref(self._scanner_ao_task))
+        
+        # Assign the created task to an analog output voltage channel
+        daq.DAQmxCreateAOVoltageChan(self._scanner_ao_task,           # add to this task
+                                     self._scanner_ao_channels, 
+                                     '',  # use sanncer ao_channels, name = ''
+                                     self._voltage_range[0],          # min voltage
+                                     self._voltage_range[1],           # max voltage
+                                     daq.DAQmx_Val_Volts,'')       # units is Volt
+                                     
         return 0
 
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
@@ -451,11 +482,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self.logMsg('No clock running, call set_up_clock before starting the counter.', \
             msgType='error')
             return -1
-        if self._scanner_counter_daq_task != None:            
-            self.logMsg('Another counter is already running, close this one first.', \
+        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:            
+            self.logMsg('Another scanner is already running, close this one first.', \
             msgType='error')
             return -1
-            
+                    
         if counter_channel != None:
             self._scanner_counter_channel = counter_channel
         if photon_source != None:
@@ -468,20 +499,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             
         if scanner_ao_channels != None:
             self._scanner_ao_channels = scanner_ao_channels
-        
-        # init ao channels / task for scanner, should always be active
-        # the type definition for the task, an unsigned integer datatype (uInt32):
-        self._scanner_ao_task = daq.TaskHandle()
-        
-        daq.DAQmxCreateTask('', daq.byref(self._scanner_ao_task))
-        
-        # Assign the created task to an analog output voltage channel
-        daq.DAQmxCreateAOVoltageChan(self._scanner_ao_task,           # add to this task
-                                     self._scanner_ao_channels, 
-                                     '',  # use sanncer ao_channels, name = ''
-                                     self._voltage_range[0],          # min voltage
-                                     self._voltage_range[1],           # max voltage
-                                     daq.DAQmx_Val_Volts,'')       # units is Volt
+            self._start_analoque_output()
         
         # set task timing to on demand, i.e. when demanded by software
         daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
@@ -490,7 +508,6 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_counter_daq_task = daq.TaskHandle()
         daq.DAQmxCreateTask('', daq.byref(self._scanner_counter_daq_task))
         
-        # TODO: change this to DAQmxCreateCISemiPeriodChan
         daq.DAQmxCreateCISemiPeriodChan(self._scanner_counter_daq_task,    #add to this task
                                         self._scanner_counter_channel,  #use this counter
                                         '',  #name
@@ -522,6 +539,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         
+        if self.getState() == 'locked':            
+            self.logMsg('Another scan_line is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
         if x != None:
             if x < self._position_range[0][0] or x > self._position_range[0][1]:                
                 self.logMsg('You want to set x out of range: {0:f}.'.format(x), 
@@ -588,7 +610,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """
         
         if not isinstance( positions, (frozenset, list, set, tuple, np.ndarray, ) ):
-            self.logMsg('Given voltage list is no array type.', \
+            self.logMsg('Given position list is no array type.', \
             msgType='error')
             return np.array([-1.,-1.,-1.,-1.])
         
@@ -609,6 +631,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         / (self._position_range[3][1]-self._position_range[3][0])\
         * (positions[3]-self._position_range[3][0])\
         + self._voltage_range[0] ) )
+        
+        if volts.min() < self._voltage_range[0] or volts.max() > self._voltage_range[1]:
+            self.logMsg('Voltages exceed the limit, the positions have to be adjusted to stay in the given range.', \
+            msgType='error')
+            return np.array([-1.,-1.,-1.,-1.])
+            
         return volts
         
         
@@ -619,7 +647,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-
+        
+        if self._scanner_counter_daq_task == None:            
+            self.logMsg('No counter is running, cannot scna a line without one.', \
+            msgType='error')
+            return -1
+            
         self._line_length = length
         
         if length < np.inf:
@@ -653,6 +686,18 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
         
+        if self.getState() == 'locked':            
+            self.logMsg('Another scan_line is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
+        self.lock()
+        
+        if self._scanner_counter_daq_task == None:            
+            self.logMsg('No counter is running, cannot scna a line without one.', \
+            msgType='error')
+            return np.array([-1.])
+            
         if not isinstance( voltages, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.logMsg('Given voltage list is no array type.', \
             msgType='error')
@@ -697,7 +742,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         self._real_data = np.empty((self._line_length,), dtype=np.uint32)
         self._real_data = self._scan_data[::2]
-        self._real_data += self._scan_data[1::2]
+        self._real_data += self._scan_data[1::2]        
+        
+        self.unlock()
         
         return self._real_data*(self._scanner_clock_frequency*0.5)
         
@@ -711,10 +758,6 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
         daq.DAQmxClearTask(self._scanner_counter_daq_task)
         self._scanner_counter_daq_task = None
-        
-        daq.DAQmxStopTask(self._scanner_ao_task)
-        daq.DAQmxClearTask(self._scanner_ao_task)
-        self._scanner_ao_task = None
         
         return 0
         

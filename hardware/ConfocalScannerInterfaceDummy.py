@@ -37,6 +37,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
             msgType='warning')
             
         self._line_length = None
+        self._scanner_counter_daq_task = None
         self._voltage_range = [-10., 10.]
         
         self._position_range=[[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
@@ -106,6 +107,11 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
             msgType='error')
             return -1
                 
+        if self.getState() == 'locked':
+            self.logMsg('A Scanner is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
         self._voltage_range = myrange    
             
         return 0
@@ -145,8 +151,13 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self.logMsg('ConfocalScannerInterfaceDummy>set_up_scanner', 
                     msgType='warning')
                     
+        if self.getState() == 'locked' or self._scanner_counter_daq_task != None:            
+            self.logMsg('Another scanner is already running, close this one first.', \
+            msgType='error')
+            return -1
+                            
         time.sleep(0.5)
-        
+                
         return 0
         
         
@@ -164,6 +175,11 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self.logMsg('ConfocalScannerInterfaceDummy>scanner_set_pos: [{0:f},{1:f},{2:f},{3:f}]'.format(x,y,z,a), 
                     msgType='warning')
                     
+        if self.getState() == 'locked':
+            self.logMsg('A Scanner is already running, close this one first.', \
+            msgType='error')
+            return -1
+        
         time.sleep(0.01)
         
         return 0
@@ -192,6 +208,13 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
         
+        if self.getState() == 'locked':
+            self.logMsg('A scan_line is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
+        self.lock()
+        
         if not isinstance( voltages, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.logMsg('Given voltage list is no array type.', \
             msgType='error')
@@ -210,6 +233,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self.logMsg('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length), 
                     msgType='warning')
                     
+        self.unlock()
         
         return count_data
     
@@ -221,6 +245,9 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         
         self.logMsg('ConfocalScannerInterfaceDummy>close_scanner', 
                     msgType='warning')
+                    
+        self._scanner_counter_daq_task = None
+        
         return 0
         
     def close_scanner_clock(self,power=0):
