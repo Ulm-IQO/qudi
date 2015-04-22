@@ -57,8 +57,8 @@ class ConfocalLogic(GenericLogic):
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
-        self.res = 100
-        self.zres = 100
+        self.xy_resolution = 100
+        self.z_resolution = 100
         
         self.testing()
         
@@ -120,31 +120,36 @@ class ConfocalLogic(GenericLogic):
             print('x2 should be larger than x1')
             return -1
         if zscan:
-            X = np.linspace(x1, x2, self.res)
+            X = np.linspace(x1, x2, self.xy_resolution)
             if z2 < z1:
                 print('z2 should be larger than z1')
                 return -1
-            Z = np.linspace(z1, z2, self.zres)
+            Z = np.linspace(z1, z2, self.z_resolution)
         else:
             if y2 < y1:
                 print('y2 should be larger than y1')
                 return -1
             if (x2-x1) >= (y2-y1):
-                X = np.linspace(x1, x2, self.res)
-                Y = np.linspace(y1, y2, int(self.res*(y2-y1)/(x2-x1)))
+                X = np.linspace(x1, x2, self.xy_resolution)
+                Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
             else:
-                Y = np.linspace(y1, y2, self.res)
-                X = np.linspace(x1, x2, int(self.res*(x2-x1)/(y2-y1)))
+                Y = np.linspace(y1, y2, self.xy_resolution)
+                X = np.linspace(x1, x2, int(self.xy_resolution*(x2-x1)/(y2-y1)))
+        
+
+        slowness = self.return_slowness
+        
+        XL = X
+        AL = np.zeros(XL.shape)
+        return_XL = np.linspace(XL[-1], XL[0], slowness)
+        return_AL = np.zeros(return_XL.shape)
         
         if zscan:
             image_vert_axis = Z
+            self.xz_image = np.zeros((len(image_vert_axis), len(X)))
         else:
             image_vert_axis = Y
-
-        XL = X
-        AL = np.zeros(X.shape)
-        
-        self.image = np.zeros((len(image_vert_axis), len(X)))
+            self.xy_image = np.zeros((len(image_vert_axis), len(X)))
 #        self.return_image = np.zeros((len(image_vert_axis), len(X)))
         
         for i,q in enumerate(image_vert_axis):
@@ -153,18 +158,24 @@ class ConfocalLogic(GenericLogic):
             if zscan:
                 YL = self._current_y * np.ones(X.shape)
                 ZL = q * np.ones(X.shape)           #todo: tilt_correction
+                return_YL = self._current_y * np.ones(return_XL.shape)
+                return_ZL = ZL = q * np.ones(return_XL.shape)
             else:
                 YL = q * np.ones(X.shape)
                 ZL = self._current_z * np.ones(X.shape)      #todo: tilt_correction
+                return_YL = q * np.ones(return_XL.shape)
+                return_ZL = self._current_z * np.ones(return_XL.shape)
                 
             line = np.vstack( (XL, YL, ZL, AL) )
             
             line_counts = self._scanning_device.scan_line(line)
-            return_XL = np.linspace(XL[-1], XL[0], self.return_slowness)   #passt das so?
-            return_line = np.vstack( (return_XL, YL, ZL, AL) )
-            return_line_counts=self._scanning_device.scan_line(return_line)
+            return_line = np.vstack( (return_XL, return_YL, return_ZL, return_AL) )
+            return_line_counts = self._scanning_device.scan_line(return_line)
             
-            self.image[i,:] = line_counts
+            if zscan:
+                self.xz_image[i,:] = line_counts #position mit abspeichern noch implementieren
+            else:
+                self.xy_image[i,:] = line_counts #position mit abspeichern noch implementieren
             print('image update')
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
