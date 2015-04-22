@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
-class InterfaceImplementationError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+from core.util.CustomExceptions import InterfaceImplementationError
 
 class SlowCounterInterface():
     """This is the Interface class to define the controls for the simple 
