@@ -41,69 +41,45 @@ class MagnetStagePI(Base,MagnetStageInterface):
         #!!!!NOTE:  vielleicht sollte überall .ask anstatt .write genommen werden, das die stage glaube ich immer was zurückgibt....
     
     
-    def step_x(self, step = 0.):
-        """Moves stage in x-direction
+    def step(self, x = None, y = None, z = None, phi = None):
+        """Moves stage in given direction (relative movement)
         
-        @param float step: amount of realtive movement
+        @param float x: amount of realtive movement in x direction
+        @param float y: amount of realtive movement in y direction
+        @param float z: amount of realtive movement in z direction
+        @param float phi: amount of realtive movement in phi direction
         
         @return int: error code (0:OK, -1:error)
         """
-        a = int(step*10000.)
-        current_pos = int(self._serial_connection_xyz.ask(self._x_axis+'TT')[8:])   # das gibt '1TT\n'
-        move = current_pos + a
-        if move > self._max_x or move < self._min_x:
-            print('out of range, choose smaller step')
-        else:
-            self._serial_connection_xyz.write(self._x_axis+'SP%s'%move)
-            self._serial_connection_xyz.write(self._x_axis+'MP')
+        if x != None:
+            a = int(x*10000)
+            current_pos = int(self._serial_connection_xyz.ask(self._x_axis+'TT')[8:])   # das gibt '1TT\n'
+            move = current_pos + a
+            if move > self._max_x or move < self._min_x:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
+        if y != None:
+            a = int(y*10000)
+            current_pos = int(self._serial_connection_xyz.ask(self._y_axis+'TT')[8:])   # das gibt '3TT\n'
+            move = current_pos + a
+            if move > self._max_y or move < self._min_y:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
+        if z != None:
+            a = int(z*10000)
+            current_pos = int(self._serial_connection_xyz.ask(self._z_axis+'TT')[8:])   # das gibt '2TT\n'
+            move = current_pos + a
+            if move > self._max_z or move < self._min_z:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
+        if phi != None:
+            self._move_relative_rot(step)
+        
         return 0
-    
-    
-    def step_y(self, step = 0.):
-        """Moves stage in y-direction
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        a = int(step*10000.)
-        current_pos = int(self._serial_connection_xyz.ask(self._y_axis+'TT')[8:])   # das gibt '3TT\n'
-        move = current_pos + a
-        if move > self._max_y or move < self._min_y:
-            print('out of range, choose smaller step')
-        else:
-            self._serial_connection_xyz.write(self._y_axis+'SP%s'%move)
-            self._serial_connection_xyz.write(self._y_axis+'MP')
-        return 0
-    
-    
-    def step_z(self, step = 0.):
-        """Moves stage in z-direction
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        a = int(step*10000.)
-        current_pos = int(self._serial_connection_xyz.ask(self._z_axis+'TT')[8:])   # das gibt '2TT\n'
-        move = current_pos + a
-        if move > self._max_z or move < self._min_z:
-            print('out of range, choose smaller step')
-        else:
-            self._serial_connection_xyz.write(self._z_axis+'SP%s'%move)
-            self._serial_connection_xyz.write(self._z_axis+'MP')
-        return 0
-        
-    
-    def step_phi(self, step = 0.):
-        """Turns stage around angle phi
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        self._move_relative_rot(step)
-        return 0         
+       
     
 
     def abort(self):
@@ -154,17 +130,23 @@ class MagnetStagePI(Base,MagnetStageInterface):
         @return int: error code (0:OK, -1:error)
         """
         if x != None:
-            movex = int(x*10000.)
-            self._serial_connection_xyz.write(self._x_axis+'SP%s'%movex)
-            self._serial_connection_xyz.write(self._x_axis+'MP')
+            move = int(x*10000)
+            if move > self._max_x or move < self._min_x:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
         if y != None:
-            movey = int(y*10000.)
-            self._serial_connection_xyz.write(self._y_axis+'SP%s'%movey)
-            self._serial_connection_xyz.write(self._y_axis+'MP')
+            move = int(y*10000)
+            if move > self._max_y or move < self._min_y:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
         if z != None:
-            movez = int(z*10000.)
-            self._serial_connection_xyz.write(self._z_axis+'SP%s'%movez)
-            self._serial_connection_xyz.write(self._z_axis+'MP')
+            move = int(z*10000)
+            if move > self._max_z or move < self._min_z:
+                print('out of range, choose smaller step')
+            else:
+                self._go_to_pos(self._x_axis, move)
             
         [a,b,c] = self._in_movement_xyz()
         while a != 0 or b != 0 or c != 0:
@@ -307,7 +289,7 @@ class MagnetStagePI(Base,MagnetStageInterface):
         return
         
         
-    def _ask_rot():
+    def _ask_rot(self):
         '''receiving an answer from the rotation stage'''
         # return 6 bytes from the receive buffer
         # there must be 6 bytes to receive (no error checking)
@@ -327,7 +309,7 @@ class MagnetStagePI(Base,MagnetStageInterface):
         return q
         
     
-    def _in_movement_rot():
+    def _in_movement_rot(self):
         st = self._ask_rot([1,54,0])
         while st != 0:
             print ('rotation stage moving...')
@@ -336,7 +318,7 @@ class MagnetStagePI(Base,MagnetStageInterface):
         print ('rotation stage stopped. ready')
         
         
-    def _in_movement_xyz():
+    def _in_movement_xyz(self):
         '''this method checks if the magnet is still in movement and returns
         a list which of the axis are moving. Ex: return is [1,1,0]-> x and y ax are in movement and z axis is imobile.            
         '''
@@ -350,28 +332,38 @@ class MagnetStagePI(Base,MagnetStageInterface):
         del tmpx,tmpy,tmpz
     
 
-    def _move_absolute_rot(value):
+    def _move_absolute_rot(self, value):
         '''moves the rotation stage to an absolut position; value in degrees'''
         data = int(value/self.MicroStepSize)
         self.write_rot([1,20,data])
         self._in_movement_rot()         # waits until rot_stage finished its move
     
     
-    def _move_relative_rot(value):
+    def _move_relative_rot(self, value):
         '''moves the rotation stage by a relative value in degrees'''
         data = int(value/self.MicroStepSize)
         self.write_rot([1,21,data])
         self._in_movement_rot()         # waits until rot_stage finished its move 
     
     
-    def _data_to_speed_rot(data):
+    def _data_to_speed_rot(self, data):
         speed = data * 9.375 * self.MicroStepSize
         return speed
         
         
-    def _speed_to_data_rot(speed):
+    def _speed_to_data_rot(self, speed):
         data = int(speed / 9.375 / self.MicroStepSize)
         return data
+        
+    def _go_to_pos(self, axis = None, move = None):
+        """moves one axis to an absolute position
+        
+        @param string axis: ID of the axis, '1', '2' or '3'
+        @param int move: absolute position
+        """
+        self._serial_connection_xyz.write(self._x_axis+'SP%s'%move)
+        self._serial_connection_xyz.write(self._x_axis+'MP')
+        
     
     
     
