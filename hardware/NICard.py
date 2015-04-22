@@ -32,14 +32,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self.connector['out']['confocalscanner'] = OrderedDict()
         self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
         
-        
-        self.logMsg('The following configuration was found.', 
-                    msgType='status')
-                    
-        # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
-                        msgType='status')
+#        # checking for the right configuration
+#        for key in config.keys():
+#            print('{}: {}'.format(key,config[key]))
                         
         self._max_counts = 1e7
         self._RWTimeout = 5
@@ -51,7 +46,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._line_length = None
         self._voltage_range = [-10., 10.]
         
-        self._position_range=[[0., 100.], [0., 100.], [-100., 100.], [-100., 100.]]
+        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         
         self._current_position = [0., 0., 0., 0.]
         
@@ -65,6 +60,16 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         else:
             self.logMsg('No counter_channel configured.', msgType='error')
             
+        if 'scanner_clock_channel' in config.keys():
+            self._scanner_clock_channel=config['scanner_clock_channel']
+        else:
+            self.logMsg('No scanner_clock_channel configured.', msgType='error')
+            
+        if 'scanner_counter_channel' in config.keys():
+            self._scanner_counter_channel=config['scanner_counter_channel']
+        else:
+            self.logMsg('No scanner_counter_channel configured.', msgType='error')
+            
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
@@ -77,11 +82,73 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self.logMsg('No clock_frequency configured tanking 100 Hz instead.', \
             msgType='warning')
             
+        if 'scanner_clock_frequency' in config.keys():
+            self._scanner_clock_frequency=config['scanner_clock_frequency']
+        else:
+            self._scanner_clock_frequency=100
+            self.logMsg('No scanner_clock_frequency configured tanking 100 Hz instead.', \
+            msgType='warning')
+            
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
             self.logMsg('No samples_number configured tanking 10 instead.', \
+            msgType='warning')
+            
+        if 'scanner_ao_channels' in config.keys():
+            self._scanner_ao_channels=config['scanner_ao_channels']
+        else:
+            self.logMsg('No scanner_ao_channels configured.', msgType='error')
+            
+        if 'x_range' in config.keys():
+            if float(config['x_range'][0]) < float(config['x_range'][1]):
+                self._position_range[0]=[float(config['x_range'][0]),float(config['x_range'][1])]
+            else:
+                self.logMsg('Configuration ({}) of x_range incorrect, tanking [0,100] instead.'.format(config['x_range']), \
+                msgType='warning')                
+        else:
+            self.logMsg('No x_range configured tanking [0,100] instead.', \
+            msgType='warning')
+            
+        if 'y_range' in config.keys():
+            if float(config['y_range'][0]) < float(config['y_range'][1]):
+                self._position_range[1]=[float(config['y_range'][0]),float(config['y_range'][1])]
+            else:
+                self.logMsg('Configuration ({}) of y_range incorrect, tanking [0,100] instead.'.format(config['y_range']), \
+                msgType='warning')                
+        else:
+            self.logMsg('No y_range configured tanking [0,100] instead.', \
+            msgType='warning')
+            
+        if 'z_range' in config.keys():
+            if float(config['z_range'][0]) < float(config['z_range'][1]):
+                self._position_range[2]=[float(config['z_range'][0]),float(config['z_range'][1])]
+            else:
+                self.logMsg('Configuration ({}) of z_range incorrect, tanking [0,100] instead.'.format(config['z_range']), \
+                msgType='warning')                
+        else:
+            self.logMsg('No z_range configured tanking [0,100] instead.', \
+            msgType='warning')
+            
+        if 'a_range' in config.keys():
+            if float(config['a_range'][0]) < float(config['a_range'][1]):
+                self._position_range[3]=[float(config['a_range'][0]),float(config['a_range'][1])]
+            else:
+                self.logMsg('Configuration ({}) of a_range incorrect, tanking [0,100] instead.'.format(config['a_range']), \
+                msgType='warning')                
+        else:
+            self.logMsg('No a_range configured tanking [0,100] instead.', \
+            msgType='warning')
+            
+        if 'voltage_range' in config.keys():
+            if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
+                self._voltage_range=[float(config['voltage_range'][0]),float(config['voltage_range'][1])]
+            else:
+                self.logMsg('Configuration ({}) of voltage_range incorrect, tanking [-10,10] instead.'.format(config['voltage_range']), \
+                msgType='warning')                
+        else:
+            self.logMsg('No voltage_range configured tanking [-10,10] instead.', \
             msgType='warning')
             
 #        self.testing()
