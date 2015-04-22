@@ -140,7 +140,7 @@ class CounterGui(Base):
         """ The function that grabs the data and sends it to the plot.
         """
         if self._counting_logic.running:
-            self._counts_label.setText('{0:,.0f}'.format(self._counting_logic.countdata[-1]))
+            self._counts_label.setText('{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1]))
             self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(1, self._counting_logic.get_count_length()+1))
             self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(1, self._counting_logic.get_count_length()+1))
 

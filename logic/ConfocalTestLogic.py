@@ -55,8 +55,8 @@ class ConfocalTestLogic(GenericLogic):
 
     def start_scanner(self):
         # setting up the scanner
-        self._scanning_device.set_up_scanner_clock(clock_frequency = 50., clock_channel = '/Dev1/Ctr2')
-        self._scanning_device.set_up_scanner(counter_channel = '/Dev1/Ctr3', photon_source= '/Dev1/PFI8', scanner_ao_channels = '/Dev1/AO0:3')
+        self._scanning_device.set_up_scanner_clock(clock_frequency = 50.)
+        self._scanning_device.set_up_scanner()
     
     
     def kill_scanner(self):

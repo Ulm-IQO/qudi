@@ -175,8 +175,8 @@ class CounterLogic(GenericLogic):
 
     def startCount(self):
         # setting up the counter
-        self._counting_device.set_up_clock(clock_frequency = self._count_frequency, clock_channel = '/Dev1/Ctr0')
-        self._counting_device.set_up_counter(counter_channel = '/Dev1/Ctr1', photon_source= '/Dev1/PFI8')
+        self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
+        self._counting_device.set_up_counter()
         
         # initialising the data arrays
         self.countdata=np.zeros((self._count_length,))
