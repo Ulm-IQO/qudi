@@ -37,8 +37,8 @@ class ConfocalLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
-        self._clock_frequency = 50.
-        self.return_slowness = 10
+        self._clock_frequency = 500.
+        self.return_slowness = 100
                     
                        
     def activation(self, e):
@@ -51,9 +51,9 @@ class ConfocalLogic(GenericLogic):
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
         
-        self.x = (self.x_range[0] + self.x_range[1]) / 2.
-        self.y = (self.y_range[0] + self.y_range[1]) / 2.
-        self.z = (self.z_range[0] + self.z_range[1]) / 2.
+        self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
+        self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
+        self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
@@ -67,9 +67,12 @@ class ConfocalLogic(GenericLogic):
     def testing(self):
         """ Debug method. """
         self.start_scanner()
-        self.set_position(x = 1, y = 2, z = 3, a = 4)
+        self.set_position(x = 1, y = 2, z = 3)
+        self.scan_image()
         self.kill_scanner()
         
+    def set_clock_frequency(self):
+        return 0
 
     def start_scanner(self):
         """setting up the scanner device
@@ -94,6 +97,13 @@ class ConfocalLogic(GenericLogic):
         @param float a: postion in a-direction (microns)
         """
         self._scanning_device.scanner_set_position(x = x, y = y, z = z, a = a)
+        
+    
+    def get_position(self):
+        """Forwarding the desired new position from the GUI to the scanning device.
+        
+        """
+        return [self._current_x, self._current_y, self._current_z]
         
         
     def scan_image(self, zscan = False):
@@ -141,11 +151,11 @@ class ConfocalLogic(GenericLogic):
             # here threading?
         
             if zscan:
-                YL = self.y * np.ones(X.shape)
+                YL = self._current_y * np.ones(X.shape)
                 ZL = q * np.ones(X.shape)           #todo: tilt_correction
             else:
                 YL = q * np.ones(X.shape)
-                ZL = self.z * np.ones(X.shape)      #todo: tilt_correction
+                ZL = self._current_z * np.ones(X.shape)      #todo: tilt_correction
                 
             line = np.vstack( (XL, YL, ZL, AL) )
             
@@ -155,7 +165,8 @@ class ConfocalLogic(GenericLogic):
             return_line_counts=self._scanning_device.scan_line(return_line)
             
             self.image[i,:] = line_counts
+            print('image update')
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         
-        self.set_position(x = self.x, y = self.y, z = self.z, a = 0.)
+        self.set_position(x = self._current_x, y = self._current_y, z = self._current_z, a = 0.)
