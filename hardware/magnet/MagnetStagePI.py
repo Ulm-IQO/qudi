@@ -2,7 +2,7 @@
 # unstable: Christoph Müller
 
 from core.Base import Base
-from hardware.magnetstageinterface import MagnetStageInterface
+from hardware.MagnetStageInterface import MagnetStageInterface
 import visa
 
 
