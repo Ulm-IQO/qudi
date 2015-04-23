@@ -214,11 +214,11 @@ class ConfocalLogic(GenericLogic):
 
         if self._zscan:
             YL = self._current_y * np.ones(self._X.shape)
-            ZL = self._scan_counter * np.ones(self._X.shape)           #todo: tilt_correction
+            ZL = self._Z[self._scan_counter] * np.ones(self._X.shape)           #todo: tilt_correction
             return_YL = self._current_y * np.ones(self._return_XL.shape)
             return_ZL = ZL = self._scan_counter * np.ones(self._return_XL.shape)
         else:
-            YL = self._scan_counter * np.ones(self._X.shape)
+            YL = self._Y[self._scan_counter] * np.ones(self._X.shape)
             ZL = self._current_z * np.ones(self._X.shape)      #todo: tilt_correction
             return_YL = self._scan_counter * np.ones(self._return_XL.shape)
             return_ZL = self._current_z * np.ones(self._return_XL.shape)
