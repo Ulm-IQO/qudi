@@ -9,8 +9,7 @@ import numpy as np
 
 class ConfocalLogic(GenericLogic):
     """unstable: Christoph Müller
-    This is the Interface class to define the controls for the simple 
-    microwave hardware.
+    This is the Logic class for confocal scanning.
     """
     signal_scan_lines_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
@@ -22,7 +21,7 @@ class ConfocalLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'counterlogic'
+        self._modclass = 'confocallogic'
         self._modtype = 'logic'
 
         ## declare connectors
@@ -31,7 +30,7 @@ class ConfocalLogic(GenericLogic):
         self.connector['in']['confocalscanner1']['object'] = None
         
         self.connector['out']['scannerlogic'] = OrderedDict()
-        self.connector['out']['scannerlogic']['class'] = 'ConfocalTestLogic'
+        self.connector['out']['scannerlogic']['class'] = 'ConfocalLogic'
         
 
         self.logMsg('The following configuration was found.', 
@@ -56,31 +55,39 @@ class ConfocalLogic(GenericLogic):
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+        
+        @parameter?????????
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
         print("Scanning device is", self._scanning_device)
         
+        
+        #reads in the maximal scanning range
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
         
+        #sets the current position to the center of the maximal scanning range
         self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
         self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
         self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
         self._current_a = 0.0
+        
+        #sets the size of the image to the maximal scanning range
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
+        
+        #sets the resolution for the scan
         self.xy_resolution = 10
         self.z_resolution = 10
         
-        self._scan_counter = 0         
+        #??????????        
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         
         self.testing()
         
-        # self.sigImageNext noch einbinden
-
+        
     def testing(self):
         """ Debug method. """
         self.start_scanner()
@@ -89,8 +96,17 @@ class ConfocalLogic(GenericLogic):
         self.kill_scanner()
         
     def set_clock_frequency(self, clock_frequency):
+        """Sets the frequency of the clock
+        
+        @param int clock_frequency: desired frequency of the clock 
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        #checks if scanner is still running
         self._clock_frequency = int(clock_frequency)
         if not self.running:
+            #Why kill scanner first?
             self.kill_scanner()
             self.start_scanner()
             return 0
@@ -98,6 +114,11 @@ class ConfocalLogic(GenericLogic):
             return -1
         
     def start_scanning(self, zscan = False):
+         """Starts scanning
+        
+        @param bool zscan: zscan if true, xyscan if false
+               
+        """
         self._scan_counter = 0
         self._zscan=zscan
         self.initialize_image()
@@ -105,28 +126,47 @@ class ConfocalLogic(GenericLogic):
         self.signal_scan_lines_next.emit()
         
     def stop_scanning(self):
+        """Stop of the scan
+        
+        """
         with self.lock:
             self.stopRequested = True
         
     def initialize_image(self):
+        """Initalization of the image           
+        """
         
+        #x1: x-start-value, x2: x-end-value
         x1, x2 = self.image_x_range[0], self.image_x_range[1]
+        #y1: x-start-value, y2: x-end-value
         y1, y2 = self.image_y_range[0], self.image_y_range[1]
+        #z1: x-start-value, z2: x-end-value
         z1, z2 = self.image_z_range[0], self.image_z_range[1]
         
+        #Checks if the x-start and x-end value are ok    
         if x2 < x1:
             print('x2 should be larger than x1')
             return -1
+         
+            
         if self._zscan:
+            #creates an array of evenly spaced numbers over the interval
+            #x1, x2 and with spacing xy_resolution
             self._X = np.linspace(x1, x2, self.xy_resolution)
+            #Checks if the z-start and z-end value are ok
             if z2 < z1:
                 print('z2 should be larger than z1')
                 return -1
+            #creates an array of evenly spaced numbers over the interval
+            #z1, z2 and with spacing z_resolution    
             self._Z = np.linspace(z1, z2, self.z_resolution)
         else:
+            #Checks if the y-start and y-end value are ok
             if y2 < y1:
                 print('y2 should be larger than y1')
                 return -1
+            
+            #prevents distorion of the image
             if (x2-x1) >= (y2-y1):
                 self._X = np.linspace(x1, x2, self.xy_resolution)
                 self._Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
@@ -163,12 +203,15 @@ class ConfocalLogic(GenericLogic):
     def set_position(self, x = None, y = None, z = None, a = None):
         """Forwarding the desired new position from the GUI to the scanning device.
         
-        @param float x: postion in x-direction (microns)
-        @param float y: postion in y-direction (microns)
-        @param float z: postion in z-direction (microns)
-        @param float a: postion in a-direction (microns)
+        @param float x: if defined, changes to postion in x-direction (microns)
+        @param float y: if defined, changes to postion in y-direction (microns)
+        @param float z: if defined, changes to postion in z-direction (microns)
+        @param float a: if defined, changes to postion in a-direction (microns)
+        
+        @return int: error code (0:OK, -1:error)
         """
         
+        #Changes the respective value
         if x != None:
             self._current_x = x
         if y != None:
@@ -176,6 +219,7 @@ class ConfocalLogic(GenericLogic):
         if z != None:
             self._current_z = z
         
+        #Checks if the scanner is still running
         if not self.running:
             self._scanning_device.scanner_set_position(x = self._current_x, 
                                                        y = self._current_y, 
@@ -189,15 +233,14 @@ class ConfocalLogic(GenericLogic):
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
         
+        @return int[]: Current position       
         """
         return [self._current_x, self._current_y, self._current_z]
         
         
     def _scan_line(self):
-        """scanning an image in either xz or xy
-        
-        @param bool zscan: (True: xz_scan, False: xy_scan) 
-        
+        """scanning an image in either xz or xy       
+                
         """
         
 
@@ -205,6 +248,8 @@ class ConfocalLogic(GenericLogic):
 #        self.signal_image_updated.emit()
         self.running = True
         
+        
+        #stops scanning
         if self.stopRequested:
             with self.lock:
                 self.running = False
@@ -222,7 +267,8 @@ class ConfocalLogic(GenericLogic):
             ZL = self._current_z * np.ones(self._X.shape)      #todo: tilt_correction
             return_YL = self._scan_counter * np.ones(self._return_XL.shape)
             return_ZL = self._current_z * np.ones(self._return_XL.shape)
-                
+        
+               
         line = np.vstack( (self._XL, YL, ZL, self._AL) )
             
         line_counts = self._scanning_device.scan_line(line)
