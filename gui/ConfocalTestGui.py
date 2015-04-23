@@ -47,7 +47,7 @@ class ConfocalTestGui(Base):
         # setting up the window
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: Counter Test GUI')
-        self._mw.resize(400,100)
+        self._mw.setGeometry(1400,650,400,400)
         self._cw = QtGui.QWidget()
         self._mw.setCentralWidget(self._cw)
         

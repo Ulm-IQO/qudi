@@ -48,7 +48,7 @@ class CounterGui(Base):
         # setting up the window
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: Slow Counter')
-        self._mw.resize(800,550)
+        self._mw.setGeometry(1000,30,800,550)
         self._cw = QtGui.QWidget()
         self._mw.setCentralWidget(self._cw)
         
@@ -167,17 +167,17 @@ class CounterGui(Base):
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
         """
-        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
+#        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._count_length_display.value())
         self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
         
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
-        print ('count_frequency_changed: {0:d}'.format(self._count_frequency_display.value()))
+#        print ('count_frequency_changed: {0:d}'.format(self._count_frequency_display.value()))
         self._counting_logic.set_count_frequency(self._count_frequency_display.value())
         
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
         """
-        print ("Oversampling not implemented yet.")
+        self._counting_logic.set_counting_samples(samples=self._oversampling_display.value())
