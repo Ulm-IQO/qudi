@@ -84,7 +84,9 @@ class ConfocalLogic(GenericLogic):
         self.xy_resolution = 10
         self.z_resolution = 10
         
-        #??????????        
+          
+        self._scan_counter=0
+        #??????????   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         
         self.testing()
@@ -128,7 +130,7 @@ class ConfocalLogic(GenericLogic):
         self.signal_scan_lines_next.emit()
         
     def stop_scanning(self):
-        """Stop of the scan
+        """Stop the scan
         
         """
         with self.lock:
@@ -178,15 +180,19 @@ class ConfocalLogic(GenericLogic):
         
         self._XL = self._X
         self._AL = np.zeros(self._XL.shape)
+        
+        #Arrays for retrace line
         self._return_XL = np.linspace(self._XL[-1], self._XL[0], self.return_slowness)
         self._return_AL = np.zeros(self._return_XL.shape)
         
         if self._zscan:
             self._image_vert_axis = self._Z
-            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  #creats an image where each pixel will be [x,y,z,counts]
+            #creats an image where each pixel will be [x,y,z,counts]
+            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  
         else:
             self._image_vert_axis = self._Y
-            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  #creats an image where each pixel will be [x,y,z,counts]        
+            #creats an image where each pixel will be [x,y,z,counts]
+            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))          
 
     def start_scanner(self):
         """setting up the scanner device
