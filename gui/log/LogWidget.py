@@ -27,7 +27,7 @@ class LogWidget(QtGui.QWidget):
         .status .message {color: #090}
         .logExtra {margin-left: 40px;}
         .traceback {color: #555; height: 0px;}
-        .timestamp {color: #000;}
+        .timestamp {color: #FFF;}
     """
     pageTemplate = """
         <html>

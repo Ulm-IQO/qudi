@@ -97,8 +97,8 @@ class ConfocalTestGui(Base):
         # funny gifs
         self.movie_screen = QtGui.QLabel()  
 #        self.movie_screen.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
-        self.movie_screen.setFixedHeight(300)
-        self.movie_screen.setFixedWidth(300)
+        self.movie_screen.setFixedHeight(200)
+        self.movie_screen.setFixedWidth(200)
         self.movie_screen.setAlignment(QtCore.Qt.AlignCenter)
         self.movie_screen.setStyleSheet('QLabel {background-color: white; color: red;}')
         # Add the QMovie object to the label

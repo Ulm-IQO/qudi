@@ -335,6 +335,9 @@ class Manager(QtCore.QObject):
                             stylesheetfile = open(stylesheetpath)
                             stylesheet = stylesheetfile.read()
                             stylesheetfile.close()
+#                            print (QtGui.QStyleFactory.keys())
+                            QtGui.QApplication.instance().setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
+                            self.logger.print_logMsg("Using 'Cleanlooks' Window Style.")
                             QtGui.QApplication.instance().setStyleSheet(stylesheet)
                                 
                 
