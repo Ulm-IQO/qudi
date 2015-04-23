@@ -14,17 +14,17 @@ class ConfocalLogic(GenericLogic):
     signal_scan_lines_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
     
-    ## counter for scan_image    
+    # counter for scan_image    
     _scan_counter = 0
 
     def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
+        # declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
         self._modclass = 'confocallogic'
         self._modtype = 'logic'
 
-        ## declare connectors
+        # declare connectors
         self.connector['in']['confocalscanner1'] = OrderedDict()
         self.connector['in']['confocalscanner1']['class'] = 'ConfocalScannerInterface'
         self.connector['in']['confocalscanner1']['object'] = None
@@ -41,6 +41,8 @@ class ConfocalLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
         self._clock_frequency = 500.
         self.return_slowness = 100
         
@@ -78,7 +80,7 @@ class ConfocalLogic(GenericLogic):
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
         
-        #sets the resolution for the scan
+        #default values for the resolution of the scan
         self.xy_resolution = 10
         self.z_resolution = 10
         
@@ -151,14 +153,14 @@ class ConfocalLogic(GenericLogic):
             
         if self._zscan:
             #creates an array of evenly spaced numbers over the interval
-            #x1, x2 and with spacing xy_resolution
+            #x1, x2 and the spacing is equal to xy_resolution
             self._X = np.linspace(x1, x2, self.xy_resolution)
             #Checks if the z-start and z-end value are ok
             if z2 < z1:
                 print('z2 should be larger than z1')
                 return -1
             #creates an array of evenly spaced numbers over the interval
-            #z1, z2 and with spacing z_resolution    
+            #z1, z2 and the spacing is equal to z_resolution    
             self._Z = np.linspace(z1, z2, self.z_resolution)
         else:
             #Checks if the y-start and y-end value are ok
