@@ -141,10 +141,10 @@ class ConfocalLogic(GenericLogic):
         
         if self._zscan:
             self._image_vert_axis = self._Z
-            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X)))
+            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  #creats an image where each pixel will be [x,y,z,counts]
         else:
             self._image_vert_axis = self._Y
-            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X)))        
+            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  #creats an image where each pixel will be [x,y,z,counts]        
 
     def start_scanner(self):
         """setting up the scanner device
@@ -230,9 +230,15 @@ class ConfocalLogic(GenericLogic):
         return_line_counts = self._scanning_device.scan_line(return_line)
             
         if self._zscan:
-                self.xz_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
+                self.xz_image[self._scan_counter,:,0] = self._XL
+                self.xz_image[self._scan_counter,:,1] = YL
+                self.xz_image[self._scan_counter,:,2] = ZL
+                self.xz_image[self._scan_counter,:,3] = line_counts
         else:
-                self.xy_image[self._scan_counter,:] = line_counts #position mit abspeichern noch implementieren
+                self.xy_image[self._scan_counter,:,0] = self._XL
+                self.xy_image[self._scan_counter,:,1] = YL
+                self.xy_image[self._scan_counter,:,2] = ZL
+                self.xy_image[self._scan_counter,:,3] = line_counts
         print('image update')
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
