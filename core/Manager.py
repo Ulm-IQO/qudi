@@ -20,7 +20,7 @@ import re
 import time
 import atexit
 import weakref
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
 import pyqtgraph.configfile as configfile
 
@@ -324,7 +324,19 @@ class Manager(QtCore.QObject):
                             self.setBaseDir(cfg['global']['storageDir'])
                 
                         elif m == 'useOpenGL':
+                            # use accelerated drawing
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
+
+                        elif m == 'stylesheet':
+                            stylesheetpath = os.path.join(self.configDir, cfg['global']['stylesheet'])
+                            if not os.path.isfile(stylesheetpath):
+                                self.logger.print_logMsg("Stylesheet not found at {0}".format(stylesheetpath), importance=6, msgType='warning')
+                                continue
+                            stylesheetfile = open(stylesheetpath)
+                            stylesheet = stylesheetfile.read()
+                            stylesheetfile.close()
+                            QtGui.QApplication.instance().setStyleSheet(stylesheet)
+                                
                 
                 # Copy in any other configurations.
                 # dicts are extended, all others are overwritten.
