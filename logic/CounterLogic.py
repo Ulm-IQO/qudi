@@ -199,11 +199,11 @@ class CounterLogic(GenericLogic):
         # check for aborts of the thread in break if necessary 
         if self.stopRequested:
             with self.lock:
-                # switch the state variable off again
-                self.running = False
                 # close off the actual counter
                 self._counting_device.close_counter()
                 self._counting_device.close_clock()
+                # switch the state variable off again
+                self.running = False
                 self.stopRequested = False
                 return
         
