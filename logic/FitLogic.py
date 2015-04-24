@@ -46,11 +46,14 @@ class FitLogic(GenericLogic):
             self.twoD_testing()
             
         def make_fit(self,function=None,dimensions=None,data=None,initial_guess=None):
+            # check parameter before using them (isinstance)
+            # introduce details and only then return cov
             popt, pcov = opt.curve_fit(function,dimensions,data,initial_guess)
             return popt, pcov
         
         def twoD_gaussian_function(self,xdata_tuple,amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
             (x, y) = xdata_tuple
+            # not xo but rather x_zero
             xo = float(xo)
             yo = float(yo)    
             a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
@@ -64,6 +67,7 @@ class FitLogic(GenericLogic):
 #            TODO:Make clever estimator
             #get some initial values
             amplitude=data.max()-data.min()
+            # not xo but rather x_zero
             xo=len(dimension_x)/2.
             yo=len(dimenstion_y)/2.
             sigma_x=xo/3
@@ -74,12 +78,14 @@ class FitLogic(GenericLogic):
             
             
         def gaussian_function(self,xdata=None,amplitude=None, x0=None, sigma=None):
+            # offset
             gaussian=amplitude*np.exp(-(xdata-x0)**2/(2*sigma**2))
             return gaussian
         
         def gaussian_estimator(self,axis_x,data):
 #            TODO:Make clever estimator
             amplitude=data.max()
+            # consistent parameter names
             x0=len(axis_x)/2.
             sigma=x0/3
             return amplitude, x0, sigma
