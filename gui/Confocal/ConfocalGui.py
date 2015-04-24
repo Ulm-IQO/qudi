@@ -214,26 +214,23 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         
         # Set a Range for the sliders:
-        self._mw.x_SliderWidget.setRange(0,200)
-        self._mw.y_SliderWidget.setRange(0,200) 
-        self._mw.z_SliderWidget.setRange(0,200)
-
-
-        #self._mw.x_SliderWidget.setMaximum(self.)     
-
-
-
-
+        self._mw.x_SliderWidget.setRange(self._scanning_logic.x_range[0],self._scanning_logic.x_range[1])
         
-        
-#        self.xy_resolution.
-#        
-#        self.connect(self, SIGNAL("mysignal"), self.myValChanged)
-#        self._mw.xy_res_InputWidget.        
-#        
-#        self._scanning_logic.xy_resolution
+        self._mw.y_SliderWidget.setRange(self._scanning_logic.y_range[0],self._scanning_logic.y_range[1])
+        self._mw.z_SliderWidget.setRange(self._scanning_logic.z_range[0],self._scanning_logic.z_range[1])
 
-        
+        # Connect to maximal and minimal range:
+        self._mw.x_min_InputWidget.setText(str(self._scanning_logic.image_x_range[0]))
+        self._mw.x_max_InputWidget.setText(str(self._scanning_logic.image_x_range[1]))
+        self._mw.y_min_InputWidget.setText(str(self._scanning_logic.image_y_range[0]))
+        self._mw.y_max_InputWidget.setText(str(self._scanning_logic.image_y_range[1]))
+        self._mw.z_min_InputWidget.setText(str(self._scanning_logic.image_z_range[0]))
+        self._mw.z_max_InputWidget.setText(str(self._scanning_logic.image_z_range[1]))
+ 
+
+        # Define what happend if the slider change the value: then adjust that
+        # change for the region of interest.
+
         self._mw.x_SliderWidget.valueChanged.connect(self.roi_xy_change_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.roi_xy_change_y)
 
@@ -265,6 +262,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))   
         
         
+       
 
         # Connect the Slider with an update in the current values of x
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
@@ -277,20 +275,31 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.x_current_InputWidget.returnPressed.connect(self.update_x_slider)
         self._mw.x_current_InputWidget.returnPressed.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.returnPressed.connect(self.update_z_slider)
-        self._mw.xy_res_InputWidget.returnPressed.connect(self.update_x_slider)
-
+        
+        self._mw.xy_res_InputWidget.returnPressed.connect(self.update_xy_resolution)
+        self._mw.z_res_InputWidget.returnPressed.connect(self.update_z_resolution)
+        
+        self._mw.x_min_InputWidget.returnPressed.connect(self.change_x_image_range)
+        self._mw.x_max_InputWidget.returnPressed.connect(self.change_x_image_range)
+        self._mw.y_min_InputWidget.returnPressed.connect(self.change_y_image_range)
+        self._mw.y_max_InputWidget.returnPressed.connect(self.change_y_image_range)
+        self._mw.z_min_InputWidget.returnPressed.connect(self.change_z_image_range)
+        self._mw.z_max_InputWidget.returnPressed.connect(self.change_z_image_range)
+        
+        
 
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_z_slider)
 
+        self._mw.xy_res_InputWidget.editingFinished.connect(self.update_xy_resolution)
+        self._mw.z_res_InputWidget.editingFinished.connect(self.update_z_resolution)
         
-        
-
-
+        #print(self._scanning_logic.xy_image)
 
         print('Main Confocal Windows shown:')
         self._mw.show()
+        
 
 
     def roi_xy_change_x(self,x_pos):
@@ -329,7 +338,26 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def update_x_slider(self):
         self._mw.x_SliderWidget.setValue(float(self._mw.x_current_InputWidget.text()))
+        
     def update_y_slider(self):
         self._mw.y_SliderWidget.setValue(float(self._mw.y_current_InputWidget.text()))
+        
     def update_z_slider(self):
-        self._mw.z_SliderWidget.setValue(float(self._mw.z_current_InputWidget.text()))    
+        self._mw.z_SliderWidget.setValue(float(self._mw.z_current_InputWidget.text()))  
+        
+    def update_xy_resolution(self):
+        self._scanning_logic.set_position(float(self._mw.xy_res_InputWidget.text()))
+        print(self._mw.xy_res_InputWidget.text())
+        
+    def update_z_resolution(self):
+        self._scanning_logic.set_position(float(self._mw.z_res_InputWidget.text()))
+        print(self._mw.z_res_InputWidget.text())
+    
+    def change_x_image_range(self):
+        self._scanning_logic.image_x_range = [float(self._mw.x_min_InputWidget.text()), float(self._mw.x_max_InputWidget.text())]
+        
+    def change_y_image_range(self):
+        self._scanning_logic.image_y_range = [float(self._mw.y_min_InputWidget.text()), float(self._mw.y_max_InputWidget.text())]
+        
+    def change_z_image_range(self):
+        self._scanning_logic.image_z_range = [float(self._mw.z_min_InputWidget.text()), float(self._mw.z_max_InputWidget.text())]
