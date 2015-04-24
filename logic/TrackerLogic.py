@@ -10,9 +10,10 @@ class TrackerLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for NV tracking and refocus
     """
+    signal_scan_xy_line_next = QtCore.Signal()
+    signal_xy_image_updated = QtCore.Signal()
+    signal_z_image_updated = QtCore.Signal()
     
-    ## counter for scan_image    
-    _scan_counter = 0
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -25,6 +26,9 @@ class TrackerLogic(GenericLogic):
         self.connector['in']['confocalscanner1'] = OrderedDict()
         self.connector['in']['confocalscanner1']['class'] = 'ConfocalScannerInterface'
         self.connector['in']['confocalscanner1']['object'] = None
+        self.connector['in']['fitlogic'] = OrderedDict()
+        self.connector['in']['fitlogic']['class'] = 'FitLogic'
+        self.connector['in']['fitlogic']['object'] = None
         
         self.connector['out']['trackerlogic'] = OrderedDict()
         self.connector['out']['trackerlogic']['class'] = 'TrackerLogic'
@@ -41,13 +45,17 @@ class TrackerLogic(GenericLogic):
         self.refocus_XY_size
         self.refocus_XY_step
         self.refocus_Z_size
-        self.refocus_Z_step  
+        self.refocus_Z_step
+        
+        self.running = False
+        self.stopRequested = False
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
         print("Scanning device is", self._scanning_device)
+        self._fit_logic = self.connector['in']['fitlogic']['object']
         
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
@@ -55,23 +63,32 @@ class TrackerLogic(GenericLogic):
         
         self._trackpoint_x = 0.
         self._trackpoint_y = 0.   #woher?
-        self._trackpoint_z = 0. 
+        self._trackpoint_z = 0.
+        
+        self._scan_counter = 0
+        
+        self.signal_scan_xy_line_next.connect(self._scan_xy_line, QtCore.Qt.QueuedConnection)
         
     def start_refocus(self):
+        """Starts refocus        
+        """
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
-        
-        ## xy-scan durchführen
-        ## xy fitten  ---> self.refocus_x und self.refocus_y
-        self._scan_counter = 0
         self._initialize_z_refocus_image()
-        ## z-linien-scandurchführen
-        ## z fitten ---> self.refocus_z
+        self.start_scanner()
+        self.signal_scan_xy_line_next.emit()
         
-        ## self.refocus_x, y, z als trackpoint in eigener Klasse abspeichern
+        
+    def stop_refocus(self):
+        """Stops refocus        
+        """
+        with self.lock:
+            self.stopRequested = True
         
         
     def _initialize_xy_refocus_image(self):
+        """Initialisation of the xy refocus image
+        """
         self._scan_counter = 0
         
         x0 = self._trackpoint_x
@@ -92,6 +109,18 @@ class TrackerLogic(GenericLogic):
         
         
     def _scan_xy_line(self):
+        """Scanning one line of the xy refocus image
+        """
+        self.running = True        
+        
+        #stops scanning
+        if self.stopRequested:
+            with self.lock:
+                self.running = False
+                self.stopRequested = False
+                self.signal_xy_image_updated.emit()
+                return
+                
         X_line = self._X_values
         Y_line = self._Y_values[self._scan_counter] * np.ones(X_line.shape)
         Z_line = self._Z_values    #todo: tilt_correction
@@ -108,10 +137,30 @@ class TrackerLogic(GenericLogic):
         self.xy_refocus_image[self._scan_counter,:,2] = self._Z_values
         self.xy_refocus_image[self._scan_counter,:,3] = line_counts
         
+        self.signal_xy_image_updated.emit()
         self._scan_counter += 1
+        
+        if self._scan_counter < np.size(self._image_vert_axis):            
+            self.signal_scan_xy_line_next.emit()
+        else:
+            #TODO: xy fitten  ---> self.refocus_x und self.refocus_y
+            #vermutlich ungefähr so?
+            #fit_parameters = self._fit_logic.Fit(self.xy_refocus_image[:,:,3], twoD_gaussian_estimator, twoD_gaussian_function)
+            self._scan_z_line()
+            self.running = False
+            self.signal_z_image_updated.emit()
+            # TODO: z fitten  ---> self.refocus_z
+            # TODO: self.refocus x,y,z als neuen trackpoint setzen
+            #und dort hinfahren
+            self._scanning_device.scanner_set_position(x = self.refocus_x, 
+                                                       y = self.refocus_y, 
+                                                       z = self.refocus_z, 
+                                                       a = 0.)
         
     
     def _initialize_z_refocus_image(self):
+        """Initialisation of the z refocus image
+        """
         self._scan_counter = 0
         z0 = self._trackpoint_z  #falls tilt correction, dann hier aufpassen
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
@@ -124,7 +173,9 @@ class TrackerLogic(GenericLogic):
         
         
     def _scan_z_line(self):
-        Z_line = self._Z_values
+        """Scans the z line for refocus
+        """
+        Z_line = self._Z_values    #todo: tilt_correction
         X_line = self.refocus_x * np.ones(self._Z_values.shape)
         Y_line = self.refocus_y * np.ones(self._Z_values.shape)
         A_line = np.zeros(self._Z_values.shape)
@@ -133,5 +184,3 @@ class TrackerLogic(GenericLogic):
         line_counts = self._scanning_device.scan_line(line)
         
         self.z_refocus_line = line_counts
-        
-        self._scan_counter += 1
