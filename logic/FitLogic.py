@@ -42,10 +42,12 @@ class FitLogic(GenericLogic):
 #                            msgType='status')
                              
         def activation(self,e):
-            self.testing()
+            self.oneD_testing()
+            self.twoD_testing()
             
-        def make_fit(self):
-            pass
+        def make_fit(self,function=None,dimensions=None,data=None,initial_guess=None):
+            popt, pcov = opt.curve_fit(function,dimensions,data,initial_guess)
+            return popt, pcov
         
         def twoD_gaussian_function(self,xdata_tuple,amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
             (x, y) = xdata_tuple
@@ -58,74 +60,69 @@ class FitLogic(GenericLogic):
                                     + c*((y-yo)**2)))
             return g.ravel()
             
-        def twoD_gaussian_estimator():
-            pass
+        def twoD_gaussian_estimator(self,dimension_x=None,dimenstion_y=None,data=None):
+#            TODO:Make clever estimator
+            #get some initial values
+            amplitude=data.max()-data.min()
+            xo=len(dimension_x)/2.
+            yo=len(dimenstion_y)/2.
+            sigma_x=xo/3
+            sigma_y =yo/3
+            theta=0
+            offset=data.min()
+            return amplitude, xo, yo, sigma_x, sigma_y, theta, offset
             
-        def gaussian_function(xdata,amplitude, x0, sigma):
+            
+        def gaussian_function(self,xdata=None,amplitude=None, x0=None, sigma=None):
             gaussian=amplitude*np.exp(-(xdata-x0)**2/(2*sigma**2))
             return gaussian
         
-        def gaussian_estimator():
-            pass
+        def gaussian_estimator(self,axis_x,data):
+#            TODO:Make clever estimator
+            amplitude=data.max()
+            x0=len(axis_x)/2.
+            sigma=x0/3
+            return amplitude, x0, sigma
         
-        def testing(self):    
+        def oneD_testing(self):
+            self.x = np.linspace(0, 200, 201)
+            
+            self.xdata=self.gaussian_function(self.x,10,80,20)
+            
+            self.xdata_noisy=self.xdata+2*np.random.normal(size=self.xdata.shape)
+            
+            initial_guess_data=self.gaussian_estimator(self.x,self.xdata)
+            popt, pcov = self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=initial_guess_data)
+            
+            plt.figure()
+            plt.plot(self.x,self.gaussian_function(self.x, *popt))
+            plt.plot(self.xdata_noisy)
+            plt.show()
+            
+
+        
+        def twoD_testing(self):    
             # Create x and y indices
-            x = np.linspace(0, 200, 201)
-            y = np.linspace(0, 200, 201)
-            x, y = np.meshgrid(x, y)
+            self.x = np.linspace(0, 200, 201)
+            self.y = np.linspace(0, 200, 201)
+            self.x, self.y = np.meshgrid(self.x, self.y)
             
             #create data
-            data = self.twoD_gaussian_function((x, y), 3, 100, 100, 20, 40, 10, 10)
-            
-            # plot twoD_Gaussian data generated above
-            plt.figure()
-            plt.imshow(data.reshape(201, 201),origin='bottom')
-            plt.colorbar()
+            data = self.twoD_gaussian_function((self.x, self.y), 3, 100, 100, 20, 40, 10, 10)
             
             # add some noise to the data and try to fit the data generated beforehand
-            initial_guess = (3,100,100,20,40,0,10)
             
-            data_noisy = data + 0.2*np.random.normal(size=data.shape)
+            self.data_noisy = data + 0.2*np.random.normal(size=data.shape)
             
-            popt, pcov = opt.curve_fit(self.twoD_gaussian_function,(x, y), data_noisy,p0=initial_guess)
+            amplitude, xo, yo, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(self.x,self.y,self.data_noisy)
+            initial_guess_noisy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
             
-            data_fitted = self.twoD_gaussian_function((x, y), *popt)
+            popt, pcov = self.make_fit(function=self.twoD_gaussian_function,dimensions=(self.x, self.y), data=self.data_noisy,initial_guess=initial_guess_noisy)
+            
+            data_fitted = self.twoD_gaussian_function((self.x, self.y), *popt)
             
             fig, ax = plt.subplots(1, 1)
             ax.hold(True)
-            ax.imshow(data_noisy.reshape(201, 201), cmap=plt.cm.jet, origin='bottom',
-                extent=(x.min(), x.max(), y.min(), y.max()))
-            ax.contour(x, y, data_fitted.reshape(201, 201), 8, colors='w')
-
-        
-#    #testing 1D gaussian
-#         
-#        x = np.linspace(0, 200, 201)
-#        
-#        xdata=gaussian_function(x,10,80,20)
-#        
-#        xdata_noisy=xdata+2*np.random.normal(size=xdata.shape)
-#        
-#        plt.figure()
-#        plt.plot(xdata)
-#        plt.plot(xdata_noisy)
-#        plt.show()
-#        
-#        popt, pcov = opt.curve_fit(gaussian_function, x, xdata_noisy,p0=[10,80,20])
-#        
-#        plt.figure()
-#        plt.plot(x,gaussian_function(x, *popt))
-#        plt.plot(xdata_noisy)
-#        plt.show()
-#        
-#        #estimate mean and standard deviation
-#        mean = np.mean(x * xdata_noisy)
-#        sigma = sum(xdata * (x - mean)**2)
-#        print('mean, sigma',mean, sigma)
-#        #do the fit!
-#        popt, pcov = opt.curve_fit(gaussian_function, x, xdata_noisy, p0 = [10, mean, sigma])
-#        #plot the fit results
-#        plt.figure()
-#        plt.plot(x,gaussian_function(xdata, *popt))
-#        #confront with the given data
-#        plt.plot(x,xdata,'ok')
+            ax.imshow(self.data_noisy.reshape(201, 201), cmap=plt.cm.jet, origin='bottom',
+                extent=(self.x.min(), self.x.max(), self.y.min(), self.y.max()))
+            ax.contour(self.x, self.y, data_fitted.reshape(201, 201), 8, colors='w')
