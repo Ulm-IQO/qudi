@@ -440,6 +440,8 @@ class LogWidget(QtGui.QWidget):
             cursor = self.ui.output.document().find('Show traceback %s' % url[4:])
             try:
                 tb = self.entries[int(url[4:])-1]['tracebackHtml']
+            except KeyError:
+               print('Nope.jpg')
             except IndexError:
                 try:
                     tb = self.entries[self.entryArray[self.entryArray['entryId']==(int(url[4:]))]['index']]['tracebackHtml']

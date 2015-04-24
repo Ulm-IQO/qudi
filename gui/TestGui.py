@@ -25,9 +25,12 @@ class TestGui(Base):
         self._mw.setWindowTitle('TEST')
         self.cwdget = QtGui.QWidget()
         self.button = QtGui.QPushButton(self.buttonText)
+        self.buttonerror = QtGui.QPushButton('Giff Error!')
         self.button.clicked.connect(self.handleButton)
+        self.buttonerror.clicked.connect(self.handleButtonError)
         self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(self.button)
+        self.layout.addWidget(self.buttonerror)
         self.cwdget.setLayout(self.layout)
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
@@ -35,3 +38,6 @@ class TestGui(Base):
     def handleButton(self):
         self.button.setStyleSheet('QPushButton {background-color:'
                                 ' #A3C1DA; color: red;}')
+
+    def handleButtonError(self):
+        raise Exception('Сука Блять')

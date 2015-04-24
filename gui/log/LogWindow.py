@@ -42,7 +42,7 @@ class LogWindow(Base):
         self.mw.setCentralWidget(self.wid)
         self.mw.setGeometry(7,630,1000, 500)
         self.wid.ui.input.returnPressed.connect(self.textEntered)
-        self.errorDialog = ErrorDialog()
+        self.errorDialog = ErrorDialog(self)
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)
         self.mw.show()
 
@@ -82,9 +82,9 @@ class LogWindow(Base):
         self.errorDialog.disable(disable)
         
 class ErrorDialog(QtGui.QDialog):
-    def __init__(self):
+    def __init__(self, logWindow):
         QtGui.QDialog.__init__(self)
-        #self.setModal(False)
+        self.logWindow = logWindow
         self.setWindowFlags(QtCore.Qt.Window)
         #self.setWindowModality(QtCore.Qt.NonModal)
         self.setWindowTitle('QuDi Error')
@@ -199,7 +199,7 @@ class ErrorDialog(QtGui.QDialog):
         
     def logClicked(self):
         self.accept()
-        self.show()
+        self.logWindow.show()
         self.messages = []
         
     def nextMessage(self):
