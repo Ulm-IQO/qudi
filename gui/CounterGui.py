@@ -60,9 +60,11 @@ class CounterGui(Base):
                 
         # defining buttons
         self._start_stop_button = QtGui.QPushButton('Start')
-        self._start_stop_button.released.connect(self.start_clicked)
+        self._start_stop_button.setFixedWidth(50)
+        self._start_stop_button.clicked.connect(self.start_clicked)
         self._save_button = QtGui.QPushButton('Start Saving Data')
-        self._save_button.released.connect(self.save_clicked)
+        self._save_button.setFixedWidth(120)
+        self._save_button.clicked.connect(self.save_clicked)
         
         # defining the parameters to edit
         self._count_length_label = QtGui.QLabel('Count lenght (s):')
@@ -99,7 +101,7 @@ class CounterGui(Base):
         
         # creating the label for the current counts and right alignment
         self._counts_label = QtGui.QLabel('xxx')
-        self._counts_label.setFont(QtGui.QFont('Arial', 50, QtGui.QFont.Bold))
+        self._counts_label.setFont(QtGui.QFont('Arial', 60, QtGui.QFont.Bold))
         self._hbox_counter = QtGui.QHBoxLayout()
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._counts_label)
