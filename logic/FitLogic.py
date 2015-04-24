@@ -42,8 +42,9 @@ class FitLogic(GenericLogic):
 #                            msgType='status')
                              
         def activation(self,e):
-            self.oneD_testing()
-            self.twoD_testing()
+            pass
+#            self.oneD_testing()
+#            self.twoD_testing()
             
         def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
             """ Makes a fit of the desired function with the one and two dimensional data.
