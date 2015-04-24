@@ -177,6 +177,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_ViewWidget.addItem(self.xz_image)
         
         
+        
+        
         # create Region of Interest for xy image:
         self.roi_xy = CrossROI([len(arr01)/2, len(arr01)/2], [len(arr01)/20, len(arr01)/20], pen={'color': "00F", 'width': 1},removable=True )
         # self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
@@ -198,12 +200,17 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
         self._mw.xy_ViewWidget.addItem(self.vline_xy)
+        
+        # Some additional settings for the xy ViewWidget
+        self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
+        self._mw.xy_ViewWidget.disableAutoRange()
+        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1)
 
         # create Region of Interest for xz image:
         self.roi_xz = CrossROI([len(arr02)/2, len(arr02)/2], [len(arr02)/20, len(arr02)/20], pen={'color': "00F", 'width': 1},removable=True )
         # self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
 
-        # Add to the xy Image Widget
+        # Add to the xz Image Widget
         self._mw.xz_ViewWidget.addItem(self.roi_xz)
 
         self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
@@ -216,7 +223,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.sigRegionChanged.connect(self.slider_z_adjust)        
         
         self._mw.xz_ViewWidget.addItem(self.hline_xz)
-        self._mw.xz_ViewWidget.addItem(self.vline_xz)        
+        self._mw.xz_ViewWidget.addItem(self.vline_xz)
+
+        # Some additional settings for the xz ViewWidget
+        self._mw.xz_ViewWidget.setMouseEnabled(x=False,y=False)
+        self._mw.xz_ViewWidget.disableAutoRange()
+        self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)
+        
         
 
         
@@ -302,6 +315,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_res_InputWidget.editingFinished.connect(self.update_xy_resolution)
         self._mw.z_res_InputWidget.editingFinished.connect(self.update_z_resolution)
         
+        # Connect the RadioButtons
+        #self._mw.xy_scan_StateWidget
+        self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
+        self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
+        self._mw.xz_scan_StateWidget.toggled.connect(self.xz_scan_clicked)
+#        self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
+        
         #print(self._scanning_logic.xy_image)
 
         print('Main Confocal Windows shown:')
@@ -309,6 +329,26 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
 
 
+    def ready_clicked(self):
+        pass
+
+            
+    def xy_scan_clicked(self, enabled):
+        self._scanning_logic.stop_scanning()
+        if enabled:
+            self._scanning_logic.start_scanning()
+            
+    def xz_scan_clicked(self, enabled):
+        self._scanning_logic.stop_scanning()
+        if enabled:
+            self._scanning_logic.start_scanning(zscan = True)
+            
+#    def refocus_clicked(self, enabled):
+#        self._scanning_logic.stop_scanning()
+#        if enabled:
+            
+   
+   
     def roi_xy_change_x(self,x_pos):
         self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
         #self._scanning_logic.set_position(x=x_pos)
