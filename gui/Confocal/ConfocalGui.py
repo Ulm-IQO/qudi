@@ -218,6 +218,21 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.setRange(0,200) 
         self._mw.z_SliderWidget.setRange(0,200)
 
+
+        #self._mw.x_SliderWidget.setMaximum(self.)     
+
+
+
+
+        
+        
+#        self.xy_resolution.
+#        
+#        self.connect(self, SIGNAL("mysignal"), self.myValChanged)
+#        self._mw.xy_res_InputWidget.        
+#        
+#        self._scanning_logic.xy_resolution
+
         
         self._mw.x_SliderWidget.valueChanged.connect(self.roi_xy_change_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.roi_xy_change_y)
@@ -234,32 +249,65 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.x_current_InputWidget.setValidator(validator)
         self._mw.y_current_InputWidget.setValidator(validator)
         self._mw.z_current_InputWidget.setValidator(validator)
+        
+        self._mw.x_min_InputWidget.setValidator(validator)
+        self._mw.x_max_InputWidget.setValidator(validator)
+        self._mw.y_min_InputWidget.setValidator(validator)
+        self._mw.y_max_InputWidget.setValidator(validator)
+        self._mw.z_min_InputWidget.setValidator(validator)
+        self._mw.z_max_InputWidget.setValidator(validator)
+        
+        self._mw.xy_res_InputWidget.setValidator(validator)
+        self._mw.z_res_InputWidget.setValidator(validator)
 
+        #take the default values for resolutions from logic:
+        self._mw.xy_res_InputWidget.setText(str(self._scanning_logic.xy_resolution))     
+        self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))   
+        
+        
+
+        # Connect the Slider with an update in the current values of x
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
-        #self.x_current_InputWidget
+
+        # Connect the input of a current value of the position with the slider
+        # update:
+
+        self._mw.x_current_InputWidget.returnPressed.connect(self.update_x_slider)
+        self._mw.x_current_InputWidget.returnPressed.connect(self.update_y_slider)
+        self._mw.z_current_InputWidget.returnPressed.connect(self.update_z_slider)
+        self._mw.xy_res_InputWidget.returnPressed.connect(self.update_x_slider)
+
+
+        self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
+        self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
+        self._mw.z_current_InputWidget.editingFinished.connect(self.update_z_slider)
+
+        
+        
+
 
 
         print('Main Confocal Windows shown:')
         self._mw.show()
-        
-        #self._mw.x_SliderWidget.SliderChange.connect()
-        
-        #print(dir(self._mw.x_SliderWidget))
 
 
     def roi_xy_change_x(self,x_pos):
         self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
+        #self._scanning_logic.set_position(x=x_pos)
         
     def roi_xy_change_y(self,y_pos):
         self.roi_xy.setPos([self.roi_xy.pos()[0],y_pos])        
+        #self._scanning_logic.set_position(y=y_pos) 
         
     def roi_xz_change_x(self,x_pos):
         self.roi_xz.setPos([x_pos,self.roi_xz.pos()[1]])
+        #self._scanning_logic.set_position(x=x_pos) 
 
     def roi_xz_change_z(self,z_pos):
         self.roi_xz.setPos([self.roi_xz.pos()[0],z_pos])
+        #self._scanning_logic.set_position(z=z_pos)       
         
     def slider_x_adjust(self,roi):
         self._mw.x_SliderWidget.setValue(roi.pos()[0])
@@ -278,3 +326,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     
     def update_current_z(self,text):
         self._mw.z_current_InputWidget.setText(str(text))   
+        
+    def update_x_slider(self):
+        self._mw.x_SliderWidget.setValue(float(self._mw.x_current_InputWidget.text()))
+    def update_y_slider(self):
+        self._mw.y_SliderWidget.setValue(float(self._mw.y_current_InputWidget.text()))
+    def update_z_slider(self):
+        self._mw.z_SliderWidget.setValue(float(self._mw.z_current_InputWidget.text()))    
