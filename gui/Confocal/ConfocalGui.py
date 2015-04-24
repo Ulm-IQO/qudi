@@ -167,8 +167,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._mw.graphicsView_2.addItem(ilv2)
 
         self.xy_image = pg.ImageItem(arr)
+        self.xz_image = pg.ImageItem(arr)
         self._mw.xy_ViewWidget.addItem(self.xy_image)
-        self._mw.xz_ViewWidget.addItem(self.xy_image)
+        self._mw.xz_ViewWidget.addItem(self.xz_image)
         
         
         # create Region of Interest for xy image:
@@ -184,6 +185,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # connect the change of a region with the adjustment of the crosshair
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
+
+        self.roi_xy.sigRegionChanged.connect(self.slider_x_adjust)
+        self.roi_xy.sigRegionChanged.connect(self.slider_y_adjust)
 
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
@@ -201,6 +205,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
         self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
         
+        self.roi_xz.sigRegionChanged.connect(self.slider_x_adjust)
+        self.roi_xz.sigRegionChanged.connect(self.slider_z_adjust)        
+        
         self._mw.xz_ViewWidget.addItem(self.hline_xz)
         self._mw.xz_ViewWidget.addItem(self.vline_xz)        
         
@@ -210,28 +217,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.x_SliderWidget.setRange(0,200)
         self._mw.y_SliderWidget.setRange(0,200) 
         self._mw.z_SliderWidget.setRange(0,200)
-        
-        
-        
-        
-        # Connect a change in horizontal line  in xz scan to a adjustment of
-        # the region of interest window.
-        #self.hline_xz.sigPositionChanged.connect(self.update_line)
-        
-        
-
-        
-        
-        # Connect a change in the sliders with a change in the position of 
-        # the ROI window.
-        
-#        self._mw.x_SliderWidget.valueChanged.connect(self.vline_xz.setPos)
-#        self._mw.z_SliderWidget.valueChanged.connect(self.hline_xz.setPos)
-#        
-#        self._mw.x_SliderWidget.valueChanged.connect(self.vline_xy.setPos)
-#        self._mw.y_SliderWidget.valueChanged.connect(self.hline_xy.setPos)
-
-        
 
         
         self._mw.x_SliderWidget.valueChanged.connect(self.roi_xy_change_x)
@@ -241,6 +226,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_SliderWidget.valueChanged.connect(self.roi_xz_change_z)
 
         #self._mw.x_SliderWidget.valueChanged.connect(stwo.setValue)        
+        self._mw.x_current_InputWidget.setText(str(0.0))        
+        
+        validator = QtGui.QDoubleValidator()
+        self._mw.x_current_InputWidget.setValidator(validator)
+
+        self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
+        self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
+        self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
+        #self.x_current_InputWidget
 
 
         print('Main Confocal Windows shown:')
@@ -263,8 +257,20 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def roi_xz_change_z(self,z_pos):
         self.roi_xz.setPos([self.roi_xz.pos()[0],z_pos])
         
+    def slider_x_adjust(self,roi):
+        self._mw.x_SliderWidget.setValue(roi.pos()[0])
 
+    def slider_y_adjust(self,roi):
+        self._mw.y_SliderWidget.setValue(roi.pos()[1])
 
+    def slider_z_adjust(self,roi):
+        self._mw.z_SliderWidget.setValue(roi.pos()[1])
+        
+    def update_current_x(self,text):
+        self._mw.x_current_InputWidget.setText(str(text))
+        
+    def update_current_y(self,text):
+        self._mw.y_current_InputWidget.setText(str(text))        
     
-
-
+    def update_current_z(self,text):
+        self._mw.z_current_InputWidget.setText(str(text))   
