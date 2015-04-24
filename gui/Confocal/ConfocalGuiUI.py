@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalWindowTemplate.ui'
 #
-# Created: Fri Apr 24 11:38:31 2015
+# Created: Fri Apr 24 12:07:54 2015
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -49,22 +49,11 @@ class Ui_MainWindow(object):
         self.gridLayout_3.setObjectName(_fromUtf8("gridLayout_3"))
         self.horizontalLayout_6 = QtGui.QHBoxLayout()
         self.horizontalLayout_6.setObjectName(_fromUtf8("horizontalLayout_6"))
-        self.radioButton = QtGui.QRadioButton(self.centralwidget)
-        self.radioButton.setObjectName(_fromUtf8("radioButton"))
-        self.horizontalLayout_6.addWidget(self.radioButton)
-        self.radioButton_2 = QtGui.QRadioButton(self.centralwidget)
-        self.radioButton_2.setObjectName(_fromUtf8("radioButton_2"))
-        self.horizontalLayout_6.addWidget(self.radioButton_2)
-        self.radioButton_3 = QtGui.QRadioButton(self.centralwidget)
-        self.radioButton_3.setObjectName(_fromUtf8("radioButton_3"))
-        self.horizontalLayout_6.addWidget(self.radioButton_3)
-        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem)
         self.gridLayout_3.addLayout(self.horizontalLayout_6, 5, 0, 1, 1)
         self.horizontalLayout_7 = QtGui.QHBoxLayout()
         self.horizontalLayout_7.setObjectName(_fromUtf8("horizontalLayout_7"))
-        spacerItem1 = QtGui.QSpacerItem(56, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_7.addItem(spacerItem1)
+        spacerItem = QtGui.QSpacerItem(56, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem)
         self.label_4 = QtGui.QLabel(self.centralwidget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -80,13 +69,13 @@ class Ui_MainWindow(object):
         self.line.setFrameShadow(QtGui.QFrame.Sunken)
         self.line.setObjectName(_fromUtf8("line"))
         self.horizontalLayout_7.addWidget(self.line)
-        spacerItem2 = QtGui.QSpacerItem(30, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_7.addItem(spacerItem2)
+        spacerItem1 = QtGui.QSpacerItem(30, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem1)
         self.label_5 = QtGui.QLabel(self.centralwidget)
         self.label_5.setObjectName(_fromUtf8("label_5"))
         self.horizontalLayout_7.addWidget(self.label_5)
-        spacerItem3 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_7.addItem(spacerItem3)
+        spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem2)
         self.gridLayout_3.addLayout(self.horizontalLayout_7, 0, 0, 1, 1)
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
@@ -103,8 +92,8 @@ class Ui_MainWindow(object):
         self.label_2.setFont(font)
         self.label_2.setObjectName(_fromUtf8("label_2"))
         self.horizontalLayout_3.addWidget(self.label_2)
-        spacerItem4 = QtGui.QSpacerItem(56, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_3.addItem(spacerItem4)
+        spacerItem3 = QtGui.QSpacerItem(56, 20, QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_3.addItem(spacerItem3)
         self.line_3 = QtGui.QFrame(self.centralwidget)
         self.line_3.setFrameShape(QtGui.QFrame.VLine)
         self.line_3.setFrameShadow(QtGui.QFrame.Sunken)
@@ -246,8 +235,8 @@ class Ui_MainWindow(object):
         self.refocus_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.refocus_StateWidget.setObjectName(_fromUtf8("refocus_StateWidget"))
         self.horizontalLayout_61.addWidget(self.refocus_StateWidget)
-        spacerItem5 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout_61.addItem(spacerItem5)
+        spacerItem4 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.horizontalLayout_61.addItem(spacerItem4)
         self.gridLayout_3.addLayout(self.horizontalLayout_61, 4, 0, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout_3, 1, 1, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -270,9 +259,6 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
-        self.radioButton.setText(_translate("MainWindow", "Scan XY", None))
-        self.radioButton_2.setText(_translate("MainWindow", "Scan Z", None))
-        self.radioButton_3.setText(_translate("MainWindow", "Refocus", None))
         self.label_4.setText(_translate("MainWindow", "Resolution", None))
         self.label_5.setText(_translate("MainWindow", "Scan Range", None))
         self.label_2.setText(_translate("MainWindow", "Y-Axis :", None))
