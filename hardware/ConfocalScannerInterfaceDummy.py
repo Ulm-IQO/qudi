@@ -40,7 +40,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._scanner_counter_daq_task = None
         self._voltage_range = [-10., 10.]
         
-        self._position_range=[[-10., 10.], [-10., 10.], [-10., 10.], [-10., 10.]]
+        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         
         self._current_position = [0., 0., 0., 0.]
     
