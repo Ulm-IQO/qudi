@@ -120,16 +120,18 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # GUI element:
         self._mw = ConfocalMainWindow()
         
-        arr = np.ones((200, 200), dtype=float)
-        arr[45:55, 45:55] = 0
-        arr[25, :] = 5
-        arr[:, 25] = 5
-        arr[75, :] = 5
-        arr[:, 75] = 5
-        arr[50, :] = 10
-        arr[:, 50] = 10
-        arr += np.sin(np.linspace(0, 20, 200)).reshape(1, 200)
-        arr += np.random.normal(size=(200,200))
+#        arr = np.ones((200, 200), dtype=float)
+#        arr[45:55, 45:55] = 0
+#        arr[25, :] = 5
+#        arr[:, 25] = 5
+#        arr[75, :] = 5
+#        arr[:, 75] = 5
+#        arr[50, :] = 10
+#        arr[:, 50] = 10
+#        arr += np.sin(np.linspace(0, 20, 200)).reshape(1, 200)
+#        arr += np.random.normal(size=(200,200))        
+        
+
 #
 #        self.xy_image = pg.ImageItem(arr)
 #        self._mw.graphicsView.addItem(self.xy_image)
@@ -166,14 +168,18 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._mw.graphicsView_2.addItem(ilh2)
 #        self._mw.graphicsView_2.addItem(ilv2)
 
-        self.xy_image = pg.ImageItem(arr)
-        self.xz_image = pg.ImageItem(arr)
+        arr01 = self._scanning_logic.xy_image[:,:,3]
+        arr02 = self._scanning_logic.xz_image[:,:,3]
+        
+        self.xy_image = pg.ImageItem(arr01)
+        self.xz_image = pg.ImageItem(arr02)
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget.addItem(self.xz_image)
         
         
         # create Region of Interest for xy image:
-        self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xy = CrossROI([len(arr01)/2, len(arr01)/2], [len(arr01)/20, len(arr01)/20], pen={'color': "00F", 'width': 1},removable=True )
+        # self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
         
         # Add to the xy Image Widget
         self._mw.xy_ViewWidget.addItem(self.roi_xy)
@@ -194,7 +200,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_ViewWidget.addItem(self.vline_xy)
 
         # create Region of Interest for xz image:
-        self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xz = CrossROI([len(arr02)/2, len(arr02)/2], [len(arr02)/20, len(arr02)/20], pen={'color': "00F", 'width': 1},removable=True )
+        # self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
 
         # Add to the xy Image Widget
         self._mw.xz_ViewWidget.addItem(self.roi_xz)
