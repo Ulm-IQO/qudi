@@ -2,13 +2,6 @@
 
 
 
-
-
-####################
-# From Qt designer #
-####################
-
-
 # Form implementation generated from reading ui file 'ConfocalWindowTemplate.ui'
 #
 # Created: Thu Apr 23 09:28:53 2015
@@ -24,7 +17,7 @@ from collections import OrderedDict
 from core.Base import Base
 import numpy as np
 
-# To convert the ui file to a raw ConfocalGui_ui.py file use the python script
+# To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
@@ -33,28 +26,45 @@ import numpy as np
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalWindowTemplate.ui > ConfocalGui_ui.py
 #
-# to convert to ConfocalGui_ui.py.
-from gui.Confocal.ConfocalGui_ui import Ui_MainWindow
+# to convert to ConfocalGuiUI.py.
+from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 
 
 
 
 class CrossROI(pg.ROI):
-	def __init__(self, pos, size, **args):
-		pg.ROI.__init__(self, pos, size, **args)
-		center = [0.5, 0.5]    
-		self.addTranslateHandle(center)
+    """Create a Region of interest, which is a zoomable rectangular. """
+    
+    def __init__(self, pos, size, **args):
+        pg.ROI.__init__(self, pos, size, **args)
+        center = [0.5, 0.5]    
+        self.addTranslateHandle(center)
 
 
 class CrossLine(pg.InfiniteLine):
-	def __init__(self, **args):
-		pg.InfiniteLine.__init__(self, **args)
+    """ Construct one line for the Crosshair in th plot.
 
-	def adjust(self, extroi):
-		if self.angle == 0:
-			self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
-		if self.angle == 90:
-			self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
+      @param float pos: optional parameter to set the position
+      @param float angle: optional parameter to set the angle of the line
+      @param dict pen: Configure the pen.
+
+      For additional options consider the documentation of pyqtgraph.InfiniteLine
+
+    """
+    def __init__(self, **args):
+        pg.InfiniteLine.__init__(self, **args)
+
+    def adjust(self, extroi):
+        """
+        Run this function to adjust the position of the Crosshair-Line
+        """
+        if self.angle == 0:
+            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
+        if self.angle == 90:
+            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
+
+    def set_x(self,value):
+        self.setValue(value)
 
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
@@ -66,7 +76,7 @@ class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
 
 class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """
-    Confocal Class
+    Main Confocal Class for xy and xz scans
     """
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -94,12 +104,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        msgType='status')
-  
-        print ('\n in the Confocal GUI init\n')
-
-
-                      
+                        msgType='status')                      
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
@@ -161,66 +166,103 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._mw.graphicsView_2.addItem(ilh2)
 #        self._mw.graphicsView_2.addItem(ilv2)
 
+        self.xy_image = pg.ImageItem(arr)
+        self._mw.xy_ViewWidget.addItem(self.xy_image)
+        self._mw.xz_ViewWidget.addItem(self.xy_image)
         
+        
+        # create Region of Interest for xy image:
+        self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
+        
+        # Add to the xy Image Widget
+        self._mw.xy_ViewWidget.addItem(self.roi_xy)
+        
+        # create horizontal and vertical line in xy image
+        self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle= 0, pen={'color': "00F", 'width': 1} )
+        self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+
+        # connect the change of a region with the adjustment of the crosshair
+        self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
+        self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
+
+        # add the configured crosshair to the xy Widget
+        self._mw.xy_ViewWidget.addItem(self.hline_xy)
+        self._mw.xy_ViewWidget.addItem(self.vline_xy)
+
+        # create Region of Interest for xz image:
+        self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
+
+        # Add to the xy Image Widget
+        self._mw.xz_ViewWidget.addItem(self.roi_xz)
+
+        self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
+        self.vline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+
+        self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
+        self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
+        
+        self._mw.xz_ViewWidget.addItem(self.hline_xz)
+        self._mw.xz_ViewWidget.addItem(self.vline_xz)        
+        
+
+        
+        # Set a Range for the sliders:
+        self._mw.x_SliderWidget.setRange(0,200)
+        self._mw.y_SliderWidget.setRange(0,200) 
+        self._mw.z_SliderWidget.setRange(0,200)
+        
+        
+        
+        
+        # Connect a change in horizontal line  in xz scan to a adjustment of
+        # the region of interest window.
+        #self.hline_xz.sigPositionChanged.connect(self.update_line)
+        
+        
+
+        
+        
+        # Connect a change in the sliders with a change in the position of 
+        # the ROI window.
+        
+#        self._mw.x_SliderWidget.valueChanged.connect(self.vline_xz.setPos)
+#        self._mw.z_SliderWidget.valueChanged.connect(self.hline_xz.setPos)
+#        
+#        self._mw.x_SliderWidget.valueChanged.connect(self.vline_xy.setPos)
+#        self._mw.y_SliderWidget.valueChanged.connect(self.hline_xy.setPos)
+
+        
+
+        
+        self._mw.x_SliderWidget.valueChanged.connect(self.roi_xy_change_x)
+        self._mw.y_SliderWidget.valueChanged.connect(self.roi_xy_change_y)
+
+        self._mw.x_SliderWidget.valueChanged.connect(self.roi_xz_change_x)
+        self._mw.z_SliderWidget.valueChanged.connect(self.roi_xz_change_z)
+
+        #self._mw.x_SliderWidget.valueChanged.connect(stwo.setValue)        
+
+
         print('Main Confocal Windows shown:')
         self._mw.show()
         
+        #self._mw.x_SliderWidget.SliderChange.connect()
         
+        #print(dir(self._mw.x_SliderWidget))
+
+
+    def roi_xy_change_x(self,x_pos):
+        self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
         
-        ## Create image to display
-        self.array = np.ones((100, 100), dtype=float)
-        self.array[45:55, 45:55] = 0
-        self.array[25, :] = 5
-        self.array[:, 25] = 5
-        self.array[75, :] = 5
-        self.array[:, 75] = 5
-        self.array[50, :] = 10
-        self.array[:, 50] = 10
-        self.array += np.sin(np.linspace(0, 20, 100)).reshape(1, 100)
-        self.array += np.random.normal(size=(100,100))
+    def roi_xy_change_y(self,y_pos):
+        self.roi_xy.setPos([self.roi_xy.pos()[0],y_pos])        
         
+    def roi_xz_change_x(self,x_pos):
+        self.roi_xz.setPos([x_pos,self.roi_xz.pos()[1]])
 
-
-    def qimage2numpy(qimage, dtype = 'array'):
-    	"""Convert QImage to numpy.ndarray.  The dtype defaults to uint8
-    	for QImage.Format_Indexed8 or `bgra_dtype` (i.e. a record array)
-    	for 32bit color images.  You can pass a different dtype to use, or
-    	'array' to get a 3D uint8 array for color images."""
-    
-    	result_shape = (qimage.height(), qimage.width())
-    	temp_shape = (qimage.height(), qimage.bytesPerLine() * 8 / qimage.depth())
-    	if qimage.format() in (QtGui.QImage.Format_ARGB32_Premultiplied,
-    						   QtGui.QImage.Format_ARGB32,
-    						   QtGui.QImage.Format_RGB32):
-    		if dtype == 'rec':
-    			dtype = bgra_dtype
-    		elif dtype == 'array':
-    			dtype = np.uint8
-    			result_shape += (4, )
-    			temp_shape += (4, )
-    	elif qimage.format() == QtGui.QImage.Format_Indexed8:
-    		dtype = np.uint8
-    	else:
-    		raise ValueError("qimage2numpy only supports 32bit and 8bit images")
-    	# FIXME: raise error if alignment does not match
-    	buf = qimage.bits().tobytes()	#.asstring(qimage.numBytes())
-    	result = np.frombuffer(buf, dtype).reshape(temp_shape)
-    	if result_shape != temp_shape:
-    		result = result[:,:result_shape[1]]
-    	result = result[...,[2,1,0,3]]
-    	if qimage.format() == QtGui.QImage.Format_RGB32 and dtype == np.uint8:
-    		result = result[...,:3]
-    	return result
-
-
-
-
-
-
-
-
-
-
+    def roi_xz_change_z(self,z_pos):
+        self.roi_xz.setPos([self.roi_xz.pos()[0],z_pos])
+        
 
 
     
