@@ -45,11 +45,66 @@ class FitLogic(GenericLogic):
             self.oneD_testing()
             self.twoD_testing()
             
-        def make_fit(self,function=None,dimensions=None,data=None,initial_guess=None):
-            # check parameter before using them (isinstance)
-            # introduce details and only then return cov
-            popt, pcov = opt.curve_fit(function,dimensions,data,initial_guess)
-            return popt, pcov
+        def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
+            """ Makes a fit of the desired function with the one and two dimensional data.
+        
+            @param callable function: The model function, f(x, ...).
+                    It must take the independent variable as the first argument
+                    and the parameters to fit as separate remaining arguments.
+            @param M-length sequence or an (k,M)-shaped array axes: Here the 
+                    axis or the axes are input. In one-dimensional case, simple
+                    array of x_axis; in two-dimensional case tuple of x_axis 
+                    and y_axis
+            @param M-length sequence data: The dependent data — nominally 
+                    f(xdata, ...)
+            @param None, scalar, or N-length sequence initial_guess: initial 
+                    guess with as many parameters as needed for the function
+            @param int details: (optional) If set to None only the optimized 
+                    parameters will be returned. If set to True also the 
+                    estimated covariance is returned.
+        
+            @return int error: error code (0:OK, -1:error)
+            @return array popt: Optimal values for the parameters so that 
+                    the sum of the squared error of f(xdata, *popt) - ydata 
+                    is minimized
+            @return 2d array pcov: The estimated covariance of popt. The 
+                    diagonals provide the variance of the parameter estimate. 
+                    To compute one standard deviation errors on the parameters 
+                    use perr = np.sqrt(np.diag(pcov)).
+                    
+            """
+            # check if parameters make sense
+            error=0
+            popt=initial_guess
+            if initial_guess==None:
+                pcov=None
+            else:
+                pcov=np.zeros((len(initial_guess),len(initial_guess)))
+            
+            if not callable(function):
+                self.logMsg('Given "function" is no function.', \
+                            msgType='error')  
+                error =-1
+            if not isinstance( data, (frozenset, list, set, tuple, np.ndarray, ) ):
+                self.logMsg('Given range of data is no array type.', \
+                            msgType='error')
+                error= -1
+            if not isinstance( axes, (frozenset, list, set, tuple, np.ndarray, ) ):
+                self.logMsg('Given range of axes is no array type.', \
+                            msgType='error')
+                error= -1
+            if error==0:
+                try:
+                    popt, pcov = opt.curve_fit(function,axes,data,initial_guess)
+                except:
+                    self.logMsg('The fit did not work.', 
+                        msgType='status')
+                    error=-1
+                
+            if not details:
+                return error,popt
+            else:    
+                return error,popt, pcov
         
         def twoD_gaussian_function(self,xdata_tuple,amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
             (x, y) = xdata_tuple
@@ -98,7 +153,7 @@ class FitLogic(GenericLogic):
             self.xdata_noisy=self.xdata+2*np.random.normal(size=self.xdata.shape)
             
             initial_guess_data=self.gaussian_estimator(self.x,self.xdata)
-            popt, pcov = self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=initial_guess_data)
+            error,popt = self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=initial_guess_data)
             
             plt.figure()
             plt.plot(self.x,self.gaussian_function(self.x, *popt))
@@ -123,7 +178,7 @@ class FitLogic(GenericLogic):
             amplitude, xo, yo, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(self.x,self.y,self.data_noisy)
             initial_guess_noisy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
             
-            popt, pcov = self.make_fit(function=self.twoD_gaussian_function,dimensions=(self.x, self.y), data=self.data_noisy,initial_guess=initial_guess_noisy)
+            error,popt = self.make_fit(function=self.twoD_gaussian_function,axes=(self.x, self.y), data=self.data_noisy,initial_guess=initial_guess_noisy)
             
             data_fitted = self.twoD_gaussian_function((self.x, self.y), *popt)
             
