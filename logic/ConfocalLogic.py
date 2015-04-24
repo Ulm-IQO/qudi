@@ -94,10 +94,11 @@ class ConfocalLogic(GenericLogic):
         
     def testing(self):
         """ Debug method. """
-        self.start_scanner()
-        self.set_position(x = 1., y = 2., z = 3., a = 4.)
-        self.start_scanning()
-        self.kill_scanner()
+        pass
+#        self.start_scanner()
+#        self.set_position(x = 1., y = 2., z = 3., a = 4.)
+#        self.start_scanning()
+#        self.kill_scanner()
         
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -118,7 +119,7 @@ class ConfocalLogic(GenericLogic):
             return -1
         
     def start_scanning(self, zscan = False):
-         """Starts scanning
+        """Starts scanning
         
         @param bool zscan: zscan if true, xyscan if false
                

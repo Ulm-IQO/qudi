@@ -125,41 +125,41 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         arr[:, 50] = 10
         arr += np.sin(np.linspace(0, 20, 200)).reshape(1, 200)
         arr += np.random.normal(size=(200,200))
-
-        self.xy_image = pg.ImageItem(arr)
-        self._mw.graphicsView.addItem(self.xy_image)
-        
-        # create Region of Interest
-        
-        cr = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
-        
-        self._mw.graphicsView.addItem(cr)
-        
-        self._mw.graphicsView.enableMouse = False        
-        
-        ilh = CrossLine(pos=cr.pos()+cr.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
-        ilv = CrossLine(pos=cr.pos()+cr.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
-
-
-        cr.sigRegionChanged.connect(ilh.adjust)
-        cr.sigRegionChanged.connect(ilv.adjust)
-
-        self._mw.graphicsView.addItem(ilh)
-        self._mw.graphicsView.addItem(ilv)
-
-
-        cr2 = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
-
-        self._mw.graphicsView_2.addItem(cr2)
-
-        ilh2 = CrossLine(pos=cr2.pos()+cr.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
-        ilv2 = CrossLine(pos=cr2.pos()+cr.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
-
-        cr2.sigRegionChanged.connect(ilh2.adjust)
-        cr2.sigRegionChanged.connect(ilv2.adjust)
-
-        self._mw.graphicsView_2.addItem(ilh2)
-        self._mw.graphicsView_2.addItem(ilv2)
+#
+#        self.xy_image = pg.ImageItem(arr)
+#        self._mw.graphicsView.addItem(self.xy_image)
+#        
+#        # create Region of Interest
+#        
+#        cr = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
+#        
+#        self._mw.graphicsView.addItem(cr)
+#        
+#        self._mw.graphicsView.enableMouse = False        
+#        
+#        ilh = CrossLine(pos=cr.pos()+cr.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
+#        ilv = CrossLine(pos=cr.pos()+cr.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+#
+#
+#        cr.sigRegionChanged.connect(ilh.adjust)
+#        cr.sigRegionChanged.connect(ilv.adjust)
+#
+#        self._mw.graphicsView.addItem(ilh)
+#        self._mw.graphicsView.addItem(ilv)
+#
+#
+#        cr2 = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
+#
+#        self._mw.graphicsView_2.addItem(cr2)
+#
+#        ilh2 = CrossLine(pos=cr2.pos()+cr.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
+#        ilv2 = CrossLine(pos=cr2.pos()+cr.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+#
+#        cr2.sigRegionChanged.connect(ilh2.adjust)
+#        cr2.sigRegionChanged.connect(ilv2.adjust)
+#
+#        self._mw.graphicsView_2.addItem(ilh2)
+#        self._mw.graphicsView_2.addItem(ilv2)
 
         
         print('Main Confocal Windows shown:')
