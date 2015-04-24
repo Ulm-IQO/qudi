@@ -228,8 +228,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         #self._mw.x_SliderWidget.valueChanged.connect(stwo.setValue)        
         self._mw.x_current_InputWidget.setText(str(0.0))        
         
+        # Add to the QLineEdit Widget a Double Validator to ensure only a 
+        # float input.
         validator = QtGui.QDoubleValidator()
         self._mw.x_current_InputWidget.setValidator(validator)
+        self._mw.y_current_InputWidget.setValidator(validator)
+        self._mw.z_current_InputWidget.setValidator(validator)
 
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
