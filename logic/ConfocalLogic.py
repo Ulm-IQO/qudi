@@ -13,6 +13,7 @@ class ConfocalLogic(GenericLogic):
     """
     signal_scan_lines_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
+    signal_change_position = QtCore.Signal()
     
     # counter for scan_image    
     _scan_counter = 0
@@ -88,6 +89,7 @@ class ConfocalLogic(GenericLogic):
         self._scan_counter=0
         #??????????   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
+        self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         
         self.testing()
         
@@ -122,7 +124,8 @@ class ConfocalLogic(GenericLogic):
         """Starts scanning
         
         @param bool zscan: zscan if true, xyscan if false
-               
+        
+        @return int: error code (0:OK, -1:error)
         """
         self._scan_counter = 0
         self._zscan=zscan
@@ -130,15 +133,22 @@ class ConfocalLogic(GenericLogic):
         self.start_scanner()
         self.signal_scan_lines_next.emit()
         
+        return 0
+        
     def stop_scanning(self):
         """Stop the scan
         
+        @return int: error code (0:OK, -1:error)
         """
         with self.lock:
             self.stopRequested = True
+            
+        return 0
         
     def initialize_image(self):
-        """Initalization of the image           
+        """Initalization of the image.
+        
+        @return int: error code (0:OK, -1:error)
         """
         
         #x1: x-start-value, x2: x-end-value
@@ -189,24 +199,35 @@ class ConfocalLogic(GenericLogic):
         if self._zscan:
             self._image_vert_axis = self._Z
             #creats an image where each pixel will be [x,y,z,counts]
-            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))  
+            self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
         else:
             self._image_vert_axis = self._Y
             #creats an image where each pixel will be [x,y,z,counts]
-            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))          
+            self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
+            
+        return 0
 
     def start_scanner(self):
-        """setting up the scanner device
+        """Setting up the scanner device.
+        
+        @return int: error code (0:OK, -1:error)
         """
+        
         self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         self._scanning_device.set_up_scanner()
+        
+        return 0
     
     
     def kill_scanner(self):
-        """Closing the scanner device
+        """Closing the scanner device.
+        
+        @return int: error code (0:OK, -1:error)
         """
         self._scanning_device.close_scanner()
         self._scanning_device.close_scanner_clock()
+        
+        return 0
         
         
     def set_position(self, x = None, y = None, z = None, a = None):
@@ -229,15 +250,23 @@ class ConfocalLogic(GenericLogic):
             self._current_z = z
         
         #Checks if the scanner is still running
-        if not self.running:
-            self._scanning_device.scanner_set_position(x = self._current_x, 
-                                                       y = self._current_y, 
-                                                       z = self._current_z, 
-                                                       a = self._current_a)
-            return 0
-        else:
+        if self.running or self._scanning_device.getState() == 'locked':
             return -1
+        else:
+            self.signal_change_position.emit()
+            return 0
+            
+    def _change_position(self):
+        """ Threaded method to change the hardware position.
         
+        @return int: error code (0:OK, -1:error)
+        """
+        self._scanning_device.scanner_set_position(x = self._current_x, 
+                                                   y = self._current_y, 
+                                                   z = self._current_z, 
+                                                   a = self._current_a)
+                                                   
+        return 0
     
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
