@@ -20,12 +20,13 @@ class MagnetStageMicos(Base,MagnetStageInterface):
 
 #Questions:
 #	Are values put in the right way in config????
-#	change return values to sensible values???
+#	change return values to sensible values??? - not so important
 #	After moving files what has to be changed, where?
 
 #Christoph:
 # 	make on activate method which asks for values with get_pos()
 #	checks for sensible values???
+#	default parameters should be none
 #	introduce dead-times while waiting?
 # 	check if sensible value and check for float!!!! in interface
 #	put together everything to one step???
@@ -41,7 +42,7 @@ class MagnetStageMicos(Base,MagnetStageInterface):
 # 	change prints to log messages
 #	wait in calibrate or implement get_cal
 #	make subfolder with __init__ for subfolder check GUI
-#	
+#	change format string to new convention
 
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuation=config)
@@ -120,6 +121,7 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+#		command is wrong same as step_y
     	MICOSA.write('%f 0 0 r'%step)
         return 0
     
