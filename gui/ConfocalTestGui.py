@@ -53,7 +53,7 @@ class ConfocalTestGui(Base):
         
         # defining buttons
         self._start_stop_button = QtGui.QPushButton('Start Scan')
-        self._start_stop_button.released.connect(self.start_clicked)
+        self._start_stop_button.clicked.connect(self.start_clicked)
         
         # defining the parameters to edit
         self._x_label = QtGui.QLabel('x:')

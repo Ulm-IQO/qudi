@@ -59,7 +59,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         self.logMsg('slowcounterinterfacedummy>set_up_clock', 
                     msgType='warning')
                     
-        time.sleep(0.5)
+        time.sleep(0.1)
         
         return 0
     
@@ -77,7 +77,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         self.logMsg('slowcounterinterfacedummy>set_up_counter', 
                     msgType='warning')
                     
-        time.sleep(0.5)
+        time.sleep(0.1)
         
         return 0
         
@@ -103,7 +103,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         for i in range(samples):
             count_data[i] = random.uniform(0, 1e6)
             
-        time.sleep(1./self._clock_frequency)
+        time.sleep(1./self._clock_frequency*samples)
         
         return count_data
     
