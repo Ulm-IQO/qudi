@@ -18,24 +18,10 @@ class LogWidget(QtGui.QWidget):
     sigAddEntry = QtCore.Signal(object) ## for thread-safetyness
     sigScrollToAnchor = QtCore.Signal(object)  # for internal use.
 
-    Stylesheet = """
-        body {color: #000; font-family: sans;}
-        .entry {}
-        .error .message {color: #900}
-        .warning .message {color: #740}
-        .user .message {color: #009}
-        .status .message {color: #090}
-        .logExtra {margin-left: 40px;}
-        .traceback {color: #555; height: 0px;}
-        .timestamp {color: #FFF;}
-    """
     pageTemplate = """
         <html>
         <head>
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-            <style type="text/css">
-            %s    </style>
-    
             <script type="text/javascript">
                 function showDiv(id) {
                     div = document.getElementById(id);
@@ -46,9 +32,9 @@ class LogWidget(QtGui.QWidget):
         </head>
         <body>
         </body>
-        </html> """ % Stylesheet
+        </html> """
 
-    def __init__(self, parent):
+    def __init__(self, parent, logStyleSheet):
         """Creates the log widget.
 
         @param object parent: Qt parent object for log widet
@@ -74,8 +60,10 @@ class LogWidget(QtGui.QWidget):
             ('entryId', 'int32')
         ])
         self.entryArray = self.entryArrayBuffer[:0]
-        
+
+        self.stylesheet = logStyleSheet        
         self.filtersChanged()
+        self.ui.output.document().setDefaultStyleSheet(self.stylesheet)
         
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
@@ -83,6 +71,7 @@ class LogWidget(QtGui.QWidget):
         self.ui.filterTree.itemChanged.connect(self.setCheckStates)
         self.ui.importanceSlider.valueChanged.connect(self.filtersChanged)
         self.ui.output.anchorClicked.connect(self.linkClicked)
+        
         self.sigScrollToAnchor.connect(self.scrollToAnchor, QtCore.Qt.QueuedConnection)
         
         
@@ -217,7 +206,7 @@ class LogWidget(QtGui.QWidget):
         #    d = d.reshape(i*j).view('|S%d' % j)
         #    mask *= (d == self.dirFilter)
         self.ui.output.clear()
-        self.ui.output.document().setDefaultStyleSheet(self.Stylesheet)
+        self.ui.output.document().setDefaultStyleSheet(self.stylesheet)
         indices = list(self.entryArray[mask]['index'])
         self.displayEntry([self.entries[i] for i in indices])
                           

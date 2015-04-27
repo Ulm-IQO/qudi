@@ -1,0 +1,11 @@
+body {color: #FFF; font-family: sans;}
+.entry {}
+.error .message {color: #F11}
+.warning .message {color: #F90}
+.user .message {color: #F1F}
+.thread .message {color: #11F}
+.status .message {color: #1F1}
+.logExtra {margin-left: 40px;}
+.traceback {color: #999; height: 0px;}
+.timestamp {color: #FFF;}
+
