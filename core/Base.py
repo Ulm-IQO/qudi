@@ -81,17 +81,17 @@ class Base(QtCore.QObject, Fysom):
         self._configuration = configuration
 
     def activate(self):
-        self.logMsg("Please implement this function.", msgType='status')
+        self.logMsg("Please implement this function.", msgType='warning')
 
     def deactivate(self):
-        self.logMsg("Please implement this function.", msgType='status')
+        self.logMsg("Please implement this function.", msgType='warning')
 
     def getStatusVariableList(self):
-        self.logMsg("Please implement this function.", msgType='status')
+        self.logMsg("Please implement this function.", msgType='warning')
         return list()
 
     def getStatusVariables(self):
-        self.logMsg("Please implement this function.", msgType='status')
+        self.logMsg("Please implement this function.", msgType='warning')
         return dict()
 
     # Do not replace these in subclasses
@@ -99,8 +99,11 @@ class Base(QtCore.QObject, Fysom):
     def getState(self):
         return self.current
 
-    def getConfguration(self):
+    def getConfiguration(self):
         return self._configuration
+
+    def getConfigDirectory(self):
+        return self._manager.configDir
 
     def logMsg(self, message, **kwargs):
         """Creates a status message method for all child classes.
