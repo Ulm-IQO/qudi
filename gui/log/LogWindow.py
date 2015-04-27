@@ -25,12 +25,23 @@ class LogWindow(Base):
     """
     
     def __init__(self, manager, name, config):
+        """Create LogWindow Instance
+
+          @param object manager: te manager instance thet this Log window belongs to
+          @param str name: the unique name of this module
+          @param dict config: configuration of this module in a dictionary
+
+        """
         callback = {'onactivate': self.initUI}
         Base.__init__(self, manager, name, config, callback)
         self.buttons = [] ## weak references to all Log Buttons get added to this list, so it's easy to make them all do things, like flash red.
         self.lock = Mutex()
         
     def initUI(self, e=None):
+        """Create the actual log window. Called only by state machine
+
+        @param object e: state change object from fysom stae machine
+        """
         self.mw = QtGui.QMainWindow()
         self.mw.setWindowTitle("Log")
         path = os.path.dirname(__file__)
@@ -46,42 +57,63 @@ class LogWindow(Base):
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)
         self.mw.show()
 
-    def addMessage(self, entry):  ## called indirectly when logMsg is called from a non-gui thread
+    def addMessage(self, entry):
+        """ Add message to log window.
+          
+          @param dict entry: the log entry to be added in dict format
+
+          This function is called usually as a Qt slot from the Logger instance
+          that is receiving and saving the log messages.
+        """
         self.wid.addEntry(entry) ## takes care of displaying the entry if it passes the current filters on the logWidget
         if entry['msgType'] == 'error':
             if self.errorDialog.show(entry) is False:
                 self.flashButtons()
         
     def textEntered(self):
+        """Add string from entry field on LogWidget to log and clear the entry field.
+          This is usually called as a Qt slot when text is entered in the log
+          widget user text entry field.
+        """
         msg = str(self.wid.ui.input.text())
-        if msg == '!!':
-            self.makeError1()
-        elif msg == '##':
-            self.makeErrorLogExc()
         currentDir = None
         self.logMsg(msg, importance=8, msgType='user', currentDir=currentDir)
         self.wid.ui.input.clear()
 
     def flashButtons(self):
+        """Flash buttons on error.
+        """
         for b in self.buttons:
             if b() is not None:
                 b().failure(tip='An error occurred. Please see the log.', limitedTime = False)
     
     def resetButtons(self):
+        """Stop flashing buttons.
+        """
         for b in self.buttons:
             if b() is not None:
                 b().reset()
     
     def show(self):
+        """Make log window visible and put it above all other windows.
+        """
         QtGui.QMainWindow.show(self.mw)
         self.mw.activateWindow()
         self.mw.raise_()
         self.resetButtons()
     
     def disablePopups(self, disable):
+        """ Do/ do not show popupas on error.
+
+          @param bool disable: True disables popups, false enable popups.
+        """
         self.errorDialog.disable(disable)
         
 class ErrorDialog(QtGui.QDialog):
+    """This class provides a popup window for notification with the option to
+      show the next error popup in the queue and to show the log window where
+      you can see the traceback for an exception.
+    """
     def __init__(self, logWindow):
         QtGui.QDialog.__init__(self)
         self.logWindow = logWindow

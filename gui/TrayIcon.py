@@ -17,26 +17,28 @@ class TrayIcon(Base):
     def initUI(self, e=None):
         self._tray = SystemTrayIcon()
         self._tray.show()
+        self._tray.
 
 class RightClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
         QtGui.QMenu.__init__(self, "quit", parent)
         self.icon = QtGui.QIcon.fromTheme("quit")
-        self.addAction(QtGui.QAction(self.icon, "&Quit", self))
 
 class LeftClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
         QtGui.QMenu.__init__(self, "Edit", parent)
-        self.icon = QtGui.QIcon.fromTheme("document-new")
-        self.addAction(QtGui.QAction(self.icon, "&New", self))
 
 class SystemTrayIcon(QtGui.QSystemTrayIcon):
     def __init__(self, parent=None):
         QtGui.QSystemTrayIcon.__init__(self, parent)
         self.logo=QtGui.QIcon('artwork/qudi_trayicon.png')
         self.setIcon(self.logo)
-        self.right_menu = RightClickMenu()
-        self.left_menu = LeftClickMenu()
+        self.right_menu = QtGui.QMenu('Quit')
+        self.left_menu = QtGui.QMenu('Manager')
+        self.managericon = QtGui.QIcon.fromTheme("document-new")
+        self.exiticon = QtGui.QIcon.fromTheme("exit")
+        self.left_menu.addAction(QtGui.QAction(self.managericon, "&Manager", self.left_menu))
+        self.right_menu.addAction(QtGui.QAction(self.icon, "&Quit", self))
         self.setContextMenu(self.right_menu)
         self.activated.connect(self.click_trap)
 
