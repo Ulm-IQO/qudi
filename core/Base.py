@@ -19,6 +19,7 @@ Base class for all loadable modules
 from pyqtgraph.Qt import QtCore
 from fysom import Fysom # provides a final state machine
 from collections import OrderedDict
+import os
 
 class Base(QtCore.QObject, Fysom):
     sigStateChanged = QtCore.Signal(str, object)  #(module name, state change)
@@ -111,3 +112,15 @@ class Base(QtCore.QObject, Fysom):
     @staticmethod
     def identify():
         return {moduleclass: _class, moduletype: _modtype}
+        
+    def get_main_dir(self):
+        """Returns the absolut path to the directory of the main software.
+        
+             @return string: path to the main tree of the software
+        
+        """ 
+        mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
+        self.logMsg('Filepath of the main tree was called',importance=0)
+        
+        return mainpath
+ #            print("PAth of Managerfile: ", os.path.abspath(__file__)) 

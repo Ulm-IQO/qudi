@@ -9,6 +9,9 @@ print('Loading QuDi...')
 if __package__ is None:
     import core
     __package__ = 'core'
+else:
+    import core
+    
 from pyqtgraph.Qt import QtGui, QtCore
 
 from .Manager import Manager
@@ -16,7 +19,6 @@ import numpy as np
 import pyqtgraph as pg
 import sys
 
-import core
 
 class AppWatchdog(QtCore.QObject):
     """This class periodically runs a function for debugging and handles
