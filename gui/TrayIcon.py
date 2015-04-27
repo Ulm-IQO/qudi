@@ -17,7 +17,8 @@ class TrayIcon(Base):
     def initUI(self, e=None):
         self._tray = SystemTrayIcon()
         self._tray.show()
-        #self._tray.
+        self._tray.quitAction.triggered.connect(self._manager.quit)
+        self._tray.managerAction.triggered.connect(self._manager.show)
 
 class RightClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
@@ -33,14 +34,16 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
         QtGui.QSystemTrayIcon.__init__(self, parent)
         self.logo=QtGui.QIcon('artwork/qudi_trayicon.png')
         self.setIcon(self.logo)
-        #self.right_menu = QtGui.QMenu('Quit')
-        #self.left_menu = QtGui.QMenu('Manager')
-        #self.managericon = QtGui.QIcon.fromTheme("document-new")
-        #self.exiticon = QtGui.QIcon.fromTheme("exit")
-        #self.left_menu.addAction(QtGui.QAction(self.managericon, "&Manager", self.left_menu))
-        #self.right_menu.addAction(QtGui.QAction(self.icon, "&Quit", self))
-        #self.setContextMenu(self.right_menu)
-        #self.activated.connect(self.click_trap)
+        self.right_menu = QtGui.QMenu('Quit')
+        self.left_menu = QtGui.QMenu('Manager')
+        self.managericon = QtGui.QIcon.fromTheme("go-home")
+        self.exiticon = QtGui.QIcon.fromTheme("application-exit")
+        self.quitAction = QtGui.QAction(self.exiticon, "&Quit", self.right_menu)
+        self.managerAction = QtGui.QAction(self.managericon, "&Manager", self.left_menu)
+        self.left_menu.addAction(self.managerAction)
+        self.right_menu.addAction(self.quitAction)
+        self.setContextMenu(self.right_menu)
+        self.activated.connect(self.click_trap)
 
     def click_trap(self, value):
         if value == self.Trigger:
