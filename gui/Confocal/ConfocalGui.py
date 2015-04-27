@@ -155,7 +155,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Load the image in the display:
         self.xy_image = pg.ImageItem(arr01)
+        self.xy_image.setRect(QtCore.QRectF(0, 0, 100, 100))
         self.xz_image = pg.ImageItem(arr02)
+        self.xz_image.setRect(QtCore.QRectF(0, 0, 100, 100))
+
+
+        
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -329,7 +334,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def xy_scan_clicked(self, enabled):
         self._scanning_logic.stop_scanning()
         if enabled:
-            self._scanning_logic.stop_scanning()
             self._scanning_logic.start_scanning()
             
     def xz_scan_clicked(self, enabled):
