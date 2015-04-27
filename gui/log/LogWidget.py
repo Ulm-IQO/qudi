@@ -441,7 +441,7 @@ class LogWidget(QtGui.QWidget):
             try:
                 tb = self.entries[int(url[4:])-1]['tracebackHtml']
             except KeyError:
-               print('Nope.jpg')
+                tb = 'Can\'t get the backtrace as there is no tracebackHtml key in the entry dict. Something is royally fucked here.'
             except IndexError:
                 try:
                     tb = self.entries[self.entryArray[self.entryArray['entryId']==(int(url[4:]))]['index']]['tracebackHtml']
