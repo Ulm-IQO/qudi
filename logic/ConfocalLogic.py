@@ -134,6 +134,7 @@ class ConfocalLogic(GenericLogic):
         """
         self._scan_counter = 0
         self._zscan=zscan
+        self.stopRequested = False
         self.initialize_image()
         self.start_scanner()
         self.signal_scan_lines_next.emit()
