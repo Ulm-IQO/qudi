@@ -80,29 +80,51 @@ class Base(QtCore.QObject, Fysom):
         self._name = name
         self._configuration = configuration
 
-    def activate(self):
-        self.logMsg("Please implement this function.", msgType='warning')
-
-    def deactivate(self):
-        self.logMsg("Please implement this function.", msgType='warning')
-
     def getStatusVariableList(self):
+        """Return a list of variable names for variables that can be saved and restored.
+
+          @return list(str): variable names for saving
+
+          Please implement this function when subclassing.
+        """
         self.logMsg("Please implement this function.", msgType='warning')
         return list()
 
     def getStatusVariables(self):
+        """ Return a dict of variable names and their content.
+
+          @return dict: variable names and contents.
+
+          Please implement this function when subclassing.
+        """
         self.logMsg("Please implement this function.", msgType='warning')
         return dict()
 
     # Do not replace these in subclasses
 
     def getState(self):
+        """Return the state of the state machine implemented in this class.
+
+          @return str: state of state machine
+
+          Valid return values are: 'deactivated', 'idle', 'running', 'locked', 'blocked'
+        """
         return self.current
 
     def getConfiguration(self):
+        """ Return the configration dictionary for this module.
+
+          @return dict: confiuration dictionary
+
+        """
         return self._configuration
 
     def getConfigDirectory(self):
+        """ Return the configuration directory for the manager this module belongs to.
+
+          @return str: path of configuation directory
+
+        """
         return self._manager.configDir
 
     def logMsg(self, message, **kwargs):
@@ -114,6 +136,10 @@ class Base(QtCore.QObject, Fysom):
     
     @staticmethod
     def identify():
+        """ Return module id.
+
+          @return dict: id dictionary with modclass and modtype keys.
+        """
         return {moduleclass: _class, moduletype: _modtype}
         
     def get_main_dir(self):
