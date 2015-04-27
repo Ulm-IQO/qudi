@@ -24,7 +24,7 @@
     <item row="0" column="0" colspan="2">
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
-       <widget class="xy_scan" name="xy_ViewWidget"/>
+       <widget class="PlotWidget" name="xy_ViewWidget"/>
       </item>
       <item row="0" column="1">
        <widget class="QTabWidget" name="tabWidget">
@@ -39,7 +39,7 @@
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
             <item row="0" column="0">
-             <widget class="xz_scan" name="xz_ViewWidget"/>
+             <widget class="PlotWidget" name="xz_ViewWidget"/>
             </item>
            </layout>
           </item>
@@ -151,7 +151,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QSlider" name="horizontalSlider_3">
+         <widget class="QSlider" name="z_SliderWidget">
           <property name="minimumSize">
            <size>
             <width>150</width>
@@ -164,7 +164,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="y_current_InputWidget_2">
+         <widget class="QLineEdit" name="z_current_InputWidget">
           <property name="maximumSize">
            <size>
             <width>50</width>
@@ -399,7 +399,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QSlider" name="horizontalSlider_2">
+         <widget class="QSlider" name="y_SliderWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -528,7 +528,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QSlider" name="horizontalSlider">
+         <widget class="QSlider" name="x_SliderWidget">
           <property name="minimumSize">
            <size>
             <width>150</width>
@@ -606,14 +606,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>xy_scan</class>
+   <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
-  <customwidget>
-   <class>xz_scan</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header>pyqtgraph.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

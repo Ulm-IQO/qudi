@@ -269,8 +269,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
 
-        # Connect the input of a current value of the position with the slider
-        # update:
+        # Update the inputed/displayed numbers if return key is hit:
 
         self._mw.x_current_InputWidget.returnPressed.connect(self.update_x_slider)
         self._mw.x_current_InputWidget.returnPressed.connect(self.update_y_slider)
@@ -286,7 +285,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_min_InputWidget.returnPressed.connect(self.change_z_image_range)
         self._mw.z_max_InputWidget.returnPressed.connect(self.change_z_image_range)
         
-        
+        # Declare for which fields changes are applied if the cursor is leaving
+        # the field:
 
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
@@ -295,8 +295,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_res_InputWidget.editingFinished.connect(self.update_xy_resolution)
         self._mw.z_res_InputWidget.editingFinished.connect(self.update_z_resolution)
         
-        # Connect the RadioButtons
-        #self._mw.xy_scan_StateWidget
+        self._mw.x_min_InputWidget.editingFinished.connect(self.change_x_image_range)
+        self._mw.x_max_InputWidget.editingFinished.connect(self.change_x_image_range)
+        self._mw.y_min_InputWidget.editingFinished.connect(self.change_y_image_range)
+        self._mw.y_max_InputWidget.editingFinished.connect(self.change_y_image_range)
+        self._mw.z_min_InputWidget.editingFinished.connect(self.change_z_image_range)
+        self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range)        
+        
+        
+        # Connect the RadioButtons and connect to the event if they are touched:
         
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
@@ -313,10 +320,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xy.setPos([ini_pos_x_crosshair+0.001, ini_pos_y_crosshair+0.001]) 
         # Now that the ROI is connected to events, set again to initial pos:        
         self.roi_xz.setPos([ini_pos_x_crosshair+0.001, ini_pos_y_crosshair+0.001])          
-        
-        
-#        self._mw.xy_scan_StateWidget.click()
-#        self._scanning_logic.start_scanning()
 
 
     def ready_clicked(self):
