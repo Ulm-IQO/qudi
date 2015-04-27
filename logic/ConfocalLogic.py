@@ -146,7 +146,8 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.lock:
-            self.stopRequested = True
+            if self.running:
+                self.stopRequested = True
             
         return 0
         
@@ -205,7 +206,7 @@ class ConfocalLogic(GenericLogic):
             self._image_vert_axis = self._Z
             #creats an image where each pixel will be [x,y,z,counts]
             self.xz_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
-            self.xz_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self.XL)
+            self.xz_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
             self.xz_image[:,:,1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
             z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
             self.xz_image[:,:,2] = z_value_matrix.transpose()
@@ -213,10 +214,10 @@ class ConfocalLogic(GenericLogic):
             self._image_vert_axis = self._Y
             #creats an image where each pixel will be [x,y,z,counts]
             self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
-            self.xz_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self.XL)
+            self.xy_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
-            self.xz_image[:,:,1] = y_value_matrix.transpose()
-            self.xz_image[:,:,2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
+            self.xy_image[:,:,1] = y_value_matrix.transpose()
+            self.xy_image[:,:,2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
             
         return 0
 
@@ -326,7 +327,6 @@ class ConfocalLogic(GenericLogic):
                 self.xz_image[self._scan_counter,:,3] = line_counts
         else:
                 self.xy_image[self._scan_counter,:,3] = line_counts
-        print('image update')
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         # call this again from event loop
@@ -338,4 +338,4 @@ class ConfocalLogic(GenericLogic):
         else:
             self.running = False
             self.signal_image_updated.emit()
-            self.set_position()            
+            self.set_position()
