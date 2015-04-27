@@ -38,6 +38,7 @@ class LogWidget(QtGui.QWidget):
         """Creates the log widget.
 
         @param object parent: Qt parent object for log widet
+        @param str logStyleSheet: stylesheet for log view
 
         """
         QtGui.QWidget.__init__(self, parent)
@@ -115,7 +116,9 @@ class LogWidget(QtGui.QWidget):
         self.filterEntries() ## puts all entries through current filters and displays the ones that pass
         
     def addEntry(self, entry):
-        """Add a log entry to the list.
+        """Add a log entry to the log view.
+          
+          @param dict entry: log entry in dict format
         """
         ## All incoming messages begin here
         ## for thread-safetyness:
@@ -156,6 +159,11 @@ class LogWidget(QtGui.QWidget):
         self.checkDisplay(entry) ## displays the entry if it passes the current filters
 
     def setCheckStates(self, item, column):
+        """ Set state of the checkbox in the filter list and update log view.
+
+          @param int item: Item number
+          @param int column: Column number
+        """
         if item == self.ui.filterTree.topLevelItem(1):
             if item.checkState(0):
                 for i in range(item.childCount()):
@@ -166,6 +174,8 @@ class LogWidget(QtGui.QWidget):
         self.filtersChanged()
         
     def filtersChanged(self):
+        """ This function is called to update the filter list when the log filters have been changed.
+        """
         ### Update self.typeFilters, self.importanceFilter, and self.dirFilter to reflect changes.
         tree = self.ui.filterTree
         
@@ -192,7 +202,8 @@ class LogWidget(QtGui.QWidget):
     
         
     def filterEntries(self):
-        """Runs each entry in self.entries through the filters and displays if it makes it through."""
+        """Clears the log view and runs each entry in self.entries through the filters and displays if it makes it through.
+        """
         ### make self.entries a record array, then filtering will be much faster (to OR true/false arrays, + them)
         typeMask = self.entryArray['msgType'] == b''
         for t in self.typeFilters:
@@ -211,6 +222,10 @@ class LogWidget(QtGui.QWidget):
         self.displayEntry([self.entries[i] for i in indices])
                           
     def checkDisplay(self, entry):
+        """ Check if a log entry should be displayed and display it if this is the case.
+
+          @param dict entry: log entry in dictionary form
+        """
         ### checks whether entry passes the current filters and displays it if it does.
         if entry['msgType'] not in self.typeFilters:
             return
@@ -224,6 +239,10 @@ class LogWidget(QtGui.QWidget):
     
         
     def displayEntry(self, entries):
+        """ Display a list of entries in the log view.
+
+          @param list(dict) entries: list of entries in dictionry form to be added to the log view
+        """
         ## entries should be a list of log entries
         
         ## for thread-safetyness:
@@ -251,9 +270,19 @@ class LogWidget(QtGui.QWidget):
                 self.sigScrollToAnchor.emit(str(entry['id']))  ## queued connection
             
     def scrollToAnchor(self, anchor):
+        """ Scroll the log view so the specified element is visible.
+        
+          @param object anchor: element that should be visible
+        """
         self.ui.output.scrollToAnchor(anchor)
                 
     def generateEntryHtml(self, entry):
+        """ Build a HTML string from a log message dictionary.
+
+          @param dict entry: log entry in dictionary form
+
+          @return str: HTML string containing the formatted log message from the dictionary
+        """
         msg = self.cleanText(entry['message'])
         
         reasons = ""
@@ -292,6 +321,14 @@ class LogWidget(QtGui.QWidget):
         
     @staticmethod
     def cleanText(text):
+    """ Escape special characters for HTML.
+
+      @param str text: string with special characters to be escaped
+
+      @return str: string where special characters have been replaced by theit HTML sequences
+
+      FIXME: there is probably a pre-defined metod for this, use it!
+    """
         text = re.sub(r'&', '&amp;', text)
         text = re.sub(r'>','&gt;', text)
         text = re.sub(r'<', '&lt;', text)
@@ -299,12 +336,19 @@ class LogWidget(QtGui.QWidget):
         return text
     
     def formatExceptionForHTML(self, entry, exception=None, count=1, entryId=None):
-        ### Here, exception is a dict that holds the message, reasons, docs, traceback and oldExceptions (which are also dicts, with the same entries)
-        ## the count and tracebacks keywords are for calling recursively
+        """ Format exception with backtrsce in HTML.
+          @param dict entrs: log entry in dictionary form
+          @param Exception exception: Python exception object
+          @param int count: recursion counter for recursive backtrace parsing
+          @param int entryId: ID number of the log entry that this exception belongs to
+
+          @return (str, str, str): HTML formatted exception and backtrace
+
+          Here, exception is a dict that holds the message, reasons, docs, traceback and oldExceptions (which are also dicts, with the same entries)
+          the count and tracebacks keywords are for calling recursively
+        """
         if exception is None:
             exception = entry['exception']
-        #if tracebacks is None:
-            #tracebacks = []
             
         indent = 10
         
@@ -315,10 +359,8 @@ class LogWidget(QtGui.QWidget):
         if 'reasons' in exception:
             reasons = self.formatReasonsStrForHTML(exception['reasons'])
             text += reasons
-            #self.displayText(reasons, entry, color, clean=False)
         if 'docs' in exception:
             docs = self.formatDocsStrForHTML(exception['docs'])
-            #self.displayText(docs, entry, color, clean=False)
             text += docs
         
         traceback = [self.formatTracebackForHTML(exception['traceback'], count)]
@@ -329,63 +371,51 @@ class LogWidget(QtGui.QWidget):
             text.extend(exc)
             messages.extend(msgs)
             traceback.extend(tb)
-            
-        #else:
-            #if len(tracebacks)==count+1:
-                #n=0
-            #else: 
-                #n=1
-            #for i, tb in enumerate(tracebacks):
-                #self.displayTraceback(tb, entry, number=i+n)
         if count == 1:
             exc = "<div class=\"exception\"><ol>" + "\n".join(["<li>%s</li>" % ex for ex in text]) + "</ol></div>"
             tbStr = "\n".join(["<li><b>%s</b><br/><span class='traceback'>%s</span></li>" % (messages[i], tb) for i,tb in enumerate(traceback)])
-            #traceback = "<div class=\"traceback\" id=\"%s\"><ol>"%str(entryId) + tbStr + "</ol></div>"
             entry['tracebackHtml'] = tbStr
-
-            #return exc + '<a href="#" onclick="showDiv(\'%s\')">Show traceback</a>'%str(entryId) + traceback
             return exc + '<a href="exc:%s">Show traceback %s</a>'%(str(entryId), str(entryId))
         else:
             return text, traceback, messages
         
         
     def formatTracebackForHTML(self, tb, number):
+        """ Convert a traceback object to HTML for display.
+
+          @param list tb: traceback as a list of strings
+          @param number: FIXME: unused?
+
+          @return str: HTML string containing the traceback
+        """
         try:
             tb = [line for line in tb if not line.startswith("Traceback (most recent call last)")]
         except:
             print("\n"+str(tb)+"\n")
             raise
         return re.sub(" ", "&nbsp;", ("").join(map(self.cleanText, tb)))[:-1]
-        #tb = [self.cleanText(strip(x)) for x in tb]
-        #lines = []
-        #prefix = ''
-        #for l in ''.join(tb).split('\n'):
-            #if l == '':
-                #continue
-            #if l[:9] == "Traceback":
-                #prefix = ' ' + str(number) + '. '
-                #continue
-            #spaceCount = 0
-            #while l[spaceCount] == ' ':
-                #spaceCount += 1
-            #if prefix is not '':
-                #spaceCount -= 1
-            #lines.append("&nbsp;"*(spaceCount*4) + prefix + l)
-            #prefix = ''
-        #return '<div class="traceback">' + '<br />'.join(lines) + '</div>'
-        #self.displayText('<br />'.join(lines), entry, color, clean=False)
         
     def formatReasonsStrForHTML(self, reasons):
-        #indent = 6
+        """ Format an exception reason list as HTML.
+        
+          @param list(str) reasons: exception reasosn list
+
+          @return str: HTML formatted string with reasons
+        """
         reasonStr = "<table class='reasons'><tr><td>Possible reasons include:\n<ul>\n"
         for r in reasons:
             r = self.cleanText(r)
             reasonStr += "<li>" + r + "</li>\n"
-            #reasonStr += "&nbsp;"*22 + chr(97+i) + ". " + r + "<br>"
         reasonStr += "</ul></td></tr></table>\n"
         return reasonStr
     
     def formatDocsStrForHTML(self, docs):
+    """ Format a doc string list as links in HTML.
+
+      @param docs: list of documentation urls
+
+      @return str: documenation strings as links in HTML  format
+    """ 
         #indent = 6
         docStr = "<div class='docRefs'>Relevant documentation:\n<ul>\n"
         for d in docs:
@@ -395,21 +425,20 @@ class LogWidget(QtGui.QWidget):
         return docStr
     
     def exportHtml(self, fileName=False):
+        """ Export visible log entries to a file as HTML.
+
+          @param str fileName: name of file to save HTML in
+
+          If no fileName is given, this opens a file dialog and asks for a location to save.
+        """
         if fileName is False:
             self.fileDialog = FileDialog(self, "Save HTML as...", "htmltemp.log")
-            #self.fileDialog.setFileMode(QtGui.QFileDialog.AnyFile)
             self.fileDialog.setAcceptMode(QtGui.QFileDialog.AcceptSave)
             self.fileDialog.show()
             self.fileDialog.fileSelected.connect(self.exportHtml)
             return
         if fileName[-5:] != '.html':
             fileName += '.html'
-            
-        #doc = self.ui.output.document().toHtml('utf-8')
-        #for e in self.displayedEntries:
-            #if e.has_key('tracebackHtml'):
-                #doc = re.sub(r'<a href="exc:%s">(<[^>]+>)*Show traceback %s(<[^>]+>)*</a>'%(str(e['id']), str(e['id'])), e['tracebackHtml'], doc)
-                
         doc = self.pageTemplate
         for e in self.displayedEntries:
             doc += self.cache[id(e)]
@@ -421,6 +450,8 @@ class LogWidget(QtGui.QWidget):
         f.close()
         
     def linkClicked(self, url):
+        """ This function is called when a link in the log view is clicked to expand the text or show documentation.
+        """
         url = url.toString()
         if url[:4] == 'doc:':
             #self.manager.showDocumentation(url[4:])
@@ -440,6 +471,8 @@ class LogWidget(QtGui.QWidget):
             cursor.insertHtml(tb)
 
     def clear(self):
+        """ Remove all displayed log entries from the log view.
+        """
         self.ui.output.clear()
         self.displayedEntryies = []
 
