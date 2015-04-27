@@ -42,12 +42,13 @@ class FitLogic(GenericLogic):
 #                            msgType='status')
                              
         def activation(self,e):
-            pass
 #            self.oneD_testing()
 #            self.twoD_testing()
+            pass
             
         def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
-            """ Makes a fit of the desired function with the one and two dimensional data.
+            """ Makes a fit of the desired function with the one and two 
+                dimensional data.
         
             @param callable function: The model function, f(x, ...).
                     It must take the independent variable as the first argument
@@ -86,76 +87,174 @@ class FitLogic(GenericLogic):
                 self.logMsg('Given "function" is no function.', \
                             msgType='error')  
                 error =-1
-            if not isinstance( data, (frozenset, list, set, tuple, np.ndarray, ) ):
+            if not isinstance( data,(frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given range of data is no array type.', \
                             msgType='error')
                 error= -1
-            if not isinstance( axes, (frozenset, list, set, tuple, np.ndarray, ) ):
+            if not isinstance( axes,(frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given range of axes is no array type.', \
                             msgType='error')
                 error= -1
             if error==0:
                 try:
-                    popt, pcov = opt.curve_fit(function,axes,data,initial_guess)
+                    popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
                     self.logMsg('The fit did not work.', 
                         msgType='status')
                     error=-1
-                
             if not details:
                 return error,popt
             else:    
                 return error,popt, pcov
         
-        def twoD_gaussian_function(self,xdata_tuple,amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
-            (x, y) = xdata_tuple
-            # not xo but rather x_zero
-            xo = float(xo)
-            yo = float(yo)    
+        def twoD_gaussian_function(self,x_data_tuple=None,amplitude=None, x_zero=None, y_zero=None, sigma_x=None, sigma_y=None, theta=None, offset=None):
+            """ This method provides a two dimensional gaussian function.
+        
+            @param (k,M)-shaped array x_data_tuple: x and y values
+            @param float or int amplitude: Amplitude of gaussian
+            @param float or int x_zero: x value of maximum
+            @param float or int y_zero: y value of maximum
+            @param float or int sigma_x: standard deviation in x direction
+            @param float or int sigma_y: standard deviation in y direction
+            @param float or int theta: angle for eliptical gaussians
+            @param float or int offset: offset
+
+            @return callable function: returns the function
+            
+            """
+            # check if parameters make sense
+            if not isinstance( x_data_tuple,(frozenset, list, set, tuple, np.ndarray)):
+                self.logMsg('Given range of axes is no array type.', \
+                            msgType='error')  
+
+            parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
+            for var in parameters:
+                if not isinstance(var,(float,int)):
+                    self.logMsg('Given range of parameter is no float or int.', \
+                                msgType='error')  
+
+                                
+            (x, y) = x_data_tuple
+            x_zero = float(x_zero)
+            y_zero = float(y_zero)    
             a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
             b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
             c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
-            g = offset + amplitude*np.exp( - (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo) 
-                                    + c*((y-yo)**2)))
+            g = offset + amplitude*np.exp( - (a*((x-x_zero)**2) + 2*b*(x-x_zero)*(y-y_zero) 
+                                    + c*((y-y_zero)**2)))
             return g.ravel()
             
-        def twoD_gaussian_estimator(self,dimension_x=None,dimenstion_y=None,data=None):
+        def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
 #            TODO:Make clever estimator
-            #get some initial values
-            amplitude=data.max()-data.min()
-            # not xo but rather x_zero
-            xo=len(dimension_x)/2.
-            yo=len(dimenstion_y)/2.
-            sigma_x=xo/3
-            sigma_y =yo/3
-            theta=0
-            offset=data.min()
-            return amplitude, xo, yo, sigma_x, sigma_y, theta, offset
+            """ This method provides a two dimensional gaussian function.
+        
+            @param array x_axis: x values
+            @param array y_axis: y values
+            @param array data: value of each data point corresponding to
+                                x and y values
+
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float y_zero: estimated y value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float sigma_y: estimated  standard deviation in y direction
+            @return float theta: estimated angle for eliptical gaussians
+            @return float offset: estimated offset
+            @return int error: error code (0:OK, -1:error)                    
+            """                                 
+            amplitude=float(data.max()-data.min())
+            x_zero=len(x_axis)/2.
+            y_zero=len(y_axis)/2.
+            sigma_x=x_zero/3.
+            sigma_y =y_zero/3.
+            theta=0.0
+            offset=float(data.min())
+            error=0
+            #check for sensible values
+            parameters=[x_axis,y_axis,data]
+            for var in parameters:
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is not an array.', \
+                                msgType='error') 
+                    amplitude=0.
+                    x_zero=0.
+                    y_zero=0.
+                    sigma_x=0.
+                    sigma_y =0.
+                    theta=0.0
+                    offset=0.
+                    error=-1
+       
+            return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
             
             
-        def gaussian_function(self,xdata=None,amplitude=None, x0=None, sigma=None):
-            # offset
-            gaussian=amplitude*np.exp(-(xdata-x0)**2/(2*sigma**2))
+        def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
+            """ This method provides a two dimensional gaussian function.
+        
+            @param array x_data: x values
+            @param float or int amplitude: Amplitude of gaussian
+            @param float or int x_zero: x value of maximum
+            @param float or int sigma: standard deviation
+            @param float or int offset: offset
+
+            @return callable function: returns the function
+                    
+            """
+            # check if parameters make sense
+            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
+                print("error")
+                self.logMsg('Given range of axes is no array type.', \
+                            msgType='error')            
+
+            parameters=[amplitude,x_zero,sigma,offset]
+            for var in parameters:
+                if not isinstance(var,(float,int)):
+                    print('error',var)
+                    self.logMsg('Given range of parameter is no float or int.', \
+                                msgType='error')  
+            gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
             return gaussian
         
-        def gaussian_estimator(self,axis_x,data):
+        def gaussian_estimator(self,x_axis,data):
 #            TODO:Make clever estimator
+            """ This method provides a two dimensional gaussian function.
+        
+            @param array x_axis: x values
+            @param array y_axis: y values
+            @param array data: value of each data point corresponding to
+                                x and y values
+
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float y_zero: estimated y value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float sigma_y: estimated  standard deviation in y direction
+            @return float theta: estimated angle for eliptical gaussians
+            @return float offset: estimated offset
+            @return int error: error code (0:OK, -1:error)                    
+                    
+            """
+            error=0
+            # check if parameters make sense
+            parameters=[x_axis,data]
+            for var in parameters:
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.', \
+                                msgType='error') 
+                    error=-1
+            #set paraameters        
             amplitude=data.max()
-            # consistent parameter names
-            x0=len(axis_x)/2.
-            sigma=x0/3
-            return amplitude, x0, sigma
+            x_zero=len(x_axis)/2.
+            sigma=x_zero/3
+            offset=data.min()
+            return error, amplitude, x_zero, sigma, offset
         
         def oneD_testing(self):
             self.x = np.linspace(0, 200, 201)
-            
-            self.xdata=self.gaussian_function(self.x,10,80,20)
-            
+            self.xdata=self.gaussian_function(self.x,10,80,20,5)
             self.xdata_noisy=self.xdata+2*np.random.normal(size=self.xdata.shape)
-            
-            initial_guess_data=self.gaussian_estimator(self.x,self.xdata)
-            error,popt = self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=initial_guess_data)
-            
+            error,amplitude, x_zero, sigma, offset=self.gaussian_estimator(self.x,self.xdata)
+            error,popt= self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=(amplitude, x_zero, sigma, offset))
             plt.figure()
             plt.plot(self.x,self.gaussian_function(self.x, *popt))
             plt.plot(self.xdata_noisy)
@@ -175,12 +274,9 @@ class FitLogic(GenericLogic):
             # add some noise to the data and try to fit the data generated beforehand
             
             self.data_noisy = data + 0.2*np.random.normal(size=data.shape)
-            
-            amplitude, xo, yo, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(self.x,self.y,self.data_noisy)
+            error,amplitude, xo, yo, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(self.x,self.y,self.data_noisy)
             initial_guess_noisy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
-            
             error,popt = self.make_fit(function=self.twoD_gaussian_function,axes=(self.x, self.y), data=self.data_noisy,initial_guess=initial_guess_noisy)
-            
             data_fitted = self.twoD_gaussian_function((self.x, self.y), *popt)
             
             fig, ax = plt.subplots(1, 1)
