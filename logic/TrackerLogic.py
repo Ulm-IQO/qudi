@@ -230,21 +230,44 @@ class TrackerLogic(GenericLogic):
         if self._scan_counter < np.size(self._image_vert_axis):            
             self.signal_scan_xy_line_next.emit()
         else:
-            #TODO: xy fitten  ---> self.refocus_x und self.refocus_y
-            #vermutlich ungefähr so?
-            initial_guess = self._fit_logic.make_fit(x_axis=X_line, y_axis=Y_line,  data=self.xy_refocus_image[:,:,3])
-            if initial_guess[0] == -1:
-                print('error in initial_guess 2D Gaussian')
+            #x,y-fit
+            error,amplitude,xo,yo,sigma_x,sigma_y,theta,offset = self._fit_logic.make_fit(x_axis=X_line, y_axis=Y_line,  data=self.xy_refocus_image[:,:,3])
+            if error == -1:
+                print('error in initial_guess xy fit')
+                #hier abbrechen
             else:
-                initial_guess = initial_guess[1:] #removing the error-check-variable
-            #2D_values = self._fit_logic.make_fit(self,function=None,axes=None,data=None,initial_guess=initial_guess)
+                initial_guess_xy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
+            #TODO: function richtig aufrufen
+            error, twoD_values = self._fit_logic.make_fit(function=None,axes=(X_line,Y_line),data=self.xy_refocus_image[:,:,3],initial_guess=initial_guess_xy)
+            if error == -1:
+                print('error in 2D Gaussian Fit')
+                #hier abbrechen
+            else:
+                self.refocus_x = twoD_values[1]
+                self.refocus_y = twoD_values[2]
                 
+            #xz scaning    
             self._scan_z_line()
             self.running = False
             self.signal_z_image_updated.emit()
-            # TODO: z fitten  ---> self.refocus_z
-            # TODO: self.refocus x,y,z als neuen trackpoint setzen
-            #und dort hinfahren
+            
+            #z-fit
+            error, amplitude, x_zero, sigma, offset=self.gaussian_estimator(self._Z_values,self.z_refocus_line)
+            if error == -1:
+                print('error in initial_guess z fit')
+                #hier abbrechen
+            else:
+                initial_guess_z = (amplitude, x_zero, sigma, offset)
+            #TODO: function richtig aufrufen
+            error, oneD_values = self._fit_logic.make_fit(function=None, axes=self._Z_values, data=self.z_refocus_line,initial_guess=initial_guess_z)
+            if error == -1:
+                print('error in 1D Gaussian Fit')
+                #hier abbrechen
+            else:
+                self.refocus_z = oneD_values[1]
+                
+            #TODO: werte als neuen Trackpoint setzen
+            
             self._scanning_device.scanner_set_position(x = self.refocus_x, 
                                                        y = self.refocus_y, 
                                                        z = self.refocus_z, 
