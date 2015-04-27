@@ -50,9 +50,8 @@ class ConfocalLogic(GenericLogic):
         self._zscan = False
         
         #locking for thread safety
-        self.lock = Mutex()
+        self.threadlock = Mutex()
         
-        self.running = False
         self.stopRequested = False
                     
                        
@@ -115,15 +114,16 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         
-        #checks if scanner is still running
         self._clock_frequency = int(clock_frequency)
-        if not self.running:
-            #Why kill scanner first?
+        #checks if scanner is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            # if no line scan is in progress, restart the scanner with the new parameters
             self.kill_scanner()
             self.start_scanner()
             return 0
-        else:
-            return -1
+            
         
     def start_scanning(self, zscan = False):
         """Starts scanning
@@ -136,6 +136,7 @@ class ConfocalLogic(GenericLogic):
         self._zscan=zscan
         self.initialize_image()
         self.start_scanner()
+        self.lock()
         self.signal_scan_lines_next.emit()
         
         return 0
@@ -145,8 +146,8 @@ class ConfocalLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        with self.lock:
-            if self.running:
+        with self.threadlock:
+            if self.getState() == 'locked':
                 self.stopRequested = True
             
         return 0
@@ -264,7 +265,7 @@ class ConfocalLogic(GenericLogic):
             self._current_z = z
         
         #Checks if the scanner is still running
-        if self.running or self._scanning_device.getState() == 'locked':
+        if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
         else:
             self.signal_change_position.emit()
@@ -294,12 +295,11 @@ class ConfocalLogic(GenericLogic):
         """scanning an image in either xz or xy       
                 
         """
-        self.running = True        
         
         #stops scanning
         if self.stopRequested:
-            with self.lock:
-                self.running = False
+            with self.threadlock:
+                self.unlock()
                 self.stopRequested = False
                 self.signal_image_updated.emit()
                 return
@@ -336,6 +336,6 @@ class ConfocalLogic(GenericLogic):
         if self._scan_counter < np.size(self._image_vert_axis):            
             self.signal_scan_lines_next.emit()
         else:
-            self.running = False
+            self.unlock()
             self.signal_image_updated.emit()
             self.set_position()

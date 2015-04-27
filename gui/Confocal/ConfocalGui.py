@@ -409,6 +409,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         elif self._mw.xz_scan_StateWidget.isChecked():
             self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3])
         
-        if not self._scanning_logic.running:
+        if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
         

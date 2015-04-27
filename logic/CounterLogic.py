@@ -30,7 +30,7 @@ class CounterLogic(GenericLogic):
         self.connector['out']['counterlogic']['class'] = 'CounterLogic'
         
         #locking for thread safety
-        self.lock = Mutex()
+        self.threadlock = Mutex()
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -79,10 +79,10 @@ class CounterLogic(GenericLogic):
         restart = False
         
         # if the counter is running, stop it
-        if self.running:
+        if self.getState() == 'locked':
             restart = True
             self.stopCount()
-            while self.running:
+            while self.getState() == 'locked':
                 time.sleep(0.01)
                 
         self._counting_samples = int(samples)
@@ -107,10 +107,10 @@ class CounterLogic(GenericLogic):
         restart = False
         
         # if the counter is running, stop it
-        if self.running:
+        if self.getState() == 'locked':
             restart = True
             self.stopCount()
-            while self.running:
+            while self.getState() == 'locked':
                 time.sleep(0.01)
                 
         self._count_length = int(length)
@@ -135,10 +135,10 @@ class CounterLogic(GenericLogic):
         restart = False
         
         # if the counter is running, stop it
-        if self.running:
+        if self.getState() == 'locked':
             restart = True
             self.stopCount()
-            while self.running:
+            while self.getState() == 'locked':
                 time.sleep(0.01)
                 
         self._count_frequency = int(frequency)
@@ -203,6 +203,7 @@ class CounterLogic(GenericLogic):
         return 0
 
     def startCount(self):
+        
         # setting up the counter
         self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
         self._counting_device.set_up_counter()
@@ -213,27 +214,26 @@ class CounterLogic(GenericLogic):
         self.rawdata=np.zeros((self._counting_samples,))
         self._sampling_data=np.ones((self._counting_samples,2))
         
+        # set a lock, to signify the measurment is running
+        self.lock()
         self.sigCountNext.emit()
  
     def stopCount(self):
-        with self.lock:
+        with self.threadlock:
             self.stopRequested = True
 
     def countLoopBody(self):
         """ The actual measurement method which is run in a thread.
         """
         
-        # set a status variable, to signify the measurment is running
-        self.running = True
-        
         # check for aborts of the thread in break if necessary 
         if self.stopRequested:
-            with self.lock:
+            with self.threadlock:
                 # close off the actual counter
                 self._counting_device.close_counter()
                 self._counting_device.close_clock()
                 # switch the state variable off again
-                self.running = False
+                self.unlock()
                 self.stopRequested = False
                 return
         
