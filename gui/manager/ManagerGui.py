@@ -23,3 +23,11 @@ class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
+
+class ModuleList(QtCore.AbstractItemModel):
+    def __init__(self):
+        super().__init__()
+
+class ModuleItemDelegate(QtGui.QAbstractItemDelegate):
+    def __init__(self):
+        super().__init__()
