@@ -11,8 +11,9 @@ import collections
 
 
 class Mutex(QtCore.QMutex):
-    """Extends QMutex to provide:
+    """Extends QMutex (which serves as access serialization between threads).
 
+    This class provides:
     * Warning messages when a mutex stays locked for a long time.
       (if initialized with debug=True)
     * Drop-in replacement for threading.Lock
@@ -23,9 +24,9 @@ class Mutex(QtCore.QMutex):
         if kargs.get('recursive', False):
             args = (QtCore.QMutex.Recursive,)
         QtCore.QMutex.__init__(self, *args)
-        self.l = QtCore.QMutex()  ## for serializing access to self.tb
+        self.l = QtCore.QMutex()  # for serializing access to self.tb
         self.tb = []
-        self.debug = kargs.pop('debug', False) ## True to enable debugging functions
+        self.debug = kargs.pop('debug', False) # True to enable debugging functions
 
     def tryLock(self, timeout=None, id=None):
         if timeout is None:
@@ -55,7 +56,7 @@ class Mutex(QtCore.QMutex):
             if self.debug:
                 self.l.lock()
                 try:
-                    print("Waiting for mutex lock (%0.1f sec). Traceback follows:" % (c*waitTime/1000.))
+                    print("Waiting for mutex lock ({:.1} sec). Traceback follows:".format(c*waitTime/1000.))
                     traceback.print_stack()
                     if len(self.tb) > 0:
                         print("Mutex is currently locked from:\n", self.tb[-1])
@@ -200,6 +201,7 @@ class MutexLocker:
 
 class ThreadsafeWrapper(object):
     """Wrapper that makes access to any object thread-safe (within reasonable limits).
+
        Mostly tested for wrapping lists, dicts, etc.
        NOTE: Do not instantiate directly; use threadsafe(obj) instead.
     - all method calls and attribute/item accesses are protected by mutex
@@ -278,6 +280,7 @@ def threadsafe(obj, *args, **kargs):
     """Return a thread-safe wrapper around obj. (see ThreadsafeWrapper)
     args and kargs are passed directly to ThreadsafeWrapper.__init__()
     This factory function is necessary for wrapping special methods (like __getitem__)"""
+
     if type(obj) in [int, float, str, str, tuple, type(None), bool]:
         return obj
     clsName = 'Threadsafe_' + obj.__class__.__name__
