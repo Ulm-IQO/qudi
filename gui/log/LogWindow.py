@@ -130,6 +130,11 @@ class ErrorDialog(QtGui.QDialog):
       you can see the traceback for an exception.
     """
     def __init__(self, logWindow):
+        """ Create an ErrorDialog object
+
+          @param object logWindow: reference to LogWindow object that this popup belongs to
+
+        """
         QtGui.QDialog.__init__(self)
         self.logWindow = logWindow
         self.setWindowFlags(QtCore.Qt.Window)
@@ -178,6 +183,11 @@ class ErrorDialog(QtGui.QDialog):
         
         
     def show(self, entry):
+        """ Show a log entry in a popup window.
+
+          @param dict entry: log entry in dictionary form
+
+        """
         ## rules are:
         ##   - Try to show friendly error messages
         ##   - If there are any helpfulExceptions, ONLY show those
@@ -230,6 +240,14 @@ class ErrorDialog(QtGui.QDialog):
             
     @staticmethod
     def cleanText(text):
+        """ Return a string with some special characters escaped for HTML.
+
+          @param str text: string to sanitize
+
+          @return str: string with spechial characters replaced by HTML escape sequences
+
+          FIXME: there is probably a pre-defined function for this, use it!
+        """
         text = re.sub(r'&', '&amp;', text)
         text = re.sub(r'>','&gt;', text)
         text = re.sub(r'<', '&lt;', text)
@@ -237,25 +255,38 @@ class ErrorDialog(QtGui.QDialog):
         return text
         
     def closeEvent(self, ev):
+        """ Specify close event action.
+          @param QEvent ev: event from event handler
+
+          Extends the parent class closeEvent hndling function to delete pending messages.
+        """
         QtGui.QDialog.closeEvent(self, ev)
         self.messages = []
         
     def okClicked(self):
+        """ Marks message as acceped and closes popup.
+        """
         self.accept()
         self.messages = []
         
     def logClicked(self):
+        """ Marks message as accepted and shows log window.
+        """
         self.accept()
         self.logWindow.show()
         self.messages = []
         
     def nextMessage(self):
+        """ Shows the next error message popup.
+        """
         self.msgLabel.setText(self.messages.pop(0))
         self.nextBtn.setText('Show next error (%d more)' % len(self.messages))
         if len(self.messages) == 0:
             self.nextBtn.setEnabled(False)
         
     def disable(self, disable):
+        """ Disables popups.
+        """
         self.disableCheck.setChecked(disable)
     
     
