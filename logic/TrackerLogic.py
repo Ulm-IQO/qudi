@@ -232,7 +232,13 @@ class TrackerLogic(GenericLogic):
         else:
             #TODO: xy fitten  ---> self.refocus_x und self.refocus_y
             #vermutlich ungefähr so?
-            #fit_parameters = self._fit_logic.Fit(self.xy_refocus_image[:,:,3], twoD_gaussian_estimator, twoD_gaussian_function)
+            initial_guess = self._fit_logic.make_fit(x_axis=X_line, y_axis=Y_line,  data=self.xy_refocus_image[:,:,3])
+            if initial_guess[0] == -1:
+                print('error in initial_guess 2D Gaussian')
+            else:
+                initial_guess = initial_guess[1:] #removing the error-check-variable
+            #2D_values = self._fit_logic.make_fit(self,function=None,axes=None,data=None,initial_guess=initial_guess)
+                
             self._scan_z_line()
             self.running = False
             self.signal_z_image_updated.emit()
