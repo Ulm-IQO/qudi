@@ -321,14 +321,14 @@ class LogWidget(QtGui.QWidget):
         
     @staticmethod
     def cleanText(text):
-    """ Escape special characters for HTML.
+        """ Escape special characters for HTML.
 
-      @param str text: string with special characters to be escaped
+          @param str text: string with special characters to be escaped
 
-      @return str: string where special characters have been replaced by theit HTML sequences
+          @return str: string where special characters have been replaced by theit HTML sequences
 
-      FIXME: there is probably a pre-defined metod for this, use it!
-    """
+          FIXME: there is probably a pre-defined metod for this, use it!
+        """
         text = re.sub(r'&', '&amp;', text)
         text = re.sub(r'>','&gt;', text)
         text = re.sub(r'<', '&lt;', text)
@@ -410,12 +410,12 @@ class LogWidget(QtGui.QWidget):
         return reasonStr
     
     def formatDocsStrForHTML(self, docs):
-    """ Format a doc string list as links in HTML.
+        """ Format a doc string list as links in HTML.
 
-      @param docs: list of documentation urls
+          @param docs: list of documentation urls
 
-      @return str: documenation strings as links in HTML  format
-    """ 
+          @return str: documenation strings as links in HTML  format
+        """ 
         #indent = 6
         docStr = "<div class='docRefs'>Relevant documentation:\n<ul>\n"
         for d in docs:
