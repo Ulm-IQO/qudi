@@ -39,11 +39,13 @@ class Manager(QtCore.QObject):
       - Making sure all devices/modules are properly shut down
         at the end of the program
 
-      @signal sigConfigChanged
-      @signal sigModulesChanged
-      @signal sigModuleHasQuit
-      @signal sigBaseDirChanged
-      @signal sigAbortAll
+      @signal sigConfigChanged: the configuration has changed, please reread your configuration
+      @signal sigModulesChanged: the available modules have changed
+      @signal sigModuleHasQuit: the module whose name is passed is now deactivated
+      @signal sigBaseDirChanged: the base directiory has changed
+      @signal sigAbortAll: abort all running things as quicly as possible
+      @signal sigManagerQuit: the manager is quitting
+      @signal sigManagerShow: show whatever part of the GUI is important
       """
       
 
@@ -51,17 +53,12 @@ class Manager(QtCore.QObject):
     # signal and slot delivery mechanisms.
     sigConfigChanged = QtCore.Signal()
     sigModulesChanged = QtCore.Signal() 
-    sigModuleHasQuit = QtCore.Signal(object)    # a signal which is connected to
-                                                # all objects in python. Here 
-                                                # you should receive the
-                                                # (module name).
+    sigModuleHasQuit = QtCore.Signal(object)
     sigBaseDirChanged = QtCore.Signal()
-    sigLogDirChanged = QtCore.Signal(object)    # a signal which is connected to
-                                                # all objects in python. Here 
-                                                # you should receive the
-                                                # (directory name).
+    sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object)
+    sigManagerShow = QtCore.Signal()
     
     def __init__(self, configFile=None, argv=None):
         """Constructor for QuDi main management class
@@ -736,7 +733,10 @@ class Manager(QtCore.QObject):
         reload.reloadAll(prefix=path, debug=True)
         self.logger.print_logMsg("Reloaded all libraries under {0}.".format(path),
                                  msgType='status')
-        
+    
+    def show(self):
+        self.sigManagerShow.emit()
+
     def quit(self):
         """Nicely request that all modules shut down."""
         self.sigManagerQuit.emit(self)

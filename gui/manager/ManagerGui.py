@@ -18,6 +18,7 @@ class ManagerGui(Base):
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
         self._mw.show()
+        self._manager.sigManagerShow.connect(self._mw.raise_)
 
 class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
