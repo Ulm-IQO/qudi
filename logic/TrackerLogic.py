@@ -5,6 +5,93 @@ from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from collections import OrderedDict
 import numpy as np
+import time
+
+class TrackPoint(object):
+    """ The actual individual trackpoint is saved in this generic object.
+    """
+    
+    def __init__(self, point = None, name=None):
+        self._position_time_trace=[]
+        self._name = time.strftime('Point_%Y%m%d_%M%S%')
+        
+        if point != None:
+            if len(point) != 3:
+                self.logMsg('Length of set trackpoint is not 3.', 
+                             msgType='error')
+            self._position_time_trace.appand(np.array[time.time(),point[0],point[1],point[2]])
+        if name != None:
+            self._name=name
+                
+    def set_next_point(self, point = None):
+        """ Adds another trackpoint.
+        
+        @param float[3] point: position coordinates of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        if point != None:
+            if len(point) != 3:
+                self.logMsg('Length of set trackpoint is not 3.', 
+                             msgType='error')
+                return -1
+            self._position_time_trace.appand(np.array[time.time(),point[0],point[1],point[2]])
+        else:
+            return -1
+    
+    def get_last_point(self):
+        """ Returns the most current trackpoint.
+        
+        @return float[3]: the position of the last point
+        """
+        if len(self._position_time_trace) > 0:
+            return self._position_time_trace[-1][1:]
+        else:
+            return [-1.,-1.,-1.]
+            
+    def set_name(self, name= None):
+        """ Sets the name of the trackpoint.
+        
+        @param string name: name to be set.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        if len(self._position_time_trace) > 0:
+            self._name = time.strftime('Point_%Y%m%d_%M%S%',self._position_time_trace[0][0])
+        else:
+            self._name = time.strftime('Point_%Y%m%d_%M%S%')
+        if name != None:
+            self._name=name
+            
+    def get_name(self):
+        """ Returns the name of the trackpoint.
+        
+        @return string: name
+        """
+        return self._name
+        
+    def get_trace(self):
+        """ Returns the whole position time trace as array.
+        
+        @return float[][4]: the whole position time trace
+        """
+        
+        return np.array(self._position_time_trace)
+        
+    def delete_last_point(self):
+        """ Delete the last poitn in the trace.
+        
+        @return float[4]: the point just deleted.
+        """
+        
+        if len(self._position_time_trace) > 0:
+            return self._position_time_trace.pop()
+        else:
+            return [-1.,-1.,-1.,-1.]
+    
+    
+                
 
 class TrackerLogic(GenericLogic):
     """unstable: Christoph Müller
