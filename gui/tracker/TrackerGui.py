@@ -47,12 +47,15 @@ class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
+
             
+               
             
 class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """
     Main Tracker Class
     """
+    
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -96,7 +99,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
         
         self._tracker_logic = self.connector['in']['trackerlogic1']['object']
-        print("Scanning logic is", self._scanning_logic)
+        print("Tracking logic is", self._tracker_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
@@ -107,16 +110,32 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Get the image for the display from the logic:
         arr01 = self._tracker_logic.xy_refocus_image[:,:,3]
-        arr02 = self._tracker_logic.z_refocus_line      
+        arr02 = self._tracker_logic.z_refocus_line
+
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)
         self.xy_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
-        self.xz_refocus_image = pg.ImageItem(arr02)
-        self.xz_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
+        self.xz_refocus_image = pg.PlotDataItem(arr02)
+#        self.xz_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
-        self._mw.xz_refocus_ViewWidget.addItem(self.xy_refocus_image)
-
+        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
+        
+        self._tracker_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
+        self._tracker_logic.signal_z_image_updated.connect(self.refresh_z_image)
+        
+        print('Main Tracker Windows shown:')
+        self._mw.show()
+        
+    def refresh_xy_image(self):
+        self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3])
+#        if self._tracker_logic.getState() != 'locked':
+#            self.signal_refocus_finished.emit()
+        
+    def refresh_z_image(self):
+        self.xz_refocus_image.setImage(image=self._tracker_logic.z_refocus_line)
+#        if self._tracker_logic.getState() != 'locked':
+#            self.signal_refocus_finished.emit()

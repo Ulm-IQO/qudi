@@ -100,6 +100,7 @@ class TrackerLogic(GenericLogic):
     signal_scan_xy_line_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_z_image_updated = QtCore.Signal()
+    signa_refocus_finished = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -128,11 +129,16 @@ class TrackerLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
+                        
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
+        self._clock_frequency = 500.
+        self.return_slowness = 100
         
-        self.refocus_XY_size
-        self.refocus_XY_step
-        self.refocus_Z_size
-        self.refocus_Z_step
+        self.refocus_XY_size =  2
+        self.refocus_XY_step = 0.02
+        self.refocus_Z_size = 5
+        self.refocus_Z_step = 0.1
         
         self.running = False
         self.stopRequested = False
@@ -155,10 +161,14 @@ class TrackerLogic(GenericLogic):
         self._scan_counter = 0
         
         self.signal_scan_xy_line_next.connect(self._scan_xy_line, QtCore.Qt.QueuedConnection)
+
+        self._initialize_xy_refocus_image()
+        self._initialize_z_refocus_image()
         
     def start_refocus(self):
         """Starts refocus        
         """
+        print('start refocusing')
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
@@ -192,7 +202,8 @@ class TrackerLogic(GenericLogic):
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.arange(xmax, xmin + self.refocus_XY_step, self.refocus_XY_step)
         
-        self.xy_refocus_image = np.zeros(len(self._X_values), len(self._Y_values), 4)
+        self.xy_refocus_image = np.zeros((len(self._X_values), len(self._Y_values), 4))
+
         
         
     def _scan_xy_line(self):
@@ -213,6 +224,8 @@ class TrackerLogic(GenericLogic):
         Z_line = self._Z_values    #todo: tilt_correction
         A_line = self._A_values
         return_X_line = self._return_X_values
+
+                
         
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )            
         line_counts = self._scanning_device.scan_line(line)
@@ -300,3 +313,25 @@ class TrackerLogic(GenericLogic):
         line_counts = self._scanning_device.scan_line(line)
         
         self.z_refocus_line = line_counts
+        
+    def start_scanner(self):
+        """Setting up the scanner device.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        self._scanning_device.set_up_scanner()
+        
+        return 0
+    
+    
+    def kill_scanner(self):
+        """Closing the scanner device.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        self._scanning_device.close_scanner()
+        self._scanning_device.close_scanner_clock()
+        
+        return 0

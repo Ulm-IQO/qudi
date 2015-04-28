@@ -113,6 +113,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.connector['in']['savelogic'] = OrderedDict()
         self.connector['in']['savelogic']['class'] = 'SaveLogic'
         self.connector['in']['savelogic']['object'] = None
+        
+        self.connector['in']['trackerlogic1'] = OrderedDict()
+        self.connector['in']['trackerlogic1']['class'] = 'TrackerLogic'
+        self.connector['in']['trackerlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -137,7 +141,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         print("Scanning logic is", self._scanning_logic)
         
         self._save_logic = self.connector['in']['savelogic']['object']
-        print("Save logic is", self._save_logic)  
+        print("Save logic is", self._save_logic)
+        
+        self._tracker_logic = self.connector['in']['trackerlogic1']['object']
+        print("Tracking logic is", self._tracker_logic)
         
         # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
         # GUI element:
@@ -313,7 +320,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
         self._mw.xz_scan_StateWidget.toggled.connect(self.xz_scan_clicked)
-#        self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
+        self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
 
 
         self._scanning_logic.signal_image_updated.connect(self.refresh_image)
@@ -341,12 +348,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
             
-#    def refocus_clicked(self, enabled):
-#        self._scanning_logic.stop_scanning()
-#        if enabled:
-            
-   
-   
+    def refocus_clicked(self, enabled):
+        self._scanning_logic.stop_scanning()
+        if enabled:
+            self._tracker_logic.start_refocus()
+               
     def roi_xy_change_x(self,x_pos):
         self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
         self._scanning_logic.set_position(x=x_pos)
