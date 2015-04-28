@@ -100,7 +100,7 @@ class TrackerLogic(GenericLogic):
     signal_scan_xy_line_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_z_image_updated = QtCore.Signal()
-    signa_refocus_finished = QtCore.Signal()
+    signal_refocus_finished = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -200,7 +200,7 @@ class TrackerLogic(GenericLogic):
         self._Y_values = np.arange(ymin, ymax + self.refocus_XY_step, self.refocus_XY_step)
         self._Z_values = self._trackpoint_z * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
-        self._return_X_values = np.arange(xmax, xmin + self.refocus_XY_step, self.refocus_XY_step)
+        self._return_X_values = np.arange(xmax, xmin - self.refocus_XY_step, -self.refocus_XY_step)
         
         self.xy_refocus_image = np.zeros((len(self._X_values), len(self._Y_values), 4))
 
