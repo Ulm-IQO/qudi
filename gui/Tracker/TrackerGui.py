@@ -11,6 +11,7 @@ import pyqtgraph as pg
 from collections import OrderedDict
 from core.Base import Base
 from gui.Tracker.TrackerGuiUI import Ui_MainWindow
+from gui.Tracker.TrackerSettingsUI import Ui_Dialog
 # To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
@@ -46,6 +47,11 @@ class CustomViewBox(pg.ViewBox):
 class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
+        self.setupUi(self)
+        
+class TrackerSettingDialog(QtGui.QDialog,Ui_Dialog):
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
         self.setupUi(self)
 
             
@@ -107,6 +113,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Use the inherited class 'Ui_TrackerGuiTemplate' to create now the 
         # GUI element:
         self._mw = TrackerMainWindow()
+        self._sw = TrackerSettingDialog()
         
         # Get the image for the display from the logic:
         arr01 = self._tracker_logic.xy_refocus_image[:,:,3].transpose()
@@ -125,10 +132,15 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         self._tracker_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
         self._tracker_logic.signal_z_image_updated.connect(self.refresh_z_image)
+        self._mw.action_Settings.triggered.connect(self.menue_settings)
         
         print('Main Tracker Windows shown:')
         self._mw.show()
-        
+    
+    def menue_settings(self):
+        self._sw.exec_()
+
+    
     def refresh_xy_image(self):
         self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
 #        if self._tracker_logic.getState() != 'locked':
