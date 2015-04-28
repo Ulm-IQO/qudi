@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ConfocalWindowTemplate.ui'
+# Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Apr 28 16:09:09 2015
+# Created: Tue Apr 28 18:24:50 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,7 +17,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(1028, 720)
+        MainWindow.resize(1010, 690)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -30,9 +30,19 @@ class Ui_MainWindow(object):
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
         self.xy_ViewWidget = PlotWidget(self.centralwidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.xy_ViewWidget.sizePolicy().hasHeightForWidth())
+        self.xy_ViewWidget.setSizePolicy(sizePolicy)
         self.xy_ViewWidget.setObjectName(_fromUtf8("xy_ViewWidget"))
         self.gridLayout.addWidget(self.xy_ViewWidget, 0, 0, 1, 1)
         self.tabWidget = QtGui.QTabWidget(self.centralwidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.tabWidget.sizePolicy().hasHeightForWidth())
+        self.tabWidget.setSizePolicy(sizePolicy)
         self.tabWidget.setObjectName(_fromUtf8("tabWidget"))
         self.tab_5 = QtGui.QWidget()
         self.tab_5.setObjectName(_fromUtf8("tab_5"))
@@ -43,6 +53,10 @@ class Ui_MainWindow(object):
         self.xz_ViewWidget = PlotWidget(self.tab_5)
         self.xz_ViewWidget.setObjectName(_fromUtf8("xz_ViewWidget"))
         self.gridLayout_4.addWidget(self.xz_ViewWidget, 0, 0, 1, 1)
+        self.xz_cb_ViewWidget = PlotWidget(self.tab_5)
+        self.xz_cb_ViewWidget.setMaximumSize(QtCore.QSize(40, 16777215))
+        self.xz_cb_ViewWidget.setObjectName(_fromUtf8("xz_cb_ViewWidget"))
+        self.gridLayout_4.addWidget(self.xz_cb_ViewWidget, 0, 1, 1, 1)
         self.gridLayout_5.addLayout(self.gridLayout_4, 0, 0, 1, 1)
         self.tabWidget.addTab(self.tab_5, _fromUtf8(""))
         self.tab_6 = QtGui.QWidget()
@@ -59,7 +73,16 @@ class Ui_MainWindow(object):
         self.tab = QtGui.QWidget()
         self.tab.setObjectName(_fromUtf8("tab"))
         self.tabWidget.addTab(self.tab, _fromUtf8(""))
-        self.gridLayout.addWidget(self.tabWidget, 0, 1, 1, 1)
+        self.gridLayout.addWidget(self.tabWidget, 0, 2, 1, 1)
+        self.xy_cb_ViewWidget = PlotWidget(self.centralwidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.xy_cb_ViewWidget.sizePolicy().hasHeightForWidth())
+        self.xy_cb_ViewWidget.setSizePolicy(sizePolicy)
+        self.xy_cb_ViewWidget.setMaximumSize(QtCore.QSize(40, 16777215))
+        self.xy_cb_ViewWidget.setObjectName(_fromUtf8("xy_cb_ViewWidget"))
+        self.gridLayout.addWidget(self.xy_cb_ViewWidget, 0, 1, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 2)
         self.gridLayout_3 = QtGui.QGridLayout()
         self.gridLayout_3.setObjectName(_fromUtf8("gridLayout_3"))
@@ -257,7 +280,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2.addLayout(self.gridLayout_3, 1, 1, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1028, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1010, 21))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -273,14 +296,19 @@ class Ui_MainWindow(object):
         self.actionSave_configuration.setObjectName(_fromUtf8("actionSave_configuration"))
         self.action_Settings = QtGui.QAction(MainWindow)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
+        self.actionExit = QtGui.QAction(MainWindow)
+        self.actionExit.setObjectName(_fromUtf8("actionExit"))
         self.menuFile.addAction(self.actionSave_as)
         self.menuFile.addAction(self.actionSave_configuration)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionExit)
         self.menu_Options.addAction(self.action_Settings)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menu_Options.menuAction())
 
         self.retranslateUi(MainWindow)
         self.tabWidget.setCurrentIndex(0)
+        QtCore.QObject.connect(self.actionExit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -313,5 +341,6 @@ class Ui_MainWindow(object):
         self.actionSave_as.setText(QtGui.QApplication.translate("MainWindow", "&Save as", None, QtGui.QApplication.UnicodeUTF8))
         self.actionSave_configuration.setText(QtGui.QApplication.translate("MainWindow", "Save &configuration", None, QtGui.QApplication.UnicodeUTF8))
         self.action_Settings.setText(QtGui.QApplication.translate("MainWindow", "&Settings", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionExit.setText(QtGui.QApplication.translate("MainWindow", "&Exit", None, QtGui.QApplication.UnicodeUTF8))
 
 from pyqtgraph import PlotWidget
