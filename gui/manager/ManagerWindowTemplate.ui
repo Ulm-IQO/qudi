@@ -6,24 +6,70 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>358</width>
-    <height>298</height>
+    <width>468</width>
+    <height>547</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>qudi: Manager</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QPushButton" name="loadAllButton">
-      <property name="text">
-       <string>Load all modules</string>
+     <widget class="QToolBox" name="toolBox">
+      <property name="currentIndex">
+       <number>1</number>
       </property>
+      <widget class="QWidget" name="modules">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>123</width>
+         <height>116</height>
+        </rect>
+       </property>
+       <attribute name="label">
+        <string>Modules</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QPushButton" name="loadAllButton">
+          <property name="text">
+           <string>Load all modules</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QListView" name="loadedModuleView"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>450</width>
+         <height>432</height>
+        </rect>
+       </property>
+       <attribute name="label">
+        <string>Configuraion</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QTreeWidget" name="treeWidget">
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QListView" name="loadedModuleView"/>
     </item>
    </layout>
   </widget>
@@ -32,8 +78,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>358</width>
-     <height>21</height>
+     <width>468</width>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
