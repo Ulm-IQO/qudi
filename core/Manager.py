@@ -200,6 +200,8 @@ class Manager(QtCore.QObject):
                     self.tree['loaded']['gui'][key].activate()
                 except:
                     raise
+            # Configuration has changed with activation
+            self.sigModulesChanged.emit()
         except:
             printExc("Error while configuring Manager:")
         finally:

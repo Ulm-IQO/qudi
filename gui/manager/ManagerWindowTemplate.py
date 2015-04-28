@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\gui\manager\ManagerWindowTemplate.ui'
+# Form implementation generated from reading ui file './gui/manager/ManagerWindowTemplate.ui'
 #
-# Created: Mon Apr 13 17:50:49 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Tue Apr 28 14:59:56 2015
+#      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -26,20 +26,39 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.setGeometry(7,200,358, 298)
+        MainWindow.resize(468, 547)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.gridLayout = QtGui.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
-        self.loadAllButton = QtGui.QPushButton(self.centralwidget)
+        self.toolBox = QtGui.QToolBox(self.centralwidget)
+        self.toolBox.setObjectName(_fromUtf8("toolBox"))
+        self.modules = QtGui.QWidget()
+        self.modules.setGeometry(QtCore.QRect(0, 0, 123, 116))
+        self.modules.setObjectName(_fromUtf8("modules"))
+        self.gridLayout1 = QtGui.QGridLayout(self.modules)
+        self.gridLayout1.setObjectName(_fromUtf8("gridLayout1"))
+        self.loadAllButton = QtGui.QPushButton(self.modules)
         self.loadAllButton.setObjectName(_fromUtf8("loadAllButton"))
-        self.gridLayout.addWidget(self.loadAllButton, 0, 0, 1, 1)
-        self.loadedModuleView = QtGui.QListView(self.centralwidget)
+        self.gridLayout1.addWidget(self.loadAllButton, 0, 0, 1, 1)
+        self.loadedModuleView = QtGui.QListView(self.modules)
         self.loadedModuleView.setObjectName(_fromUtf8("loadedModuleView"))
-        self.gridLayout.addWidget(self.loadedModuleView, 1, 0, 1, 1)
+        self.gridLayout1.addWidget(self.loadedModuleView, 1, 0, 1, 1)
+        self.toolBox.addItem(self.modules, _fromUtf8(""))
+        self.page = QtGui.QWidget()
+        self.page.setGeometry(QtCore.QRect(0, 0, 450, 432))
+        self.page.setObjectName(_fromUtf8("page"))
+        self.gridLayout2 = QtGui.QGridLayout(self.page)
+        self.gridLayout2.setObjectName(_fromUtf8("gridLayout2"))
+        self.treeWidget = QtGui.QTreeWidget(self.page)
+        self.treeWidget.setObjectName(_fromUtf8("treeWidget"))
+        self.treeWidget.headerItem().setText(0, _fromUtf8("1"))
+        self.gridLayout2.addWidget(self.treeWidget, 0, 0, 1, 1)
+        self.toolBox.addItem(self.page, _fromUtf8(""))
+        self.gridLayout.addWidget(self.toolBox, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 358, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 468, 19))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuMenu = QtGui.QMenu(self.menubar)
         self.menuMenu.setObjectName(_fromUtf8("menuMenu"))
@@ -67,11 +86,14 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuMenu.menuAction())
 
         self.retranslateUi(MainWindow)
+        self.toolBox.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
+        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Manager", None))
         self.loadAllButton.setText(_translate("MainWindow", "Load all modules", None))
+        self.toolBox.setItemText(self.toolBox.indexOf(self.modules), _translate("MainWindow", "Modules", None))
+        self.toolBox.setItemText(self.toolBox.indexOf(self.page), _translate("MainWindow", "Configuraion", None))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu", None))
         self.actionLoad_configuration.setText(_translate("MainWindow", "Load configuration", None))
         self.actionSave_configuration.setText(_translate("MainWindow", "Save configuration", None))
