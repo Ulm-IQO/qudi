@@ -181,13 +181,13 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """ 
         
-        if scanner and self._clock_daq_task != None:            
+        if not scanner and self._clock_daq_task != None:            
             self.logMsg('Another counter clock is already running, close this one first.', \
             msgType='error')
             return -1
             
         
-        if not scanner and self._scanner_clock_daq_task != None:            
+        if scanner and self._scanner_clock_daq_task != None:            
             self.logMsg('Another scanner clock is already running, close this one first.', \
             msgType='error')
             return -1
@@ -217,22 +217,22 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         # use the correct clock channel in this method
         if scanner:
-            my_clock_channel = self._clock_channel
-        else:
             my_clock_channel = self._scanner_clock_channel
+        else:
+            my_clock_channel = self._clock_channel
         
         # create task for clock
         daq.DAQmxCreateTask('', daq.byref(my_clock_daq_task))
         
         # create a digital clock channel
         daq.DAQmxCreateCOPulseChanFreq( my_clock_daq_task,# the task to which to add the channels
-                            		    my_clock_channel,  # use this channel
-										'Clock Task',    # name to assign to task (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
-										daq.DAQmx_Val_Hz, #units, Hertz in our case
-										daq.DAQmx_Val_Low, #idle state, low voltage in our case
-										0, #initial delay
-										my_clock_frequency / 2.,   #pulse frequency, divide by 2 such that length of semi period = count_interval
-										0.5 ) #duty cycle of pulses, 0.5 such that high and low duration are both = count_interval
+                                        my_clock_channel,  # use this channel
+                                        'Clock Task',    # name to assign to task (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
+								daq.DAQmx_Val_Hz, #units, Hertz in our case
+								daq.DAQmx_Val_Low, #idle state, low voltage in our case
+								0, #initial delay
+								my_clock_frequency / 2.,   #pulse frequency, divide by 2 such that length of semi period = count_interval
+								0.5 ) #duty cycle of pulses, 0.5 such that high and low duration are both = count_interval
         
         # set timing to continuous, i.e. set only the number of samples to 
         # acquire or generate without specifying timing
