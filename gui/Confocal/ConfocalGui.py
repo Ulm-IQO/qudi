@@ -73,8 +73,8 @@ class ColorBar(pg.GraphicsObject):
         
     def paint(self, p, *args):
         # paint underlying mask
-        p.setPen(pg.QtGui.QColor(255, 255, 255, 0))
-        p.setBrush(pg.QtGui.QColor(255, 255, 255, 200))
+        p.setPen(pg.QtGui.QColor(0, 0, 0, 255))
+        p.setBrush(pg.QtGui.QColor(0, 0, 0, 200))
         p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
         
         # paint colorbar
@@ -424,7 +424,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Play around with a color bar:
         
         self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
-        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
+        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])              
         
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
@@ -496,7 +496,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def slider_x_adjust(self,roi):
         self._mw.x_SliderWidget.setValue(roi.pos()[0]+ 0.5*roi.size()[0]) 
-
+        
     def slider_y_adjust(self,roi):
         self._mw.y_SliderWidget.setValue(roi.pos()[1]+ 0.5*roi.size()[1]) 
 
@@ -506,6 +506,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def update_current_x(self,text):
         self._mw.x_current_InputWidget.setText(str(text))
+        print(self.xy_image.boundingRect())
+        #print(dir(self.xy_image))boundingRegion
         
     def update_current_y(self,text):
         self._mw.y_current_InputWidget.setText(str(text))        
@@ -515,7 +517,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def update_x_slider(self):
         self._mw.x_SliderWidget.setValue(float(self._mw.x_current_InputWidget.text()))
-        print(self.xy_image.viewRect())
+        
         
         
     def update_y_slider(self):
@@ -566,9 +568,54 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
-            print(self._scanning_logic.xy_image[:,:,3])
-            
+            self.put_cursor_in_xy_scan()
+            self.put_cursor_in_xz_scan()
         
-    def put_cursor_in_xy_scan():
+    def put_cursor_in_xy_scan(self):
+        view_x_min = float(self._mw.x_min_InputWidget.text())
+        view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
+        view_y_min = float(self._mw.y_min_InputWidget.text())
+        view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min  
+        
+        cross_pos = self.roi_xy.pos()+ self.roi_xy.size()*0.5
+        
+        if (view_x_min > cross_pos[0]):
+            self.roi_xy_change_x(view_x_min+self.roi_xy.size()[0]*0.5)
+            
+        if (view_x_max < cross_pos[0]):
+            self.roi_xy_change_x(view_x_max-self.roi_xy.size()[0]*0.5)
+            
+        if (view_y_min > cross_pos[1]):
+            self.roi_xy_change_y(view_y_min+self.roi_xy.size()[1]*0.5)
+            
+        if (view_y_max < cross_pos[1]):
+            self.roi_xy_change_y(view_y_max-self.roi_xy.size()[1]*0.5)
+            
+            
+    def put_cursor_in_xz_scan(self):
+        view_x_min = float(self._mw.x_min_InputWidget.text())
+        view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
+        view_z_min = float(self._mw.z_min_InputWidget.text())
+        view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min  
+        
+        cross_pos = self.roi_xz.pos()+ self.roi_xz.size()*0.5
+        
+        if (view_x_min > cross_pos[0]):
+            self.roi_xz_change_x(view_x_min+self.roi_xz.size()[0]*0.5)
+            
+        if (view_x_max < cross_pos[0]):
+            self.roi_xz_change_x(view_x_max-self.roi_xz.size()[0]*0.5)
+            
+        if (view_z_min > cross_pos[1]):
+            self.roi_xz_change_z(view_z_min+self.roi_xz.size()[1]*0.5)
+            
+        if (view_z_max < cross_pos[1]):
+            self.roi_xz_change_z(view_z_max-self.roi_xz.size()[1]*0.5)
+            
+    def adjust_aspect_roi_xy():
         pass
+    
+    def adjust_aspect_roi_xz():
+        pass
+        
         
