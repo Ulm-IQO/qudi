@@ -69,11 +69,14 @@ class CrossLine(pg.InfiniteLine):
     def adjust(self, extroi):
         """
         Run this function to adjust the position of the Crosshair-Line
+        
+          @param object extroi: external roi
         """
         if self.angle == 0:
             self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
         if self.angle == 90:
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
+        
 
     def set_x(self,value):
         self.setValue(value)
@@ -151,8 +154,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw = ConfocalMainWindow()
         
         # Get the image for the display from the logic: 
-        arr01 = self._scanning_logic.xy_image[:,:,3]
-        arr02 = self._scanning_logic.xz_image[:,:,3]
+        arr01 = self._scanning_logic.xy_image[:,:,3].transpose()
+        arr02 = self._scanning_logic.xz_image[:,:,3].transpose()
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
@@ -166,6 +169,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_image = pg.ImageItem(arr02)
         self.xz_image.setRect(QtCore.QRectF(0, 0, 100, 100))
 
+        
 
         
         
@@ -175,7 +179,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_ViewWidget.addItem(self.xz_image)
         
         # Create Region of Interest for xy image:
-        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01)/20, len(arr01)/20], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01), len(arr01)], pen={'color': "00F", 'width': 1},removable=True )
         # self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
         
         # Add to the xy Image Widget
@@ -186,11 +190,24 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
 
         # connect the change of a region with the adjustment of the crosshair
+
+
+        
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
 
         self.roi_xy.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xy.sigRegionChanged.connect(self.slider_y_adjust)
+
+        #self.hline_xy.sigPositionChanged.connect(self.slider_x_adjust)
+#        self.vline_xy.sigPositionChanged.connect(self.slider_x_adjust)
+#        self.hline_xy.sigPositionChanged.connect(self.slider_y_adjust)
+        
+        
+        
+#        self.hline_xy.xChanged.connect(self.slider_x_adjust)
+#        self.vline_xy.yChanged.connect(self.slider_y_adjust)
+
 
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
@@ -198,11 +215,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Some additional settings for the xy ViewWidget
         self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
-        self._mw.xy_ViewWidget.disableAutoRange()
-        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
+        self._mw.xy_ViewWidget.enableAutoRange()
+#        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
 
         # create Region of Interest for xz image:
-        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/20, len(arr02)/20], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/10, len(arr02)/10], pen={'color': "00F", 'width': 1},removable=True )
         # self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
 
         # Add to the xz Image Widget
@@ -214,6 +231,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
         self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
         
+        
+#        self.vline_xz.sigPositionChanged.connect(self.slider_x_adjust)
+#        self.hline_xz.sigPositionChanged.connect(self.slider_z_adjust)
+        
         self.roi_xz.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xz.sigRegionChanged.connect(self.slider_z_adjust)        
         
@@ -222,15 +243,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         # Some additional settings for the xz ViewWidget
         self._mw.xz_ViewWidget.setMouseEnabled(x=False,y=False)
-        self._mw.xz_ViewWidget.disableAutoRange()
-        self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)        
+        #self._mw.xz_ViewWidget.disableAutoRange()
+        #self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)        
         
         self._mw.x_SliderWidget.setSingleStep(0.01)
        
         
         # Set a Range for the sliders:
         self._mw.x_SliderWidget.setRange(self._scanning_logic.x_range[0],self._scanning_logic.x_range[1])
-        
         self._mw.y_SliderWidget.setRange(float(self._scanning_logic.y_range[0]),float(self._scanning_logic.y_range[1]))
         self._mw.z_SliderWidget.setRange(self._scanning_logic.z_range[0],self._scanning_logic.z_range[1])
 
@@ -276,7 +296,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_res_InputWidget.setText(str(self._scanning_logic.xy_resolution))     
         self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))   
         
-        # Connect the Slider with an update in the current values of x
+        # Connect the Slider with an update in the current values of x,y and z.
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
@@ -287,8 +307,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.x_current_InputWidget.returnPressed.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.returnPressed.connect(self.update_z_slider)
         
-        self._mw.xy_res_InputWidget.returnPressed.connect(self.update_xy_resolution)
-        self._mw.z_res_InputWidget.returnPressed.connect(self.update_z_resolution)
+        self._mw.xy_res_InputWidget.returnPressed.connect(self.change_xy_resolution)
+        self._mw.z_res_InputWidget.returnPressed.connect(self.change_z_resolution)
         
         self._mw.x_min_InputWidget.returnPressed.connect(self.change_x_image_range)
         self._mw.x_max_InputWidget.returnPressed.connect(self.change_x_image_range)
@@ -304,8 +324,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_z_slider)
 
-        self._mw.xy_res_InputWidget.editingFinished.connect(self.update_xy_resolution)
-        self._mw.z_res_InputWidget.editingFinished.connect(self.update_z_resolution)
+        self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution)
+        self._mw.z_res_InputWidget.editingFinished.connect(self.change_z_resolution)
         
         self._mw.x_min_InputWidget.editingFinished.connect(self.change_x_image_range)
         self._mw.x_max_InputWidget.editingFinished.connect(self.change_x_image_range)
@@ -334,6 +354,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.setPos([ini_pos_x_crosshair+0.001, ini_pos_y_crosshair+0.001])          
 
 
+        
+
+
     def ready_clicked(self):
         pass
 
@@ -348,35 +371,102 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
             
+
     def refocus_clicked(self, enabled):
         self._scanning_logic.stop_scanning()
         if enabled:
-            self._tracker_logic.start_refocus()
-               
+             self._tracker_logic.start_refocus()
+   
+   
+
+#    def roi_xy_change_x(self,x_pos):
+#
+#        print('Change ROI for x:',x_pos)
+#
+#        # Since the origin of the region of interest (ROI) is not the crosshair
+#        # point but the lowest left point of the square, you have to shift the
+#        # origin according to that. Therefore the position of the ROI is not 
+#        # the actual position! 
+#        roi_x_pos = x_pos - self.roi_xy.size()[0]*0.5
+#        roi_y_pos = self.roi_xy.pos()[1]
+#    
+#        print('roi_x_pos:',roi_x_pos)
+#        print('roi_y_pos:',roi_y_pos)
+#        
+#        self.roi_xy.setPos([roi_x_pos,roi_y_pos])
+#        
+#        self._scanning_logic.set_position(x=x_pos)
+#        
+#    def roi_xy_change_y(self,y_pos):
+#        
+#        # Since the origin of the region of interest (ROI) is not the crosshair
+#        # point but the lowest left point of the square, you have to shift the
+#        # origin according to that. Therefore the position of the ROI is not 
+#        # the actual position! 
+#        roi_x_pos = self.roi_xy.pos()[0]
+#        roi_y_pos = y_pos - self.roi_xy.size()[1]*0.5
+#    
+#        
+#        self.roi_xy.setPos([roi_x_pos,roi_y_pos])     
+#        self._scanning_logic.set_position(y=y_pos) 
+##        
+#    def roi_xz_change_x(self,x_pos):
+#        
+#        # Since the origin of the region of interest (ROI) is not the crosshair
+#        # point but the lowest left point of the square, you have to shift the
+#        # origin according to that. Therefore the position of the ROI is not 
+#        # the actual position! 
+#        
+#        roi_x_pos = x_pos - self.roi_xz.size()[0]*0.5
+#        roi_z_pos = self.roi_xz.pos()[1]
+#        
+#        self.roi_xz.setPos([roi_x_pos,roi_z_pos])
+#        self._scanning_logic.set_position(x=x_pos) 
+#
+#    def roi_xz_change_z(self,z_pos):
+#        
+#        # Since the origin of the region of interest (ROI) is not the crosshair
+#        # point but the lowest left point of the square, you have to shift the
+#        # origin according to that. Therefore the position of the ROI is not 
+#        # the actual position!
+#        
+#        roi_x_pos = self.roi_xz.pos()[0]
+#        roi_z_pos = z_pos - self.roi_xz.size()[1]*0.5
+#        
+#        self.roi_xz.setPos([roi_x_pos,roi_z_pos])        
+#        self._scanning_logic.set_position(z=z_pos)
+   
     def roi_xy_change_x(self,x_pos):
+#        print('Change ROI for x:',x_pos)
+#        print('roi pos:',self.roi_xy.pos())
         self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
-        self._scanning_logic.set_position(x=x_pos)
+        self._scanning_logic.set_position(x=x_pos+self.roi_xy.size()[0]*0.5)
         
     def roi_xy_change_y(self,y_pos):
+#        print('Change ROI for y:',y_pos)
         self.roi_xy.setPos([self.roi_xy.pos()[0],y_pos])        
-        self._scanning_logic.set_position(y=y_pos) 
+        self._scanning_logic.set_position(y=y_pos+self.roi_xy.size()[0]*0.5) 
         
     def roi_xz_change_x(self,x_pos):
         self.roi_xz.setPos([x_pos,self.roi_xz.pos()[1]])
-        self._scanning_logic.set_position(x=x_pos) 
+        self._scanning_logic.set_position(x=x_pos+self.roi_xz.size()[0]*0.5) 
 
     def roi_xz_change_z(self,z_pos):
         self.roi_xz.setPos([self.roi_xz.pos()[0],z_pos])
-        self._scanning_logic.set_position(z=z_pos)       
+        self._scanning_logic.set_position(z=z_pos+self.roi_xy.size()[0]*0.5)      
         
-    def slider_x_adjust(self,roi):
-        self._mw.x_SliderWidget.setValue(roi.pos()[0])
+        
+        
+        
+    def slider_x_adjust(self,inf_line_obj):
+        self._mw.x_SliderWidget.setValue(inf_line_obj.pos()[0]) 
 
-    def slider_y_adjust(self,roi):
-        self._mw.y_SliderWidget.setValue(roi.pos()[1])
+    def slider_y_adjust(self,inf_line_obj):
+        self._mw.y_SliderWidget.setValue(inf_line_obj.pos()[1])
 
     def slider_z_adjust(self,roi):
         self._mw.z_SliderWidget.setValue(roi.pos()[1])
+        
         
     def update_current_x(self,text):
         self._mw.x_current_InputWidget.setText(str(text))
@@ -389,6 +479,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def update_x_slider(self):
         self._mw.x_SliderWidget.setValue(float(self._mw.x_current_InputWidget.text()))
+        print(self.xy_image.viewRect())
+        
         
     def update_y_slider(self):
         self._mw.y_SliderWidget.setValue(float(self._mw.y_current_InputWidget.text()))
@@ -396,13 +488,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_z_slider(self):
         self._mw.z_SliderWidget.setValue(float(self._mw.z_current_InputWidget.text()))  
         
-    def update_xy_resolution(self):
-        self._scanning_logic.set_position(float(self._mw.xy_res_InputWidget.text()))
-        print(self._mw.xy_res_InputWidget.text())
+    def change_xy_resolution(self):
+        self._scanning_logic.xy_resolution = float(self._mw.xy_res_InputWidget.text())
         
-    def update_z_resolution(self):
-        self._scanning_logic.set_position(float(self._mw.z_res_InputWidget.text()))
-        print(self._mw.z_res_InputWidget.text())
+    def change_z_resolution(self):
+        self._scanning_logic.z_resolution = float(self._mw.z_res_InputWidget.text())
     
     def change_x_image_range(self):
         self._scanning_logic.image_x_range = [float(self._mw.x_min_InputWidget.text()), float(self._mw.x_max_InputWidget.text())]
@@ -413,12 +503,36 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def change_z_image_range(self):
         self._scanning_logic.image_z_range = [float(self._mw.z_min_InputWidget.text()), float(self._mw.z_max_InputWidget.text())]
         
+        
+        
     def refresh_image(self):
         if self._mw.xy_scan_StateWidget.isChecked():
-            self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3])
+#            x_range = self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0]
+#            y_range = self._scanning_logic.image_y_range[1] - self._scanning_logic.image_y_range[0]
+#           
+            #self.put_cursor_in_scan()
+        
+            self.xy_image.getViewBox().enableAutoRange()            
+            view_x_min = float(self._mw.x_min_InputWidget.text())#/self._scanning_logic.xy_resolution
+            view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min#/self._scanning_logic.xy_resolution
+            view_y_min = float(self._mw.y_min_InputWidget.text())#/self._scanning_logic.xy_resolution
+            view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min#/self._scanning_logic.xy_resolution     
+            self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))           
+            
+            
+            #self.xy_image.setRect(QtCore.QRectF(0.0 , 0.0,x_range , y_range))
+            self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose())
         elif self._mw.xz_scan_StateWidget.isChecked():
-            self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3])
+            
+            x_range = self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0]
+            z_range = self._scanning_logic.image_z_range[1] - self._scanning_logic.image_z_range[0]
+            #self.xy_image.setRect(QtCore.QRectF(0.0 , 0.0,x_range , z_range))
+            self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose())
+
         
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
+        
+    def put_cursor_in_xy_scan():
+        pass
         
