@@ -76,7 +76,7 @@
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_6">
             <item row="1" column="0">
-             <widget class="QGraphicsView" name="graphicsView_3"/>
+             <widget class="PlotWidget" name="xy_refocus_ViewWidget"/>
             </item>
            </layout>
           </item>
@@ -616,6 +616,8 @@
     </property>
     <addaction name="actionSave_as"/>
     <addaction name="actionSave_configuration"/>
+    <addaction name="separator"/>
+    <addaction name="action_Exit"/>
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
@@ -642,6 +644,11 @@
     <string>&amp;Settings</string>
    </property>
   </action>
+  <action name="action_Exit">
+   <property name="text">
+    <string>&amp;Exit</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -651,5 +658,22 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>action_Exit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>510</x>
+     <y>339</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

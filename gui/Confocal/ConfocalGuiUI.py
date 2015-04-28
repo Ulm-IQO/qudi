@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Apr 28 18:31:53 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Tue Apr 28 23:00:03 2015
+#      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -74,9 +74,9 @@ class Ui_MainWindow(object):
         self.gridLayout_7.setObjectName(_fromUtf8("gridLayout_7"))
         self.gridLayout_6 = QtGui.QGridLayout()
         self.gridLayout_6.setObjectName(_fromUtf8("gridLayout_6"))
-        self.graphicsView_3 = QtGui.QGraphicsView(self.tab_6)
-        self.graphicsView_3.setObjectName(_fromUtf8("graphicsView_3"))
-        self.gridLayout_6.addWidget(self.graphicsView_3, 1, 0, 1, 1)
+        self.xy_refocus_ViewWidget = PlotWidget(self.tab_6)
+        self.xy_refocus_ViewWidget.setObjectName(_fromUtf8("xy_refocus_ViewWidget"))
+        self.gridLayout_6.addWidget(self.xy_refocus_ViewWidget, 1, 0, 1, 1)
         self.gridLayout_7.addLayout(self.gridLayout_6, 0, 0, 1, 1)
         self.tabWidget.addTab(self.tab_6, _fromUtf8(""))
         self.tab = QtGui.QWidget()
@@ -305,14 +305,19 @@ class Ui_MainWindow(object):
         self.actionSave_configuration.setObjectName(_fromUtf8("actionSave_configuration"))
         self.action_Settings = QtGui.QAction(MainWindow)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
+        self.action_Exit = QtGui.QAction(MainWindow)
+        self.action_Exit.setObjectName(_fromUtf8("action_Exit"))
         self.menuFile.addAction(self.actionSave_as)
         self.menuFile.addAction(self.actionSave_configuration)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.action_Exit)
         self.menu_Options.addAction(self.action_Settings)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menu_Options.menuAction())
 
         self.retranslateUi(MainWindow)
         self.tabWidget.setCurrentIndex(0)
+        QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -345,5 +350,6 @@ class Ui_MainWindow(object):
         self.actionSave_as.setText(_translate("MainWindow", "&Save as", None))
         self.actionSave_configuration.setText(_translate("MainWindow", "Save &configuration", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
+        self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
 
 from pyqtgraph import PlotWidget

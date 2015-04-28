@@ -445,14 +445,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
         roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
         self.roi_xz.setPos([roi_x_view , roi_y_view])
-
-     
-        
-        
-        
-        
-        
-        
         
         
     def refresh_xy_colorbar(self):
