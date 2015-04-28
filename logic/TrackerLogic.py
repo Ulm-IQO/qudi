@@ -266,8 +266,8 @@ class TrackerLogic(GenericLogic):
             else:
                 self.refocus_x = twoD_values[1]
                 self.refocus_y = twoD_values[2]
-            self.refocus_x = self._trackpoint_x
-            self.refocus_y = self._trackpoint_y
+            self.refocus_x = self._trackpoint_x+3
+            self.refocus_y = self._trackpoint_y+3
                 
             #xz scaning    
             self._scan_z_line()
@@ -290,6 +290,7 @@ class TrackerLogic(GenericLogic):
                 #hier abbrechen
             else:
                 self.refocus_z = oneD_values[1]
+            self.refocus_z = self._trackpoint_z+3
                 
             #TODO: werte als neuen Trackpoint setzen
             

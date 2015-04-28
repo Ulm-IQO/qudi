@@ -387,6 +387,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
 
         self._scanning_logic.signal_image_updated.connect(self.refresh_image)
+        self._scanning_logic.signal_change_position.connect(self.update_gui)
         self._tracker_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
         #self._scanning_logic.signal_scan_lines_next.connect(self.refresh_image)
         print('Main Confocal Windows shown:')
@@ -430,6 +431,29 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
+        
+    def update_gui(self):
+        
+        x_pos = self._scanning_logic._current_x
+        y_pos = self._scanning_logic._current_y
+        z_pos = self._scanning_logic._current_z
+        
+        roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
+        roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
+        self.roi_xy.setPos([roi_x_view , roi_y_view])
+        
+        roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
+        roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
+        self.roi_xz.setPos([roi_x_view , roi_y_view])
+
+     
+        
+        
+        
+        
+        
+        
+        
         
     def refresh_xy_colorbar(self):
         self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
