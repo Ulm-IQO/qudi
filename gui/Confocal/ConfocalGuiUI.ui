@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1010</width>
-    <height>690</height>
+    <width>1021</width>
+    <height>680</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -58,7 +58,7 @@
              <widget class="PlotWidget" name="xz_cb_ViewWidget">
               <property name="maximumSize">
                <size>
-                <width>40</width>
+                <width>80</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -99,7 +99,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>40</width>
+          <width>80</width>
           <height>16777215</height>
          </size>
         </property>
@@ -606,7 +606,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1010</width>
+     <width>1021</width>
      <height>21</height>
     </rect>
    </property>
@@ -616,8 +616,6 @@
     </property>
     <addaction name="actionSave_as"/>
     <addaction name="actionSave_configuration"/>
-    <addaction name="separator"/>
-    <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
@@ -644,11 +642,6 @@
     <string>&amp;Settings</string>
    </property>
   </action>
-  <action name="actionExit">
-   <property name="text">
-    <string>&amp;Exit</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -658,22 +651,5 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections>
-  <connection>
-   <sender>actionExit</sender>
-   <signal>triggered()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>close()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>504</x>
-     <y>344</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>
