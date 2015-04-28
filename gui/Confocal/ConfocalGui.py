@@ -5,6 +5,7 @@
 #from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
+import numpy as np
 
 from collections import OrderedDict
 from core.Base import Base
@@ -20,6 +21,67 @@ from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 #
 # to convert to ConfocalGuiUI.py.
 
+
+
+
+class ColorBar(pg.GraphicsObject):
+ 
+    def __init__(self, cmap, width, height, ticks=None, tick_labels=None, label=None):
+        pg.GraphicsObject.__init__(self)
+ 
+        # handle args
+        label = label or ''
+        w, h = width, height
+        stops, colors = cmap.getStops('float')
+        smn, spp = stops.min(), stops.ptp()
+        stops = (stops - stops.min())/stops.ptp()
+        if ticks is None:
+            ticks = np.r_[0.0:1.0:5j, 1.0] * spp + smn
+        tick_labels = tick_labels or ["%0.2g" % (t,) for t in ticks]
+ 
+        # setup picture
+        self.pic = pg.QtGui.QPicture()
+        p = pg.QtGui.QPainter(self.pic)
+ 
+        # draw bar with gradient following colormap
+        p.setPen(pg.mkPen('k'))
+        grad = pg.QtGui.QLinearGradient(w/2.0, 0.0, w/2.0, h*1.0)
+        for stop, color in zip(stops, colors):
+            grad.setColorAt(1.0 - stop, pg.QtGui.QColor(*[255*c for c in color]))
+        p.setBrush(pg.QtGui.QBrush(grad))
+        p.drawRect(pg.QtCore.QRectF(0, 0, w, h))
+ 
+        # draw ticks & tick labels
+        mintx = 0.0
+        for tick, tick_label in zip(ticks, tick_labels):
+            y_ = (1.0 - (tick - smn)/spp) * h
+            p.drawLine(0.0, y_, -5.0, y_)
+            br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, tick_label)
+            if br.x() < mintx:
+                mintx = br.x()
+            p.drawText(br.x() - 10.0, y_ + br.height() / 4.0, tick_label)
+ 
+        # draw label
+        br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, label)
+        p.drawText(-br.width() / 2.0, h + br.height() + 5.0, label)
+        
+        # done
+        p.end()
+ 
+        # compute rect bounds for underlying mask
+        self.zone = mintx - 12.0, -15.0, br.width() - mintx, h + br.height() + 30.0
+        
+    def paint(self, p, *args):
+        # paint underlying mask
+        p.setPen(pg.QtGui.QColor(255, 255, 255, 0))
+        p.setBrush(pg.QtGui.QColor(255, 255, 255, 200))
+        p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
+        
+        # paint colorbar
+        p.drawPicture(0, 0, self.pic)
+        
+    def boundingRect(self):
+        return pg.QtCore.QRectF(self.pic.boundingRect())
 
 
 
@@ -170,6 +232,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # the UI file.
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget.addItem(self.xz_image)
+        
+    
         
         # Create Region of Interest for xy image:
         self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01), len(arr01)], pen={'color': "00F", 'width': 1},removable=True )
@@ -333,10 +397,49 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Now that the ROI is connected to events, set again to initial pos:        
         self.roi_xz.setPos([ini_pos_x_crosshair+0.001, ini_pos_y_crosshair+0.001])          
 
+        # create a color map that goes from dark red to dark blue:
 
+        # Absolute scale relative to the expected data not important. This 
+        # should have the same amount of entries (num parameter) as the number
+        # of values given in color. 
+        pos = np.linspace(0.0, 1.0, num=10)
+        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
+                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
+                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
+                          [  0,  0,132,255]], dtype=np.ubyte)
+                          
+        colmap = pg.ColorMap(pos, color)
         
+        self.colmap_norm = pg.ColorMap(pos, color/255)
+        
+        # get the LookUpTable (LUT), first two params should match the position
+        # scale extremes passed to ColorMap(). 
+        # I believe last one just has to be >= the difference between the min and max level set later
+        lut = colmap.getLookupTable(0, 1, 10)
 
+            
+        self.xy_image.setLookupTable(lut)
+        self.xz_image.setLookupTable(lut)        
+        
+        # Play around with a color bar:
+        
+        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
+        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
+        
+        self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
+        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
+        self._mw.xy_cb_ViewWidget.hideAxis('bottom')
+        self._mw.xz_cb_ViewWidget.hideAxis('bottom')
+        
+    def refresh_xy_colorbar(self):
+        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
+        self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
 
+     
+    def refresh_xz_colorbar(self):
+        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
+        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
+        
     def ready_clicked(self):
         pass
 
@@ -366,7 +469,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
         roi_y_view = self.roi_xy.pos()[1]
         self.roi_xy.setPos([roi_x_view , roi_y_view])
-        print('x_pos:',x_pos)
         self._scanning_logic.set_position(x=x_pos)
         
     def roi_xy_change_y(self,y_pos):
@@ -441,31 +543,31 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def refresh_image(self):
         if self._mw.xy_scan_StateWidget.isChecked():
-#            x_range = self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0]
-#            y_range = self._scanning_logic.image_y_range[1] - self._scanning_logic.image_y_range[0]
-#           
-            #self.put_cursor_in_scan()
-        
             self.xy_image.getViewBox().enableAutoRange()            
-            view_x_min = float(self._mw.x_min_InputWidget.text())#/self._scanning_logic.xy_resolution
-            view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min#/self._scanning_logic.xy_resolution
-            view_y_min = float(self._mw.y_min_InputWidget.text())#/self._scanning_logic.xy_resolution
-            view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min#/self._scanning_logic.xy_resolution     
-            self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))           
+            view_x_min = float(self._mw.x_min_InputWidget.text())
+            view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
+            view_y_min = float(self._mw.y_min_InputWidget.text())
+            view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min   
+            self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))
             
+            self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose(),autoLevels=True)
+            self.refresh_xy_colorbar()
             
-            #self.xy_image.setRect(QtCore.QRectF(0.0 , 0.0,x_range , y_range))
-            self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose())
         elif self._mw.xz_scan_StateWidget.isChecked():
-            
-            x_range = self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0]
-            z_range = self._scanning_logic.image_z_range[1] - self._scanning_logic.image_z_range[0]
-            #self.xy_image.setRect(QtCore.QRectF(0.0 , 0.0,x_range , z_range))
-            self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose())
+            self.xz_image.getViewBox().enableAutoRange()            
+            view_x_min = float(self._mw.x_min_InputWidget.text())
+            view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
+            view_z_min = float(self._mw.z_min_InputWidget.text())
+            view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min  
+            self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min, view_x_max, view_z_max))    
+            self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose(),autoLevels=True)
+            self.refresh_xz_colorbar()
 
-        
+
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
+            print(self._scanning_logic.xy_image[:,:,3])
+            
         
     def put_cursor_in_xy_scan():
         pass
