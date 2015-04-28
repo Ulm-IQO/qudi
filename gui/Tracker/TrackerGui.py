@@ -109,15 +109,14 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw = TrackerMainWindow()
         
         # Get the image for the display from the logic:
-        arr01 = self._tracker_logic.xy_refocus_image[:,:,3]
+        arr01 = self._tracker_logic.xy_refocus_image[:,:,3].transpose()
         arr02 = self._tracker_logic.z_refocus_line
 
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)
         self.xy_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
-        self.xz_refocus_image = pg.PlotDataItem(arr02)
-#        self.xz_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
+        self.xz_refocus_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,arr02)
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -131,11 +130,11 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.show()
         
     def refresh_xy_image(self):
-        self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3])
+        self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()
         
     def refresh_z_image(self):
-        self.xz_refocus_image.setImage(image=self._tracker_logic.z_refocus_line)
+        self.xz_refocus_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_refocus_line)
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()
