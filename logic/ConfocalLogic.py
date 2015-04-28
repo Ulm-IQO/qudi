@@ -295,7 +295,7 @@ class ConfocalLogic(GenericLogic):
         """scanning an image in either xz or xy       
                 
         """
-        
+        #TODO: change z_values, if z is changed during scan!
         #stops scanning
         if self.stopRequested:
             with self.threadlock:
