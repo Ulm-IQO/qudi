@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'TrackerGuiUI.ui'
 #
-# Created: Tue Apr 28 21:58:24 2015
+# Created: Tue Apr 28 22:44:02 2015
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -65,21 +65,31 @@ class Ui_MainWindow(object):
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuOptions = QtGui.QMenu(self.menubar)
         self.menuOptions.setObjectName(_fromUtf8("menuOptions"))
+        self.menu_File = QtGui.QMenu(self.menubar)
+        self.menu_File.setObjectName(_fromUtf8("menu_File"))
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         MainWindow.setStatusBar(self.statusbar)
         self.action_Settings = QtGui.QAction(MainWindow)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
+        self.action_Exit = QtGui.QAction(MainWindow)
+        self.action_Exit.setObjectName(_fromUtf8("action_Exit"))
         self.menuOptions.addAction(self.action_Settings)
+        self.menu_File.addSeparator()
+        self.menu_File.addAction(self.action_Exit)
+        self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menuOptions.menuAction())
 
         self.retranslateUi(MainWindow)
+        QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Tracker", None))
         self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
+        self.menu_File.setTitle(_translate("MainWindow", "&File", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
+        self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
 
 from pyqtgraph import PlotWidget
