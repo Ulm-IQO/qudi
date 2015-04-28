@@ -22,7 +22,7 @@ class FitLogic(GenericLogic):
             ## declare actions for state transitions
             state_actions = {'onactivate': self.activation}
             GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-            self._modclass = 'counterlogic'
+            self._modclass = 'fitlogic'
             self._modtype = 'logic'
     
             ## declare connectors
@@ -100,7 +100,7 @@ class FitLogic(GenericLogic):
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
                     self.logMsg('The fit did not work.', 
-                        msgType='status')
+                        msgType='error')
                     error=-1
             if not details:
                 return error,popt
