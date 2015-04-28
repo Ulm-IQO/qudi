@@ -52,7 +52,6 @@ class CrossROI(pg.ROI):
         center = [0.5, 0.5]    
         self.addTranslateHandle(center)
 
-
 class CrossLine(pg.InfiniteLine):
     """ Construct one line for the Crosshair in th plot.
 
@@ -69,17 +68,14 @@ class CrossLine(pg.InfiniteLine):
     def adjust(self, extroi):
         """
         Run this function to adjust the position of the Crosshair-Line
-        
+    
           @param object extroi: external roi
         """
         if self.angle == 0:
             self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
         if self.angle == 90:
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
-        
 
-    def set_x(self,value):
-        self.setValue(value)
 
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
@@ -169,10 +165,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_image = pg.ImageItem(arr02)
         self.xz_image.setRect(QtCore.QRectF(0, 0, 100, 100))
 
-        
 
-        
-        
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.xy_ViewWidget.addItem(self.xy_image)
@@ -189,24 +182,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle= 0, pen={'color': "00F", 'width': 1} )
         self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
 
-        # connect the change of a region with the adjustment of the crosshair
-
-
-        
+        # connect the change of a region with the adjustment of the crosshair:
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
+        
 
         self.roi_xy.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xy.sigRegionChanged.connect(self.slider_y_adjust)
-
-        #self.hline_xy.sigPositionChanged.connect(self.slider_x_adjust)
-#        self.vline_xy.sigPositionChanged.connect(self.slider_x_adjust)
-#        self.hline_xy.sigPositionChanged.connect(self.slider_y_adjust)
-        
-        
-        
-#        self.hline_xy.xChanged.connect(self.slider_x_adjust)
-#        self.vline_xy.yChanged.connect(self.slider_y_adjust)
 
 
         # add the configured crosshair to the xy Widget
@@ -220,7 +202,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         # create Region of Interest for xz image:
         self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/10, len(arr02)/10], pen={'color': "00F", 'width': 1},removable=True )
-        # self.roi_xz = CrossROI([100, 100], [20, 20], pen={'color': "00F", 'width': 1},removable=True )
 
         # Add to the xz Image Widget
         self._mw.xz_ViewWidget.addItem(self.roi_xz)
@@ -230,10 +211,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
         self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
-        
-        
-#        self.vline_xz.sigPositionChanged.connect(self.slider_x_adjust)
-#        self.hline_xz.sigPositionChanged.connect(self.slider_z_adjust)
         
         self.roi_xz.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xz.sigRegionChanged.connect(self.slider_z_adjust)        
@@ -377,95 +354,49 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if enabled:
              self._tracker_logic.start_refocus()
    
-   
-
-#    def roi_xy_change_x(self,x_pos):
-#
-#        print('Change ROI for x:',x_pos)
-#
-#        # Since the origin of the region of interest (ROI) is not the crosshair
-#        # point but the lowest left point of the square, you have to shift the
-#        # origin according to that. Therefore the position of the ROI is not 
-#        # the actual position! 
-#        roi_x_pos = x_pos - self.roi_xy.size()[0]*0.5
-#        roi_y_pos = self.roi_xy.pos()[1]
-#    
-#        print('roi_x_pos:',roi_x_pos)
-#        print('roi_y_pos:',roi_y_pos)
-#        
-#        self.roi_xy.setPos([roi_x_pos,roi_y_pos])
-#        
-#        self._scanning_logic.set_position(x=x_pos)
-#        
-#    def roi_xy_change_y(self,y_pos):
-#        
-#        # Since the origin of the region of interest (ROI) is not the crosshair
-#        # point but the lowest left point of the square, you have to shift the
-#        # origin according to that. Therefore the position of the ROI is not 
-#        # the actual position! 
-#        roi_x_pos = self.roi_xy.pos()[0]
-#        roi_y_pos = y_pos - self.roi_xy.size()[1]*0.5
-#    
-#        
-#        self.roi_xy.setPos([roi_x_pos,roi_y_pos])     
-#        self._scanning_logic.set_position(y=y_pos) 
-##        
-#    def roi_xz_change_x(self,x_pos):
-#        
-#        # Since the origin of the region of interest (ROI) is not the crosshair
-#        # point but the lowest left point of the square, you have to shift the
-#        # origin according to that. Therefore the position of the ROI is not 
-#        # the actual position! 
-#        
-#        roi_x_pos = x_pos - self.roi_xz.size()[0]*0.5
-#        roi_z_pos = self.roi_xz.pos()[1]
-#        
-#        self.roi_xz.setPos([roi_x_pos,roi_z_pos])
-#        self._scanning_logic.set_position(x=x_pos) 
-#
-#    def roi_xz_change_z(self,z_pos):
-#        
-#        # Since the origin of the region of interest (ROI) is not the crosshair
-#        # point but the lowest left point of the square, you have to shift the
-#        # origin according to that. Therefore the position of the ROI is not 
-#        # the actual position!
-#        
-#        roi_x_pos = self.roi_xz.pos()[0]
-#        roi_z_pos = z_pos - self.roi_xz.size()[1]*0.5
-#        
-#        self.roi_xz.setPos([roi_x_pos,roi_z_pos])        
-#        self._scanning_logic.set_position(z=z_pos)
-   
     def roi_xy_change_x(self,x_pos):
-#        print('Change ROI for x:',x_pos)
-#        print('roi pos:',self.roi_xy.pos())
-        self.roi_xy.setPos([x_pos,self.roi_xy.pos()[1]])
-        self._scanning_logic.set_position(x=x_pos+self.roi_xy.size()[0]*0.5)
+        # Since the origin of the region of interest (ROI) is not the crosshair
+        # point but the lowest left point of the square, you have to shift the
+        # origin according to that. Therefore the position of the ROI is not 
+        # the actual position!
+    
+        roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
+        roi_y_view = self.roi_xy.pos()[1]
+        self.roi_xy.setPos([roi_x_view , roi_y_view])
+        print('x_pos:',x_pos)
+        self._scanning_logic.set_position(x=x_pos)
         
     def roi_xy_change_y(self,y_pos):
-#        print('Change ROI for y:',y_pos)
-        self.roi_xy.setPos([self.roi_xy.pos()[0],y_pos])        
-        self._scanning_logic.set_position(y=y_pos+self.roi_xy.size()[0]*0.5) 
+        roi_x_view = self.roi_xy.pos()[0]
+        roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
+        self.roi_xy.setPos([roi_x_view , roi_y_view])
+        self._scanning_logic.set_position(y=y_pos)    
+
         
     def roi_xz_change_x(self,x_pos):
-        self.roi_xz.setPos([x_pos,self.roi_xz.pos()[1]])
-        self._scanning_logic.set_position(x=x_pos+self.roi_xz.size()[0]*0.5) 
+        
+        roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
+        roi_y_view = self.roi_xz.pos()[1]
+        self.roi_xz.setPos([roi_x_view , roi_y_view])
+        self._scanning_logic.set_position(x=x_pos)        
 
     def roi_xz_change_z(self,z_pos):
-        self.roi_xz.setPos([self.roi_xz.pos()[0],z_pos])
-        self._scanning_logic.set_position(z=z_pos+self.roi_xy.size()[0]*0.5)      
         
-        
-        
-        
-    def slider_x_adjust(self,inf_line_obj):
-        self._mw.x_SliderWidget.setValue(inf_line_obj.pos()[0]) 
 
-    def slider_y_adjust(self,inf_line_obj):
-        self._mw.y_SliderWidget.setValue(inf_line_obj.pos()[1])
+        roi_x_view = self.roi_xz.pos()[0]
+        roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
+        self.roi_xz.setPos([roi_x_view , roi_y_view])
+        self._scanning_logic.set_position(z=z_pos)         
+        
+        
+    def slider_x_adjust(self,roi):
+        self._mw.x_SliderWidget.setValue(roi.pos()[0]+ 0.5*roi.size()[0]) 
+
+    def slider_y_adjust(self,roi):
+        self._mw.y_SliderWidget.setValue(roi.pos()[1]+ 0.5*roi.size()[1]) 
 
     def slider_z_adjust(self,roi):
-        self._mw.z_SliderWidget.setValue(roi.pos()[1])
+        self._mw.z_SliderWidget.setValue(roi.pos()[1]+ 0.5*roi.size()[1]) 
         
         
     def update_current_x(self,text):
