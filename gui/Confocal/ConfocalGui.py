@@ -309,7 +309,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_min_InputWidget.editingFinished.connect(self.change_y_image_range)
         self._mw.y_max_InputWidget.editingFinished.connect(self.change_y_image_range)
         self._mw.z_min_InputWidget.editingFinished.connect(self.change_z_image_range)
-        self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range)        
+        self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range) 
+        
+        
         
         
         # Connect the RadioButtons and connect to the event if they are touched:
@@ -321,6 +323,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
 
         self._scanning_logic.signal_image_updated.connect(self.refresh_image)
+        self._tracker_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
         #self._scanning_logic.signal_scan_lines_next.connect(self.refresh_image)
         print('Main Confocal Windows shown:')
         self._mw.show()
