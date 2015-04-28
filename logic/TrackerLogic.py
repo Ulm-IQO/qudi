@@ -136,9 +136,9 @@ class TrackerLogic(GenericLogic):
         self.return_slowness = 100
         
         self.refocus_XY_size =  2
-        self.refocus_XY_step = 0.02
+        self.refocus_XY_step = 0.2
         self.refocus_Z_size = 5
-        self.refocus_Z_step = 0.1
+        self.refocus_Z_step = 0.5
         
         self.running = False
         self.stopRequested = False
@@ -224,8 +224,6 @@ class TrackerLogic(GenericLogic):
         Z_line = self._Z_values    #todo: tilt_correction
         A_line = self._A_values
         return_X_line = self._return_X_values
-
-                
         
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )            
         line_counts = self._scanning_device.scan_line(line)
@@ -240,18 +238,19 @@ class TrackerLogic(GenericLogic):
         self.signal_xy_image_updated.emit()
         self._scan_counter += 1
         
-        if self._scan_counter < np.size(self._image_vert_axis):            
+        if self._scan_counter < np.size(self._Y_values):            
             self.signal_scan_xy_line_next.emit()
         else:
             #x,y-fit
-            error,amplitude,xo,yo,sigma_x,sigma_y,theta,offset = self._fit_logic.make_fit(x_axis=X_line, y_axis=Y_line,  data=self.xy_refocus_image[:,:,3])
+            error,amplitude,xo,yo,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=X_line, y_axis=Y_line,  data=self.xy_refocus_image[:,:,3])
             if error == -1:
                 print('error in initial_guess xy fit')
                 #hier abbrechen
             else:
                 initial_guess_xy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
             #TODO: function richtig aufrufen
-            error, twoD_values = self._fit_logic.make_fit(function=None,axes=(X_line,Y_line),data=self.xy_refocus_image[:,:,3],initial_guess=initial_guess_xy)
+            fit_x, fit_y = np.meshgrid(X_line, Y_line)
+            error, twoD_values = self._fit_logic.make_fit(function=self._fit_logic.twoD_gaussian_function,axes=(fit_x, fit_y),data=self.xy_refocus_image[:,:,3],initial_guess=initial_guess_xy)
             if error == -1:
                 print('error in 2D Gaussian Fit')
                 #hier abbrechen
@@ -265,14 +264,14 @@ class TrackerLogic(GenericLogic):
             self.signal_z_image_updated.emit()
             
             #z-fit
-            error, amplitude, x_zero, sigma, offset=self.gaussian_estimator(self._Z_values,self.z_refocus_line)
+            error, amplitude, x_zero, sigma, offset=self._fit_logic.gaussian_estimator(self._zimage_Z_values,self.z_refocus_line)
             if error == -1:
                 print('error in initial_guess z fit')
                 #hier abbrechen
             else:
                 initial_guess_z = (amplitude, x_zero, sigma, offset)
             #TODO: function richtig aufrufen
-            error, oneD_values = self._fit_logic.make_fit(function=None, axes=self._Z_values, data=self.z_refocus_line,initial_guess=initial_guess_z)
+            error, oneD_values = self._fit_logic.make_fit(function=self._fit_logic.gaussian_function, axes=self._zimage_Z_values, data=self.z_refocus_line,initial_guess=initial_guess_z)
             if error == -1:
                 print('error in 1D Gaussian Fit')
                 #hier abbrechen
@@ -295,19 +294,19 @@ class TrackerLogic(GenericLogic):
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         
-        self._Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
-        self._A_values = np.zeros(self._Z_values.shape)
+        self._zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
+        self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
-        self.z_refocus_line = np.zeros(len(self._Z_values))
+        self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         
         
     def _scan_z_line(self):
         """Scans the z line for refocus
         """
-        Z_line = self._Z_values    #todo: tilt_correction
-        X_line = self.refocus_x * np.ones(self._Z_values.shape)
-        Y_line = self.refocus_y * np.ones(self._Z_values.shape)
-        A_line = np.zeros(self._Z_values.shape)
+        Z_line = self._zimage_Z_values    #todo: tilt_correction
+        X_line = self.refocus_x * np.ones(self._zimage_Z_values.shape)
+        Y_line = self.refocus_y * np.ones(self._zimage_Z_values.shape)
+        A_line = np.zeros(self._zimage_Z_values.shape)
         
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )            
         line_counts = self._scanning_device.scan_line(line)
