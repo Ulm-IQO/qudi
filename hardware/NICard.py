@@ -14,6 +14,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 	This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    #FIX ME: microwave hardware?
+        
     
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -31,7 +33,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         self.connector['out']['confocalscanner'] = OrderedDict()
         self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
-                                
+        
+
+        #FIX ME: Shouldn't that be in the hardware class?    
+        #FIX ME: What are the variables doing (i.e. RWTimeout)?            
         self._max_counts = 3e7
         self._RWTimeout = 5
         self._counter_daq_task = None
@@ -46,10 +51,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._current_position = [0., 0., 0., 0.]
         
         # handle all the parameters given by the config
+        #FIX ME: also what happens if there are no parameters in the config
         if 'scanner_ao_channels' in config.keys():
             self._scanner_ao_channels=config['scanner_ao_channels']
         else:
             self._scanner_ao_channels = '/Dev1/AO0:3'
+            #FIX ME: Why error and not warning?
             self.logMsg('No scanner_ao_channels configured, using {} instead.'.format(self._scanner_ao_channels), msgType='error')
             
         if 'clock_channel' in config.keys():
@@ -81,48 +88,48 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
-            self.logMsg('No clock_frequency configured tanking 100 Hz instead.', \
+            self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
             msgType='warning')
             
         if 'scanner_clock_frequency' in config.keys():
             self._scanner_clock_frequency=config['scanner_clock_frequency']
         else:
             self._scanner_clock_frequency=100
-            self.logMsg('No scanner_clock_frequency configured tanking 100 Hz instead.', \
+            self.logMsg('No scanner_clock_frequency configured taking 100 Hz instead.', \
             msgType='warning')
             
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
-            self.logMsg('No samples_number configured tanking 10 instead.', \
+            self.logMsg('No samples_number configured taking 10 instead.', \
             msgType='warning')
             
         if 'x_range' in config.keys():
             if float(config['x_range'][0]) < float(config['x_range'][1]):
                 self._position_range[0]=[float(config['x_range'][0]),float(config['x_range'][1])]
             else:
-                self.logMsg('Configuration ({}) of x_range incorrect, tanking [0,100] instead.'.format(config['x_range']), \
+                self.logMsg('Configuration ({}) of x_range incorrect, taking [0,100] instead.'.format(config['x_range']), \
                 msgType='warning')                
         else:
-            self.logMsg('No x_range configured tanking [0,100] instead.', \
+            self.logMsg('No x_range configured taking [0,100] instead.', \
             msgType='warning')
             
         if 'y_range' in config.keys():
             if float(config['y_range'][0]) < float(config['y_range'][1]):
                 self._position_range[1]=[float(config['y_range'][0]),float(config['y_range'][1])]
             else:
-                self.logMsg('Configuration ({}) of y_range incorrect, tanking [0,100] instead.'.format(config['y_range']), \
+                self.logMsg('Configuration ({}) of y_range incorrect, taking [0,100] instead.'.format(config['y_range']), \
                 msgType='warning')                
         else:
-            self.logMsg('No y_range configured tanking [0,100] instead.', \
+            self.logMsg('No y_range configured taking [0,100] instead.', \
             msgType='warning')
             
         if 'z_range' in config.keys():
             if float(config['z_range'][0]) < float(config['z_range'][1]):
                 self._position_range[2]=[float(config['z_range'][0]),float(config['z_range'][1])]
             else:
-                self.logMsg('Configuration ({}) of z_range incorrect, tanking [0,100] instead.'.format(config['z_range']), \
+                self.logMsg('Configuration ({}) of z_range incorrect, taking [0,100] instead.'.format(config['z_range']), \
                 msgType='warning')                
         else:
             self.logMsg('No z_range configured tanking [0,100] instead.', \
@@ -132,26 +139,28 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             if float(config['a_range'][0]) < float(config['a_range'][1]):
                 self._position_range[3]=[float(config['a_range'][0]),float(config['a_range'][1])]
             else:
-                self.logMsg('Configuration ({}) of a_range incorrect, tanking [0,100] instead.'.format(config['a_range']), \
+                self.logMsg('Configuration ({}) of a_range incorrect, taking [0,100] instead.'.format(config['a_range']), \
                 msgType='warning')                
         else:
-            self.logMsg('No a_range configured tanking [0,100] instead.', \
+            self.logMsg('No a_range configured taking [0,100] instead.', \
             msgType='warning')
             
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
                 self._voltage_range=[float(config['voltage_range'][0]),float(config['voltage_range'][1])]
             else:
-                self.logMsg('Configuration ({}) of voltage_range incorrect, tanking [-10,10] instead.'.format(config['voltage_range']), \
+                self.logMsg('Configuration ({}) of voltage_range incorrect, taking [-10,10] instead.'.format(config['voltage_range']), \
                 msgType='warning')                
         else:
-            self.logMsg('No voltage_range configured tanking [-10,10] instead.', \
+            self.logMsg('No voltage_range configured taking [-10,10] instead.', \
             msgType='warning')
             
 #        self.testing()
         
     def activation(self, e=None): 
         """ Starts up the NI Card at activation.
+        
+        FIX ME: @param e: Ask Jan
         
         @return int: error code (0:OK, -1:error)
         """
@@ -295,6 +304,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         if self._counter_daq_task == None:            
             self.logMsg('No counter running, call set_up_counter before reading it.', \
             msgType='error')
+            #FIX ME: Why an array of -1s?
             return np.ones((samples,), dtype=np.uint32) * -1.
             
         if samples == None:
@@ -362,7 +372,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return float [4][2]: array of 4 ranges with an array containing lower and upper limit
         """ 
         return self._position_range
-        
+    
+    #FIX ME: Why not NONE here?    
     def set_position_range(self, myrange=[[0,1],[0,1],[0,1],[0,1]]):
         """ Sets the physical range of the scanner.
         
