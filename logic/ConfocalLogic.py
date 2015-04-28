@@ -311,7 +311,7 @@ class ConfocalLogic(GenericLogic):
         else:
             image = self.xy_image
                
-        line = np.vstack( (self._XL,
+        line = np.vstack( (image[self._scan_counter,:,0],
                            image[self._scan_counter,:,1], 
                            image[self._scan_counter,:,2], 
                            self._AL) )
@@ -319,8 +319,8 @@ class ConfocalLogic(GenericLogic):
         line_counts = self._scanning_device.scan_line(line)
         
         return_line = np.vstack( (self._return_XL, 
-                                  self.xy_image[self._scan_counter,0,1] * np.ones(self._return_XL.shape), 
-                                  self.xy_image[self._scan_counter,0,2] * np.ones(self._return_XL.shape), 
+                                  image[self._scan_counter,0,1] * np.ones(self._return_XL.shape), 
+                                  image[self._scan_counter,0,2] * np.ones(self._return_XL.shape), 
                                   self._return_AL) )
         
         return_line_counts = self._scanning_device.scan_line(return_line)
@@ -338,6 +338,8 @@ class ConfocalLogic(GenericLogic):
         if self._scan_counter < np.size(self._image_vert_axis):            
             self.signal_scan_lines_next.emit()
         else:
+            self.stopRequested = False
+            self.kill_scanner()
             self.unlock()
             self.signal_image_updated.emit()
             self.set_position()
