@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'TrackerGuiUI.ui'
 #
-# Created: Tue Apr 28 15:34:55 2015
-#      by: PyQt4 UI code generator 4.9.5
+# Created: Tue Apr 28 21:58:24 2015
+#      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -29,14 +38,6 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
-        self.xz_refocus_ViewWidget = PlotWidget(self.centralwidget)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(5)
-        sizePolicy.setHeightForWidth(self.xz_refocus_ViewWidget.sizePolicy().hasHeightForWidth())
-        self.xz_refocus_ViewWidget.setSizePolicy(sizePolicy)
-        self.xz_refocus_ViewWidget.setObjectName(_fromUtf8("xz_refocus_ViewWidget"))
-        self.gridLayout.addWidget(self.xz_refocus_ViewWidget, 5, 0, 1, 1)
         self.xy_refocus_ViewWidget = PlotWidget(self.centralwidget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -45,6 +46,18 @@ class Ui_MainWindow(object):
         self.xy_refocus_ViewWidget.setSizePolicy(sizePolicy)
         self.xy_refocus_ViewWidget.setObjectName(_fromUtf8("xy_refocus_ViewWidget"))
         self.gridLayout.addWidget(self.xy_refocus_ViewWidget, 4, 0, 1, 1)
+        self.xy_refocus_cb_ViewWidget = PlotWidget(self.centralwidget)
+        self.xy_refocus_cb_ViewWidget.setMaximumSize(QtCore.QSize(75, 16777215))
+        self.xy_refocus_cb_ViewWidget.setObjectName(_fromUtf8("xy_refocus_cb_ViewWidget"))
+        self.gridLayout.addWidget(self.xy_refocus_cb_ViewWidget, 4, 1, 1, 1)
+        self.xz_refocus_ViewWidget = PlotWidget(self.centralwidget)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(5)
+        sizePolicy.setHeightForWidth(self.xz_refocus_ViewWidget.sizePolicy().hasHeightForWidth())
+        self.xz_refocus_ViewWidget.setSizePolicy(sizePolicy)
+        self.xz_refocus_ViewWidget.setObjectName(_fromUtf8("xz_refocus_ViewWidget"))
+        self.gridLayout.addWidget(self.xz_refocus_ViewWidget, 5, 0, 1, 2)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
@@ -65,8 +78,8 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "qudi: Tracker", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuOptions.setTitle(QtGui.QApplication.translate("MainWindow", "&Options", None, QtGui.QApplication.UnicodeUTF8))
-        self.action_Settings.setText(QtGui.QApplication.translate("MainWindow", "&Settings", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Tracker", None))
+        self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
+        self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
 
 from pyqtgraph import PlotWidget

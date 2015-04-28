@@ -7,22 +7,24 @@ Created on Mon Apr 27 17:54:58 2015
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
+import numpy as np
 
 from collections import OrderedDict
 from core.Base import Base
 from gui.Tracker.TrackerGuiUI import Ui_MainWindow
 from gui.Tracker.TrackerSettingsUI import Ui_SettingsDialog
-# To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
+from gui.Confocal.ConfocalGui import ColorBar
+
+# To convert the *.ui file to a raw TrackerGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
 #
 # Then use that script like
 #
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalWindowTemplate.ui > ConfocalGuiUI.py
+# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" TrackerGuiUI.ui > TrackerGuiUI.py
 #
-# to convert to ConfocalGuiUI.py.
-
+# to convert to TrackerGuiUI.py.
 
 
 
@@ -43,6 +45,7 @@ class CustomViewBox(pg.ViewBox):
             pg.ViewBox.mouseDragEvent(self, ev,axis)
         else:
             ev.ignore()
+            
             
 class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
@@ -130,6 +133,33 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
         
+        # create a color map that goes from dark red to dark blue:
+
+        # Absolute scale relative to the expected data not important. This 
+        # should have the same amount of entries (num parameter) as the number
+        # of values given in color. 
+        pos = np.linspace(0.0, 1.0, num=10)
+        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
+                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
+                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
+                          [  0,  0,132,255]], dtype=np.ubyte)
+                          
+        colmap = pg.ColorMap(pos, color)        
+        self.colmap_norm = pg.ColorMap(pos, color/255)
+        
+        # get the LookUpTable (LUT), first two params should match the position
+        # scale extremes passed to ColorMap(). 
+        # I believe last one just has to be >= the difference between the min and max level set later
+        lut = colmap.getLookupTable(0, 1, 10)
+
+            
+        self.xy_refocus_image.setLookupTable(lut)
+        
+        # Add color bar:        
+        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
+        self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
+        self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
+        
         # Connect to default values:
         self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
         self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
@@ -180,6 +210,10 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
         self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
         
+    def refresh_xy_colorbar(self):
+        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
+        self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
+        
     
 #    def update_xy_refocusrange(self):
 #        print('set xy refra')
@@ -204,6 +238,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     
     def refresh_xy_image(self):
         self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
+        self.refresh_xy_colorbar()
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()
         
