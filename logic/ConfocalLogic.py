@@ -11,6 +11,8 @@ class ConfocalLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for confocal scanning.
     """
+    
+    signal_start_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal()
@@ -89,6 +91,7 @@ class ConfocalLogic(GenericLogic):
         #??????????   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
+        self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         
         self.initialize_image()
         self._zscan = True
@@ -119,9 +122,6 @@ class ConfocalLogic(GenericLogic):
         if self.getState() == 'locked':
             return -1
         else:
-            # if no line scan is in progress, restart the scanner with the new parameters
-            self.kill_scanner()
-            self.start_scanner()
             return 0
             
         
@@ -132,12 +132,11 @@ class ConfocalLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
+        
         self._scan_counter = 0
         self._zscan=zscan
         self.initialize_image()
-        self.start_scanner()
-        self.lock()
-        self.signal_scan_lines_next.emit()
+        self.signal_start_scanning.emit()
         
         return 0
         
@@ -228,8 +227,10 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         
+        self.lock()
         self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         self._scanning_device.set_up_scanner()
+        self.signal_scan_lines_next.emit()
         
         return 0
     
@@ -299,8 +300,9 @@ class ConfocalLogic(GenericLogic):
         #stops scanning
         if self.stopRequested:
             with self.threadlock:
-                self.unlock()
+                self.kill_scanner()
                 self.stopRequested = False
+                self.unlock()
                 self.signal_image_updated.emit()
                 return
         
