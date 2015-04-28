@@ -28,6 +28,11 @@ class ManagerGui(Base):
 
 
     def fill_item(self, item, value):
+        """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
+            
+          @param QTreeWidgetItem item: the widget item to fill
+          @param (dict, list, etc) value: value to fill in
+        """
         item.setExpanded(True)
         if type(value) is OrderedDict or type(value) is dict:
             for key in value:
@@ -57,6 +62,11 @@ class ManagerGui(Base):
             item.addChild(child)
 
     def fill_widget(self, widget, value):
+        """ Fill a QTreeWidget with the content of a dictionary
+           
+          @param QTreeWidget widget: the tree widget to fill
+          @param dict,OrderedDict value: the dictionary to fill in
+        """
         widget.clear()
         self.fill_item(widget.invisibleRootItem(), value)
 
