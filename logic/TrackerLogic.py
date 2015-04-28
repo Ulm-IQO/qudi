@@ -266,6 +266,8 @@ class TrackerLogic(GenericLogic):
             else:
                 self.refocus_x = twoD_values[1]
                 self.refocus_y = twoD_values[2]
+            self.refocus_x = self._trackpoint_x
+            self.refocus_y = self._trackpoint_y
                 
             #xz scaning    
             self._scan_z_line()
@@ -295,6 +297,8 @@ class TrackerLogic(GenericLogic):
                                               y = self.refocus_y, 
                                               z = self.refocus_z, 
                                               a = 0.)
+                                              
+            self.signal_refocus_finished.emit()
         
     
     def _initialize_z_refocus_image(self):

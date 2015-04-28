@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalWindowTemplate.ui'
 #
-# Created: Mon Apr 27 15:35:35 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Tue Apr 28 16:09:09 2015
+#      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,16 +12,7 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    def _fromUtf8(s):
-        return s
-
-try:
-    _encoding = QtGui.QApplication.UnicodeUTF8
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
-except AttributeError:
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
+    _fromUtf8 = lambda s: s
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -293,34 +284,34 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Confocal", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("MainWindow", "Z-Scan", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Tracker", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "ROI", None))
-        self.label_3.setText(_translate("MainWindow", "Z-Axis :", None))
-        self.z_res_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-Resolution</span></p></body></html>", None))
-        self.z_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Min</span></p></body></html>", None))
-        self.z_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Max</span></p></body></html>", None))
-        self.z_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-position</span></p></body></html>", None))
-        self.ready_StateWidget.setText(_translate("MainWindow", "Ready", None))
-        self.xy_scan_StateWidget.setText(_translate("MainWindow", "Scan XY", None))
-        self.xz_scan_StateWidget.setText(_translate("MainWindow", "Scan Z", None))
-        self.refocus_StateWidget.setText(_translate("MainWindow", "Refocus", None))
-        self.label_4.setText(_translate("MainWindow", "Resolution", None))
-        self.label_5.setText(_translate("MainWindow", "Scan Range", None))
-        self.label_2.setText(_translate("MainWindow", "Y-Axis :", None))
-        self.y_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Min</span></p></body></html>", None))
-        self.y_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Max</span></p></body></html>", None))
-        self.y_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y-position</span></p></body></html>", None))
-        self.label.setText(_translate("MainWindow", "X-Axis :", None))
-        self.xy_res_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">XY-Resolution</span></p></body></html>", None))
-        self.x_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Min</span></p></body></html>", None))
-        self.x_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Max</span></p></body></html>", None))
-        self.x_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X-position</span></p></body></html>", None))
-        self.menuFile.setTitle(_translate("MainWindow", "&File", None))
-        self.menu_Options.setTitle(_translate("MainWindow", "&Options", None))
-        self.actionSave_as.setText(_translate("MainWindow", "&Save as", None))
-        self.actionSave_configuration.setText(_translate("MainWindow", "Save &configuration", None))
-        self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
+        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "qudi: Confocal", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), QtGui.QApplication.translate("MainWindow", "Z-Scan", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), QtGui.QApplication.translate("MainWindow", "Tracker", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "ROI", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Z-Axis :", None, QtGui.QApplication.UnicodeUTF8))
+        self.z_res_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-Resolution</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.z_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.z_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.z_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.ready_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Ready", None, QtGui.QApplication.UnicodeUTF8))
+        self.xy_scan_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Scan XY", None, QtGui.QApplication.UnicodeUTF8))
+        self.xz_scan_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Scan Z", None, QtGui.QApplication.UnicodeUTF8))
+        self.refocus_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Refocus", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_4.setText(QtGui.QApplication.translate("MainWindow", "Resolution", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Scan Range", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Y-Axis :", None, QtGui.QApplication.UnicodeUTF8))
+        self.y_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.y_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.y_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(QtGui.QApplication.translate("MainWindow", "X-Axis :", None, QtGui.QApplication.UnicodeUTF8))
+        self.xy_res_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">XY-Resolution</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.x_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.x_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.x_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
+        self.menu_Options.setTitle(QtGui.QApplication.translate("MainWindow", "&Options", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionSave_as.setText(QtGui.QApplication.translate("MainWindow", "&Save as", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionSave_configuration.setText(QtGui.QApplication.translate("MainWindow", "Save &configuration", None, QtGui.QApplication.UnicodeUTF8))
+        self.action_Settings.setText(QtGui.QApplication.translate("MainWindow", "&Settings", None, QtGui.QApplication.UnicodeUTF8))
 
 from pyqtgraph import PlotWidget
