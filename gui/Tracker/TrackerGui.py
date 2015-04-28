@@ -11,7 +11,7 @@ import pyqtgraph as pg
 from collections import OrderedDict
 from core.Base import Base
 from gui.Tracker.TrackerGuiUI import Ui_MainWindow
-from gui.Tracker.TrackerSettingsUI import Ui_Dialog
+from gui.Tracker.TrackerSettingsUI import Ui_SettingsDialog
 # To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
@@ -49,7 +49,7 @@ class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-class TrackerSettingDialog(QtGui.QDialog,Ui_Dialog):
+class TrackerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
     def __init__(self):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
@@ -130,12 +130,73 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
         
+        # Connect to default values:
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
+        
+        # Add to the QLineEdit Widget a Double Validator to ensure only a 
+        # float input.
+        validator = QtGui.QDoubleValidator()
+        self._sw.xy_refocusrange_InputWidget.setValidator(validator)
+        self._sw.xy_refocusstepsize_InputWidget.setValidator(validator)
+        self._sw.z_refocusrange_InputWidget.setValidator(validator)
+        self._sw.z_refocusstepsize_InputWidget.setValidator(validator)
+                
+#        # Update the inputed/displayed numbers if return key is hit:
+#        self._sw.xy_refocusrange_InputWidget.returnPressed.connect(self.update_xy_refocusrange)
+#        self._sw.xy_refocusstepsize_InputWidget.returnPressed.connect(self.update_xy_refocusstepsize)
+#        self._sw.z_refocusrange_InputWidget.returnPressed.connect(self.update_z_refocusrange)
+#        self._sw.z_refocusstepsize_InputWidget.returnPressed.connect(self.update_z_refocusstepsize)
+#        
+#        # Declare for which fields changes are applied if the cursor is leaving
+#        # the field:
+#        self._sw.xy_refocusrange_InputWidget.editingFinished.connect(self.update_xy_refocusrange)
+#        self._sw.xy_refocusstepsize_InputWidget.editingFinished.connect(self.update_xy_refocusstepsize)
+#        self._sw.z_refocusrange_InputWidget.editingFinished.connect(self.update_z_refocusrange)
+#        self._sw.z_refocusstepsize_InputWidget.editingFinished.connect(self.update_z_refocusstepsize)
+
+        
         self._tracker_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
         self._tracker_logic.signal_z_image_updated.connect(self.refresh_z_image)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
+        self._sw.accepted.connect(self.update_settings)
+        self._sw.rejected.connect(self.reject_settings)
         
         print('Main Tracker Windows shown:')
         self._mw.show()
+    
+    
+    def update_settings(self):
+        self._tracker_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
+        self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
+        self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
+        self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
+        
+    def reject_settings(self):
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
+        
+    
+#    def update_xy_refocusrange(self):
+#        print('set xy refra')
+#        self._tracker_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
+#        
+#    def update_xy_refocusstepsize(self):
+#        print('set xy refst')
+#        self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
+#        
+#    def update_z_refocusrange(self):
+#        print('set z refra')
+#        self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
+#        
+#    def update_z_refocusstepsize(self):
+#        print('set z refst')
+#        self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
+    
     
     def menue_settings(self):
         self._sw.exec_()
