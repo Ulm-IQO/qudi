@@ -14,7 +14,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 	This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
-    #FIX ME: microwave hardware?
+    #FIXME: microwave hardware?
         
     
     def __init__(self, manager, name, config, **kwargs):
@@ -35,8 +35,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
         
 
-        #FIX ME: Shouldn't that be in the hardware class?    
-        #FIX ME: What are the variables doing (i.e. RWTimeout)?            
+        #FIXME: What are the variables doing (i.e. RWTimeout)?            
         self._max_counts = 3e7
         self._RWTimeout = 5
         self._counter_daq_task = None
@@ -51,13 +50,13 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._current_position = [0., 0., 0., 0.]
         
         # handle all the parameters given by the config
-        #FIX ME: also what happens if there are no parameters in the config
+        #FIXME: also what happens if there are no parameters in the config
         if 'scanner_ao_channels' in config.keys():
             self._scanner_ao_channels=config['scanner_ao_channels']
         else:
             self._scanner_ao_channels = '/Dev1/AO0:3'
-            #FIX ME: Why error and not warning?
-            self.logMsg('No scanner_ao_channels configured, using {} instead.'.format(self._scanner_ao_channels), msgType='error')
+            #FIXME: Why error and not warning?
+            self.logMsg('No scanner_ao_channels configured, using {} instead.'.format(self._scanner_ao_channels), msgType='warning')
             
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
@@ -172,48 +171,82 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
 ################################## Counter ###################################
         
-    def set_up_clock(self, clock_frequency = None, clock_channel = None):
+    def set_up_clock(self, clock_frequency = None, clock_channel = None, scanner=False):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
         
         @param float clock_frequency: if defined, this sets the frequency of the clock
         @param string clock_channel: if defined, this is the physical channel of the clock
+        @param boll scanner: is this clock for the counter or for the scanner (function)
         
         @return int: error code (0:OK, -1:error)
         """ 
         
-        if self._clock_daq_task != None:            
-            self.logMsg('Another clock is already running, close this one first.', \
+        if scanner and self._clock_daq_task != None:            
+            self.logMsg('Another counter clock is already running, close this one first.', \
+            msgType='error')
+            return -1
+            
+        
+        if not scanner and self._scanner_clock_daq_task != None:            
+            self.logMsg('Another scanner clock is already running, close this one first.', \
             msgType='error')
             return -1
         
         # create handle for task, this task will generate pulse signal for photon counting
-        self._clock_daq_task = daq.TaskHandle()
+        my_clock_daq_task = daq.TaskHandle()
+        
+        # assing the clock frequency, if given
         if clock_frequency != None:
-            self._clock_frequency = float(clock_frequency)
+            if not scanner:
+                self._clock_frequency = float(clock_frequency)
+            else:
+                self._scanner_clock_frequency = float(clock_frequency)
+                
+        # use the correct clock in this method
+        if scanner:
+            my_clock_frequency = self._scanner_clock_frequency
+        else:
+            my_clock_frequency = self._clock_frequency
+            
+        # assing the clock channel, if given
         if clock_channel != None:
-            self._clock_channel = clock_channel
+            if not scanner:
+                self._clock_channel = clock_channel
+            else:
+                self._scanner_clock_channel = clock_channel
+        
+        # use the correct clock channel in this method
+        if scanner:
+            my_clock_channel = self._clock_channel
+        else:
+            my_clock_channel = self._scanner_clock_channel
         
         # create task for clock
-        daq.DAQmxCreateTask('', daq.byref(self._clock_daq_task))
+        daq.DAQmxCreateTask('', daq.byref(my_clock_daq_task))
         
         # create a digital clock channel
-        daq.DAQmxCreateCOPulseChanFreq( self._clock_daq_task,# the task to which to add the channels
-                            		    self._clock_channel,  # use this channel
+        daq.DAQmxCreateCOPulseChanFreq( my_clock_daq_task,# the task to which to add the channels
+                            		    my_clock_channel,  # use this channel
 										'Clock Task',    # name to assign to task (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
 										daq.DAQmx_Val_Hz, #units, Hertz in our case
 										daq.DAQmx_Val_Low, #idle state, low voltage in our case
 										0, #initial delay
-										self._clock_frequency / 2.,   #pulse frequency, divide by 2 such that length of semi period = count_interval
+										my_clock_frequency / 2.,   #pulse frequency, divide by 2 such that length of semi period = count_interval
 										0.5 ) #duty cycle of pulses, 0.5 such that high and low duration are both = count_interval
         
         # set timing to continuous, i.e. set only the number of samples to 
         # acquire or generate without specifying timing
-        daq.DAQmxCfgImplicitTiming( self._clock_daq_task,  #define task
+        daq.DAQmxCfgImplicitTiming( my_clock_daq_task,  #define task
                                     daq.DAQmx_Val_ContSamps,  #continuous running
                                     1000) #buffer length
-                                    
+            
         # actually start the preconfigured clock task
-        daq.DAQmxStartTask(self._clock_daq_task) 
+        daq.DAQmxStartTask(my_clock_daq_task)
+        
+        if scanner:
+            self._scanner_clock_daq_task=my_clock_daq_task
+        else:
+            self._clock_daq_task=my_clock_daq_task
                            
         return 0
     
@@ -286,7 +319,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxSetReadOffset(self._counter_daq_task, 0) 
         
         # unread data in buffer will be overwritten
-        daq.DAQmxSetReadOverWrite(self._counter_daq_task, daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
+        daq.DAQmxSetReadOverWrite(self._counter_daq_task, 
+                                  daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
         
         # actually start the preconfigured counter task
         daq.DAQmxStartTask(self._counter_daq_task) 
@@ -304,7 +338,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         if self._counter_daq_task == None:            
             self.logMsg('No counter running, call set_up_counter before reading it.', \
             msgType='error')
-            #FIX ME: Why an array of -1s?
+            #in case of error return a lot of -1
             return np.ones((samples,), dtype=np.uint32) * -1.
             
         if samples == None:
@@ -330,37 +364,57 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         # normalize to counts per second and return data
         return count_data * self._clock_frequency 
     
-    def close_counter(self):
+    def close_counter(self, scanner=False):
         """ Closes the counter and cleans up afterwards. 
+        
+        @param bool scanner: specifies if the counter or scanner (function) should be closed
         
         @return int: error code (0:OK, -1:error)
         """
         
+        if scanner:
+            my_task=self._scanner_counter_daq_task
+        else:
+            my_task=self._counter_daq_task
+        
         # stop the counter task
-        daq.DAQmxStopTask(self._counter_daq_task)
+        daq.DAQmxStopTask(my_task)
         
         # after stopping delete all the configuration of the counter
-        daq.DAQmxClearTask(self._counter_daq_task)
+        daq.DAQmxClearTask(my_task)
         
         # set the task handle to None as a safety
-        self._counter_daq_task = None
+        if scanner:
+            self._scanner_counter_daq_task = None
+        else:
+            self._counter_daq_task=None
         
         return 0
         
-    def close_clock(self):
+    def close_clock(self, scanner=False):
         """ Closes the clock and cleans up afterwards. 
+        
+        @param bool scanner: specifies if the counter or scanner (function) should be closed
         
         @return int: error code (0:OK, -1:error)
         """
         
+        if scanner:
+            my_task=self._scanner_clock_daq_task
+        else:
+            my_task=self._clock_daq_task
+            
         # stop the clock task
-        daq.DAQmxStopTask(self._clock_daq_task)
+        daq.DAQmxStopTask(my_task)
         
         # after stopping delete all the configuration of the clock
-        daq.DAQmxClearTask(self._clock_daq_task)
+        daq.DAQmxClearTask(my_task)
         
         # set the task handle to None as a safety
-        self._clock_daq_task = None
+        if scanner:
+            self._scanner_clock_daq_task = None
+        else:
+            self._clock_daq_task=None
         
         return 0
         
@@ -373,7 +427,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """ 
         return self._position_range
     
-    #FIX ME: Why not NONE here?    
+    #FIXME: Why not NONE here?    
     def set_position_range(self, myrange=[[0,1],[0,1],[0,1],[0,1]]):
         """ Sets the physical range of the scanner.
         
@@ -487,41 +541,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """ 
         
-        if self._scanner_clock_daq_task != None:            
-            self.logMsg('Another clock is already running, close this one first.', \
-            msgType='error')
-            return -1
-        
-        # create handle for task, this task will generate pulse signal for photon counting for the scanner
-        self._scanner_clock_daq_task = daq.TaskHandle()
-        if clock_frequency != None:
-            self._scanner_clock_frequency = float(clock_frequency)
-        if clock_channel != None:
-            self._scanner_clock_channel = clock_channel
-        
-         # create task for the scanner clock
-        daq.DAQmxCreateTask('', daq.byref(self._scanner_clock_daq_task))
-        
-        # create a digital scanner clock channel
-        daq.DAQmxCreateCOPulseChanFreq( self._scanner_clock_daq_task,# the task to which to add the scanner clock
-                            		    self._scanner_clock_channel,# use this channel for the scanner clock
-										'Clock Task', # name to assign to channel (NIDAQ uses by default the physical channel name as the virtual channel name. If name is specified, then you must use the name when you refer to that channel in other NIDAQ functions)
-										daq.DAQmx_Val_Hz, #units, Hertz in our case
-										daq.DAQmx_Val_Low, #idle state, low voltage in our case
-										0, #initial delay
-										self._scanner_clock_frequency / 2., #pulse frequency, divide by 2 such that length of semi period = count_interval
-										0.5 ) #duty cycle of pulses, 0.5 such that high and low duration are both = count_interval
-        
-        # set timing to continuous, i.e. set only the number of samples to 
-        # acquire or generate without specifying timing
-        daq.DAQmxCfgImplicitTiming( self._scanner_clock_daq_task, #define task
-                                    daq.DAQmx_Val_ContSamps, #continuous running
-                                    1000) #buffer length
-                                    
-        # actually start the preconfigured scanner clock task
-        daq.DAQmxStartTask(self._scanner_clock_daq_task) 
-                       
-        return 0
+        return self.set_up_clock(clock_frequency = clock_frequency, clock_channel = clock_channel, scanner = True)
         
     
     def set_up_scanner(self, counter_channel = None, photon_source = None, clock_channel = None, scanner_ao_channels = None):
@@ -637,7 +657,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                 return -1
             self._current_position[3] = np.float(a)
             
+        # the position has to be a vstack
         my_position = np.vstack(self._current_position)
+        
+        # then directly write the position to the hardware
         self._write_scanner_ao(voltages = \
             self._scanner_position_to_volt(my_position), 
             start=True)
@@ -654,15 +677,18 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         
+        #number of samples which were actually written, will be stored here
         self._AONwritten = daq.int32()
         
-        daq.DAQmxWriteAnalogF64(self._scanner_ao_task,
-                                length,  # length of command
+        # write the voltage instructions for the analoque output to the hardware
+        daq.DAQmxWriteAnalogF64(self._scanner_ao_task, #write to this task
+                                length,  # length of the command (points)
                                 start, # start task immediately (True), or wait for software start (False)
-                                self._RWTimeout,
-                                daq.DAQmx_Val_GroupByChannel,
-                                voltages,
-                                daq.byref(self._AONwritten), None)
+                                self._RWTimeout, # maximal timeout for the write process
+                                daq.DAQmx_Val_GroupByChannel, # each pixel is grouped by Channel number
+                                voltages, # the voltages to be written
+                                daq.byref(self._AONwritten), # number of samples which were written
+                                None) # Reserved for future use. Pass NULL(here None) to this parameter
         
         return self._AONwritten.value
     
@@ -679,6 +705,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return np.array([-1.,-1.,-1.,-1.])
         
+        # calculate the voltages from the positions and theri ranges and stack them together
         volts = np.vstack( ( \
         (self._voltage_range[1]-self._voltage_range[0])\
         / (self._position_range[0][1]-self._position_range[0][0])\
@@ -721,23 +748,27 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._line_length = length
         
         if length < np.inf:
-            daq.DAQmxCfgSampClkTiming(self._scanner_ao_task,   # set up sample clock for task timing
-                                      self._my_scanner_clock_channel+'InternalOutput',       # use these pulses as clock
+            # set up the timing of the scanner counting while scanning the voltages
+            daq.DAQmxCfgSampClkTiming(self._scanner_ao_task, # add to this task
+                                      self._my_scanner_clock_channel+'InternalOutput', # use these pulses as clock
                                       self._scanner_clock_frequency, # maximum expected clock frequency
-                                      daq.DAQmx_Val_Falling, 
-                                      daq.DAQmx_Val_FiniteSamps, # generate sample on falling edge, generate finite number of samples
-                                      self._line_length) # samples to generate
+                                      daq.DAQmx_Val_Falling, #  generate sample on falling edge
+                                      daq.DAQmx_Val_FiniteSamps, # generate finite number of samples
+                                      self._line_length) # number of samples to generate
         
-        # set timing for scanner pulse and count task.
-        daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, 
-                                   daq.DAQmx_Val_FiniteSamps, 
-                                   2*self._line_length+1)
+        # set timing for scanner pulse and count task to the number of pixel.
+        daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, #define task
+                                   daq.DAQmx_Val_FiniteSamps, # only a limited number of counts
+                                   2*self._line_length+1) #count twice for each voltage +1 for safety
                                    
         # read samples from beginning of acquisition, do not overwrite
         daq.DAQmxSetReadRelativeTo(self._scanner_counter_daq_task, 
                                    daq.DAQmx_Val_CurrReadPos) 
+                                   
         # do not read first sample
         daq.DAQmxSetReadOffset(self._scanner_counter_daq_task, 1)
+        
+        # unread data in buffer will be overwritten
         daq.DAQmxSetReadOverWrite(self._scanner_counter_daq_task, 
                                   daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
         
@@ -774,38 +805,50 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         # set task timing to use a sampling clock
         daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
+        # write the positions to the analoque output
         written_voltages = self._write_scanner_ao(voltages=\
             self._scanner_position_to_volt(voltages), 
             length=self._line_length, 
             start=False)
         
-        print('written samples: {0:d} of {1:d}'.format(written_voltages,np.shape(voltages)[1]))
-        
-        #start tasks
+        # start the timed analoque output task
         daq.DAQmxStartTask(self._scanner_ao_task)
+        # start the scanner counting task that acquires counts synchroneously
         daq.DAQmxStartTask(self._scanner_counter_daq_task)
         
-        daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, self._RWTimeout*self._line_length)
+        # wait for the scanner counter to finish
+        daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, #define task
+                                   self._RWTimeout*2*self._line_length) # maximal timeout for the counter times the positions
         
         # count data will be written here
         self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
+        
         #number of samples which were read will be stored here
-        n_read_samples = daq.int32() 
-        daq.DAQmxReadCounterU32(self._scanner_counter_daq_task,   #read from this task
-                                2*self._line_length,    #read number of "line_points" samples
-                                self._RWTimeout,
+        n_read_samples = daq.int32()
+        
+        # actually read the counted photons
+        daq.DAQmxReadCounterU32(self._scanner_counter_daq_task, #read from this task
+                                2*self._line_length, #read number of double the number of samples
+                                self._RWTimeout, # maximal timeout for the read process
                                 self._scan_data, #write into this array
-                                2*self._line_length,   #length of array to write into
-                                daq.byref(n_read_samples), None)  #number of samples which were read
-
+                                2*self._line_length, #length of array to write into
+                                daq.byref(n_read_samples), #number of samples which were actually read
+                                None) # Reserved for future use. Pass NULL(here None) to this parameter
+        
+        # stop the counter task
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
+        
+        #stop the analoque output taks
         daq.DAQmxStopTask(self._scanner_ao_task)
         
         # set task timing to on demand, i.e. when demanded by software
-        daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_OnDemand)
+        daq.DAQmxSetSampTimingType(self._scanner_ao_task, # define task
+                                   daq.DAQmx_Val_OnDemand) # sampling directly when a voltage is written
         
-        
+        # create a new array for the final data (this time of the length number of samples)
         self._real_data = np.empty((self._line_length,), dtype=np.uint32)
+        
+        # add upp adjoint pixels to also get the counts from the low time of the clock
         self._real_data = self._scan_data[::2]
         self._real_data += self._scan_data[1::2]        
         
@@ -820,20 +863,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        daq.DAQmxStopTask(self._scanner_counter_daq_task)
-        daq.DAQmxClearTask(self._scanner_counter_daq_task)
-        self._scanner_counter_daq_task = None
+        return self.close_counter(scanner=True)
         
-        return 0
-        
-    def close_scanner_clock(self,power=0):
+    def close_scanner_clock(self):
         """ Closes the clock and cleans up afterwards. 
         
         @return int: error code (0:OK, -1:error)
-        """        
+        """     
         
-        daq.DAQmxStopTask(self._scanner_clock_daq_task)
-        daq.DAQmxClearTask(self._scanner_clock_daq_task)
-        self._scanner_clock_daq_task = None
-        
-        return 0
+        return self.close_clock(scanner=True)
