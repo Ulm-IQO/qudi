@@ -455,6 +455,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
         
+        self._mw.ready_StateWidget.click()
+        
     def update_gui(self):
         
         x_pos = self._scanning_logic._current_x
