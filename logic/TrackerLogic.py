@@ -162,6 +162,8 @@ class TrackerLogic(GenericLogic):
         self._trackpoint_y = 0.
         self._trackpoint_z = 0.
         
+        self._max_offset = 3.
+        
         self._scan_counter = 0
         
         self.signal_scan_xy_line_next.connect(self._scan_xy_line, QtCore.Qt.QueuedConnection)
@@ -267,8 +269,12 @@ class TrackerLogic(GenericLogic):
                 self.refocus_y = self._trackpoint_y
                 #hier abbrechen
             else:
-                self.refocus_x = twoD_values[1]
-                self.refocus_y = twoD_values[2]
+                if abs(self._trackpoint_x - twoD_values[1]) < self._max_offset and abs(self._trackpoint_x - twoD_values[1]) < self._max_offset:
+                    self.refocus_x = twoD_values[1]
+                    self.refocus_y = twoD_values[2]
+                else:
+                    self.refocus_x = self._trackpoint_x
+                    self.refocus_y = self._trackpoint_y
                 
             #xz scaning    
             self._scan_z_line()
@@ -291,7 +297,12 @@ class TrackerLogic(GenericLogic):
                 self.refocus_z = self._trackpoint_z
                 #hier abbrechen
             else:
-                self.refocus_z = oneD_values[1]
+                if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset:
+                    self.refocus_z = oneD_values[1]
+                    self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
+                else:
+                    self.refocus_z = self._trackpoint_z
+                    
                 
             #TODO: werte als neuen Trackpoint setzen
                                               
@@ -317,6 +328,7 @@ class TrackerLogic(GenericLogic):
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
+        self.z_fit_data = np.zeros(len(self._zimage_Z_values))
         
         
     def _scan_z_line(self):
