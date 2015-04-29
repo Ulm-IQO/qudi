@@ -260,12 +260,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                                     daq.DAQmx_Val_ContSamps,  #continuous running
                                     1000) #buffer length
             
-        # actually start the preconfigured clock task
-        daq.DAQmxStartTask(my_clock_daq_task)
         
         if scanner:
             self._scanner_clock_daq_task=my_clock_daq_task
         else:
+            # actually start the preconfigured clock task
+            daq.DAQmxStartTask(my_clock_daq_task)
             self._clock_daq_task=my_clock_daq_task
                            
         return 0
@@ -795,6 +795,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                                       self._line_length) # number of samples to generate
         
         # set timing for scanner pulse and count task to the number of pixel.
+        daq.DAQmxCfgImplicitTiming(self._scanner_clock_daq_task, #define task
+                                   daq.DAQmx_Val_FiniteSamps, # only a limited number of counts
+                                   self._line_length+1) #count twice for each voltage +1 for safety
+                                   
+        # set timing for scanner pulse and count task to the number of pixel.
         daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, #define task
                                    daq.DAQmx_Val_FiniteSamps, # only a limited number of counts
                                    2*self._line_length+1) #count twice for each voltage +1 for safety
@@ -839,11 +844,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return np.array([-1.])
         
+        # set task timing to use a sampling clock
+        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
+        
 #        if np.shape(voltages)[1] != self._line_length:
         self.set_up_line(np.shape(voltages)[1])
             
-        # set task timing to use a sampling clock
-        daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
         # write the positions to the analoque output
         written_voltages = self._write_scanner_ao(voltages=\
@@ -855,6 +861,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         daq.DAQmxStartTask(self._scanner_ao_task)
         # start the scanner counting task that acquires counts synchroneously
         daq.DAQmxStartTask(self._scanner_counter_daq_task)
+        daq.DAQmxStartTask(self._scanner_clock_daq_task)
         
         # wait for the scanner counter to finish
         daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, #define task
@@ -877,6 +884,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         # stop the counter task
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
+        daq.DAQmxStopTask(self._scanner_clock_daq_task)
         
         #stop the analoque output taks
         daq.DAQmxStopTask(self._scanner_ao_task)
