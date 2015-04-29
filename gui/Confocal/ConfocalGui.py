@@ -629,8 +629,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
-            self.put_cursor_in_xy_scan()
-            self.put_cursor_in_xz_scan()
+#            self.put_cursor_in_xy_scan()
+#            self.put_cursor_in_xz_scan()
         
     def put_cursor_in_xy_scan(self):
         view_x_min = float(self._mw.x_min_InputWidget.text())
