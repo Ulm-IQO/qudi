@@ -179,7 +179,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xy_refocus_image.setLookupTable(lut)
         
         # Add color bar:        
-        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])          
+        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])          
              
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
@@ -232,7 +232,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
         self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
         self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
-        self._tracker_logic.set_clock_frequency(int(self._sw.count_freq_InputWidget.text()))
+        self._tracker_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
         self._tracker_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
         
         
@@ -246,7 +246,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def refresh_xy_colorbar(self):
         self._mw.xy_refocus_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
+        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         
     
@@ -277,7 +277,9 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._X_values[0], self._tracker_logic._Y_values[0], self._tracker_logic._X_values[1]-self._tracker_logic._X_values[0], self._tracker_logic._Y_values[1]-self._tracker_logic._Y_values[0]))        
         self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
         self.vLine.setValue(self._tracker_logic.refocus_x)
+        print('set vline to', self._tracker_logic.refocus_x)
         self.hLine.setValue(self._tracker_logic.refocus_y)
+        print('set hline to', self._tracker_logic.refocus_y)
         self.refresh_xy_colorbar()
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()
