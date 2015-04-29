@@ -37,6 +37,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 
         #FIXME: What are the variables doing (i.e. RWTimeout)?            
         self._max_counts = 3e7
+        #FIXME: Read-Write timeout
         self._RWTimeout = 5
         self._counter_daq_task = None
         self._clock_daq_task = None
@@ -45,17 +46,21 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         self._scanner_counter_daq_task = None
         self._line_length = None
         
+        #FIXME: Here you assign a value to some variables. For _sample_number, _clock_frequency,
+        #_scanner_clock_frequency you are doing this later. Wouldn't it be more 
+        #convenient to also put the default values for _sample_number, _clock_frequency,
+        #_scanner_clock_frequency here. Then it is also a bit simpler to change...
         self._voltage_range = [-10., 10.]        
         self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]        
         self._current_position = [0., 0., 0., 0.]
         
         # handle all the parameters given by the config
-        #FIXME: also what happens if there are no parameters in the config
+        #FIXME: Suggestion: and  partially set the parameters to default values
+        #if not given by the config
         if 'scanner_ao_channels' in config.keys():
             self._scanner_ao_channels=config['scanner_ao_channels']
         else:
             self._scanner_ao_channels = '/Dev1/AO0:3'
-            #FIXME: Why error and not warning?
             self.logMsg('No scanner_ao_channels configured, using {} instead.'.format(self._scanner_ao_channels), msgType='warning')
             
         if 'odmr_trigger_channel' in config.keys():
@@ -138,7 +143,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                 self.logMsg('Configuration ({}) of z_range incorrect, taking [0,100] instead.'.format(config['z_range']), \
                 msgType='warning')                
         else:
-            self.logMsg('No z_range configured tanking [0,100] instead.', \
+            self.logMsg('No z_range configured taking [0,100] instead.', \
             msgType='warning')
             
         if 'a_range' in config.keys():
@@ -160,16 +165,19 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         else:
             self.logMsg('No voltage_range configured taking [-10,10] instead.', \
             msgType='warning')
-            
+         
+         #FIXME: Noch rausnehmen?
 #        self.testing()
         
     def activation(self, e=None): 
         """ Starts up the NI Card at activation.
         
-        FIX ME: @param e: Ask Jan
-        
+                
         @return int: error code (0:OK, -1:error)
         """
+        
+        #FIXME: @param ???? e: Ask Jan or something like this...
+        #FIXME: Where is the error code returned?
         
         # analoque output is always needed and it does not interfere with the rest,
         # so start it always and leave it running
@@ -179,11 +187,15 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
 ################################## Counter ###################################
         
     def set_up_clock(self, clock_frequency = None, clock_channel = None, scanner=False):
+        
+        #FIXME: scanner: True means for the scanner and False for the counter
+        #Of course this should be clear, but just to make sure....
+        #Not sure what (function) means. Does that mean scanner corresponds to TRUE?
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
         
         @param float clock_frequency: if defined, this sets the frequency of the clock
         @param string clock_channel: if defined, this is the physical channel of the clock
-        @param boll scanner: is this clock for the counter or for the scanner (function)
+        @param bool scanner: is this clock for the counter or for the scanner (function)
         
         @return int: error code (0:OK, -1:error)
         """ 
@@ -243,6 +255,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         
         # set timing to continuous, i.e. set only the number of samples to 
         # acquire or generate without specifying timing
+        #FIXME: No code: Not sure what a buffer length is...
         daq.DAQmxCfgImplicitTiming( my_clock_daq_task,  #define task
                                     daq.DAQmx_Val_ContSamps,  #continuous running
                                     1000) #buffer length
@@ -335,6 +348,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         return 0
         
     def get_counter(self, samples=None):
+        #FIXME: Not 100% sure, what samples mean...
+        #FIXME: Reading out the counter for sample times? ...
+    
+        #FIXME: Isn't the return value an array?
         """ Returns the current counts per second of the counter. 
         
         @param int samples: if defined, number of samples to read in one go
@@ -372,6 +389,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         return count_data * self._clock_frequency 
     
     def close_counter(self, scanner=False):
+        #FIXME: scanner: True means for scanner and False counter
+        #FIXME: Does function indicate that???
+    
+        #FIXME: Cannot find a way to set up scanner_counter. In 
+        #FIXME: def set_up_counter(self, counter_channel = None, photon_source = None, clock_channel = None):
+        #FIXME: there is no 'scanner'-option
         """ Closes the counter and cleans up afterwards. 
         
         @param bool scanner: specifies if the counter or scanner (function) should be closed
@@ -399,6 +422,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         return 0
         
     def close_clock(self, scanner=False):
+        #FIXME: scanner: True means for scanner and False counter
+        #FIXME: Does function indicate that???
         """ Closes the clock and cleans up afterwards. 
         
         @param bool scanner: specifies if the counter or scanner (function) should be closed
@@ -434,7 +459,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """ 
         return self._position_range
     
-    #FIXME: Why not NONE here?    
+    #FIXME: Why not NONE here?  
+    #FIXME: Why set to [0,1],[0,1],[0,1],[0,1]? In the beginning it was [0., 100.], [0., 100.], [0., 100.], [0., 100.]
+    #FIXME: Aren't there dots missing after the 0s and 1s
     def set_position_range(self, myrange=[[0,1],[0,1],[0,1],[0,1]]):
         """ Sets the physical range of the scanner.
         
@@ -510,7 +537,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return -1
             
-        # if an analoque task is already running, klii that one first
+        # if an analoque task is already running, kill that one first
         if self._scanner_ao_task != None:
             # stop the analoque output task
             daq.DAQmxStopTask(self._scanner_ao_task)
@@ -538,7 +565,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                                      '')# empty for future use
                                      
         return 0
-
+        
+        #FIXME: Why do you define this function although set_up_clock does almost the same?
     def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
         
