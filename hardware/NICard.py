@@ -623,6 +623,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
     def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
         
+        #FIXME: No volts
         @param float x: postion in x-direction (volts)
         @param float y: postion in y-direction (volts)
         @param float z: postion in z-direction (volts)
@@ -697,6 +698,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                                 daq.byref(self._AONwritten), # number of samples which were written
                                 None) # Reserved for future use. Pass NULL(here None) to this parameter
         
+        #FIXME: Is that error code? Or what does that .value mean/do?
         return self._AONwritten.value
     
     def _scanner_position_to_volt(self, positions = None):
@@ -712,7 +714,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return np.array([-1.,-1.,-1.,-1.])
         
-        # calculate the voltages from the positions and theri ranges and stack them together
+        # calculate the voltages from the positions, their ranges and stack them together
         volts = np.vstack( ( \
         (self._voltage_range[1]-self._voltage_range[0])\
         / (self._position_range[0][1]-self._position_range[0][0])\
@@ -748,12 +750,13 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         """
         
         if self._scanner_counter_daq_task == None:            
-            self.logMsg('No counter is running, cannot scna a line without one.', \
+            self.logMsg('No counter is running, cannot scan a line without one.', \
             msgType='error')
             return -1
             
         self._line_length = length
         
+        #FIXME: Why should length be inf. 
         if length < np.inf:
             # set up the timing of the scanner counting while scanning the voltages
             daq.DAQmxCfgSampClkTiming(self._scanner_ao_task, # add to this task
@@ -792,12 +795,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
         if self.getState() == 'locked':            
             self.logMsg('Another scan_line is already running, close this one first.', \
             msgType='error')
+            #FIXME: Here you just return -1 and below you return np.array([-1.])
+            #Is there a difference? If not make consistent.
             return -1
             
         self.lock()
         
         if self._scanner_counter_daq_task == None:            
-            self.logMsg('No counter is running, cannot scna a line without one.', \
+            self.logMsg('No counter is running, cannot scan a line without one.', \
             msgType='error')
             return np.array([-1.])
             
