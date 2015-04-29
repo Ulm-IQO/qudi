@@ -456,7 +456,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         #print(dir(self._mw.x_SliderWidget.valueChanged))
         #self.xy_image.viewRangeChanged.connect(self.adjust_aspect_roi_xy)       
-        #self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
+        self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         #self.xy_image.getViewBox().sigResized.connect(self.adjust_aspect_roi_xy)
         
         #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
@@ -682,11 +682,21 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if (view_z_max < cross_pos[1]):
             self.roi_xz_change_z(view_z_max-self.roi_xz.size()[1]*0.5)
             
-    def adjust_aspect_roi_xy(self,par=None):
-        print(par)
-        pass
+    def adjust_aspect_roi_xy(self,viewbox=None):
+        
+        current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
+        current_y_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+
+        size_x_roi = current_x_view_range/20
+        size_y_roi = current_y_view_range/20
+        self.roi_xy.setSize([size_x_roi,size_y_roi])
     
-    def adjust_aspect_roi_xz():
-        pass
+    def adjust_aspect_roi_xz(self,viewbox=None):
+        current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
+        current_z_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+
+        size_x_roi = current_x_view_range/20
+        size_z_roi = current_z_view_range/20
+        self.roi_xz.setSize([size_x_roi,size_z_roi])
         
         
