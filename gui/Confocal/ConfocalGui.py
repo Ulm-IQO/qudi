@@ -454,6 +454,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
         
+        
+        self.adjust_aspect_roi_xy(self.xy_image.getViewBox())
+        self.adjust_aspect_roi_xz(self.xz_image.getViewBox())
         #print(dir(self._mw.x_SliderWidget.valueChanged))
         #self.xy_image.viewRangeChanged.connect(self.adjust_aspect_roi_xy)       
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
@@ -566,19 +569,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_current_x(self,x_pos):
         # That will return the x_pos of the slider in number of points
         
-        self._mw.x_current_InputWidget.setText(str(x_pos*self.slider_res))
+        self._mw.x_current_InputWidget.setText('{0:.5}'.format(x_pos*self.slider_res))
         #print(dir(self.xy_image.viewRect()))
         #print(dir(self.xy_image))boundingRegion
         
     def update_current_y(self,y_pos):
-        self._mw.y_current_InputWidget.setText(str(y_pos*self.slider_res))        
+        self._mw.y_current_InputWidget.setText('{0:.5}'.format(y_pos*self.slider_res))        
     
     def update_current_z(self,z_pos):    
         # s_pos: amounts of points for slider
-
-            
-    
-        self._mw.z_current_InputWidget.setText(str(self._scanning_logic.z_range[0] + z_pos*self.slider_res))
+        self._mw.z_current_InputWidget.setText('{0:.5}'.format(self._scanning_logic.z_range[0] + z_pos*self.slider_res))
         
         
         
@@ -590,7 +590,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.setValue(  int(float(self._mw.y_current_InputWidget.text())/self.slider_res)    )
         
     def update_z_slider(self):
-        self._mw.z_SliderWidget.setValue( int(float(self._mw.z_current_InputWidget.text())/self.slider_res)   )  
+        
+        self._mw.z_SliderWidget.setValue( int( ((self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/2.0 + float(self._mw.z_current_InputWidget.text()) )/self.slider_res)   )  
         
     def change_xy_resolution(self):
         self._scanning_logic.xy_resolution = float(self._mw.xy_res_InputWidget.text())
