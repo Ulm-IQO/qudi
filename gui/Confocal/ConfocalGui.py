@@ -424,15 +424,19 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                           [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
                           [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
                           [  0,  0,132,255]], dtype=np.ubyte)
-                          
-        colmap = pg.ColorMap(pos, color)
+                      
+        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
+                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
+                               [127,  0,  0,255] ], dtype=np.ubyte)
+        colmap = pg.ColorMap(pos, color_inv)
         
         self.colmap_norm = pg.ColorMap(pos, color/255)
         
         # get the LookUpTable (LUT), first two params should match the position
         # scale extremes passed to ColorMap(). 
         # I believe last one just has to be >= the difference between the min and max level set later
-        lut = colmap.getLookupTable(0, 1, 10)
+        lut = colmap.getLookupTable(0, 1, 2000)
 
             
         self.xy_image.setLookupTable(lut)
@@ -603,11 +607,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
             view_y_min = float(self._mw.y_min_InputWidget.text())
             view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min   
-            #self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))
+            self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))
             
 
-            self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
-            self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
+#            self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
+#            self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
             
             self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose(),autoLevels=True)
             self.refresh_xy_colorbar()
