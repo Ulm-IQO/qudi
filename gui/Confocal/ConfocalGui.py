@@ -467,6 +467,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         #print(dir(self._mw.x_SliderWidget.valueChanged))
         #self.xy_image.viewRangeChanged.connect(self.adjust_aspect_roi_xy)       
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
+        self.xz_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xz)
         #self.xy_image.getViewBox().sigResized.connect(self.adjust_aspect_roi_xy)
         
         #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
