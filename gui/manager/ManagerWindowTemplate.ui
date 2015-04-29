@@ -18,15 +18,15 @@
     <item row="0" column="0">
      <widget class="QToolBox" name="toolBox">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="modules">
        <property name="geometry">
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>123</width>
-         <height>116</height>
+         <width>450</width>
+         <height>432</height>
         </rect>
        </property>
        <attribute name="label">
@@ -41,11 +41,25 @@
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QListView" name="loadedModuleView"/>
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollcontent">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>430</width>
+             <height>384</height>
+            </rect>
+           </property>
+          </widget>
+         </widget>
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="page">
+      <widget class="QWidget" name="config">
        <property name="geometry">
         <rect>
          <x>0</x>
