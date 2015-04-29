@@ -23,12 +23,18 @@ from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 
 
 
+pg.setConfigOption('background', QtGui.QColor('#222'))
+
+
+
+
 
 class ColorBar(pg.GraphicsObject):
  
     def __init__(self, cmap, width, height, ticks=None, tick_labels=None, label=None):
         pg.GraphicsObject.__init__(self)
  
+         
         # handle args
         label = label or ''
         w, h = width, height
@@ -44,7 +50,7 @@ class ColorBar(pg.GraphicsObject):
         p = pg.QtGui.QPainter(self.pic)
  
         # draw bar with gradient following colormap
-        p.setPen(pg.mkPen('k'))
+        p.setPen(pg.mkPen())
         grad = pg.QtGui.QLinearGradient(w/2.0, 0.0, w/2.0, h*1.0)
         for stop, color in zip(stops, colors):
             grad.setColorAt(1.0 - stop, pg.QtGui.QColor(*[255*c for c in color]))
@@ -73,8 +79,8 @@ class ColorBar(pg.GraphicsObject):
         
     def paint(self, p, *args):
         # paint underlying mask
-        p.setPen(pg.QtGui.QColor(0, 0, 0, 255))
-        p.setBrush(pg.QtGui.QColor(0, 0, 0, 200))
+        p.setPen(pg.QtGui.QColor('#222'))
+        p.setBrush(pg.QtGui.QColor('#222'))
         p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
         
         # paint colorbar
@@ -453,8 +459,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Play around with a color bar:
         
-        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
-        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])              
+        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
+        self.xz_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])              
         
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
@@ -498,13 +504,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def refresh_xy_colorbar(self):
         self._mw.xy_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
+        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
 
      
     def refresh_xz_colorbar(self):
         self._mw.xz_cb_ViewWidget.clear()
-        self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
+        self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
         
     def ready_clicked(self):

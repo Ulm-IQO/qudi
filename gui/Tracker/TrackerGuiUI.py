@@ -47,7 +47,7 @@ class Ui_MainWindow(object):
         self.xy_refocus_ViewWidget.setObjectName(_fromUtf8("xy_refocus_ViewWidget"))
         self.gridLayout.addWidget(self.xy_refocus_ViewWidget, 4, 0, 1, 1)
         self.xy_refocus_cb_ViewWidget = PlotWidget(self.centralwidget)
-        self.xy_refocus_cb_ViewWidget.setMaximumSize(QtCore.QSize(75, 16777215))
+        self.xy_refocus_cb_ViewWidget.setMaximumSize(QtCore.QSize(70, 16777215))
         self.xy_refocus_cb_ViewWidget.setObjectName(_fromUtf8("xy_refocus_cb_ViewWidget"))
         self.gridLayout.addWidget(self.xy_refocus_cb_ViewWidget, 4, 1, 1, 1)
         self.xz_refocus_ViewWidget = PlotWidget(self.centralwidget)

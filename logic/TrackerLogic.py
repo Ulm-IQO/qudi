@@ -308,6 +308,7 @@ class TrackerLogic(GenericLogic):
                         if twoD_values[2] >= self.y_range[0] and twoD_values[2] <= self.y_range[1]:
                             self.refocus_x = twoD_values[1]
                             self.refocus_y = twoD_values[2]
+#                            print('xy fit is',self.refocus_x,self.refocus_y)
                 else:
                     self.refocus_x = self._trackpoint_x
                     self.refocus_y = self._trackpoint_y

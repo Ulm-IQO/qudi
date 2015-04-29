@@ -37,7 +37,7 @@
        <widget class="PlotWidget" name="xy_refocus_cb_ViewWidget">
         <property name="maximumSize">
          <size>
-          <width>75</width>
+          <width>70</width>
           <height>16777215</height>
          </size>
         </property>
