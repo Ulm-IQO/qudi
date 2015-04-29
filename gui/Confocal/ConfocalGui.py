@@ -227,9 +227,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Load the image in the display:
         self.xy_image = pg.ImageItem(arr01)
-        self.xy_image.setRect(QtCore.QRectF(0, 0, self._scanning_logic.image_x_range[1], self._scanning_logic.image_y_range[1]))
+        self.xy_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[1]-self._scanning_logic.image_y_range[0]))
         self.xz_image = pg.ImageItem(arr02)
-        self.xz_image.setRect(QtCore.QRectF(0, 0, self._scanning_logic.image_x_range[1], self._scanning_logic.image_z_range[1]))
+        self.xz_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
         
         self._mw.ready_StateWidget.click()
 
@@ -302,7 +302,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0])/self.slider_res
         num_of_points_y = (self._scanning_logic.y_range[1] - self._scanning_logic.y_range[0])/self.slider_res
         num_of_points_z = (self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/self.slider_res        
+        self.num_of_points_z = num_of_points_z
         
+        print('num_of_points_z:',num_of_points_z)
         # How many points are needed for that kind of resolution:
                  
         
@@ -542,7 +544,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
     def roi_xz_change_z(self,z_pos):
         
-        z_pos=z_pos*self.slider_res         
+        z_pos=self._scanning_logic.z_range[0] + z_pos*self.slider_res         
         
         roi_x_view = self.roi_xz.pos()[0]
         roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
@@ -558,7 +560,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
 
     def slider_z_adjust(self,roi):
-        self._mw.z_SliderWidget.setValue(int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
+        self._mw.z_SliderWidget.setValue(int( (    roi.pos()[1] + 0.5*roi.size()[1]  +(self._scanning_logic.z_range[1]-self._scanning_logic.z_range[0])/2.0 )/self.slider_res) ) 
         
         
     def update_current_x(self,x_pos):
@@ -571,8 +573,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_current_y(self,y_pos):
         self._mw.y_current_InputWidget.setText(str(y_pos*self.slider_res))        
     
-    def update_current_z(self,z_pos):
-        self._mw.z_current_InputWidget.setText(str(z_pos*self.slider_res))   
+    def update_current_z(self,z_pos):    
+        # s_pos: amounts of points for slider
+
+            
+    
+        self._mw.z_current_InputWidget.setText(str(self._scanning_logic.z_range[0] + z_pos*self.slider_res))
+        
+        
+        
         
     def update_x_slider(self):
         self._mw.x_SliderWidget.setValue( int(float(self._mw.x_current_InputWidget.text())/self.slider_res)   )
