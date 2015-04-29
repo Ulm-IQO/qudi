@@ -171,6 +171,21 @@ class TrackerLogic(GenericLogic):
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
         
+    def set_clock_frequency(self, clock_frequency):
+        """Sets the frequency of the clock
+        
+        @param int clock_frequency: desired frequency of the clock 
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._clock_frequency = int(clock_frequency)
+        #checks if scanner is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            return 0
+        
     def start_refocus(self):
         """Starts refocus        
         """
