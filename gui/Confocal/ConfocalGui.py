@@ -578,7 +578,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
 
     def slider_z_adjust(self,roi):
-        self._mw.z_SliderWidget.setValue(int( (    roi.pos()[1] + 0.5*roi.size()[1]  +(self._scanning_logic.z_range[1]-self._scanning_logic.z_range[0])/2.0 )/self.slider_res) ) 
+        self._mw.z_SliderWidget.setValue(int( ( roi.pos()[1] + 0.5*roi.size()[1]  +(self._scanning_logic.z_range[1]-self._scanning_logic.z_range[0])/2.0 )/self.slider_res) ) 
         
         
     def update_current_x(self,x_pos):
@@ -605,8 +605,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_SliderWidget.setValue(  int(float(self._mw.y_current_InputWidget.text())/self.slider_res)    )
         
     def update_z_slider(self):
+        #self._mw.z_SliderWidget.setValue( int( ((self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/2.0 + float(self._mw.z_current_InputWidget.text()) )/self.slider_res)   )  
         
-        self._mw.z_SliderWidget.setValue( int( ((self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/2.0 + float(self._mw.z_current_InputWidget.text()) )/self.slider_res)   )  
+        self._mw.z_SliderWidget.setValue( int((float(self._mw.z_current_InputWidget.text()) - self._scanning_logic.z_range[0])/self.slider_res ))
+        
+        
         
     def change_xy_resolution(self):
         self._scanning_logic.xy_resolution = float(self._mw.xy_res_InputWidget.text())
