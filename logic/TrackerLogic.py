@@ -249,7 +249,8 @@ class TrackerLogic(GenericLogic):
         else:
             #x,y-fit
             fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
-            error,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=fit_x, y_axis=fit_y,  data=self.xy_refocus_image[:,:,3])
+            xy_fit_data = self.xy_refocus_image[:,:,3].ravel()
+            error,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=fit_x, y_axis=fit_y,  data=xy_fit_data)
             if error == -1:
                 self.logMsg('error in initial_guess xy fit.', \
                             msgType='error')
@@ -257,16 +258,16 @@ class TrackerLogic(GenericLogic):
             else:
                 initial_guess_xy = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
-            error, twoD_values = self._fit_logic.make_fit(function=self._fit_logic.twoD_gaussian_function,axes=(fit_x, fit_y),data=self.xy_refocus_image[:,:,3],initial_guess=initial_guess_xy)
+            error, twoD_values = self._fit_logic.make_fit(function=self._fit_logic.twoD_gaussian_function,axes=(fit_x, fit_y),data=xy_fit_data,initial_guess=initial_guess_xy)
             if error == -1:
                 self.logMsg('error in 2D Gaussian Fit.', \
                             msgType='error')
+                self.refocus_x = self._trackpoint_x+3
+                self.refocus_y = self._trackpoint_y+3
                 #hier abbrechen
             else:
                 self.refocus_x = twoD_values[1]
                 self.refocus_y = twoD_values[2]
-            self.refocus_x = self._trackpoint_x+3
-            self.refocus_y = self._trackpoint_y+3
                 
             #xz scaning    
             self._scan_z_line()
@@ -286,10 +287,10 @@ class TrackerLogic(GenericLogic):
             if error == -1:
                 self.logMsg('error in 1D Gaussian Fit.', \
                             msgType='error')
+                self.refocus_z = self._trackpoint_z+3
                 #hier abbrechen
             else:
                 self.refocus_z = oneD_values[1]
-            self.refocus_z = self._trackpoint_z+3
                 
             #TODO: werte als neuen Trackpoint setzen
             
