@@ -310,6 +310,22 @@ class ConfocalLogic(GenericLogic):
             image = self.xz_image
         else:
             image = self.xy_image
+            
+        if self._scan_counter == 0:
+            start_line = np.vstack( (np.linspace(self._current_x, \
+                                                 image[self._scan_counter,0,0], \
+                                                 self.return_slowness), \
+                                     np.linspace(self._current_y, \
+                                                 image[self._scan_counter,0,1], \
+                                                 self.return_slowness), \
+                                     np.linspace(self._current_z, \
+                                                 image[self._scan_counter,0,2], \
+                                                 self.return_slowness), \
+                                     np.linspace(self._current_a, \
+                                                 0, \
+                                                 self.return_slowness) ))
+            
+            start_line_counts = self._scanning_device.scan_line(start_line)
                
         line = np.vstack( (image[self._scan_counter,:,0],
                            image[self._scan_counter,:,1], 

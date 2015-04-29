@@ -168,8 +168,8 @@ class FitLogic(GenericLogic):
             amplitude=float(data.max()-data.min())
             x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
             y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  #len(y_axis)/2.
-            sigma_x=x_zero/3.
-            sigma_y =y_zero/3.
+            sigma_x=(x_axis.max()-x_axis.min())/3.
+            sigma_y =(y_axis.max()-y_axis.min())/3.
             theta=0.0
             offset=float(data.min())
             error=0
