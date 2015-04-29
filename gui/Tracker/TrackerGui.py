@@ -146,8 +146,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
         
         #Add crosshair to the xy refocus scan
-        self.vLine = pg.InfiniteLine(pos=50, angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(pos=50, angle=0, movable=False)
+        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.01), pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.01), pos=50, angle=0, movable=False)
         self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
         
@@ -188,6 +188,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
         self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
         self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._tracker_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
         
         # Add to the QLineEdit Widget a Double Validator to ensure only a 
         # float input.
@@ -196,6 +198,9 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.xy_refocusstepsize_InputWidget.setValidator(validator)
         self._sw.z_refocusrange_InputWidget.setValidator(validator)
         self._sw.z_refocusstepsize_InputWidget.setValidator(validator)
+        self._sw.count_freq_InputWidget.setValidator(validator)
+        self._sw.return_slow_InputWidget.setValidator(validator)
+        
                 
 #        # Update the inputed/displayed numbers if return key is hit:
 #        self._sw.xy_refocusrange_InputWidget.returnPressed.connect(self.update_xy_refocusrange)
@@ -226,12 +231,17 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
         self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
         self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
+        self._tracker_logic.set_clock_frequencyclock_frequency(int(self._sw.count_freq_InputWidget.text()))
+        self._tracker_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
+        
         
     def reject_settings(self):
         self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
         self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
         self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
         self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._tracker_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
         
     def refresh_xy_colorbar(self):
         self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
