@@ -298,13 +298,22 @@ class TrackerLogic(GenericLogic):
                             msgType='error')
                 self.refocus_z = self._trackpoint_z
                 #hier abbrechen
-            else:
-                if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset:
-                    if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]:
+            else: #move to new position
+                if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset: #checks if new pos is too far away
+                    if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]: #checks if new pos is within the scanner range
                         self.refocus_z = oneD_values[1]
                         self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
-                else:
-                    self.refocus_z = self._trackpoint_z
+                else: #new pos is too far away
+                    if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
+                        if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
+                            self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
+                        else:
+                            self.z_refocus = self.z_range[1] #moves to highest possible value
+                    else:
+                        if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
+                            self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to lower edge of scan range
+                        else:
+                            self.z_refocus = self.z_range[0] #moves to lowest possible value
                     
                 
             #TODO: werte als neuen Trackpoint setzen
