@@ -135,8 +135,8 @@ class TrackerLogic(GenericLogic):
                         
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
-        self._clock_frequency = 500.
-        self.return_slowness = 100
+        self._clock_frequency = 200.
+        self.return_slowness = 20
         
         self.refocus_XY_size =  2
         self.refocus_XY_step = 0.2
@@ -222,6 +222,7 @@ class TrackerLogic(GenericLogic):
             with self.lock:
                 self.running = False
                 self.stopRequested = False
+                self.kill_scanner()
                 self.signal_xy_image_updated.emit()
                 return
                 
@@ -262,8 +263,8 @@ class TrackerLogic(GenericLogic):
             if error == -1:
                 self.logMsg('error in 2D Gaussian Fit.', \
                             msgType='error')
-                self.refocus_x = self._trackpoint_x+3
-                self.refocus_y = self._trackpoint_y+3
+                self.refocus_x = self._trackpoint_x
+                self.refocus_y = self._trackpoint_y
                 #hier abbrechen
             else:
                 self.refocus_x = twoD_values[1]
@@ -287,12 +288,14 @@ class TrackerLogic(GenericLogic):
             if error == -1:
                 self.logMsg('error in 1D Gaussian Fit.', \
                             msgType='error')
-                self.refocus_z = self._trackpoint_z+3
+                self.refocus_z = self._trackpoint_z
                 #hier abbrechen
             else:
                 self.refocus_z = oneD_values[1]
                 
             #TODO: werte als neuen Trackpoint setzen
+                                              
+            self.kill_scanner()
             
             self._confocal_logic.set_position(x = self.refocus_x, 
                                               y = self.refocus_y, 

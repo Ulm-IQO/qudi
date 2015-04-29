@@ -46,8 +46,8 @@ class ConfocalLogic(GenericLogic):
         
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
-        self._clock_frequency = 500.
-        self.return_slowness = 100
+        self._clock_frequency = 1000.
+        self.return_slowness = 50
         
         self._zscan = False
         
@@ -83,8 +83,8 @@ class ConfocalLogic(GenericLogic):
         self.image_z_range = self.z_range
         
         #default values for the resolution of the scan
-        self.xy_resolution = 10
-        self.z_resolution = 10
+        self.xy_resolution = 100
+        self.z_resolution = 50
         
           
         self._scan_counter=0
