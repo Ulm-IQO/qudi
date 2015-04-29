@@ -308,12 +308,12 @@ class TrackerLogic(GenericLogic):
                         if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
                             self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
                         else:
-                            self.z_refocus = self.z_range[1] #moves to highest possible value
+                            self.refocus_z = self.z_range[1] #moves to highest possible value
                     else:
                         if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
                             self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to lower edge of scan range
                         else:
-                            self.z_refocus = self.z_range[0] #moves to lowest possible value
+                            self.refocus_z = self.z_range[0] #moves to lowest possible value
                     
                 
             #TODO: werte als neuen Trackpoint setzen
