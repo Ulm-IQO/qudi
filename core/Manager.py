@@ -700,6 +700,70 @@ class Manager(QtCore.QObject):
             self.logger.logExc('{0} module {1}: error during activation:'.format(base, key),
                                msgType='error')
 
+    def getModuleDependencies(self, base, key):
+        deps = dict()
+        if base not in self.tree['defined']:
+            self.logger.logMsg('{0} module {1}: no such base'.format(base, key), msgType='error')
+            return None
+        if key not in self.tree['defined'][base]:
+            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')            
+            return None
+        if 'connect' not in self.tree['defined'][base][key]:
+            return dict()
+        if not isinstance(self.tree['defined'][base][key]['connect'], OrderedDict):
+            self.logger.logMsg('{0} module {1}: connect is not a dictionary'.format(base, key), msgType='error')            
+            return None
+        connections = self.tree['defined'][base][key]['connect']
+        deplist = list()
+        for c in connections:
+            if not isinstance(connections[c], str):
+                self.logger.logMsg('value for class key is not a string', msgType='error')
+                return None
+            if not '.' in connections[c]:
+                self.logger.logMsg('wrong format for connectin target: {0}'.format(connections[c]), msgType='error')
+                return None
+            destmod = connections[c].split('.')[0]
+            destbase = ''
+            if destmod in self.tree['defined']['hardware'] and destmod in self.tree['defined']['logic']:
+                self.logger.logMsg('Unique name {0} is in both hardware and '
+                                   'logic module list. Connection is not well '
+                                   'defined, cannot connect {1} to  it.'.format(destmod, key),
+                                   msgType='error')
+                return None
+            elif destmod in self.tree['defined']['hardware']:
+                destbase = 'hardware'
+            elif destmod in self.tree['defined']['logic']:
+                destbase = 'logic'
+            else:
+                self.logger.logMsg('Unique name {0} is neither in hardware or '
+                                   'logic module list. Cannot connect {1}  '
+                                   'to it.'.format(connections[c], key),
+                                   msgType='error')
+                return None
+            deplist.append(destmod)
+            subdeps = self.getModuleDependencies(destbase, destmod)
+            if subdeps is not None:
+                deps.update(subdeps)
+            else:
+                return None
+        if len(deplist) > 0:
+            deps.update({key: deplist})
+        return deps
+
+    @QtCore.pyqtSlot(str, str)
+    def startModule(self, base, key):
+        deps = self.getModuleDependencies(base, key)
+        sorteddeps = Manager.toposort(deps)
+
+        for mkey in sorteddeps:
+            for mbase in ['hardware', 'logic', 'gui']:
+                if mkey in self.tree['defined'][mbase]:
+                    self.loadConfigureModule(mbase, mkey)
+                    self.connectModule(mbase, mkey)
+                    if mkey in self.tree['loaded'][mbase]:
+                        self.activateModule(mbase, mkey)
+
+
     def startAllConfiguredModules(self):
         """Connect all QuDi modules from the currently laoded configuration and
             activate them.
