@@ -794,12 +794,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
                                       daq.DAQmx_Val_FiniteSamps, # generate finite number of samples
                                       self._line_length) # number of samples to generate
         
-        # set timing for scanner pulse and count task to the number of pixel.
+        # set timing for scanner clock task to the number of pixel.
         daq.DAQmxCfgImplicitTiming(self._scanner_clock_daq_task, #define task
                                    daq.DAQmx_Val_FiniteSamps, # only a limited number of counts
                                    self._line_length+1) #count twice for each voltage +1 for safety
                                    
-        # set timing for scanner pulse and count task to the number of pixel.
+        # set timing for scanner count task to the number of pixel.
         daq.DAQmxCfgImplicitTiming(self._scanner_counter_daq_task, #define task
                                    daq.DAQmx_Val_FiniteSamps, # only a limited number of counts
                                    2*self._line_length+1) #count twice for each voltage +1 for safety

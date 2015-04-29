@@ -6,6 +6,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+import time
 
 class ConfocalLogic(GenericLogic):
     """unstable: Christoph Müller
@@ -133,9 +134,12 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         
+        #TODO: this is dirty, but it works for now
+#        while self.getState() == 'locked':
+#            time.sleep(0.01)
+            
         self._scan_counter = 0
         self._zscan=zscan
-        self.initialize_image()
         self.signal_start_scanning.emit()
         
         return 0
@@ -228,6 +232,7 @@ class ConfocalLogic(GenericLogic):
         """
         
         self.lock()
+        self.initialize_image()
         self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         self._scanning_device.set_up_scanner()
         self.signal_scan_lines_next.emit()
@@ -304,6 +309,7 @@ class ConfocalLogic(GenericLogic):
                 self.stopRequested = False
                 self.unlock()
                 self.signal_image_updated.emit()
+                self.set_position()
                 return
         
         if self._zscan:
@@ -351,11 +357,6 @@ class ConfocalLogic(GenericLogic):
         self.signal_image_updated.emit()
         self._scan_counter += 1
         
-        if self._scan_counter < np.size(self._image_vert_axis):            
-            self.signal_scan_lines_next.emit()
-        else:
-            self.stopRequested = False
-            self.kill_scanner()
-            self.unlock()
-            self.signal_image_updated.emit()
-            self.set_position()
+        if self._scan_counter >= np.size(self._image_vert_axis): 
+            self.stop_scanning()           
+        self.signal_scan_lines_next.emit()

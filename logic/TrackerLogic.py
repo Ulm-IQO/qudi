@@ -234,6 +234,22 @@ class TrackerLogic(GenericLogic):
         A_line = self._A_values
         return_X_line = self._return_X_values
         
+        if self._scan_counter == 0:
+            start_line = np.vstack( (np.linspace(self._trackpoint_x, \
+                                                 self._X_values[0], \
+                                                 self.return_slowness), \
+                                     np.linspace(self._trackpoint_y, \
+                                                 self._Y_values[0], \
+                                                 self.return_slowness), \
+                                     np.linspace(self._trackpoint_z, \
+                                                 self._Z_values[0], \
+                                                 self.return_slowness), \
+                                     np.linspace(0, \
+                                                 self._A_values[0], \
+                                                 self.return_slowness) ))
+            
+            start_line_counts = self._scanning_device.scan_line(start_line)
+            
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )            
         line_counts = self._scanning_device.scan_line(line)
         return_line = np.vstack( (return_X_line, Y_line, Z_line, A_line) )
