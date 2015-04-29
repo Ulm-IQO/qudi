@@ -471,11 +471,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         
     def refresh_xy_colorbar(self):
+        self._mw.xy_cb_ViewWidget.clear()
         self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
 
      
     def refresh_xz_colorbar(self):
+        self._mw.xz_cb_ViewWidget.clear()
         self.xz_cb = ColorBar(self.colmap_norm, 10, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
         
