@@ -125,13 +125,31 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)
-        self.xy_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))
+#        self.xy_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))        
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
+#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size+1, self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size+1, self._tracker_logic._X_values[1]-self._tracker_logic._X_values[0], self._tracker_logic._Y_values[1]-self._tracker_logic._Y_values[0]))               
+        
+#        self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size        
+        
+#        self._X_values = np.arange(xmin, xmax + self.refocus_XY_step, self.refocus_XY_step)
+#        self._Y_values = np.arange(ymin, ymax + self.refocus_XY_step, self.refocus_XY_step)
+#        self._Z_values = self._trackpoint_z * np.ones(self._X_values.shape)        
+        
+        
         self.xz_refocus_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,arr02)
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
+        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
+        
+        #Add crosshair to the xy refocus scan
+        self.vLine = pg.InfiniteLine(pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(pos=50, angle=0, movable=False)
+        self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
+        self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
         
         # create a color map that goes from dark red to dark blue:
 
@@ -144,13 +162,18 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                           [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
                           [  0,  0,132,255]], dtype=np.ubyte)
                           
-        colmap = pg.ColorMap(pos, color)        
+        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
+                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
+                               [127,  0,  0,255] ], dtype=np.ubyte)
+                          
+        colmap = pg.ColorMap(pos, color_inv)        
         self.colmap_norm = pg.ColorMap(pos, color/255)
         
         # get the LookUpTable (LUT), first two params should match the position
         # scale extremes passed to ColorMap(). 
         # I believe last one just has to be >= the difference between the min and max level set later
-        lut = colmap.getLookupTable(0, 1, 10)
+        lut = colmap.getLookupTable(0, 1, 2000)
 
             
         self.xy_refocus_image.setLookupTable(lut)
@@ -238,11 +261,17 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     
     def refresh_xy_image(self):
         self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
+#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic.x_range[0], self._tracker_logic.y_range[0], self._tracker_logic.x_range[1]-self._tracker_logic.x_range[0], self._tracker_logic.y_range[1]-self._tracker_logic.y_range[0]))
+#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._X_values[0], self._tracker_logic._Y_values[0], self._tracker_logic._X_values[1]-self._tracker_logic._X_values[0], self._tracker_logic._Y_values[1]-self._tracker_logic._Y_values[0]))        
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
+        self.vLine.setValue(self._tracker_logic.refocus_x)
+        self.hLine.setValue(self._tracker_logic.refocus_y)
         self.refresh_xy_colorbar()
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()
         
     def refresh_z_image(self):
         self.xz_refocus_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_refocus_line)
+        self.xz_refocus_fit_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
 #        if self._tracker_logic.getState() != 'locked':
 #            self.signal_refocus_finished.emit()

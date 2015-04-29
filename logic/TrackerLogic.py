@@ -228,6 +228,9 @@ class TrackerLogic(GenericLogic):
                 self.signal_xy_image_updated.emit()
                 return
                 
+        self.refocus_x = self._trackpoint_x
+        self.refocus_y = self._trackpoint_y
+                
         X_line = self._X_values
         Y_line = self._Y_values[self._scan_counter] * np.ones(X_line.shape)
         Z_line = self._Z_values    #todo: tilt_correction
