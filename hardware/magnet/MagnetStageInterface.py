@@ -65,7 +65,7 @@ class MagnetStageInterface():
         raise InterfaceImplementationError('MWInterface>get_status')
         return -1
         
-        
+    #Why not calibrate all together using None    
     def calibrate_x(self):
         """Calibrates the x-direction of the stage. 
         For this it moves to the point zero in x.
@@ -105,7 +105,8 @@ class MagnetStageInterface():
         raise InterfaceImplementationError('MagnetStageInterface>calibrate_phi')
         return -1
     
-    
+    #FIXME: x as default value. See set_velocity below.
+    #FIXME: Does returning an array with all velocities simplify this?
     def get_velocity(self, dimension = ''):
         """ Gets the velocity of the given dimension
         
@@ -116,8 +117,9 @@ class MagnetStageInterface():
         raise InterfaceImplementationError('MagnetStageInterface>get_velocity')
         return 0.0
         
-        
-    def set_velocity(self, dimension = 'x', vel = None): #vllt hier auch vel_x, vel_y, vel_z, vel_phi ?
+        #FIXME: vllt hier auch vel_x, vel_y, vel_z, vel_phi ?
+        #FIXME: Does NONE make sense here?
+    def set_velocity(self, dimension = 'x', vel = None): 
         """Write new value for velocity in chosen dimension
         
         @param str dimension: name of chosen dimension
