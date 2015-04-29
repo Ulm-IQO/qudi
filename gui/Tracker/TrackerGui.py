@@ -231,7 +231,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
         self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
         self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
-        self._tracker_logic.set_clock_frequencyclock_frequency(int(self._sw.count_freq_InputWidget.text()))
+        self._tracker_logic.set_clock_frequency(int(self._sw.count_freq_InputWidget.text()))
         self._tracker_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
         
         
