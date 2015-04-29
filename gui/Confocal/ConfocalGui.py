@@ -128,8 +128,10 @@ class CrossLine(pg.InfiniteLine):
       For additional options consider the documentation of pyqtgraph.InfiniteLine
 
     """
+    
     def __init__(self, **args):
         pg.InfiniteLine.__init__(self, **args)
+#        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
 
     def adjust(self, extroi):
         """
@@ -224,11 +226,18 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ini_pos_x_crosshair = len(arr01)/2
         ini_pos_y_crosshair = len(arr01)/2
         ini_pos_z_crosshair = len(arr02)/2
+
+#        self.cvb1 = CustomViewBox()
+#        self.cvb2 =  CustomViewBox()
+#        self.xy_image.getViewBox().addItem(self.cvb)        
+        
         
         # Load the image in the display:
-        self.xy_image = pg.ImageItem(arr01)
+        
+        
+#        self.xy_image = pg.ImageItem(arr01,view = self.cvb1)
         self.xy_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[1]-self._scanning_logic.image_y_range[0]))
-        self.xz_image = pg.ImageItem(arr02)
+#        self.xz_image = pg.ImageItem(arr02,view = self.cvb2)
         self.xz_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
         
         self._mw.ready_StateWidget.click()
@@ -237,24 +246,22 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # the UI file.
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget.addItem(self.xz_image)
-        
     
-        
+    
         # Create Region of Interest for xy image:
-        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01), len(arr01)], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01), len(arr01)], pen={'color': "F0F", 'width': 1},removable=True )
         # self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
         
         # Add to the xy Image Widget
         self._mw.xy_ViewWidget.addItem(self.roi_xy)
         
         # create horizontal and vertical line in xy image
-        self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle= 0, pen={'color': "00F", 'width': 1} )
-        self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+        self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle= 0, pen={'color': "F0F", 'width': 1} )
+        self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "F0F", 'width': 1} )
 
         # connect the change of a region with the adjustment of the crosshair:
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
-        
 
         self.roi_xy.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xy.sigRegionChanged.connect(self.slider_y_adjust)
@@ -270,13 +277,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
 
         # create Region of Interest for xz image:
-        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/10, len(arr02)/10], pen={'color': "00F", 'width': 1},removable=True )
+        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/10, len(arr02)/10], pen={'color': "F0F", 'width': 1},removable=True )
 
         # Add to the xz Image Widget
         self._mw.xz_ViewWidget.addItem(self.roi_xz)
 
-        self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=0, pen={'color': "00F", 'width': 1} )
-        self.vline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=90, pen={'color': "00F", 'width': 1} )
+        self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=0, pen={'color': "F0F", 'width': 1} )
+        self.vline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=90, pen={'color': "F0F", 'width': 1} )
 
         self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
         self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
@@ -463,8 +470,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         #self.xy_image.getViewBox().sigResized.connect(self.adjust_aspect_roi_xy)
         
         #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
-        
+        #print(dir(self._mw.xy_cb_ViewWidget))
         self._mw.ready_StateWidget.click()
+#        a = self.xy_image.getViewBox()
+        
+        
+#        a =  CustomViewBox()
+#        self.xy_image.getViewBox().addItem(self.cvb)
+#        self._mw.xy_cb_ViewWidget.getPlotItem().addItem(self.cvb)
+        
         
     def update_gui(self):
         
