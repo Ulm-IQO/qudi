@@ -235,9 +235,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Load the image in the display:
         
         
-#        self.xy_image = pg.ImageItem(arr01,view = self.cvb1)
+        self.xy_image = pg.ImageItem(arr01)
         self.xy_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[1]-self._scanning_logic.image_y_range[0]))
-#        self.xz_image = pg.ImageItem(arr02,view = self.cvb2)
+        self.xz_image = pg.ImageItem(arr02)
         self.xz_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
         
         self._mw.ready_StateWidget.click()
