@@ -811,8 +811,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface):
             msgType='error')
             return np.array([-1.])
         
-        if np.shape(voltages)[1] != self._line_length:
-            self.set_up_line(np.shape(voltages)[1])
+#        if np.shape(voltages)[1] != self._line_length:
+        self.set_up_line(np.shape(voltages)[1])
             
         # set task timing to use a sampling clock
         daq.DAQmxSetSampTimingType( self._scanner_ao_task, daq.DAQmx_Val_SampClk)
