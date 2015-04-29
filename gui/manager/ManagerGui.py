@@ -35,13 +35,13 @@ class ManagerGui(Base):
         self.fillModuleList(self._mw.scrollboxlayout)
         
     def fillModuleList(self, layout):
-        for base in self._manager.tree['defined']:
-            for module in self._manager.tree['defined'][base]:
-                widget = QtGui.QPushButton('Activate {0}.{1}'.format(base, module))
-                self.modlist.append(widget)
-                layout.addWidget(widget)
-                widget.clicked.connect( lambda trash, b=base, m=module: self.sigStartThis.emit(b, m) )
-            
+        base = 'gui'
+        #for base in self._manager.tree['defined']:
+        for module in self._manager.tree['defined'][base]:
+            widget = QtGui.QPushButton('Load {0}.{1}'.format(base, module))
+            self.modlist.append(widget)
+            layout.addWidget(widget)
+            widget.clicked.connect( lambda trash, b=base, m=module: self.sigStartThis.emit(b, m) )
 
     def fill_tree_item(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
