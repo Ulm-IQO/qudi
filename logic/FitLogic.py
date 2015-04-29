@@ -9,7 +9,7 @@ import scipy.optimize as opt#, scipy.stats
 import pylab as plt
 
 #TODO:
-#Make Estimator, Fit method, comments, try smooth as estimator
+#try smooth as estimator
 class FitLogic(GenericLogic):        
         """
         UNSTABLE:Jochen Scheuer
