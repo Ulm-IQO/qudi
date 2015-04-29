@@ -137,7 +137,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         
         self.xz_refocus_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,arr02)
-        self.xz_refocus_fit_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data, pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -179,7 +179,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xy_refocus_image.setLookupTable(lut)
         
         # Add color bar:        
-        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
+        self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])          
+             
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
         
@@ -244,6 +245,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
         
     def refresh_xy_colorbar(self):
+        self._mw.xy_refocus_cb_ViewWidget.clear()
         self.xy_cb = ColorBar(self.colmap_norm, 10, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         
