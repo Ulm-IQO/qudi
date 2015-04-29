@@ -757,7 +757,7 @@ class Manager(QtCore.QObject):
 
         for mkey in sorteddeps:
             for mbase in ['hardware', 'logic', 'gui']:
-                if mkey in self.tree['defined'][mbase]:
+                if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
                     self.loadConfigureModule(mbase, mkey)
                     self.connectModule(mbase, mkey)
                     if mkey in self.tree['loaded'][mbase]:
