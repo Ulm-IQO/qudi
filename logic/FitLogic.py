@@ -97,6 +97,9 @@ class FitLogic(GenericLogic):
                 error= -1
             if error==0:
                 try:
+#                print(function)
+#                print(axes, np.shape(axes))
+#                print(data, np.shape(data))
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
                     self.logMsg('The fit did not work.', 
@@ -163,8 +166,8 @@ class FitLogic(GenericLogic):
             @return int error: error code (0:OK, -1:error)                    
             """                                 
             amplitude=float(data.max()-data.min())
-            x_zero=len(x_axis)/2.
-            y_zero=len(y_axis)/2.
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
+            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  #len(y_axis)/2.
             sigma_x=x_zero/3.
             sigma_y =y_zero/3.
             theta=0.0
@@ -244,7 +247,7 @@ class FitLogic(GenericLogic):
                     error=-1
             #set paraameters        
             amplitude=data.max()
-            x_zero=len(x_axis)/2.
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
             sigma=x_zero/3
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
