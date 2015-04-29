@@ -210,7 +210,7 @@ class TrackerLogic(GenericLogic):
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.arange(xmax, xmin - self.refocus_XY_step, -self.refocus_XY_step)
         
-        self.xy_refocus_image = np.zeros((len(self._X_values), len(self._Y_values), 4))
+        self.xy_refocus_image = np.zeros((len(self._Y_values), len(self._X_values), 4))
 
         
         
@@ -240,7 +240,7 @@ class TrackerLogic(GenericLogic):
         return_line_counts = self._scanning_device.scan_line(return_line)                
         
         self.xy_refocus_image[self._scan_counter,:,0] = self._X_values
-        self.xy_refocus_image[self._scan_counter,:,1] = self._Y_values
+        self.xy_refocus_image[self._scan_counter,:,1] = Y_line
         self.xy_refocus_image[self._scan_counter,:,2] = self._Z_values
         self.xy_refocus_image[self._scan_counter,:,3] = line_counts
         
@@ -270,8 +270,10 @@ class TrackerLogic(GenericLogic):
                 #hier abbrechen
             else:
                 if abs(self._trackpoint_x - twoD_values[1]) < self._max_offset and abs(self._trackpoint_x - twoD_values[1]) < self._max_offset:
-                    self.refocus_x = twoD_values[1]
-                    self.refocus_y = twoD_values[2]
+                    if twoD_values[1] >= self.x_range[0] and twoD_values[1] <= self.x_range[1]:
+                        if twoD_values[2] >= self.y_range[0] and twoD_values[2] <= self.y_range[1]:
+                            self.refocus_x = twoD_values[1]
+                            self.refocus_y = twoD_values[2]
                 else:
                     self.refocus_x = self._trackpoint_x
                     self.refocus_y = self._trackpoint_y
@@ -298,8 +300,9 @@ class TrackerLogic(GenericLogic):
                 #hier abbrechen
             else:
                 if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset:
-                    self.refocus_z = oneD_values[1]
-                    self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
+                    if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]:
+                        self.refocus_z = oneD_values[1]
+                        self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
                 else:
                     self.refocus_z = self._trackpoint_z
                     
