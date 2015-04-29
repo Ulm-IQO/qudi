@@ -248,15 +248,14 @@ class TrackerLogic(GenericLogic):
             self.signal_scan_xy_line_next.emit()
         else:
             #x,y-fit
-            fit_x, fit_y = np.meshgrid(X_line, Y_line)
-            error,amplitude,xo,yo,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=fit_x, y_axis=fit_y,  data=self.xy_refocus_image[:,:,3])
-            print(error,amplitude,xo,yo,sigma_x,sigma_y,theta,offset)
+            fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
+            error,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=fit_x, y_axis=fit_y,  data=self.xy_refocus_image[:,:,3])
             if error == -1:
                 self.logMsg('error in initial_guess xy fit.', \
                             msgType='error')
                 #hier abbrechen
             else:
-                initial_guess_xy = (amplitude, xo, yo, sigma_x, sigma_y, theta, offset)
+                initial_guess_xy = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
             error, twoD_values = self._fit_logic.make_fit(function=self._fit_logic.twoD_gaussian_function,axes=(fit_x, fit_y),data=self.xy_refocus_image[:,:,3],initial_guess=initial_guess_xy)
             if error == -1:
@@ -275,13 +274,13 @@ class TrackerLogic(GenericLogic):
             self.signal_z_image_updated.emit()
             
             #z-fit
-            error, amplitude, x_zero, sigma, offset=self._fit_logic.gaussian_estimator(self._zimage_Z_values,self.z_refocus_line)
+            error, amplitude_z, x_zero_z, sigma_z, offset_z=self._fit_logic.gaussian_estimator(x_axis=self._zimage_Z_values,data=self.z_refocus_line)
             if error == -1:
                 self.logMsg('error in initial_guess z fit.', \
                             msgType='error')
                 #hier abbrechen
             else:
-                initial_guess_z = (amplitude, x_zero, sigma, offset)
+                initial_guess_z = (amplitude_z, x_zero_z, sigma_z, offset_z)
             
             error, oneD_values = self._fit_logic.make_fit(function=self._fit_logic.gaussian_function, axes=self._zimage_Z_values, data=self.z_refocus_line,initial_guess=initial_guess_z)
             if error == -1:
