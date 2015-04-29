@@ -13,10 +13,19 @@ class MagnetStageMicos(Base,MagnetStageInterface):
     """
 
 # 	Creating class variables to store the current value of the position.
-	x_store=-1
-	y_store=-1
-	z_store=-1
-	phi_store=-1
+    x_store=-1
+    y_store=-1
+    z_store=-1
+    phi_store=-1
+ 
+    x_min=0
+    x_max=95
+    y_min=0
+    y_max=95
+    z_min=0
+    z_max=60
+    phi_min=0
+    phi_max=330
 
 #Questions:
 #	Are values put in the right way in config????
@@ -62,90 +71,91 @@ class MagnetStageMicos(Base,MagnetStageInterface):
 
 #		here the COM port is read from the config file
         if 'magnet_connection_micos_xy' in config.keys():
-			MICOSA = instrument(config['magnet_connection_micos_xy']) # x, y
-		else:
-			MICOSA = instrument('COM8') # x, y
+            MICOSA = instrument(config['magnet_connection_micos_xy']) # x, y
+        else:
+            MICOSA = instrument('COM8') # x, y
             self.logMsg('No magent_connection_micos_xy configured taking COM8 instead.', \
             msgType='warning')
-		if 'magnet_connection_micos_zphi' in config.keys():		 
-			MICOSB = instrument(config['magent_connection_micos_zphi']) # z, phi
-		else:
-			MICOSB = instrument('COM5') # z, phi
+        if 'magnet_connection_micos_zphi' in config.keys():
+            MICOSB = instrument(config['magent_connection_micos_zphi']) # z, phi
+        else:
+            MICOSB = instrument('COM5') # z, phi
             self.logMsg('No magent_connection_micos_zphi configured taking COM5 instead.', \
             msgType='warning')
 
 #		here the variables for the term are read in
         if 'magnet_term_chars_xy' in config.keys():
-			MICOSA.term_chars = config['magnet_term_chars_xy']
-		else:
-			MICOSA.term_chars = '\n'
-            self.logMsg('No magnet_term_chars_xy configured taking '\\n' instead.', \
+            MICOSA.term_chars = config['magnet_term_chars_xy']
+        else:
+            MICOSA.term_chars = '\n'
+            self.logMsg('No magnet_term_chars_xy configured taking '\\n' instead.', \ 
             msgType='warning')
         if 'magnet_term_chars_zphi' in config.keys():
-			MICOSA.term_chars = config['magnet_term_chars_zphi']
-		else:
-			MICOSB.term_chars = '\n'
+            MICOSA.term_chars = config['magnet_term_chars_zphi']
+        else:
+            MICOSB.term_chars = '\n'
             self.logMsg('No magnet_term_chars_zphi configured taking '\\n' instead.', \
             msgType='warning')
-
+            
 #		here the variables for the baud rate are read in
         if 'magnet_baud_rate_xy' in config.keys():
-			MICOSA.baud_rate = config['magnet_baud_rate_xy']
-		else:
-			MICOSA.baud_rate = 57600
+		MICOSA.baud_rate = config['magnet_baud_rate_xy']
+	  else:
+            MICOSA.baud_rate = 57600
             self.logMsg('No magnet_baud_rate_xy configured taking '57600' instead.', \
             msgType='warning')
         if 'magnet_baud_rate_zphi' in config.keys():
-			MICOSB.baud_rate = config['magnet_baud_rate_zphi']
-		else:
-			MICOSB.baud_rate = 57600
+            MICOSB.baud_rate = config['magnet_baud_rate_zphi']
+        else:
+            MICOSB.baud_rate = 57600
             self.logMsg('No magnet_baud_rate_zphi configured taking '57600' instead.', \
             msgType='warning')
 
-            
-    def step_x(self, step = 0.):
-        """Moves stage in x-direction
+    def step(self, x = None, y = None, z = None, phi = None):
+        """Moves stage in given direction (relative movement)
         
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-		MICOSA.write('%f 0 0 r'%step)
-        return 0
-    
-    
-    def step_y(self, step = 0.):
-        """Moves stage in y-direction
-        
-        @param float step: amount of realtive movement
+        @param float x: amount of realtive movement in x direction
+        @param float y: amount of realtive movement in y direction
+        @param float z: amount of realtive movement in z direction
+        @param float phi: amount of realtive movement in phi direction
         
         @return int: error code (0:OK, -1:error)
         """
-#		command is wrong same as step_y
-    	MICOSA.write('%f 0 0 r'%step)
-        return 0
-    
-    
-    def step_z(self, step = 0.):
-        """Moves stage in z-direction
         
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-    	MICOSB.write('%f 0 0 r'%step)
-        return 0
-        
-    
-    def step_phi(self, step = 0.):
-        """Turns stage around angle phi
-        
-        @param float step: amount of realtive movement
-        
-        @return int: error code (0:OK, -1:error)
-        """
-    	MICOSB.write('0 %f 0 r'%a)
-        return 0         
+        error =0
+        if x !=None:
+            current_x=self.get_pos()[0]
+            if (current_x+x)>self.x_max or (current_x+x)<x_min:
+                self.logMsg('Magnet movement out of range in x. No movement possible', \
+                            msgType='error')
+                error=-1
+            else:
+                MICOSA.write('%f 0 0 r'%x)
+        if y !=None:
+            current_y=self.get_pos()[1]
+            if (current_y+y)>self.y_max or (current_y+y)<y_min:
+                self.logMsg('Magnet movement out of range in y. No movement possible', \
+                            msgType='error')
+                error=-1
+            else:
+                MICOSA.write('0 %f 0 r'%y)
+        if z !=None:            
+            current_z=self.get_pos()[2]
+            if (current_z+z)>self.z_max or (current_z+z)<z_min:
+                self.logMsg('Magnet movement out of range in z. No movement possible', \
+                            msgType='error')
+                error=-1
+            else:
+                MICOSB.write('%f 0 0 r'%z)
+        if phi !=None:            
+            current_phi=self.get_pos()[3]
+            if (current_phi+phi)>self.phi_max or (current_phi+phi)<phi_min:
+                self.logMsg('Magnet movement out of range in phi. No movement possible', \
+                            msgType='error')
+                error=-1
+            else:
+                MICOSB.write('0 %f 0 r'%phi)
+        return error      
     
 
     def abort(self):
@@ -236,9 +246,9 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-		MICOSA.write('1 1 setaxis')
-		MICOSA.write('4 2 setaxis')
-		MICOSA.write('cal')
+        MICOSA.write('1 1 setaxis')
+        MICOSA.write('4 2 setaxis')
+        MICOSA.write('cal')
         return 0
             
     
@@ -248,9 +258,9 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-		MICOSA.write('4 1 setaxis')
-		MICOSA.write('1 2 setaxis')
-		MICOSA.write('cal')
+        MICOSA.write('4 1 setaxis')
+        MICOSA.write('1 2 setaxis')
+        MICOSA.write('cal')
         return 0
             
     
@@ -260,9 +270,9 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-		MICOSB.write('1 1 setaxis')
-		MICOSB.write('4 2 setaxis')
-		MICOSB.write('cal')
+        MICOSB.write('1 1 setaxis')
+        MICOSB.write('4 2 setaxis')
+        MICOSB.write('cal')
         return 0
     
             
@@ -272,9 +282,9 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-		MICOSB.write('4 1 setaxis')
-		MICOSB.write('1 2 setaxis')
-		MICOSB.write('cal')
+        MICOSB.write('4 1 setaxis')
+        MICOSB.write('1 2 setaxis')
+        MICOSB.write('cal')
         return 0
     
     
@@ -287,16 +297,16 @@ class MagnetStageMicos(Base,MagnetStageInterface):
         """
         if dimension == 'x':
         	vel=float(MICOSA.ask('getvel').split()[0])  
-			print("The velocity of the magnet in dimension x and y is set on ",vel) 
+		print("The velocity of the magnet in dimension x and y is set on ",vel) 
         elif dimension == 'y':
         	vel=float(MICOSA.ask('getvel').split()[0]) 
-			print("The velocity of the magnet in dimension x and y is set on ",vel)   
+		print("The velocity of the magnet in dimension x and y is set on ",vel)   
         elif dimension == 'z':
     		vel=float(MICOSB.ask('getvel').split()[0]) 
-			print("The velocity of the magnet in dimension z and phi is set on ",vel)        
+		print("The velocity of the magnet in dimension z and phi is set on ",vel)        
         elif dimension == 'phi':
     		vel=float(MICOSB.ask('getvel').split()[0])
-			print("The velocity of the magnet in dimension z and phi is set on ",vel)           
+		print("The velocity of the magnet in dimension z and phi is set on ",vel)           
         return vel
         
         
