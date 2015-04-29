@@ -248,7 +248,7 @@ class FitLogic(GenericLogic):
             #set paraameters        
             amplitude=data.max()
             x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
-            sigma=x_zero/3
+            sigma=(x_axis.max()-x_axis.min())/2.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
         
