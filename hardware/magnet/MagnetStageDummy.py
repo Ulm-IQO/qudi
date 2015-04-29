@@ -5,6 +5,7 @@ from hardware.MagnetStageInterface import MagnetStageInterface
 from collections import OrderedDict
 
 class MagnetStageDummy(Base,MagnetStageInterface):
+    #FIXME: Is this an interface class?
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
