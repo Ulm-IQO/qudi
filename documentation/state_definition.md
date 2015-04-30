@@ -1,30 +1,42 @@
-New model with fysom:
+State machine per module with Fysom              {#modulestate}
+============
 
-states:
-    deactivated
-    idle
-    running
-    locked
-    blocked
+States:
+* deactivated
+* idle
+* running
+* locked
+* blocked
 
-state transition functions, do not use in anything derived from Base:
+State transition functions, do not use in anything derived from Base:
 
-    activate:   deactivated -> idle
-    deactivate: idle -> deactivated
-                running -> deactivated
-    run:        idle -> running
-    stop:       running -> idle
-    lock:       idle -> locked
-                running -> locked
-    block:      idle -> blocked
-                running -> blocked
-    locktoblock: locked -> blocked
-    unlock:     locked -> idle
-    unblock:    blocked -> idle
-    runlock:    locked -> running
-    runblock:   blocked -> running
+* activate:   
+  - deactivated -> idle
+* deactivate:
+  - idle -> deactivated
+  - running -> deactivated
+* run:
+  - idle -> running
+* stop:
+  - running -> idle
+* lock:
+  - idle -> locked
+  - running -> locked
+* block:
+  - idle -> blocked
+  - running -> blocked
+* locktoblock:
+  - locked -> blocked
+* unlock:
+  - locked -> idle
+* unblock:
+  - blocked -> idle
+* runlock:
+  - locked -> running
+* runblock:
+  - blocked -> running
 
-Old:
+Old Stuff:
 -1 - failed: error in the state determination
 0 - idle: the object is ready for your commands
 1 - running: objects is working, but can be interrupted any time
