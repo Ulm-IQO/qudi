@@ -4,11 +4,14 @@
 from core.Base import Base
 from pyqtgraph.Qt import QtCore, QtGui
 from .ManagerWindowTemplate import Ui_MainWindow
+from .ModuleWidgetTemplate import Ui_ModuleWidget
 from collections import OrderedDict
 
 class ManagerGui(Base):
     sigStartAll = QtCore.Signal()
     sigStartThis = QtCore.Signal(str, str)
+    sigReloadThis = QtCore.Signal(str, str)
+    sigStopThis = QtCore.Signal(str, str)
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, c_dict)
@@ -38,10 +41,10 @@ class ManagerGui(Base):
         base = 'gui'
         #for base in self._manager.tree['defined']:
         for module in self._manager.tree['defined'][base]:
-            widget = QtGui.QPushButton('Load {0}.{1}'.format(base, module))
+            widget = ModuleListItem(base, module)
             self.modlist.append(widget)
             layout.addWidget(widget)
-            widget.clicked.connect( lambda trash, b=base, m=module: self.sigStartThis.emit(b, m) )
+            widget.sigActivateThis.connect(self.sigStartThis)
 
     def fill_tree_item(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
@@ -95,12 +98,22 @@ class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         #self.test = QtGui.QPushButton('test')
         #self.scrollboxlayout.addWidget(self.test)
 
-#class ModuleList(QtCore.AbstractItemModel):
-#    def __init__(self):
-#        super().__init__()
-#
-#class ModuleItemDelegate(QtGui.QAbstractItemDelegate):
-#    def __init__(self):
-#        super().__init__()
+class ModuleListItem(QtGui.QWidget, Ui_ModuleWidget):
 
+    sigActivateThis = QtCore.Signal(str, str)
 
+    def __init__(self, basename, modulename):
+        super().__init__()
+        self.setupUi(self)
+        self.name = modulename
+        self.loadButton.setText('Load {0}'.format(self.name))
+        self.loadButton.clicked.connect(self.activateButtonClicked)
+
+    def activateButtonClicked(self):
+        self.sigActivateThis.emit('gui', self.name)
+
+    def reloadButtonClicked(self):
+        self.sigReloadThis.emit('gui', self.name)
+
+    def stopeButtonClicked(self):
+        self.sigStopThis.emit('gui', self.name)
