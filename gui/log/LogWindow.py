@@ -45,7 +45,7 @@ class LogWindow(Base):
         @param object e: state change object from fysom stae machine
         """
         self.mw = QtGui.QMainWindow()
-        self.mw.setWindowTitle("Log")
+        self.mw.setWindowTitle('qudi: Log')
         path = os.path.dirname(__file__)
         self.mw.setWindowIcon(QtGui.QIcon(os.path.join(path, 'logIcon.png')))
 
@@ -54,7 +54,7 @@ class LogWindow(Base):
         else:
             stylesheetpath = os.path.join(self.getConfigDirectory(), '..', 'styles', 'log', 'logDark.qss')
         if not os.path.isfile(stylesheetpath):
-            self.logger.print_logMsg("Stylesheet not found at {0}".format(stylesheetpath), importance=6, msgType='warning')
+            self.logger.print_logMsg('Stylesheet not found at {0}'.format(stylesheetpath), importance=6, msgType='warning')
             self.stylesheet = ''
         else:
             stylesheetfile = open(stylesheetpath)
@@ -64,7 +64,7 @@ class LogWindow(Base):
         self.wid = LogWidget(self.mw, self.stylesheet)
         self.wid.ui.input = QtGui.QLineEdit()
         self.wid.ui.gridLayout.addWidget(self.wid.ui.input, 2, 0, 1, 3)
-        self.wid.ui.dirLabel.setText("Current Storage Directory: None")
+        self.wid.ui.dirLabel.setText('Current Storage Directory: None')
         self.mw.setCentralWidget(self.wid)
         self.mw.setGeometry(7,630,1000, 500)
         self.wid.ui.input.returnPressed.connect(self.textEntered)
@@ -286,6 +286,8 @@ class ErrorDialog(QtGui.QDialog):
         
     def disable(self, disable):
         """ Disables popups.
+
+          @param bool disable: disable popups if true, enables if false
         """
         self.disableCheck.setChecked(disable)
     
