@@ -15,16 +15,7 @@ from gui.Tracker.TrackerGuiUI import Ui_MainWindow
 from gui.Tracker.TrackerSettingsUI import Ui_SettingsDialog
 from gui.Confocal.ConfocalGui import ColorBar
 
-# To convert the *.ui file to a raw TrackerGuiUI.py file use the python script
-# in the Anaconda directory, which you can find in:
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
-#
-# Then use that script like
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" TrackerGuiUI.ui > TrackerGuiUI.py
-#
-# to convert to TrackerGuiUI.py.
+
 
 
 
@@ -45,7 +36,8 @@ class CustomViewBox(pg.ViewBox):
             pg.ViewBox.mouseDragEvent(self, ev,axis)
         else:
             ev.ignore()
-            
+  
+          
             
 class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
@@ -62,7 +54,7 @@ class TrackerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
             
 class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """
-    Main Tracker Class
+    This is the GUI Class for Tracker
     """
     
     
@@ -124,18 +116,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
 
         # Load the image in the display:
-        self.xy_refocus_image = pg.ImageItem(arr01)
-#        self.xy_refocus_image.setRect(QtCore.QRectF(0, 0, 100, 100))        
+        self.xy_refocus_image = pg.ImageItem(arr01)       
         self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
-#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size+1, self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size+1, self._tracker_logic._X_values[1]-self._tracker_logic._X_values[0], self._tracker_logic._Y_values[1]-self._tracker_logic._Y_values[0]))               
-        
-#        self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size        
-        
-#        self._X_values = np.arange(xmin, xmax + self.refocus_XY_step, self.refocus_XY_step)
-#        self._Y_values = np.arange(ymin, ymax + self.refocus_XY_step, self.refocus_XY_step)
-#        self._Z_values = self._trackpoint_z * np.ones(self._X_values.shape)        
-        
-        
         self.xz_refocus_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,arr02)
         self.xz_refocus_fit_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data, pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
@@ -146,8 +128,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
         
         #Add crosshair to the xy refocus scan
-        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.01), pos=50, angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.01), pos=50, angle=0, movable=False)
+        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=0, movable=False)
         self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
         
@@ -192,8 +174,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.count_freq_InputWidget.setText(str(self._tracker_logic._clock_frequency))
         self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
         
-        # Add to the QLineEdit Widget a Double Validator to ensure only a 
-        # float input.
+        # Add to the QLineEdit Widget a Double- and Int Validator to ensure only a 
+        # float/Int input.
         validator = QtGui.QDoubleValidator()
         validator2 = QtGui.QIntValidator()
         self._sw.xy_refocusrange_InputWidget.setValidator(validator)
@@ -204,20 +186,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.return_slow_InputWidget.setValidator(validator)
         
                 
-#        # Update the inputed/displayed numbers if return key is hit:
-#        self._sw.xy_refocusrange_InputWidget.returnPressed.connect(self.update_xy_refocusrange)
-#        self._sw.xy_refocusstepsize_InputWidget.returnPressed.connect(self.update_xy_refocusstepsize)
-#        self._sw.z_refocusrange_InputWidget.returnPressed.connect(self.update_z_refocusrange)
-#        self._sw.z_refocusstepsize_InputWidget.returnPressed.connect(self.update_z_refocusstepsize)
-#        
-#        # Declare for which fields changes are applied if the cursor is leaving
-#        # the field:
-#        self._sw.xy_refocusrange_InputWidget.editingFinished.connect(self.update_xy_refocusrange)
-#        self._sw.xy_refocusstepsize_InputWidget.editingFinished.connect(self.update_xy_refocusstepsize)
-#        self._sw.z_refocusrange_InputWidget.editingFinished.connect(self.update_z_refocusrange)
-#        self._sw.z_refocusstepsize_InputWidget.editingFinished.connect(self.update_z_refocusstepsize)
-
-        
+        # Connect signals
         self._tracker_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
         self._tracker_logic.signal_z_image_updated.connect(self.refresh_z_image)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
@@ -231,15 +200,18 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     
     
     def update_settings(self):
+        ''' This method writes the new settings from the gui to the file
+        '''
         self._tracker_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
         self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
         self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
         self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
         self._tracker_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
         self._tracker_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
-        
-        
+                
     def reject_settings(self):
+        ''' This method keeps the old settings and restores the old settings in the gui
+        '''
         self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
         self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
         self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
@@ -248,47 +220,30 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
         
     def refresh_xy_colorbar(self):
+        ''' This method deletes the old colorbar and replace it with an updated one
+        '''
         self._mw.xy_refocus_cb_ViewWidget.clear()
         self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
-        
-    
-#    def update_xy_refocusrange(self):
-#        print('set xy refra')
-#        self._tracker_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
-#        
-#    def update_xy_refocusstepsize(self):
-#        print('set xy refst')
-#        self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
-#        
-#    def update_z_refocusrange(self):
-#        print('set z refra')
-#        self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
-#        
-#    def update_z_refocusstepsize(self):
-#        print('set z refst')
-#        self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
-    
-    
+            
     def menue_settings(self):
+        ''' This method opens the settings menue
+        '''
         self._sw.exec_()
 
     
     def refresh_xy_image(self):
+        ''' This method refreshes the xy image, the crosshair and the colorbar
+        '''
         self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
-#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic.x_range[0], self._tracker_logic.y_range[0], self._tracker_logic.x_range[1]-self._tracker_logic.x_range[0], self._tracker_logic.y_range[1]-self._tracker_logic.y_range[0]))
-#        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._X_values[0], self._tracker_logic._Y_values[0], self._tracker_logic._X_values[1]-self._tracker_logic._X_values[0], self._tracker_logic._Y_values[1]-self._tracker_logic._Y_values[0]))        
         self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
         self.vLine.setValue(self._tracker_logic.refocus_x)
-        print('set vline to', self._tracker_logic.refocus_x)
         self.hLine.setValue(self._tracker_logic.refocus_y)
-        print('set hline to', self._tracker_logic.refocus_y)
         self.refresh_xy_colorbar()
-#        if self._tracker_logic.getState() != 'locked':
-#            self.signal_refocus_finished.emit()
+
         
     def refresh_z_image(self):
+        ''' This method refreshes the z image
+        '''
         self.xz_refocus_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_refocus_line)
         self.xz_refocus_fit_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
-#        if self._tracker_logic.getState() != 'locked':
-#            self.signal_refocus_finished.emit()
