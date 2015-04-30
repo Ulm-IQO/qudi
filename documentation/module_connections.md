@@ -1,3 +1,5 @@
+How to connect software modules                       {#moduleconnection}
+============
 
 Every module derived from Base has an OrderedDict "connector" which has to
 contain its connection possibilities.
