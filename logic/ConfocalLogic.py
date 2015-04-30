@@ -67,23 +67,24 @@ class ConfocalLogic(GenericLogic):
         print("Scanning device is", self._scanning_device)
         
         
-        #reads in the maximal scanning range
+        # Reads in the maximal scanning range. The unit of that scan range is
+        # micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
         
-        #sets the current position to the center of the maximal scanning range
+        # Sets the current position to the center of the maximal scanning range
         self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
         self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
         self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
         self._current_a = 0.0
         
-        #sets the size of the image to the maximal scanning range
+        # Sets the size of the image to the maximal scanning range
         self.image_x_range = self.x_range
         self.image_y_range = self.y_range
         self.image_z_range = self.z_range
         
-        #default values for the resolution of the scan
+        # Default values for the resolution of the scan
         self.xy_resolution = 100
         self.z_resolution = 50
         
