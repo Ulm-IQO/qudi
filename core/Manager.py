@@ -763,30 +763,16 @@ class Manager(QtCore.QObject):
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
 
-
     def startAllConfiguredModules(self):
         """Connect all QuDi modules from the currently laoded configuration and
             activate them.
         """
         #FIXME: actually load all the modules in the correct order and connect
         # the interfaces
-        for thing in ['hardware', 'logic', 'gui']:
-            for key in self.tree['defined'][thing]:
-                self.loadConfigureModule(thing, key)
+        for base in ['hardware', 'logic', 'gui']:
+            for key in self.tree['defined'][base]:
+                self.startModule(base, key)
 
-        # Connect ALL the things!
-        self.logger.print_logMsg('Connecting ALL the things!!')
-        for mkey in self.tree['defined']['logic']:
-            self.connectModule('logic', mkey)
-        for mkey in self.tree['defined']['gui']:
-            self.connectModule('gui', mkey)
-
-        # FIXME Check for any disconnected modules and add their dummies
-        # FIXME Call Activate on all deactivated modules
-        self.logger.print_logMsg('Activation starting!')
-        for thing in ['hardware', 'logic', 'gui']:
-            for key in self.tree['loaded'][thing]:
-                self.activateModule(thing, key)
         self.logger.print_logMsg('Activation finished.')
 
     def reloadAll(self):
