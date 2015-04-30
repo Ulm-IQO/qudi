@@ -135,7 +135,7 @@ class TrackerLogic(GenericLogic):
                         
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
-        self._clock_frequency = 200.
+        self._clock_frequency = 200
         self.return_slowness = 20
         
         self.refocus_XY_size =  2
