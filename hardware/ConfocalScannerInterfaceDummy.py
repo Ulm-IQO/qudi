@@ -3,7 +3,6 @@
 from core.Base import Base
 from hardware.ConfocalScannerInterface import ConfocalScannerInterface
 from collections import OrderedDict
-import random
 import time
 
 import numpy as np
@@ -14,12 +13,17 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        ## declare actions for state transitions
+        state_actions = {'onactivate': self.activation}
+        Base.__init__(self, manager, name, config, state_actions, **kwargs)
         self._modclass = 'confocalscannerinterface'
         self._modtype = 'hardware'
 
         self.connector['out']['confocalscanner'] = OrderedDict()
         self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
+        self.connector['in']['fitlogic'] = OrderedDict()
+        self.connector['in']['fitlogic']['class'] = 'FitLogic'
+        self.connector['in']['fitlogic']['object'] = None
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -43,7 +47,41 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         
         self._current_position = [0., 0., 0., 0.]
+        self._num_points = 100
     
+    def activation(self, e):
+        """ Initialisation performed during activation of the module.
+        """        
+        
+        self._fit_logic = self.connector['in']['fitlogic']['object']
+        print("Fit Logic is", self._fit_logic)
+        #def twoD_gaussian_function(self,x_data_tuple=None,amplitude=None, x_zero=None, y_zero=None, sigma_x=None, sigma_y=None, theta=None, offset=None):
+        self._points = np.empty([self._num_points,7])
+        # amplitude
+        self._points[:,0] = np.random.normal( 1e5,
+                                              1e4,
+                                              self._num_points)
+        # x_zero
+        self._points[:,1] = np.random.uniform(self._position_range[0][0],
+                                              self._position_range[0][1],
+                                              self._num_points)
+        # y_zero
+        self._points[:,2] = np.random.uniform(self._position_range[1][0],
+                                              self._position_range[1][1],
+                                              self._num_points)
+        # sigma_x
+        self._points[:,3] = np.random.normal( 0.5,
+                                              0.1,
+                                              self._num_points)
+        # sigma_y
+        self._points[:,4] = np.random.normal( 0.5,
+                                              0.1,
+                                              self._num_points)
+        # theta
+        self._points[:,5] = 45
+        # offset
+        self._points[:,6] = 0
+        
     
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -223,10 +261,11 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         if np.shape(voltages)[1] != self._line_length:
             self.set_up_line(np.shape(voltages)[1])
             
-        count_data = np.empty((self._line_length,), dtype=np.uint32)
+        count_data = np.random.uniform(0,4e4,self._line_length)
+        x_data,y_data = np.meshgrid(voltages[0,:],voltages[1,0])
         
-        for i in range(self._line_length):
-            count_data[i] = random.uniform(0, 1e6)
+        for i in range(self._num_points):
+            count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),*(self._points[i]))
             
         time.sleep(self._line_length*1./self._clock_frequency)
         
