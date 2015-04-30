@@ -87,7 +87,7 @@ class ConfocalScannerInterface():
         """
         
         raise InterfaceImplementationError('ConfocalScannerInterface>set_up_line')
-        return [0.0]
+        return -1
 
     def scan_line(self, positions = None):
         """ Scans a line and returns the counts on that line. 

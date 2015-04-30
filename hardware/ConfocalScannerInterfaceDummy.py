@@ -132,7 +132,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self.logMsg('ConfocalScannerInterfaceDummy>set_up_scanner_clock', 
                     msgType='warning')
                     
-        time.sleep(0.5)
+        time.sleep(0.2)
         
         return 0
     
@@ -156,7 +156,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
             msgType='error')
             return -1
                             
-        time.sleep(0.5)
+        time.sleep(0.2)
                 
         return 0
         
