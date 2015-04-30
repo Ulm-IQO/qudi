@@ -195,11 +195,12 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Add to the QLineEdit Widget a Double Validator to ensure only a 
         # float input.
         validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
         self._sw.xy_refocusrange_InputWidget.setValidator(validator)
         self._sw.xy_refocusstepsize_InputWidget.setValidator(validator)
         self._sw.z_refocusrange_InputWidget.setValidator(validator)
         self._sw.z_refocusstepsize_InputWidget.setValidator(validator)
-        self._sw.count_freq_InputWidget.setValidator(validator)
+        self._sw.count_freq_InputWidget.setValidator(validator2)
         self._sw.return_slow_InputWidget.setValidator(validator)
         
                 
@@ -222,6 +223,8 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sw.accepted.connect(self.update_settings)
         self._sw.rejected.connect(self.reject_settings)
+        self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        
         
         print('Main Tracker Windows shown:')
         self._mw.show()
