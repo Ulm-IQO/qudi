@@ -1,6 +1,12 @@
-My Main Page                         {#mainpage}
+Welcome to the Quantum Diamond Documentation                {#mainpage}
 ============
 
-Documentation that will appear on the main page
+A few poinnters for getting started:
 
-See [the other page](other.md) for more info.
+* [Python distributions](getpython)
+* [Reqired python modules](requiredmodules)
+
+
+Design documents:
+* [Module connection](moduleconnection)
+* [Module state machine](modulestate)
