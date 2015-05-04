@@ -62,10 +62,6 @@ if set_api:
 import pyqtgraph as pg
 # Make icons work on non-X11 platforms, import a custom theme
 print('Platform is', sys.platform)
-if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
-    print('Using custom theme for non-X11 platform.')
-    import artwork.qudiTheme
-
 pg.setConfigOptions(useWeave=False)
 
 
@@ -77,6 +73,9 @@ app = pg.mkQApp()
 
 # Make icons work on non-X11 platforms, set custom theme
 if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
+    themepaths = pg.Qt.QtGui.QIcon.themeSearchPaths()
+    themepaths.append('artwork/icons')
+    pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
     pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
 
 # rename any orphaned .pyc files -- these are probably leftover from 
