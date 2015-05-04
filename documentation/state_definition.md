@@ -37,10 +37,11 @@ State transition functions, do not use in anything derived from Base:
   - blocked -> running
 
 Old Stuff:
+~~~~~~~~~~~~~
 -1 - failed: error in the state determination
 0 - idle: the object is ready for your commands
 1 - running: objects is working, but can be interrupted any time
 2 - locked: you can read, but not send commands or write
 3 - blocked: object is busy and can not answer (come back later)
 4 or higher: specific states of any class
-
+~~~~~~~~~~~~~
