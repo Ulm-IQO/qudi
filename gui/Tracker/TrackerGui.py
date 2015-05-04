@@ -2,7 +2,7 @@
 """
 Created on Mon Apr 27 17:54:58 2015
 
-@author: user-admin
+@author: user-admin  FIXME this should be a more meaningful name.
 """
 
 from pyqtgraph.Qt import QtCore, QtGui
