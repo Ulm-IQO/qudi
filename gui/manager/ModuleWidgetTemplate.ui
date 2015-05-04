@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>ModuleWidget</class>
- <widget class="QWidget" name="ModuleWidget">
+ <widget class="QFrame" name="ModuleWidget">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>60</height>
+    <height>61</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -18,6 +18,9 @@
   </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="frameShape">
+   <enum>QFrame::StyledPanel</enum>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
@@ -33,7 +36,9 @@
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset theme="view-refresh"/>
+      <iconset theme="view-refresh">
+       <normaloff/>
+      </iconset>
      </property>
     </widget>
    </item>
@@ -43,7 +48,9 @@
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset theme="application-exit"/>
+      <iconset theme="application-exit">
+       <normaloff/>
+      </iconset>
      </property>
     </widget>
    </item>
