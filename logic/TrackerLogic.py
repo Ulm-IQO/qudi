@@ -166,7 +166,7 @@ class TrackerLogic(GenericLogic):
         
         self._scan_counter = 0
         
-        self.signal_scan_xy_line_next.connect(self._scan_xy_line, QtCore.Qt.QueuedConnection)
+        self.signal_scan_xy_line_next.connect(self._refocus_line, QtCore.Qt.QueuedConnection)
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
@@ -229,10 +229,8 @@ class TrackerLogic(GenericLogic):
 
         
         
-    def _scan_xy_line(self):
+    def _refocus_line(self):
         """Scanning one line of the xy refocus image
-
-        FIXME: Why does this also do z scanning?  Should that part be moved to _scan_xz_line?
         """
         self.running = True        
         
