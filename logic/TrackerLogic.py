@@ -71,7 +71,7 @@ class TrackPoint(object):
         """
         return self._name
         
-    def get_trace(self):
+    def get_trace(self): #instead of "trace": drift_log, history, 
         """ Returns the whole position time trace as array.
         
         @return float[][4]: the whole position time trace
@@ -95,7 +95,7 @@ class TrackPoint(object):
 
 class TrackerLogic(GenericLogic):
     """unstable: Christoph Müller
-    This is the Logic class for NV tracking and refocus
+    This is the Logic class for refocussing on and tracking bright features in the confocal scan.
     """
     signal_scan_xy_line_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
@@ -231,6 +231,8 @@ class TrackerLogic(GenericLogic):
         
     def _scan_xy_line(self):
         """Scanning one line of the xy refocus image
+
+        FIXME: Why does this also do z scanning?  Should that part be moved to _scan_xz_line?
         """
         self.running = True        
         
