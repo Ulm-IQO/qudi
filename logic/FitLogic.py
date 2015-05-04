@@ -42,8 +42,8 @@ class FitLogic(GenericLogic):
 #                            msgType='status')
                              
         def activation(self,e):
-            self.oneD_testing()
-            self.twoD_testing()
+#            self.oneD_testing()
+#            self.twoD_testing()
             pass
             
         
