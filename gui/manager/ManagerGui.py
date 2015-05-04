@@ -98,7 +98,7 @@ class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         #self.test = QtGui.QPushButton('test')
         #self.scrollboxlayout.addWidget(self.test)
 
-class ModuleListItem(QtGui.QWidget, Ui_ModuleWidget):
+class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
 
     sigActivateThis = QtCore.Signal(str, str)
 
