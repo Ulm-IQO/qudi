@@ -10,7 +10,11 @@ import time
 class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for ODMR.
-    """    
+    """
+    
+    signal_next_line = QtCore.Signal()
+    signal_ODMR_plot_updated = QtCore.Signal()
+    signal_ODMR_matrix_updated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -58,6 +62,8 @@ class ODMRLogic(GenericLogic):
         self._MW_device = self.connector['in']['microwave1']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
+        
+        self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
             
     
     def start_ODMR(self):
@@ -65,18 +71,31 @@ class ODMRLogic(GenericLogic):
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
         
+        self.signal_next_line.emit()
+        
         
     def stop_ODMR(self):
         pass        
     
+    
     def _initialize_ODMR_plot(self):
         pass
+    
     
     def _initialize_ODMR_matrix(self):
         pass
     
+    
     def _scan_ODMR_line(self):
-        pass
+        
+        
+        self._scan_counter += 1
+        
+        if self._scan_counter > 50: #TODO: exit condition
+            self.stop_ODMR()
+            
+        self.signal_next_line.emit()
+        
     
 
     def set_power(self, power = None):
