@@ -3,10 +3,10 @@ Welcome to the Quantum Diamond Documentation                {#mainpage}
 
 A few poinnters for getting started:
 
-* [Python distributions](getpython)
-* [Reqired python modules](requiredmodules)
+* [Python distributions](@ref getpython)
+* [Reqired python modules](@ref requiredmodules)
 
 
 Design documents:
-* [Module connection](moduleconnection)
-* [Module state machine](modulestate)
+* [Module connection](@ref moduleconnection)
+* [Module state machine](@ref modulestate)
