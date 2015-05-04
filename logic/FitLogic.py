@@ -42,10 +42,11 @@ class FitLogic(GenericLogic):
 #                            msgType='status')
                              
         def activation(self,e):
-#            self.oneD_testing()
-#            self.twoD_testing()
+            self.oneD_testing()
+            self.twoD_testing()
             pass
             
+        
         def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
             """ Makes a fit of the desired function with the one and two 
                 dimensional data.
@@ -97,17 +98,13 @@ class FitLogic(GenericLogic):
                 error= -1
             if error==0:
                 try:
-#                print(function)
-#                print(axes, np.shape(axes))
-#                print(data, np.shape(data))
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
-                    self.logMsg('The fit did not work.', 
-                        msgType='error')
+                    self.logMsg('The fit did not work.', msgType='error')
                     error=-1
             if not details:
                 return error,popt
-            else:    
+            else:
                 return error,popt, pcov
         
         def twoD_gaussian_function(self,x_data_tuple=None,amplitude=None, x_zero=None, y_zero=None, sigma_x=None, sigma_y=None, theta=None, offset=None):
@@ -166,8 +163,8 @@ class FitLogic(GenericLogic):
             @return int error: error code (0:OK, -1:error)                    
             """                                 
             amplitude=float(data.max()-data.min())
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
-            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  #len(y_axis)/2.
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
+            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
             sigma_x=(x_axis.max()-x_axis.min())/3.
             sigma_y =(y_axis.max()-y_axis.min())/3.
             theta=0.0
@@ -247,17 +244,17 @@ class FitLogic(GenericLogic):
                     error=-1
             #set paraameters        
             amplitude=data.max()
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  #len(x_axis)/2.
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/3.
             sigma=(x_axis.max()-x_axis.min())/2.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
         
         def oneD_testing(self):
             self.x = np.linspace(0, 200, 201)
-            self.xdata=self.gaussian_function(self.x,10,80,20,5)
+            self.xdata=self.gaussian_function(self.x,30,101,70,5)
             self.xdata_noisy=self.xdata+2*np.random.normal(size=self.xdata.shape)
             error,amplitude, x_zero, sigma, offset=self.gaussian_estimator(self.x,self.xdata)
-            error,popt= self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=(amplitude, x_zero, sigma, offset))
+            error,popt= self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=(amplitude, x_zero, sigma, offset))            
             plt.figure()
             plt.plot(self.x,self.gaussian_function(self.x, *popt))
             plt.plot(self.xdata_noisy)
