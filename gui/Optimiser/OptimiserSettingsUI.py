@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'TrackerSettings.ui'
+# Form implementation generated from reading ui file 'OptimiserSettings.ui'
 #
 # Created: Thu Apr 30 12:52:59 2015
 #      by: PyQt4 UI code generator 4.9.5
@@ -93,7 +93,7 @@ class Ui_SettingsDialog(object):
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
 
     def retranslateUi(self, SettingsDialog):
-        SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: Tracker - Settings", None, QtGui.QApplication.UnicodeUTF8))
+        SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: Optimiser - Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("SettingsDialog", "XY Range :", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("SettingsDialog", "XY Stepsize :", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("SettingsDialog", "Z Range :", None, QtGui.QApplication.UnicodeUTF8))

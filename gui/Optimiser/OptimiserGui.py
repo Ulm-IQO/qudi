@@ -39,12 +39,12 @@ class CustomViewBox(pg.ViewBox):
   
           
             
-class TrackerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class OptimiserMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-class TrackerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+class OptimiserSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
     def __init__(self):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
@@ -54,7 +54,7 @@ class TrackerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
             
 class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """
-    This is the GUI Class for Tracker
+    This is the GUI Class for Optimiser
     """
     
     
@@ -68,7 +68,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                     config,
                     c_dict)
         
-        self._modclass = 'TrackerGui'
+        self._modclass = 'OptimiserGui'
         self._modtype = 'gui'
         
         ## declare connectors
@@ -105,10 +105,10 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
         
-        # Use the inherited class 'Ui_TrackerGuiTemplate' to create now the 
+        # Use the inherited class 'Ui_OptimiserGuiTemplate' to create now the 
         # GUI element:
-        self._mw = TrackerMainWindow()
-        self._sw = TrackerSettingDialog()
+        self._mw = OptimiserMainWindow()
+        self._sw = OptimiserSettingDialog()
         
         # Get the image for the display from the logic:
         arr01 = self._tracker_logic.xy_refocus_image[:,:,3].transpose()
@@ -194,7 +194,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         
         
-        print('Main Tracker Windows shown:')
+        print('Main Optimiser Windows shown:')
         self._mw.show()
     
     

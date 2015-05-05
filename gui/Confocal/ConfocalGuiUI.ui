@@ -70,7 +70,7 @@
         </widget>
         <widget class="QWidget" name="tab_6">
          <attribute name="title">
-          <string>Tracker</string>
+          <string>Optimiser</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="0" column="0">
@@ -286,7 +286,7 @@
         <item>
          <widget class="QRadioButton" name="refocus_StateWidget">
           <property name="text">
-           <string>Refocus</string>
+           <string>Optimise position</string>
           </property>
          </widget>
         </item>

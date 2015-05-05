@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'TrackerGuiUI.ui'
+# Form implementation generated from reading ui file 'OptimiserGuiUI.ui'
 #
 # Created: Tue Apr 28 22:44:02 2015
 #      by: PyQt4 UI code generator 4.9.6
@@ -86,7 +86,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Tracker", None))
+        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Optimiser", None))
         self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
         self.menu_File.setTitle(_translate("MainWindow", "&File", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))

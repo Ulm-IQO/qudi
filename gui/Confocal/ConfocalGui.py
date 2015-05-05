@@ -188,7 +188,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.connector['in']['savelogic']['object'] = None
         
         self.connector['in']['optimiserlogic1'] = OrderedDict()
-        self.connector['in']['optimiserlogic1']['class'] = 'TrackerLogic'
+        self.connector['in']['optimiserlogic1']['class'] = 'OptimiserLogic'
         self.connector['in']['optimiserlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 
