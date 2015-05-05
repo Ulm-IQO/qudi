@@ -1,6 +1,6 @@
 Required python modules                     {#requiredmodules}
 ============
-
+Install these via *pip install*:
 * Fysom: https://pypi.python.org/pypi/fysom
 * pyqtgraph: http://www.pyqtgraph.org/
 * pyvisa: https://pypi.python.org/pypi/PyVISA
