@@ -20,7 +20,7 @@
       <x>0</x>
       <y>0</y>
       <width>571</width>
-      <height>571</height>
+      <height>611</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -35,7 +35,7 @@
        <rect>
         <x>10</x>
         <y>40</y>
-        <width>431</width>
+        <width>541</width>
         <height>391</height>
        </rect>
       </property>
@@ -46,7 +46,7 @@
        </sizepolicy>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton">
+     <widget class="QPushButton" name="get_confocal_image_Button">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -59,11 +59,11 @@
        <string>Get Confocal image</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_2">
+     <widget class="QPushButton" name="set_tp_Button">
       <property name="geometry">
        <rect>
-        <x>20</x>
-        <y>490</y>
+        <x>10</x>
+        <y>440</y>
         <width>121</width>
         <height>23</height>
        </rect>
@@ -75,44 +75,31 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>20</x>
-        <y>440</y>
+        <x>50</x>
+        <y>480</y>
         <width>121</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>Rename trackpoint </string>
+       <string>Manage trackpoint </string>
       </property>
      </widget>
-     <widget class="QLineEdit" name="lineEdit">
+     <widget class="QLineEdit" name="tp_name_Input">
       <property name="geometry">
        <rect>
-        <x>270</x>
-        <y>440</y>
+        <x>160</x>
+        <y>510</y>
         <width>113</width>
         <height>22</height>
        </rect>
       </property>
      </widget>
-     <widget class="QComboBox" name="comboBox_3">
+     <widget class="QComboBox" name="manage_tp_comboBox">
       <property name="geometry">
        <rect>
-        <x>234</x>
-        <y>470</y>
-        <width>131</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="editable">
-       <bool>true</bool>
-      </property>
-     </widget>
-     <widget class="QComboBox" name="comboBox_4">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>440</y>
+        <x>170</x>
+        <y>480</y>
         <width>85</width>
         <height>23</height>
        </rect>
@@ -121,14 +108,53 @@
      <widget class="QLabel" name="label_3">
       <property name="geometry">
        <rect>
-        <x>240</x>
-        <y>440</y>
+        <x>90</x>
+        <y>510</y>
         <width>58</width>
-        <height>14</height>
+        <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>as: </string>
+       <string>Name: </string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="delete_tp_Button">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>540</y>
+        <width>95</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Delete</string>
+      </property>
+     </widget>
+     <widget class="Line" name="line">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>460</y>
+        <width>541</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="manual_update_tp_Button">
+      <property name="geometry">
+       <rect>
+        <x>90</x>
+        <y>540</y>
+        <width>181</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Manual update position</string>
       </property>
      </widget>
     </widget>
@@ -139,8 +165,8 @@
      <widget class="PlotWidget" name="xy_refocus_ViewWidget_2">
       <property name="geometry">
        <rect>
-        <x>30</x>
-        <y>20</y>
+        <x>10</x>
+        <y>10</y>
         <width>431</width>
         <height>431</height>
        </rect>
@@ -152,10 +178,30 @@
        </sizepolicy>
       </property>
      </widget>
+     <widget class="QListView" name="listView">
+      <property name="geometry">
+       <rect>
+        <x>450</x>
+        <y>10</y>
+        <width>111</width>
+        <height>431</height>
+       </rect>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tab">
+     <attribute name="title">
+      <string>Offset marker</string>
+     </attribute>
     </widget>
     <widget class="QWidget" name="triangulation">
      <attribute name="title">
       <string>Triangulation</string>
+     </attribute>
+    </widget>
+    <widget class="QWidget" name="tab_2">
+     <attribute name="title">
+      <string>AutoFinder</string>
      </attribute>
     </widget>
    </widget>
@@ -177,28 +223,28 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox">
+      <widget class="QComboBox" name="active_tp_Input">
        <property name="editable">
         <bool>false</bool>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="radioButton_2">
+      <widget class="QRadioButton" name="goto_tp_Button">
        <property name="text">
         <string>Goto TP</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="radioButton">
+      <widget class="QRadioButton" name="update_tp_Button">
        <property name="text">
-        <string>Update position using </string>
+        <string>Update using </string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox_2"/>
+      <widget class="QComboBox" name="update_method_Input"/>
      </item>
     </layout>
    </widget>

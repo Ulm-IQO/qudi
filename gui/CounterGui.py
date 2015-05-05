@@ -106,7 +106,7 @@ class CounterGui(Base):
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._counts_label)
         
-        # kombining the layouts with the plot
+        # combining the layouts with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
         self._vbox_layout.addLayout(self._hbox_counter)
         self._vbox_layout.addWidget(self._pw)
