@@ -102,9 +102,9 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
                                              
         # offset
         self._points_z[:,3] = 0
-        
-        print('Position of NV 1',self._points[0,:],self._points_z[0,:],len(self._points))
-        print(self._points_z[:,0],self._points[:,0])
+#        
+#        print('Position of NV 1',self._points[0,:],self._points_z[0,:],len(self._points))
+#        print(self._points_z[:,0],self._points[:,0])
         
                                               
     def get_position_range(self):
