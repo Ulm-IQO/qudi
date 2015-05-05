@@ -187,8 +187,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
                 
         # Connect signals
-        self._tracker_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
-        self._tracker_logic.signal_z_image_updated.connect(self.refresh_z_image)
+        self._tracker_logic.signal_image_updated.connect(self.refresh_image)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sw.accepted.connect(self.update_settings)
         self._sw.rejected.connect(self.reject_settings)
@@ -232,18 +231,13 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.exec_()
 
     
-    def refresh_xy_image(self):
+    def refresh_image(self):
         ''' This method refreshes the xy image, the crosshair and the colorbar
         '''
         self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
         self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
         self.vLine.setValue(self._tracker_logic.refocus_x)
         self.hLine.setValue(self._tracker_logic.refocus_y)
-        self.refresh_xy_colorbar()
-
-        
-    def refresh_z_image(self):
-        ''' This method refreshes the z image
-        '''
         self.xz_refocus_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_refocus_line)
         self.xz_refocus_fit_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
+        self.refresh_xy_colorbar()
