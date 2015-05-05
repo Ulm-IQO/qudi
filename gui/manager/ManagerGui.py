@@ -28,6 +28,7 @@ class ManagerGui(Base):
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         self.sigStartThis.connect(self._manager.startModule)
+        self.sigReloadThis.connect(self._manager.restartModule)
         self.updateModuleList()
 
     def updateConfigWidgets(self):
@@ -45,6 +46,7 @@ class ManagerGui(Base):
             self.modlist.append(widget)
             layout.addWidget(widget)
             widget.sigActivateThis.connect(self.sigStartThis)
+            widget.sigReloadThis.connect(self.sigReloadThis)
 
     def fill_tree_item(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
@@ -101,6 +103,7 @@ class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
 class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
 
     sigActivateThis = QtCore.Signal(str, str)
+    sigReloadThis = QtCore.Signal(str, str)
 
     def __init__(self, basename, modulename):
         super().__init__()
@@ -108,11 +111,12 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
         self.name = modulename
         self.loadButton.setText('Load {0}'.format(self.name))
         self.loadButton.clicked.connect(self.activateButtonClicked)
+        self.reloadButton.clicked.connect(self.reactivateButtonClicked)
 
     def activateButtonClicked(self):
         self.sigActivateThis.emit('gui', self.name)
 
-    def reloadButtonClicked(self):
+    def reactivateButtonClicked(self):
         self.sigReloadThis.emit('gui', self.name)
 
     def stopeButtonClicked(self):

@@ -16,10 +16,11 @@ import gc
 import getopt
 import glob
 import re
-
 import time
 import atexit
 import weakref
+import importlib
+
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
 import pyqtgraph.configfile as configfile
@@ -188,15 +189,12 @@ class Manager(QtCore.QObject):
             # Load startup things from config here
             for key in self.tree['start']['gui']:
                 try:
-                    # self.loadModule( baseclass, module, instanceName, config=None)
-                    modObj = self.loadModule('gui',
-                                            self.tree['start']['gui'][key]['module'])
+                    modObj = self.importModule('gui', self.tree['start']['gui'][key]['module'])
                     pkgName = re.escape(modObj.__package__)
                     modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
                     modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     
-                    self.configureModule(modObj, 'gui', modName, key,
-                                         self.tree['start']['gui'][key])
+                    self.configureModule(modObj, 'gui', modName, key, self.tree['start']['gui'][key])
                     self.tree['loaded']['gui'][key].activate()
                 except:
                     raise
@@ -452,7 +450,7 @@ class Manager(QtCore.QObject):
     # Module loading #
     ##################
 
-    def loadModule(self, baseName, module):
+    def importModule(self, baseName, module):
         """Load a python module that is a loadable QuDi module.
 
           @param string baseName: the module base package (hardware, logic, or gui)
@@ -467,9 +465,9 @@ class Manager(QtCore.QObject):
                             'system with some category {0}'.format(baseName) )
         
         # load the python module
-        mod = __import__('{0}.{1}'.format(baseName, module), fromlist=['*'])
+        mod = importlib.__import__('{0}.{1}'.format(baseName, module), fromlist=['*'])
         return mod
-
+ 
     def configureModule(self, moduleObject, baseName, className, instanceName, 
                         configuration = {} ):
         """Instantiate an object from the class that makes up a QuDi module
@@ -662,24 +660,57 @@ class Manager(QtCore.QObject):
         """
         if 'module' in self.tree['defined'][base][key]:
             try:
-                modObj = self.loadModule(base,
-                                         self.tree['defined'][base][key]['module'])
+                modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
                 pkgName = re.escape(modObj.__package__)
                 modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                self.configureModule(modObj, base, modName, key,
-                                     self.tree['defined'][base][key])
+                self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
                 ## start main loop for qt objects
                 if base == 'logic':
                     modthread = self.tm.newThread('mod-' + base + '-' + key)
                     self.tree['loaded'][base][key].moveToThread(modthread)
                     modthread.start()
             except:
-                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key),
-                                   msgType='error')
+                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
                 return
         else:
-            self.logger.logMsg('Not a loadable {0} module: {1}'.format(base, key),
-                               msgType='error')
+            self.logger.logMsg('Missing module declaration in configuration: {0}.{1}'.format(base, key), msgType='error')
+
+    def reloadConfigureModule(self, base, key):
+        """Reloads the configuration module in key with the help of base class.
+          
+          @param string base: module base package (hardware, logic or gui)
+          @param string key: module which is going to be loaded
+          
+        """
+        if key in self.tree['loaded'][base] and 'module' in self.tree['defined'][base][key]:
+            try:
+                # state machine: deactivate
+                self.tree['loaded'][base][key].deactivate()
+                # stop main loop for qt objects
+                if base == 'logic':
+                    self.tm.quitThread('mod-' + base + '-' + key)
+            except:
+                self.logger.logExc('Error while deactivating {0} module: {1}'.format(base, key), msgType='error')
+                return
+            try:
+                with self.lock:
+                    self.tree['loaded'][base].pop(key, None)
+                modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
+                # des Pudels Kern
+                importlib.reload(modObj)
+                pkgName = re.escape(modObj.__package__)
+                modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
+                # start main loop for qt objects
+                if base == 'logic':
+                    modthread = self.tm.newThread('mod-' + base + '-' + key)
+                    self.tree['loaded'][base][key].moveToThread(modthread)
+                    modthread.start()
+            except:
+                self.logger.logExc('Error while reloading {0} module: {1}'.format(base, key), msgType='error')
+                return
+        else:
+            self.logger.logMsg('Module not loaded or not loadable (missing module declaration in configuration): {0}.{1}'.format(base, key), msgType='error')
 
     def activateModule(self, base, key):
         """Activated the module given in key with the help of base class.
@@ -701,6 +732,13 @@ class Manager(QtCore.QObject):
                                msgType='error')
 
     def getModuleDependencies(self, base, key):
+        """ Based on input connector declarations, determine in which other modules are needed for a specific module to run.
+
+          @param str base: Module category
+          @param str key: Unique configured module name for module where we want the dependencies
+
+          @return dict: module dependencies in the right format for the Manager.toposort function
+        """
         deps = dict()
         if base not in self.tree['defined']:
             self.logger.logMsg('{0} module {1}: no such base'.format(base, key), msgType='error')
@@ -752,6 +790,12 @@ class Manager(QtCore.QObject):
 
     @QtCore.pyqtSlot(str, str)
     def startModule(self, base, key):
+        """ Figure out the module dependencies in terms of connections, load and activate module.
+
+          @param str base: Module category
+          @param str key: Unique module name
+
+        """
         deps = self.getModuleDependencies(base, key)
         sorteddeps = Manager.toposort(deps)
 
@@ -759,6 +803,32 @@ class Manager(QtCore.QObject):
             for mbase in ['hardware', 'logic', 'gui']:
                 if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
                     self.loadConfigureModule(mbase, mkey)
+                    self.connectModule(mbase, mkey)
+                    if mkey in self.tree['loaded'][mbase]:
+                        self.activateModule(mbase, mkey)
+
+    @QtCore.pyqtSlot(str, str)
+    def restartModule(self, base, key):
+        """ Figure out the module dependencies in terms of connections, reload and activate module.
+
+          @param str base: Module category
+          @param str key: Unique configured module name
+
+        """
+        deps = self.getModuleDependencies(base, key)
+        sorteddeps = Manager.toposort(deps)
+
+        for mkey in sorteddeps:
+            for mbase in ['hardware', 'logic', 'gui']:
+                # load if the config changed
+                if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
+                    self.loadConfigureModule(mbase, mkey)
+                    self.connectModule(mbase, mkey)
+                    if mkey in self.tree['loaded'][mbase]:
+                        self.activateModule(mbase, mkey)
+                # reload if already there
+                elif mkey in self.tree['loaded'][mbase]:
+                    self.reloadConfigureModule(mbase, mkey)
                     self.connectModule(mbase, mkey)
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
@@ -775,17 +845,6 @@ class Manager(QtCore.QObject):
 
         self.logger.print_logMsg('Activation finished.')
 
-    def reloadAll(self):
-        """Reload all python code."""
-        #path = os.path.split(os.path.abspath(__file__))[0]
-        #path = os.path.abspath(os.path.join(path, '..'))
-        path = '.'
-        self.logger.print_logMsg("\n---- Reloading all libraries under {0} ----".format(path),
-                                 msgType='status')
-        reload.reloadAll(prefix=path, debug=True)
-        self.logger.print_logMsg("Reloaded all libraries under {0}.".format(path),
-                                 msgType='status')
-    
     def show(self):
         self.sigManagerShow.emit()
 
