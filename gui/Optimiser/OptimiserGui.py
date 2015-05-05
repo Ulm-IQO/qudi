@@ -11,8 +11,8 @@ import numpy as np
 
 from collections import OrderedDict
 from core.Base import Base
-from gui.Tracker.TrackerGuiUI import Ui_MainWindow
-from gui.Tracker.TrackerSettingsUI import Ui_SettingsDialog
+from gui.Optimiser.OptimiserGuiUI import Ui_MainWindow
+from gui.Optimiser.OptimiserSettingsUI import Ui_SettingsDialog
 from gui.Confocal.ConfocalGui import ColorBar
 
 
@@ -52,7 +52,7 @@ class TrackerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
             
                
             
-class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """
     This is the GUI Class for Tracker
     """
@@ -72,9 +72,9 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._modtype = 'gui'
         
         ## declare connectors
-        self.connector['in']['trackerlogic1'] = OrderedDict()
-        self.connector['in']['trackerlogic1']['class'] = 'TrackerLogic'
-        self.connector['in']['trackerlogic1']['object'] = None
+        self.connector['in']['optimiserlogic1'] = OrderedDict()
+        self.connector['in']['optimiserlogic1']['class'] = 'OptimiserLogic'
+        self.connector['in']['optimiserlogic1']['object'] = None
 
 #        self.connector['in']['savelogic'] = OrderedDict()
 #        self.connector['in']['savelogic']['class'] = 'SaveLogic'
@@ -99,7 +99,7 @@ class TrackerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         """
         
-        self._tracker_logic = self.connector['in']['trackerlogic1']['object']
+        self._tracker_logic = self.connector['in']['optimiserlogic1']['object']
         print("Tracking logic is", self._tracker_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']

@@ -187,9 +187,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.connector['in']['savelogic']['class'] = 'SaveLogic'
         self.connector['in']['savelogic']['object'] = None
         
-        self.connector['in']['trackerlogic1'] = OrderedDict()
-        self.connector['in']['trackerlogic1']['class'] = 'TrackerLogic'
-        self.connector['in']['trackerlogic1']['object'] = None
+        self.connector['in']['optimiserlogic1'] = OrderedDict()
+        self.connector['in']['optimiserlogic1']['class'] = 'TrackerLogic'
+        self.connector['in']['optimiserlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -216,7 +216,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._save_logic = self.connector['in']['savelogic']['object']
         print("Save logic is", self._save_logic)
         
-        self._tracker_logic = self.connector['in']['trackerlogic1']['object']
+        self._tracker_logic = self.connector['in']['optimiserlogic1']['object']
         print("Tracking logic is", self._tracker_logic)
         
         # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
