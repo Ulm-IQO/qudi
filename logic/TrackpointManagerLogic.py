@@ -16,6 +16,7 @@ class TrackPoint(object):
     def __init__(self, point = None, name=None):
         self._position_time_trace=[]
         self._name = time.strftime('Point_%Y%m%d_%M%S')
+        self._key = str(self._name)
         self._creation_time = time.time()
         
         if point != None:
@@ -74,6 +75,13 @@ class TrackPoint(object):
         """
         return self._name
         
+    def get_key(self):
+        """ Returns the dictionary key of the trackpoint.
+        
+        @return string: key
+        """
+        return self._key
+        
     def get_trace(self): #instead of "trace": drift_log, history, 
         """ Returns the whole position time trace as array.
         
@@ -97,12 +105,9 @@ class TrackPoint(object):
                 
 
 class TrackpointManagerLogic(GenericLogic):
-    """unstable: Christoph Müller
-    This is the Logic class for refocussing on and tracking bright features in the confocal scan.
+    """unstable: Kay Jahnke
+    This is the Logic class for tracking bright features in the confocal scan.
     """
-    signal_scan_xy_line_next = QtCore.Signal()
-    signal_image_updated = QtCore.Signal()
-    signal_refocus_finished = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -133,6 +138,8 @@ class TrackpointManagerLogic(GenericLogic):
                         msgType='status')
         
         self.track_point_list = dict()
+        self._current_trackpoint_name = None
+        self.go_to_crosshair_after_refocus = True
                                 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -140,13 +147,17 @@ class TrackpointManagerLogic(GenericLogic):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
+        
         self._optimiser_logic = self.connector['in']['optimiser1']['object']
         print("Optimiser Logic is", self._optimiser_logic)
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
         print("Confocal Logic is", self._confocal_logic)
         
         crosshair=TrackPoint(point=[0,0,0], name='crosshair')
-        self.track_point_list[crosshair.get_name()] = crosshair
+        crosshair._key='crosshair'
+        self.track_point_list[crosshair._key] = crosshair
+        
+        self._optimiser_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
                 
 #        self.testing()
         
@@ -170,13 +181,66 @@ class TrackpointManagerLogic(GenericLogic):
     def change_name(self,trackpointname = None, newname = None):
         if trackpointname != None and trackpointname in self.track_point_list.keys():
             self.track_point_list[trackpointname].set_name(newname)
+            return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
                 msgType='error')
+            return -1
             
     def delete_trackpoint(self,trackpointname = None):        
         if trackpointname != None and trackpointname in self.track_point_list.keys():
+            if trackpointname is 'crosshair':
+                self.logMsg('You cannot delete the crosshair.', msgType='warning')
+                return -1
             del self.track_point_list[trackpointname]
+            return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
                 msgType='error')
+            return -1
+        
+    def optimise_trackpoint(self,trackpointname = None):
+        if trackpointname != None and trackpointname in self.track_point_list.keys():
+            self.track_point_list['crosshair'].set_next_point(point=self._optimiser_logic.get_position())
+            self._current_trackpoint_name = trackpointname
+            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointname])
+            return 0
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
+                msgType='error')
+            return -1
+                
+    def go_to_trackpoint(self, trackpointname = None):
+        if trackpointname != None and trackpointname in self.track_point_list.keys():
+            self._current_trackpoint_name = trackpointname
+            x,y,z = self.track_point_list[trackpointname]
+            self._confocal_logic.set_position(x=x, y=y, z=z)
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
+                msgType='error')
+            return -1
+                
+    def _refocus_done(self):
+        if self._optimiser_logic.is_crosshair:                
+            self.track_point_list['crosshair'].\
+                    set_next_point([self._optimiser_logic.refocus_x, 
+                                    self._optimiser_logic.refocus_y, 
+                                    self._optimiser_logic.refocus_z])
+            return 0
+            
+        if self._current_trackpoint_name != None and self._current_trackpoint_name in self.track_point_list.keys():
+            self.track_point_list[self._current_trackpoint_name].\
+                    set_next_point([self._optimiser_logic.refocus_x, 
+                                    self._optimiser_logic.refocus_y, 
+                                    self._optimiser_logic.refocus_z])
+                                    
+            if self.go_to_crosshair_after_refocus:
+                self.go_to_trackpoint(trackpointname = 'crosshair')
+            else:
+                self.go_to_trackpoint(trackpointname = self._current_trackpoint_name)
+                
+            return 0
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_name), 
+                msgType='error')
+            return -1
