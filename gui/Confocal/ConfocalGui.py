@@ -518,7 +518,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
             
     def xy_scan_clicked(self, enabled):
+        #Firstly stop any scan that might be in progress
         self._scanning_logic.stop_scanning()
+        #Then if enabled. start a new scan.
         if enabled:
             self._scanning_logic.start_scanning()
             
