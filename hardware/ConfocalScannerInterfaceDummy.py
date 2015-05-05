@@ -44,7 +44,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._scanner_counter_daq_task = None
         self._voltage_range = [-10., 10.]
         
-        self._position_range=[[0., 10.], [0., 10.], [0., 10.], [0., 1.]]
+        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
         
         self._current_position = [0., 0., 0., 0.]
         self._num_points = 500
@@ -58,8 +58,8 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         #put randomly distributed NVs in the scanner, first the x,y scan        
         self._points = np.empty([self._num_points,7])
         # amplitude
-        self._points[:,0] = np.random.normal( 1e5,
-                                              1.8e4,
+        self._points[:,0] = np.random.normal( 4e5,
+                                              1e5,
                                               self._num_points)
         # x_zero
         self._points[:,1] = np.random.uniform(self._position_range[0][0],
@@ -86,11 +86,13 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
 #       gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
         self._points_z= np.empty([self._num_points,4])
         # amplitude
-        self._points_z[:,0]= np.ones(self._num_points)
+        self._points_z[:,0]= np.random.normal( 1,
+                                               0.05,
+                                               self._num_points)
         
         # x_zero
-        self._points_z[:,1] = np.random.uniform(self._position_range[2][0],
-                                              self._position_range[2][1],
+        self._points_z[:,1] = np.random.uniform(45,
+                                              55,
                                               self._num_points)
                                               
         # sigma
@@ -102,6 +104,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._points_z[:,3] = 0
         
         print('Position of NV 1',self._points[0,:],self._points_z[0,:],len(self._points))
+        print(self._points_z[:,0],self._points[:,0])
         
                                               
     def get_position_range(self):
@@ -282,16 +285,18 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         if np.shape(voltages)[1] != self._line_length:
             self.set_up_line(np.shape(voltages)[1])
             
-        count_data =np.zeros(self._line_length)        
+        count_data = np.zeros(self._line_length)
         count_data_noise = np.random.uniform(0,2e4,self._line_length)
         x_data,y_data = np.meshgrid(voltages[0,:],voltages[1,0])
-        z_data=voltages[2,:]
+        z_data = voltages[2,:]
         for i in range(self._num_points):
-            count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),*(self._points[i]))
-            count_data*=(self._fit_logic.gaussian_function(z_data,*(self._points_z[i])))
-#            print('countdata 1',count_data)
-            count_data+= count_data_noise
-#            print('countdata 2',count_data)
+            count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),*(self._points[i])) * ((self._fit_logic.gaussian_function(np.array(z_data[0]),*(self._points_z[i]))))
+#            if z_data[0] == z_data[1]:
+#                for j in range(len(count_data)):
+#                    count_data[j] *= (1+(self._fit_logic.gaussian_function(np.array(z_data[0]),*(self._points_z[i]))))
+#            else:
+#                count_data *= (1+(self._fit_logic.gaussian_function(z_data,*(self._points_z[i]))))
+                
         
         time.sleep(self._line_length*1./self._clock_frequency)            
         time.sleep(self._line_length*1./self._clock_frequency)
