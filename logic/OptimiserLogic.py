@@ -95,7 +95,7 @@ class TrackPoint(object):
     
                 
 
-class TrackerLogic(GenericLogic):
+class OptimiserLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for refocussing on and tracking bright features in the confocal scan.
     """
@@ -122,8 +122,8 @@ class TrackerLogic(GenericLogic):
         self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
         self.connector['in']['scannerlogic']['object'] = None
         
-        self.connector['out']['trackerlogic'] = OrderedDict()
-        self.connector['out']['trackerlogic']['class'] = 'TrackerLogic'
+        self.connector['out']['optimiserlogic'] = OrderedDict()
+        self.connector['out']['optimiserlogic']['class'] = 'OptimiserLogic'
         
 
         self.logMsg('The following configuration was found.', 
