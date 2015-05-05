@@ -7,92 +7,6 @@ from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time
-
-class TrackPoint(object):
-    """ unstable: Kay Jahnke    
-    The actual individual trackpoint is saved in this generic object.
-    """
-    
-    def __init__(self, point = None, name=None):
-        self._position_time_trace=[]
-        self._name = time.strftime('Point_%Y%m%d_%M%S')
-        
-        if point != None:
-            if len(point) != 3:
-                self.logMsg('Length of set trackpoint is not 3.', 
-                             msgType='error')
-            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
-        if name != None:
-            self._name=name
-                
-    def set_next_point(self, point = None):
-        """ Adds another trackpoint.
-        
-        @param float[3] point: position coordinates of the trackpoint
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        if point != None:
-            if len(point) != 3:
-                self.logMsg('Length of set trackpoint is not 3.', 
-                             msgType='error')
-                return -1
-            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
-        else:
-            return -1
-    
-    def get_last_point(self):
-        """ Returns the most current trackpoint.
-        
-        @return float[3]: the position of the last point
-        """
-        if len(self._position_time_trace) > 0:
-            return self._position_time_trace[-1][1:]
-        else:
-            return [-1.,-1.,-1.]
-            
-    def set_name(self, name= None):
-        """ Sets the name of the trackpoint.
-        
-        @param string name: name to be set.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        
-        if len(self._position_time_trace) > 0:
-            self._name = time.strftime('Point_%Y%m%d_%M%S%',self._position_time_trace[0][0])
-        else:
-            self._name = time.strftime('Point_%Y%m%d_%M%S%')
-        if name != None:
-            self._name=name
-            
-    def get_name(self):
-        """ Returns the name of the trackpoint.
-        
-        @return string: name
-        """
-        return self._name
-        
-    def get_trace(self): #instead of "trace": drift_log, history, 
-        """ Returns the whole position time trace as array.
-        
-        @return float[][4]: the whole position time trace
-        """
-        
-        return np.array(self._position_time_trace)
-        
-    def delete_last_point(self):
-        """ Delete the last poitn in the trace.
-        
-        @return float[4]: the point just deleted.
-        """
-        
-        if len(self._position_time_trace) > 0:
-            return self._position_time_trace.pop()
-        else:
-            return [-1.,-1.,-1.,-1.]
-    
-    
                 
 
 class OptimiserLogic(GenericLogic):
@@ -133,8 +47,6 @@ class OptimiserLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
-        
-        self.track_point_list = dict()
                                 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -149,7 +61,6 @@ class OptimiserLogic(GenericLogic):
         #locking for thread safety
         self.threadlock = Mutex()
         
-        self.running = False
         self.stopRequested = False
                        
     def activation(self, e):
@@ -163,10 +74,7 @@ class OptimiserLogic(GenericLogic):
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
-        
-        crosshair=TrackPoint(point=[0,0,0], name='crosshair')
-        self.track_point_list[crosshair.get_name()] = crosshair
-        
+                
         self._trackpoint_x = 0.
         self._trackpoint_y = 0.
         self._trackpoint_z = 0.
@@ -183,11 +91,7 @@ class OptimiserLogic(GenericLogic):
 #        self.testing()
         
     def testing(self):
-        self.start_refocus()
-        name=self.add_trackpoint()
-        print (name)
-        
-        self.start_refocus(trackpointname=name)
+        pass
         
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -204,27 +108,17 @@ class OptimiserLogic(GenericLogic):
         else:
             return 0
             
-    def add_trackpoint(self):
-        
-        new_track_point=TrackPoint(point=self._confocal_logic.get_position())
-        self.track_point_list[new_track_point.get_name()] = new_track_point
-        
-        return new_track_point.get_name()
-        
-    def start_refocus(self, trackpointname=None):
+    def start_refocus(self, trackpoint=None):
         """Starts refocus        
         """
         print('start refocusing')
-        if trackpointname != None:
-            print (trackpointname)
-            if trackpointname in self.track_point_list.keys():
-                self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
-                    self.track_point_list[trackpointname].get_last_point()
-            else:
-                self.logMsg('The requested Trackpoint ({}) does not exist.'.format(trackpointname), 
+        if trackpoint != None:
+            if len(trackpoint) != 3:
+                self.logMsg('The given Trackpoint ({}) does not have the right format.'.format(trackpoint), 
                 msgType='error')
                 self.signal_refocus_finished.emit()
                 return -1
+            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
         else:
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
                     self._confocal_logic.get_position()
@@ -233,11 +127,8 @@ class OptimiserLogic(GenericLogic):
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
-        self.start_scanner()
         
-#        self.unlock()
-#        return -1
-        
+        self.start_scanner()                
         self.signal_scan_xy_line_next.emit()
         
         
