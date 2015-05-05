@@ -323,7 +323,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Confocal", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("MainWindow", "Z-Scan", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Tracker", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Optimiser", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "ROI", None))
         self.label_3.setText(_translate("MainWindow", "Z-Axis :", None))
         self.z_res_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-Resolution</span></p></body></html>", None))
@@ -333,7 +333,7 @@ class Ui_MainWindow(object):
         self.ready_StateWidget.setText(_translate("MainWindow", "Ready", None))
         self.xy_scan_StateWidget.setText(_translate("MainWindow", "Scan XY", None))
         self.xz_scan_StateWidget.setText(_translate("MainWindow", "Scan Z", None))
-        self.refocus_StateWidget.setText(_translate("MainWindow", "Refocus", None))
+        self.refocus_StateWidget.setText(_translate("MainWindow", "Optimise position", None))
         self.label_4.setText(_translate("MainWindow", "Resolution", None))
         self.label_5.setText(_translate("MainWindow", "Scan Range", None))
         self.label_2.setText(_translate("MainWindow", "Y-Axis :", None))
