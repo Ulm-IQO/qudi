@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>579</width>
     <height>684</height>
    </rect>
   </property>
@@ -14,39 +14,13 @@
    <string>qudi: Trackpoint Manager</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QRadioButton" name="radioButton">
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>560</y>
-      <width>171</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Update position using </string>
-    </property>
-   </widget>
-   <widget class="QComboBox" name="comboBox">
-    <property name="geometry">
-     <rect>
-      <x>100</x>
-      <y>530</y>
-      <width>85</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="editable">
-     <bool>false</bool>
-    </property>
-   </widget>
    <widget class="QTabWidget" name="tabWidget">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>801</width>
-      <height>521</height>
+      <width>571</width>
+      <height>571</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -60,9 +34,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>10</y>
+        <y>40</y>
         <width>431</width>
-        <height>431</height>
+        <height>391</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -72,27 +46,89 @@
        </sizepolicy>
       </property>
      </widget>
-     <widget class="QLabel" name="label">
+     <widget class="QPushButton" name="pushButton">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>450</y>
-        <width>171</width>
+        <y>10</y>
+        <width>151</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Get Confocal image</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton_2">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>490</y>
+        <width>121</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Set trackpoint</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>440</y>
+        <width>121</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>Set position as trackpoint: </string>
+       <string>Rename trackpoint </string>
       </property>
      </widget>
      <widget class="QLineEdit" name="lineEdit">
       <property name="geometry">
        <rect>
-        <x>170</x>
-        <y>450</y>
+        <x>270</x>
+        <y>440</y>
         <width>113</width>
         <height>22</height>
        </rect>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="comboBox_3">
+      <property name="geometry">
+       <rect>
+        <x>234</x>
+        <y>470</y>
+        <width>131</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="comboBox_4">
+      <property name="geometry">
+       <rect>
+        <x>150</x>
+        <y>440</y>
+        <width>85</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_3">
+      <property name="geometry">
+       <rect>
+        <x>240</x>
+        <y>440</y>
+        <width>58</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>as: </string>
       </property>
      </widget>
     </widget>
@@ -123,41 +159,48 @@
      </attribute>
     </widget>
    </widget>
-   <widget class="QLabel" name="label_2">
+   <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>530</y>
-      <width>91</width>
-      <height>21</height>
+      <y>619</y>
+      <width>561</width>
+      <height>25</height>
      </rect>
     </property>
-    <property name="text">
-     <string>For trackpoint</string>
-    </property>
-   </widget>
-   <widget class="QRadioButton" name="radioButton_2">
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>590</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Goto TP</string>
-    </property>
-   </widget>
-   <widget class="QComboBox" name="comboBox_2">
-    <property name="geometry">
-     <rect>
-      <x>250</x>
-      <y>560</y>
-      <width>151</width>
-      <height>23</height>
-     </rect>
-    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>For trackpoint</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBox">
+       <property name="editable">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButton_2">
+       <property name="text">
+        <string>Goto TP</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="radioButton">
+       <property name="text">
+        <string>Update position using </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBox_2"/>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -165,7 +208,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>579</width>
      <height>20</height>
     </rect>
    </property>
