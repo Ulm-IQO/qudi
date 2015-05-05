@@ -1,25 +1,27 @@
 # -*- coding: utf-8 -*-
-# unstable: Christoph Müller
+# unstable: Kay Jahnke
 
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
+from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time
 
 class TrackPoint(object):
-    """ The actual individual trackpoint is saved in this generic object.
+    """ unstable: Kay Jahnke    
+    The actual individual trackpoint is saved in this generic object.
     """
     
     def __init__(self, point = None, name=None):
         self._position_time_trace=[]
-        self._name = time.strftime('Point_%Y%m%d_%M%S%')
+        self._name = time.strftime('Point_%Y%m%d_%M%S')
         
         if point != None:
             if len(point) != 3:
                 self.logMsg('Length of set trackpoint is not 3.', 
                              msgType='error')
-            self._position_time_trace.appand(np.array[time.time(),point[0],point[1],point[2]])
+            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
         if name != None:
             self._name=name
                 
@@ -35,7 +37,7 @@ class TrackPoint(object):
                 self.logMsg('Length of set trackpoint is not 3.', 
                              msgType='error')
                 return -1
-            self._position_time_trace.appand(np.array[time.time(),point[0],point[1],point[2]])
+            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
         else:
             return -1
     
@@ -98,8 +100,7 @@ class TrackerLogic(GenericLogic):
     This is the Logic class for refocussing on and tracking bright features in the confocal scan.
     """
     signal_scan_xy_line_next = QtCore.Signal()
-    signal_xy_image_updated = QtCore.Signal()
-    signal_z_image_updated = QtCore.Signal()
+    signal_image_updated = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal()
     
 
@@ -132,7 +133,9 @@ class TrackerLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
-                        
+        
+        self.track_point_list = dict()
+                                
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
         self._clock_frequency = 200
@@ -142,6 +145,9 @@ class TrackerLogic(GenericLogic):
         self.refocus_XY_step = 0.2
         self.refocus_Z_size = 5
         self.refocus_Z_step = 0.5
+        
+        #locking for thread safety
+        self.threadlock = Mutex()
         
         self.running = False
         self.stopRequested = False
@@ -158,6 +164,9 @@ class TrackerLogic(GenericLogic):
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
         
+        crosshair=TrackPoint(point=[0,0,0], name='crosshair')
+        self.track_point_list[crosshair.get_name()] = crosshair
+        
         self._trackpoint_x = 0.
         self._trackpoint_y = 0.
         self._trackpoint_z = 0.
@@ -170,6 +179,15 @@ class TrackerLogic(GenericLogic):
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
+        
+#        self.testing()
+        
+    def testing(self):
+        self.start_refocus()
+        name=self.add_trackpoint()
+        print (name)
+        
+        self.start_refocus(trackpointname=name)
         
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -185,24 +203,48 @@ class TrackerLogic(GenericLogic):
             return -1
         else:
             return 0
+            
+    def add_trackpoint(self):
         
-    def start_refocus(self):
+        new_track_point=TrackPoint(point=self._confocal_logic.get_position())
+        self.track_point_list[new_track_point.get_name()] = new_track_point
+        
+        return new_track_point.get_name()
+        
+    def start_refocus(self, trackpointname=None):
         """Starts refocus        
         """
         print('start refocusing')
-        self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = self._confocal_logic.get_position()
+        if trackpointname != None:
+            print (trackpointname)
+            if trackpointname in self.track_point_list.keys():
+                self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
+                    self.track_point_list[trackpointname].get_last_point()
+            else:
+                self.logMsg('The requested Trackpoint ({}) does not exist.'.format(trackpointname), 
+                msgType='error')
+                self.signal_refocus_finished.emit()
+                return -1
+        else:
+            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
+                    self._confocal_logic.get_position()
         print (self._trackpoint_x, self._trackpoint_y, self._trackpoint_z)
+        self.lock()
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
         self.start_scanner()
+        
+#        self.unlock()
+#        return -1
+        
         self.signal_scan_xy_line_next.emit()
         
         
     def stop_refocus(self):
         """Stops refocus        
         """
-        with self.lock:
+        with self.threadlock:
             self.stopRequested = True
         
         
@@ -232,15 +274,14 @@ class TrackerLogic(GenericLogic):
     def _refocus_line(self):
         """Scanning one line of the xy refocus image
         """
-        self.running = True        
         
         #stops scanning
         if self.stopRequested:
-            with self.lock:
-                self.running = False
+            with self.threadlock:
                 self.stopRequested = False
                 self.kill_scanner()
-                self.signal_xy_image_updated.emit()
+                self.unlock()
+                self.signal_image_updated.emit()
                 return
                 
         self.refocus_x = self._trackpoint_x
@@ -278,7 +319,7 @@ class TrackerLogic(GenericLogic):
         self.xy_refocus_image[self._scan_counter,:,2] = self._Z_values
         self.xy_refocus_image[self._scan_counter,:,3] = line_counts
         
-        self.signal_xy_image_updated.emit()
+        self.signal_image_updated.emit()
         self._scan_counter += 1
         
         if self._scan_counter < np.size(self._Y_values):            
@@ -315,8 +356,11 @@ class TrackerLogic(GenericLogic):
                 
             #xz scaning    
             self._scan_z_line()
-            self.running = False
-            self.signal_z_image_updated.emit()
+                                              
+            self.kill_scanner()            
+            self.unlock()
+            
+            self.signal_image_updated.emit()
             
             #z-fit
             error, amplitude_z, x_zero_z, sigma_z, offset_z=self._fit_logic.gaussian_estimator(x_axis=self._zimage_Z_values,data=self.z_refocus_line)
@@ -352,8 +396,6 @@ class TrackerLogic(GenericLogic):
                     
                 
             #TODO: werte als neuen Trackpoint setzen
-                                              
-            self.kill_scanner()
             
             self._confocal_logic.set_position(x = self.refocus_x, 
                                               y = self.refocus_y, 
