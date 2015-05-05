@@ -6,7 +6,6 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-import time
                 
 
 class OptimiserLogic(GenericLogic):
@@ -62,6 +61,7 @@ class OptimiserLogic(GenericLogic):
         self.threadlock = Mutex()
         
         self.stopRequested = False
+        self.is_crosshair = True
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -118,11 +118,13 @@ class OptimiserLogic(GenericLogic):
                 msgType='error')
                 self.signal_refocus_finished.emit()
                 return -1
+            self.is_crosshair = False
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
         else:
+            self.is_crosshair = True
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
                     self._confocal_logic.get_position()
-        print (self._trackpoint_x, self._trackpoint_y, self._trackpoint_z)
+                    
         self.lock()
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
@@ -285,13 +287,18 @@ class OptimiserLogic(GenericLogic):
                         else:
                             self.refocus_z = self.z_range[0] #moves to lowest possible value
                     
-                
+            
+            self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(\
+            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z,\
+            self.refocus_x, self.refocus_y, self.refocus_z), \
+                            msgType='status')
             #TODO: werte als neuen Trackpoint setzen
             
-            self._confocal_logic.set_position(x = self.refocus_x, 
-                                              y = self.refocus_y, 
-                                              z = self.refocus_z, 
-                                              a = 0.)
+            if self.is_crosshair:
+                self._confocal_logic.set_position(x = self.refocus_x, 
+                                                  y = self.refocus_y, 
+                                                  z = self.refocus_z, 
+                                                  a = 0.)
                                               
             self.signal_refocus_finished.emit()
         
