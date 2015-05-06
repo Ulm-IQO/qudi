@@ -20,6 +20,7 @@ import pylab as plt
 
 
 #FIXME: In general is it needed for any purposes to use weighting?
+#FIXME: Don't understand exactly when you return error code...
 
 class FitLogic(GenericLogic):        
         """
@@ -132,7 +133,7 @@ class FitLogic(GenericLogic):
                                     x_zero=None, y_zero=None, sigma_x=None, \
                                     sigma_y=None, theta=None, offset=None):
                                         
-            #FIXME: x_data_tuple: Should be 2D, shouldn't it?
+            #FIXME: x_data_tuple: dimension of arrays
                                     
             """ This method provides a two dimensional gaussian function.
             
@@ -164,7 +165,7 @@ class FitLogic(GenericLogic):
             (x, y) = x_data_tuple
             x_zero = float(x_zero)
             y_zero = float(y_zero) 
-            #FIXME: What is calculated here?
+            
             a = (np.cos(theta)**2)/(2*sigma_x**2) \
                                         + (np.sin(theta)**2)/(2*sigma_y**2)
             b = -(np.sin(2*theta))/(4*sigma_x**2) \
@@ -207,7 +208,8 @@ class FitLogic(GenericLogic):
             #check for sensible values
             parameters=[x_axis,y_axis,data]
             for var in parameters:
-                #Check for 1D array, 2D
+                #FIXME: Why don't you check earlier?
+                #FIXME: Check for 1D array, 2D
                 if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
                     self.logMsg('Given parameter is not an array.', \
                                 msgType='error') 
@@ -224,7 +226,8 @@ class FitLogic(GenericLogic):
 
 
         def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
-            #FIXME: 1D array x_axis, y_axis, data 2D????
+            #FIXME: dimensions of arrays
+        
             """ This method performes a 2D gaussian fit on the provided data.
 
             @param array x_axis: x values
@@ -246,9 +249,13 @@ class FitLogic(GenericLogic):
                     use perr = np.sqrt(np.diag(pcov)).
                     
             """
+            
+            #FIXME: Don't understand exactly why you need that...
             details_here=details
+            #FIXME: Don't understand exactly why you need that...
             error=0
-                
+            
+            #FIXME: Would be nice in several rows....
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
             initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
@@ -260,7 +267,7 @@ class FitLogic(GenericLogic):
                 return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-            #FIXME: 1D arrays
+            #FIXME: dimension of arrays
             """ This method provides a one dimensional gaussian function.
         
             @param array x_data: x values
@@ -269,14 +276,15 @@ class FitLogic(GenericLogic):
             @param float or int sigma: standard deviation
             @param float or int offset: offset
 
-            @return callable function: returns the function
+            @return callable function: returns a 1D Gaussian function
                     
             """
             #FIXME: Check for 1D arrays
             # check if parameters make sense
+
             if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
                 print("error")
-                self.logMsg('Given range of axes is no array type.', \
+                self.logMsg('Given range of axis is no array type.', \
                             msgType='error')            
 
             parameters=[amplitude,x_zero,sigma,offset]
@@ -288,9 +296,10 @@ class FitLogic(GenericLogic):
             gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
             return gaussian
         
+        #FIXME: Checking is different from 2D case... Why?
         def gaussian_estimator(self,x_axis=None,data=None):
 #            TODO:Make clever estimator
-            #FIXME: 1D arrays
+            #FIXME: dimensions of arrays
             #FIXME:Habe hier alle y entfernt. Und theta. Hoffe das passt...
             """ This method provides a one dimensional gaussian function.
         
@@ -325,7 +334,9 @@ class FitLogic(GenericLogic):
             return error, amplitude, x_zero, sigma, offset
 
         def make_gaussian_fit(self,axis=None,data=None,details=False):
-            #FIXME: 1D arrays
+            #FIXME: dimensions of arrays
+            #FIXME: @return array popt has to be corrected
+            #FIXME: @return 2d array pcov only if details=true
             """ This method performes a gaussian fit on the provided data.
         
             @param array axis: axis values
@@ -339,13 +350,16 @@ class FitLogic(GenericLogic):
             @return array popt: Optimal values for the parameters so that 
                     the sum of the squared error of f(xdata, *popt) - ydata 
                     is minimized
-            @return 2d array pcov: The estimated covariance of popt. The 
+            @return 2d array pcov : The estimated covariance of popt. The 
                     diagonals provide the variance of the parameter estimate. 
                     To compute one standard deviation errors on the parameters 
                     use perr = np.sqrt(np.diag(pcov)).
                     
             """
+            
+            #FIXME: Don't understand exactly why you need that...
             details_here=details
+            #FIXME: Don't understand exactly why you need that...
             error=0
                 
             error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
