@@ -43,7 +43,7 @@ class CounterGui(Base):
         """
 
         self._counting_logic = self.connector['in']['counterlogic1']['object']
-        print("Counting logic is", self._counting_logic)
+#        print("Counting logic is", self._counting_logic)
                 
         # setting up the window
         self._mw = QtGui.QMainWindow()

@@ -149,9 +149,9 @@ class TrackpointManagerLogic(GenericLogic):
         """
         
         self._optimiser_logic = self.connector['in']['optimiser1']['object']
-        print("Optimiser Logic is", self._optimiser_logic)
+#        print("Optimiser Logic is", self._optimiser_logic)
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
-        print("Confocal Logic is", self._confocal_logic)
+#        print("Confocal Logic is", self._confocal_logic)
         
         crosshair=TrackPoint(point=[0,0,0], name='crosshair')
         crosshair._key='crosshair'

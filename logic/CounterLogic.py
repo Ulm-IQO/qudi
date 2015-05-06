@@ -59,7 +59,7 @@ class CounterLogic(GenericLogic):
         self._saving = False
         
         self._counting_device = self.connector['in']['counter1']['object']
-        print("Counting device is", self._counting_device)
+#        print("Counting device is", self._counting_device)
 
         #QSignals
         self.sigCountNext.connect(self.countLoopBody, QtCore.Qt.QueuedConnection)

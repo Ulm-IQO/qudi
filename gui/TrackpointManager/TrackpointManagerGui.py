@@ -107,7 +107,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         # Connect signals
         self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
         
-        print('Main Trackpoint Manager Window shown:')
+#        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
     
     
