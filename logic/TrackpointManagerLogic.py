@@ -36,8 +36,8 @@ class TrackPoint(object):
         """
         if point != None:
             if len(point) != 3:
-                self.logMsg('Length of set trackpoint is not 3.', 
-                             msgType='error')
+#                self.logMsg('Length of set trackpoint is not 3.', 
+#                             msgType='error')
                 return -1
             self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
         else:
@@ -60,13 +60,19 @@ class TrackPoint(object):
         
         @return int: error code (0:OK, -1:error)
         """
-        
-        if len(self._position_time_trace) > 0:
-            self._name = time.strftime('Point_%Y%m%d_%M%S%',self._creation_time)
-        else:
-            self._name = time.strftime('Point_%Y%m%d_%M%S%')
+        if self._name == 'crosshair':            
+#            self.logMsg('You can not change the name of the crosshair.', 
+#                        msgType='error')
+            return -1
         if name != None:
             self._name=name
+            return 0
+        if len(self._position_time_trace) > 0:
+            self._name = time.strftime('Point_%Y%m%d_%M%S%',self._creation_time)
+            return -1
+        else:
+            self._name = time.strftime('Point_%Y%m%d_%M%S%')
+            return -1
             
     def get_name(self):
         """ Returns the name of the trackpoint.

@@ -107,6 +107,8 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         # Connect signals
         self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
         self._mw.goto_tp_Button.clicked.connect(self.goto_trackpoint)
+        self._mw.delete_tp_Button.clicked.connect(self.delete_last_point)
+        self._mw.manual_update_tp_Button.clicked.connect(self.manual_update_trackpoint)
         
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
@@ -122,19 +124,23 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         print(self._tp_manager_logic.get_all_trackpoints())
         print(self._tp_manager_logic.track_point_list[key].get_last_point())
 
-        self._mw.active_tp_Input.addItem(key)
-
+        self.population_tp_list()
         
-    def delete_trackpoint(self):
-        ''' This method deletes a chosen trackpoint
+    def delete_last_point(self):
+        ''' This method deletes the last track position of a chosen trackpoint
         '''
-        print("you have asked to delete a trackpoint")
+        
+        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+        self._tp_manager_logic.track_point_list[key].delete_last_point()
+        
+    def manual_update_trackpoint(self):
+        pass
 
     def goto_trackpoint(self, key):
         ''' Go to the last known position of trackpoint <key>
         '''
-
-        key=self._mw.active_tp_Input.currentText()
+        
+        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
 
         self._tp_manager_logic.go_to_trackpoint(trackpointname=key)
 
@@ -144,3 +150,8 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
     def population_tp_list(self):
         ''' Populate the dropdown box for selecting a trackpoint
         '''
+        self._mw.active_tp_Input.clear()
+        self._mw.active_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+        for key in self._tp_manager_logic.track_point_list.keys():
+            self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
+            self._mw.active_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
