@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'TrackpointManagerUI.ui'
+# Form implementation generated from reading ui file 'TrackpointManagerGuiUI.ui'
 #
-# Created: Tue May  5 21:16:41 2015
+# Created: Wed May  6 14:58:00 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -46,30 +46,30 @@ class Ui_TrackpointManager(object):
         self.get_confocal_image_Button.setGeometry(QtCore.QRect(10, 10, 151, 23))
         self.get_confocal_image_Button.setObjectName(_fromUtf8("get_confocal_image_Button"))
         self.set_tp_Button = QtGui.QPushButton(self.roiMap)
-        self.set_tp_Button.setGeometry(QtCore.QRect(10, 440, 121, 23))
+        self.set_tp_Button.setGeometry(QtCore.QRect(10, 440, 151, 23))
         self.set_tp_Button.setObjectName(_fromUtf8("set_tp_Button"))
         self.label = QtGui.QLabel(self.roiMap)
-        self.label.setGeometry(QtCore.QRect(50, 480, 121, 20))
+        self.label.setGeometry(QtCore.QRect(50, 500, 121, 20))
         self.label.setObjectName(_fromUtf8("label"))
         self.tp_name_Input = QtGui.QLineEdit(self.roiMap)
-        self.tp_name_Input.setGeometry(QtCore.QRect(160, 510, 113, 22))
+        self.tp_name_Input.setGeometry(QtCore.QRect(160, 530, 113, 22))
         self.tp_name_Input.setObjectName(_fromUtf8("tp_name_Input"))
         self.manage_tp_comboBox = QtGui.QComboBox(self.roiMap)
-        self.manage_tp_comboBox.setGeometry(QtCore.QRect(170, 480, 85, 23))
+        self.manage_tp_comboBox.setGeometry(QtCore.QRect(170, 500, 85, 23))
         self.manage_tp_comboBox.setObjectName(_fromUtf8("manage_tp_comboBox"))
         self.label_3 = QtGui.QLabel(self.roiMap)
-        self.label_3.setGeometry(QtCore.QRect(90, 510, 58, 21))
+        self.label_3.setGeometry(QtCore.QRect(90, 530, 58, 21))
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.delete_tp_Button = QtGui.QPushButton(self.roiMap)
-        self.delete_tp_Button.setGeometry(QtCore.QRect(320, 540, 95, 23))
+        self.delete_tp_Button.setGeometry(QtCore.QRect(320, 560, 95, 23))
         self.delete_tp_Button.setObjectName(_fromUtf8("delete_tp_Button"))
         self.line = QtGui.QFrame(self.roiMap)
-        self.line.setGeometry(QtCore.QRect(10, 460, 541, 20))
+        self.line.setGeometry(QtCore.QRect(10, 470, 541, 20))
         self.line.setFrameShape(QtGui.QFrame.HLine)
         self.line.setFrameShadow(QtGui.QFrame.Sunken)
         self.line.setObjectName(_fromUtf8("line"))
         self.manual_update_tp_Button = QtGui.QPushButton(self.roiMap)
-        self.manual_update_tp_Button.setGeometry(QtCore.QRect(90, 540, 181, 23))
+        self.manual_update_tp_Button.setGeometry(QtCore.QRect(90, 560, 181, 23))
         self.manual_update_tp_Button.setObjectName(_fromUtf8("manual_update_tp_Button"))
         self.tabWidget.addTab(self.roiMap, _fromUtf8(""))
         self.sampleShift = QtGui.QWidget()
@@ -108,7 +108,7 @@ class Ui_TrackpointManager(object):
         self.active_tp_Input.setEditable(False)
         self.active_tp_Input.setObjectName(_fromUtf8("active_tp_Input"))
         self.horizontalLayout.addWidget(self.active_tp_Input)
-        self.goto_tp_Button = QtGui.QRadioButton(self.horizontalLayoutWidget)
+        self.goto_tp_Button = QtGui.QPushButton(self.horizontalLayoutWidget)
         self.goto_tp_Button.setObjectName(_fromUtf8("goto_tp_Button"))
         self.horizontalLayout.addWidget(self.goto_tp_Button)
         self.update_tp_Button = QtGui.QRadioButton(self.horizontalLayoutWidget)
@@ -133,7 +133,7 @@ class Ui_TrackpointManager(object):
     def retranslateUi(self, TrackpointManager):
         TrackpointManager.setWindowTitle(_translate("TrackpointManager", "qudi: Trackpoint Manager", None))
         self.get_confocal_image_Button.setText(_translate("TrackpointManager", "Get Confocal image", None))
-        self.set_tp_Button.setText(_translate("TrackpointManager", "Set trackpoint", None))
+        self.set_tp_Button.setText(_translate("TrackpointManager", "Set new trackpoint", None))
         self.label.setText(_translate("TrackpointManager", "Manage trackpoint ", None))
         self.label_3.setText(_translate("TrackpointManager", "Name: ", None))
         self.delete_tp_Button.setText(_translate("TrackpointManager", "Delete", None))

@@ -64,19 +64,19 @@
        <rect>
         <x>10</x>
         <y>440</y>
-        <width>121</width>
+        <width>151</width>
         <height>23</height>
        </rect>
       </property>
       <property name="text">
-       <string>Set trackpoint</string>
+       <string>Set new trackpoint</string>
       </property>
      </widget>
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
         <x>50</x>
-        <y>480</y>
+        <y>500</y>
         <width>121</width>
         <height>20</height>
        </rect>
@@ -89,7 +89,7 @@
       <property name="geometry">
        <rect>
         <x>160</x>
-        <y>510</y>
+        <y>530</y>
         <width>113</width>
         <height>22</height>
        </rect>
@@ -99,7 +99,7 @@
       <property name="geometry">
        <rect>
         <x>170</x>
-        <y>480</y>
+        <y>500</y>
         <width>85</width>
         <height>23</height>
        </rect>
@@ -109,7 +109,7 @@
       <property name="geometry">
        <rect>
         <x>90</x>
-        <y>510</y>
+        <y>530</y>
         <width>58</width>
         <height>21</height>
        </rect>
@@ -122,7 +122,7 @@
       <property name="geometry">
        <rect>
         <x>320</x>
-        <y>540</y>
+        <y>560</y>
         <width>95</width>
         <height>23</height>
        </rect>
@@ -135,7 +135,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>460</y>
+        <y>470</y>
         <width>541</width>
         <height>20</height>
        </rect>
@@ -148,7 +148,7 @@
       <property name="geometry">
        <rect>
         <x>90</x>
-        <y>540</y>
+        <y>560</y>
         <width>181</width>
         <height>23</height>
        </rect>
@@ -230,7 +230,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="goto_tp_Button">
+      <widget class="QPushButton" name="goto_tp_Button">
        <property name="text">
         <string>Goto TP</string>
        </property>

@@ -213,7 +213,7 @@ class TrackpointManagerLogic(GenericLogic):
     def go_to_trackpoint(self, trackpointname = None):
         if trackpointname != None and trackpointname in self.track_point_list.keys():
             self._current_trackpoint_name = trackpointname
-            x,y,z = self.track_point_list[trackpointname]
+            x,y,z = self.track_point_list[trackpointname].get_last_point()
             self._confocal_logic.set_position(x=x, y=y, z=z)
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
