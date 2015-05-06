@@ -67,7 +67,7 @@ class OptimiserLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        print("Scanning device is", self._scanning_device)
+#        print("Scanning device is", self._scanning_device)
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
         

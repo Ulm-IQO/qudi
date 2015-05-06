@@ -54,7 +54,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         """        
         
         self._fit_logic = self.connector['in']['fitlogic']['object']
-        print("Fit Logic is", self._fit_logic)
+#        print("Fit Logic is", self._fit_logic)
         #put randomly distributed NVs in the scanner, first the x,y scan        
         self._points = np.empty([self._num_points,7])
         # amplitude

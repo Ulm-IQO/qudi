@@ -211,13 +211,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
         
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        print("Scanning logic is", self._scanning_logic)
+#        print("Scanning logic is", self._scanning_logic)
         
         self._save_logic = self.connector['in']['savelogic']['object']
-        print("Save logic is", self._save_logic)
+#        print("Save logic is", self._save_logic)
         
         self._tracker_logic = self.connector['in']['optimiserlogic1']['object']
-        print("Tracking logic is", self._tracker_logic)
+#        print("Tracking logic is", self._tracker_logic)
         
         # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
         # GUI element:
@@ -317,7 +317,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         num_of_points_z = (self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/self.slider_res        
         self.num_of_points_z = num_of_points_z
         
-        print('num_of_points_z:',num_of_points_z)
+#        print('num_of_points_z:',num_of_points_z)
         # How many points are needed for that kind of resolution:
                  
         
@@ -421,7 +421,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._scanning_logic.signal_change_position.connect(self.update_gui)
         self._tracker_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
         #self._scanning_logic.signal_scan_lines_next.connect(self.refresh_image)
-        print('Main Confocal Windows shown:')
+#        print('Main Confocal Windows shown:')
         self._mw.show()
         
         # Now that the ROI is connected to events, set again to initial pos:        

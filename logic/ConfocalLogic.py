@@ -64,7 +64,7 @@ class ConfocalLogic(GenericLogic):
         @parameter?????????
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
-        print("Scanning device is", self._scanning_device)
+#        print("Scanning device is", self._scanning_device)
         
         
         # Reads in the maximal scanning range. The unit of that scan range is

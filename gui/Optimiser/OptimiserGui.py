@@ -99,8 +99,8 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         """
         
-        self._tracker_logic = self.connector['in']['optimiserlogic1']['object']
-        print("Tracking logic is", self._tracker_logic)
+        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
+#        print("Optimiser logic is", self._optimiser_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
@@ -111,15 +111,15 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw = OptimiserSettingDialog()
         
         # Get the image for the display from the logic:
-        arr01 = self._tracker_logic.xy_refocus_image[:,:,3].transpose()
-        arr02 = self._tracker_logic.z_refocus_line
+        arr01 = self._optimiser_logic.xy_refocus_image[:,:,3].transpose()
+        arr02 = self._optimiser_logic.z_refocus_line
 
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)       
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
-        self.xz_refocus_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,arr02)
-        self.xz_refocus_fit_image = pg.PlotDataItem(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data, pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.xz_refocus_image = pg.PlotDataItem(self._optimiser_logic._zimage_Z_values,arr02)
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_fit_data, pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -167,12 +167,12 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
         
         # Connect to default values:
-        self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
-        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
-        self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
-        self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
-        self._sw.count_freq_InputWidget.setText(str(self._tracker_logic._clock_frequency))
-        self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._optimiser_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._optimiser_logic.return_slowness))
         
         # Add to the QLineEdit Widget a Double- and Int Validator to ensure only a 
         # float/Int input.
@@ -187,7 +187,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
                 
         # Connect signals
-        self._tracker_logic.signal_image_updated.connect(self.refresh_image)
+        self._optimiser_logic.signal_image_updated.connect(self.refresh_image)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sw.accepted.connect(self.update_settings)
         self._sw.rejected.connect(self.reject_settings)
@@ -201,22 +201,22 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_settings(self):
         ''' This method writes the new settings from the gui to the file
         '''
-        self._tracker_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
-        self._tracker_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
-        self._tracker_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
-        self._tracker_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
-        self._tracker_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
-        self._tracker_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
+        self._optimiser_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
+        self._optimiser_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
+        self._optimiser_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
+        self._optimiser_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
+        self._optimiser_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
+        self._optimiser_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
                 
     def reject_settings(self):
         ''' This method keeps the old settings and restores the old settings in the gui
         '''
-        self._sw.xy_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_XY_size))
-        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_XY_step))
-        self._sw.z_refocusrange_InputWidget.setText(str(self._tracker_logic.refocus_Z_size))
-        self._sw.z_refocusstepsize_InputWidget.setText(str(self._tracker_logic.refocus_Z_step))
-        self._sw.count_freq_InputWidget.setText(str(self._tracker_logic._clock_frequency))
-        self._sw.return_slow_InputWidget.setText(str(self._tracker_logic.return_slowness))
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._optimiser_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._optimiser_logic.return_slowness))
         
     def refresh_xy_colorbar(self):
         ''' This method deletes the old colorbar and replace it with an updated one
@@ -234,10 +234,10 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def refresh_image(self):
         ''' This method refreshes the xy image, the crosshair and the colorbar
         '''
-        self.xy_refocus_image.setImage(image=self._tracker_logic.xy_refocus_image[:,:,3].transpose())
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._tracker_logic._trackpoint_x - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic._trackpoint_y - 0.5 * self._tracker_logic.refocus_XY_size , self._tracker_logic.refocus_XY_size, self._tracker_logic.refocus_XY_size))               
-        self.vLine.setValue(self._tracker_logic.refocus_x)
-        self.hLine.setValue(self._tracker_logic.refocus_y)
-        self.xz_refocus_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_refocus_line)
-        self.xz_refocus_fit_image.setData(self._tracker_logic._zimage_Z_values,self._tracker_logic.z_fit_data)
+        self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.vLine.setValue(self._optimiser_logic.refocus_x)
+        self.hLine.setValue(self._optimiser_logic.refocus_y)
+        self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
+        self.xz_refocus_fit_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_fit_data)
         self.refresh_xy_colorbar()
