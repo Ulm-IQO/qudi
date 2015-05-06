@@ -47,7 +47,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
         
         self._current_position = [0., 0., 0., 0.]
-        self._num_points = 500
+        self._num_points = 5000
     
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -71,11 +71,11 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
                                               self._num_points)
         # sigma_x
         self._points[:,3] = np.random.normal( 0.5,
-                                              0.1,
+                                              0.3,
                                               self._num_points)
         # sigma_y
         self._points[:,4] = np.random.normal( 0.5,
-                                              0.1,
+                                              0.3,
                                               self._num_points)
         # theta
         self._points[:,5] = 45
