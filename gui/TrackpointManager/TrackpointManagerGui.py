@@ -11,7 +11,7 @@ import numpy as np
 
 from collections import OrderedDict
 from core.Base import Base
-from gui.TrackpointManager.TrackpointManagerGuiUI import Ui_MainWindow
+from gui.TrackpointManager.TrackpointManagerGuiUI import Ui_TrackpointManager
 from gui.Confocal.ConfocalGui import ColorBar
 
 
@@ -38,7 +38,7 @@ class CustomViewBox(pg.ViewBox):
   
           
             
-class TrackpointManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class TrackpointManagerMainWindow(QtGui.QMainWindow,Ui_TrackpointManager):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
@@ -47,7 +47,7 @@ class TrackpointManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
             
                
             
-class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
     """
     This is the GUI Class for TrackpointManager
     """
@@ -105,7 +105,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw = TrackpointManagerMainWindow()
                 
         # Connect signals
-        self.set_tp_Button.clicked.connect(self.set_new_trackpoint)
+        self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
         
         print('Main Trackpoint Manager Window shown:')
         self._mw.show()
