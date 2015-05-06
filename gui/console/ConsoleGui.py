@@ -13,10 +13,19 @@ class ConsoleGui(Base):
         Base.__init__(self, manager, name, config, c_dict)
 
     def initUI(self, e=None):
-        namespace = {'pg': pg, 'np': np, 'mod': self._manager.tree['loaded'] }
+        namespace = {
+            'pg': pg,
+            'np': np,
+            'mod': self._manager.tree['loaded'],
+            'gui': self._manager.tree['loaded']['gui'],
+            'logic': self._manager.tree['loaded']['logic'],
+            'hardware': self._manager.tree['loaded']['hardware'],
+            'config': self._manager.tree['defined']
+            }
         text = """
 This is an interactive python console. The numpy and pyqtgraph modules have already been imported 
 as 'np' and 'pg'. 
+Configuration is in 'config', loaded modules in 'mod' and in 'hardware', 'logic' and 'gui'.
 Go, play.
 """
         self._cw = Console.ConsoleWidget(namespace=namespace, text=text)

@@ -8,11 +8,27 @@ from .ModuleWidgetTemplate import Ui_ModuleWidget
 from collections import OrderedDict
 
 class ManagerGui(Base):
+    """This class provides a GUI to the QuDi manager.
+
+      @signal sigStartAll: sent when all modules should be loaded
+      @signal str str sigStartThis: load a specific module
+      @signal str str sigReloadThis reload a specific module from Python code
+      @signal str str sigStopThis: stop all actions of a module and remove references
+
+        It supports module loading, reloading, logging and other administrative tasks.
+    """
     sigStartAll = QtCore.Signal()
     sigStartThis = QtCore.Signal(str, str)
     sigReloadThis = QtCore.Signal(str, str)
     sigStopThis = QtCore.Signal(str, str)
+
     def __init__(self, manager, name, config, **kwargs):
+        """Create an instance of the module.
+
+          @param object manager:
+          @param str name:
+          @param dict config:
+        """
         c_dict = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, c_dict)
         self.modlist = list()
