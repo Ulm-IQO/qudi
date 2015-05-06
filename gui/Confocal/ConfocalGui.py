@@ -489,9 +489,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def update_gui(self):
         
-        x_pos = self._scanning_logic._current_x
-        y_pos = self._scanning_logic._current_y
-        z_pos = self._scanning_logic._current_z
+        x_pos, y_pos, z_pos = self._scanning_logic.get_position()
         
         roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
         roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
