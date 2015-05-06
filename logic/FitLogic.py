@@ -10,6 +10,13 @@ import pylab as plt
 
 #TODO:
 #try smooth as estimator
+#Missing functions: - make_gaussian_fit()
+#                    - Lorentian
+#                    -Double lorentian
+#                    - N15
+#                    - N14
+#                    - C13 variabler
+
 class FitLogic(GenericLogic):        
         """
         UNSTABLE:Jochen Scheuer
