@@ -66,7 +66,7 @@ class LogWindow(Base):
         self.wid.ui.gridLayout.addWidget(self.wid.ui.input, 2, 0, 1, 3)
         self.wid.ui.dirLabel.setText('Current Storage Directory: None')
         self.mw.setCentralWidget(self.wid)
-        self.mw.setGeometry(7,630,1000, 500)
+        self.mw.setGeometry(7,500,1000, 500)
         self.wid.ui.input.returnPressed.connect(self.textEntered)
         self.errorDialog = ErrorDialog(self)
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)

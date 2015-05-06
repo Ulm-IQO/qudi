@@ -118,8 +118,12 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)       
         self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
-        self.xz_refocus_image = pg.PlotDataItem(self._optimiser_logic._zimage_Z_values,arr02)
-        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_fit_data, pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+        self.xz_refocus_image = pg.ScatterPlotItem(self._optimiser_logic._zimage_Z_values,
+                                                arr02, 
+                                                symbol='o')
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._fit_zimage_Z_values,
+                                                    self._optimiser_logic.z_fit_data, 
+                                                    pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -194,7 +198,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         
         
-        print('Main Optimiser Windows shown:')
+#        print('Main Optimiser Windows shown:')
         self._mw.show()
     
     
@@ -239,5 +243,5 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.vLine.setValue(self._optimiser_logic.refocus_x)
         self.hLine.setValue(self._optimiser_logic.refocus_y)
         self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
-        self.xz_refocus_fit_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_fit_data)
+        self.xz_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
         self.refresh_xy_colorbar()

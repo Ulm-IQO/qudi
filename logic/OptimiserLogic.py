@@ -56,6 +56,7 @@ class OptimiserLogic(GenericLogic):
         self.refocus_XY_step = 0.2
         self.refocus_Z_size = 2
         self.refocus_Z_step = 0.2
+        self.fit_Z_step = 0.01
         
         #locking for thread safety
         self.threadlock = Mutex()
@@ -274,7 +275,7 @@ class OptimiserLogic(GenericLogic):
                 if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset: #checks if new pos is too far away
                     if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]: #checks if new pos is within the scanner range
                         self.refocus_z = oneD_values[1]
-                        self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
+                        self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._fit_zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
                 else: #new pos is too far away
                     if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
                         if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
@@ -312,10 +313,11 @@ class OptimiserLogic(GenericLogic):
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         
         self._zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
+        self._fit_zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.fit_Z_step)
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
-        self.z_fit_data = np.zeros(len(self._zimage_Z_values))
+        self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
         
         
     def _scan_z_line(self):
