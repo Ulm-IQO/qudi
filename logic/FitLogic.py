@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# unstable: Jochen Scheuer
+
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
@@ -16,10 +18,13 @@ import pylab as plt
 #                    - N14
 #                    - C13 variabler
 
+
+#FIXME: In general is it needed for any purposes to use weighting?
+
 class FitLogic(GenericLogic):        
         """
         UNSTABLE:Jochen Scheuer
-        This is the fitting class where  fit functions are defined and methods
+        This is the fitting class where fit functions are defined and methods
         are implemented to process the data.
         
         Here fit functions and estimators are provided, so for every function
@@ -46,12 +51,14 @@ class FitLogic(GenericLogic):
     
             self.logMsg('The following configuration was found.', 
                         msgType='status')
-                                
+             
+             #FIXME: Why commented out?                   
 #            # checking for the right configuration
 #            for key in config.keys():
 #                self.logMsg('{}: {}'.format(key,config[key]), 
 #                            msgType='status')
-                             
+        
+        #FIXME: To do or delete                     
         def activation(self,e):
             pass
             
@@ -111,6 +118,7 @@ class FitLogic(GenericLogic):
                 error= -1
             if error==0:
                 try:
+                    #FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
                     self.logMsg('The fit did not work.', msgType='error')
@@ -123,8 +131,11 @@ class FitLogic(GenericLogic):
         def twoD_gaussian_function(self,x_data_tuple=None,amplitude=None,\
                                     x_zero=None, y_zero=None, sigma_x=None, \
                                     sigma_y=None, theta=None, offset=None):
+                                        
+            #FIXME: x_data_tuple: Should be 2D, shouldn't it?
+                                    
             """ This method provides a two dimensional gaussian function.
-        
+            
             @param (k,M)-shaped array x_data_tuple: x and y values
             @param float or int amplitude: Amplitude of gaussian
             @param float or int x_zero: x value of maximum
@@ -138,6 +149,7 @@ class FitLogic(GenericLogic):
             
             """
             # check if parameters make sense
+            #FIXME: Check for 2D matrix
             if not isinstance( x_data_tuple,(frozenset, list, set, tuple,\
                                 np.ndarray)):
                 self.logMsg('Given range of axes is no array type.', \
@@ -151,7 +163,8 @@ class FitLogic(GenericLogic):
                                         
             (x, y) = x_data_tuple
             x_zero = float(x_zero)
-            y_zero = float(y_zero)    
+            y_zero = float(y_zero) 
+            #FIXME: What is calculated here?
             a = (np.cos(theta)**2)/(2*sigma_x**2) \
                                         + (np.sin(theta)**2)/(2*sigma_y**2)
             b = -(np.sin(2*theta))/(4*sigma_x**2) \
@@ -165,6 +178,8 @@ class FitLogic(GenericLogic):
             
         def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
 #            TODO:Make clever estimator
+            #FIXME: Idea: x_zero@max x_axis
+            #FIXME: 1D array x_axis, y_axis, 2D data???
             """ This method provides a two dimensional gaussian function.
         
             @param array x_axis: x values
@@ -192,6 +207,7 @@ class FitLogic(GenericLogic):
             #check for sensible values
             parameters=[x_axis,y_axis,data]
             for var in parameters:
+                #Check for 1D array, 2D
                 if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
                     self.logMsg('Given parameter is not an array.', \
                                 msgType='error') 
@@ -208,6 +224,7 @@ class FitLogic(GenericLogic):
 
 
         def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
+            #FIXME: 1D array x_axis, y_axis, data 2D????
             """ This method performes a 2D gaussian fit on the provided data.
 
             @param array x_axis: x values
@@ -243,7 +260,8 @@ class FitLogic(GenericLogic):
                 return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-            """ This method provides a two dimensional gaussian function.
+            #FIXME: 1D arrays
+            """ This method provides a one dimensional gaussian function.
         
             @param array x_data: x values
             @param float or int amplitude: Amplitude of gaussian
@@ -254,6 +272,7 @@ class FitLogic(GenericLogic):
             @return callable function: returns the function
                     
             """
+            #FIXME: Check for 1D arrays
             # check if parameters make sense
             if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
                 print("error")
@@ -271,39 +290,42 @@ class FitLogic(GenericLogic):
         
         def gaussian_estimator(self,x_axis=None,data=None):
 #            TODO:Make clever estimator
-            """ This method provides a two dimensional gaussian function.
+            #FIXME: 1D arrays
+            #FIXME:Habe hier alle y entfernt. Und theta. Hoffe das passt...
+            """ This method provides a one dimensional gaussian function.
         
             @param array x_axis: x values
-            @param array y_axis: y values
             @param array data: value of each data point corresponding to
-                                x and y values
+                                x values
 
+            @return int error: error code (0:OK, -1:error)
             @return float amplitude: estimated amplitude
             @return float x_zero: estimated x value of maximum
-            @return float y_zero: estimated y value of maximum
             @return float sigma_x: estimated standard deviation in x direction
-            @return float sigma_y: estimated  standard deviation in y direction
-            @return float theta: estimated angle for eliptical gaussians
             @return float offset: estimated offset
-            @return int error: error code (0:OK, -1:error)                    
+                                
                     
             """
             error=0
             # check if parameters make sense
+            #FIXME:check for 1D arrays
             parameters=[x_axis,data]
             for var in parameters:
                 if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
                     self.logMsg('Given parameter is no array.', \
                                 msgType='error') 
                     error=-1
-            #set paraameters        
+            #set paraameters 
+            #FIXME:Why not data-max-data.min
             amplitude=data.max()
+            #FIXME: Don't you habe to interchange those?
             x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/3.
             sigma=(x_axis.max()-x_axis.min())/2.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
 
         def make_gaussian_fit(self,axis=None,data=None,details=False):
+            #FIXME: 1D arrays
             """ This method performes a gaussian fit on the provided data.
         
             @param array axis: axis values
