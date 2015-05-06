@@ -1,5 +1,5 @@
 
-from pyqtgraph.Qt import QtCore, QtGui, USE_PYSIDE
+from pyqtgraph.Qt import QtCore, QtGui
 import sys, re, os, time, traceback, subprocess
 import pyqtgraph as pg
 from . import template
@@ -107,7 +107,7 @@ class ConsoleWidget(QtGui.QWidget):
                 self.write("<br><b>%s</b>\n"%encCmd, html=True)
                 self.execMulti(cmd)
             else:
-                self.write("<br><div style='background-color: #CCF'><b>%s</b>\n"%encCmd, html=True)
+                self.write("<br><div><b>%s</b>\n"%encCmd, html=True)
                 self.inCmd = True
                 self.execSingle(cmd)
             
@@ -201,7 +201,7 @@ class ConsoleWidget(QtGui.QWidget):
         else:
             if self.inCmd:
                 self.inCmd = False
-                self.output.textCursor().insertHtml("</div><br><div style='font-weight: normal; background-color: #FFF;'>")
+                self.output.textCursor().insertHtml("</div><br><div style='font-weight: normal;'>")
                 #self.stdout.write("</div><br><div style='font-weight: normal; background-color: #FFF;'>")
             self.output.insertPlainText(strn)
         #self.stdout.write(strn)

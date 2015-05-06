@@ -13,7 +13,7 @@ class ConsoleGui(Base):
         Base.__init__(self, manager, name, config, c_dict)
 
     def initUI(self, e=None):
-        namespace = {'pg': pg, 'np': np}
+        namespace = {'pg': pg, 'np': np, 'mod': self._manager.tree['loaded'] }
         text = """
 This is an interactive python console. The numpy and pyqtgraph modules have already been imported 
 as 'np' and 'pg'. 
