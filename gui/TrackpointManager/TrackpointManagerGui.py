@@ -107,8 +107,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         # Connect signals
         self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
         self._mw.goto_tp_Button.clicked.connect(self.goto_trackpoint)
-        self._mw.delete_tp_Button.clicked.connect(self.delete_last_point)
+        self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_tp_Button.clicked.connect(self.manual_update_trackpoint)
+        self._mw.tp_name_Input.editingFinished.connect(self.change_tp_name)
         
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
@@ -152,6 +153,25 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         '''
         self._mw.active_tp_Input.clear()
         self._mw.active_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+
+        self._mw.manage_tp_Input.clear()
+        self._mw.manage_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+        
         for key in self._tp_manager_logic.track_point_list.keys():
-            self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
+            #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
             self._mw.active_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
+            self._mw.manage_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
+
+    def change_tp_name(self):
+        '''Change the name of a trackpoint
+        '''
+
+        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+
+        newname=self._mw.tp_name_Input.text()
+
+        print(newname)
+
+        self._tp_manager_logic.track_point_list[key].set_name(newname)
+
+        self.population_tp_list()

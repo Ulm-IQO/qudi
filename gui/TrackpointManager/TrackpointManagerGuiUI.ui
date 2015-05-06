@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>579</width>
-    <height>684</height>
+    <width>573</width>
+    <height>687</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -95,12 +95,12 @@
        </rect>
       </property>
      </widget>
-     <widget class="QComboBox" name="manage_tp_comboBox">
+     <widget class="QComboBox" name="manage_tp_Input">
       <property name="geometry">
        <rect>
         <x>170</x>
         <y>500</y>
-        <width>85</width>
+        <width>161</width>
         <height>23</height>
        </rect>
       </property>
@@ -123,12 +123,12 @@
        <rect>
         <x>320</x>
         <y>560</y>
-        <width>95</width>
+        <width>141</width>
         <height>23</height>
        </rect>
       </property>
       <property name="text">
-       <string>Delete</string>
+       <string>Delete trackpoint</string>
       </property>
      </widget>
      <widget class="Line" name="line">
@@ -155,6 +155,19 @@
       </property>
       <property name="text">
        <string>Manual update position</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="delete_last_pos_Button">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>530</y>
+        <width>141</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Delete last position</string>
       </property>
      </widget>
     </widget>
@@ -210,13 +223,19 @@
      <rect>
       <x>10</x>
       <y>619</y>
-      <width>561</width>
+      <width>551</width>
       <height>25</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
         <string>For trackpoint</string>
        </property>
@@ -224,6 +243,12 @@
      </item>
      <item>
       <widget class="QComboBox" name="active_tp_Input">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="editable">
         <bool>false</bool>
        </property>
@@ -254,7 +279,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>579</width>
+     <width>573</width>
      <height>20</height>
     </rect>
    </property>
