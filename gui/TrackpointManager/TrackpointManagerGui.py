@@ -106,6 +106,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
                 
         # Connect signals
         self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
+        self._mw.goto_tp_Button.clicked.connect(self.goto_trackpoint)
         
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
@@ -115,4 +116,31 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         ''' This method sets a new trackpoint from the current crosshair position
 
         '''
-        print("you have asked to set a trackpoint")
+        key=self._tp_manager_logic.add_trackpoint()
+
+        print('new trackpoint '+key)
+        print(self._tp_manager_logic.get_all_trackpoints())
+        print(self._tp_manager_logic.track_point_list[key].get_last_point())
+
+        self._mw.active_tp_Input.addItem(key)
+
+        
+    def delete_trackpoint(self):
+        ''' This method deletes a chosen trackpoint
+        '''
+        print("you have asked to delete a trackpoint")
+
+    def goto_trackpoint(self, key):
+        ''' Go to the last known position of trackpoint <key>
+        '''
+
+        key=self._mw.active_tp_Input.currentText()
+
+        self._tp_manager_logic.go_to_trackpoint(trackpointname=key)
+
+        print(self._tp_manager_logic.track_point_list[key].get_last_point())
+
+
+    def population_tp_list(self):
+        ''' Populate the dropdown box for selecting a trackpoint
+        '''
