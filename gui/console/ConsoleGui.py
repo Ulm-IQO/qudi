@@ -5,7 +5,7 @@ from core.Base import Base
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.console
+from . import Console
 
 class ConsoleGui(Base):
     def __init__(self, manager, name, config, **kwargs):
@@ -19,6 +19,6 @@ This is an interactive python console. The numpy and pyqtgraph modules have alre
 as 'np' and 'pg'. 
 Go, play.
 """
-        self._cw = pyqtgraph.console.ConsoleWidget(namespace=namespace, text=text)
-        self._cw.setWindowTitle('QuDi: Console')
+        self._cw = Console.ConsoleWidget(namespace=namespace, text=text)
+        self._cw.setWindowTitle('qudi: Console')
         self._cw.show()
