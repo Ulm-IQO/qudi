@@ -47,7 +47,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
         
         self._current_position = [0., 0., 0., 0.]
-        self._num_points = 5000
+        self._num_points = 500
     
     def activation(self, e):
         """ Initialisation performed during activation of the module.
