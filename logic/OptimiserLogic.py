@@ -54,8 +54,8 @@ class OptimiserLogic(GenericLogic):
         
         self.refocus_XY_size =  2
         self.refocus_XY_step = 0.2
-        self.refocus_Z_size = 5
-        self.refocus_Z_step = 0.5
+        self.refocus_Z_size = 2
+        self.refocus_Z_step = 0.2
         
         #locking for thread safety
         self.threadlock = Mutex()
