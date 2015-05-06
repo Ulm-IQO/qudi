@@ -2,10 +2,7 @@
 from pyqtgraph.Qt import QtCore, QtGui, USE_PYSIDE
 import sys, re, os, time, traceback, subprocess
 import pyqtgraph as pg
-if USE_PYSIDE:
-    from . import template_pyside as template
-else:
-    from . import template_pyqt as template
+from . import template
     
 import pyqtgraph.exceptionHandling as exceptionHandling
 import pickle
