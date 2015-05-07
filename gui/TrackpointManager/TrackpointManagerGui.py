@@ -71,6 +71,10 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self.connector['in']['trackerlogic1']['class'] = 'TrackpointManagerLogic'
         self.connector['in']['trackerlogic1']['object'] = None
 
+        self.connector['in']['confocallogic1'] = OrderedDict()
+        self.connector['in']['confocallogic1']['class'] = 'ConfocalLogic'
+        self.connector['in']['confocallogic1']['object'] = None
+
 #        self.connector['in']['savelogic'] = OrderedDict()
 #        self.connector['in']['savelogic']['class'] = 'SaveLogic'
 #        self.connector['in']['savelogic']['object'] = None
@@ -95,7 +99,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         """
         
         self._tp_manager_logic = self.connector['in']['trackerlogic1']['object']
+        self._confocal_logic = self.connector['in']['confocallogic1']['object']
         print("Trackpoint Manager logic is", self._tp_manager_logic)
+        print("Confocal logic is", self._confocal_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
@@ -103,18 +109,86 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         # Use the inherited class 'Ui_TrackpointManagerGuiTemplate' to create now the 
         # GUI element:
         self._mw = TrackpointManagerMainWindow()
+
                 
+        #####################
+        # Setting up display of ROI map xy image
+        #####################
+
+        # Get the image for the display from the logic: 
+        roi_map_data = self._confocal_logic.xy_image[:,:,3].transpose()
+             
+        # Load the image in the display:
+        self.roi_map_image = pg.ImageItem(roi_map_data)
+        self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[1]-self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1]-self._confocal_logic.image_y_range[0]))
+        
+        # Add the display item to the roi map ViewWidget defined in the UI file
+        self._mw.roi_map_ViewWidget.addItem(self.roi_map_image)
+        
+        # create a color map that goes from dark red to dark blue:
+
+        # Absolute scale relative to the expected data not important. This 
+        # should have the same amount of entries (num parameter) as the number
+        # of values given in color. 
+        pos = np.linspace(0.0, 1.0, num=10)
+        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
+                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
+                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
+                          [  0,  0,132,255]], dtype=np.ubyte)
+                      
+        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
+                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
+                               [127,  0,  0,255] ], dtype=np.ubyte)
+        colmap = pg.ColorMap(pos, color_inv)
+        
+        self.colmap_norm = pg.ColorMap(pos, color/255)
+
+        # get the LookUpTable (LUT), first two params should match the position
+        # scale extremes passed to ColorMap(). 
+        # I believe last one just has to be >= the difference between the min and max level set later
+        lut = colmap.getLookupTable(0, 1, 2000)
+
+            
+        self.roi_map_image.setLookupTable(lut)
+
+        #####################
+        # Setting up display of sample shift plot
+        #####################
+
+        # Load image in the display
+        self.x_shift_plot = pg.ScatterPlotItem([0],[0],symbol='o')
+        self.y_shift_plot = pg.ScatterPlotItem([0],[0],symbol='s')
+        self.z_shift_plot = pg.ScatterPlotItem([0],[0],symbol='t')
+
+        # Add the plot to the ViewWidget defined in the UI file
+        self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
+        self._mw.sample_shift_ViewWidget.addItem(self.y_shift_plot)
+        self._mw.sample_shift_ViewWidget.addItem(self.z_shift_plot)
+
+
+        #####################        
         # Connect signals
+        #####################        
+
+        self._mw.get_confocal_image_Button.clicked.connect(self.get_confocal_image)
         self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
         self._mw.goto_tp_Button.clicked.connect(self.goto_trackpoint)
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_tp_Button.clicked.connect(self.manual_update_trackpoint)
-        self._mw.tp_name_Input.editingFinished.connect(self.change_tp_name)
+        self._mw.tp_name_Input.returnPressed.connect(self.change_tp_name)
         self._mw.delete_tp_Button.clicked.connect(self.delete_trackpoint)
+
+        self._mw.update_tp_Button.clicked.connect(self.update_tp_pos)
         
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
     
+    def get_confocal_image(self):
+        self.roi_map_image.getViewBox().enableAutoRange()
+        self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[1]-self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1]-self._confocal_logic.image_y_range[0]))
+        self.roi_map_image.setImage(image=self._confocal_logic.xy_image[:,:,3].transpose(),autoLevels=True)
+
     
     def set_new_trackpoint(self):
         ''' This method sets a new trackpoint from the current crosshair position
@@ -127,6 +201,10 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         print(self._tp_manager_logic.track_point_list[key].get_last_point())
 
         self.population_tp_list()
+
+        # Set the newly added trackpoint as the selected tp to manage.
+        self._mw.manage_tp_Input.setCurrentIndex(self._mw.manage_tp_Input.findData(key))
+
         
     def delete_last_point(self):
         ''' This method deletes the last track position of a chosen trackpoint
@@ -180,8 +258,30 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         newname=self._mw.tp_name_Input.text()
 
-        print(newname)
 
         self._tp_manager_logic.track_point_list[key].set_name(newname)
 
         self.population_tp_list()
+
+        # Keep the renamed trackpoint as the selected tp to manage.
+        self._mw.manage_tp_Input.setCurrentIndex(self._mw.manage_tp_Input.findData(key))
+
+        #TODO: WHen manage trackpoint is changed, empty name field
+        self._mw.tp_name_Input.setText('')
+
+    def update_tp_pos(self):
+
+        key=self._mw.active_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+
+        self._tp_manager_logic.optimise_trackpoint(key)
+
+        # Get trace data and calculate shifts in x,y,z
+        tp_trace=self._tp_manager_logic.track_point_list[key].get_trace()
+
+        time_data = tp_trace[:,0]
+        x_shift_data  = tp_trace[:,1] - tp_trace[0,1] 
+        y_shift_data  = tp_trace[:,2] - tp_trace[0,2] 
+        z_shift_data  = tp_trace[:,3] - tp_trace[0,3] 
+        self.x_shift_plot.setData(time_data, x_shift_data)
+        self.y_shift_plot.setData(time_data, y_shift_data)
+        self.z_shift_plot.setData(time_data, z_shift_data)
