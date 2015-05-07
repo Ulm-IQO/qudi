@@ -110,6 +110,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_tp_Button.clicked.connect(self.manual_update_trackpoint)
         self._mw.tp_name_Input.editingFinished.connect(self.change_tp_name)
+        self._mw.delete_tp_Button.clicked.connect(self.delete_trackpoint)
         
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
@@ -133,7 +134,15 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
         self._tp_manager_logic.track_point_list[key].delete_last_point()
-        
+
+    def delete_trackpoint(self):
+        '''This method deletes a trackpoint from the list of managed points
+        '''
+        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+        self._tp_manager_logic.delete_trackpoint(trackpointname=key)
+    
+        self.population_tp_list()
+
     def manual_update_trackpoint(self):
         pass
 
@@ -159,8 +168,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         for key in self._tp_manager_logic.track_point_list.keys():
             #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
-            self._mw.active_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
-            self._mw.manage_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
+            if key is not 'crosshair':
+                self._mw.active_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
+                self._mw.manage_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
 
     def change_tp_name(self):
         '''Change the name of a trackpoint
