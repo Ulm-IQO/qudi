@@ -458,8 +458,13 @@ class LogWidget(QtGui.QWidget):
             print("Not implemented")
         elif url[:4] == 'exc:':
             cursor = self.ui.output.document().find('Show traceback %s' % url[4:])
+            print(url)
             try:
-                tb = self.entries[int(url[4:])-1]['tracebackHtml']
+                for entry in self.entries:
+                    if int(entry['id']) == int(url[4:]):
+                        print(entry)
+                        tb = entry['tracebackHtml']
+                        break
             except KeyError:
                 tb = 'Can\'t get the backtrace as there is no tracebackHtml key in the entry dict. Something is royally fucked here.'
             except IndexError:
