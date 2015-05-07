@@ -240,6 +240,13 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
                 
     def set_next_point(self, trackpointkey = None, point = None):
+        """ Adds another point to the trace of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        @param float[3] point: coordinates of the next point
+        
+        @return int: error code (0:OK, -1:error)
+        """
                 
         if trackpointkey != None and point != None and trackpointkey in self.track_point_list.keys():
             if len(point) != 3:
@@ -253,6 +260,13 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
             
     def set_name(self, trackpointkey = None, name = None):
+        """ Sets the name of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        @param string name: name of the trackpoint to be set
+        
+        @return int: error code (0:OK, -1:error)
+        """
                 
         if trackpointkey != None and name != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].set_name(name=name)
@@ -262,6 +276,12 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
             
     def delete_last_point(self, trackpointkey = None):
+        """ Deletes the last tracked point from the trace of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        """
                 
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list['sample'].delete_last_point()
@@ -272,6 +292,12 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
             
     def get_trace(self, trackpointkey = None):
+        """ Get the full time trace of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint for the trace
+        
+        @return int: error code (0:OK, -1:error)
+        """
                 
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_trace()
@@ -282,6 +308,12 @@ class TrackpointManagerLogic(GenericLogic):
             
     
     def set_current_trackpoint(self, trackpointkey = None):
+        """ Set the internal current trackpoint.
+        
+        @param string trackpointkey: the key of the current trackpoint to be set
+        
+        @return int: error code (0:OK, -1:error)
+        """
                 
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             self._current_trackpoint_key = trackpointkey
@@ -292,6 +324,13 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
             
     def start_periodic_refocus(self, duration=None, trackpointkey = None):
+        """ Starts the perodic refocussing of the trackpoint.
+        
+        @param float duration: (optional) the time between periodic refocussion
+        @param string trackpointkey: (optional) the key of the current trackpoint to be set and refocussed on.
+        
+        @return int: error code (0:OK, -1:error)
+        """
         if duration!=None:
             self.timer_duration=duration
         else:
@@ -308,8 +347,14 @@ class TrackpointManagerLogic(GenericLogic):
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self._periodic_refocus_loop)
         self.timer.start(300)
+        return 0
         
     def _periodic_refocus_loop(self):
+        """ This is the looped function that does the actual periodic refocus.
+        
+        If the time has run out, it refocussed the current trackpoint.
+        Otherwise it just updates the time that is left.
+        """
         self.time_left = self.timer_step-time.time()+self.timer_duration
         self.signal_timer_updated.emit()
         if self.time_left <= 0:
@@ -317,13 +362,25 @@ class TrackpointManagerLogic(GenericLogic):
             self.optimise_trackpoint(trackpointkey = self._current_trackpoint_key)
         
     def stop_periodic_refocus(self):
+        """ Stops the perodic refocussing of the trackpoint.
+        
+        @return int: error code (0:OK, -1:error)
+        """
         if self.timer == None:
             self.logMsg('No timer to stop.', 
                 msgType='warning')
+            return -1
         self.timer.stop()
         self.timer = None
+        return 0
                 
     def _refocus_done(self):
+        """ Gets called automatically after the refocus is done and saves the new point.
+        
+        Also it tracks the sample and may go back to the crosshair.
+        
+        @return int: error code (0:OK, -1:error)
+        """
         positions = [self._optimiser_logic.refocus_x, 
                      self._optimiser_logic.refocus_y, 
                      self._optimiser_logic.refocus_z]
