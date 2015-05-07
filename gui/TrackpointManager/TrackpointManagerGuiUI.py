@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'TrackpointManagerGuiUI.ui'
 #
-# Created: Thu May  7 12:03:01 2015
+# Created: Thu May  7 23:55:22 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_TrackpointManager(object):
     def setupUi(self, TrackpointManager):
         TrackpointManager.setObjectName(_fromUtf8("TrackpointManager"))
-        TrackpointManager.resize(573, 734)
+        TrackpointManager.resize(573, 756)
         self.centralwidget = QtGui.QWidget(TrackpointManager)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.tabWidget = QtGui.QTabWidget(self.centralwidget)
@@ -131,6 +131,19 @@ class Ui_TrackpointManager(object):
         self.label_5 = QtGui.QLabel(self.centralwidget)
         self.label_5.setGeometry(QtCore.QRect(20, 620, 231, 16))
         self.label_5.setObjectName(_fromUtf8("label_5"))
+        self.periodic_update_Button = QtGui.QRadioButton(self.centralwidget)
+        self.periodic_update_Button.setGeometry(QtCore.QRect(80, 680, 171, 21))
+        self.periodic_update_Button.setObjectName(_fromUtf8("periodic_update_Button"))
+        self.time_till_next_update_Display = QtGui.QLCDNumber(self.centralwidget)
+        self.time_till_next_update_Display.setGeometry(QtCore.QRect(400, 680, 64, 23))
+        self.time_till_next_update_Display.setObjectName(_fromUtf8("time_till_next_update_Display"))
+        self.update_period_Input = QtGui.QSpinBox(self.centralwidget)
+        self.update_period_Input.setGeometry(QtCore.QRect(260, 680, 56, 22))
+        self.update_period_Input.setMinimum(5)
+        self.update_period_Input.setMaximum(999)
+        self.update_period_Input.setSingleStep(5)
+        self.update_period_Input.setProperty("value", 15)
+        self.update_period_Input.setObjectName(_fromUtf8("update_period_Input"))
         TrackpointManager.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(TrackpointManager)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 573, 20))
@@ -163,5 +176,6 @@ class Ui_TrackpointManager(object):
         self.goto_tp_Button.setText(_translate("TrackpointManager", "Goto TP", None))
         self.update_tp_Button.setText(_translate("TrackpointManager", "Update using ", None))
         self.label_5.setText(_translate("TrackpointManager", "USING / WORKING WITH TRACKPOINT", None))
+        self.periodic_update_Button.setText(_translate("TrackpointManager", "Periodic update every:", None))
 
 from pyqtgraph import PlotWidget

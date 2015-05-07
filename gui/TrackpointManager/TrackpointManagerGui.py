@@ -180,6 +180,8 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._mw.delete_tp_Button.clicked.connect(self.delete_trackpoint)
 
         self._mw.update_tp_Button.clicked.connect(self.update_tp_pos)
+
+        self._mw.periodic_update_Button.toggled.connect(self.toggle_periodic_update)
         
         #Signal at end of refocus
         self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
@@ -225,9 +227,15 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self.population_tp_list()
 
     def manual_update_trackpoint(self):
-        #TODO: Kays Testing stuff: canibalising an unused button
+        pass
+
+    def toggle_periodic_update(self):
         if self._tp_manager_logic.timer ==  None:
-            self._tp_manager_logic.start_periodic_refocus(duration=15, trackpointkey = 'crosshair')
+            key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+            period = self._mw.update_period_Input.value()
+
+            self._tp_manager_logic.start_periodic_refocus(duration=period, trackpointkey = key)
+
         else:
             self._tp_manager_logic.stop_periodic_refocus()
 
@@ -253,7 +261,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         for key in self._tp_manager_logic.get_all_trackpoints():
             #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
-            if key is not 'crosshair':
+            if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
                 self._mw.manage_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
 
@@ -283,16 +291,16 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._tp_manager_logic.optimise_trackpoint(trackpointkey=key)
 
     def _update_timer(self):
-        placeholder=QtGui.QLineEdit()
-        placeholder.setText('{0:.1f}'.format(self._tp_manager_logic.time_left))
-        print ('{0:.1f}'.format(self._tp_manager_logic.time_left))
+        #placeholder=QtGui.QLineEdit()
+        #placeholder.setText('{0:.1f}'.format(self._tp_manager_logic.time_left))
+        
+        print(self._tp_manager_logic.time_left)
+        self._mw.time_till_next_update_Display.display( self._tp_manager_logic.time_left )
 
     def _refocus_finished(self):
         
-        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
-
         # Get trace data and calculate shifts in x,y,z
-        tp_trace=self._tp_manager_logic.get_trace(trackpointkey=key)
+        tp_trace=self._tp_manager_logic.get_trace(trackpointkey='sample')
 
         time_shift_data = tp_trace[:,0] - tp_trace[0,0]
         x_shift_data  = tp_trace[:,1] - tp_trace[0,1] 
