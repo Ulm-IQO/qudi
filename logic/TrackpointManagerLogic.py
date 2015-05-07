@@ -207,9 +207,9 @@ class TrackpointManagerLogic(GenericLogic):
         
     def optimise_trackpoint(self,trackpointname = None):
         if trackpointname != None and trackpointname in self.track_point_list.keys():
-            self.track_point_list['crosshair'].set_next_point(point=self._optimiser_logic.get_position())
+            self.track_point_list['crosshair'].set_next_point(point=self._confocal_logic.get_position())
             self._current_trackpoint_name = trackpointname
-            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointname])
+            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointname].get_last_point())
             return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 

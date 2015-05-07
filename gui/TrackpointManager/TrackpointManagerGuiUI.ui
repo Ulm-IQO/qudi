@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>573</width>
-    <height>687</height>
+    <height>734</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,7 +30,7 @@
      <attribute name="title">
       <string>ROI Map</string>
      </attribute>
-     <widget class="PlotWidget" name="xy_refocus_ViewWidget">
+     <widget class="PlotWidget" name="roi_map_ViewWidget">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -62,8 +62,8 @@
      <widget class="QPushButton" name="set_tp_Button">
       <property name="geometry">
        <rect>
-        <x>10</x>
-        <y>440</y>
+        <x>250</x>
+        <y>460</y>
         <width>151</width>
         <height>23</height>
        </rect>
@@ -75,8 +75,8 @@
      <widget class="QLabel" name="label">
       <property name="geometry">
        <rect>
-        <x>50</x>
-        <y>500</y>
+        <x>20</x>
+        <y>460</y>
         <width>121</width>
         <height>20</height>
        </rect>
@@ -88,8 +88,8 @@
      <widget class="QLineEdit" name="tp_name_Input">
       <property name="geometry">
        <rect>
-        <x>160</x>
-        <y>530</y>
+        <x>150</x>
+        <y>500</y>
         <width>113</width>
         <height>22</height>
        </rect>
@@ -98,9 +98,9 @@
      <widget class="QComboBox" name="manage_tp_Input">
       <property name="geometry">
        <rect>
-        <x>170</x>
-        <y>500</y>
-        <width>161</width>
+        <x>140</x>
+        <y>460</y>
+        <width>101</width>
         <height>23</height>
        </rect>
       </property>
@@ -108,21 +108,21 @@
      <widget class="QLabel" name="label_3">
       <property name="geometry">
        <rect>
-        <x>90</x>
-        <y>530</y>
+        <x>80</x>
+        <y>500</y>
         <width>58</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>Name: </string>
+       <string>Rename:</string>
       </property>
      </widget>
      <widget class="QPushButton" name="delete_tp_Button">
       <property name="geometry">
        <rect>
-        <x>320</x>
-        <y>560</y>
+        <x>410</x>
+        <y>460</y>
         <width>141</width>
         <height>23</height>
        </rect>
@@ -131,24 +131,11 @@
        <string>Delete trackpoint</string>
       </property>
      </widget>
-     <widget class="Line" name="line">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>470</y>
-        <width>541</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
      <widget class="QPushButton" name="manual_update_tp_Button">
       <property name="geometry">
        <rect>
-        <x>90</x>
-        <y>560</y>
+        <x>80</x>
+        <y>550</y>
         <width>181</width>
         <height>23</height>
        </rect>
@@ -160,8 +147,8 @@
      <widget class="QPushButton" name="delete_last_pos_Button">
       <property name="geometry">
        <rect>
-        <x>320</x>
-        <y>530</y>
+        <x>290</x>
+        <y>550</y>
         <width>141</width>
         <height>23</height>
        </rect>
@@ -170,12 +157,25 @@
        <string>Delete last position</string>
       </property>
      </widget>
+     <widget class="QLabel" name="label_4">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>440</y>
+        <width>131</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>MANAGING ROI MAP</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="sampleShift">
      <attribute name="title">
       <string>Sample shift</string>
      </attribute>
-     <widget class="PlotWidget" name="xy_refocus_ViewWidget_2">
+     <widget class="PlotWidget" name="sample_shift_ViewWidget">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -222,7 +222,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>619</y>
+      <y>650</y>
       <width>551</width>
       <height>25</height>
      </rect>
@@ -262,7 +262,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="update_tp_Button">
+      <widget class="QPushButton" name="update_tp_Button">
        <property name="text">
         <string>Update using </string>
        </property>
@@ -272,6 +272,19 @@
       <widget class="QComboBox" name="update_method_Input"/>
      </item>
     </layout>
+   </widget>
+   <widget class="QLabel" name="label_5">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>620</y>
+      <width>231</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>USING / WORKING WITH TRACKPOINT</string>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
