@@ -183,6 +183,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         #Signal at end of refocus
         self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
+        self._tp_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
  
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
@@ -207,13 +208,12 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         # Set the newly added trackpoint as the selected tp to manage.
         self._mw.manage_tp_Input.setCurrentIndex(self._mw.manage_tp_Input.findData(key))
-
         
     def delete_last_point(self):
         ''' This method deletes the last track position of a chosen trackpoint
         '''
         
-        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
         self._tp_manager_logic.delete_last_point(trackpointkey=key)
 
     def delete_trackpoint(self):
@@ -225,7 +225,11 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self.population_tp_list()
 
     def manual_update_trackpoint(self):
-        pass
+        #TODO: Kays Testing stuff: canibalising an unused button
+        if self._tp_manager_logic.timer ==  None:
+            self._tp_manager_logic.start_periodic_refocus(duration=15, trackpointkey = 'crosshair')
+        else:
+            self._tp_manager_logic.stop_periodic_refocus()
 
     def goto_trackpoint(self, key):
         ''' Go to the last known position of trackpoint <key>
@@ -277,6 +281,11 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
 
         self._tp_manager_logic.optimise_trackpoint(trackpointkey=key)
+
+    def _update_timer(self):
+        placeholder=QtGui.QLineEdit()
+        placeholder.setText('{0:.1f}'.format(self._tp_manager_logic.time_left))
+        print ('{0:.1f}'.format(self._tp_manager_logic.time_left))
 
     def _refocus_finished(self):
         

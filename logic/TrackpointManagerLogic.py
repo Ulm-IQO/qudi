@@ -116,6 +116,7 @@ class TrackpointManagerLogic(GenericLogic):
     """
 
     signal_refocus_finished = QtCore.Signal()
+    signal_timer_updated = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -148,6 +149,10 @@ class TrackpointManagerLogic(GenericLogic):
         self.track_point_list = dict()
         self._current_trackpoint_key = None
         self.go_to_crosshair_after_refocus = True
+        self.timer = None
+        self.time_left = 0
+        self.timer_step = 0
+        self.timer_duration = 300
                                 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -173,11 +178,7 @@ class TrackpointManagerLogic(GenericLogic):
 #        self.testing()
         
     def testing(self):
-        self._optimiser_logic.start_refocus()
-        name=self.add_trackpoint()
-        print (name)
-        
-        self._optimiser_logic.start_refocus()
+        pass
                     
     def add_trackpoint(self):
         
@@ -278,11 +279,55 @@ class TrackpointManagerLogic(GenericLogic):
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return [-1.,-1.,-1,-1]
+            
+    
+    def set_current_trackpoint(self, trackpointkey = None):
+                
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            self._current_trackpoint_key = trackpointkey
+            return 0
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return -1
+            
+    def start_periodic_refocus(self, duration=None, trackpointkey = None):
+        if duration!=None:
+            self.timer_duration=duration
+        else:
+            self.logMsg('No timer duration given, using {} s.'.format(self.timer_duration), 
+                msgType='warning')
+            
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            self._current_trackpoint_key = trackpointkey
+        
+        self.logMsg('Periodic refocus on {}.'.format(self._current_trackpoint_key), msgType='status')
+            
+        self.timer_step = time.time()
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self._periodic_refocus_loop)
+        self.timer.start(300)
+        
+    def _periodic_refocus_loop(self):
+        self.time_left = self.timer_step-time.time()+self.timer_duration
+        self.signal_timer_updated.emit()
+        if self.time_left <= 0:
+            self.timer_step = time.time()
+            self.optimise_trackpoint(trackpointkey = self._current_trackpoint_key)
+        
+    def stop_periodic_refocus(self):
+        if self.timer == None:
+            self.logMsg('No timer to stop.', 
+                msgType='warning')
+        self.timer.stop()
+        self.timer = None
                 
     def _refocus_done(self):
         positions = [self._optimiser_logic.refocus_x, 
                      self._optimiser_logic.refocus_y, 
                      self._optimiser_logic.refocus_z]
+                     
         if self._optimiser_logic.is_crosshair:                
             self.track_point_list['crosshair'].\
                     set_next_point(point=positions)
@@ -299,7 +344,8 @@ class TrackpointManagerLogic(GenericLogic):
             else:
                 self.go_to_trackpoint(trackpointkey = self._current_trackpoint_key)
             
-            self.signal_refocus_finished.emit()
+            if self._current_trackpoint_key != 'crosshair' and self._current_trackpoint_key != 'sample':
+                self.signal_refocus_finished.emit()
             return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_key), 
