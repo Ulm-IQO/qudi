@@ -181,6 +181,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         self._mw.update_tp_Button.clicked.connect(self.update_tp_pos)
         
+        #Signal at end of refocus
+        self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
+ 
 #        print('Main Trackpoint Manager Window shown:')
         self._mw.show()
     
@@ -275,13 +278,17 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         self._tp_manager_logic.optimise_trackpoint(key)
 
+    def _refocus_finished(self):
+        
+        key=self._mw.active_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+
         # Get trace data and calculate shifts in x,y,z
         tp_trace=self._tp_manager_logic.track_point_list[key].get_trace()
 
-        time_data = tp_trace[:,0]
+        time_shift_data = tp_trace[:,0] - tp_trace[0,0]
         x_shift_data  = tp_trace[:,1] - tp_trace[0,1] 
         y_shift_data  = tp_trace[:,2] - tp_trace[0,2] 
         z_shift_data  = tp_trace[:,3] - tp_trace[0,3] 
-        self.x_shift_plot.setData(time_data, x_shift_data)
-        self.y_shift_plot.setData(time_data, y_shift_data)
-        self.z_shift_plot.setData(time_data, z_shift_data)
+        self.x_shift_plot.setData(time_shift_data, x_shift_data)
+        self.y_shift_plot.setData(time_shift_data, y_shift_data)
+        self.z_shift_plot.setData(time_shift_data, z_shift_data)

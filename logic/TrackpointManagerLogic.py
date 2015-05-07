@@ -114,6 +114,8 @@ class TrackpointManagerLogic(GenericLogic):
     """unstable: Kay Jahnke
     This is the Logic class for tracking bright features in the confocal scan.
     """
+
+    signal_refocus_finished = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -244,7 +246,8 @@ class TrackpointManagerLogic(GenericLogic):
                 self.go_to_trackpoint(trackpointname = 'crosshair')
             else:
                 self.go_to_trackpoint(trackpointname = self._current_trackpoint_name)
-                
+            
+            self.signal_refocus_finished.emit()
             return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_name), 
