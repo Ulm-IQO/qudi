@@ -60,7 +60,7 @@ class TrackPoint(object):
         
         @return int: error code (0:OK, -1:error)
         """
-        if self._name == 'crosshair':            
+        if self._name is 'crosshair' or self._name is 'sample':            
 #            self.logMsg('You can not change the name of the crosshair.', 
 #                        msgType='error')
             return -1
@@ -146,7 +146,7 @@ class TrackpointManagerLogic(GenericLogic):
                         msgType='status')
         
         self.track_point_list = dict()
-        self._current_trackpoint_name = None
+        self._current_trackpoint_key = None
         self.go_to_crosshair_after_refocus = True
                                 
         #locking for thread safety
@@ -164,6 +164,9 @@ class TrackpointManagerLogic(GenericLogic):
         crosshair=TrackPoint(point=[0,0,0], name='crosshair')
         crosshair._key='crosshair'
         self.track_point_list[crosshair._key] = crosshair
+        sample=TrackPoint(point=[0,0,0], name='sample')
+        sample._key='sample'
+        self.track_point_list[sample._key] = sample
         
         self._optimiser_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
                 
@@ -185,71 +188,120 @@ class TrackpointManagerLogic(GenericLogic):
         
     def get_all_trackpoints(self):
         return self.track_point_list.keys()
-        
-    def change_name(self,trackpointname = None, newname = None):
-        if trackpointname != None and trackpointname in self.track_point_list.keys():
-            self.track_point_list[trackpointname].set_name(newname)
-            return 0
-        else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
-                msgType='error')
-            return -1
             
-    def delete_trackpoint(self,trackpointname = None):        
-        if trackpointname != None and trackpointname in self.track_point_list.keys():
-            if trackpointname is 'crosshair':
-                self.logMsg('You cannot delete the crosshair.', msgType='warning')
+    def delete_trackpoint(self,trackpointkey = None):        
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            if trackpointkey is 'crosshair' or trackpointkey is 'sample':
+                self.logMsg('You cannot delete the crosshair or sample.', msgType='warning')
                 return -1
-            del self.track_point_list[trackpointname]
+            del self.track_point_list[trackpointkey]
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
         
-    def optimise_trackpoint(self,trackpointname = None):
-        if trackpointname != None and trackpointname in self.track_point_list.keys():
+    def optimise_trackpoint(self,trackpointkey = None):
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             self.track_point_list['crosshair'].set_next_point(point=self._confocal_logic.get_position())
-            self._current_trackpoint_name = trackpointname
-            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointname].get_last_point())
+            self._current_trackpoint_key = trackpointkey
+            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointkey].get_last_point())
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
                 
-    def go_to_trackpoint(self, trackpointname = None):
-        if trackpointname != None and trackpointname in self.track_point_list.keys():
-            self._current_trackpoint_name = trackpointname
-            x,y,z = self.track_point_list[trackpointname].get_last_point()
+    def go_to_trackpoint(self, trackpointkey = None):
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            self._current_trackpoint_key = trackpointkey
+            x,y,z = self.track_point_list[trackpointkey].get_last_point()
             self._confocal_logic.set_position(x=x, y=y, z=z)
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointname), 
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return -1
+            
+    def get_last_point(self, trackpointkey = None):
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            return self.track_point_list[trackpointkey].get_last_point()
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return [-1.,-1.,-1.]
+                
+    def get_name(self, trackpointkey = None):
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            return self.track_point_list[trackpointkey].get_name()
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
                 
+    def set_next_point(self, trackpointkey = None, point = None):
+                
+        if trackpointkey != None and point != None and trackpointkey in self.track_point_list.keys():
+            if len(point) != 3:
+                self.logMsg('Length of set trackpoint is not 3.', 
+                             msgType='error')
+                return -1
+            return self.track_point_list[trackpointkey].set_next_point(point=point)
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return -1
+            
+    def set_name(self, trackpointkey = None, name = None):
+                
+        if trackpointkey != None and name != None and trackpointkey in self.track_point_list.keys():
+            return self.track_point_list[trackpointkey].set_name(name=name)
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return -1
+            
+    def delete_last_point(self, trackpointkey = None):
+                
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            return self.track_point_list['sample'].delete_last_point()
+            return self.track_point_list[trackpointkey].delete_last_point()
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return -1
+            
+    def get_trace(self, trackpointkey = None):
+                
+        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+            return self.track_point_list[trackpointkey].get_trace()
+        else:
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+                msgType='error')
+            return [-1.,-1.,-1,-1]
+                
     def _refocus_done(self):
+        positions = [self._optimiser_logic.refocus_x, 
+                     self._optimiser_logic.refocus_y, 
+                     self._optimiser_logic.refocus_z]
         if self._optimiser_logic.is_crosshair:                
             self.track_point_list['crosshair'].\
-                    set_next_point([self._optimiser_logic.refocus_x, 
-                                    self._optimiser_logic.refocus_y, 
-                                    self._optimiser_logic.refocus_z])
+                    set_next_point(point=positions)
             return 0
             
-        if self._current_trackpoint_name != None and self._current_trackpoint_name in self.track_point_list.keys():
-            self.track_point_list[self._current_trackpoint_name].\
-                    set_next_point([self._optimiser_logic.refocus_x, 
-                                    self._optimiser_logic.refocus_y, 
-                                    self._optimiser_logic.refocus_z])
+        if self._current_trackpoint_key != None and self._current_trackpoint_key in self.track_point_list.keys():
+            sample_shift=positions-self.track_point_list[self._current_trackpoint_key].get_last_point()
+            self.track_point_list['sample'].set_next_point(point=sample_shift)
+            self.track_point_list[self._current_trackpoint_key].\
+                    set_next_point(point=positions)
                                     
             if self.go_to_crosshair_after_refocus:
-                self.go_to_trackpoint(trackpointname = 'crosshair')
+                self.go_to_trackpoint(trackpointkey = 'crosshair')
             else:
-                self.go_to_trackpoint(trackpointname = self._current_trackpoint_name)
+                self.go_to_trackpoint(trackpointkey = self._current_trackpoint_key)
             
             self.signal_refocus_finished.emit()
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_name), 
+            self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_key), 
                 msgType='error')
             return -1
