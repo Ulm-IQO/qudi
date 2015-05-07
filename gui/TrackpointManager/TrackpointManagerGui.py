@@ -201,7 +201,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         print('new trackpoint '+key)
         print(self._tp_manager_logic.get_all_trackpoints())
-        print(self._tp_manager_logic.track_point_list[key].get_last_point())
+        print(self._tp_manager_logic.get_last_point(trackpointkey=key))
 
         self.population_tp_list()
 
@@ -214,7 +214,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         '''
         
         key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
-        self._tp_manager_logic.track_point_list[key].delete_last_point()
+        self._tp_manager_logic.delete_last_point(trackpointkey=key)
 
     def delete_trackpoint(self):
         '''This method deletes a trackpoint from the list of managed points
@@ -233,9 +233,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
 
-        self._tp_manager_logic.go_to_trackpoint(trackpointname=key)
+        self._tp_manager_logic.go_to_trackpoint(trackpointkey=key)
 
-        print(self._tp_manager_logic.track_point_list[key].get_last_point())
+        print(self._tp_manager_logic.get_last_point(trackpointkey=key))
 
 
     def population_tp_list(self):
@@ -247,11 +247,11 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._mw.manage_tp_Input.clear()
         self._mw.manage_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
         
-        for key in self._tp_manager_logic.track_point_list.keys():
+        for key in self._tp_manager_logic.get_all_trackpoints():
             #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
             if key is not 'crosshair':
-                self._mw.active_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
-                self._mw.manage_tp_Input.addItem(self._tp_manager_logic.track_point_list[key].get_name(), key)
+                self._mw.active_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
+                self._mw.manage_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
 
     def change_tp_name(self):
         '''Change the name of a trackpoint
@@ -262,7 +262,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         newname=self._mw.tp_name_Input.text()
 
 
-        self._tp_manager_logic.track_point_list[key].set_name(newname)
+        self._tp_manager_logic.set_name(trackpointkey=key, name=newname)
 
         self.population_tp_list()
 
@@ -274,16 +274,16 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
     def update_tp_pos(self):
 
-        key=self._mw.active_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
 
-        self._tp_manager_logic.optimise_trackpoint(key)
+        self._tp_manager_logic.optimise_trackpoint(trackpointkey=key)
 
     def _refocus_finished(self):
         
-        key=self._mw.active_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
 
         # Get trace data and calculate shifts in x,y,z
-        tp_trace=self._tp_manager_logic.track_point_list[key].get_trace()
+        tp_trace=self._tp_manager_logic.get_trace(trackpointkey=key)
 
         time_shift_data = tp_trace[:,0] - tp_trace[0,0]
         x_shift_data  = tp_trace[:,1] - tp_trace[0,1] 
@@ -292,3 +292,5 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
+        
+        print (self._tp_manager_logic.get_trace(trackpointkey='sample'))

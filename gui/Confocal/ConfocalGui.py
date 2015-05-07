@@ -512,7 +512,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
         
     def ready_clicked(self):
-        pass
+        if self._scanning_logic.getState() == 'locked':
+            self._scanning_logic.stop_scanning()
+        if self._tracker_logic.getState() == 'locked':
+            self._tracker_logic.stop_refocus()
 
             
     def xy_scan_clicked(self, enabled):
