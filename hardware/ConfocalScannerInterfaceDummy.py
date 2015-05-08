@@ -291,11 +291,15 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         if voltages[0,0] != voltages[0,1]:
             x_data,y_data = np.meshgrid(voltages[0,:],voltages[1,0])
             for i in range(self._num_points):
-                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),*(self._points[i])) * ((self._fit_logic.gaussian_function(np.array(z_data[0]),*(self._points_z[i]))))
+                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),
+                              *(self._points[i])) * ((self._fit_logic.gaussian_function(np.array(z_data[0]),
+                              *(self._points_z[i]))))
         else:
             x_data,y_data = np.meshgrid(voltages[0,0],voltages[1,0])
             for i in range(self._num_points):
-                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),*(self._points[i])) * ((self._fit_logic.gaussian_function(z_data,*(self._points_z[i]))))
+                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),
+                              *(self._points[i])) * ((self._fit_logic.gaussian_function(z_data,
+                              *(self._points_z[i]))))
         
         
         time.sleep(self._line_length*1./self._clock_frequency)            
