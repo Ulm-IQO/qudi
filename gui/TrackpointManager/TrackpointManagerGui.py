@@ -16,6 +16,23 @@ from gui.Confocal.ConfocalGui import ColorBar
 
 
 
+class PointMarker(pg.CircleROI):
+    """Creates a circle as a marker. 
+        
+        @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
+        @param int[2] size: (length-2 sequence) The size of the ROI’s bounding rectangle.
+        @param **args: All extra keyword arguments are passed to ROI()
+        
+        Have a look at: 
+        http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
+    """
+    
+    def __init__(self, pos, size, **args):
+        pg.CircleROI.__init__(self, pos, size, **args)
+#        handles=self.getHandles()
+#        for handle in handles:
+#            print(handle)
+#            self.removeHandle(handle)
 
 
 class CustomViewBox(pg.ViewBox):
@@ -183,6 +200,8 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
 
         self._mw.periodic_update_Button.toggled.connect(self.toggle_periodic_update)
         
+        self._markers=[]
+        
         #Signal at end of refocus
         self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
         self._tp_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
@@ -259,11 +278,30 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._mw.manage_tp_Input.clear()
         self._mw.manage_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
         
+        for marker in self._markers:
+            self._mw.roi_map_ViewWidget.removeItem(marker)
+            del marker
+            
+        self._markers=[]
+        
         for key in self._tp_manager_logic.get_all_trackpoints():
             #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
             if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
                 self._mw.manage_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
+                
+                # Create Region of Interest as marker:
+                position=self._tp_manager_logic.get_last_point(trackpointkey=key)
+                position=position[:2]-[2.5,2.5]
+                self._markers.append(\
+                    PointMarker(position, 
+                                [5, 5], 
+                                pen={'color': "F0F", 'width': 2}, 
+                                movable=False, 
+                                scaleSnap=True, 
+                                snapSize=1.0))
+                # Add to the Map Widget
+                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
 
     def change_tp_name(self):
         '''Change the name of a trackpoint
@@ -294,7 +332,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         #placeholder=QtGui.QLineEdit()
         #placeholder.setText('{0:.1f}'.format(self._tp_manager_logic.time_left))
         
-        print(self._tp_manager_logic.time_left)
+#        print(self._tp_manager_logic.time_left)
         self._mw.time_till_next_update_Display.display( self._tp_manager_logic.time_left )
 
     def _refocus_finished(self):
@@ -310,4 +348,4 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
         
-        print (self._tp_manager_logic.get_trace(trackpointkey='sample'))
+#        print (self._tp_manager_logic.get_trace(trackpointkey='sample'))
