@@ -3,7 +3,7 @@
 from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
 import visa
-
+import numpy as np
 
 class mwsourcesmiq(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
@@ -69,19 +69,6 @@ class mwsourcesmiq(Base,MWInterface):
         self._gpib_connetion.write('*WAI')
         
         return 0
-        
-    def power(self,power=None):
-        """ Sets and gets the microwave output power. 
-        
-        @param float power: if defined, this power is set at the device
-        
-        @return float: the power set at the device
-        """
-        # This is not a good way to implement it!
-        self.logMsg("This is MWSMIQ>power: Bad implementation, \
-        use get and set.", 
-                    msgType='error')
-        return 0.0
     
     def get_power(self):
         """ Gets the microwave output power. 
@@ -121,3 +108,86 @@ class mwsourcesmiq(Base,MWInterface):
         
         self._gpib_connetion.write(':FREQ {:e}'.format(frequency))
         return 0
+        
+    def set_cw(self,f=None, power=None):
+        """ Sets the MW mode to cw and additionally frequency and power
+        
+        @param float f: frequency to set
+        @param float power: power to set
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connetion.write(':FREQ:MODE CW')
+        
+        if f != None:
+            self.set_frequency(f)
+        if power != None:
+            self.set_power(power)
+            
+        return 0
+        
+    def set_list(self,freq=None, power=None):
+        """Sets the MW mode to list mode 
+        @param list f: list of frequencies
+        @param float power: MW power
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        error = 0
+        
+        if self.set_cw(freq[0],power) != 0:
+            error = -1
+            
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(':LIST:DEL:ALL')
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(":LIST:SEL 'ODMR'")
+        FreqString = ''
+        
+        for f in freq[:-1]:
+            FreqString += ' %f,' % f
+        FreqString += ' %f' % freq[-1]
+      
+        self._gpib_connetion.write(':LIST:FREQ' + FreqString)
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(':LIST:POW'  +  (' %f,' % power * len(freq))[:-1])
+       
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(':TRIG1:LIST:SOUR EXT')
+        self._gpib_connetion.write(':TRIG1:SLOP NEG')
+        self._gpib_connetion.write(':LIST:MODE STEP')
+        self._gpib_connetion.write('*WAI')
+        
+        N = int(np.round(float(self._gpib_connetion.ask(':LIST:FREQ:POIN?'))))
+        
+        if N != len(freq):
+            error = -1
+            
+        return error
+        
+    def reset_listpos(self):#
+        """Reset of MW List Mode
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+        self._gpib_connetion.write('*WAI')
+        return 0
+        
+    def list_on(self):
+        """Activates MW List Mode
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        self._gpib_connetion.write(':OUTP ON')
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(':LIST:LEAR')
+        self._gpib_connetion.write('*WAI')
+        self._gpib_connetion.write(':FREQ:MODE LIST')
+        
+        return 0
+        
+    
+        
+        
