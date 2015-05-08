@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'TrackpointManagerGuiUI.ui'
 #
-# Created: Thu May  7 23:55:22 2015
+# Created: Fri May  8 09:24:53 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -136,6 +136,7 @@ class Ui_TrackpointManager(object):
         self.periodic_update_Button.setObjectName(_fromUtf8("periodic_update_Button"))
         self.time_till_next_update_Display = QtGui.QLCDNumber(self.centralwidget)
         self.time_till_next_update_Display.setGeometry(QtCore.QRect(400, 680, 64, 23))
+        self.time_till_next_update_Display.setSmallDecimalPoint(False)
         self.time_till_next_update_Display.setObjectName(_fromUtf8("time_till_next_update_Display"))
         self.update_period_Input = QtGui.QSpinBox(self.centralwidget)
         self.update_period_Input.setGeometry(QtCore.QRect(260, 680, 56, 22))
@@ -164,6 +165,7 @@ class Ui_TrackpointManager(object):
         self.label.setText(_translate("TrackpointManager", "Manage trackpoint ", None))
         self.label_3.setText(_translate("TrackpointManager", "Rename:", None))
         self.delete_tp_Button.setText(_translate("TrackpointManager", "Delete trackpoint", None))
+        self.manual_update_tp_Button.setToolTip(_translate("TrackpointManager", "This is for telling QuDi a totally new position for a known trackpoint.  For example, after manually shifting the sample to re-centre the ROI in the scan range.", None))
         self.manual_update_tp_Button.setText(_translate("TrackpointManager", "Manual update position", None))
         self.delete_last_pos_Button.setText(_translate("TrackpointManager", "Delete last position", None))
         self.label_4.setText(_translate("TrackpointManager", "MANAGING ROI MAP", None))

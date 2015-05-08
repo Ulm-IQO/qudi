@@ -140,6 +140,9 @@
         <height>23</height>
        </rect>
       </property>
+      <property name="toolTip">
+       <string>This is for telling QuDi a totally new position for a known trackpoint.  For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
+      </property>
       <property name="text">
        <string>Manual update position</string>
       </property>
