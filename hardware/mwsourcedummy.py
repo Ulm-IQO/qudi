@@ -84,7 +84,7 @@ class mwsourcedummy(Base,MWInterface):
                     
         return random.uniform(0, 1e6)
         
-    def set_frequency(self,frequency=0):
+    def set_frequency(self,frequency=None):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
@@ -92,7 +92,56 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_frequency, frequency: {f}".format(power), 
+        self.logMsg("mwsourcedummy>set_frequency, frequency: {f}".format(frequency), 
                     msgType='warning')
                     
         return 0
+
+    def set_cw(self,f=None, power=None):
+        """ Sets the MW mode to cw and additionally frequency and power
+        
+        @param float f: frequency to set
+        @param float power: power to set
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self.logMsg("mwsourcedummy>set_cw, frequency: {f}".format(power), 
+                    msgType='warning')
+                    
+        return 0
+        
+    def set_list(self,freq=None, power=None):
+        """Sets the MW mode to list mode 
+        @param list f: list of frequencies
+        @param float power: MW power
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self.logMsg("mwsourcedummy>set_list, frequency: {f}".format(freq), 
+                    msgType='warning')
+                    
+        return 0
+        
+    def reset_listpos(self):#
+        """Reset of MW List Mode
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self.logMsg("mwsourcedummy>reset_listpos", msgType='warning')
+        
+        return 0
+        
+    def list_on(self):
+        """Activates MW List Mode
+         
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self.logMsg("mwsourcedummy>list_on", msgType='warning')
+        
+        return 0
+        
+        
