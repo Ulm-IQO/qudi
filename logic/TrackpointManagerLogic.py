@@ -164,6 +164,8 @@ class TrackpointManagerLogic(GenericLogic):
         self.track_point_list = dict()
         self._current_trackpoint_key = None
         self.go_to_crosshair_after_refocus = True
+        
+        # timer and its handling for the periodic refocus
         self.timer = None
         self.time_left = 0
         self.timer_step = 0
@@ -181,31 +183,58 @@ class TrackpointManagerLogic(GenericLogic):
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 #        print("Confocal Logic is", self._confocal_logic)
         
+        # initally add crosshair to the trackpoints
         crosshair=TrackPoint(point=[0,0,0], name='crosshair')
         crosshair._key='crosshair'
         self.track_point_list[crosshair._key] = crosshair
+        
+        # initally add sample to the trackpoints
         sample=TrackPoint(point=[0,0,0], name='sample')
         sample._key='sample'
         self.track_point_list[sample._key] = sample
         
+        # listen for the refocus to finish
         self._optimiser_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
                 
-#        self.testing()
+        self.testing()
         
     def testing(self):
+        """ Debug function for testing. """
         pass
                     
     def add_trackpoint(self):
+        """ Creates a new trackpoint and adds it to the list.
+                
+        @return int: key of this new trackpoint
+        
+        The initial position is taken from the current crosshair.
+        """
         
         new_track_point=TrackPoint(point=self._confocal_logic.get_position())
-        self.track_point_list[new_track_point.get_name()] = new_track_point
+        self.track_point_list[new_track_point.get_key()] = new_track_point
         
-        return new_track_point.get_name()
+        return new_track_point.get_key()
         
     def get_all_trackpoints(self):
+        """ Returns a list of the names of all existing trankpoints.
+        
+        @return string[]: List of names of the trackpoints
+        
+        Also crosshair and sample are included.
+        """
+        
         return self.track_point_list.keys()
             
-    def delete_trackpoint(self,trackpointkey = None):        
+    def delete_trackpoint(self,trackpointkey = None):   
+        """ Completely deletes the whole given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        
+        Does not delete the crosshair and sample.
+        """
+        
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             if trackpointkey is 'crosshair' or trackpointkey is 'sample':
                 self.logMsg('You cannot delete the crosshair or sample.', msgType='warning')
@@ -218,6 +247,16 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
         
     def optimise_trackpoint(self,trackpointkey = None):
+        """ Starts the optimisation procedure for the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        
+        This is threaded, so it returns directly. 
+        The function _refocus_done handles the data when the optimisation returns.
+        """
+        
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             self.track_point_list['crosshair'].set_next_point(point=self._confocal_logic.get_position())
             self._current_trackpoint_key = trackpointkey
@@ -229,6 +268,12 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
                 
     def go_to_trackpoint(self, trackpointkey = None):
+        """ Goes to the given trackpoint and saves it as the current one.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        """
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             self._current_trackpoint_key = trackpointkey
             x,y,z = self.track_point_list[trackpointkey].get_last_point()
@@ -239,6 +284,13 @@ class TrackpointManagerLogic(GenericLogic):
             return -1
             
     def get_last_point(self, trackpointkey = None):
+        """ Gets the most recent coordinates of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_last_point()
         else:
@@ -247,6 +299,13 @@ class TrackpointManagerLogic(GenericLogic):
             return [-1.,-1.,-1.]
                 
     def get_name(self, trackpointkey = None):
+        """ Gets the name of the given trackpoint.
+        
+        @param string trackpointkey: the key of the trackpoint
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_name()
         else:
@@ -407,17 +466,20 @@ class TrackpointManagerLogic(GenericLogic):
             
         if self._current_trackpoint_key != None and self._current_trackpoint_key in self.track_point_list.keys():
             sample_shift=positions-self.track_point_list[self._current_trackpoint_key].get_last_point()
+            sample_shift+=self.track_point_list['sample'].get_last_point()
             self.track_point_list['sample'].set_next_point(point=sample_shift)
             self.track_point_list[self._current_trackpoint_key].\
                     set_next_point(point=positions)
-                                    
+            
+            if (not (self._current_trackpoint_key is 'crosshair')) and (not (self._current_trackpoint_key is 'sample')):
+                self.signal_refocus_finished.emit()
+                
             if self.go_to_crosshair_after_refocus:
+                temp_key=self._current_trackpoint_key
                 self.go_to_trackpoint(trackpointkey = 'crosshair')
+                self._current_trackpoint_key = temp_key
             else:
                 self.go_to_trackpoint(trackpointkey = self._current_trackpoint_key)
-            
-            if self._current_trackpoint_key != 'crosshair' and self._current_trackpoint_key != 'sample':
-                self.signal_refocus_finished.emit()
             return 0
         else:
             self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_key), 
