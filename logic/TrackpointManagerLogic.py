@@ -11,6 +11,10 @@ import time
 class TrackPoint(object):
     """ unstable: Kay Jahnke    
     The actual individual trackpoint is saved in this generic object.
+
+    TODO: (Lachlan) thinks it would be better vocabulary to change name from "trackpoint" to "point of interest (POI)".  This is a better fit with the metaphor of "sample maps" and "regions of interest".  Not all POIs will be "tracked".  
+
+    TODO: In general, we are working to make the code naturally match the usage metaphor of "sample maps" with fluorescent spots at certain positions.  The spots should normally keep a fixed position relative to each other, but the sample itself shifts.
     """
     
     def __init__(self, point = None, name=None):
@@ -26,8 +30,19 @@ class TrackPoint(object):
             self._position_time_trace.append(np.array([self._creation_time,point[0],point[1],point[2]]))
         if name != None:
             self._name=name
+
+    def set_pos_in_sample(self, point = None):
+        '''Defines the position of the trackpoint relative to the sample, 
+        allowing a sample map to be constructed that matches the user's concept.
+        '''
+
+        # Choose reference point for sample coordinates.  1st trackpoint?  Scanner (0,0,0)?
+        # Define position of current POI in sample coordinates.  This involves vector subtraction with the *latest* known sample position.
+
+        # Once set, this "pos in sample" will not be altered unless the user wants to manually redefine this POI (for example, they put the POI in the wrong place.
+        pass
                 
-    def set_next_point(self, point = None):
+    def set_next_point(self, point = None): #TODO: rename to set_new_position, "point" is confusing with "trackpoint"
         """ Adds another trackpoint.
         
         @param float[3] point: position coordinates of the trackpoint
@@ -43,7 +58,7 @@ class TrackPoint(object):
         else:
             return -1
     
-    def get_last_point(self):
+    def get_last_point(self): #TODO: rename to get_last_position, "point" is confusing with "trackpoint".
         """ Returns the most current trackpoint.
         
         @return float[3]: the position of the last point
@@ -96,7 +111,7 @@ class TrackPoint(object):
         
         return np.array(self._position_time_trace)
         
-    def delete_last_point(self):
+    def delete_last_point(self): #Rename to delete_last_position
         """ Delete the last poitn in the trace.
         
         @return float[4]: the point just deleted.
