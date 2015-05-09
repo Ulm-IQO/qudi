@@ -3,6 +3,7 @@
 
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
+from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time
@@ -46,7 +47,7 @@ class ODMRLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
-        self._scan_counter = 0
+        self._odmrscan_counter = 0
         self._clock_frequency = 200
         
         self.MW_frequency = 2870.    #in MHz
@@ -54,7 +55,10 @@ class ODMRLogic(GenericLogic):
         self.MW_start = 2700.        #in MHz
         self.MW_stop = 3000.         #in MHz
         self.MW_step = 5.            #in MHz
-                       
+        
+        self.threadlock = Mutex()
+        
+        self.stopRequested = False
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -64,18 +68,59 @@ class ODMRLogic(GenericLogic):
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
         
         self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
-            
-    
+        
+    def set_clock_frequency(self, clock_frequency):
+        """Sets the frequency of the clock
+        
+        @param int clock_frequency: desired frequency of the clock 
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self._clock_frequency = int(clock_frequency)
+        #checks if scanner is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            return 0
+                      
+        
     def start_ODMR(self):
-        self._scan_counter = 0
+        self.lock()
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
+        
+        self._ODMR_counter.set_up_odmr_clock(clock_frequency = self._clock_frequency)
+        self._ODMR_counter.set_up_odmr()
+        
+    def kill_ODMR(self):  
+        self._ODMR_counter.close_odmr()
+        self._ODMR_counter.close_odmr_clock()
+        return 0          
+    
+    def start_ODMR_scan(self):
+        self.odmrscan_counter = 0
+        self._initialize_ODMR_plot()
+        self._initialize_ODMR_matrix()
+        
+        self._ODMR_counter.set_odmr_length()
+        x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
+        
+        self._MW_device.set_list(x,self.MW_power)
+        self._MW_device.list_on()
         
         self.signal_next_line.emit()
         
         
-    def stop_ODMR(self):
-        pass        
+    def stop_ODMR_scan(self):
+        """Stop the ODMR scan
+        @return int: error code (0:OK, -1:error)
+        """
+        with self.threadlock:
+            if self.getState() == 'locked':
+                self.stopRequested = True
+            
+        return 0        
     
     
     def _initialize_ODMR_plot(self):
@@ -88,15 +133,17 @@ class ODMRLogic(GenericLogic):
     
     def _scan_ODMR_line(self):
         
+        if self.stopRequested:
+            with self.threadlock:
+                self.kill_scanner()
+                self.stopRequested = False
+                self.unlock()
+                self.signal_ODMR_plot_updated.emit() 
+                self.signal_ODMR_matrix_updated.emit() 
+                return
         
-        self._scan_counter += 1
-        
-        if self._scan_counter > 50: #TODO: exit condition
-            self.stop_ODMR()
-            
+        self._odmrscan_counter += 1
         self.signal_next_line.emit()
-        
-    
 
     def set_power(self, power = None):
         """Forwarding the desired new power from the GUI to the MW source.
