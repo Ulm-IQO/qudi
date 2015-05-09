@@ -56,6 +56,8 @@ class ODMRLogic(GenericLogic):
         self.MW_stop = 3000.         #in MHz
         self.MW_step = 5.            #in MHz
         
+        self.NumberofLines = 50 
+        
         self.threadlock = Mutex()
         
         self.stopRequested = False
@@ -82,8 +84,7 @@ class ODMRLogic(GenericLogic):
         if self.getState() == 'locked':
             return -1
         else:
-            return 0
-                      
+            return 0                 
         
     def start_ODMR(self):
         self.lock()
@@ -100,14 +101,15 @@ class ODMRLogic(GenericLogic):
     
     def start_ODMR_scan(self):
         self.odmrscan_counter = 0
+        
+        self.MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
+        self._ODMR_counter.set_odmr_length(len(self.MW_frequency_list))
+        
+        self._MW_device.set_list(self.MW_frequency_list,self.MW_power)
+        self._MW_device.list_on()
+        
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
-        
-        self._ODMR_counter.set_odmr_length()
-        x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
-        
-        self._MW_device.set_list(x,self.MW_power)
-        self._MW_device.list_on()
         
         self.signal_next_line.emit()
         
@@ -124,25 +126,31 @@ class ODMRLogic(GenericLogic):
     
     
     def _initialize_ODMR_plot(self):
-        pass
-    
+        self.ODMR_plot_x = self.MW_frequency_list
+        self.ODMR_plot_y = np.zeros(self.MW_frequency_list.shape)
     
     def _initialize_ODMR_matrix(self):
-        pass
+        self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self.MW_frequency_list)) )
     
     
     def _scan_ODMR_line(self):
         
         if self.stopRequested:
             with self.threadlock:
-                self.kill_scanner()
+                self.kill_ODMR()
                 self.stopRequested = False
                 self.unlock()
                 self.signal_ODMR_plot_updated.emit() 
                 self.signal_ODMR_matrix_updated.emit() 
                 return
+                
+        self._MW_device.reset_listpos()        
+        y = self._ODMR_counter.count_odmr(length=len(self.MW_frequency_list))
         
         self._odmrscan_counter += 1
+        
+        self.signal_ODMR_plot_updated.emit() 
+        self.signal_ODMR_matrix_updated.emit() 
         self.signal_next_line.emit()
 
     def set_power(self, power = None):
