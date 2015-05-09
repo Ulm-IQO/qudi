@@ -137,6 +137,7 @@ class ODMRLogic(GenericLogic):
         
         if self.stopRequested:
             with self.threadlock:
+                self.MW_off()
                 self.kill_ODMR()
                 self.stopRequested = False
                 self.unlock()
