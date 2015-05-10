@@ -31,6 +31,7 @@ from collections import OrderedDict
 import pyqtgraph as pg
 from .Logger import Logger, LOG, printExc
 from .ThreadManager import ThreadManager
+from .Remote import RemoteObjectManager
 from .Base import Base
 
 class Manager(QtCore.QObject):
@@ -171,6 +172,8 @@ class Manager(QtCore.QObject):
             
             self.configDir = os.path.dirname(configFile)
             self.readConfig(configFile)
+
+            self.rm = RemoteObjectManager(self.tm)
             
             self.logger.logMsg('QuDi started.', importance=9)
             
@@ -669,6 +672,9 @@ class Manager(QtCore.QObject):
                     modthread = self.tm.newThread('mod-' + base + '-' + key)
                     self.tree['loaded'][base][key].moveToThread(modthread)
                     modthread.start()
+                if 'remoteaccess' in self.tree['defined'][base][key]:
+                    if self.tree['defined'][base][key]['remoteaccess']:
+                        self.rm.createServer('{0}-{1}'.format(base,key), self.tree['loaded'][base][key])
             except:
                 self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
                 return

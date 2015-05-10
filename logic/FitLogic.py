@@ -8,7 +8,6 @@ from collections import OrderedDict
 
 import numpy as np
 import scipy.optimize as opt#, scipy.stats
-import pylab as plt
 
 #TODO:
 #try smooth as estimator
