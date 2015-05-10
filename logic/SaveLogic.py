@@ -7,6 +7,7 @@ import os
 import sys
 import inspect
 import time
+import numpy as np
 
 class FunctionImplementationError(Exception):
     def __init__(self, value):
@@ -76,7 +77,7 @@ class SaveLogic(GenericLogic):
     
     
     def save_data(self, data, filepath, parameters=None, filename=None, 
-                  as_text=False, as_xml=True, precision=None, delimiter=None):
+                  as_text=True, as_xml=False, precision=None, delimiter=None):
             """ General save routine for data.
 
               @param dict data: Any dictonary with a keyword of the data
@@ -112,7 +113,7 @@ class SaveLogic(GenericLogic):
                                        '323.423842' is saved as '323.423'.
                                        Default is precision = 3.
 
-              @param string delimiter: optional, insert here the di  
+              @param string delimiter: optional, insert here the delimiter.
 
 
 
@@ -154,60 +155,213 @@ class SaveLogic(GenericLogic):
             module_name =  mod.__name__.split('.')[-1]  # that will extract the 
                                                         # name of the class.
 
+            # check whether the given directory path does exist. If not, the
+            # file will be saved anyway in the unspecified directory.
 
             if not os.path.exists(filepath):
                 filepath = self.get_daily_directory('UNSPECIFIED_'+str(module_name))
+                self.logMsg('No Module name specified! Please correct this! '
+                            'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.', 
+                            msgType='warning', importance=7)
 
 
+            # create a unique name for the file, if no name was passed:
+            if filename == None:
+                filename = time.strftime('%Hh%Mm%Ss') + module_name + '.dat'
+                
 
-            if len(data)==1:
-
-                pure_data = data[list(data)[0]]   # get the pure data from the 
-                                                # dictionary
-                if len(np.shape(pure_data)) ==1:
-
-                    self._save_1d_trace_as_text(trace_data=pure_data, 
-                                                trace_name=list(data)[0],
-                                                )
-
-                self._save_1d_trace_as_text(data)
-
-            else:
-                pass
+            # open the file
+            textfile = open(filepath+'\\'+filename,'wb')
 
 
+            # write the paramters if specified:
+            textfile.write('# Saved Data from the class ' +module_name+
+                                   ' on '+ time.strftime('%d.%m%.%Y at %Hh%Mm%Ss.\n') )
+            textfile.write('#\n')
+            textfile.write('# Parameters:\n')
+            textfile.write('# ===========\n')
+            textfile.write('#\n')
+            
+            
+            if parameters != None:
+                
+                # check whether the format for the parameters have a dict type:
+                if type(parameters) is dict:
+                    for entry in parameters:
+                        textfile.write('# '+str(entry)+': '+str(parameters[entry])+'\n')
+                
+                
+                # make a hardcore string convertion and try to save the 
+                # parameters directly:
+                else:
+                    self.logMsg('The parameters are not passed as a dictionary! '
+                                'The SaveLogic will try to save the paramters '
+                                'directely.', msgType='error', importance=9)
+                    textfile.write('# not specified parameters: '+str(parameters)+'\n')
+                
+                
+            textfile.write('#\n')
+            textfile.write('# Data:\n')
+            textfile.write('# =====\n')
+            # check the input data:
 
             
+            # go through each data in t
+            if len(data)==1:
+                key_name = list(data.keys())[0]
+                
+                # check whether the data is only a 1d trace
+                if len(np.shape(data[key_name])) == 1:
+                        
+                    self.save_1d_trace_as_text(trace_data = data[key_name], 
+                                                trace_name=entry,
+                                                opened_file =textfile,
+                                                precision=precision)
+                                                    
+                # check whether the data is only a 2d array                                
+                elif len(np.shape(data[key_name])) == 2:
+                    
+                    key_name_array = key_name.split(',')                    
+                    
+                    self.save_2d_points_as_text(trace_data = data[key_name],
+                                                trace_name = key_name_array,
+                                                openend_file=textfile,
+                                                precision=precision,
+                                                delimiter=delimiter)
+                elif len(np.shape(data[key_name])) == 3:
+                    
+                    self.logMsg('Savelogic has no implementation for 3 '
+                                'dimensional arrays. The data is saved in a '
+                                'raw fashion.', msgType='warning', importance=7)
+                    textfile.write(+str(data[key_name]))
+                
+                else:
+                    
+                    self.logMsg('Savelogic has no implementation for 4 '
+                                'dimensional arrays. The data is saved in a '
+                                'raw fashion.', msgType='warning', importance=7)
+                    textfile.write(+str(data[key_name]))
+                    
+                    
+            else:
+                key_list = list(data)
 
-    def _save_1d_trace_as_text(self, trace_data, trace_name):
-        print('Not implemented yet.')
-        raise FunctionImplementationError('SaveLogic>_save_1d_trace_as_text')
-        return -1
+                trace_1d_flag = True                
+                
+                data_traces = []
+                for entry in key_list:
+                    data_traces.append(data[entry])
+                    if len(data[entry]) > 1:
+                        trace_1d_flag = False
+                    
+                    
+                if trace_1d_flag:
+                    
+                    self.save_N_1d_traces_as_text(trace_data = data_traces,
+                                                  trace_name = key_list,
+                                                  openend_file=textfile,
+                                                  precision=precision,
+                                                  delimiter=delimiter)
+                else:
+                    # go through each passed element again and treat them as 
+                    # independant, i.e. each element is saved in an extra file.
+                    # That is an recursive procedure:
+                
+                    for entry in key_list:
+                        self.save_data(data = {entry:data[entry]}, 
+                                       filepath = filepath, 
+                                       parameters=parameters, 
+                                       filename=filename[:-4]+'_'+entry+'.dat',
+                                       as_text=True, as_xml=False, 
+                                       precision=precision, delimiter=delimiter)                            
+
+
+            textfile.close()
+            
+
+
+
+
+
+    def save_1d_trace_as_text(self, trace_data, trace_name, openend_file=None,
+                              filepath=None, filename=None, precision=':.3f'):
+        """An independant method, which can save a 1d trace. 
+        
+        If you call this method but you are respondible, that the passed 
+        optional parameters are correct."""
+        
+        close_file_flag = False        
+        
+        if openend_file == None:
+            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+            close_file_flag = True
+            
+            
+        openend_file.write('# '+str(trace_name)+'\n')
+        
+        for entry in trace_data:
+            openend_file.write(str('{0'+precision+'}\n').format(entry))
+            
+            
+        if close_file_flag:
+            openend_file.close()
         
 
-    def _save_N_1d_traces_as_text(self,):
-        print('Not implemented yet.')
-        raise FunctionImplementationError('SaveLogic>_save_N_1d_traces_as_text')
-        return -1
+    def save_N_1d_traces_as_text(self, trace_data, trace_name, openend_file=None,
+                              filepath=None, filename=None, precision=':.3f',
+                              delimiter='\t'):
+        
+        close_file_flag = False        
+        
+        if openend_file == None:
+            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+            close_file_flag = True
+        
+        if trace_name != None:
+            openend_file.write('# ')
+            for name in trace_name:
+                openend_file.write(name + delimiter )                          
+            openend_file.write('\n') 
+        
+        max_trace_length = max(np.shape(trace_data))   
 
-    def _save_2d_points_as_text(self,):
-        print('Not implemented yet.')
-        raise FunctionImplementationError('SaveLogic>_save_2d_points_as_text')
-        return -1
+        for row in range(max_trace_length):
+            for column in range(len(trace_data)):
+                try:
+                    openend_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[row][column]))
+                except:
+                    openend_file.write(str('{0}'+delimiter).format('NaN'))
+            openend_file.write('\n')
+            
+        if close_file_flag:
+            openend_file.close()  
 
-    def _save_matrix_as_text():
-        """
-        x_[column][row]
-        """
-        print('Not implemented yet.')
-        raise FunctionImplementationError('SaveLogic>_save_matrix_as_text')
-        return -1
+    def save_2d_points_as_text(self,trace_data, trace_name=None, openend_file=None,
+                              filepath=None, filename=None, precision=':.3f',
+                              delimiter='\t'):
+        
+        close_file_flag = False        
+        
+        if openend_file == None:
+            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+            close_file_flag = True
+            
+        # write the trace names:
+        if trace_name != None:
+            openend_file.write('# ')
+            for name in trace_name:
+                openend_file.write(name + delimiter )                          
+            openend_file.write('\n')  
+
+        for row in trace_data:
+            for entry in row:
+                openend_file.write(str('{0'+precision+'}'+delimiter).format(entry)) 
+            openend_file.write('\n')    
+            
+        if close_file_flag:
+            openend_file.close()      
 
 
-    def _save_general_2d_data_as_text():
-        print('Not implemented yet.')
-        raise FunctionImplementationError('SaveLogic>_save_general_2d_data_as_text')
-        return -1
 
     def _save_1d_traces_as_xml():
         
@@ -328,7 +482,7 @@ class SaveLogic(GenericLogic):
                                 'file does not exist. Using default for {0} '
                                 'system instead. The directory\n{1} was '
                                 'created'.format(self.os_system,self.data_dir), 
-                                msgType='status', importance=5)
+                                msgType='status', importance=3)
                                 
         # That is now the current directory:
         current_dir = self.data_dir +time.strftime("\\%Y\\%m")
@@ -371,7 +525,7 @@ class SaveLogic(GenericLogic):
         if module_name == None:
             self.logMsg('No Module name specified! Please correct this! Data '
                         'are saved in the \'UNSPECIFIED_<module_name>\' folder.', 
-                                msgType='status', importance=5)
+                        msgType='warning', importance=7)
                   
             frm = inspect.stack()[1]    # try to trace back the functioncall to
                                         # the class which was calling it.
@@ -386,44 +540,4 @@ class SaveLogic(GenericLogic):
         if not os.path.exists(dir_path):        
             os.makedirs(dir_path)
         return dir_path
-
-
-
-
-#    def pack(data):
-#      # create the result element
-#      result = xml.Element("Array")
-#    
-#      # report the dimensions
-#      ref = data
-#      while isinstance(ref, list):
-#        xml.SubElement(result, "Dimsize").text = str(len(ref))
-#        ref = ref[0]
-#    
-#      # flatten the data
-#      while isinstance(data[0], list):
-#        data = sum(data, [])
-#    
-#      # pack the data
-#      for d in data:
-#        result.append(pack_simple(d))
-#    
-#      # return the result
-#      return result    
-
-
-# from Manager:
-
-
-
-        
-#     def get_dll_dir(self):
-#         """ Returns the absolut path to the directory of our dlls.
-        
-#           @return string: path to the dll directory       
-#         """
-#         dll_path = self.get_main_dir() + '\\hardware\\dll'
-#         self.logMsg('Filepath request to dll was called.',importance=0)
-        
-#         return dll_path
-#       
+ 
