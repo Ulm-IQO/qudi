@@ -663,11 +663,11 @@ class Manager(QtCore.QObject):
         """
         if 'module' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
-                if not isinstance(self.tree['defined'][base][key], str):
+                if not isinstance(self.tree['defined'][base][key]['remote'], str):
                     self.logger.logMSG('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
                     return
                 try:
-                    instance = self.rm.getRemoteModule()
+                    instance = self.rm.getRemoteModule(self.tree['defined'][base][key]['remote'])
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][baseName][key] = instance

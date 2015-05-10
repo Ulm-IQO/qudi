@@ -26,6 +26,10 @@ class RemoteObjectManager(QtCore.QObject):
         self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
         self.logger.logMsg('Module {0} registered as {1} and as {0}-{2} at nameserver {3}'.format(name, server.uri, self.hostname, self.nameserver._pyroUri), msgType='status')
 
+    def getRemoteModule(self, name)
+        uri = self.nameserver.lookup(name)
+        return Pyro4.Proxy(uri)
+
 
 class PyroModuleServer(QtCore.QObject):
     def __init__(self, module):
