@@ -173,7 +173,7 @@ class Manager(QtCore.QObject):
             self.configDir = os.path.dirname(configFile)
             self.readConfig(configFile)
 
-            self.rm = RemoteObjectManager(self.tm)
+            self.rm = RemoteObjectManager(self.tm, self.logger)
             
             self.logger.logMsg('QuDi started.', importance=9)
             
@@ -662,22 +662,41 @@ class Manager(QtCore.QObject):
           
         """
         if 'module' in self.tree['defined'][base][key]:
-            try:
-                modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
-                pkgName = re.escape(modObj.__package__)
-                modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
-                ## start main loop for qt objects
-                if base == 'logic':
-                    modthread = self.tm.newThread('mod-' + base + '-' + key)
-                    self.tree['loaded'][base][key].moveToThread(modthread)
-                    modthread.start()
-                if 'remoteaccess' in self.tree['defined'][base][key]:
-                    if self.tree['defined'][base][key]['remoteaccess']:
+            if 'remote' in self.tree['defined'][base][key]:
+                if not isinstance(self.tree['defined'][base][key], str):
+                    self.logger.logMSG('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
+                    return
+                try:
+                    instance = self.rm.getRemoteModule()
+                    with self.lock:
+                        if base in ['hardware', 'logic', 'gui']:
+                            self.tree['loaded'][baseName][key] = instance
+                        else:
+                            raise Exception('You are trying to cheat the '
+                                'system with some category {0}'.format(baseName) )
+
+                    if base == 'logic':
+                        modthread = self.tm.newThread('mod-' + base + '-' + key)
+                        self.tree['loaded'][base][key].moveToThread(modthread)
+                        modthread.start()                
+                except:
+                    self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+            else:
+                try:
+                    modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
+                    pkgName = re.escape(modObj.__package__)
+                    modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                    self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
+                    ## start main loop for qt objects
+                    if base == 'logic':
+                        modthread = self.tm.newThread('mod-' + base + '-' + key)
+                        self.tree['loaded'][base][key].moveToThread(modthread)
+                        modthread.start()
+                    if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
                         self.rm.createServer('{0}-{1}'.format(base,key), self.tree['loaded'][base][key])
-            except:
-                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
-                return
+                except:
+                    self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+                    return
         else:
             self.logger.logMsg('Missing module declaration in configuration: {0}.{1}'.format(base, key), msgType='error')
 
