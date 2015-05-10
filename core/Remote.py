@@ -13,18 +13,19 @@ class RemoteObjectManager(QtCore.QObject):
         self.nameserver = Pyro4.locateNS()
         self.tm = threadManager
         self.logger = logger
+        self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
 
     def refresNameserver(self):
         self.nameserver = Pyro4.locateNS()
 
     def createServer(self, name, obj):
         thread = self.tm.newThread('pyro-{0}'.format(name))
-        server = PyroModuleServer(obj)
+        server = PyroModuleServer(self.hostname, obj)
         server.moveToThread(thread)
         thread.started.connect(server.run)
         thread.start()
         self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
-        self.logger.logMsg('Module {0} registered as {1} and as {0}-{2} at nameserver {3}'.format(name, server.uri, self.hostname, self.nameserver._pyroUri), msgType='status')
+        self.logger.logMsg('Module {0} registered as {1} and as {2}-{0} at nameserver {3}'.format(name, server.uri, self.hostname, self.nameserver._pyroUri), msgType='status')
 
     def getRemoteModule(self, name):
         uri = self.nameserver.lookup(name)
@@ -32,10 +33,10 @@ class RemoteObjectManager(QtCore.QObject):
 
 
 class PyroModuleServer(QtCore.QObject):
-    def __init__(self, module):
+    def __init__(self, host, module):
         super().__init__()
         Pyro4.config.COMMTIMEOUT = 0.5
-        self.daemon = Pyro4.Daemon()
+        self.daemon = Pyro4.Daemon(host=host)
         self.uri = self.daemon.register(module)
 
     def run(self):

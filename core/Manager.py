@@ -670,10 +670,10 @@ class Manager(QtCore.QObject):
                     instance = self.rm.getRemoteModule(self.tree['defined'][base][key]['remote'])
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
-                            self.tree['loaded'][baseName][key] = instance
+                            self.tree['loaded'][base][key] = instance
                         else:
                             raise Exception('You are trying to cheat the '
-                                'system with some category {0}'.format(baseName) )
+                                'system with some category {0}'.format(base) )
 
                     if base == 'logic':
                         modthread = self.tm.newThread('mod-' + base + '-' + key)
