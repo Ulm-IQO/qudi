@@ -7,11 +7,12 @@ import socket
 
 
 class RemoteObjectManager(QtCore.QObject):
-    def __init__(self, threadManager):
+    def __init__(self, threadManager, logger):
         super().__init__()
         self.hostname = socket.gethostname()
         self.nameserver = Pyro4.locateNS()
         self.tm = threadManager
+        self.logger = logger
 
     def refresNameserver(self):
         self.nameserver = Pyro4.locateNS()
@@ -23,7 +24,7 @@ class RemoteObjectManager(QtCore.QObject):
         thread.started.connect(server.run)
         thread.start()
         self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
-        
+        self.logger.logMsg('Module {0} registered as {1} and as {0}-{2} at nameserver {3}'.format(name, server.uri, self.hostname, self.nameserver._pyroUri), msgType='status')
 
 
 class PyroModuleServer(QtCore.QObject):
