@@ -51,11 +51,12 @@ class ODMRLogic(GenericLogic):
         self._clock_frequency = 200
         
         self.MW_frequency = 2870.    #in MHz
-        self.MW_power = -40.         #in dBm
+        self.MW_power = -20.         #in dBm
         self.MW_start = 2700.        #in MHz
         self.MW_stop = 3000.         #in MHz
         self.MW_step = 5.            #in MHz
         
+        #number of lines in the matrix plot
         self.NumberofLines = 50 
         
         self.threadlock = Mutex()
@@ -70,6 +71,10 @@ class ODMRLogic(GenericLogic):
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
         
         self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
+        
+        #setting to low power and turning off the input during activation
+        self.set_frequency(frequency = -20.)
+        self.MW_off()
         
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -102,10 +107,10 @@ class ODMRLogic(GenericLogic):
     def start_ODMR_scan(self):
         self.odmrscan_counter = 0
         
-        self.MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
-        self._ODMR_counter.set_odmr_length(len(self.MW_frequency_list))
+        self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
+        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
         
-        self._MW_device.set_list(self.MW_frequency_list,self.MW_power)
+        self._MW_device.set_list(self._MW_frequency_list,self.MW_power)
         self._MW_device.list_on()
         
         self._initialize_ODMR_plot()
@@ -120,21 +125,26 @@ class ODMRLogic(GenericLogic):
         """
         with self.threadlock:
             if self.getState() == 'locked':
-                self.stopRequested = True
-            
+                self.stopRequested = True            
         return 0        
     
     
     def _initialize_ODMR_plot(self):
-        self.ODMR_plot_x = self.MW_frequency_list
-        self.ODMR_plot_y = np.zeros(self.MW_frequency_list.shape)
+        '''Initializing the ODMR line plot.
+        '''
+        self.ODMR_plot_x = self._MW_frequency_list
+        self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
     
     def _initialize_ODMR_matrix(self):
-        self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self.MW_frequency_list)) )
+        '''Initializing the ODMR matrix plot.
+        '''
+        self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self._MW_frequency_list)) )
     
     
     def _scan_ODMR_line(self):
-        
+        '''Scans one line in ODMR.
+        (from MW_start to MW_stop in steps of MW_step)
+        '''        
         if self.stopRequested:
             with self.threadlock:
                 self.MW_off()
@@ -146,13 +156,14 @@ class ODMRLogic(GenericLogic):
                 return
                 
         self._MW_device.reset_listpos()        
-        y = self._ODMR_counter.count_odmr(length=len(self.MW_frequency_list))
+        y = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
         
         self._odmrscan_counter += 1
         
         self.signal_ODMR_plot_updated.emit() 
         self.signal_ODMR_matrix_updated.emit() 
         self.signal_next_line.emit()
+
 
     def set_power(self, power = None):
         """Forwarding the desired new power from the GUI to the MW source.
