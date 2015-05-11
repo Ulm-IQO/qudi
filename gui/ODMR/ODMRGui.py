@@ -13,7 +13,7 @@ import numpy as np
 from collections import OrderedDict
 from core.Base import Base
 from gui.ODMR.ODMRGuiUI import Ui_MainWindow
-from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
+#from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -30,10 +30,10 @@ class ODMRMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
-    def __init__(self):
-        QtGui.QDialog.__init__(self)
-        self.setupUi(self)
+#class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+#    def __init__(self):
+#        QtGui.QDialog.__init__(self)
+#        self.setupUi(self)
 
             
                
@@ -85,7 +85,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
         
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
-        print("ODMR logic is", self._optimiser_logic)
+        print("ODMR logic is", self._odmr_logic)
         
         self._save_logic = self.connector['in']['savelogic']['object']
         print("Save logic is", self._save_logic)  
@@ -93,7 +93,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the 
         # GUI element:
         self._mw = ODMRMainWindow()
-        self._sd = ODMRSettingDialog()
+#        self._sd = ODMRSettingDialog()
         
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy)
