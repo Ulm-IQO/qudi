@@ -50,11 +50,11 @@ class LogWindow(Base):
         self.mw.setWindowIcon(QtGui.QIcon(os.path.join(path, 'logIcon.png')))
 
         if 'stylesheet' in self.getConfiguration():
-            stylesheetpath = os.path.join(self.getConfigDirectory(), self.getConfiguration()['stylesheet'])
+            stylesheetpath = os.path.join(self.get_main_dir(), 'artwork', 'styles', 'log', self.getConfiguration()['stylesheet'])
         else:
-            stylesheetpath = os.path.join(self.getConfigDirectory(), '..', 'styles', 'log', 'logDark.qss')
+            stylesheetpath = os.path.join(self.get_main_dir(), 'artwork', 'styles', 'log', 'logDark.qss')
         if not os.path.isfile(stylesheetpath):
-            self.logger.print_logMsg('Stylesheet not found at {0}'.format(stylesheetpath), importance=6, msgType='warning')
+            self.logMsg('Stylesheet not found at {0}'.format(stylesheetpath), importance=6, msgType='warning')
             self.stylesheet = ''
         else:
             stylesheetfile = open(stylesheetpath)

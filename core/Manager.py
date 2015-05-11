@@ -209,7 +209,14 @@ class Manager(QtCore.QObject):
             if len(self.tree['loaded']['logic']) == 0 and len(self.tree['loaded']['gui']) == 0 :
                 self.logger.logMsg('No modules loaded during startup. Not '
                                    'is happening.', importance=9)
-            
+    def getMainDir(self):
+        """Returns the absolut path to the directory of the main software.
+        
+             @return string: path to the main tree of the software
+        
+        """ 
+        return os.path.abspath( os.path.join( os.path.dirname(__file__), ".." ) )
+
     def _getConfigFile(self):
         """ Search all the default locations to find a configuration file.
           
@@ -328,7 +335,7 @@ class Manager(QtCore.QObject):
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
 
                         elif m == 'stylesheet':
-                            stylesheetpath = os.path.join(self.configDir, cfg['global']['stylesheet'])
+                            stylesheetpath = os.path.join(self.getMainDir(), 'artwork', 'styles', 'application', cfg['global']['stylesheet'])
                             if not os.path.isfile(stylesheetpath):
                                 self.logger.print_logMsg("Stylesheet not found at {0}".format(stylesheetpath), importance=6, msgType='warning')
                                 continue
