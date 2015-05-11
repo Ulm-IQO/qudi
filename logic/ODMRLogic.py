@@ -76,6 +76,9 @@ class ODMRLogic(GenericLogic):
         self.set_frequency(frequency = -20.)
         self.MW_off()
         
+        self._initialize_ODMR_plot()
+        self._initialize_ODMR_matrix()
+        
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
         
