@@ -10,6 +10,8 @@ import numpy as np
 from collections import OrderedDict
 from core.Base import Base
 from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
+
+# ============= HowTo Convert the corresponding *.ui file =====================
 # To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
@@ -20,9 +22,9 @@ from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalWindowTemplate.ui > ConfocalGuiUI.py
 #
 # to convert to ConfocalGuiUI.py.
+# =============================================================================
 
-
-
+# set manually the background color in hex code according to our color scheme: 
 pg.setConfigOption('background', QtGui.QColor('#222'))
 
 
@@ -30,12 +32,25 @@ pg.setConfigOption('background', QtGui.QColor('#222'))
 
 
 class ColorBar(pg.GraphicsObject):
- 
-    def __init__(self, cmap, width, height, ticks=None, tick_labels=None, label=None):
+    """ Create a ColorBar according to a previously defined color map.
+        
+    @param cmap pyqtgraph colormap object: a defined colormap
+    @param float width: width of the colorbar in x direction, starting from
+                        the origin.
+    @param float height: height of the colorbar in y direction, starting 
+                         from the origin.
+    @param numpy array ticks: optional, definition of the relative ticks marks
+    @param string tick_labels: optional, a c-like format definition for the output of
+                               the ticks.
+    @param string label: optional, label for the colorbar.
+    """
+    
+    def __init__(self, cmap, width, height, ticks=None, tick_labels=None,
+                 label=None):
+
         pg.GraphicsObject.__init__(self)
- 
          
-        # handle args
+        # handle the passed arguments:
         label = label or ''
         w, h = width, height
         stops, colors = cmap.getStops('float')
@@ -76,9 +91,13 @@ class ColorBar(pg.GraphicsObject):
  
         # compute rect bounds for underlying mask
         self.zone = mintx - 12.0, -15.0, br.width() - mintx, h + br.height() + 30.0
-        
+       
     def paint(self, p, *args):
-        # paint underlying mask
+        """ Paint the underlying mask.
+
+        @param QPainter p: a QPainter object, which is used to set the color
+        """
+        
         p.setPen(pg.QtGui.QColor('#222'))
         p.setBrush(pg.QtGui.QColor('#222'))
         p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
@@ -87,11 +106,20 @@ class ColorBar(pg.GraphicsObject):
         p.drawPicture(0, 0, self.pic)
         
     def boundingRect(self):
+        """ Get the position, width and hight of the displayed object. """
         return pg.QtCore.QRectF(self.pic.boundingRect())
 
-
+#FIXME: A refresh function for the colorbar has to be implemented!
 
 class CustomViewBox(pg.ViewBox):
+    """ Predefine the view region and set what interaction are allowed. 
+    
+        Test to create a custom ViewBox and add that to the plot items in order
+        to enable a zoom box with the right mouse click, while holding the 
+        Control Key. Right now it is not working with that GUI configuration.
+        It has to be figured out how to include the ViewBox.
+    
+    """
     def __init__(self, *args, **kwds):
         pg.ViewBox.__init__(self, *args, **kwds)
         self.setMouseMode(self.RectMode)
@@ -113,10 +141,13 @@ class CustomViewBox(pg.ViewBox):
 
 
 class CrossROI(pg.ROI):
-    """Create a Region of interest, which is a zoomable rectangular. 
+    """ Create a Region of interest, which is a zoomable rectangular. 
     
-        Have a look at: 
-        http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
+    @param float pos: optional parameter to set the position
+    @param float size: optional parameter to set the size of the roi
+    
+    Have a look at: 
+    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
     """
     
     def __init__(self, pos, size, **args):
@@ -125,13 +156,13 @@ class CrossROI(pg.ROI):
         self.addTranslateHandle(center)
 
 class CrossLine(pg.InfiniteLine):
-    """ Construct one line for the Crosshair in th plot.
+    """ Construct one line for the Crosshair in the plot.
 
-      @param float pos: optional parameter to set the position
-      @param float angle: optional parameter to set the angle of the line
-      @param dict pen: Configure the pen.
+    @param float pos: optional parameter to set the position
+    @param float angle: optional parameter to set the angle of the line
+    @param dict pen: Configure the pen.
 
-      For additional options consider the documentation of pyqtgraph.InfiniteLine
+    For additional options consider the documentation of pyqtgraph.InfiniteLine
 
     """
     
@@ -143,7 +174,7 @@ class CrossLine(pg.InfiniteLine):
         """
         Run this function to adjust the position of the Crosshair-Line
     
-          @param object extroi: external roi
+        @param object extroi: external roi object from pyqtgraph
         """
         if self.angle == 0:
             self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
@@ -153,6 +184,7 @@ class CrossLine(pg.InfiniteLine):
         
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+    """Mainwindow based on the *.ui file. """
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
@@ -160,11 +192,7 @@ class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         
 
 class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
-    """
-    Main Confocal Class for xy and xz scans
-    """
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
+    """ Main Confocal Class for xy and xz scans. """
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -202,12 +230,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
           
-          @param class e: event class from Fysom
+        @param class e: event class from Fysom
 
 
         This init connects all the graphic modules, which were created in the
-        *.ui file and configures the event handling between the modules.
-        
+        *.ui file and configures the event handling between the modules. 
+        Moreover it sets default values.
         """
         
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
@@ -216,14 +244,17 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)
         
-        self._tracker_logic = self.connector['in']['optimiserlogic1']['object']
-#        print("Tracking logic is", self._tracker_logic)
+        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
+#        print("Tracking logic is", self._optimiser_logic)
         
         # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
         # GUI element:
         self._mw = ConfocalMainWindow()
         
-        # Get the image for the display from the logic: 
+        # Get the image for the display from the logic. Transpose the received
+        # matrix to get the proper scan. The graphig widget displays vector-
+        # wise the lines and the lines are normally columns, but in our 
+        # measurement we scan rows per row. That's why it has to be transposed.
         arr01 = self._scanning_logic.xy_image[:,:,3].transpose()
         arr02 = self._scanning_logic.xz_image[:,:,3].transpose()
 
@@ -233,45 +264,66 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ini_pos_y_crosshair = len(arr01)/2
         ini_pos_z_crosshair = len(arr02)/2
 
-#        self.cvb1 = CustomViewBox()
-#        self.cvb2 =  CustomViewBox()
-#        self.xy_image.getViewBox().addItem(self.cvb)        
+        # parameters for the signal proxy:
+#        eventlimit = 0.01 # in signals per second
+#        delay_sig = 0.4  # delay of the signal in seconds
         
         
-        # Load the image in the display:
-        
-        
+        # Load the images for xy and xz in the display:
         self.xy_image = pg.ImageItem(arr01)
-        self.xy_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_y_range[1]-self._scanning_logic.image_y_range[0]))
-        self.xz_image = pg.ImageItem(arr02)
-        self.xz_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[0], self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
+        self.xy_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], 
+                                            self._scanning_logic.image_y_range[0], 
+                                            self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], 
+                                            self._scanning_logic.image_y_range[1]-self._scanning_logic.image_y_range[0]))
         
+        self.xz_image = pg.ImageItem(arr02)
+        self.xz_image.setRect(QtCore.QRectF(self._scanning_logic.image_x_range[0], 
+                                            self._scanning_logic.image_z_range[0], 
+                                            self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], 
+                                            self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
+        
+        # Set the state button as ready button as default setting.
         self._mw.ready_StateWidget.click()
 
-        # Add the display item to the xy and xz VieWidget, which was defined in
-        # the UI file.
+        # Add the display item to the xy and xz ViewWidget, which was defined 
+        # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget.addItem(self.xz_image)
     
-    
-        # Create Region of Interest for xy image:
-        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], [len(arr01), len(arr01)], pen={'color': "F0F", 'width': 1},removable=True )
-        # self.roi_xy = CrossROI([100, 100], [10, 10], pen={'color': "00F", 'width': 1},removable=True )
-        
-        # Add to the xy Image Widget
+        # Create Region of Interest for xy image and add to xy Image Widget:
+        self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], 
+                               [len(arr01), len(arr01)], 
+                               pen={'color': "F0F", 'width': 1}, 
+                               removable=True)
         self._mw.xy_ViewWidget.addItem(self.roi_xy)
         
-        # create horizontal and vertical line in xy image
-        self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle= 0, pen={'color': "F0F", 'width': 1} )
-        self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, angle=90, pen={'color': "F0F", 'width': 1} )
+        # create horizontal and vertical line as a crosshair in xy image:
+        self.hline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, 
+                                  angle= 0, pen={'color': "F0F", 'width': 1} )
+        self.vline_xy = CrossLine(pos=self.roi_xy.pos()+self.roi_xy.size()*0.5, 
+                                  angle=90, pen={'color': "F0F", 'width': 1} )
 
         # connect the change of a region with the adjustment of the crosshair:
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
 
+
+        
+
+
+        # connect the change of a region with the adjustment of the sliders:
+        # the proxy signals for that:
+#        self.proxy_roi_xy_to_slider_x = pg.SignalProxy(self.roi_xy.sigRegionChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.slider_x_adjust)
+#        self.proxy_roi_xy_to_slider_y = pg.SignalProxy(self.roi_xy.sigRegionChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.slider_y_adjust)
+        # the normal signal connection for that:
         self.roi_xy.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xy.sigRegionChanged.connect(self.slider_y_adjust)
-
 
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
@@ -282,51 +334,66 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_ViewWidget.enableAutoRange()
 #        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
 
-        # create Region of Interest for xz image:
-        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], [len(arr02)/10, len(arr02)/10], pen={'color': "F0F", 'width': 1},removable=True )
-
-        # Add to the xz Image Widget
+        # Create Region of Interest for xz image and add to xy Image Widget:
+        self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], 
+                               [len(arr02)/10, len(arr02)/10], 
+                               pen={'color': "F0F", 'width': 1},
+                               removable=True )
         self._mw.xz_ViewWidget.addItem(self.roi_xz)
 
-        self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=0, pen={'color': "F0F", 'width': 1} )
-        self.vline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, angle=90, pen={'color': "F0F", 'width': 1} )
+        # create horizontal and vertical line as a crosshair in xz image:
+        self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, 
+                                  angle=0, pen={'color': "F0F", 'width': 1} )
+        self.vline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, 
+                                  angle=90, pen={'color': "F0F", 'width': 1} )
 
+        # connect the change of a region with the adjustment of the crosshair:
         self.roi_xz.sigRegionChanged.connect(self.hline_xz.adjust)
         self.roi_xz.sigRegionChanged.connect(self.vline_xz.adjust)
         
+        # connect the change of a region with the adjustment of the sliders:
+        # the proxy signals for that:
+#        self.proxy_roi_xz_to_slider_x = pg.SignalProxy(self.roi_xz.sigRegionChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit,
+#                                                       slot=self.slider_x_adjust)
+#        self.proxy_roi_xz_to_slider_z = pg.SignalProxy(self.roi_xz.sigRegionChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.slider_z_adjust)  
+        
+        # the normal signal connection for that:
         self.roi_xz.sigRegionChanged.connect(self.slider_x_adjust)
         self.roi_xz.sigRegionChanged.connect(self.slider_z_adjust)        
         
+        # add the configured crosshair to the xz Widget:
         self._mw.xz_ViewWidget.addItem(self.hline_xz)
         self._mw.xz_ViewWidget.addItem(self.vline_xz)
 
         # Some additional settings for the xz ViewWidget
         self._mw.xz_ViewWidget.setMouseEnabled(x=False,y=False)
-        #self._mw.xz_ViewWidget.disableAutoRange()
-        #self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)        
+        self._mw.xz_ViewWidget.disableAutoRange()
+        #self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)               
         
-        #self._mw.x_SliderWidget.setSingleStep(0.01)
-       
-        
-        # Calculate the needed Range for the sliders:
-        # The image ranges comming from the Logic module must be in micrometer.
+        # Setup the Sliders:
+        # Calculate the needed Range for the sliders. The image ranges comming 
+        # from the Logic module must be in micrometer.
 
-        self.slider_res = 0.001 # 1 nanometer resolution per one change, units are micrometer
+        self.slider_res = 0.001 # 1 nanometer resolution per one change, units 
+                                # are micrometer
+        
+        # How many points are needed for that kind of resolution:
         num_of_points_x = (self._scanning_logic.x_range[1] - self._scanning_logic.x_range[0])/self.slider_res
         num_of_points_y = (self._scanning_logic.y_range[1] - self._scanning_logic.y_range[0])/self.slider_res
         num_of_points_z = (self._scanning_logic.z_range[1] - self._scanning_logic.z_range[0])/self.slider_res        
-        self.num_of_points_z = num_of_points_z
-        
-#        print('num_of_points_z:',num_of_points_z)
-        # How many points are needed for that kind of resolution:
-                 
         
         # Set a Range for the sliders:
         self._mw.x_SliderWidget.setRange(0,num_of_points_x)
         self._mw.y_SliderWidget.setRange(0,num_of_points_y)
         self._mw.z_SliderWidget.setRange(0,num_of_points_z)
 
-        # Connect to maximal and minimal range:
+        # Predefine the maximal and minimal image range as the default values
+        # for the display of the range:
         self._mw.x_min_InputWidget.setText(str(self._scanning_logic.image_x_range[0]))
         self._mw.x_max_InputWidget.setText(str(self._scanning_logic.image_x_range[1]))
         self._mw.y_min_InputWidget.setText(str(self._scanning_logic.image_y_range[0]))
@@ -335,21 +402,38 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_max_InputWidget.setText(str(self._scanning_logic.image_z_range[1]))
  
 
-        # Define what happend if the slider change the value: then adjust that
-        # change for the region of interest.
+        # Connect the change of the slider with the adjustment of the ROI: 
 
+        # the proxy signals for that:
+#        self.proxy_slider_x_to_roi_xy = pg.SignalProxy(self._mw.x_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.roi_xy_change_x)
+#        self.proxy_slider_y_to_roi_xy = pg.SignalProxy(self._mw.y_SliderWidget.valueChanged,
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.roi_xy_change_y)
+#        self.proxy_slider_x_to_roi_xz = pg.SignalProxy(self._mw.x_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.roi_xz_change_x)
+#        self.proxy_slider_z_to_roi_xz = pg.SignalProxy(self._mw.z_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.roi_xz_change_z)
+
+        # the normal signal connection for that:
         self._mw.x_SliderWidget.valueChanged.connect(self.roi_xy_change_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.roi_xy_change_y)
 
         self._mw.x_SliderWidget.valueChanged.connect(self.roi_xz_change_x)
         self._mw.z_SliderWidget.valueChanged.connect(self.roi_xz_change_z)
 
-        #self._mw.x_SliderWidget.valueChanged.connect(stwo.setValue)        
-        self._mw.x_current_InputWidget.setText(str(0.0))        
-        
-        # Add to the QLineEdit Widget a Double Validator to ensure only a 
-        # float input.
+             
+        # Add to all QLineEdit Widget a Double Validator to ensure only a 
+        # float input: 
         validator = QtGui.QDoubleValidator()
+        
         self._mw.x_current_InputWidget.setValidator(validator)
         self._mw.y_current_InputWidget.setValidator(validator)
         self._mw.z_current_InputWidget.setValidator(validator)
@@ -364,11 +448,25 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_res_InputWidget.setValidator(validator)
         self._mw.z_res_InputWidget.setValidator(validator)
 
-        #take the default values for resolutions from logic:
+        # Take the default values for resolutions from logic:
         self._mw.xy_res_InputWidget.setText(str(self._scanning_logic.xy_resolution))     
         self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))   
         
         # Connect the Slider with an update in the current values of x,y and z.
+        # The proxy signal slot:
+#        self.proxy_slider_x_to_curr_x = pg.SignalProxy(self._mw.x_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.update_current_x)
+#        self.proxy_slider_y_to_curr_y = pg.SignalProxy(self._mw.y_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.update_current_y)
+#        self.proxy_slider_z_to_curr_z = pg.SignalProxy(self._mw.z_SliderWidget.valueChanged, 
+#                                                       delay=delay_sig, 
+#                                                       rateLimit=eventlimit, 
+#                                                       slot=self.update_current_z)
+        # without the proxy:
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.update_current_y)
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
@@ -389,8 +487,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_min_InputWidget.returnPressed.connect(self.change_z_image_range)
         self._mw.z_max_InputWidget.returnPressed.connect(self.change_z_image_range)
         
-        # Declare for which fields changes are applied if the cursor is leaving
-        # the field:
+        # Update the inputed/displayed numbers if the cursor has left the field:
 
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
@@ -406,22 +503,23 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_min_InputWidget.editingFinished.connect(self.change_z_image_range)
         self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range) 
         
-        
-        
-        
-        # Connect the RadioButtons and connect to the event if they are touched:
-        
+        # Connect the RadioButtons and connect to the events if they are clicked:
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
         self._mw.xz_scan_StateWidget.toggled.connect(self.xz_scan_clicked)
         self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
 
-
+        # Connect the emitted signal of an image change from the logic with
+        # a refresh of the GUI picture: 
         self._scanning_logic.signal_image_updated.connect(self.refresh_image)
-        self._scanning_logic.signal_change_position.connect(self.update_gui)
-        self._tracker_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
-        #self._scanning_logic.signal_scan_lines_next.connect(self.refresh_image)
-#        print('Main Confocal Windows shown:')
+        
+        # Connect the signal from the logic with an update of the cursor position
+        self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
+        
+        # Connect the tracker
+        self._optimiser_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
+  
+        # Show the Main Confocal GUI:
         self._mw.show()
         
         # Now that the ROI is connected to events, set again to initial pos:        
@@ -487,7 +585,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        self._mw.xy_cb_ViewWidget.getPlotItem().addItem(self.cvb)
         
         
-    def update_gui(self):
+    def update_crosshair_position(self):
+        """ Update the GUI position of the crosshair from the logic. """
         
         x_pos, y_pos, z_pos = self._scanning_logic.get_position()
         
@@ -501,24 +600,45 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         
     def refresh_xy_colorbar(self):
-        self._mw.xy_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
-        self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
+        """ Adjust the xy colorbar.
+        
+        Currently everytime the update is performed, a new ColorBar object is 
+        created and add to the display while the old one is deleted. This must
+        be fixed in the class.
+        """
 
+        self._mw.xy_cb_ViewWidget.clear()
+        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), 
+                              label='Counts')#, [0., 0.5, 1.0])
+        self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
      
     def refresh_xz_colorbar(self):
+        """ Adjust the xz colorbar.
+        
+        Currently everytime the update is performed, a new ColorBar object is 
+        created and add to the display while the old one is deleted. This must
+        be fixed in the class.
+        """
         self._mw.xz_cb_ViewWidget.clear()
-        self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])
+        self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), 
+                              label='Counts')#, [0., 0.5, 1.0])
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
         
     def ready_clicked(self):
+        """ Stopp the scan if the state has switched to ready. """
+        
         if self._scanning_logic.getState() == 'locked':
             self._scanning_logic.stop_scanning()
-        if self._tracker_logic.getState() == 'locked':
-            self._tracker_logic.stop_refocus()
+        if self._optimiser_logic.getState() == 'locked':
+            self._optimiser_logic.stop_refocus()
 
             
     def xy_scan_clicked(self, enabled):
+        """ Manages what happens if the xy scan is started.
+        
+        @param bool enabled: start scan if that is possible
+        """
+        
         #Firstly stop any scan that might be in progress
         self._scanning_logic.stop_scanning()
         #Then if enabled. start a new scan.
@@ -526,81 +646,160 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self._scanning_logic.start_scanning()
             
     def xz_scan_clicked(self, enabled):
+        """ Manages what happens if the xz scan is started.
+        
+        @param bool enabled: start scan if that is possible
+        """
         self._scanning_logic.stop_scanning()
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
             
 
     def refocus_clicked(self, enabled):
+        """ Manages what happens if the optimizer is started.
+        
+        @param bool enabled: start optimizer if that is possible
+        """
+        
         self._scanning_logic.stop_scanning()
         if enabled:
-             self._tracker_logic.start_refocus()
+             self._optimiser_logic.start_refocus()
    
-    def roi_xy_change_x(self,x_pos):
-        # Since the origin of the region of interest (ROI) is not the crosshair
-        # point but the lowest left point of the square, you have to shift the
-        # origin according to that. Therefore the position of the ROI is not 
-        # the actual position!
+    def roi_xy_change_x(self,x_pos=None):
+        """ Adjust the xy ROI position if the x value has changed.
+        
+        @param tuple or float x_pos: value of the current x value
+        
+        Since the origin of the region of interest (ROI) is not the crosshair
+        point but the lowest left point of the square, you have to shift the
+        origin according to that. Therefore the position of the ROI is not 
+        the actual position!
+        """
 
-        x_pos=x_pos*self.slider_res    
-    
-    
-        roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
-        roi_y_view = self.roi_xy.pos()[1]
-        self.roi_xy.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(x=x_pos)
+        if type(x_pos) is tuple:
+            x_pos = x_pos[0]
+        if x_pos != None and type(x_pos) is float:
+            x_pos=x_pos*self.slider_res    
         
-    def roi_xy_change_y(self,y_pos):
         
-        y_pos=y_pos*self.slider_res
+            roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
+            roi_y_view = self.roi_xy.pos()[1]
+            self.roi_xy.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(x=x_pos)
         
-        roi_x_view = self.roi_xy.pos()[0]
-        roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
-        self.roi_xy.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(y=y_pos)    
+    def roi_xy_change_y(self,y_pos=None):
+        """ Adjust the xy ROI position if the y value has changed.
+        
+        @param tuple or float y_pos: value of the current y value
+        
+        Since the origin of the region of interest (ROI) is not the crosshair
+        point but the lowest left point of the square, you have to shift the
+        origin according to that. Therefore the position of the ROI is not 
+        the actual position!
+        """
+        
+        if type(y_pos) is tuple:
+            y_pos = y_pos[0]
+        if y_pos != None and type(y_pos) is float:
+            y_pos=y_pos*self.slider_res
+            
+            roi_x_view = self.roi_xy.pos()[0]
+            roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
+            self.roi_xy.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(y=y_pos)    
 
         
-    def roi_xz_change_x(self,x_pos):
+    def roi_xz_change_x(self,x_pos=None):
+        """ Adjust the xz ROI position if the x value has changed.
         
-        x_pos=x_pos*self.slider_res        
+        @param tuple or float x_pos: value of the current x value
         
-        roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
-        roi_y_view = self.roi_xz.pos()[1]
-        self.roi_xz.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(x=x_pos)        
+        Since the origin of the region of interest (ROI) is not the crosshair
+        point but the lowest left point of the square, you have to shift the
+        origin according to that. Therefore the position of the ROI is not 
+        the actual position!
+        """
+        
+        if type(x_pos) is tuple:
+            x_pos = x_pos[0]
+        if x_pos != None and type(x_pos) is float:
+            x_pos=x_pos*self.slider_res        
+            
+            roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
+            roi_y_view = self.roi_xz.pos()[1]
+            self.roi_xz.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(x=x_pos)        
 
-    def roi_xz_change_z(self,z_pos):
+    def roi_xz_change_z(self,z_pos=None):
+        """ Adjust the xz ROI position if the z value has changed.
         
-        z_pos = self._scanning_logic.z_range[0] + z_pos*self.slider_res         
+        @param tuple or float z_pos: value of the current z value
         
-        roi_x_view = self.roi_xz.pos()[0]
-        roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
-        self.roi_xz.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(z=z_pos)         
+        Since the origin of the region of interest (ROI) is not the crosshair
+        point but the lowest left point of the square, you have to shift the
+        origin according to that. Therefore the position of the ROI is not 
+        the actual position!
+        """
+        
+        if type(z_pos) is tuple:
+            z_pos = z_pos[0]
+        if z_pos != None and type(z_pos) is float:
+            z_pos = self._scanning_logic.z_range[0] + z_pos*self.slider_res         
+            
+            roi_x_view = self.roi_xz.pos()[0]
+            roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
+            self.roi_xz.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(z=z_pos)         
         
         
-    def slider_x_adjust(self,roi):
+    def slider_x_adjust(self,roi=None):
+        """ Adjust the x slider if a change happens.
         
-        self._mw.x_SliderWidget.setValue( int( (roi.pos()[0]+ 0.5*roi.size()[0])/self.slider_res) )
+        @param ROI object roi: optional, a ROI object of the scan.
+        """
+        if hasattr(roi,'pos') and hasattr(roi,'size'):
+            self._mw.x_SliderWidget.setValue( int( (roi.pos()[0]+ 0.5*roi.size()[0])/self.slider_res) )
         
     def slider_y_adjust(self,roi):
-        self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
+        """ Adjust the y slider if a change happens.
+        
+        @param ROI object roi: optional, a ROI object of the scan.
+        """
+        if hasattr(roi,'pos') and hasattr(roi,'size'):
+            self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
 
     def slider_z_adjust(self,roi):
-        self._mw.z_SliderWidget.setValue(int( ( roi.pos()[1] + 0.5*roi.size()[1]  - self._scanning_logic.z_range[0] )/self.slider_res) ) 
+        """ Adjust the z slider if a change happens.
+        
+        @param ROI object roi: optional, a ROI object of the scan.
+        """
+        if hasattr(roi,'pos') and hasattr(roi,'size'):
+            self._mw.z_SliderWidget.setValue(int( ( roi.pos()[1] + 0.5*roi.size()[1]  - self._scanning_logic.z_range[0] )/self.slider_res) ) 
         
         
-    def update_current_x(self,x_pos):
+    def update_current_x(self,x_pos=None):
+        """ Update the displayed x-value.
+        
+        @param float x_pos
+        
+        """
+        
+        if type(x_pos) is tuple:
+            x_pos = x_pos[0]
         # That will return the x_pos of the slider in number of points
-        
+
         self._mw.x_current_InputWidget.setText('{0:.5}'.format(x_pos*self.slider_res))
-        #print(dir(self.xy_image.viewRect()))
-        #print(dir(self.xy_image))boundingRegion
+
         
-    def update_current_y(self,y_pos):
+    def update_current_y(self,y_pos=None):
+        if type(y_pos) is tuple:
+            y_pos = y_pos[0]
+ 
         self._mw.y_current_InputWidget.setText('{0:.5}'.format(y_pos*self.slider_res))        
     
-    def update_current_z(self,z_pos):    
+    def update_current_z(self,z_pos=None):
+        if type(z_pos) is tuple:
+            z_pos = z_pos[0]
         # z_pos: amounts of points for slider
         self._mw.z_current_InputWidget.setText('{0:.5}'.format(self._scanning_logic.z_range[0] + z_pos*self.slider_res))
         
