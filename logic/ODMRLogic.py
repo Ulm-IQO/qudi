@@ -69,16 +69,18 @@ class ODMRLogic(GenericLogic):
         self._MW_device = self.connector['in']['microwave1']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
-        
+       
         self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
+        
+        # Initalize the ODMR plot and matrix image
+        self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
+        self._initialize_ODMR_plot()
+        self._initialize_ODMR_matrix()        
         
         #setting to low power and turning off the input during activation
         self.set_frequency(frequency = -20.)
         self.MW_off()
-        
-        self._initialize_ODMR_plot()
-        self._initialize_ODMR_matrix()
-        
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
         
@@ -135,6 +137,7 @@ class ODMRLogic(GenericLogic):
     def _initialize_ODMR_plot(self):
         '''Initializing the ODMR line plot.
         '''
+        print('initialize odmr xy plot')
         self.ODMR_plot_x = self._MW_frequency_list
         self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
     
