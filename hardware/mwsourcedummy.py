@@ -77,7 +77,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_power, power: {f}".format(power), 
+        self.logMsg("mwsourcedummy>set_power, power: {0:f}".format(power), 
                     msgType='warning')
                     
         return 0
@@ -101,7 +101,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_frequency, frequency: {f}".format(frequency), 
+        self.logMsg("mwsourcedummy>set_frequency, frequency: {0:f}".format(frequency), 
                     msgType='warning')
                     
         return 0
@@ -115,7 +115,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_cw, frequency: {f}".format(power), 
+        self.logMsg("mwsourcedummy>set_cw, frequency: {0:f}".format(power), 
                     msgType='warning')
                     
         return 0
@@ -128,7 +128,7 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_list, frequency: {f}".format(freq), 
+        self.logMsg("mwsourcedummy>set_list, frequency: {0:f}".format(freq), 
                     msgType='warning')
                     
         return 0
