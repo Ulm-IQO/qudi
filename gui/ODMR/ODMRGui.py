@@ -58,9 +58,9 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._modtype = 'gui'
         
         ## declare connectors
-        self.connector['in']['odmrlogic'] = OrderedDict()
-        self.connector['in']['odmrlogic']['class'] = 'ODMRLogic'
-        self.connector['in']['odmrlogic']['object'] = None
+        self.connector['in']['odmrlogic1'] = OrderedDict()
+        self.connector['in']['odmrlogic1']['class'] = 'ODMRLogic'
+        self.connector['in']['odmrlogic1']['object'] = None
         self.connector['in']['savelogic'] = OrderedDict()
         self.connector['in']['savelogic']['class'] = 'SaveLogic'
         self.connector['in']['savelogic']['object'] = None
@@ -84,7 +84,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         """
         
-        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
         print("ODMR logic is", self._odmr_logic)
         
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -95,10 +95,11 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw = ODMRMainWindow()
 #        self._sd = ODMRSettingDialog()
         
+        
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy)
 #        self.xy_odmr_image.setRect(Qt.Core.QRectF())
-        self.odmr_image = pg.ScatterPlotItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+        self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         
         
         # Add the display item to the xy and xz VieWidget, which was defined in
