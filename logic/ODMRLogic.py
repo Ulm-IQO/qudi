@@ -16,6 +16,7 @@ class ODMRLogic(GenericLogic):
     signal_next_line = QtCore.Signal()
     signal_ODMR_plot_updated = QtCore.Signal()
     signal_ODMR_matrix_updated = QtCore.Signal()
+    signal_ODMR_finished = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions

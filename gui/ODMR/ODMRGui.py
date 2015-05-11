@@ -107,14 +107,58 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.odmr_ViewWidget.addItem(self.odmr_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
         
+        # Connect the RadioButtons and connect to the events if they are clicked:
+        self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
+        self._mw.run_StateWidget.toggled.connect(self.run_clicked)
+        
+        ##
+        ## Connect signals
+        ##
+        
+        self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
+        self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
+        
+        # Connect stop odmr
+        self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
         
         
         
          # Show the Main ODMR GUI:
         self._mw.show()
 
+
+
+    def idle_clicked(self):
+        """ Stopp the scan if the state has switched to idle. """
+        self._odmr_logic.stop_ODMR_scan()
+        self._odmr_logic.kill_ODMR()
+
+
+    def run_clicked(self, enabled):
+        """ Manages what happens if odmr scan is started.
         
+        @param bool enabled: start scan if that is possible
+        """
         
+        #Firstly stop any scan that might be in progress
+        self._odmr_logic.stop_ODMR_scan()
+        self._odmr_logic.kill_ODMR()
+        #Then if enabled. start a new odmr scan.
+        if enabled:
+            self._odmr_logic.start_ODMR()
+            self._odmr_logic.start_ODMR_scan()
+
+    def refresh_plot(self):
+        ''' This method refreshes the xy-plot image
+        '''
+        self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+
+
+        
+    def refresh_matrix(self):
+        ''' This method refreshes the xy-matrix image
+        '''       
+        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         
         
         
