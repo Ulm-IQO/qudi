@@ -10,13 +10,14 @@ class RemoteObjectManager(QtCore.QObject):
     def __init__(self, threadManager, logger):
         super().__init__()
         self.hostname = socket.gethostname()
-        self.nameserver = Pyro4.locateNS()
+        #self.nameserver = Pyro4.locateNS()
         self.tm = threadManager
         self.logger = logger
-        self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
+        #self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
 
     def refresNameserver(self):
-        self.nameserver = Pyro4.locateNS()
+        #self.nameserver = Pyro4.locateNS()
+        pass
 
     def createServer(self, name, obj):
         thread = self.tm.newThread('pyro-{0}'.format(name))
@@ -24,11 +25,11 @@ class RemoteObjectManager(QtCore.QObject):
         server.moveToThread(thread)
         thread.started.connect(server.run)
         thread.start()
-        self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
-        self.logger.logMsg('Module {0} registered as {1} and as {2}-{0} at nameserver {3}'.format(name, server.uri, self.hostname, self.nameserver._pyroUri), msgType='status')
+        #self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
+        self.logger.logMsg('Module {0} registered as {1} and as {2}-{0} at nameserver {3}'.format(name, server.uri, self.hostname, 'NameServer'), msgType='status')
 
     def getRemoteModule(self, name):
-        uri = self.nameserver.lookup(name)
+        #uri = self.nameserver.lookup(name)
         return Pyro4.Proxy(uri)
 
 
