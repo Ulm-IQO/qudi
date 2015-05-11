@@ -8,7 +8,7 @@ from collections import OrderedDict
 import numpy as np
 import time
 
-class TrackPoint(object):
+class PoI(object):
     """ unstable: Kay Jahnke    
     The actual individual trackpoint is saved in this generic object.
 
@@ -125,7 +125,7 @@ class TrackPoint(object):
     
                 
 
-class TrackpointManagerLogic(GenericLogic):
+class PoiManagerLogic(GenericLogic):
     """unstable: Kay Jahnke
     This is the Logic class for tracking bright features in the confocal scan.
     """
@@ -138,7 +138,7 @@ class TrackpointManagerLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'trackerlogic'
+        self._modclass = 'poimanagerlogic'
         self._modtype = 'logic'
 
         ## declare connectors
@@ -149,8 +149,8 @@ class TrackpointManagerLogic(GenericLogic):
         self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
         self.connector['in']['scannerlogic']['object'] = None
         
-        self.connector['out']['trackerlogic'] = OrderedDict()
-        self.connector['out']['trackerlogic']['class'] = 'TrackpointManagerLogic'
+        self.connector['out']['poimanagerlogic'] = OrderedDict()
+        self.connector['out']['poimanagerlogic']['class'] = 'PoiManagerLogic'
         
 
         self.logMsg('The following configuration was found.', 
@@ -184,12 +184,12 @@ class TrackpointManagerLogic(GenericLogic):
 #        print("Confocal Logic is", self._confocal_logic)
         
         # initally add crosshair to the trackpoints
-        crosshair=TrackPoint(point=[0,0,0], name='crosshair')
+        crosshair=PoI(point=[0,0,0], name='crosshair')
         crosshair._key='crosshair'
         self.track_point_list[crosshair._key] = crosshair
         
         # initally add sample to the trackpoints
-        sample=TrackPoint(point=[0,0,0], name='sample')
+        sample=PoI(point=[0,0,0], name='sample')
         sample._key='sample'
         self.track_point_list[sample._key] = sample
         
@@ -210,7 +210,7 @@ class TrackpointManagerLogic(GenericLogic):
         The initial position is taken from the current crosshair.
         """
         
-        new_track_point=TrackPoint(point=self._confocal_logic.get_position())
+        new_track_point=PoI(point=self._confocal_logic.get_position())
         self.track_point_list[new_track_point.get_key()] = new_track_point
         
         return new_track_point.get_key()
@@ -242,7 +242,7 @@ class TrackpointManagerLogic(GenericLogic):
             del self.track_point_list[trackpointkey]
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
         
@@ -263,7 +263,7 @@ class TrackpointManagerLogic(GenericLogic):
             self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointkey].get_last_point())
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
                 
@@ -279,7 +279,7 @@ class TrackpointManagerLogic(GenericLogic):
             x,y,z = self.track_point_list[trackpointkey].get_last_point()
             self._confocal_logic.set_position(x=x, y=y, z=z)
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
             
@@ -294,7 +294,7 @@ class TrackpointManagerLogic(GenericLogic):
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_last_point()
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return [-1.,-1.,-1.]
                 
@@ -309,7 +309,7 @@ class TrackpointManagerLogic(GenericLogic):
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_name()
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
                 
@@ -329,7 +329,7 @@ class TrackpointManagerLogic(GenericLogic):
                 return -1
             return self.track_point_list[trackpointkey].set_next_point(point=point)
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
             
@@ -345,7 +345,7 @@ class TrackpointManagerLogic(GenericLogic):
         if trackpointkey != None and name != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].set_name(name=name)
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
             
@@ -361,7 +361,7 @@ class TrackpointManagerLogic(GenericLogic):
             return self.track_point_list['sample'].delete_last_point()
             return self.track_point_list[trackpointkey].delete_last_point()
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
             
@@ -376,7 +376,7 @@ class TrackpointManagerLogic(GenericLogic):
         if trackpointkey != None and trackpointkey in self.track_point_list.keys():
             return self.track_point_list[trackpointkey].get_trace()
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return [-1.,-1.,-1,-1]
             
@@ -393,7 +393,7 @@ class TrackpointManagerLogic(GenericLogic):
             self._current_trackpoint_key = trackpointkey
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
                 msgType='error')
             return -1
             
@@ -482,6 +482,6 @@ class TrackpointManagerLogic(GenericLogic):
                 self.go_to_trackpoint(trackpointkey = self._current_trackpoint_key)
             return 0
         else:
-            self.logMsg('The given Trackpoint ({}) does not exist.'.format(self._current_trackpoint_key), 
+            self.logMsg('The given POI ({}) does not exist.'.format(self._current_trackpoint_key), 
                 msgType='error')
             return -1

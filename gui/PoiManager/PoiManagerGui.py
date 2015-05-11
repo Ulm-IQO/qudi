@@ -11,7 +11,7 @@ import numpy as np
 
 from collections import OrderedDict
 from core.Base import Base
-from gui.TrackpointManager.TrackpointManagerGuiUI import Ui_TrackpointManager
+from gui.PoiManager.PoiManagerGuiUI import Ui_PoiManager
 from gui.Confocal.ConfocalGui import ColorBar
 
 
@@ -55,7 +55,7 @@ class CustomViewBox(pg.ViewBox):
   
           
             
-class TrackpointManagerMainWindow(QtGui.QMainWindow,Ui_TrackpointManager):
+class PoiManagerMainWindow(QtGui.QMainWindow,Ui_PoiManager):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
@@ -64,9 +64,9 @@ class TrackpointManagerMainWindow(QtGui.QMainWindow,Ui_TrackpointManager):
             
                
             
-class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
+class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
     """
-    This is the GUI Class for TrackpointManager
+    This is the GUI Class for PoiManager
     """
     
     
@@ -80,13 +80,13 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
                     config,
                     c_dict)
         
-        self._modclass = 'TrackpointManagerGui'
+        self._modclass = 'PoiManagerGui'
         self._modtype = 'gui'
         
         ## declare connectors
-        self.connector['in']['trackerlogic1'] = OrderedDict()
-        self.connector['in']['trackerlogic1']['class'] = 'TrackpointManagerLogic'
-        self.connector['in']['trackerlogic1']['object'] = None
+        self.connector['in']['poimanagerlogic1'] = OrderedDict()
+        self.connector['in']['poimanagerlogic1']['class'] = 'PoiManagerLogic'
+        self.connector['in']['poimanagerlogic1']['object'] = None
 
         self.connector['in']['confocallogic1'] = OrderedDict()
         self.connector['in']['confocallogic1']['class'] = 'ConfocalLogic'
@@ -105,7 +105,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
                         msgType='status')  
                         
     def initUI(self, e=None):
-        """ Definition, configuration and initialisation of the Trackpoint Manager GUI.
+        """ Definition, configuration and initialisation of the POI Manager GUI.
           
           @param class e: event class from Fysom
 
@@ -115,17 +115,17 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         
         """
         
-        self._tp_manager_logic = self.connector['in']['trackerlogic1']['object']
+        self._tp_manager_logic = self.connector['in']['poimanagerlogic1']['object']
         self._confocal_logic = self.connector['in']['confocallogic1']['object']
-        print("Trackpoint Manager logic is", self._tp_manager_logic)
+        print("POI Manager logic is", self._tp_manager_logic)
         print("Confocal logic is", self._confocal_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
         
-        # Use the inherited class 'Ui_TrackpointManagerGuiTemplate' to create now the 
+        # Use the inherited class 'Ui_PoiManagerGuiTemplate' to create now the 
         # GUI element:
-        self._mw = TrackpointManagerMainWindow()
+        self._mw = PoiManagerMainWindow()
 
                 
         #####################
@@ -174,9 +174,9 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         #####################
 
         # Load image in the display
-        self.x_shift_plot = pg.ScatterPlotItem([0],[0],symbol='o')
-        self.y_shift_plot = pg.ScatterPlotItem([0],[0],symbol='s')
-        self.z_shift_plot = pg.ScatterPlotItem([0],[0],symbol='t')
+        self.x_shift_plot = pg.ScatterPlotItem([0],[0],symbol='o', pen='r')
+        self.y_shift_plot = pg.ScatterPlotItem([0],[0],symbol='s', pen='g')
+        self.z_shift_plot = pg.ScatterPlotItem([0],[0],symbol='t', pen='b')
 
         # Add the plot to the ViewWidget defined in the UI file
         self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
@@ -206,7 +206,7 @@ class TrackpointManagerGui(Base,QtGui.QMainWindow,Ui_TrackpointManager):
         self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
         self._tp_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
  
-#        print('Main Trackpoint Manager Window shown:')
+#        print('Main POI Manager Window shown:')
         self._mw.show()
     
     def get_confocal_image(self):
