@@ -681,11 +681,6 @@ class Manager(QtCore.QObject):
                         else:
                             raise Exception('You are trying to cheat the '
                                 'system with some category {0}'.format(base) )
-
-                    if base == 'logic':
-                        modthread = self.tm.newThread('mod-' + base + '-' + key)
-                        self.tree['loaded'][base][key].moveToThread(modthread)
-                        modthread.start()                
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
             else:
