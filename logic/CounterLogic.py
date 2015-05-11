@@ -210,12 +210,16 @@ class CounterLogic(GenericLogic):
         
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (numbers of counts),Value (Mcounts/s)':self._data_to_save}        
+        data = {'Time (s),Signal (Mcounts/s)':self._data_to_save}        
 
         # write the parameters:
         parameters = OrderedDict() 
         parameters['Start counting time (s)'] = self._saving_start_time
         parameters['Stop counting time (s)'] = self._saving_stop_time
+        parameters['Stop counting time (s)'] = self._count_length
+        parameters['Count frequency (Hz)'] = self._count_frequency
+        parameters['Oversampling (Samples)'] = self._counting_samples
+        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length       
         
         self._save_logic.save_data(data, filepath, parameters=parameters, 
                                    filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
