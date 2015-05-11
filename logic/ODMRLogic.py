@@ -159,7 +159,11 @@ class ODMRLogic(GenericLogic):
                 return
                 
         self._MW_device.reset_listpos()        
-        y = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
+        new_counts = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
+        
+        
+        self.ODMR_plot_y = ( self.odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self.odmrscan_counter + 1)
+        self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
         
         self._odmrscan_counter += 1
         
