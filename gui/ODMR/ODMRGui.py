@@ -97,7 +97,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy)
+        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
 #        self.xy_odmr_image.setRect(Qt.Core.QRectF())
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         
@@ -158,7 +158,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def refresh_matrix(self):
         ''' This method refreshes the xy-matrix image
         '''       
-        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
         
         
         

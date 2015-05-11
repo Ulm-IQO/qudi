@@ -48,7 +48,7 @@ class ODMRCounterInterface():
         return -1
         
         
-    def count_odmr(self, lenght = 100):
+    def count_odmr(self, length = 100):
         """ Sweeps the microwave and returns the counts on that sweep. 
         
         @param int length: length of microwave sweep in pixel
