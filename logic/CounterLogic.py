@@ -208,9 +208,11 @@ class CounterLogic(GenericLogic):
         filepath = self._save_logic.get_path_for_module(module_name='Counter')
         filename = time.strftime('%Y-%m-%d_trace_from_%Hh%Mm%Ss.dat')
         
+        # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data = {'Time (numbers of counts),Value (Mcounts/s)':self._data_to_save}        
 
+        # write the parameters:
         parameters = OrderedDict() 
         parameters['Start counting time (s)'] = self._saving_start_time
         parameters['Stop counting time (s)'] = self._saving_stop_time
