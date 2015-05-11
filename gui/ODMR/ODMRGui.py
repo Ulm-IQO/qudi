@@ -94,3 +94,27 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # GUI element:
         self._mw = ODMRMainWindow()
         self._sd = ODMRSettingDialog()
+        
+        # Get the image from the logic
+        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy)
+#        self.xy_odmr_image.setRect(Qt.Core.QRectF())
+        self.odmr_image = pg.ScatterPlotItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+        
+        
+        # Add the display item to the xy and xz VieWidget, which was defined in
+        # the UI file.
+        self._mw.odmr_ViewWidget.addItem(self.odmr_image)
+        self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
+        
+        
+        
+        
+         # Show the Main ODMR GUI:
+        self._mw.show()
+
+        
+        
+        
+        
+        
+

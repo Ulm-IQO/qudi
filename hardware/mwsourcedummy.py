@@ -3,6 +3,9 @@
 from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
 import random
+from collections import OrderedDict
+
+
 
 class mwsourcedummy(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
@@ -13,6 +16,12 @@ class mwsourcedummy(Base,MWInterface):
         Base.__init__(self, manager, name, configuation=config)
         self._modclass = 'mwsourcedummy'
         self._modtype = 'mwsource'
+        
+        
+        ## declare connectors        
+        self.connector['out']['mwsourcedummy'] = OrderedDict()
+        self.connector['out']['mwsourcedummy']['class'] = 'MWSource'        
+        
         
         self.logMsg("The following configuration was found.", 
                     msgType='status')
