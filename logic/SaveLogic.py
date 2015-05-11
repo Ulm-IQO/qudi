@@ -80,54 +80,53 @@ class SaveLogic(GenericLogic):
                   as_text=True, as_xml=False, precision=':.3f', delimiter='\t'):
             """ General save routine for data.
 
-              @param dict data: Any dictonary with a keyword of the data
-                                and a corresponding list, where the data are situated.
-                                E.g. like:
-                                    data = {'Frequency (MHz)':[1,2,4,5,6]}
-                                    data = {'Frequency':[1,2,4,5,6],'Counts':[234,894,743,423,235]}
-                                    data = {'Frequency (MHz),Counts':[ [1,234],[2,894],...[30,504] ]}
+            @param dict or OrderedDict data: 
+                                      Any dictonary with a keyword of the data 
+                                      and a corresponding list, where the data 
+                                      are situated. E.g. like:
+                                      
+                         data = {'Frequency (MHz)':[1,2,4,5,6]}
+                         data = {'Frequency':[1,2,4,5,6],'Counts':[234,894,743,423,235]}
+                         data = {'Frequency (MHz),Counts':[ [1,234],[2,894],...[30,504] ]}
 
-              @param string filepath: The path to the directory, where the data
+            @param string filepath: The path to the directory, where the data
                                       will be saved.
                                       If filepath is corrupt, the saving routine 
                                       will retrieve the basic filepath for the 
                                       data from the inherited base module 
                                       'get_data_dir' and saves the data in the
                                       directory .../UNSPECIFIED_<module_name>/
-              @param dict parameters: optional, a dictionary with all parameters 
-                                      you want to pass to the saving routine.
-              @parem string filename: optional, if you really want to fix an own
+            @param dict or OrderedDict parameters: 
+                                      optional, a dictionary 
+                                      with all parameters you want to pass to 
+                                      the saving routine.
+            @parem string filename: optional, if you really want to fix an own
                                       filename, otherwise an unique filename 
                                       will be generated from the class which is
                                       calling the save method with a timestamp.  
                                       The filename will be looking like:
 
-                                        <filename>_JJJJ-MM-DD_HHh-MMm.dat
-
- 
-
-              @param int precision: optional, specifies the number of degits 
-                                       after the comma for the saving precision.
-                                       All number, which follows afterwards are 
-                                       cut off. For 'precision=3' a number like
+                                        <calling-class>_JJJJ-MM-DD_HHh-MMm.dat
+            @param bool as_text: specify how the saved data are saved to file.
+            @param bool as_xml: specify how the saved data are saved to file.
+            
+            @param int precision: optional, specifies the number of degits
+                                  after the comma for the saving precision. All
+                                  number, which follows afterwards are cut off.
+                                  A c-like format should be used.
+                                  For 'precision=3' a number like
                                        '323.423842' is saved as '323.423'.
                                        Default is precision = 3.
 
-              @param string delimiter: optional, insert here the delimiter.
-
-
+            @param string delimiter: optional, insert here the delimiter, like
+                                     \n for new line,  \t for tab, , for a 
+                                     comma, ect.
 
             This method should be called from the modules and it will call all 
-            the needed methods for the saving routine.
+            the needed methods for the saving routine. This module guarentees 
+            that if the passing of the data is correct, the data are saved 
+            always.
 
-
-            Saves data as text files or as xml files. 
-
-               
-
-
-              data is saved in a file with <filename>_JJJJ-MM-DD_HHh-MMm
-            
             1D data
             =======
             1D data should be passed in a dictionary where the data trace should be
