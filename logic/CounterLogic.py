@@ -29,6 +29,10 @@ class CounterLogic(GenericLogic):
         self.connector['out']['counterlogic'] = OrderedDict()
         self.connector['out']['counterlogic']['class'] = 'CounterLogic'
         
+        self.connector['in']['savelogic'] = OrderedDict()
+        self.connector['in']['savelogic']['class'] = 'SaveLogic'
+        self.connector['in']['savelogic']['object'] = None
+        
         #locking for thread safety
         self.threadlock = Mutex()
 
@@ -60,6 +64,8 @@ class CounterLogic(GenericLogic):
         
         self._counting_device = self.connector['in']['counter1']['object']
 #        print("Counting device is", self._counting_device)
+
+        self._save_logic = self.connector['in']['savelogic']['object']
 
         #QSignals
         self.sigCountNext.connect(self.countLoopBody, QtCore.Qt.QueuedConnection)
@@ -197,8 +203,24 @@ class CounterLogic(GenericLogic):
         
         self._saving=False
         self._saving_stop_time=time.time()
+
+
+        filepath = self._save_logic.get_path_for_module(module_name='Counter')
+        filename = time.strftime('%Y-%m-%d_trace_from_%Hh%Mm%Ss.dat')
         
-        print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
+        data = OrderedDict()
+        data = {'Time (numbers of counts),Value (Mcounts/s)':self._data_to_save}        
+
+        parameters = OrderedDict() 
+        parameters['Start counting time (s)'] = self._saving_start_time
+        parameters['Stop counting time (s)'] = self._saving_stop_time
+        
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                  
+        self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+
+        #print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
         
         return 0
 
