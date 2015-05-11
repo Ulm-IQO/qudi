@@ -128,8 +128,9 @@ class mwsourcedummy(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg("mwsourcedummy>set_list, frequency: {0:f}".format(freq), 
-                    msgType='warning')
+        #FIXME: the following line raises an error
+        #self.logMsg("mwsourcedummy>set_list, frequency: {0:f}".format(freq), 
+        #            msgType='warning')
                     
         return 0
         
