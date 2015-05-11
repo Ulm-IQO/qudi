@@ -115,9 +115,9 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         
         """
         
-        self._tp_manager_logic = self.connector['in']['poimanagerlogic1']['object']
+        self._poi_manager_logic = self.connector['in']['poimanagerlogic1']['object']
         self._confocal_logic = self.connector['in']['confocallogic1']['object']
-        print("POI Manager logic is", self._tp_manager_logic)
+        print("POI Manager logic is", self._poi_manager_logic)
         print("Confocal logic is", self._confocal_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
@@ -189,22 +189,24 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         #####################        
 
         self._mw.get_confocal_image_Button.clicked.connect(self.get_confocal_image)
-        self._mw.set_tp_Button.clicked.connect(self.set_new_trackpoint)
-        self._mw.goto_tp_Button.clicked.connect(self.goto_trackpoint)
+        self._mw.set_poi_Button.clicked.connect(self.set_new_poi)
+        self._mw.goto_poi_Button.clicked.connect(self.goto_poi)
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
-        self._mw.manual_update_tp_Button.clicked.connect(self.manual_update_trackpoint)
-        self._mw.tp_name_Input.returnPressed.connect(self.change_tp_name)
-        self._mw.delete_tp_Button.clicked.connect(self.delete_trackpoint)
+        self._mw.manual_update_poi_Button.clicked.connect(self.manual_update_poi)
+        self._mw.poi_name_Input.returnPressed.connect(self.change_poi_name)
+        self._mw.delete_poi_Button.clicked.connect(self.delete_poi)
 
-        self._mw.update_tp_Button.clicked.connect(self.update_tp_pos)
+        self._mw.update_poi_Button.clicked.connect(self.update_poi_pos)
 
-        self._mw.periodic_update_Button.toggled.connect(self.toggle_periodic_update)
+        self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
+
+        self._mw.shift_refresh_Button.clicked.connect(self._redraw_sample_shift)
         
         self._markers=[]
         
         #Signal at end of refocus
-        self._tp_manager_logic.signal_refocus_finished.connect(self._refocus_finished, QtCore.Qt.QueuedConnection)
-        self._tp_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
+        self._poi_manager_logic.signal_refocus_finished.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+        self._poi_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
  
 #        print('Main POI Manager Window shown:')
         self._mw.show()
@@ -215,83 +217,87 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         self.roi_map_image.setImage(image=self._confocal_logic.xy_image[:,:,3].transpose(),autoLevels=True)
 
     
-    def set_new_trackpoint(self):
-        ''' This method sets a new trackpoint from the current crosshair position
+    def set_new_poi(self):
+        ''' This method sets a new poi from the current crosshair position
 
         '''
-        key=self._tp_manager_logic.add_trackpoint()
+        key=self._poi_manager_logic.add_poi()
 
-        print('new trackpoint '+key)
-        print(self._tp_manager_logic.get_all_trackpoints())
-        print(self._tp_manager_logic.get_last_point(trackpointkey=key))
+        print('new poi '+key)
+        print(self._poi_manager_logic.get_all_pois())
+        print(self._poi_manager_logic.get_last_point(poikey=key))
 
-        self.population_tp_list()
+        self.population_poi_list()
 
-        # Set the newly added trackpoint as the selected tp to manage.
-        self._mw.manage_tp_Input.setCurrentIndex(self._mw.manage_tp_Input.findData(key))
+        # Set the newly added poi as the selected poi to manage.
+        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
         
     def delete_last_point(self):
-        ''' This method deletes the last track position of a chosen trackpoint
+        ''' This method deletes the last track position of a chosen poi
         '''
         
-        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
-        self._tp_manager_logic.delete_last_point(trackpointkey=key)
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        self._poi_manager_logic.delete_last_point(poikey=key)
 
-    def delete_trackpoint(self):
-        '''This method deletes a trackpoint from the list of managed points
+        # Update the sample shift plot to show the update event has been removed.
+        # TODO: Somehow this is being called too fast, and the 'sample' POI is not updated in time.
+        #       There is now a Refresh button on the shift plot, and it allows me to call the _redraw
+        #       method arbitrarily.  This works.
+        self._redraw_sample_shift
+
+    def delete_poi(self):
+        '''This method deletes a poi from the list of managed points
         '''
-        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
-        self._tp_manager_logic.delete_trackpoint(trackpointname=key)
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        self._poi_manager_logic.delete_poi(poiname=key)
     
-        self.population_tp_list()
+        self.population_poi_list()
 
-    def manual_update_trackpoint(self):
+    def manual_update_poi(self):
         pass
 
     def toggle_periodic_update(self):
-        if self._tp_manager_logic.timer ==  None:
-            key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+        if self._poi_manager_logic.timer ==  None:
+            key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
             period = self._mw.update_period_Input.value()
 
-            self._tp_manager_logic.start_periodic_refocus(duration=period, trackpointkey = key)
+            self._poi_manager_logic.start_periodic_refocus(duration=period, poikey = key)
+            self._mw.periodic_update_Button.setChecked(True)
 
         else:
-            self._tp_manager_logic.stop_periodic_refocus()
+            self._poi_manager_logic.stop_periodic_refocus()
+            self._mw.periodic_update_Button.setChecked(False)
 
-    def goto_trackpoint(self, key):
-        ''' Go to the last known position of trackpoint <key>
+    def goto_poi(self, key):
+        ''' Go to the last known position of poi <key>
         '''
         
-        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
 
-        self._tp_manager_logic.go_to_trackpoint(trackpointkey=key)
+        self._poi_manager_logic.go_to_poi(poikey=key)
 
-        print(self._tp_manager_logic.get_last_point(trackpointkey=key))
+        print(self._poi_manager_logic.get_last_point(poikey=key))
 
 
-    def population_tp_list(self):
-        ''' Populate the dropdown box for selecting a trackpoint
+    def population_poi_list(self):
+        ''' Populate the dropdown box for selecting a poi
         '''
-        self._mw.active_tp_Input.clear()
-        self._mw.active_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+        self._mw.active_poi_Input.clear()
+        self._mw.active_poi_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
 
-        self._mw.manage_tp_Input.clear()
-        self._mw.manage_tp_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
-        
         for marker in self._markers:
             self._mw.roi_map_ViewWidget.removeItem(marker)
             del marker
             
         self._markers=[]
         
-        for key in self._tp_manager_logic.get_all_trackpoints():
-            #self._tp_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
+        for key in self._poi_manager_logic.get_all_pois():
+            #self._poi_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
             if key is not 'crosshair' and key is not 'sample':
-                self._mw.active_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
-                self._mw.manage_tp_Input.addItem(self._tp_manager_logic.get_name(trackpointkey=key), key)
+                self._mw.active_poi_Input.addItem(self._poi_manager_logic.get_name(poikey=key), key)
                 
                 # Create Region of Interest as marker:
-                position=self._tp_manager_logic.get_last_point(trackpointkey=key)
+                position=self._poi_manager_logic.get_last_point(poikey=key)
                 position=position[:2]-[2.5,2.5]
                 self._markers.append(\
                     PointMarker(position, 
@@ -303,49 +309,49 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
                 # Add to the Map Widget
                 self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
 
-    def change_tp_name(self):
-        '''Change the name of a trackpoint
+    def change_poi_name(self):
+        '''Change the name of a poi
         '''
 
-        key=self._mw.manage_tp_Input.itemData(self._mw.manage_tp_Input.currentIndex())
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
 
-        newname=self._mw.tp_name_Input.text()
+        newname=self._mw.poi_name_Input.text()
 
 
-        self._tp_manager_logic.set_name(trackpointkey=key, name=newname)
+        self._poi_manager_logic.set_name(poikey=key, name=newname)
 
-        self.population_tp_list()
+        self.population_poi_list()
 
-        # Keep the renamed trackpoint as the selected tp to manage.
-        self._mw.manage_tp_Input.setCurrentIndex(self._mw.manage_tp_Input.findData(key))
+        # Keep the renamed POI as the selected POI to manage.
+        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
 
-        #TODO: WHen manage trackpoint is changed, empty name field
-        self._mw.tp_name_Input.setText('')
+        # After POI name is changed, empty name field
+        self._mw.poi_name_Input.setText('')
 
-    def update_tp_pos(self):
+    def update_poi_pos(self):
 
-        key=self._mw.active_tp_Input.itemData(self._mw.active_tp_Input.currentIndex())
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
 
-        self._tp_manager_logic.optimise_trackpoint(trackpointkey=key)
+        self._poi_manager_logic.optimise_poi(poikey=key)
 
     def _update_timer(self):
         #placeholder=QtGui.QLineEdit()
-        #placeholder.setText('{0:.1f}'.format(self._tp_manager_logic.time_left))
+        #placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
         
-#        print(self._tp_manager_logic.time_left)
-        self._mw.time_till_next_update_Display.display( self._tp_manager_logic.time_left )
+#        print(self._poi_manager_logic.time_left)
+        self._mw.time_till_next_update_Display.display( self._poi_manager_logic.time_left )
 
-    def _refocus_finished(self):
+    def _redraw_sample_shift(self):
         
         # Get trace data and calculate shifts in x,y,z
-        tp_trace=self._tp_manager_logic.get_trace(trackpointkey='sample')
+        poi_trace=self._poi_manager_logic.get_trace(poikey='sample')
 
-        time_shift_data = tp_trace[:,0] - tp_trace[0,0]
-        x_shift_data  = tp_trace[:,1] - tp_trace[0,1] 
-        y_shift_data  = tp_trace[:,2] - tp_trace[0,2] 
-        z_shift_data  = tp_trace[:,3] - tp_trace[0,3] 
+        time_shift_data = poi_trace[:,0] - poi_trace[0,0]
+        x_shift_data  = poi_trace[:,1] - poi_trace[0,1] 
+        y_shift_data  = poi_trace[:,2] - poi_trace[0,2] 
+        z_shift_data  = poi_trace[:,3] - poi_trace[0,3] 
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
         
-#        print (self._tp_manager_logic.get_trace(trackpointkey='sample'))
+#        print (self._poi_manager_logic.get_trace(poikey='sample'))

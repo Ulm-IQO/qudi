@@ -10,9 +10,9 @@ import time
 
 class PoI(object):
     """ unstable: Kay Jahnke    
-    The actual individual trackpoint is saved in this generic object.
+    The actual individual poi is saved in this generic object.
 
-    TODO: (Lachlan) thinks it would be better vocabulary to change name from "trackpoint" to "point of interest (POI)".  This is a better fit with the metaphor of "sample maps" and "regions of interest".  Not all POIs will be "tracked".  
+    TODO: (Lachlan) thinks it would be better vocabulary to change name from "poi" to "point of interest (POI)".  This is a better fit with the metaphor of "sample maps" and "regions of interest".  Not all POIs will be "tracked".  
 
     TODO: In general, we are working to make the code naturally match the usage metaphor of "sample maps" with fluorescent spots at certain positions.  The spots should normally keep a fixed position relative to each other, but the sample itself shifts.
     """
@@ -25,41 +25,41 @@ class PoI(object):
         
         if point != None:
             if len(point) != 3:
-                self.logMsg('Length of set trackpoint is not 3.', 
+                self.logMsg('Length of set poi is not 3.', 
                              msgType='error')
             self._position_time_trace.append(np.array([self._creation_time,point[0],point[1],point[2]]))
         if name != None:
             self._name=name
 
     def set_pos_in_sample(self, point = None):
-        '''Defines the position of the trackpoint relative to the sample, 
+        '''Defines the position of the poi relative to the sample, 
         allowing a sample map to be constructed that matches the user's concept.
         '''
 
-        # Choose reference point for sample coordinates.  1st trackpoint?  Scanner (0,0,0)?
+        # Choose reference point for sample coordinates.  1st poi?  Scanner (0,0,0)?
         # Define position of current POI in sample coordinates.  This involves vector subtraction with the *latest* known sample position.
 
         # Once set, this "pos in sample" will not be altered unless the user wants to manually redefine this POI (for example, they put the POI in the wrong place.
         pass
                 
-    def set_next_point(self, point = None): #TODO: rename to set_new_position, "point" is confusing with "trackpoint"
-        """ Adds another trackpoint.
+    def set_next_point(self, point = None): #TODO: rename to set_new_position, "point" is confusing with "poi"
+        """ Adds another poi.
         
-        @param float[3] point: position coordinates of the trackpoint
+        @param float[3] point: position coordinates of the poi
         
         @return int: error code (0:OK, -1:error)
         """
         if point != None:
             if len(point) != 3:
-#                self.logMsg('Length of set trackpoint is not 3.', 
+#                self.logMsg('Length of set poi is not 3.', 
 #                             msgType='error')
                 return -1
             self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
         else:
             return -1
     
-    def get_last_point(self): #TODO: rename to get_last_position, "point" is confusing with "trackpoint".
-        """ Returns the most current trackpoint.
+    def get_last_point(self): #TODO: rename to get_last_position, "point" is confusing with "poi".
+        """ Returns the most current poi.
         
         @return float[3]: the position of the last point
         """
@@ -69,7 +69,7 @@ class PoI(object):
             return [-1.,-1.,-1.]
             
     def set_name(self, name= None):
-        """ Sets the name of the trackpoint.
+        """ Sets the name of the poi.
         
         @param string name: name to be set.
         
@@ -90,14 +90,14 @@ class PoI(object):
             return -1
             
     def get_name(self):
-        """ Returns the name of the trackpoint.
+        """ Returns the name of the poi.
         
         @return string: name
         """
         return self._name
         
     def get_key(self):
-        """ Returns the dictionary key of the trackpoint.
+        """ Returns the dictionary key of the poi.
         
         @return string: key
         """
@@ -162,7 +162,7 @@ class PoiManagerLogic(GenericLogic):
                         msgType='status')
         
         self.track_point_list = dict()
-        self._current_trackpoint_key = None
+        self._current_poi_key = None
         self.go_to_crosshair_after_refocus = True
         
         # timer and its handling for the periodic refocus
@@ -183,12 +183,12 @@ class PoiManagerLogic(GenericLogic):
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 #        print("Confocal Logic is", self._confocal_logic)
         
-        # initally add crosshair to the trackpoints
+        # initally add crosshair to the pois
         crosshair=PoI(point=[0,0,0], name='crosshair')
         crosshair._key='crosshair'
         self.track_point_list[crosshair._key] = crosshair
         
-        # initally add sample to the trackpoints
+        # initally add sample to the pois
         sample=PoI(point=[0,0,0], name='sample')
         sample._key='sample'
         self.track_point_list[sample._key] = sample
@@ -202,10 +202,10 @@ class PoiManagerLogic(GenericLogic):
         """ Debug function for testing. """
         pass
                     
-    def add_trackpoint(self):
-        """ Creates a new trackpoint and adds it to the list.
+    def add_poi(self):
+        """ Creates a new poi and adds it to the list.
                 
-        @return int: key of this new trackpoint
+        @return int: key of this new poi
         
         The initial position is taken from the current crosshair.
         """
@@ -215,41 +215,41 @@ class PoiManagerLogic(GenericLogic):
         
         return new_track_point.get_key()
         
-    def get_all_trackpoints(self):
+    def get_all_pois(self):
         """ Returns a list of the names of all existing trankpoints.
         
-        @return string[]: List of names of the trackpoints
+        @return string[]: List of names of the pois
         
         Also crosshair and sample are included.
         """
         
         return self.track_point_list.keys()
             
-    def delete_trackpoint(self,trackpointkey = None):   
-        """ Completely deletes the whole given trackpoint.
+    def delete_poi(self,poikey = None):   
+        """ Completely deletes the whole given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         
         Does not delete the crosshair and sample.
         """
         
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            if trackpointkey is 'crosshair' or trackpointkey is 'sample':
+        if poikey != None and poikey in self.track_point_list.keys():
+            if poikey is 'crosshair' or poikey is 'sample':
                 self.logMsg('You cannot delete the crosshair or sample.', msgType='warning')
                 return -1
-            del self.track_point_list[trackpointkey]
+            del self.track_point_list[poikey]
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
         
-    def optimise_trackpoint(self,trackpointkey = None):
-        """ Starts the optimisation procedure for the given trackpoint.
+    def optimise_poi(self,poikey = None):
+        """ Starts the optimisation procedure for the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         
@@ -257,151 +257,151 @@ class PoiManagerLogic(GenericLogic):
         The function _refocus_done handles the data when the optimisation returns.
         """
         
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+        if poikey != None and poikey in self.track_point_list.keys():
             self.track_point_list['crosshair'].set_next_point(point=self._confocal_logic.get_position())
-            self._current_trackpoint_key = trackpointkey
-            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[trackpointkey].get_last_point())
+            self._current_poi_key = poikey
+            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[poikey].get_last_point())
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
                 
-    def go_to_trackpoint(self, trackpointkey = None):
-        """ Goes to the given trackpoint and saves it as the current one.
+    def go_to_poi(self, poikey = None):
+        """ Goes to the given poi and saves it as the current one.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         """
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            self._current_trackpoint_key = trackpointkey
-            x,y,z = self.track_point_list[trackpointkey].get_last_point()
+        if poikey != None and poikey in self.track_point_list.keys():
+            self._current_poi_key = poikey
+            x,y,z = self.track_point_list[poikey].get_last_point()
             self._confocal_logic.set_position(x=x, y=y, z=z)
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
-    def get_last_point(self, trackpointkey = None):
-        """ Gets the most recent coordinates of the given trackpoint.
+    def get_last_point(self, poikey = None):
+        """ Gets the most recent coordinates of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         """
         
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            return self.track_point_list[trackpointkey].get_last_point()
+        if poikey != None and poikey in self.track_point_list.keys():
+            return self.track_point_list[poikey].get_last_point()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return [-1.,-1.,-1.]
                 
-    def get_name(self, trackpointkey = None):
-        """ Gets the name of the given trackpoint.
+    def get_name(self, poikey = None):
+        """ Gets the name of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         """
         
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            return self.track_point_list[trackpointkey].get_name()
+        if poikey != None and poikey in self.track_point_list.keys():
+            return self.track_point_list[poikey].get_name()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
                 
-    def set_next_point(self, trackpointkey = None, point = None):
-        """ Adds another point to the trace of the given trackpoint.
+    def set_next_point(self, poikey = None, point = None):
+        """ Adds another point to the trace of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         @param float[3] point: coordinates of the next point
         
         @return int: error code (0:OK, -1:error)
         """
                 
-        if trackpointkey != None and point != None and trackpointkey in self.track_point_list.keys():
+        if poikey != None and point != None and poikey in self.track_point_list.keys():
             if len(point) != 3:
-                self.logMsg('Length of set trackpoint is not 3.', 
+                self.logMsg('Length of set poi is not 3.', 
                              msgType='error')
                 return -1
-            return self.track_point_list[trackpointkey].set_next_point(point=point)
+            return self.track_point_list[poikey].set_next_point(point=point)
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
-    def set_name(self, trackpointkey = None, name = None):
-        """ Sets the name of the given trackpoint.
+    def set_name(self, poikey = None, name = None):
+        """ Sets the name of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
-        @param string name: name of the trackpoint to be set
+        @param string poikey: the key of the poi
+        @param string name: name of the poi to be set
         
         @return int: error code (0:OK, -1:error)
         """
                 
-        if trackpointkey != None and name != None and trackpointkey in self.track_point_list.keys():
-            return self.track_point_list[trackpointkey].set_name(name=name)
+        if poikey != None and name != None and poikey in self.track_point_list.keys():
+            return self.track_point_list[poikey].set_name(name=name)
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
-    def delete_last_point(self, trackpointkey = None):
-        """ Deletes the last tracked point from the trace of the given trackpoint.
+    def delete_last_point(self, poikey = None):
+        """ Deletes the last tracked point from the trace of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint
+        @param string poikey: the key of the poi
         
         @return int: error code (0:OK, -1:error)
         """
                 
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
+        if poikey != None and poikey in self.track_point_list.keys():
             return self.track_point_list['sample'].delete_last_point()
-            return self.track_point_list[trackpointkey].delete_last_point()
+            return self.track_point_list[poikey].delete_last_point()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
-    def get_trace(self, trackpointkey = None):
-        """ Get the full time trace of the given trackpoint.
+    def get_trace(self, poikey = None):
+        """ Get the full time trace of the given poi.
         
-        @param string trackpointkey: the key of the trackpoint for the trace
+        @param string poikey: the key of the poi for the trace
         
         @return int: error code (0:OK, -1:error)
         """
                 
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            return self.track_point_list[trackpointkey].get_trace()
+        if poikey != None and poikey in self.track_point_list.keys():
+            return self.track_point_list[poikey].get_trace()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return [-1.,-1.,-1,-1]
             
     
-    def set_current_trackpoint(self, trackpointkey = None):
-        """ Set the internal current trackpoint.
+    def set_current_poi(self, poikey = None):
+        """ Set the internal current poi.
         
-        @param string trackpointkey: the key of the current trackpoint to be set
+        @param string poikey: the key of the current poi to be set
         
         @return int: error code (0:OK, -1:error)
         """
                 
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            self._current_trackpoint_key = trackpointkey
+        if poikey != None and poikey in self.track_point_list.keys():
+            self._current_poi_key = poikey
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(trackpointkey), 
+            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
-    def start_periodic_refocus(self, duration=None, trackpointkey = None):
-        """ Starts the perodic refocussing of the trackpoint.
+    def start_periodic_refocus(self, duration=None, poikey = None):
+        """ Starts the perodic refocussing of the poi.
         
         @param float duration: (optional) the time between periodic refocussion
-        @param string trackpointkey: (optional) the key of the current trackpoint to be set and refocussed on.
+        @param string poikey: (optional) the key of the current poi to be set and refocussed on.
         
         @return int: error code (0:OK, -1:error)
         """
@@ -411,10 +411,10 @@ class PoiManagerLogic(GenericLogic):
             self.logMsg('No timer duration given, using {} s.'.format(self.timer_duration), 
                 msgType='warning')
             
-        if trackpointkey != None and trackpointkey in self.track_point_list.keys():
-            self._current_trackpoint_key = trackpointkey
+        if poikey != None and poikey in self.track_point_list.keys():
+            self._current_poi_key = poikey
         
-        self.logMsg('Periodic refocus on {}.'.format(self._current_trackpoint_key), msgType='status')
+        self.logMsg('Periodic refocus on {}.'.format(self._current_poi_key), msgType='status')
             
         self.timer_step = time.time()
         self.timer = QtCore.QTimer()
@@ -426,17 +426,17 @@ class PoiManagerLogic(GenericLogic):
     def _periodic_refocus_loop(self):
         """ This is the looped function that does the actual periodic refocus.
         
-        If the time has run out, it refocussed the current trackpoint.
+        If the time has run out, it refocussed the current poi.
         Otherwise it just updates the time that is left.
         """
         self.time_left = self.timer_step-time.time()+self.timer_duration
         self.signal_timer_updated.emit()
         if self.time_left <= 0:
             self.timer_step = time.time()
-            self.optimise_trackpoint(trackpointkey = self._current_trackpoint_key)
+            self.optimise_poi(poikey = self._current_poi_key)
         
     def stop_periodic_refocus(self):
-        """ Stops the perodic refocussing of the trackpoint.
+        """ Stops the perodic refocussing of the poi.
         
         @return int: error code (0:OK, -1:error)
         """
@@ -464,24 +464,24 @@ class PoiManagerLogic(GenericLogic):
                     set_next_point(point=positions)
             return 0
             
-        if self._current_trackpoint_key != None and self._current_trackpoint_key in self.track_point_list.keys():
-            sample_shift=positions-self.track_point_list[self._current_trackpoint_key].get_last_point()
+        if self._current_poi_key != None and self._current_poi_key in self.track_point_list.keys():
+            sample_shift=positions-self.track_point_list[self._current_poi_key].get_last_point()
             sample_shift+=self.track_point_list['sample'].get_last_point()
             self.track_point_list['sample'].set_next_point(point=sample_shift)
-            self.track_point_list[self._current_trackpoint_key].\
+            self.track_point_list[self._current_poi_key].\
                     set_next_point(point=positions)
             
-            if (not (self._current_trackpoint_key is 'crosshair')) and (not (self._current_trackpoint_key is 'sample')):
+            if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
                 self.signal_refocus_finished.emit()
                 
             if self.go_to_crosshair_after_refocus:
-                temp_key=self._current_trackpoint_key
-                self.go_to_trackpoint(trackpointkey = 'crosshair')
-                self._current_trackpoint_key = temp_key
+                temp_key=self._current_poi_key
+                self.go_to_poi(poikey = 'crosshair')
+                self._current_poi_key = temp_key
             else:
-                self.go_to_trackpoint(trackpointkey = self._current_trackpoint_key)
+                self.go_to_poi(poikey = self._current_poi_key)
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(self._current_trackpoint_key), 
+            self.logMsg('The given POI ({}) does not exist.'.format(self._current_poi_key), 
                 msgType='error')
             return -1
