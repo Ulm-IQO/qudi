@@ -77,7 +77,7 @@ class SaveLogic(GenericLogic):
     
     
     def save_data(self, data, filepath, parameters=None, filename=None, 
-                  as_text=True, as_xml=False, precision=None, delimiter=None):
+                  as_text=True, as_xml=False, precision=':.3f', delimiter='\t'):
             """ General save routine for data.
 
               @param dict data: Any dictonary with a keyword of the data
@@ -171,12 +171,12 @@ class SaveLogic(GenericLogic):
                 
 
             # open the file
-            textfile = open(filepath+'\\'+filename,'wb')
+            textfile = open(filepath+'\\'+filename,'w')
 
 
             # write the paramters if specified:
-            textfile.write('# Saved Data from the class ' +module_name+
-                                   ' on '+ time.strftime('%d.%m%.%Y at %Hh%Mm%Ss.\n') )
+            textfile.write('# Saved Data from the class ' +module_name+ ' on '
+                           + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n') )
             textfile.write('#\n')
             textfile.write('# Parameters:\n')
             textfile.write('# ===========\n')
@@ -186,9 +186,9 @@ class SaveLogic(GenericLogic):
             if parameters != None:
                 
                 # check whether the format for the parameters have a dict type:
-                if type(parameters) is dict:
+                if type(parameters) is dict or OrderedDict:
                     for entry in parameters:
-                        textfile.write('# '+str(entry)+': '+str(parameters[entry])+'\n')
+                        textfile.write('# '+str(entry)+':'+delimiter+str(parameters[entry])+'\n')
                 
                 
                 # make a hardcore string convertion and try to save the 
@@ -214,8 +214,8 @@ class SaveLogic(GenericLogic):
                 if len(np.shape(data[key_name])) == 1:
                         
                     self.save_1d_trace_as_text(trace_data = data[key_name], 
-                                                trace_name=entry,
-                                                opened_file =textfile,
+                                                trace_name=key_name,
+                                                opened_file = textfile,
                                                 precision=precision)
                                                     
                 # check whether the data is only a 2d array                                
@@ -225,7 +225,7 @@ class SaveLogic(GenericLogic):
                     
                     self.save_2d_points_as_text(trace_data = data[key_name],
                                                 trace_name = key_name_array,
-                                                openend_file=textfile,
+                                                opened_file=textfile,
                                                 precision=precision,
                                                 delimiter=delimiter)
                 elif len(np.shape(data[key_name])) == 3:
@@ -259,7 +259,7 @@ class SaveLogic(GenericLogic):
                     
                     self.save_N_1d_traces_as_text(trace_data = data_traces,
                                                   trace_name = key_list,
-                                                  openend_file=textfile,
+                                                  opened_file=textfile,
                                                   precision=precision,
                                                   delimiter=delimiter)
                 else:
@@ -283,7 +283,7 @@ class SaveLogic(GenericLogic):
 
 
 
-    def save_1d_trace_as_text(self, trace_data, trace_name, openend_file=None,
+    def save_1d_trace_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f'):
         """An independant method, which can save a 1d trace. 
         
@@ -292,74 +292,74 @@ class SaveLogic(GenericLogic):
         
         close_file_flag = False        
         
-        if openend_file == None:
-            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+        if opened_file == None:
+            opened_file = open(filepath+'\\'+filename+'.dat','wb') 
             close_file_flag = True
             
             
-        openend_file.write('# '+str(trace_name)+'\n')
+        opened_file.write('# '+str(trace_name)+'\n')
         
         for entry in trace_data:
-            openend_file.write(str('{0'+precision+'}\n').format(entry))
+            opened_file.write(str('{0'+precision+'}\n').format(entry))
             
             
         if close_file_flag:
-            openend_file.close()
+            opened_file.close()
         
 
-    def save_N_1d_traces_as_text(self, trace_data, trace_name, openend_file=None,
+    def save_N_1d_traces_as_text(self, trace_data, trace_name, opened_file=None,
                               filepath=None, filename=None, precision=':.3f',
                               delimiter='\t'):
         
         close_file_flag = False        
         
-        if openend_file == None:
-            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+        if opened_file == None:
+            opened_file = open(filepath+'\\'+filename+'.dat','wb') 
             close_file_flag = True
         
         if trace_name != None:
-            openend_file.write('# ')
+            opened_file.write('# ')
             for name in trace_name:
-                openend_file.write(name + delimiter )                          
-            openend_file.write('\n') 
+                opened_file.write(name + delimiter )                          
+            opened_file.write('\n') 
         
         max_trace_length = max(np.shape(trace_data))   
 
         for row in range(max_trace_length):
             for column in range(len(trace_data)):
                 try:
-                    openend_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[row][column]))
+                    opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[row][column]))
                 except:
-                    openend_file.write(str('{0}'+delimiter).format('NaN'))
-            openend_file.write('\n')
+                    opened_file.write(str('{0}'+delimiter).format('NaN'))
+            opened_file.write('\n')
             
         if close_file_flag:
-            openend_file.close()  
+            opened_file.close()  
 
-    def save_2d_points_as_text(self,trace_data, trace_name=None, openend_file=None,
+    def save_2d_points_as_text(self,trace_data, trace_name=None, opened_file=None,
                               filepath=None, filename=None, precision=':.3f',
                               delimiter='\t'):
         
         close_file_flag = False        
         
-        if openend_file == None:
-            openend_file = open(filepath+'\\'+filename+'.dat','wb') 
+        if opened_file == None:
+            opened_file = open(filepath+'\\'+filename+'.dat','wb') 
             close_file_flag = True
             
         # write the trace names:
         if trace_name != None:
-            openend_file.write('# ')
+            opened_file.write('# ')
             for name in trace_name:
-                openend_file.write(name + delimiter )                          
-            openend_file.write('\n')  
+                opened_file.write(name + delimiter )                          
+            opened_file.write('\n')  
 
         for row in trace_data:
             for entry in row:
-                openend_file.write(str('{0'+precision+'}'+delimiter).format(entry)) 
-            openend_file.write('\n')    
+                opened_file.write(str('{0'+precision+'}'+delimiter).format(entry)) 
+            opened_file.write('\n')    
             
         if close_file_flag:
-            openend_file.close()      
+            opened_file.close()      
 
 
 
