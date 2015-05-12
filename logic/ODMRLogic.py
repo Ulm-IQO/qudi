@@ -45,6 +45,9 @@ class ODMRLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
+                        
+        self.MW_trigger_source = 'EXT'
+        self.MW_trigger_pol = 'POS'
         
         self._odmrscan_counter = 0
         self._clock_frequency = 200
@@ -80,6 +83,7 @@ class ODMRLogic(GenericLogic):
         #setting to low power and turning off the input during activation
         self.set_frequency(frequency = -20.)
         self.MW_off()
+        self._MW_device.trigger(self.MW_trigger_source='EXT', self.MW_trigger_pol='POS')
 
 
     def set_clock_frequency(self, clock_frequency):
