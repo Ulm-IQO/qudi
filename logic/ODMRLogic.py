@@ -146,7 +146,6 @@ class ODMRLogic(GenericLogic):
     
     
     def _scan_ODMR_line(self):
-        print('first')
         '''Scans one line in ODMR.
         (from MW_start to MW_stop in steps of MW_step)
         '''        
@@ -162,7 +161,6 @@ class ODMRLogic(GenericLogic):
                 
         self._MW_device.reset_listpos()        
         new_counts = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
-        print('second')
         
         
         self.ODMR_plot_y = ( self.odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self.odmrscan_counter + 1)
@@ -173,7 +171,6 @@ class ODMRLogic(GenericLogic):
         self.signal_ODMR_plot_updated.emit() 
         self.signal_ODMR_matrix_updated.emit() 
         self.signal_next_line.emit()
-        print('next line')
 
 
     def set_power(self, power = None):
