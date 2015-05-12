@@ -117,16 +117,6 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="6">
-       <widget class="QLineEdit" name="elapsed_time_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>50</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
       <item row="1" column="6">
        <widget class="QLineEdit" name="stop_freq_InputWidget">
         <property name="maximumSize">
@@ -211,12 +201,8 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="8">
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>Matrix lines :</string>
-        </property>
-       </widget>
+      <item row="3" column="6">
+       <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
       </item>
      </layout>
     </item>
