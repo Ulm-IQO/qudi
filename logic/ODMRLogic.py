@@ -109,7 +109,7 @@ class ODMRLogic(GenericLogic):
         return 0          
     
     def start_ODMR_scan(self):
-        self.odmrscan_counter = 0
+        self._odmrscan_counter = 0
         
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
@@ -163,7 +163,7 @@ class ODMRLogic(GenericLogic):
         new_counts = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
         
         
-        self.ODMR_plot_y = ( self.odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self.odmrscan_counter + 1)
+        self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
         
         self._odmrscan_counter += 1
