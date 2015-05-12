@@ -207,6 +207,7 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         #Signal at end of refocus
         self._poi_manager_logic.signal_refocus_finished.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
+        self._poi_manager_logic.signal_poi_updated.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
  
 #        print('Main POI Manager Window shown:')
         self._mw.show()
@@ -239,11 +240,6 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
         self._poi_manager_logic.delete_last_point(poikey=key)
 
-        # Update the sample shift plot to show the update event has been removed.
-        # TODO: Somehow this is being called too fast, and the 'sample' POI is not updated in time.
-        #       There is now a Refresh button on the shift plot, and it allows me to call the _redraw
-        #       method arbitrarily.  This works.
-        self._redraw_sample_shift
 
     def delete_poi(self):
         '''This method deletes a poi from the list of managed points
@@ -254,8 +250,13 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         self.population_poi_list()
 
     def manual_update_poi(self):
-        pass
+        """ Manually adds a point to the trace of a given poi without refocussing.
+        """
+        
+        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
 
+        self._poi_manager_logic.set_new_position(poikey=key)
+        
     def toggle_periodic_update(self):
         if self._poi_manager_logic.timer ==  None:
             key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
