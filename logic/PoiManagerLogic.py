@@ -42,21 +42,19 @@ class PoI(object):
         # Once set, this "pos in sample" will not be altered unless the user wants to manually redefine this POI (for example, they put the POI in the wrong place.
         pass
                 
-    def set_next_point(self, point = None): #TODO: rename to set_new_position, "point" is confusing with "poi"
+    def set_new_position(self, point = []): 
         """ Adds another poi.
         
         @param float[3] point: position coordinates of the poi
         
         @return int: error code (0:OK, -1:error)
         """
-        if point != None:
-            if len(point) != 3:
-#                self.logMsg('Length of set poi is not 3.', 
-#                             msgType='error')
-                return -1
-            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
-        else:
+        if isinstance(point, (np.ndarray,)) and not point.size==3:
             return -1
+        elif isinstance(point, (list, tuple)) and not len(point)==3 :
+            return -1
+        else:
+            self._position_time_trace.append(np.array([time.time(),point[0],point[1],point[2]]))
     
     def get_last_point(self): #TODO: rename to get_last_position, "point" is confusing with "poi".
         """ Returns the most current poi.
@@ -132,6 +130,7 @@ class PoiManagerLogic(GenericLogic):
 
     signal_refocus_finished = QtCore.Signal()
     signal_timer_updated = QtCore.Signal()
+    signal_poi_updated = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -240,6 +239,7 @@ class PoiManagerLogic(GenericLogic):
                 self.logMsg('You cannot delete the crosshair or sample.', msgType='warning')
                 return -1
             del self.track_point_list[poikey]
+            self.signal_poi_updated.emit()
             return 0
         else:
             self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
@@ -258,7 +258,7 @@ class PoiManagerLogic(GenericLogic):
         """
         
         if poikey != None and poikey in self.track_point_list.keys():
-            self.track_point_list['crosshair'].set_next_point(point=self._confocal_logic.get_position())
+            self.track_point_list['crosshair'].set_new_position(point=self._confocal_logic.get_position())
             self._current_poi_key = poikey
             self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[poikey].get_last_point())
             return 0
@@ -313,7 +313,7 @@ class PoiManagerLogic(GenericLogic):
                 msgType='error')
             return -1
                 
-    def set_next_point(self, poikey = None, point = None):
+    def set_new_position(self, poikey = None, point = None):
         """ Adds another point to the trace of the given poi.
         
         @param string poikey: the key of the poi
@@ -321,17 +321,23 @@ class PoiManagerLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-                
-        if poikey != None and point != None and poikey in self.track_point_list.keys():
+        if point == None:
+            point=self._confocal_logic.get_position()
+            
+        if poikey != None and poikey in self.track_point_list.keys():
             if len(point) != 3:
                 self.logMsg('Length of set poi is not 3.', 
                              msgType='error')
                 return -1
-            return self.track_point_list[poikey].set_next_point(point=point)
-        else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
-                msgType='error')
-            return -1
+            sample_shift=point-self.track_point_list[poikey].get_last_point()
+            sample_shift+=self.track_point_list['sample'].get_last_point()
+            self.track_point_list['sample'].set_new_position(point=sample_shift)
+            self.signal_poi_updated.emit()
+            return self.track_point_list[poikey].set_new_position(point=point)
+            
+        self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            msgType='error')
+        return -1
             
     def set_name(self, poikey = None, name = None):
         """ Sets the name of the given poi.
@@ -343,6 +349,7 @@ class PoiManagerLogic(GenericLogic):
         """
                 
         if poikey != None and name != None and poikey in self.track_point_list.keys():
+            self.signal_poi_updated.emit()
             return self.track_point_list[poikey].set_name(name=name)
         else:
             self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
@@ -358,7 +365,8 @@ class PoiManagerLogic(GenericLogic):
         """
                 
         if poikey != None and poikey in self.track_point_list.keys():
-            return self.track_point_list['sample'].delete_last_point()
+            self.track_point_list['sample'].delete_last_point()
+            self.signal_poi_updated.emit()
             return self.track_point_list[poikey].delete_last_point()
         else:
             self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
@@ -461,18 +469,19 @@ class PoiManagerLogic(GenericLogic):
                      
         if self._optimiser_logic.is_crosshair:                
             self.track_point_list['crosshair'].\
-                    set_next_point(point=positions)
+                    set_new_position(point=positions)
             return 0
             
         if self._current_poi_key != None and self._current_poi_key in self.track_point_list.keys():
             sample_shift=positions-self.track_point_list[self._current_poi_key].get_last_point()
             sample_shift+=self.track_point_list['sample'].get_last_point()
-            self.track_point_list['sample'].set_next_point(point=sample_shift)
+            self.track_point_list['sample'].set_new_position(point=sample_shift)
             self.track_point_list[self._current_poi_key].\
-                    set_next_point(point=positions)
+                    set_new_position(point=positions)
             
             if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
                 self.signal_refocus_finished.emit()
+                self.signal_poi_updated.emit()
                 
             if self.go_to_crosshair_after_refocus:
                 temp_key=self._current_poi_key
