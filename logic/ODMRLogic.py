@@ -122,7 +122,7 @@ class ODMRLogic(GenericLogic):
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
         
-        self._MW_device.set_list(self._MW_frequency_list,self.MW_power)
+        self._MW_device.set_list(self._MW_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
         self._MW_device.list_on()
         
         self._initialize_ODMR_plot()
@@ -216,7 +216,7 @@ class ODMRLogic(GenericLogic):
         if self.getState() == 'locked':
             return -1
         else:
-            error_code = self._MW_device.set_frequency(frequency)
+            error_code = self._MW_device.set_frequency(frequency*1e6) #times 1e6 to have freq in Hz
             return error_code
     
     
@@ -225,7 +225,7 @@ class ODMRLogic(GenericLogic):
         
         @return float: current frequency off the MW source
         """
-        frequency = self._MW_device.get_frequency()
+        frequency = self._MW_device.get_frequency()/1e6 #divided by 1e6 to get freq in MHz
         return frequency
         
         
