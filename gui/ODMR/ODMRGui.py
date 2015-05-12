@@ -139,6 +139,11 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Set the state button as ready button as default setting.
         self._mw.idle_StateWidget.click()
         
+        # Configuration of the comboWidget
+        self._mw.mode_ComboWidget.addItem('Off')
+        self._mw.mode_ComboWidget.addItem('CW')
+        
+        
         #######################################################################
         ##                Configuration of the InputWidgets                  ##
         #######################################################################
@@ -163,6 +168,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.power_InputWidget.setText(str(self._odmr_logic.MW_power))
         self._mw.runtime_InputWidget.setText(str())
         self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
         
         # Update the inputed/displayed numbers if return key is hit:
 
@@ -201,6 +207,8 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)        
         # Connect stop odmr
         self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
+        # Combo Widget
+        self._mw.mode_ComboWidget.activated[str].connect(self.mw_stop)
         
         
         
@@ -248,12 +256,20 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ''' This method writes the new settings from the gui to the file
         '''
         self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
+        self._odmr_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
 
                 
     def reject_settings(self):
         ''' This method keeps the old settings and restores the old settings in the gui
         '''
         self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        
+    def mw_stop(self, txt):
+        if txt == 'Off':
+            self._odmr_logic.MW_off()
+        if txt == 'CW':
+            self._odmr_logic.MW_on()
+            
 
         
     ###########################################################################
