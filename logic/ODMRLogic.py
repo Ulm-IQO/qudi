@@ -54,7 +54,7 @@ class ODMRLogic(GenericLogic):
         self.MW_frequency = 2870.    #in MHz
         self.MW_power = -20.         #in dBm
         self.MW_start = 2700.        #in MHz
-        self.MW_stop = 3000.         #in MHz
+        self.MW_stop = 3030.         #in MHz
         self.MW_step = 5.            #in MHz
         
         #number of lines in the matrix plot
