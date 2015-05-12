@@ -11,8 +11,7 @@ import time
 class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for ODMR.
-    """
-    
+    """    
     signal_next_line = QtCore.Signal()
     signal_ODMR_plot_updated = QtCore.Signal()
     signal_ODMR_matrix_updated = QtCore.Signal()
@@ -37,8 +36,7 @@ class ODMRLogic(GenericLogic):
         self.connector['in']['microwave1']['object'] = None
         
         self.connector['out']['odmrlogic'] = OrderedDict()
-        self.connector['out']['odmrlogic']['class'] = 'ODMRLogic'
-        
+        self.connector['out']['odmrlogic']['class'] = 'ODMRLogic'        
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -63,7 +61,8 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
         
         self.stopRequested = False
-                       
+                      
+                      
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """        
@@ -82,6 +81,7 @@ class ODMRLogic(GenericLogic):
         self.set_frequency(frequency = -20.)
         self.MW_off()
 
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
         
@@ -97,18 +97,26 @@ class ODMRLogic(GenericLogic):
         else:
             return 0                 
         
-    def start_ODMR(self):
-        self.lock()
         
+    def start_ODMR(self):
+        '''Starting the ODMR counter.
+        '''
+        self.lock()        
         self._ODMR_counter.set_up_odmr_clock(clock_frequency = self._clock_frequency)
         self._ODMR_counter.set_up_odmr()
         
-    def kill_ODMR(self):  
+        
+    def kill_ODMR(self):
+        '''Stopping the ODMR counter.
+        '''  
         self._ODMR_counter.close_odmr()
         self._ODMR_counter.close_odmr_clock()
         return 0          
     
+    
     def start_ODMR_scan(self):
+        '''Starting an ODMR scan.
+        '''
         self._odmrscan_counter = 0
         
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
@@ -138,6 +146,8 @@ class ODMRLogic(GenericLogic):
         '''
         self.ODMR_plot_x = self._MW_frequency_list
         self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
+        self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
+    
     
     def _initialize_ODMR_matrix(self):
         '''Initializing the ODMR matrix plot.
@@ -235,3 +245,14 @@ class ODMRLogic(GenericLogic):
         """
         error_code = self._MW_device.off()
         return error_code
+        
+        
+    def do_fit(self, fit_function = None):
+        '''Performs the chosen fit on the measured data.
+        
+        @param string fit_function: name of the chosen fit function
+        '''
+        if fit_function == None:
+            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
+            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
+            
