@@ -155,3 +155,7 @@ class mwsourcedummy(Base,MWInterface):
         return 0
         
         
+    def trigger(self,source,pol):
+        pass
+        
+        
