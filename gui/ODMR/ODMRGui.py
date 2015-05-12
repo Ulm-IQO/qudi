@@ -13,7 +13,7 @@ import numpy as np
 from collections import OrderedDict
 from core.Base import Base
 from gui.ODMR.ODMRGuiUI import Ui_MainWindow
-#from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
+from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -25,15 +25,19 @@ from gui.ODMR.ODMRGuiUI import Ui_MainWindow
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py"ODMRGuiUI.ui > ODMRGuiUI.py
 
 
+# set manually the background color in hex code according to our color scheme: 
+pg.setConfigOption('background', QtGui.QColor('#222'))
+
+
 class ODMRMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-#class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
-#    def __init__(self):
-#        QtGui.QDialog.__init__(self)
-#        self.setupUi(self)
+class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
+        self.setupUi(self)
 
             
                
@@ -93,12 +97,11 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the 
         # GUI element:
         self._mw = ODMRMainWindow()
-#        self._sd = ODMRSettingDialog()
+        self._sd = ODMRSettingDialog()
         
         
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.xy_odmr_image.setRect(Qt.Core.QRectF())
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         
         
@@ -107,17 +110,95 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.odmr_ViewWidget.addItem(self.odmr_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
         
-        # Connect the RadioButtons and connect to the events if they are clicked:
+        # create a color map that goes from dark red to dark blue:
+
+        # Absolute scale relative to the expected data not important. This 
+        # should have the same amount of entries (num parameter) as the number
+        # of values given in color. 
+        pos = np.linspace(0.0, 1.0, num=10)
+        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
+                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
+                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
+                          [  0,  0,132,255]], dtype=np.ubyte)
+                          
+        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
+                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
+                               [127,  0,  0,255] ], dtype=np.ubyte)
+                          
+        colmap = pg.ColorMap(pos, color_inv)        
+        self.colmap_norm = pg.ColorMap(pos, color/255)
+        
+        # get the LookUpTable (LUT), first two params should match the position
+        # scale extremes passed to ColorMap(). 
+        # I believe last one just has to be >= the difference between the min and max level set later
+        lut = colmap.getLookupTable(0, 1, 2000)
+            
+        self.odmr_matrix_image.setLookupTable(lut)
+        
+        # Set the state button as ready button as default setting.
+        self._mw.idle_StateWidget.click()
+        
+        #######################################################################
+        ##                Configuration of the InputWidgets                  ##
+        #######################################################################
+        
+        # Add Validators to InputWidgets 
+        validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
+        
+        self._mw.frequency_InputWidget.setValidator(validator)
+        self._mw.start_freq_InputWidget.setValidator(validator)
+        self._mw.step_freq_InputWidget.setValidator(validator)
+        self._mw.stop_freq_InputWidget.setValidator(validator)
+        self._mw.power_InputWidget.setValidator(validator)
+        self._mw.runtime_InputWidget.setValidator(validator2)
+        self._sd.matrix_lines_InputWidget.setValidator(validator)
+        
+        # Take the default values from logic:
+        self._mw.frequency_InputWidget.setText(str(self._odmr_logic.MW_frequency))     
+        self._mw.start_freq_InputWidget.setText(str(self._odmr_logic.MW_start))
+        self._mw.step_freq_InputWidget.setText(str(self._odmr_logic.MW_step))
+        self._mw.stop_freq_InputWidget.setText(str(self._odmr_logic.MW_stop))
+        self._mw.power_InputWidget.setText(str(self._odmr_logic.MW_power))
+        self._mw.runtime_InputWidget.setText(str())
+        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        
+        # Update the inputed/displayed numbers if return key is hit:
+
+        self._mw.frequency_InputWidget.returnPressed.connect(self.change_frequency)
+        self._mw.start_freq_InputWidget.returnPressed.connect(self.change_start_freq)
+        self._mw.step_freq_InputWidget.returnPressed.connect(self.change_step_freq)
+        self._mw.stop_freq_InputWidget.returnPressed.connect(self.change_stop_freq)
+        self._mw.power_InputWidget.returnPressed.connect(self.change_power)
+        self._mw.runtime_InputWidget.returnPressed.connect(self.change_runtime)
+        
+        # Update the inputed/displayed numbers if the cursor has left the field:
+
+        self._mw.frequency_InputWidget.editingFinished.connect(self.change_frequency)
+        self._mw.start_freq_InputWidget.editingFinished.connect(self.change_start_freq)
+        self._mw.step_freq_InputWidget.editingFinished.connect(self.change_step_freq)
+        self._mw.stop_freq_InputWidget.editingFinished.connect(self.change_stop_freq)
+        self._mw.power_InputWidget.editingFinished.connect(self.change_power)
+        self._mw.runtime_InputWidget.editingFinished.connect(self.change_runtime)
+        
+        
+        
+        #######################################################################
+        ##                      Connect signals                              ##
+        #######################################################################
+       
+       # Connect the RadioButtons and connect to the events if they are clicked:
         self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
         self._mw.run_StateWidget.toggled.connect(self.run_clicked)
-        
-        ##
-        ## Connect signals
-        ##
-        
+                
         self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
         self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
-        
+        # connect settings signals
+        self._mw.action_Settings.triggered.connect(self.menue_settings)
+        self._sd.accepted.connect(self.update_settings)
+        self._sd.rejected.connect(self.reject_settings)
+        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)        
         # Connect stop odmr
         self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
         
@@ -147,19 +228,56 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if enabled:
             self._odmr_logic.start_ODMR()
             self._odmr_logic.start_ODMR_scan()
+            
+    def menue_settings(self):
+        ''' This method opens the settings menue
+        '''
+        self._sd.exec_()
 
     def refresh_plot(self):
         ''' This method refreshes the xy-plot image
         '''
         self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
-
-
         
     def refresh_matrix(self):
         ''' This method refreshes the xy-matrix image
         '''       
         self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
         
+    def update_settings(self):
+        ''' This method writes the new settings from the gui to the file
+        '''
+        self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
+
+                
+    def reject_settings(self):
+        ''' This method keeps the old settings and restores the old settings in the gui
+        '''
+        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+
+        
+    ###########################################################################
+    ##                         Change Methods                                ##
+    ###########################################################################
+    
+    def change_frequency(self):
+        self._odmr_logic.MW_frequency = float(self._mw.frequency_InputWidget.text())
+        
+    def change_start_freq(self):
+        self._odmr_logic.MW_start = float(self._mw.start_freq_InputWidget.text())
+        
+    def change_step_freq(self):
+        self._odmr_logic.MW_step = float(self._mw.step_freq_InputWidget.text())
+        
+    def change_stop_freq(self):
+        self._odmr_logic.MW_stop = float(self._mw.stop_freq_InputWidget.text())
+        
+    def change_power(self):
+        self._odmr_logic.MW_power = float(self._mw.power_InputWidget.text())
+        
+    def change_runtime(self):
+        pass
+
         
         
 
