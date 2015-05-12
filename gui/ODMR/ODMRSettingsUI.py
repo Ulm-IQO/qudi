@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ODMRSettingsUI.ui'
 #
-# Created: Tue May 12 15:40:46 2015
+# Created: Tue May 12 17:07:12 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,7 +17,7 @@ except AttributeError:
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName(_fromUtf8("SettingsDialog"))
-        SettingsDialog.resize(255, 179)
+        SettingsDialog.resize(255, 146)
         self.gridLayout_2 = QtGui.QGridLayout(SettingsDialog)
         self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
         self.gridLayout = QtGui.QGridLayout()
@@ -32,6 +32,16 @@ class Ui_SettingsDialog(object):
         self.matrix_lines_InputWidget.setMaximumSize(QtCore.QSize(50, 16777215))
         self.matrix_lines_InputWidget.setObjectName(_fromUtf8("matrix_lines_InputWidget"))
         self.gridLayout.addWidget(self.matrix_lines_InputWidget, 0, 1, 1, 1)
+        self.label_2 = QtGui.QLabel(SettingsDialog)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.label_2.setFont(font)
+        self.label_2.setObjectName(_fromUtf8("label_2"))
+        self.gridLayout.addWidget(self.label_2, 1, 0, 1, 1)
+        self.clock_frequency_InputWidget = QtGui.QLineEdit(SettingsDialog)
+        self.clock_frequency_InputWidget.setMaximumSize(QtCore.QSize(50, 16777215))
+        self.clock_frequency_InputWidget.setObjectName(_fromUtf8("clock_frequency_InputWidget"))
+        self.gridLayout.addWidget(self.clock_frequency_InputWidget, 1, 1, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
         self.buttonBox = QtGui.QDialogButtonBox(SettingsDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
@@ -47,4 +57,5 @@ class Ui_SettingsDialog(object):
     def retranslateUi(self, SettingsDialog):
         SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: ODMR - Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("SettingsDialog", "Matrix Lines :", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(QtGui.QApplication.translate("SettingsDialog", "clock frequency :", None, QtGui.QApplication.UnicodeUTF8))
 
