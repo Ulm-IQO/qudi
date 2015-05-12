@@ -83,7 +83,7 @@ class ODMRLogic(GenericLogic):
         #setting to low power and turning off the input during activation
         self.set_frequency(frequency = -20.)
         self.MW_off()
-        self._MW_device.trigger(self.MW_trigger_source='EXT', self.MW_trigger_pol='POS')
+        self._MW_device.trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
 
 
     def set_clock_frequency(self, clock_frequency):
