@@ -133,9 +133,10 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
         
 #        for i in range(self._odmr_length):
 #            count_data[i] = random.uniform(0, 1e6)
-        count_data = np.random.uniform(0,1.5e4,length)
+        count_data = np.random.uniform(0,3e4,length)
             
-        count_data += self._fit_logic.gaussian_function(x_data = np.arange(1,length+1,1),amplitude=-40000, x_zero=length/2, sigma=3, offset=100000)
+        count_data += self._fit_logic.gaussian_function(x_data = np.arange(1,length+1,1),amplitude=-50000, x_zero=length/3, sigma=3, offset=50000)
+        count_data += self._fit_logic.gaussian_function(x_data = np.arange(1,length+1,1),amplitude=-50000, x_zero=2*length/3, sigma=3, offset=50000)
             
         time.sleep(self._odmr_length*1./self._clock_frequency)
         
