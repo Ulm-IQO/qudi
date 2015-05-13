@@ -263,11 +263,11 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
             period = self._mw.update_period_Input.value()
 
             self._poi_manager_logic.start_periodic_refocus(duration=period, poikey = key)
-            self._mw.periodic_update_Button.setChecked(True)
+           # self._mw.periodic_update_Button.setChecked(True)
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
-            self._mw.periodic_update_Button.setChecked(False)
+           # self._mw.periodic_update_Button.setChecked(False)
 
     def goto_poi(self, key):
         ''' Go to the last known position of poi <key>

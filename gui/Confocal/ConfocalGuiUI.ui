@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1002</width>
+    <width>1163</width>
     <height>735</height>
    </rect>
   </property>
@@ -20,10 +20,10 @@
    <string>qudi: Confocal</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout_2">
-    <item row="0" column="0" colspan="2">
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
+   <layout class="QGridLayout" name="gridLayout_8">
+    <item row="0" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0,1">
+      <item>
        <widget class="PlotWidget" name="xy_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -33,7 +33,75 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="1" column="0">
+         <widget class="PlotWidget" name="xy_cb_ViewWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLineEdit" name="xy_cb_max_InputWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>100000</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="xy_cb_auto_CheckBox">
+          <property name="text">
+           <string>Auto</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLineEdit" name="xy_cb_min_InputWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>100</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -52,17 +120,76 @@
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
             <item row="0" column="0">
-             <widget class="PlotWidget" name="xz_ViewWidget"/>
-            </item>
-            <item row="0" column="1">
-             <widget class="PlotWidget" name="xz_cb_ViewWidget">
-              <property name="maximumSize">
-               <size>
-                <width>70</width>
-                <height>16777215</height>
-               </size>
+             <widget class="PlotWidget" name="xz_ViewWidget">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>1</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
               </property>
              </widget>
+            </item>
+            <item row="0" column="1">
+             <layout class="QGridLayout" name="gridLayout_2">
+              <item row="1" column="0">
+               <widget class="PlotWidget" name="xz_cb_ViewWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLineEdit" name="xz_cb_max_InputWidget">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>100000</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLineEdit" name="xz_cb_min_InputWidget">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>100</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="xz_cb_auto_CheckBox">
+                <property name="text">
+                 <string>Auto</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -116,25 +243,9 @@
         </widget>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="PlotWidget" name="xy_cb_ViewWidget">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>70</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
      </layout>
     </item>
-    <item row="1" column="1">
+    <item row="1" column="0">
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="3" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -633,8 +744,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1002</width>
-     <height>21</height>
+     <width>1163</width>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -705,12 +816,10 @@
   <tabstop>z_SliderWidget</tabstop>
   <tabstop>xz_refocus_ViewWidget</tabstop>
   <tabstop>y_SliderWidget</tabstop>
-  <tabstop>xz_cb_ViewWidget</tabstop>
   <tabstop>xy_refocus_cb_ViewWidget</tabstop>
   <tabstop>xy_refocus_ViewWidget</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
-  <tabstop>xy_cb_ViewWidget</tabstop>
  </tabstops>
  <resources/>
  <connections>

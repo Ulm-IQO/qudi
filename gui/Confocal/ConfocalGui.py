@@ -54,15 +54,16 @@ class ColorBar(pg.GraphicsObject):
         smn, spp = stops.min(), stops.ptp()
         stops = (stops - stops.min())/stops.ptp()
         if ticks is None:
-            ticks = np.r_[0.0:1.0:5j, 1.0] * spp + smn
+            ticks = np.r_[0.0:1.0:5j] * spp + smn
         tick_labels = tick_labels or ["%0.2g" % (t,) for t in ticks]
+        print(ticks)
  
         # setup picture
         self.pic = pg.QtGui.QPicture()
         p = pg.QtGui.QPainter(self.pic)
  
         # draw bar with gradient following colormap
-        p.setPen(pg.mkPen())
+        p.setPen(pg.mkPen('k'))
         grad = pg.QtGui.QLinearGradient(w/2.0, 0.0, w/2.0, h*1.0)
         for stop, color in zip(stops, colors):
             grad.setColorAt(1.0 - stop, pg.QtGui.QColor(*[255*c for c in color]))
@@ -73,6 +74,9 @@ class ColorBar(pg.GraphicsObject):
         mintx = 0.0
         for tick, tick_label in zip(ticks, tick_labels):
             y_ = (1.0 - (tick - smn)/spp) * h
+            print(y_)
+            print(tick_label)
+            print('\n')
             p.drawLine(0.0, y_, -5.0, y_)
             br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, tick_label)
             if br.x() < mintx:
@@ -481,6 +485,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_max_InputWidget.returnPressed.connect(self.change_y_image_range)
         self._mw.z_min_InputWidget.returnPressed.connect(self.change_z_image_range)
         self._mw.z_max_InputWidget.returnPressed.connect(self.change_z_image_range)
+
+#        self._mw.xy_cb_min_InputWidget.returnPressed.connect(self.refresh_xy_image)
+#        self._mw.xy_cb_max_InputWidget.returnPressed.connect(self.refresh_xy_image)
+#
+#        self._mw.xz_cb_min_InputWidget.returnPressed.connect(self.refresh_xz_image)
+#        self._mw.xz_cb_max_InputWidget.returnPressed.connect(self.refresh_xz_image)
         
         # Update the inputed/displayed numbers if the cursor has left the field:
 
@@ -497,6 +507,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_max_InputWidget.editingFinished.connect(self.change_y_image_range)
         self._mw.z_min_InputWidget.editingFinished.connect(self.change_z_image_range)
         self._mw.z_max_InputWidget.editingFinished.connect(self.change_z_image_range) 
+
+        self._mw.xy_cb_min_InputWidget.editingFinished.connect(self.update_xy_cb_range)
+        self._mw.xy_cb_max_InputWidget.editingFinished.connect(self.update_xy_cb_range)
+
+        self._mw.xz_cb_min_InputWidget.editingFinished.connect(self.update_xz_cb_range)
+        self._mw.xz_cb_max_InputWidget.editingFinished.connect(self.update_xz_cb_range)
+        
         
         # Connect the RadioButtons and connect to the events if they are 
         # clicked. Connect also the adjustment of the displayed windows.
@@ -510,9 +527,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
 
+        
+        self._mw.xy_cb_auto_CheckBox.toggled.connect(self.update_xy_cb_range)
+        self._mw.xz_cb_auto_CheckBox.toggled.connect(self.update_xz_cb_range)
+
         # Connect the emitted signal of an image change from the logic with
         # a refresh of the GUI picture: 
-        self._scanning_logic.signal_image_updated.connect(self.refresh_image)
+        self._scanning_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
+        self._scanning_logic.signal_xz_image_updated.connect(self.refresh_xz_image)
         
         # Connect the signal from the logic with an update of the cursor position
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
@@ -631,8 +653,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         be fixed in the class.
         """
         self._mw.xy_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), 
-                              label='Counts')#, [0., 0.5, 1.0])
+
+        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # Otherwise, take user-defined values.
+        if self._mw.xy_cb_auto_CheckBox.isChecked():
+            self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), label='Counts')#, [0., 0.5, 1.0])
+        else:
+            cb_min = float(self._mw.xy_cb_min_InputWidget.text())
+            cb_max = float(self._mw.xy_cb_max_InputWidget.text())
+            self.xy_cb = ColorBar(self.colmap_norm, 100, cb_max, label='Counts')#, [0., 0.5, 1.0])
+
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
 
 
@@ -644,8 +674,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         be fixed in the class.
         """
         self._mw.xz_cb_ViewWidget.clear()
-        self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), 
-                              label='Counts')#, [0., 0.5, 1.0])
+        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # Otherwise, take user-defined values.
+        if self._mw.xz_cb_auto_CheckBox.isChecked():
+            self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), label='Counts')#, [0., 0.5, 1.0])
+        else:
+            cb_min = float(self._mw.xz_cb_min_InputWidget.text())
+            cb_max = float(self._mw.xz_cb_max_InputWidget.text())
+            self.xz_cb = ColorBar(self.colmap_norm, 100, cb_max, label='Counts')#, [0., 0.5, 1.0])
+
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
 
 
@@ -912,33 +949,67 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """ Adjust the image range for z in the logic. """
         self._scanning_logic.image_z_range = [float(self._mw.z_min_InputWidget.text()), 
                                               float(self._mw.z_max_InputWidget.text())]
-        
-    def refresh_image(self):
-        """ Update the current image from the logic. 
 
-        Everytime the scanner is scanning a line either the xy image or the 
-        xz image is rebuild and updated in the GUI.        
+    def update_xy_cb_range(self):
+        self.refresh_xy_colorbar()
+        self.refresh_xy_image()
+
+    def update_xz_cb_range(self):
+        self.refresh_xz_colorbar()
+        self.refresh_xz_image()
+        
+        
+    def refresh_xy_image(self):
+        """ Update the current XY image from the logic. 
+
+        Everytime the scanner is scanning a line in xy the 
+        image is rebuild and updated in the GUI.        
         """
         self.adjust_xy_window()
-        self.adjust_xz_window()
             
-        if self._mw.xy_scan_StateWidget.isChecked():
-            self.xy_image.getViewBox().enableAutoRange()
-            
-            self.put_cursor_in_xy_scan()
-            
-#            self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
-#            self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
-            
+        self.xy_image.getViewBox().enableAutoRange()
+        
+        self.put_cursor_in_xy_scan()
+        
+#        self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
+#        self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
+        
+        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # Otherwise, take user-defined values.
+        if self._mw.xy_cb_auto_CheckBox.isChecked():
             self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose(),autoLevels=True)
             self.refresh_xy_colorbar()
+        else:
+            cb_min = float(self._mw.xy_cb_min_InputWidget.text())
+            cb_max = float(self._mw.xy_cb_max_InputWidget.text())
+            self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose(),levels=(cb_min,cb_max) )
+
             
-        elif self._mw.xz_scan_StateWidget.isChecked():
-            self.xz_image.getViewBox().enableAutoRange()
-            self.adjust_xz_window()
-            self.put_cursor_in_xz_scan()              
+        if self._scanning_logic.getState() != 'locked':
+            self._mw.ready_StateWidget.click()
+
+    def refresh_xz_image(self):
+        """ Update the current XZ image from the logic. 
+
+        Everytime the scanner is scanning a line in xz the 
+        image is rebuild and updated in the GUI.        
+        """
+        self.adjust_xz_window()
+            
+            
+        self.xz_image.getViewBox().enableAutoRange()
+        self.adjust_xz_window()
+        self.put_cursor_in_xz_scan()              
+
+        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # Otherwise, take user-defined values.
+        if self._mw.xz_cb_auto_CheckBox.isChecked():
             self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose(),autoLevels=True)
             self.refresh_xz_colorbar()
+        else:
+            cb_min = float(self._mw.xz_cb_min_InputWidget.text())
+            cb_max = float(self._mw.xz_cb_max_InputWidget.text())
+            self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose(),levels=(cb_min,cb_max) )
 
 
         if self._scanning_logic.getState() != 'locked':
