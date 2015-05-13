@@ -15,6 +15,7 @@ class OptimiserLogic(GenericLogic):
     signal_scan_xy_line_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal()
+    signal_refocus_started = QtCore.Signal()
     
 
     def __init__(self, manager, name, config, **kwargs):
@@ -123,8 +124,9 @@ class OptimiserLogic(GenericLogic):
             self.is_crosshair = True
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
                     self._confocal_logic.get_position()
-                    
+        
         self.lock()
+        self.signal_refocus_started.emit()
         self._scan_counter = 0
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()

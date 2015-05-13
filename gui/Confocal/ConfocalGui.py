@@ -523,7 +523,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
         
         # Connect the tracker
-        self._optimiser_logic.signal_refocus_finished.connect(self._mw.ready_StateWidget.click)
+        self._optimiser_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
+        self._optimiser_logic.signal_refocus_started.connect(self.disable_scan_buttons)
   
         
         # get the viewbox object to alter the display:
@@ -652,20 +653,34 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_cb_ViewWidget.clear()
         self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), 
                               label='Counts')#, [0., 0.5, 1.0])
-        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)        
+        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
+        
+    def disable_scan_buttons(self, newstate=False):
+        """ Disables the radio buttons for scanning.
+        
+        @param bool newstate: disabled (False), enabled (True)
+        """
+        
+        self._mw.xy_scan_StateWidget.setEnabled(newstate)
+        self._mw.xz_scan_StateWidget.setEnabled(newstate)
+        self._mw.refocus_StateWidget.setEnabled(newstate)
+        
+    def _refocus_finished_wrapper(self):
+        if not self._mw.ready_StateWidget.isChecked():
+            self._mw.ready_StateWidget.click()
+            return
+        else:
+            self.disable_scan_buttons(newstate=True)
         
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
-        
+            
         if self._scanning_logic.getState() == 'locked':
             self._scanning_logic.stop_scanning()
         if self._optimiser_logic.getState() == 'locked':
             self._optimiser_logic.stop_refocus()
             
-        self._mw.xy_scan_StateWidget.setEnabled(True)        
-        self._mw.xz_scan_StateWidget.setEnabled(True)        
-        self._mw.refocus_StateWidget.setEnabled(True)
-        
+        self.disable_scan_buttons(newstate=True)
 
             
     def xy_scan_clicked(self, enabled):
@@ -675,16 +690,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
         
         #Firstly stop any scan that might be in progress
-        self._scanning_logic.stop_scanning()
-        #TODO: Kay
-                
-        self._mw.xy_scan_StateWidget.setEnabled(False)        
-        self._mw.xz_scan_StateWidget.setEnabled(False)        
-        self._mw.refocus_StateWidget.setEnabled(False)
+        self._scanning_logic.stop_scanning()                
         
         #Then if enabled. start a new scan.
         if enabled:
             self._scanning_logic.start_scanning()
+            self.disable_scan_buttons()
             
     def xz_scan_clicked(self, enabled):
         """ Manages what happens if the xz scan is started.
@@ -693,12 +704,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
         self._scanning_logic.stop_scanning()
         
-        self._mw.xy_scan_StateWidget.setEnabled(False)        
-        self._mw.xz_scan_StateWidget.setEnabled(False)        
-        self._mw.refocus_StateWidget.setEnabled(False)
-        
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
+            self.disable_scan_buttons()
             
 
     def refocus_clicked(self, enabled):
@@ -707,13 +715,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param bool enabled: start optimizer if that is possible
         """
         
-        self._mw.xy_scan_StateWidget.setEnabled(False)        
-        self._mw.xz_scan_StateWidget.setEnabled(False)        
-        self._mw.refocus_StateWidget.setEnabled(False)
-        
         self._scanning_logic.stop_scanning()
         if enabled:
-             self._optimiser_logic.start_refocus()
+            self._optimiser_logic.start_refocus()
+            self.disable_scan_buttons()
    
     def roi_xy_change_x(self,x_pos=None):
         """ Adjust the xy ROI position if the x value has changed.
