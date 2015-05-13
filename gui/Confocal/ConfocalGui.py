@@ -661,6 +661,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self._scanning_logic.stop_scanning()
         if self._optimiser_logic.getState() == 'locked':
             self._optimiser_logic.stop_refocus()
+            
+        self._mw.xy_scan_StateWidget.setEnabled(True)        
+        self._mw.xz_scan_StateWidget.setEnabled(True)        
+        self._mw.refocus_StateWidget.setEnabled(True)
+        
 
             
     def xy_scan_clicked(self, enabled):
@@ -671,6 +676,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         #Firstly stop any scan that might be in progress
         self._scanning_logic.stop_scanning()
+        #TODO: Kay
+                
+        self._mw.xy_scan_StateWidget.setEnabled(False)        
+        self._mw.xz_scan_StateWidget.setEnabled(False)        
+        self._mw.refocus_StateWidget.setEnabled(False)
+        
         #Then if enabled. start a new scan.
         if enabled:
             self._scanning_logic.start_scanning()
@@ -681,6 +692,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param bool enabled: start scan if that is possible
         """
         self._scanning_logic.stop_scanning()
+        
+        self._mw.xy_scan_StateWidget.setEnabled(False)        
+        self._mw.xz_scan_StateWidget.setEnabled(False)        
+        self._mw.refocus_StateWidget.setEnabled(False)
+        
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
             
@@ -690,6 +706,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         @param bool enabled: start optimizer if that is possible
         """
+        
+        self._mw.xy_scan_StateWidget.setEnabled(False)        
+        self._mw.xz_scan_StateWidget.setEnabled(False)        
+        self._mw.refocus_StateWidget.setEnabled(False)
         
         self._scanning_logic.stop_scanning()
         if enabled:

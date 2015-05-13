@@ -79,8 +79,11 @@ class CounterGui(Base):
         self._count_frequency_display.setValue(self._counting_logic.get_count_frequency())
         self._count_frequency_display.valueChanged.connect(self.count_frequency_changed)
         
+        oversampling_tooltip = 'If bigger than 1, the number of samples is averaged over the given number and then displayed. \nUse for extremely fast counting, since all the raw data is saved. \nTimestamps in oversampling interval are all equal to the averaging time.'
         self._oversampling_label = QtGui.QLabel('Oversampling (#):')
+        self._oversampling_label.setToolTip(oversampling_tooltip)
         self._oversampling_display = QtGui.QSpinBox()
+        self._oversampling_display.setToolTip(oversampling_tooltip)
         self._oversampling_display.setRange(1,1e4)
         self._oversampling_display.setValue(self._counting_logic.get_counting_samples())
         self._oversampling_display.valueChanged.connect(self.oversampling_changed)
