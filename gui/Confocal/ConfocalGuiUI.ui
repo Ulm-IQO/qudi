@@ -684,6 +684,34 @@
    <header>pyqtgraph.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>xy_ViewWidget</tabstop>
+  <tabstop>xz_ViewWidget</tabstop>
+  <tabstop>xy_res_InputWidget</tabstop>
+  <tabstop>z_res_InputWidget</tabstop>
+  <tabstop>x_min_InputWidget</tabstop>
+  <tabstop>x_max_InputWidget</tabstop>
+  <tabstop>y_min_InputWidget</tabstop>
+  <tabstop>y_max_InputWidget</tabstop>
+  <tabstop>z_min_InputWidget</tabstop>
+  <tabstop>z_max_InputWidget</tabstop>
+  <tabstop>x_current_InputWidget</tabstop>
+  <tabstop>y_current_InputWidget</tabstop>
+  <tabstop>z_current_InputWidget</tabstop>
+  <tabstop>ready_StateWidget</tabstop>
+  <tabstop>xy_scan_StateWidget</tabstop>
+  <tabstop>xz_scan_StateWidget</tabstop>
+  <tabstop>refocus_StateWidget</tabstop>
+  <tabstop>z_SliderWidget</tabstop>
+  <tabstop>xz_refocus_ViewWidget</tabstop>
+  <tabstop>y_SliderWidget</tabstop>
+  <tabstop>xz_cb_ViewWidget</tabstop>
+  <tabstop>xy_refocus_cb_ViewWidget</tabstop>
+  <tabstop>xy_refocus_ViewWidget</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>x_SliderWidget</tabstop>
+  <tabstop>xy_cb_ViewWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

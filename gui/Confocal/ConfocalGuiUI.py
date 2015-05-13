@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Apr 28 23:00:03 2015
+# Created: Wed May 13 12:37:07 2015
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(1021, 680)
+        MainWindow.resize(1002, 735)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -75,8 +75,25 @@ class Ui_MainWindow(object):
         self.gridLayout_6 = QtGui.QGridLayout()
         self.gridLayout_6.setObjectName(_fromUtf8("gridLayout_6"))
         self.xy_refocus_ViewWidget = PlotWidget(self.tab_6)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(6)
+        sizePolicy.setHeightForWidth(self.xy_refocus_ViewWidget.sizePolicy().hasHeightForWidth())
+        self.xy_refocus_ViewWidget.setSizePolicy(sizePolicy)
         self.xy_refocus_ViewWidget.setObjectName(_fromUtf8("xy_refocus_ViewWidget"))
         self.gridLayout_6.addWidget(self.xy_refocus_ViewWidget, 1, 0, 1, 1)
+        self.xy_refocus_cb_ViewWidget = PlotWidget(self.tab_6)
+        self.xy_refocus_cb_ViewWidget.setMaximumSize(QtCore.QSize(50, 16777215))
+        self.xy_refocus_cb_ViewWidget.setObjectName(_fromUtf8("xy_refocus_cb_ViewWidget"))
+        self.gridLayout_6.addWidget(self.xy_refocus_cb_ViewWidget, 1, 1, 1, 1)
+        self.xz_refocus_ViewWidget = PlotWidget(self.tab_6)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(5)
+        sizePolicy.setHeightForWidth(self.xz_refocus_ViewWidget.sizePolicy().hasHeightForWidth())
+        self.xz_refocus_ViewWidget.setSizePolicy(sizePolicy)
+        self.xz_refocus_ViewWidget.setObjectName(_fromUtf8("xz_refocus_ViewWidget"))
+        self.gridLayout_6.addWidget(self.xz_refocus_ViewWidget, 2, 0, 1, 2)
         self.gridLayout_7.addLayout(self.gridLayout_6, 0, 0, 1, 1)
         self.tabWidget.addTab(self.tab_6, _fromUtf8(""))
         self.tab = QtGui.QWidget()
@@ -289,7 +306,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2.addLayout(self.gridLayout_3, 1, 1, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1021, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1002, 21))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -319,6 +336,31 @@ class Ui_MainWindow(object):
         self.tabWidget.setCurrentIndex(0)
         QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        MainWindow.setTabOrder(self.xy_ViewWidget, self.xz_ViewWidget)
+        MainWindow.setTabOrder(self.xz_ViewWidget, self.xy_res_InputWidget)
+        MainWindow.setTabOrder(self.xy_res_InputWidget, self.z_res_InputWidget)
+        MainWindow.setTabOrder(self.z_res_InputWidget, self.x_min_InputWidget)
+        MainWindow.setTabOrder(self.x_min_InputWidget, self.x_max_InputWidget)
+        MainWindow.setTabOrder(self.x_max_InputWidget, self.y_min_InputWidget)
+        MainWindow.setTabOrder(self.y_min_InputWidget, self.y_max_InputWidget)
+        MainWindow.setTabOrder(self.y_max_InputWidget, self.z_min_InputWidget)
+        MainWindow.setTabOrder(self.z_min_InputWidget, self.z_max_InputWidget)
+        MainWindow.setTabOrder(self.z_max_InputWidget, self.x_current_InputWidget)
+        MainWindow.setTabOrder(self.x_current_InputWidget, self.y_current_InputWidget)
+        MainWindow.setTabOrder(self.y_current_InputWidget, self.z_current_InputWidget)
+        MainWindow.setTabOrder(self.z_current_InputWidget, self.ready_StateWidget)
+        MainWindow.setTabOrder(self.ready_StateWidget, self.xy_scan_StateWidget)
+        MainWindow.setTabOrder(self.xy_scan_StateWidget, self.xz_scan_StateWidget)
+        MainWindow.setTabOrder(self.xz_scan_StateWidget, self.refocus_StateWidget)
+        MainWindow.setTabOrder(self.refocus_StateWidget, self.z_SliderWidget)
+        MainWindow.setTabOrder(self.z_SliderWidget, self.xz_refocus_ViewWidget)
+        MainWindow.setTabOrder(self.xz_refocus_ViewWidget, self.y_SliderWidget)
+        MainWindow.setTabOrder(self.y_SliderWidget, self.xz_cb_ViewWidget)
+        MainWindow.setTabOrder(self.xz_cb_ViewWidget, self.xy_refocus_cb_ViewWidget)
+        MainWindow.setTabOrder(self.xy_refocus_cb_ViewWidget, self.xy_refocus_ViewWidget)
+        MainWindow.setTabOrder(self.xy_refocus_ViewWidget, self.tabWidget)
+        MainWindow.setTabOrder(self.tabWidget, self.x_SliderWidget)
+        MainWindow.setTabOrder(self.x_SliderWidget, self.xy_cb_ViewWidget)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Confocal", None))
