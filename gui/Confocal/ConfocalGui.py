@@ -684,7 +684,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param bool enabled: start scan if that is possible
         """        
         #Firstly stop any scan that might be in progress
-        self._scanning_logic.stop_scanning()                
+        self._scanning_logic.stop_scanning() 
+             
         
         #Then if enabled. start a new scan.
         if enabled:
@@ -698,7 +699,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param bool enabled: start scan if that is possible
         """
         self._scanning_logic.stop_scanning()
-        
+
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
             self.disable_scan_buttons()
@@ -917,9 +918,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         Everytime the scanner is scanning a line either the xy image or the 
         xz image is rebuild and updated in the GUI.        
-        """ 
+        """
+        self.adjust_xy_window()
+        self.adjust_xz_window()
+            
         if self._mw.xy_scan_StateWidget.isChecked():
             self.xy_image.getViewBox().enableAutoRange()
+            
             self.put_cursor_in_xy_scan()
             
 #            self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
@@ -929,7 +934,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self.refresh_xy_colorbar()
             
         elif self._mw.xz_scan_StateWidget.isChecked():
-            self.xz_image.getViewBox().enableAutoRange() 
+            self.xz_image.getViewBox().enableAutoRange()
+            self.adjust_xz_window()
             self.put_cursor_in_xz_scan()              
             self.xz_image.setImage(image=self._scanning_logic.xz_image[:,:,3].transpose(),autoLevels=True)
             self.refresh_xz_colorbar()
@@ -940,28 +946,36 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         
     def adjust_xy_window(self):
+        
+        print('adjust xy')
         view_x_min = float(self._mw.x_min_InputWidget.text())
-        view_x_max = float(self._mw.x_max_InputWidget.text())#-view_x_min
+        view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_y_min = float(self._mw.y_min_InputWidget.text())
-        view_y_max = float(self._mw.y_max_InputWidget.text())#-view_y_min  
-        self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))
-        
-        xy_viewbox = self.xy_image.getViewBox()
-        xy_viewbox.state['limits']['xLimits'][0] = view_x_min
-        xy_viewbox.state['limits']['xLimits'][1] = view_x_max
-        xy_viewbox.state['limits']['yLimits'][0] = view_y_min
-        xy_viewbox.state['limits']['yLimits'][1] = view_y_max
-        
-        xy_viewbox.updateViewRange()
+        view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min  
+        self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))                
+        self.xy_image.getViewBox().enableAutoRange()
+#        xy_viewbox = self.xy_image.getViewBox()
+#        xy_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
+#        xy_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
+#        xy_viewbox.state['limits']['yLimits'][0] = float(self._mw.y_min_InputWidget.text())
+#        xy_viewbox.state['limits']['yLimits'][1] = float(self._mw.y_max_InputWidget.text())
+#        xy_viewbox.updateViewRange()
 
 
     def adjust_xz_window(self):
-        #FIXME: why is this method different from the adjust_xy_window? also two varaibles are not used...
+        print('adjust xz')
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_z_min = float(self._mw.z_min_InputWidget.text())
-        view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min   
-        #self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min, view_x_max, view_z_max))
+        view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min  
+        self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min, view_x_max, view_z_max))           
+        self.xz_image.getViewBox().enableAutoRange()
+#        xz_viewbox = self.xz_image.getViewBox()
+#        xz_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
+#        xz_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
+#        xz_viewbox.state['limits']['yLimits'][0] = float(self._mw.z_min_InputWidget.text())
+#        xz_viewbox.state['limits']['yLimits'][1] = float(self._mw.z_max_InputWidget.text())
+#        xz_viewbox.updateViewRange()
 
 
     def put_cursor_in_xy_scan(self):
