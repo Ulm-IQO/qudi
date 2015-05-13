@@ -245,7 +245,7 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         '''This method deletes a poi from the list of managed points
         '''
         key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
-        self._poi_manager_logic.delete_poi(poiname=key)
+        self._poi_manager_logic.delete_poi(poikey=key)
     
         self.population_poi_list()
 
