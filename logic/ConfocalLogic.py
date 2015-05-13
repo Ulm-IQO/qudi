@@ -15,7 +15,8 @@ class ConfocalLogic(GenericLogic):
     
     signal_start_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
-    signal_image_updated = QtCore.Signal()
+    signal_xy_image_updated = QtCore.Signal()
+    signal_xz_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal()
     
     # counter for scan_image    
@@ -309,7 +310,8 @@ class ConfocalLogic(GenericLogic):
                 self.kill_scanner()
                 self.stopRequested = False
                 self.unlock()
-                self.signal_image_updated.emit()
+                self.signal_xy_image_updated.emit()
+                self.signal_xz_image_updated.emit()
                 self.set_position()
                 return
         
@@ -350,12 +352,13 @@ class ConfocalLogic(GenericLogic):
             
         if self._zscan:
                 self.xz_image[self._scan_counter,:,3] = line_counts
+                self.signal_xz_image_updated.emit()
         else:
                 self.xy_image[self._scan_counter,:,3] = line_counts
+                self.signal_xy_image_updated.emit()
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         # call this again from event loop
-        self.signal_image_updated.emit()
         self._scan_counter += 1
         
         if self._scan_counter >= np.size(self._image_vert_axis): 
