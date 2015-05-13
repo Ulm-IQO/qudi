@@ -29,8 +29,6 @@ pg.setConfigOption('background', QtGui.QColor('#222'))
 
 
 
-
-
 class ColorBar(pg.GraphicsObject):
     """ Create a ColorBar according to a previously defined color map.
         
@@ -43,8 +41,7 @@ class ColorBar(pg.GraphicsObject):
     @param string tick_labels: optional, a c-like format definition for the output of
                                the ticks.
     @param string label: optional, label for the colorbar.
-    """
-    
+    """    
     def __init__(self, cmap, width, height, ticks=None, tick_labels=None,
                  label=None):
 
@@ -91,23 +88,25 @@ class ColorBar(pg.GraphicsObject):
  
         # compute rect bounds for underlying mask
         self.zone = mintx - 12.0, -15.0, br.width() - mintx, h + br.height() + 30.0
-       
+
+
     def paint(self, p, *args):
         """ Paint the underlying mask.
 
         @param object p: a pyqtgraph.QtGui.QPainter object, which is used to 
                          set the color of the pen.
-        """
-        
+        """        
         p.setPen(pg.QtGui.QColor('#222'))
         p.setBrush(pg.QtGui.QColor('#222'))
         p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
         
         # paint colorbar
         p.drawPicture(0, 0, self.pic)
-        
+
+
     def boundingRect(self):
-        """ Get the position, width and hight of the displayed object. """
+        """ Get the position, width and hight of the displayed object.
+        """
         return pg.QtCore.QRectF(self.pic.boundingRect())
 
 #FIXME: A refresh function for the colorbar has to be implemented!
@@ -125,6 +124,7 @@ class CustomViewBox(pg.ViewBox):
         pg.ViewBox.__init__(self, *args, **kwds)
         self.setMouseMode(self.RectMode)
 
+
     ## reimplement right-click to zoom out
     def mouseClickEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:
@@ -132,13 +132,12 @@ class CustomViewBox(pg.ViewBox):
             self.setXRange(0,5)
             self.setYRange(0,10)
 
+
     def mouseDragEvent(self, ev,axis=0):
         if (ev.button() == QtCore.Qt.LeftButton) and (ev.modifiers() & QtCore.Qt.ControlModifier):
             pg.ViewBox.mouseDragEvent(self, ev,axis)
         else:
             ev.ignore()
-
-
 
 
 class CrossROI(pg.ROI):
@@ -149,8 +148,7 @@ class CrossROI(pg.ROI):
     
     Have a look at: 
     http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
-    """
-    
+    """    
     def __init__(self, pos, size, **args):
         pg.ROI.__init__(self, pos, size, **args)
         # That is a relative position of the small box inside the region of 
@@ -158,6 +156,7 @@ class CrossROI(pg.ROI):
         center = [0.5,0.5]
         # Translate the center to the intersection point of the crosshair.
         self.addTranslateHandle(center)
+
 
 class CrossLine(pg.InfiniteLine):
     """ Construct one line for the Crosshair in the plot.
@@ -167,12 +166,11 @@ class CrossLine(pg.InfiniteLine):
     @param dict pen: Configure the pen.
 
     For additional options consider the documentation of pyqtgraph.InfiniteLine
-
-    """
-    
+    """    
     def __init__(self, **args):
         pg.InfiniteLine.__init__(self, **args)
 #        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
+
 
     def adjust(self, extroi):
         """
@@ -184,20 +182,19 @@ class CrossLine(pg.InfiniteLine):
             self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
         if self.angle == 90:
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
-
         
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
-    """Create the Mainwindow based on the *.ui file. """
+    """Create the Mainwindow based on the *.ui file.
+    """
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-        
 
 class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
-    """ Main Confocal Class for xy and xz scans. """
-
+    """ Main Confocal Class for xy and xz scans.
+    """
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
@@ -231,6 +228,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')  
 
+
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
           
@@ -241,6 +239,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         *.ui file and configures the event handling between the modules. 
         Moreover it sets default values.
         """
+        #FIXME: can we delet all the commented stuff in this method?
         
         # Getting an access to all connectors:
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
@@ -306,9 +305,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # connect the change of a region with the adjustment of the crosshair:
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
-
-
-        
 
 
         # connect the change of a region with the adjustment of the sliders:
@@ -399,8 +395,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.y_min_InputWidget.setText(str(self._scanning_logic.image_y_range[0]))
         self._mw.y_max_InputWidget.setText(str(self._scanning_logic.image_y_range[1]))
         self._mw.z_min_InputWidget.setText(str(self._scanning_logic.image_z_range[0]))
-        self._mw.z_max_InputWidget.setText(str(self._scanning_logic.image_z_range[1]))
- 
+        self._mw.z_max_InputWidget.setText(str(self._scanning_logic.image_z_range[1])) 
 
         # Connect the change of the slider with the adjustment of the ROI: 
 
@@ -610,13 +605,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
         self._mw.ready_StateWidget.click()
-
-
         
         
     def update_crosshair_position(self):
-        """ Update the GUI position of the crosshair from the logic. """
-
+        """ Update the GUI position of the crosshair from the logic.
+        """
 #        print('Update roi from scanner logic.')        
         
         x_pos, y_pos, z_pos = self._scanning_logic.get_position()
@@ -637,12 +630,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         created and add to the display while the old one is deleted. This must
         be fixed in the class.
         """
-
         self._mw.xy_cb_ViewWidget.clear()
         self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), 
                               label='Counts')#, [0., 0.5, 1.0])
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
-     
+
+
     def refresh_xz_colorbar(self):
         """ Adjust the xz colorbar.
         
@@ -654,27 +647,29 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), 
                               label='Counts')#, [0., 0.5, 1.0])
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
-        
+
+
     def disable_scan_buttons(self, newstate=False):
         """ Disables the radio buttons for scanning.
         
         @param bool newstate: disabled (False), enabled (True)
-        """
-        
+        """        
         self._mw.xy_scan_StateWidget.setEnabled(newstate)
         self._mw.xz_scan_StateWidget.setEnabled(newstate)
         self._mw.refocus_StateWidget.setEnabled(newstate)
-        
+
+
     def _refocus_finished_wrapper(self):
         if not self._mw.ready_StateWidget.isChecked():
             self._mw.ready_StateWidget.click()
             return
         else:
             self.disable_scan_buttons(newstate=True)
-        
+
+
     def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready. """
-            
+        """ Stopp the scan if the state has switched to ready.
+        """            
         if self._scanning_logic.getState() == 'locked':
             self._scanning_logic.stop_scanning()
         if self._optimiser_logic.getState() == 'locked':
@@ -687,8 +682,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """ Manages what happens if the xy scan is started.
         
         @param bool enabled: start scan if that is possible
-        """
-        
+        """        
         #Firstly stop any scan that might be in progress
         self._scanning_logic.stop_scanning()                
         
@@ -696,7 +690,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if enabled:
             self._scanning_logic.start_scanning()
             self.disable_scan_buttons()
-            
+
+      
     def xz_scan_clicked(self, enabled):
         """ Manages what happens if the xz scan is started.
         
@@ -713,13 +708,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """ Manages what happens if the optimizer is started.
         
         @param bool enabled: start optimizer if that is possible
-        """
-        
+        """        
         self._scanning_logic.stop_scanning()
         if enabled:
             self._optimiser_logic.start_refocus()
             self.disable_scan_buttons()
-   
+
+
     def roi_xy_change_x(self,x_pos=None):
         """ Adjust the xy ROI position if the x value has changed.
         
@@ -738,14 +733,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #        # distinguish a signal comming from the 
 #        if x_pos != None and type(x_pos) is int:
 #        print('x_pos 1',type(x_pos),x_pos)
-        x_pos=x_pos*self.slider_res    
-        
+        x_pos=x_pos*self.slider_res        
         
         roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
         roi_y_view = self.roi_xy.pos()[1]
         self.roi_xy.setPos([roi_x_view , roi_y_view])
         self._scanning_logic.set_position(x=x_pos)
 #        print('x_pos 2',type(x_pos),x_pos)
+        
         
     def roi_xy_change_y(self,y_pos=None):
         """ Adjust the xy ROI position if the y value has changed.
@@ -778,8 +773,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         point but the lowest left point of the square, you have to shift the
         origin according to that. Therefore the position of the ROI is not 
         the actual position!
-        """
-        
+        """        
 #        if type(x_pos) is tuple:
 #            x_pos = x_pos[0]
 #        if x_pos != None and type(x_pos) is float:
@@ -790,6 +784,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.setPos([roi_x_view , roi_y_view])
         self._scanning_logic.set_position(x=x_pos)        
 
+
     def roi_xz_change_z(self,z_pos=None):
         """ Adjust the xz ROI position if the z value has changed.
         
@@ -799,8 +794,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         point but the lowest left point of the square, you have to shift the
         origin according to that. Therefore the position of the ROI is not 
         the actual position!
-        """
-        
+        """        
 #        if type(z_pos) is tuple:
 #            z_pos = z_pos[0]
 #        if z_pos != None and type(z_pos) is float:
@@ -819,7 +813,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
 #        print('Update slider x.')
         self._mw.x_SliderWidget.setValue( int( (roi.pos()[0]+ 0.5*roi.size()[0])/self.slider_res) )
-        
+
+
     def slider_y_adjust(self,roi):
         """ Adjust the y slider if a change happens.
         
@@ -827,6 +822,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         """
 #        print('Update slider y.')
         self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1])/self.slider_res) ) 
+
 
     def slider_z_adjust(self,roi):
         """ Adjust the z slider if a change happens.
@@ -839,8 +835,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_current_x(self,x_pos):
         """ Update the displayed x-value.
         
-        @param float x_pos: the current value of the x position
-        
+        @param float x_pos: the current value of the x position        
         """
 #        print('Update current x.')
         # Convert x_pos to number of points for the slider:
@@ -850,54 +845,68 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def update_current_y(self,y_pos):
         """ Update the displayed y-value.
         
-        @param float y_pos: the current value of the y position
-        
+        @param float y_pos: the current value of the y position        
         """
 #        print('Update current y.')
         # Convert x_pos to number of points for the slider:
         self._mw.y_current_InputWidget.setText('{0:.5}'.format(y_pos*self.slider_res))        
-    
+
+
     def update_current_z(self,z_pos):
         """ Update the displayed z-value.
         
-        @param float z_pos: the current value of the z position
-        
+        @param float z_pos: the current value of the z position        
         """
         # Convert x_pos to number of points for the slider:
         self._mw.z_current_InputWidget.setText('{0:.5}'.format(self._scanning_logic.z_range[0] + z_pos*self.slider_res))
-        
+
+
     def update_x_slider(self):
-        """ Update the x slider with the new entered value of x."""
+        """ Update the x slider with the new entered value of x.
+        """
 #        print('Update x slider for change in current x.')
         self._mw.x_SliderWidget.setValue( int(float(self._mw.x_current_InputWidget.text())/self.slider_res)   )
-        
+
+
     def update_y_slider(self):
-        """ Update the y slider with the new entered value of y."""
+        """ Update the y slider with the new entered value of y.
+        """
 #        print('Update y slider for change in current y.')
         self._mw.y_SliderWidget.setValue(  int(float(self._mw.y_current_InputWidget.text())/self.slider_res)    )
-        
+
+
     def update_z_slider(self):
-        """ Update the z slider with the new entered value of z."""        
+        """ Update the z slider with the new entered value of z.
+        """        
         self._mw.z_SliderWidget.setValue( int((float(self._mw.z_current_InputWidget.text()) - self._scanning_logic.z_range[0])/self.slider_res ))
-        
+
+
     def change_xy_resolution(self):
-        """ Update the xy resolution in the logic according to the GUI. """
+        """ Update the xy resolution in the logic according to the GUI.
+        """
         self._scanning_logic.xy_resolution = float(self._mw.xy_res_InputWidget.text())
-        
+
+
     def change_z_resolution(self):
-        """ Update the z resolution in the logic according to the GUI. """        
+        """ Update the z resolution in the logic according to the GUI.
+        """        
         self._scanning_logic.z_resolution = float(self._mw.z_res_InputWidget.text())
-    
+
+
     def change_x_image_range(self):
-        """ Adjust the image range for x in the logic. """
+        """ Adjust the image range for x in the logic.
+        """
         self._scanning_logic.image_x_range = [float(self._mw.x_min_InputWidget.text()), 
                                               float(self._mw.x_max_InputWidget.text())]
-        
+
+
     def change_y_image_range(self):
-        """ Adjust the image range for y in the logic. """
+        """ Adjust the image range for y in the logic.
+        """
         self._scanning_logic.image_y_range = [float(self._mw.y_min_InputWidget.text()), 
                                               float(self._mw.y_max_InputWidget.text())]
-        
+
+
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
         self._scanning_logic.image_z_range = [float(self._mw.z_min_InputWidget.text()), 
@@ -908,9 +917,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         Everytime the scanner is scanning a line either the xy image or the 
         xz image is rebuild and updated in the GUI.        
-        """
-        
-            
+        """ 
         if self._mw.xy_scan_StateWidget.isChecked():
             self.xy_image.getViewBox().enableAutoRange()
             self.put_cursor_in_xy_scan()
@@ -946,14 +953,17 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         xy_viewbox.state['limits']['yLimits'][1] = view_y_max
         
         xy_viewbox.updateViewRange()
-    
+
+
     def adjust_xz_window(self):
+        #FIXME: why is this method different from the adjust_xy_window? also two varaibles are not used...
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_z_min = float(self._mw.z_min_InputWidget.text())
         view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min   
         #self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min, view_x_max, view_z_max))
-    
+
+
     def put_cursor_in_xy_scan(self):
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())
@@ -961,11 +971,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         view_y_max = float(self._mw.y_max_InputWidget.text())
         
         cross_pos = self.roi_xy.pos()+ self.roi_xy.size()*0.5
-#        print('cross position:',cross_pos)
-#        print('view_x_min:',view_x_min)
-#        print('view_x_max:',view_x_max)
-#        print('view_y_min:',view_y_min)
-#        print('view_y_max:',view_y_max)
         
         if (view_x_min > cross_pos[0]):
             self.roi_xy_change_x(view_x_min+self.roi_xy.size()[0]*0.5)
@@ -999,15 +1004,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             
         if (view_z_max < cross_pos[1]):
             self.roi_xz_change_z(view_z_max-self.roi_xz.size()[1]*0.5)
-            
+
+      
     def adjust_aspect_roi_xy(self,viewbox=None):
         """ Keep the aspect ratio of the ROI also during the zoom the same. 
         
         @param object viewbox: pyqtgraph.ViewBox object, which contains the 
                                view information about the display.
-        
         """
-#        print('Adjust aspect ratio roi xy.')
         viewbox = self.xy_image.getViewBox()
         current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
         current_y_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
@@ -1017,8 +1021,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         pos = self.roi_xy.pos()
         self.roi_xy.setSize([size_x_roi,size_y_roi],update=False)
         self.roi_xy.setPos(pos,update=True)
-        
-        
 
     
     def adjust_aspect_roi_xz(self,viewbox=None):
@@ -1035,5 +1037,3 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         size_x_roi = current_x_view_range/20
         size_z_roi = current_z_view_range/20
         self.roi_xz.setSize([size_x_roi,size_z_roi])
-        
-        
