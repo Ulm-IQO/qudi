@@ -458,11 +458,9 @@ class LogWidget(QtGui.QWidget):
             print("Not implemented")
         elif url[:4] == 'exc:':
             cursor = self.ui.output.document().find('Show traceback %s' % url[4:])
-            print(url)
             try:
                 for entry in self.entries:
                     if int(entry['id']) == int(url[4:]):
-                        print(entry)
                         tb = entry['tracebackHtml']
                         break
             except KeyError:
