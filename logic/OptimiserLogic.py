@@ -113,22 +113,16 @@ class OptimiserLogic(GenericLogic):
         """Starts refocus        
         """
         print('start refocusing')
-        if isinstance(trackpoint, (np.ndarray,)) and not trackpoint.size:
-            self.is_crosshair = True
-            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
-                    self._confocal_logic.get_position()
-        elif isinstance(trackpoint, (list, tuple)) and not len(trackpoint):
-            self.is_crosshair = True
-            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
-                    self._confocal_logic.get_position()
-        else:
-            if len(trackpoint) != 3:
-                self.logMsg('The given Trackpoint ({}) does not have the right format.'.format(trackpoint), 
-                msgType='error')
-                self.signal_refocus_finished.emit()
-                return -1
+        if isinstance(trackpoint, (np.ndarray,)) and trackpoint.size == 3:
             self.is_crosshair = False
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
+        elif isinstance(trackpoint, (list, tuple)) and len(trackpoint) == 3:
+            self.is_crosshair = False
+            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
+        else:
+            self.is_crosshair = True
+            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
+                    self._confocal_logic.get_position()
                     
         self.lock()
         self._scan_counter = 0
