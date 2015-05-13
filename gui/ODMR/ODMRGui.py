@@ -102,6 +102,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop,self._odmr_logic.NumberofLines))
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         
         
@@ -109,6 +110,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # the UI file.
         self._mw.odmr_ViewWidget.addItem(self.odmr_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
+        
         
         # create a color map that goes from dark red to dark blue:
 
@@ -251,6 +253,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ''' This method refreshes the xy-matrix image
         '''       
         self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop,self._odmr_logic.NumberofLines))
         
     def update_settings(self):
         ''' This method writes the new settings from the gui to the file
