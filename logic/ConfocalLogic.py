@@ -320,28 +320,34 @@ class ConfocalLogic(GenericLogic):
         else:
             image = self.xy_image
             
-        if self._scan_counter == 0:
-            start_line = np.vstack( (np.linspace(self._current_x, \
-                                                 image[self._scan_counter,0,0], \
-                                                 self.return_slowness), \
-                                     np.linspace(self._current_y, \
-                                                 image[self._scan_counter,0,1], \
-                                                 self.return_slowness), \
-                                     np.linspace(self._current_z, \
-                                                 image[self._scan_counter,0,2], \
-                                                 self.return_slowness), \
-                                     np.linspace(self._current_a, \
-                                                 0, \
-                                                 self.return_slowness) ))
+        try:
+            if self._scan_counter == 0:
+                start_line = np.vstack( (np.linspace(self._current_x, \
+                                                     image[self._scan_counter,0,0], \
+                                                     self.return_slowness), \
+                                         np.linspace(self._current_y, \
+                                                     image[self._scan_counter,0,1], \
+                                                     self.return_slowness), \
+                                         np.linspace(self._current_z, \
+                                                     image[self._scan_counter,0,2], \
+                                                     self.return_slowness), \
+                                         np.linspace(self._current_a, \
+                                                     0, \
+                                                     self.return_slowness) ))
+                
+                start_line_counts = self._scanning_device.scan_line(start_line)
+                   
+            line = np.vstack( (image[self._scan_counter,:,0],
+                               image[self._scan_counter,:,1], 
+                               image[self._scan_counter,:,2], 
+                               self._AL) )
+                
+            line_counts = self._scanning_device.scan_line(line)
+        except Exception:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.stop_scanning()           
+            self.signal_scan_lines_next.emit()
             
-            start_line_counts = self._scanning_device.scan_line(start_line)
-               
-        line = np.vstack( (image[self._scan_counter,:,0],
-                           image[self._scan_counter,:,1], 
-                           image[self._scan_counter,:,2], 
-                           self._AL) )
-            
-        line_counts = self._scanning_device.scan_line(line)
         
         return_line = np.vstack( (self._return_XL, 
                                   image[self._scan_counter,0,1] * np.ones(self._return_XL.shape), 
