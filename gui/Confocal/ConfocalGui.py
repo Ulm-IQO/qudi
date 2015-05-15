@@ -56,7 +56,6 @@ class ColorBar(pg.GraphicsObject):
         if ticks is None:
             ticks = np.r_[0.0:1.0:5j] * spp + smn
         tick_labels = tick_labels or ["%0.2g" % (t,) for t in ticks]
-        print(ticks)
  
         # setup picture
         self.pic = pg.QtGui.QPicture()
@@ -74,9 +73,6 @@ class ColorBar(pg.GraphicsObject):
         mintx = 0.0
         for tick, tick_label in zip(ticks, tick_labels):
             y_ = (1.0 - (tick - smn)/spp) * h
-            print(y_)
-            print(tick_label)
-            print('\n')
             p.drawLine(0.0, y_, -5.0, y_)
             br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, tick_label)
             if br.x() < mintx:
@@ -1018,7 +1014,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
     def adjust_xy_window(self):
         
-        print('adjust xy')
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_y_min = float(self._mw.y_min_InputWidget.text())
@@ -1034,7 +1029,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
 
     def adjust_xz_window(self):
-        print('adjust xz')
+        
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_z_min = float(self._mw.z_min_InputWidget.text())
