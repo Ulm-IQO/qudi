@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>264</width>
-    <height>366</height>
+    <width>255</width>
+    <height>412</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -55,6 +55,40 @@
       </item>
      </layout>
     </item>
+    <item row="1" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QLabel" name="x_label">
+        <property name="text">
+         <string>X</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="optimal_x"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="y_label">
+        <property name="text">
+         <string>Y</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="optimal_y"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="z_label">
+        <property name="text">
+         <string>Z</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="optimal_z"/>
+      </item>
+     </layout>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -62,8 +96,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>264</width>
-     <height>20</height>
+     <width>255</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuOptions">
@@ -82,7 +116,6 @@
    <addaction name="menu_File"/>
    <addaction name="menuOptions"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Settings">
    <property name="text">
     <string>&amp;Settings</string>
