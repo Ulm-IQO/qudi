@@ -27,8 +27,10 @@ class PointMarker(pg.CircleROI):
         http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
     """
     
-    def __init__(self, pos, size, **args):
+    def __init__(self, pos, size, text='', **args):
         pg.CircleROI.__init__(self, pos, size, **args)
+#        text_item = pg.TextItem(text=text)
+#        self.addItem(text_item)
 #        handles=self.getHandles()
 #        for handle in handles:
 #            print(handle)
@@ -233,6 +235,8 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         # Set the newly added poi as the selected poi to manage.
         self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
         
+        self._redraw_sample_shift()
+        
     def delete_last_point(self):
         ''' This method deletes the last track position of a chosen poi
         '''
@@ -285,30 +289,10 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         '''
         self._mw.active_poi_Input.clear()
         self._mw.active_poi_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
-
-        for marker in self._markers:
-            self._mw.roi_map_ViewWidget.removeItem(marker)
-            del marker
-            
-        self._markers=[]
-        
         for key in self._poi_manager_logic.get_all_pois():
-            #self._poi_manager_logic.track_point_list[key].set_name('Kay_'+key[6:])
             if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_poi_Input.addItem(self._poi_manager_logic.get_name(poikey=key), key)
-                
-                # Create Region of Interest as marker:
-                position=self._poi_manager_logic.get_last_point(poikey=key)
-                position=position[:2]-[2.5,2.5]
-                self._markers.append(\
-                    PointMarker(position, 
-                                [5, 5], 
-                                pen={'color': "F0F", 'width': 2}, 
-                                movable=False, 
-                                scaleSnap=True, 
-                                snapSize=1.0))
-                # Add to the Map Widget
-                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
+
 
     def change_poi_name(self):
         '''Change the name of a poi
@@ -355,4 +339,33 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
         
+        for marker in self._markers:
+            self._mw.roi_map_ViewWidget.removeItem(marker)
+            del marker
+            
+        self._markers=[]
+        
+        for key in self._poi_manager_logic.get_all_pois():
+            if key is not 'crosshair' and key is not 'sample':
+                
+                # Create Region of Interest as marker:
+                position=self._poi_manager_logic.get_last_point(poikey=key)
+                position=position[:2]-[2.5,2.5]
+                self._markers.append(\
+                    PointMarker(position, 
+                                [5, 5],
+                                text = self._poi_manager_logic.get_name(poikey=key),
+                                pen={'color': "F0F", 'width': 2}, 
+                                movable=False, 
+                                scaleSnap=True, 
+                                snapSize=1.0))
+                # Add to the Map Widget
+                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
+                self._markers.append(\
+                    pg.TextItem(text=self._poi_manager_logic.get_name(poikey=key)))
+                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
+                position+=[5,7.5]
+                self._markers[-1].setPos(position[0],position[1])
+                    
+                
 #        print (self._poi_manager_logic.get_trace(poikey='sample'))

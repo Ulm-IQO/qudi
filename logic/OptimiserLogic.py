@@ -80,6 +80,9 @@ class OptimiserLogic(GenericLogic):
         self._trackpoint_x = 0.
         self._trackpoint_y = 0.
         self._trackpoint_z = 0.
+        self.refocus_x = self._trackpoint_x
+        self.refocus_y = self._trackpoint_y
+        self.refocus_z = self._trackpoint_z
         
         self._max_offset = 3.
         
@@ -186,6 +189,7 @@ class OptimiserLogic(GenericLogic):
                 
         self.refocus_x = self._trackpoint_x
         self.refocus_y = self._trackpoint_y
+        self.refocus_z = self._trackpoint_z
         
         try:                         
             if self._scan_counter == 0:

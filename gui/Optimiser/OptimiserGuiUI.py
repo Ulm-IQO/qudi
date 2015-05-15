@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'OptimiserGuiUI.ui'
 #
-# Created: Wed May  6 23:41:26 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Fri May 15 16:46:40 2015
+#      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,21 +12,12 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    def _fromUtf8(s):
-        return s
-
-try:
-    _encoding = QtGui.QApplication.UnicodeUTF8
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
-except AttributeError:
-    def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
+    _fromUtf8 = lambda s: s
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(264, 366)
+        MainWindow.resize(255, 412)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
@@ -59,18 +50,36 @@ class Ui_MainWindow(object):
         self.xz_refocus_ViewWidget.setObjectName(_fromUtf8("xz_refocus_ViewWidget"))
         self.gridLayout.addWidget(self.xz_refocus_ViewWidget, 5, 0, 1, 2)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
+        self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
+        self.x_label = QtGui.QLabel(self.centralwidget)
+        self.x_label.setObjectName(_fromUtf8("x_label"))
+        self.horizontalLayout.addWidget(self.x_label)
+        self.optimal_x = QtGui.QLineEdit(self.centralwidget)
+        self.optimal_x.setObjectName(_fromUtf8("optimal_x"))
+        self.horizontalLayout.addWidget(self.optimal_x)
+        self.y_label = QtGui.QLabel(self.centralwidget)
+        self.y_label.setObjectName(_fromUtf8("y_label"))
+        self.horizontalLayout.addWidget(self.y_label)
+        self.optimal_y = QtGui.QLineEdit(self.centralwidget)
+        self.optimal_y.setObjectName(_fromUtf8("optimal_y"))
+        self.horizontalLayout.addWidget(self.optimal_y)
+        self.z_label = QtGui.QLabel(self.centralwidget)
+        self.z_label.setObjectName(_fromUtf8("z_label"))
+        self.horizontalLayout.addWidget(self.z_label)
+        self.optimal_z = QtGui.QLineEdit(self.centralwidget)
+        self.optimal_z.setObjectName(_fromUtf8("optimal_z"))
+        self.horizontalLayout.addWidget(self.optimal_z)
+        self.gridLayout_2.addLayout(self.horizontalLayout, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 264, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 255, 26))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuOptions = QtGui.QMenu(self.menubar)
         self.menuOptions.setObjectName(_fromUtf8("menuOptions"))
         self.menu_File = QtGui.QMenu(self.menubar)
         self.menu_File.setObjectName(_fromUtf8("menu_File"))
         MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtGui.QStatusBar(MainWindow)
-        self.statusbar.setObjectName(_fromUtf8("statusbar"))
-        MainWindow.setStatusBar(self.statusbar)
         self.action_Settings = QtGui.QAction(MainWindow)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
         self.action_Exit = QtGui.QAction(MainWindow)
@@ -86,10 +95,13 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Optimiser", None))
-        self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
-        self.menu_File.setTitle(_translate("MainWindow", "&File", None))
-        self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
-        self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
+        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "qudi: Optimiser", None, QtGui.QApplication.UnicodeUTF8))
+        self.x_label.setText(QtGui.QApplication.translate("MainWindow", "X", None, QtGui.QApplication.UnicodeUTF8))
+        self.y_label.setText(QtGui.QApplication.translate("MainWindow", "Y", None, QtGui.QApplication.UnicodeUTF8))
+        self.z_label.setText(QtGui.QApplication.translate("MainWindow", "Z", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuOptions.setTitle(QtGui.QApplication.translate("MainWindow", "&Options", None, QtGui.QApplication.UnicodeUTF8))
+        self.menu_File.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
+        self.action_Settings.setText(QtGui.QApplication.translate("MainWindow", "&Settings", None, QtGui.QApplication.UnicodeUTF8))
+        self.action_Exit.setText(QtGui.QApplication.translate("MainWindow", "&Exit", None, QtGui.QApplication.UnicodeUTF8))
 
 from pyqtgraph import PlotWidget
