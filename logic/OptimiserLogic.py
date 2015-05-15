@@ -181,40 +181,47 @@ class OptimiserLogic(GenericLogic):
                 self.kill_scanner()
                 self.unlock()
                 self.signal_image_updated.emit()
+                self.signal_refocus_finished.emit()
                 return
                 
         self.refocus_x = self._trackpoint_x
         self.refocus_y = self._trackpoint_y
-                                 
-        if self._scan_counter == 0:
-            start_line = np.vstack( (np.linspace(self._trackpoint_x, \
-                                                 self.xy_refocus_image[self._scan_counter,0,0], \
-                                                 self.return_slowness), \
-                                     np.linspace(self._trackpoint_y, \
-                                                 self.xy_refocus_image[self._scan_counter,0,1], \
-                                                 self.return_slowness), \
-                                     np.linspace(self._trackpoint_z, \
-                                                 self.xy_refocus_image[self._scan_counter,0,2], \
-                                                 self.return_slowness), \
-                                     np.linspace(0, \
-                                                 0, \
-                                                 self.return_slowness) ))
-            
-            start_line_counts = self._scanning_device.scan_line(start_line)
-            
-        line = np.vstack( (self.xy_refocus_image[self._scan_counter,:,0],
-                           self.xy_refocus_image[self._scan_counter,:,1], 
-                           self.xy_refocus_image[self._scan_counter,:,2],  
-                           self._A_values) )
-            
-        line_counts = self._scanning_device.scan_line(line)
         
-        return_line = np.vstack( (self._return_X_values, 
-                                  self.xy_refocus_image[self._scan_counter,0,1] * np.ones(self._return_X_values.shape), 
-                                  self.xy_refocus_image[self._scan_counter,0,2] * np.ones(self._return_X_values.shape), 
-                                  self._return_A_values) )
+        try:                         
+            if self._scan_counter == 0:
+                start_line = np.vstack( (np.linspace(self._trackpoint_x, \
+                                                     self.xy_refocus_image[self._scan_counter,0,0], \
+                                                     self.return_slowness), \
+                                         np.linspace(self._trackpoint_y, \
+                                                     self.xy_refocus_image[self._scan_counter,0,1], \
+                                                     self.return_slowness), \
+                                         np.linspace(self._trackpoint_z, \
+                                                     self.xy_refocus_image[self._scan_counter,0,2], \
+                                                     self.return_slowness), \
+                                         np.linspace(0, \
+                                                     0, \
+                                                     self.return_slowness) ))
+                
+                start_line_counts = self._scanning_device.scan_line(start_line)
+                
+            line = np.vstack( (self.xy_refocus_image[self._scan_counter,:,0],
+                               self.xy_refocus_image[self._scan_counter,:,1], 
+                               self.xy_refocus_image[self._scan_counter,:,2],  
+                               self._A_values) )
+                
+            line_counts = self._scanning_device.scan_line(line)
+            
+            return_line = np.vstack( (self._return_X_values, 
+                                      self.xy_refocus_image[self._scan_counter,0,1] * np.ones(self._return_X_values.shape), 
+                                      self.xy_refocus_image[self._scan_counter,0,2] * np.ones(self._return_X_values.shape), 
+                                      self._return_A_values) )
+            
+            return_line_counts = self._scanning_device.scan_line(return_line)
         
-        return_line_counts = self._scanning_device.scan_line(return_line)
+        except Exception:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.stop_refocus()           
+            self.signal_scan_xy_line_next.emit()
         
         self.xy_refocus_image[self._scan_counter,:,3] = line_counts
         
@@ -333,8 +340,13 @@ class OptimiserLogic(GenericLogic):
         Y_line = self.refocus_y * np.ones(self._zimage_Z_values.shape)
         A_line = np.zeros(self._zimage_Z_values.shape)
         
-        line = np.vstack( (X_line, Y_line, Z_line, A_line) )            
-        line_counts = self._scanning_device.scan_line(line)
+        line = np.vstack( (X_line, Y_line, Z_line, A_line) )
+        try:
+            line_counts = self._scanning_device.scan_line(line)
+        except Exception:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.stop_refocus()           
+            self.signal_scan_xy_line_next.emit()
         
         self.z_refocus_line = line_counts
         
