@@ -243,7 +243,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         *.ui file and configures the event handling between the modules. 
         Moreover it sets default values.
         """
-        #FIXME: can we delet all the commented stuff in this method?
+        #FIXME: can we delete all the commented stuff in this method?
         
         # Getting an access to all connectors:
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
