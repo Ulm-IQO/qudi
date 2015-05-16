@@ -19,7 +19,7 @@ from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 #
 # Then use that script like
 #
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalWindowTemplate.ui > ConfocalGuiUI.py
+# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalGuiUI.ui > ConfocalGuiUI.py
 #
 # to convert to ConfocalGuiUI.py.
 # =============================================================================
@@ -625,6 +625,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.ready_StateWidget.click()
         
         
+        # Connect the 'File' Menu dialog in confocal with the methods:
+        self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan)
+        self._mw.actionSave_XZ_Scan.triggered.connect(self.save_xz_scan) 
+        
+        
+        
+        
     def update_crosshair_position(self):
         """ Update the GUI position of the crosshair from the logic.
         """
@@ -964,8 +971,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.adjust_xy_window()
             
         self.xy_image.getViewBox().enableAutoRange()
-        
         self.put_cursor_in_xy_scan()
+        self.adjust_aspect_roi_xy()
         
 #        self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
 #        self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
@@ -994,8 +1001,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             
             
         self.xz_image.getViewBox().enableAutoRange()
-        self.adjust_xz_window()
-        self.put_cursor_in_xz_scan()              
+        self.put_cursor_in_xz_scan()
+        self.adjust_aspect_roi_xy()              
 
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
@@ -1010,7 +1017,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
-
         
     def adjust_xy_window(self):
         
@@ -1020,12 +1026,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min  
         self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, view_x_max, view_y_max))                
         self.xy_image.getViewBox().enableAutoRange()
-#        xy_viewbox = self.xy_image.getViewBox()
-#        xy_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
-#        xy_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
-#        xy_viewbox.state['limits']['yLimits'][0] = float(self._mw.y_min_InputWidget.text())
-#        xy_viewbox.state['limits']['yLimits'][1] = float(self._mw.y_max_InputWidget.text())
-#        xy_viewbox.updateViewRange()
+        xy_viewbox = self.xy_image.getViewBox()
+        xy_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
+        xy_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
+        xy_viewbox.state['limits']['yLimits'][0] = float(self._mw.y_min_InputWidget.text())
+        xy_viewbox.state['limits']['yLimits'][1] = float(self._mw.y_max_InputWidget.text())
+        xy_viewbox.updateViewRange()
 
 
     def adjust_xz_window(self):
@@ -1036,12 +1042,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min  
         self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min, view_x_max, view_z_max))           
         self.xz_image.getViewBox().enableAutoRange()
-#        xz_viewbox = self.xz_image.getViewBox()
-#        xz_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
-#        xz_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
-#        xz_viewbox.state['limits']['yLimits'][0] = float(self._mw.z_min_InputWidget.text())
-#        xz_viewbox.state['limits']['yLimits'][1] = float(self._mw.z_max_InputWidget.text())
-#        xz_viewbox.updateViewRange()
+        xz_viewbox = self.xz_image.getViewBox()
+        xz_viewbox.state['limits']['xLimits'][0] = float(self._mw.x_min_InputWidget.text())
+        xz_viewbox.state['limits']['xLimits'][1] = float(self._mw.x_max_InputWidget.text())
+        xz_viewbox.state['limits']['yLimits'][0] = float(self._mw.z_min_InputWidget.text())
+        xz_viewbox.state['limits']['yLimits'][1] = float(self._mw.z_max_InputWidget.text())
+        xz_viewbox.updateViewRange()
 
 
     def put_cursor_in_xy_scan(self):
@@ -1050,20 +1056,25 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         view_y_min = float(self._mw.y_min_InputWidget.text())
         view_y_max = float(self._mw.y_max_InputWidget.text())
         
+        x_value = self.roi_xy.pos()[0]
+        y_value = self.roi_xy.pos()[1]
         cross_pos = self.roi_xy.pos()+ self.roi_xy.size()*0.5
-        
+
+
+
         if (view_x_min > cross_pos[0]):
-            self.roi_xy_change_x(view_x_min+self.roi_xy.size()[0]*0.5)
+            x_value = view_x_min+self.roi_xy.size()[0]*0.5
             
         if (view_x_max < cross_pos[0]):
-            self.roi_xy_change_x(view_x_max-self.roi_xy.size()[0]*0.5)
+            x_value = view_x_max-self.roi_xy.size()[0]*0.5
             
         if (view_y_min > cross_pos[1]):
-            self.roi_xy_change_y(view_y_min+self.roi_xy.size()[1]*0.5)
+            y_value = view_y_min+self.roi_xy.size()[1]*0.5
             
         if (view_y_max < cross_pos[1]):
-            self.roi_xy_change_y(view_y_max-self.roi_xy.size()[1]*0.5)
-            
+            y_value = view_y_max-self.roi_xy.size()[1]*0.5
+         
+        self.roi_xy.setPos([x_value,y_value], update=True)
             
     def put_cursor_in_xz_scan(self):
         view_x_min = float(self._mw.x_min_InputWidget.text())
@@ -1071,19 +1082,23 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         view_z_min = float(self._mw.z_min_InputWidget.text())
         view_z_max = float(self._mw.z_max_InputWidget.text())#-view_z_min  
         
+        x_value = self.roi_xz.pos()[0]
+        z_value = self.roi_xz.pos()[1]
         cross_pos = self.roi_xz.pos()+ self.roi_xz.size()*0.5
         
         if (view_x_min > cross_pos[0]):
-            self.roi_xz_change_x(view_x_min+self.roi_xz.size()[0]*0.5)
+            x_value = view_x_min+self.roi_xz.size()[0]*0.5
             
         if (view_x_max < cross_pos[0]):
-            self.roi_xz_change_x(view_x_max-self.roi_xz.size()[0]*0.5)
+            x_value = view_x_max-self.roi_xz.size()[0]*0.5
             
         if (view_z_min > cross_pos[1]):
-            self.roi_xz_change_z(view_z_min+self.roi_xz.size()[1]*0.5)
+            z_value = view_z_min+self.roi_xz.size()[1]*0.5
             
         if (view_z_max < cross_pos[1]):
-            self.roi_xz_change_z(view_z_max-self.roi_xz.size()[1]*0.5)
+            z_value = view_z_max-self.roi_xz.size()[1]*0.5
+            
+        self.roi_xz.setPos([x_value,z_value], update=True)
 
       
     def adjust_aspect_roi_xy(self,viewbox=None):
@@ -1117,3 +1132,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         size_x_roi = current_x_view_range/20
         size_z_roi = current_z_view_range/20
         self.roi_xz.setSize([size_x_roi,size_z_roi])
+
+    def save_xy_scan(self):
+        """ Run the save routine from the logic to save the xy confocal pic."""
+        self._scanning_logic.save_xy_data()
+        
+    def save_xz_scan(self):
+        """ Run the save routine from the logic to save the xy confocal pic."""      
+        self._scanning_logic.save_xz_data()
+        
+        
