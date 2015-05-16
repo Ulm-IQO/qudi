@@ -72,7 +72,7 @@ class FitLogic():
                     #FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
-                    self.logMsg('The fit did not work.', msgType='error')
+                    self.logMsg('The fit did not work.', msgType='warning')
                     error=-1
             if details==False:
                 return error,popt
@@ -146,11 +146,19 @@ class FitLogic():
             @return float theta: estimated angle for eliptical gaussians
             @return float offset: estimated offset
             @return int error: error code (0:OK, -1:error)                    
-            """    
-
+            """                                 
+            amplitude=float(data.max()-data.min())
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
+            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
+            sigma_x=(x_axis.max()-x_axis.min())/3.
+            sigma_y =(y_axis.max()-y_axis.min())/3.
+            theta=0.0
+            offset=float(data.min())
+            error=0
             #check for sensible values
             parameters=[x_axis,y_axis,data]
             for var in parameters:
+                #FIXME: Why don't you check earlier?
                 #FIXME: Check for 1D array, 2D
                 if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
                     self.logMsg('Given parameter is not an array.', \
@@ -163,24 +171,6 @@ class FitLogic():
                     theta=0.0
                     offset=0.
                     error=-1
-
-                elif len(np.shape(var))!=2:
-#                    self.logMsg('Dimension of arrays is not 2.', \
-#                                msgType='error') 
-                    print('Dimension of array is not 2.')
-            print("x_axis",len(np.shape(x_axis)))
-            print("y_axis",len(np.shape(y_axis)))
-            print("data",len(np.shape(data)))
-                                
-            amplitude=float(data.max()-data.min())
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
-            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
-            sigma_x=(x_axis.max()-x_axis.min())/3.
-            sigma_y =(y_axis.max()-y_axis.min())/3.
-            theta=0.0
-            offset=float(data.min())
-            error=0
-
        
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
@@ -210,7 +200,6 @@ class FitLogic():
                     
             """
                       
-            #FIXME: Would be nice in several rows....
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
             initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
@@ -224,7 +213,6 @@ class FitLogic():
                 return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-            #FIXME: dimension of arrays
             """ This method provides a one dimensional gaussian function.
         
             @param array x_data: x values
@@ -234,21 +222,15 @@ class FitLogic():
             @param float or int offset: offset
 
             @return callable function: returns a 1D Gaussian function
-                    
-            """
-            #FIXME: Check for 1D arrays with .shape()
             
+            """            
             # check if parameters make sense
 
             if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
                 print("error")
                 self.logMsg('Given range of axis is no array type.', \
-                            msgType='error')            
-            elif len(np.shape(x_data))!=1:
-                print("error")
-                self.logMsg('Dimension of array does not fit.', \
-                        msgType='error')  
-                    
+                            msgType='error') 
+
 
             parameters=[amplitude,x_zero,sigma,offset]
             for var in parameters:
@@ -259,11 +241,8 @@ class FitLogic():
             gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
             return gaussian
         
-        #FIXME: Checking is different from 2D case... Why?
         def gaussian_estimator(self,x_axis=None,data=None):
-#            TODO:Make clever estimator
-            #FIXME: dimensions of arrays
-            #FIXME:Habe hier alle y entfernt. Und theta. Hoffe das passt...
+            #TODO:Make clever estimator
             """ This method provides a one dimensional gaussian function.
         
             @param array x_axis: x values
@@ -280,17 +259,18 @@ class FitLogic():
             """
             error=0
             # check if parameters make sense
-            #FIXME:check for 1D arrays
             parameters=[x_axis,data]
             for var in parameters:
                 if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
                     self.logMsg('Given parameter is no array.', \
                                 msgType='error') 
                     error=-1
+                elif len(np.shape(var))!=1:
+                    self.logMsg('Given parameter is no one dimensional array.', \
+                                msgType='error')                     
             #set paraameters 
-            #FIXME:Why not data-max-data.min
-            amplitude=data.max()
-            x_zero=(x_axis.max()-x_axis.min())/2.
+            amplitude=data.max()-data.min()
+            x_zero=np.argmax(data)
             sigma = x_axis.min() + (x_axis.max()-x_axis.min())/3.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
@@ -341,15 +321,18 @@ class FitLogic():
 
                 
         def oneD_testing(self):
-            self.x = np.linspace(0, 200, 201)
-            self.xdata=self.gaussian_function(self.x,30,101,70,5)
-            self.xdata_noisy=self.xdata\
-                                    +2*np.random.normal(size=self.xdata.shape)
-            error,popt=self.make_gaussian_fit(self.x,self.xdata_noisy)
+            self.x = np.linspace(0, 20, 21)
+            self.gaussian_positive_function=False
+            self.xdata=self.gaussian_function(self.x,6,3,4,5)
+            self.xdata_noisy=self.xdata+2*np.random.normal(size=self.xdata.shape)
+            error,amplitude, x_zero, sigma, offset=self.gaussian_estimator(self.x,self.xdata)
+            self.gaussian_positive_function=True
+            error,popt= self.make_fit(self.gaussian_function, self.x, self.xdata_noisy,initial_guess=(amplitude, x_zero, sigma, offset))            
             plt.figure()
             plt.plot(self.x,self.gaussian_function(self.x, *popt))
             plt.plot(self.xdata_noisy)
             plt.show()
+            
             
 
         
@@ -379,4 +362,4 @@ class FitLogic():
 
 
 test=FitLogic()
-test.twoD_testing()   
+test.oneD_testing()   
