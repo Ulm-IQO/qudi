@@ -37,6 +37,9 @@ class ConfocalLogic(GenericLogic):
         self.connector['out']['scannerlogic'] = OrderedDict()
         self.connector['out']['scannerlogic']['class'] = 'ConfocalLogic'
         
+        self.connector['in']['savelogic'] = OrderedDict()
+        self.connector['in']['savelogic']['class'] = 'SaveLogic'
+        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -67,6 +70,7 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
 #        print("Scanning device is", self._scanning_device)
         
+        self._save_logic = self.connector['in']['savelogic']['object']
         
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
@@ -370,3 +374,118 @@ class ConfocalLogic(GenericLogic):
         if self._scan_counter >= np.size(self._image_vert_axis): 
             self.stop_scanning()           
         self.signal_scan_lines_next.emit()
+
+    def save_xy_data(self):
+        """ Save the current confocal xy data to a file.
+        
+        The save method saves the data in """
+        
+        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
+        
+        # data for the pure image:
+        image_data = OrderedDict()
+        image_data['Confocal XY scan image data. Signal in counts/s:'] = self.xy_image[:,:,3]     
+
+        # write the parameters:
+        parameters = OrderedDict() 
+        
+        parameters['X image min (micrometer)'] = self.image_x_range[0]
+        parameters['X image max (micrometer)'] = self.image_x_range[1]
+        parameters['X image range (micrometer)'] = self.image_x_range[1] - self.image_x_range[0]
+        
+        parameters['Y image min'] = self.image_y_range[0]
+        parameters['Y image max'] = self.image_y_range[1]
+        parameters['Y image range'] = self.image_y_range[1] - self.image_y_range[0]
+        
+        parameters['XY resolution (samples per range)'] = self.xy_resolution
+        parameters['XY Image at z position (micrometer)'] = self._current_z
+
+        parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
+        parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness   
+        
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image.dat') 
+        self._save_logic.save_data(image_data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict() 
+        x_data = []
+        y_data = []
+        z_data = []
+        counts_data = []         
+
+        for row in self.xy_image:
+            for entry in row:
+                x_data.append(entry[0])
+                y_data.append(entry[1])
+                z_data.append(entry[2])
+                counts_data.append(entry[3])
+                
+        data['x values (micros)'] = x_data
+        data['y values (micros)'] = y_data
+        data['z values (micros)'] = z_data
+        data['count values (micros)'] = counts_data
+                                   
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_data.dat')                           
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                  
+        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), 
+                    msgType='status', importance=3)        
+        
+    def save_xz_data(self):
+        """ Save the current confocal xz data to a file. """
+        
+        filepath = self._save_logic.get_path_for_module(module_name='Confocal')
+        
+        # data for the pure image:
+        image_data = OrderedDict()
+        image_data['Confocal XZ scan image data. Signal in counts/s:'] = self.xz_image[:,:,3]     
+
+        # write the parameters:
+        parameters = OrderedDict() 
+        
+        parameters['X image min (micrometer)'] = self.image_x_range[0]
+        parameters['X image max (micrometer)'] = self.image_x_range[1]
+        parameters['X image range (micrometer)'] = self.image_x_range[1] - self.image_x_range[0]
+        
+        parameters['Z image min'] = self.image_z_range[0]
+        parameters['Z image max'] = self.image_z_range[1]
+        parameters['Z image range'] = self.image_z_range[1] - self.image_z_range[0]
+        
+        parameters['XY resolution (samples per range)'] = self.xy_resolution
+        parameters['Z resolution (samples per range)'] = self.z_resolution
+        parameters['XZ Image at y position (micrometer)'] = self._current_y
+
+        parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
+        parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness   
+        
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xz_image.dat') 
+        self._save_logic.save_data(image_data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict() 
+        x_data = []
+        y_data = []
+        z_data = []
+        counts_data = []         
+
+        for row in self.xz_image:
+            for entry in row:
+                x_data.append(entry[0])
+                y_data.append(entry[1])
+                z_data.append(entry[2])
+                counts_data.append(entry[3])
+                
+        data['x values (micros)'] = x_data
+        data['y values (micros)'] = y_data
+        data['z values (micros)'] = z_data
+        data['count values (micros)'] = counts_data
+                                   
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xz_data.dat')                           
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                  
+        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), 
+                    msgType='status', importance=3) 
