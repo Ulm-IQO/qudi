@@ -232,7 +232,7 @@ class SaveLogic(GenericLogic):
                     self.logMsg('Savelogic has no implementation for 3 '
                                 'dimensional arrays. The data is saved in a '
                                 'raw fashion.', msgType='warning', importance=7)
-                    textfile.write(+str(data[key_name]))
+                    textfile.write(str(data[key_name]))
                 
                 else:
                     
@@ -250,7 +250,7 @@ class SaveLogic(GenericLogic):
                 data_traces = []
                 for entry in key_list:
                     data_traces.append(data[entry])
-                    if len(data[entry]) > 1:
+                    if len(np.shape(data[entry])) > 1:
                         trace_1d_flag = False
                     
                     
@@ -327,7 +327,7 @@ class SaveLogic(GenericLogic):
         for row in range(max_trace_length):
             for column in range(len(trace_data)):
                 try:
-                    opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[row][column]))
+                    opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[column][row]))
                 except:
                     opened_file.write(str('{0}'+delimiter).format('NaN'))
             opened_file.write('\n')
