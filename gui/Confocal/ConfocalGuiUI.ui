@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1163</width>
+    <width>974</width>
     <height>735</height>
    </rect>
   </property>
@@ -744,15 +744,16 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1163</width>
-     <height>20</height>
+     <width>974</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionSave_as"/>
+    <addaction name="actionSave_XY_Scan"/>
+    <addaction name="actionSave_XZ_Scan"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
     <addaction name="action_Exit"/>
@@ -767,9 +768,9 @@
    <addaction name="menu_Options"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionSave_as">
+  <action name="actionSave_XY_Scan">
    <property name="text">
-    <string>&amp;Save as</string>
+    <string>Save XY Scan</string>
    </property>
   </action>
   <action name="actionSave_configuration">
@@ -785,6 +786,11 @@
   <action name="action_Exit">
    <property name="text">
     <string>&amp;Exit</string>
+   </property>
+  </action>
+  <action name="actionSave_XZ_Scan">
+   <property name="text">
+    <string>Save XZ Scan</string>
    </property>
   </action>
  </widget>

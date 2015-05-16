@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Wed May 13 20:58:59 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Sat May 16 17:05:56 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(1163, 735)
+        MainWindow.resize(974, 735)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -363,7 +363,7 @@ class Ui_MainWindow(object):
         self.gridLayout_8.addLayout(self.gridLayout_3, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1163, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 974, 21))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -373,15 +373,18 @@ class Ui_MainWindow(object):
         self.statusbar = QtGui.QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         MainWindow.setStatusBar(self.statusbar)
-        self.actionSave_as = QtGui.QAction(MainWindow)
-        self.actionSave_as.setObjectName(_fromUtf8("actionSave_as"))
+        self.actionSave_XY_Scan = QtGui.QAction(MainWindow)
+        self.actionSave_XY_Scan.setObjectName(_fromUtf8("actionSave_XY_Scan"))
         self.actionSave_configuration = QtGui.QAction(MainWindow)
         self.actionSave_configuration.setObjectName(_fromUtf8("actionSave_configuration"))
         self.action_Settings = QtGui.QAction(MainWindow)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
         self.action_Exit = QtGui.QAction(MainWindow)
         self.action_Exit.setObjectName(_fromUtf8("action_Exit"))
-        self.menuFile.addAction(self.actionSave_as)
+        self.actionSave_XZ_Scan = QtGui.QAction(MainWindow)
+        self.actionSave_XZ_Scan.setObjectName(_fromUtf8("actionSave_XZ_Scan"))
+        self.menuFile.addAction(self.actionSave_XY_Scan)
+        self.menuFile.addAction(self.actionSave_XZ_Scan)
         self.menuFile.addAction(self.actionSave_configuration)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.action_Exit)
@@ -450,9 +453,10 @@ class Ui_MainWindow(object):
         self.x_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X-position</span></p></body></html>", None))
         self.menuFile.setTitle(_translate("MainWindow", "&File", None))
         self.menu_Options.setTitle(_translate("MainWindow", "&Options", None))
-        self.actionSave_as.setText(_translate("MainWindow", "&Save as", None))
+        self.actionSave_XY_Scan.setText(_translate("MainWindow", "Save XY Scan", None))
         self.actionSave_configuration.setText(_translate("MainWindow", "Save &configuration", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
         self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
+        self.actionSave_XZ_Scan.setText(_translate("MainWindow", "Save XZ Scan", None))
 
 from pyqtgraph import PlotWidget
