@@ -46,9 +46,6 @@ class LogWindow(Base):
         """
         self.mw = QtGui.QMainWindow()
         self.mw.setWindowTitle('qudi: Log')
-        path = os.path.dirname(__file__)
-        self.mw.setWindowIcon(QtGui.QIcon(os.path.join(path, 'logIcon.png')))
-
         if 'stylesheet' in self.getConfiguration():
             stylesheetpath = os.path.join(self.get_main_dir(), 'artwork', 'styles', 'log', self.getConfiguration()['stylesheet'])
         else:
@@ -70,6 +67,7 @@ class LogWindow(Base):
         self.wid.ui.input.returnPressed.connect(self.textEntered)
         self.errorDialog = ErrorDialog(self)
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)
+        self._manager.sigShowLog.connect(self.show)
         self.mw.show()
 
     def addMessage(self, entry):

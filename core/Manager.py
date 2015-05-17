@@ -60,7 +60,9 @@ class Manager(QtCore.QObject):
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object)
-    sigManagerShow = QtCore.Signal()
+    sigShowManager = QtCore.Signal()
+    sigShowLog = QtCore.Signal()
+    sigShowConsole = QtCore.Signal()
     
     def __init__(self, configFile=None, argv=None):
         """Constructor for QuDi main management class
@@ -871,9 +873,6 @@ class Manager(QtCore.QObject):
                 self.startModule(base, key)
 
         self.logger.print_logMsg('Activation finished.')
-
-    def show(self):
-        self.sigManagerShow.emit()
 
     def quit(self):
         """Nicely request that all modules shut down."""

@@ -104,7 +104,6 @@
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
     <addaction name="action_Load_all_modules"/>
-    <addaction name="actionStart_all_modules"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -129,7 +128,9 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_configuration">
    <property name="icon">
-    <iconset theme="document-open"/>
+    <iconset theme="document-open">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Load configuration</string>
@@ -137,20 +138,29 @@
   </action>
   <action name="actionSave_configuration">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save configuration</string>
    </property>
   </action>
   <action name="action_Load_all_modules">
+   <property name="icon">
+    <iconset theme="media-playback-start">
+     <normaloff/>
+    </iconset>
+   </property>
    <property name="text">
     <string> Load all modules</string>
    </property>
   </action>
   <action name="actionStart_all_modules">
    <property name="icon">
-    <iconset theme="media-playback-start"/>
+    <iconset theme="media-playback-start">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Start all modules</string>
@@ -158,7 +168,9 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset theme="application-exit"/>
+    <iconset theme="application-exit">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Quit</string>
@@ -166,7 +178,9 @@
   </action>
   <action name="actionLog">
    <property name="icon">
-    <iconset theme="dialog-warning"/>
+    <iconset theme="dialog-warning">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Log</string>
@@ -174,7 +188,9 @@
   </action>
   <action name="actionConsole">
    <property name="icon">
-    <iconset theme="utilities-terminal"/>
+    <iconset theme="utilities-terminal">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Console</string>
@@ -182,10 +198,17 @@
   </action>
   <action name="actionAbout_QuDi">
    <property name="icon">
-    <iconset theme="help-about"/>
+    <iconset theme="help-about">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>About QuDi</string>
+   </property>
+  </action>
+  <action name="actionAbout_Qt">
+   <property name="text">
+    <string>About Qt</string>
    </property>
   </action>
   <action name="actionAbout_Qt">

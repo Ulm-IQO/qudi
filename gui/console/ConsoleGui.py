@@ -30,4 +30,10 @@ Go, play.
 """
         self._cw = Console.ConsoleWidget(namespace=namespace, text=text)
         self._cw.setWindowTitle('qudi: Console')
+        self._manager.sigShowConsole.connect(self.show)
         self._cw.show()
+
+    def show(self):
+        QtGui.QMainWindow.show(self._cw)
+        self._cw.activateWindow()
+        self._cw.raise_()
