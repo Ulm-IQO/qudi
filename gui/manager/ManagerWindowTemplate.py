@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'gui/manager/ManagerWindowTemplate.ui'
+# Form implementation generated from reading ui file './gui/manager/ManagerWindowTemplate.ui'
 #
-# Created: Wed May  6 18:32:27 2015
-#      by: PyQt4 UI code generator 4.11.3
+# Created by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -84,6 +83,8 @@ class Ui_MainWindow(object):
         self.actionSave_configuration.setIcon(icon)
         self.actionSave_configuration.setObjectName(_fromUtf8("actionSave_configuration"))
         self.action_Load_all_modules = QtGui.QAction(MainWindow)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("media-playback-start"))
+        self.action_Load_all_modules.setIcon(icon)
         self.action_Load_all_modules.setObjectName(_fromUtf8("action_Load_all_modules"))
         self.actionStart_all_modules = QtGui.QAction(MainWindow)
         icon = QtGui.QIcon.fromTheme(_fromUtf8("media-playback-start"))
@@ -107,11 +108,12 @@ class Ui_MainWindow(object):
         self.actionAbout_QuDi.setObjectName(_fromUtf8("actionAbout_QuDi"))
         self.actionAbout_Qt = QtGui.QAction(MainWindow)
         self.actionAbout_Qt.setObjectName(_fromUtf8("actionAbout_Qt"))
+        self.actionAbout_Qt1 = QtGui.QAction(MainWindow)
+        self.actionAbout_Qt1.setObjectName(_fromUtf8("actionAbout_Qt1"))
         self.menuMenu.addAction(self.actionLoad_configuration)
         self.menuMenu.addAction(self.actionSave_configuration)
         self.menuMenu.addSeparator()
         self.menuMenu.addAction(self.action_Load_all_modules)
-        self.menuMenu.addAction(self.actionStart_all_modules)
         self.menuMenu.addSeparator()
         self.menuMenu.addAction(self.actionQuit)
         self.menuUtilities.addAction(self.actionLog)
@@ -143,4 +145,5 @@ class Ui_MainWindow(object):
         self.actionConsole.setText(_translate("MainWindow", "Console", None))
         self.actionAbout_QuDi.setText(_translate("MainWindow", "About QuDi", None))
         self.actionAbout_Qt.setText(_translate("MainWindow", "About Qt", None))
+        self.actionAbout_Qt1.setText(_translate("MainWindow", "About Qt", None))
 

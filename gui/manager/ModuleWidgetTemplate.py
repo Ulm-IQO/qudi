@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file './gui/manager/ModuleWidgetTemplate.ui'
 #
-# Created: Thu Apr 30 10:30:27 2015
-#      by: PyQt4 UI code generator 4.11.3
+# Created by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -26,8 +25,9 @@ except AttributeError:
 class Ui_ModuleWidget(object):
     def setupUi(self, ModuleWidget):
         ModuleWidget.setObjectName(_fromUtf8("ModuleWidget"))
-        ModuleWidget.resize(400, 60)
+        ModuleWidget.resize(400, 61)
         ModuleWidget.setMaximumSize(QtCore.QSize(400, 16777215))
+        ModuleWidget.setFrameShape(QtGui.QFrame.StyledPanel)
         self.gridLayout = QtGui.QGridLayout(ModuleWidget)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
         self.loadButton = QtGui.QPushButton(ModuleWidget)

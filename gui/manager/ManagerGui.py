@@ -5,6 +5,7 @@ from core.Base import Base
 from pyqtgraph.Qt import QtCore, QtGui
 from .ManagerWindowTemplate import Ui_MainWindow
 from .ModuleWidgetTemplate import Ui_ModuleWidget
+from .aboutdialog import Ui_Dialog
 from collections import OrderedDict
 
 class ManagerGui(Base):
@@ -35,17 +36,30 @@ class ManagerGui(Base):
 
     def activation(self, e=None):
         self._mw = ManagerMainWindow()
+        self._about = AboutDialog()
         # Connect up the buttons.
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.actionLog.triggered.connect(lambda: self._manager.sigShowLog.emit())
+        self._mw.actionConsole.triggered.connect(lambda: self._manager.sigShowConsole.emit())
+        self._mw.actionAbout_Qt.triggered.connect(QtGui.QApplication.aboutQt)
+        self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
         self._mw.show()
-        self._manager.sigManagerShow.connect(self._mw.raise_)
+        self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         self.sigStartThis.connect(self._manager.startModule)
         self.sigReloadThis.connect(self._manager.restartModule)
         self.updateModuleList()
+
+    def show(self):
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
+    def showAboutQuDi(self):
+        self._about.show()
 
     def updateConfigWidgets(self):
         self.fill_tree_widget(self._mw.treeWidget, self._manager.tree)
@@ -108,13 +122,16 @@ class ManagerGui(Base):
         self.fill_tree_item(widget.invisibleRootItem(), value)
 
 
-class ManagerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         self.scrollboxlayout = QtGui.QVBoxLayout(self.scrollcontent)
-        #self.test = QtGui.QPushButton('test')
-        #self.scrollboxlayout.addWidget(self.test)
+
+class AboutDialog(QtGui.QDialog, Ui_Dialog):
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
+        self.setupUi(self)
 
 class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
 

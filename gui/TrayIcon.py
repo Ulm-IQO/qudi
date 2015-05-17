@@ -18,7 +18,7 @@ class TrayIcon(Base):
         self._tray = SystemTrayIcon()
         self._tray.show()
         self._tray.quitAction.triggered.connect(self._manager.quit)
-        self._tray.managerAction.triggered.connect(self._manager.show)
+        self._tray.managerAction.triggered.connect(lambda: self._manager.sigShowManager.emit())
 
 class RightClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
@@ -26,7 +26,7 @@ class RightClickMenu(QtGui.QMenu):
 
 class LeftClickMenu(QtGui.QMenu):
     def __init__(self, parent=None):
-        QtGui.QMenu.__init__(self, "Edit", parent)
+        QtGui.QMenu.__init__(self, "Manager", parent)
 
 class SystemTrayIcon(QtGui.QSystemTrayIcon):
     def __init__(self, parent=None):
