@@ -357,4 +357,3 @@ class FitLogic(GenericLogic):
                                                x_zero, sigma, offset),
                                                details=details_here)
                 return error,popt, pcov
-
