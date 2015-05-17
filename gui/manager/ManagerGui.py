@@ -58,7 +58,7 @@ class ManagerGui(Base):
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         self.sigStartThis.connect(self._manager.startModule)
-        self.sigReloadThis.connect(self._manager.restartModule)
+        self.sigReloadThis.connect(self._manager.restartModuleSimple)
         self.updateModuleList()
 
     def show(self):
@@ -82,15 +82,16 @@ class ManagerGui(Base):
         """ Clear and refill the module list widget
         """
         #self.clearModuleList(self)
-        self.fillModuleList(self._mw.scrollboxlayout)
+        self.fillModuleList(self._mw.guilayout, 'gui')
+        self.fillModuleList(self._mw.logiclayout, 'logic')
+        self.fillModuleList(self._mw.hwlayout, 'hardware')
         
-    def fillModuleList(self, layout):
+    def fillModuleList(self, layout, base):
         """ Fill the module list widget with module widgets for defined gui modules.
 
           @param QLayout layout: layout of th module list widget where module widgest should be addad
+          @param str base: module category to fill
         """
-        base = 'gui'
-        #for base in self._manager.tree['defined']:
         for module in self._manager.tree['defined'][base]:
             widget = ModuleListItem(base, module)
             self.modlist.append(widget)
@@ -150,7 +151,9 @@ class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
         """
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
-        self.scrollboxlayout = QtGui.QVBoxLayout(self.scrollcontent)
+        self.guilayout = QtGui.QVBoxLayout(self.guiscroll)
+        self.logiclayout = QtGui.QVBoxLayout(self.logicscroll)
+        self.hwlayout = QtGui.QVBoxLayout(self.hwscroll)
 
 class AboutDialog(QtGui.QDialog, Ui_Dialog):
     """ This class represents the QuDi About dialog.

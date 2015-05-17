@@ -576,38 +576,37 @@ class Manager(QtCore.QObject):
                                    'as {3} is supposed to get connected but '
                                    'is not declared in the module.'.format(c, base, thismodule['module'], mkey),
                                    msgType='error')
-                return
+                continue
             if not isinstance(connectorIn[c], OrderedDict):
                 self.logger.logMsg('No dict.', msgType='error')
-                return
+                continue
             if 'class' not in connectorIn[c]:
                 self.logger.logMsg('no class key in connection declaration',
                                    msgType='error')
-                return
+                continue
             if not isinstance(connectorIn[c]['class'], str):
                 self.logger.logMsg('value for class key is not a string',
                                    msgType='error')
-                return
+                continue
             if 'object' not in connectorIn[c]:
                 self.logger.logMsg('no object key in connection declaration',
                                    msgType='error')
-                return
+                continue
             if connectorIn[c]['object'] is not None:
-                self.logger.logMsg('object is not None, i.e. is already '
-                                   'connected', msgType='error')
-                return
+                self.logger.logMsg('IN connector {0} of {1} module {2} loaded as {3} is already connected.'.format(c, base, thismodule['module'], mkey), msgType='warning')
+                continue
             if not isinstance(connections[c], str):
                 self.logger.logMsg('{0} module {1} ({2}) connection '
                                    'configuration is broken, value for key '
                                    '{3 }is not a string.'.format(base, mkey, thismodule['module'], c ),
                                    msgType='error')
-                return
+                continue
             if '.' not in connections[c]:
                 self.logger.logMsg('{0} module {1} ({2}) connection '
                                    'configuration is broken, value {3} for '
                                    'key {4} does not contain a dot.'.format(base, mkey, thismodule['module'], connections[c], c ),
                                    msgType='error')
-                return
+                continue
             destmod = connections[c].split('.')[0]
             destcon = connections[c].split('.')[1]
             destbase = ''
@@ -616,7 +615,7 @@ class Manager(QtCore.QObject):
                                    'logic module list. Connection is not well '
                                    'defined, cannot connect {1} ({2}) to  it.'.format(destmod, mkey, thismodule['module']),
                                    msgType='error')
-                return
+                continue
                 
             # Connect to hardware module
             elif destmod in self.tree['loaded']['hardware']:
@@ -628,7 +627,7 @@ class Manager(QtCore.QObject):
                                    'logic module list. Cannot connect {1} ({2}) '
                                    'to it.'.format(connections[c], mkey, thismodule['module']),
                                    msgType='error')
-                return
+                continue
 
             if 'out' not in self.tree['loaded'][destbase][destmod].connector:
                 self.logger.logMsg('Module {0} loaded as {1} is supposed to '
@@ -636,23 +635,23 @@ class Manager(QtCore.QObject):
                                    'that does not declare any OUT '
                                    'connectors.'.format(thismodule['module'], mkey, destmod),
                                    msgType='error')
-                return
+                continue
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
             if destcon not in outputs:
                 self.logger.logMsg('OUT connector not declared', 
                                    msgType='error')
-                return
+                continue
             if not isinstance(outputs[destcon], OrderedDict):
                 self.logger.logMsg('not a dict', msgType='error')
-                return
+                continue
             if 'class' not in outputs[destcon]:
                 self.logger.logMsg(
                     'no class key in dict',
                     msgType='error')
-                return
+                continue
             if not isinstance(outputs[destcon]['class'], str):
                 self.logger.logMsg('class value no string', msgType='error')
-                return
+                continue
 #            if not issubclass(self.tree['loaded'][destbase][destmod].__class__, outputs[destcon]['class']):
 #                self.logger.logMsg('not the correct class for declared '
 #                                   'interface', msgType='error')
@@ -761,7 +760,37 @@ class Manager(QtCore.QObject):
             self.logger.logExc('{0} module {1}: error during activation:'.format(base, key),
                                msgType='error')
 
-    def getModuleDependencies(self, base, key):
+    def getSimpleModuleDependencies(self, base, key):
+        """ Based on object id, find which connections to replace.
+
+          @param str base: Module category
+          @param str key: Unique configured module name for module where we want the dependencies
+
+          @return dict: module dependencies in the right format for the Manager.toposort function
+        """
+        deplist = list()
+        if base not in self.tree['loaded']:
+            self.logger.logMsg('{0} module {1}: no such base'.format(base, key), msgType='error')
+            return None
+        if key not in self.tree['loaded'][base]:
+            self.logger.logMsg('{0} module {1}: no such module defined'.format(base, key), msgType='error')            
+            return None
+        for mbase in self.tree['loaded']:
+            for mkey in self.tree['loaded'][mbase]:
+                target = self.tree['loaded'][mbase][mkey]
+                if not hasattr(target, 'connector'):
+                    self.logger.logMsg('No connector in module .{0}.{1}!'.format(mbase, mkey), msgType='error')
+                    continue
+                for conn in target.connector['in']:
+                    if not 'object' in target.connector['in'][conn]:
+                        self.logger.logMsg('Malformed connector {2} in module .{0}.{1}!'.format(mbase, mkey, conn), msgType='error')
+                        continue
+                    if target.connector['in'][conn]['object'] is self.tree['loaded'][base][key]:
+                        deplist.append( (mbase, mkey) )
+        return {key: deplist}
+
+
+    def getRecursiveModuleDependencies(self, base, key):
         """ Based on input connector declarations, determine in which other modules are needed for a specific module to run.
 
           @param str base: Module category
@@ -788,14 +817,14 @@ class Manager(QtCore.QObject):
                 self.logger.logMsg('value for class key is not a string', msgType='error')
                 return None
             if not '.' in connections[c]:
-                self.logger.logMsg('wrong format for connectin target: {0}'.format(connections[c]), msgType='error')
+                self.logger.logMsg('wrong format for connection target: {0}'.format(connections[c]), msgType='error')
                 return None
             destmod = connections[c].split('.')[0]
             destbase = ''
             if destmod in self.tree['defined']['hardware'] and destmod in self.tree['defined']['logic']:
                 self.logger.logMsg('Unique name {0} is in both hardware and '
                                    'logic module list. Connection is not well '
-                                   'defined, cannot connect {1} to  it.'.format(destmod, key),
+                                   'defined.'.format(destmod),
                                    msgType='error')
                 return None
             elif destmod in self.tree['defined']['hardware']:
@@ -809,7 +838,7 @@ class Manager(QtCore.QObject):
                                    msgType='error')
                 return None
             deplist.append(destmod)
-            subdeps = self.getModuleDependencies(destbase, destmod)
+            subdeps = self.getRecursiveModuleDependencies(destbase, destmod)
             if subdeps is not None:
                 deps.update(subdeps)
             else:
@@ -826,7 +855,7 @@ class Manager(QtCore.QObject):
           @param str key: Unique module name
 
         """
-        deps = self.getModuleDependencies(base, key)
+        deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = Manager.toposort(deps)
 
         for mkey in sorteddeps:
@@ -838,14 +867,36 @@ class Manager(QtCore.QObject):
                         self.activateModule(mbase, mkey)
 
     @QtCore.pyqtSlot(str, str)
-    def restartModule(self, base, key):
+    def restartModuleSimple(self, base, key):
+        deps = self.getSimpleModuleDependencies(base, key)
+        if deps is None:
+            return
+        # Remove references
+        for depmod in deps[key]:
+            destbase, destmod = depmod
+            for c in self.tree['loaded'][destbase][destmod].connector['in']:
+                if self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] is self.tree['loaded'][base][key]:
+                    self.tree['loaded'][destbase][destmod].deactivate()
+                    self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] = None
+
+        self.reloadConfigureModule(base, key)
+        self.connectModule(base, key)
+        self.activateModule(base,key)
+
+        for depmod in deps[key]:
+            destbase, destmod = depmod
+            self.connectModule(destbase, destmod)
+            self.activateModule(destbase, destmod)
+
+    @QtCore.pyqtSlot(str, str)
+    def restartModuleRecursive(self, base, key):
         """ Figure out the module dependencies in terms of connections, reload and activate module.
 
           @param str base: Module category
           @param str key: Unique configured module name
 
         """
-        deps = self.getModuleDependencies(base, key)
+        deps = self.getSimpleModuleDependencies(base, key)
         sorteddeps = Manager.toposort(deps)
 
         for mkey in sorteddeps:
