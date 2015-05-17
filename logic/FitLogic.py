@@ -51,14 +51,8 @@ class FitLogic(GenericLogic):
     
             self.logMsg('The following configuration was found.', 
                         msgType='status')
-             
-             #FIXME: Why commented out?                   
-#            # checking for the right configuration
-#            for key in config.keys():
-#                self.logMsg('{}: {}'.format(key,config[key]), 
-#                            msgType='status')
         
-        #FIXME: To do or delete                     
+        #FIXME: To do or delete Question: When I delete this there is a super class error that __init__ is never called???                 
         def activation(self,e):
             pass
             
@@ -259,7 +253,9 @@ class FitLogic(GenericLogic):
                                         initial_guess=initial_guess_estimated)
                 return error,popt
             elif details==True:
-                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), data=data,initial_guess=initial_guess_estimated,details=details)
+                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
+                                                data=data,initial_guess=initial_guess_estimated,
+                                                details=details)
                 return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
@@ -275,9 +271,7 @@ class FitLogic(GenericLogic):
             
             """            
             # check if parameters make sense
-
             if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-                print("error")
                 self.logMsg('Given range of axis is no array type.', \
                             msgType='error') 
 
@@ -292,7 +286,6 @@ class FitLogic(GenericLogic):
             return gaussian
         
         def gaussian_estimator(self,x_axis=None,data=None):
-            #TODO:Make clever estimator
             """ This method provides a one dimensional gaussian function.
         
             @param array x_axis: x values
@@ -319,10 +312,9 @@ class FitLogic(GenericLogic):
                     self.logMsg('Given parameter is no one dimensional array.', \
                                 msgType='error')                     
             #set paraameters 
-            #FIXME:Why not data-max-data.min
-            amplitude=data.max()
-            x_zero=(x_axis.max()-x_axis.min())/2.
-            sigma = x_axis.min() + (x_axis.max()-x_axis.min())/3.
+            amplitude=data.max()-data.min()
+            x_zero=x_axis[np.argmax(data)]
+            sigma = (x_axis.max()-x_axis.min())/3.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
 
@@ -348,11 +340,6 @@ class FitLogic(GenericLogic):
                     use perr = np.sqrt(np.diag(pcov)).
                     
             """
-            
-            #FIXME: Don't understand exactly why you need that...
-            details_here=details
-            #FIXME: Don't understand exactly why you need that...
-            error=0
                 
             error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
                                                                     axis,data)
@@ -367,5 +354,5 @@ class FitLogic(GenericLogic):
                 error,popt,pcov= self.make_fit(self.gaussian_function, axis, 
                                                data,initial_guess=(amplitude, 
                                                x_zero, sigma, offset),
-                                               details=details_here)
+                                               details=details)
                 return error,popt, pcov

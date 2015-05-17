@@ -72,7 +72,7 @@ class FitLogic():
                     #FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
-                    self.logMsg('The fit did not work.', msgType='warning')
+                    self.logMsg('The fit did not work.', msgType='error')
                     error=-1
             if details==False:
                 return error,popt
@@ -200,6 +200,7 @@ class FitLogic():
                     
             """
                       
+            #FIXME: Would be nice in several rows....
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
             initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
@@ -209,7 +210,9 @@ class FitLogic():
                                         initial_guess=initial_guess_estimated)
                 return error,popt
             elif details==True:
-                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), data=data,initial_guess=initial_guess_estimated,details=details)
+                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
+                                                data=data,initial_guess=initial_guess_estimated,
+                                                details=details)
                 return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
@@ -225,9 +228,7 @@ class FitLogic():
             
             """            
             # check if parameters make sense
-
             if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-                print("error")
                 self.logMsg('Given range of axis is no array type.', \
                             msgType='error') 
 
@@ -242,7 +243,6 @@ class FitLogic():
             return gaussian
         
         def gaussian_estimator(self,x_axis=None,data=None):
-            #TODO:Make clever estimator
             """ This method provides a one dimensional gaussian function.
         
             @param array x_axis: x values
@@ -270,8 +270,8 @@ class FitLogic():
                                 msgType='error')                     
             #set paraameters 
             amplitude=data.max()-data.min()
-            x_zero=np.argmax(data)
-            sigma = x_axis.min() + (x_axis.max()-x_axis.min())/3.
+            x_zero=x_axis[np.argmax(data)]
+            sigma = (x_axis.max()-x_axis.min())/3.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
 
@@ -297,11 +297,6 @@ class FitLogic():
                     use perr = np.sqrt(np.diag(pcov)).
                     
             """
-            
-            #FIXME: Don't understand exactly why you need that...
-            details_here=details
-            #FIXME: Don't understand exactly why you need that...
-            error=0
                 
             error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
                                                                     axis,data)
@@ -316,9 +311,8 @@ class FitLogic():
                 error,popt,pcov= self.make_fit(self.gaussian_function, axis, 
                                                data,initial_guess=(amplitude, 
                                                x_zero, sigma, offset),
-                                               details=details_here)
+                                               details=details)
                 return error,popt, pcov
-
                 
         def oneD_testing(self):
             self.x = np.linspace(0, 20, 21)
