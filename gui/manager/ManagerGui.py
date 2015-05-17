@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-# Manager gui (test)
+""" This module contains a GUI through which the Manager core class can be controlled.
+It can load and reload modules, show the configuration, and re-open closed windows.
+"""
 
 from core.Base import Base
 from pyqtgraph.Qt import QtCore, QtGui
@@ -35,6 +37,12 @@ class ManagerGui(Base):
         self.modlist = list()
 
     def activation(self, e=None):
+        """ Activation method called on change to active state.
+            
+          @param e: Fysom state change information
+
+            This method creates the Manager main window.
+        """
         self._mw = ManagerMainWindow()
         self._about = AboutDialog()
         # Connect up the buttons.
@@ -54,21 +62,33 @@ class ManagerGui(Base):
         self.updateModuleList()
 
     def show(self):
+        """Show the window and bring it t the top.
+        """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
     def showAboutQuDi(self):
+        """Show a dialog with details about QuDi.
+        """
         self._about.show()
 
     def updateConfigWidgets(self):
+        """ Clear and refill the tree widget showing the configuration.
+        """
         self.fill_tree_widget(self._mw.treeWidget, self._manager.tree)
     
     def updateModuleList(self):
+        """ Clear and refill the module list widget
+        """
         #self.clearModuleList(self)
         self.fillModuleList(self._mw.scrollboxlayout)
         
     def fillModuleList(self, layout):
+        """ Fill the module list widget with module widgets for defined gui modules.
+
+          @param QLayout layout: layout of th module list widget where module widgest should be addad
+        """
         base = 'gui'
         #for base in self._manager.tree['defined']:
         for module in self._manager.tree['defined'][base]:
@@ -123,34 +143,63 @@ class ManagerGui(Base):
 
 
 class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
+    """ This class represents the Manager Window.
+    """
     def __init__(self):
+        """ Create the Manager Window.
+        """
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         self.scrollboxlayout = QtGui.QVBoxLayout(self.scrollcontent)
 
 class AboutDialog(QtGui.QDialog, Ui_Dialog):
+    """ This class represents the QuDi About dialog.
+    """
     def __init__(self):
+        """ Create QuDi About Dialog.
+        """
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
 
 class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
+    """ This class represents a module widget in the QuDi module list.
+
+      @signal str str sigActivateThis: gives signal with base and name of module to be loaded
+      @signal str str sigReloadThis: gives signal with base and name of module to be reloaded
+      @signal str str sigStopThis: gives signal with base and name of module to be deactivated
+    """
 
     sigActivateThis = QtCore.Signal(str, str)
     sigReloadThis = QtCore.Signal(str, str)
+    sigStopThis = QtCore.Signal(str, str)
 
     def __init__(self, basename, modulename):
+        """ Create a module widget.
+
+          @param str basename: module category
+          @param str modulename: unique module name
+        """
         super().__init__()
         self.setupUi(self)
         self.name = modulename
+        self.base = basename
         self.loadButton.setText('Load {0}'.format(self.name))
         self.loadButton.clicked.connect(self.activateButtonClicked)
         self.reloadButton.clicked.connect(self.reactivateButtonClicked)
+        self.unloadButton.clicked.connect(self.stopButtonClicked)
 
     def activateButtonClicked(self):
-        self.sigActivateThis.emit('gui', self.name)
+        """Send activation singal for module.
+        """
+        self.sigActivateThis.emit(self.base, self.name)
 
     def reactivateButtonClicked(self):
-        self.sigReloadThis.emit('gui', self.name)
+        """ Send reload signal for module.
+        """
+        self.sigReloadThis.emit(self.base, self.name)
 
-    def stopeButtonClicked(self):
-        self.sigStopThis.emit('gui', self.name)
+    def stopButtonClicked(self):
+        """ Send stop singal for module.
+        """
+        self.sigStopThis.emit(self.base , self.name)
+
