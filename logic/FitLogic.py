@@ -51,6 +51,16 @@ class FitLogic(GenericLogic):
     
             self.logMsg('The following configuration was found.', 
                         msgType='status')
+             
+             #FIXME: Why commented out?                   
+#            # checking for the right configuration
+#            for key in config.keys():
+#                self.logMsg('{}: {}'.format(key,config[key]), 
+#                            msgType='status')
+        
+        #FIXME: To do or delete                     
+        def activation(self,e):
+            pass
             
         
         def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
@@ -111,7 +121,7 @@ class FitLogic(GenericLogic):
                     #FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
-                    self.logMsg('The fit did not work.', msgType='warning')
+                    self.logMsg('The fit did not work.', msgType='error')
                     error=-1
             if details==False:
                 return error,popt
@@ -239,6 +249,7 @@ class FitLogic(GenericLogic):
                     
             """
                       
+            #FIXME: Would be nice in several rows....
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
             initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
             
@@ -308,8 +319,9 @@ class FitLogic(GenericLogic):
                     self.logMsg('Given parameter is no one dimensional array.', \
                                 msgType='error')                     
             #set paraameters 
-            amplitude=data.max()-data.min()
-            x_zero=np.argmax(data)
+            #FIXME:Why not data-max-data.min
+            amplitude=data.max()
+            x_zero=(x_axis.max()-x_axis.min())/2.
             sigma = x_axis.min() + (x_axis.max()-x_axis.min())/3.
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
