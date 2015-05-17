@@ -344,11 +344,12 @@ class Manager(QtCore.QObject):
                             stylesheetfile = open(stylesheetpath)
                             stylesheet = stylesheetfile.read()
                             stylesheetfile.close()
-#                            print (QtGui.QStyleFactory.keys())
-                            #QtGui.QApplication.instance().setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
-                            #self.logger.print_logMsg("Using 'Cleanlooks' Window Style.")
                             QtGui.QApplication.instance().setStyleSheet(stylesheet)
-                                
+                            testwidget = QtGui.QWidget()
+                            testwidget.ensurePolished()
+                            bgcolor = testwidget.palette().color(QtGui.QPalette.Normal, testwidget.backgroundRole())
+                            # set manually the background color in hex code according to our color scheme: 
+                            pg.setConfigOption('background', bgcolor)
                 
                 # Copy in any other configurations.
                 # dicts are extended, all others are overwritten.

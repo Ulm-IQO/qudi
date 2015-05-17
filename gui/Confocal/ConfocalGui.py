@@ -24,8 +24,7 @@ from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 # to convert to ConfocalGuiUI.py.
 # =============================================================================
 
-# set manually the background color in hex code according to our color scheme: 
-pg.setConfigOption('background', QtGui.QColor('#222'))
+
 
 
 

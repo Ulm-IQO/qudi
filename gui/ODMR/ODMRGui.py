@@ -25,10 +25,6 @@ from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py"ODMRGuiUI.ui > ODMRGuiUI.py
 
 
-# set manually the background color in hex code according to our color scheme: 
-pg.setConfigOption('background', QtGui.QColor('#222'))
-
-
 class ODMRMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
