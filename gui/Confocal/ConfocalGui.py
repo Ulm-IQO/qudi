@@ -10,6 +10,7 @@ import numpy as np
 from collections import OrderedDict
 from core.Base import Base
 from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
+from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
 
 # ============= HowTo Convert the corresponding *.ui file =====================
 # To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
@@ -190,6 +191,12 @@ class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
+        
+class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
+        self.setupUi(self)
+        
 
 class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     """ Main Confocal Class for xy and xz scans.
@@ -248,6 +255,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
         # GUI element:
         self._mw = ConfocalMainWindow()
+        self._sd = ConfocalSettingDialog()
         
         # Get the image for the display from the logic. Transpose the received
         # matrix to get the proper scan. The graphig widget displays vector-
@@ -427,6 +435,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Add to all QLineEdit Widget a Double Validator to ensure only a 
         # float input: 
         validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
         
         self._mw.x_current_InputWidget.setValidator(validator)
         self._mw.y_current_InputWidget.setValidator(validator)
@@ -441,10 +450,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         self._mw.xy_res_InputWidget.setValidator(validator)
         self._mw.z_res_InputWidget.setValidator(validator)
+        
+        self._sd.clock_frequency_InputWidget.setValidator(validator2)
+        self._sd.return_slowness_InputWidget.setValidator(validator2)
+        
 
-        # Take the default values for resolutions from logic:
+        # Take the default values from logic:
         self._mw.xy_res_InputWidget.setText(str(self._scanning_logic.xy_resolution))     
-        self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))   
+        self._mw.z_res_InputWidget.setText(str(self._scanning_logic.z_resolution))
+        self._sd.clock_frequency_InputWidget.setText(str(int(self._scanning_logic._clock_frequency)))
+        self._sd.return_slowness_InputWidget.setText(str(self._scanning_logic.return_slowness))
         
         # Connect the Slider with an update in the current values of x,y and z.
         # The proxy signal slot:
@@ -537,6 +552,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Connect the tracker
         self._optimiser_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
         self._optimiser_logic.signal_refocus_started.connect(self.disable_scan_buttons)
+        
+        # connect settings signals
+        self._mw.action_Settings.triggered.connect(self.menue_settings)
+        self._sd.accepted.connect(self.update_settings)
+        self._sd.rejected.connect(self.reject_settings)
+        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings) 
   
         
         # get the viewbox object to alter the display:
@@ -603,7 +624,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Play around with a color bar:
         
-        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])        
+        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])      
         self.xz_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])              
         
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
@@ -704,6 +725,24 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             return
         else:
             self.disable_scan_buttons(newstate=True)
+            
+    def menue_settings(self):
+        ''' This method opens the settings menue
+        '''
+        self._sd.exec_()
+        
+    def update_settings(self):
+        ''' This method writes the new settings from the gui to the file
+        '''        
+        self._scanning_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
+        self._scanning_logic.return_slowness = int(self._sd.return_slowness_InputWidget.text())
+
+                
+    def reject_settings(self):
+        ''' This method keeps the old settings and restores the old settings in the gui
+        '''
+        self._sd.clock_frequency_InputWidget.setText(str(int(self._scanning_logic._clock_frequency)))
+        self._sd.return_slowness_InputWidget.setText(str(self._scanning_logic.return_slowness))
 
 
     def ready_clicked(self):

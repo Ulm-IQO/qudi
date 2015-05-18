@@ -106,6 +106,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # the UI file.
         self._mw.odmr_ViewWidget.addItem(self.odmr_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
+        self._mw.odmr_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         
         
         # create a color map that goes from dark red to dark blue:
@@ -157,6 +158,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.power_InputWidget.setValidator(validator)
         self._mw.runtime_InputWidget.setValidator(validator2)
         self._sd.matrix_lines_InputWidget.setValidator(validator)
+        self._sd.clock_frequency_InputWidget.setValidator(validator2)
         
         # Take the default values from logic:
         self._mw.frequency_InputWidget.setText(str(self._odmr_logic.MW_frequency))     
