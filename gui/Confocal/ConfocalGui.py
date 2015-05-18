@@ -42,20 +42,15 @@ class ColorBar(pg.GraphicsObject):
                                the ticks.
     @param string label: optional, label for the colorbar.
     """    
-    def __init__(self, cmap, width, height, ticks=None, tick_labels=None,
-                 label=None):
+    def __init__(self, cmap, width, cb_min, cb_max, label=None):
 
         pg.GraphicsObject.__init__(self)
          
         # handle the passed arguments:
         label = label or ''
-        w, h = width, height
         stops, colors = cmap.getStops('float')
         smn, spp = stops.min(), stops.ptp()
         stops = (stops - stops.min())/stops.ptp()
-        if ticks is None:
-            ticks = np.r_[0.0:1.0:5j] * spp + smn
-        tick_labels = tick_labels or ["%0.2g" % (t,) for t in ticks]
  
         # setup picture
         self.pic = pg.QtGui.QPicture()
@@ -63,31 +58,15 @@ class ColorBar(pg.GraphicsObject):
  
         # draw bar with gradient following colormap
         p.setPen(pg.mkPen('k'))
-        grad = pg.QtGui.QLinearGradient(w/2.0, 0.0, w/2.0, h*1.0)
+        grad = pg.QtGui.QLinearGradient(width/2.0, cb_min*1.0, width/2.0, cb_max*1.0)
         for stop, color in zip(stops, colors):
             grad.setColorAt(1.0 - stop, pg.QtGui.QColor(*[255*c for c in color]))
         p.setBrush(pg.QtGui.QBrush(grad))
-        p.drawRect(pg.QtCore.QRectF(0, 0, w, h))
+        p.drawRect(pg.QtCore.QRectF(0, cb_min, width, cb_max-cb_min))
  
-        # draw ticks & tick labels
-        mintx = 0.0
-        for tick, tick_label in zip(ticks, tick_labels):
-            y_ = (1.0 - (tick - smn)/spp) * h
-            p.drawLine(0.0, y_, -5.0, y_)
-            br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, tick_label)
-            if br.x() < mintx:
-                mintx = br.x()
-            p.drawText(br.x() - 10.0, y_ + br.height() / 4.0, tick_label)
- 
-        # draw label
-        br = p.boundingRect(0, 0, 0, 0, pg.QtCore.Qt.AlignRight, label)
-        p.drawText(-br.width() / 2.0, h + br.height() + 5.0, label)
-        
         # done
         p.end()
  
-        # compute rect bounds for underlying mask
-        self.zone = mintx - 12.0, -15.0, br.width() - mintx, h + br.height() + 30.0
 
 
     def paint(self, p, *args):
@@ -96,9 +75,6 @@ class ColorBar(pg.GraphicsObject):
         @param object p: a pyqtgraph.QtGui.QPainter object, which is used to 
                          set the color of the pen.
         """        
-        p.setPen(pg.QtGui.QColor('#222'))
-        p.setBrush(pg.QtGui.QColor('#222'))
-        p.drawRoundedRect(*(self.zone + (9.0, 9.0)))
         
         # paint colorbar
         p.drawPicture(0, 0, self.pic)
@@ -624,12 +600,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Play around with a color bar:
         
-        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])      
-        self.xz_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])              
+        self.xy_cb = ColorBar(self.colmap_norm, 100, 0,100000, label='Counts')      
+        self.xz_cb = ColorBar(self.colmap_norm, 100, 0,100000, label='Counts')              
         
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
+        self._mw.xy_cb_ViewWidget.addItem(pg.TextItem('TEST') )
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
         
         
@@ -680,11 +657,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
         if self._mw.xy_cb_auto_CheckBox.isChecked():
-            self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_image.image.max(), label='Counts')#, [0., 0.5, 1.0])
+            cb_min = self.xy_image.image.min()
+            cb_max = self.xy_image.image.max()
+            self.xy_cb = ColorBar(self.colmap_norm, 100, cb_min, cb_max, label='Counts')
         else:
             cb_min = float(self._mw.xy_cb_min_InputWidget.text())
             cb_max = float(self._mw.xy_cb_max_InputWidget.text())
-            self.xy_cb = ColorBar(self.colmap_norm, 100, cb_max, label='Counts')#, [0., 0.5, 1.0])
+            self.xy_cb = ColorBar(self.colmap_norm, 100, cb_min, cb_max, label='Counts')
 
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)        
 
@@ -700,11 +679,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
         if self._mw.xz_cb_auto_CheckBox.isChecked():
-            self.xz_cb = ColorBar(self.colmap_norm, 100, self.xz_image.image.max(), label='Counts')#, [0., 0.5, 1.0])
+            cb_min = self.xz_image.image.min()
+            cb_max = self.xz_image.image.max()
+            self.xz_cb = ColorBar(self.colmap_norm, 100, cb_min, cb_max, label='Counts')
         else:
             cb_min = float(self._mw.xz_cb_min_InputWidget.text())
             cb_max = float(self._mw.xz_cb_max_InputWidget.text())
-            self.xz_cb = ColorBar(self.colmap_norm, 100, cb_max, label='Counts')#, [0., 0.5, 1.0])
+            self.xz_cb = ColorBar(self.colmap_norm, 100, cb_min, cb_max, label='Counts')
 
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
 
