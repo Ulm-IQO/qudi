@@ -36,7 +36,7 @@ class FitLogic(GenericLogic):
         
         def __init__(self, manager, name, config, **kwargs):
             ## declare actions for state transitions
-            state_actions = {'onactivate': self.activation}
+            state_actions = {}
             GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
             self._modclass = 'fitlogic'
             self._modtype = 'logic'
@@ -51,12 +51,7 @@ class FitLogic(GenericLogic):
     
             self.logMsg('The following configuration was found.', 
                         msgType='status')
-        
-        #FIXME: To do or delete Question: When I delete this there is a super class error that __init__ is never called???                 
-        def activation(self,e):
-            pass
-            
-        
+                
         def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
             """ Makes a fit of the desired function with the one and two 
                 dimensional data.
