@@ -165,7 +165,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xy_refocus_image.setLookupTable(lut)
         
         # Add color bar:        
-        self.xy_cb = ColorBar(self.colmap_norm, 100, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])          
+        self.xy_cb = ColorBar(self.colmap_norm, 100, 0, 100000, label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])          
              
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
@@ -226,7 +226,7 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ''' This method deletes the old colorbar and replace it with an updated one
         '''
         self._mw.xy_refocus_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
+        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_refocus_image.image.min(), self.xy_refocus_image.image.max(), label='Counts')#Foo (Hz)')#, [0., 0.5, 1.0])               
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
             
     def menue_settings(self):
