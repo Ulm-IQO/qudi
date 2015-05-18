@@ -202,8 +202,6 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
 
         self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
 
-        self._mw.shift_refresh_Button.clicked.connect(self._redraw_sample_shift)
-        
         self._markers=[]
         
         #Signal at end of refocus
@@ -350,10 +348,10 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
                 
                 # Create Region of Interest as marker:
                 position=self._poi_manager_logic.get_last_point(poikey=key)
-                position=position[:2]-[2.5,2.5]
+                position=position[:2]-[1,1]
                 self._markers.append(\
                     PointMarker(position, 
-                                [5, 5],
+                                [2, 2],
                                 text = self._poi_manager_logic.get_name(poikey=key),
                                 pen={'color': "F0F", 'width': 2}, 
                                 movable=False, 
@@ -362,9 +360,10 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
                 # Add to the Map Widget
                 self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
                 self._markers.append(\
-                    pg.TextItem(text=self._poi_manager_logic.get_name(poikey=key)))
+                    pg.TextItem(text=self._poi_manager_logic.get_name(poikey=key),\
+                    anchor=(0,1)) )
                 self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
-                position+=[5,7.5]
+                position+=[2,2]
                 self._markers[-1].setPos(position[0],position[1])
                     
                 

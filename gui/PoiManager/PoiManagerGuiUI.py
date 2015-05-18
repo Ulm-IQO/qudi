@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Mon May 11 23:43:19 2015
+# Created: Mon May 18 06:33:38 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -62,9 +62,6 @@ class Ui_PoiManager(object):
         self.sample_shift_ViewWidget.setSizePolicy(sizePolicy)
         self.sample_shift_ViewWidget.setObjectName(_fromUtf8("sample_shift_ViewWidget"))
         self.verticalLayout_2.addWidget(self.sample_shift_ViewWidget)
-        self.shift_refresh_Button = QtGui.QPushButton(self.sampleShift)
-        self.shift_refresh_Button.setObjectName(_fromUtf8("shift_refresh_Button"))
-        self.verticalLayout_2.addWidget(self.shift_refresh_Button)
         self.tabWidget.addTab(self.sampleShift, _fromUtf8(""))
         self.tab = QtGui.QWidget()
         self.tab.setObjectName(_fromUtf8("tab"))
@@ -168,14 +165,13 @@ class Ui_PoiManager(object):
         PoiManager.setStatusBar(self.statusbar)
 
         self.retranslateUi(PoiManager)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(PoiManager)
 
     def retranslateUi(self, PoiManager):
         PoiManager.setWindowTitle(_translate("PoiManager", "qudi: POI Manager", None))
         self.get_confocal_image_Button.setText(_translate("PoiManager", "Get Confocal image", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.roiMap), _translate("PoiManager", "ROI Map", None))
-        self.shift_refresh_Button.setText(_translate("PoiManager", "Refresh (debug)", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.sampleShift), _translate("PoiManager", "Sample shift", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("PoiManager", "Offset marker", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.triangulation), _translate("PoiManager", "Triangulation", None))
