@@ -53,6 +53,14 @@
        </layout>
       </widget>
       <widget class="QWidget" name="logicmod">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>98</width>
+         <height>88</height>
+        </rect>
+       </property>
        <attribute name="label">
         <string>Logic modules</string>
        </attribute>
@@ -67,8 +75,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>430</width>
-             <height>328</height>
+             <width>98</width>
+             <height>28</height>
             </rect>
            </property>
           </widget>
@@ -77,6 +85,14 @@
        </layout>
       </widget>
       <widget class="QWidget" name="hwmod">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>98</width>
+         <height>88</height>
+        </rect>
+       </property>
        <attribute name="label">
         <string>Hardware modules</string>
        </attribute>
@@ -91,8 +107,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>430</width>
-             <height>328</height>
+             <width>98</width>
+             <height>28</height>
             </rect>
            </property>
           </widget>
@@ -105,8 +121,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>450</width>
-         <height>348</height>
+         <width>98</width>
+         <height>88</height>
         </rect>
        </property>
        <attribute name="label">

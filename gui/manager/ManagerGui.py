@@ -7,8 +7,9 @@ from core.Base import Base
 from pyqtgraph.Qt import QtCore, QtGui
 from .ManagerWindowTemplate import Ui_MainWindow
 from .ModuleWidgetTemplate import Ui_ModuleWidget
-from .aboutdialog import Ui_Dialog
+from .aboutdialog import Ui_AboutDialog
 from collections import OrderedDict
+import svn.local
 
 class ManagerGui(Base):
     """This class provides a GUI to the QuDi manager.
@@ -45,6 +46,11 @@ class ManagerGui(Base):
         """
         self._mw = ManagerMainWindow()
         self._about = AboutDialog()
+        version = self.getSoftwareVersion()
+        self._about.label.setText('<a href=\"{0}\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
+        self.versionLabel = QtGui.QLabel()
+        self.versionLabel.setText('<a href=\"{0}\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
+        self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
@@ -76,7 +82,7 @@ class ManagerGui(Base):
     def updateConfigWidgets(self):
         """ Clear and refill the tree widget showing the configuration.
         """
-        self.fill_tree_widget(self._mw.treeWidget, self._manager.tree)
+        self.fillTreeWidget(self._mw.treeWidget, self._manager.tree)
     
     def updateModuleList(self):
         """ Clear and refill the module list widget
@@ -99,7 +105,7 @@ class ManagerGui(Base):
             widget.sigActivateThis.connect(self.sigStartThis)
             widget.sigReloadThis.connect(self.sigReloadThis)
 
-    def fill_tree_item(self, item, value):
+    def fillTreeItem(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
             
           @param QTreeWidgetItem item: the widget item to fill
@@ -111,20 +117,20 @@ class ManagerGui(Base):
                 child = QtGui.QTreeWidgetItem()
                 child.setText(0, key)
                 item.addChild(child)
-                self.fill_tree_item(child, value[key])
+                self.fillTreeItem(child, value[key])
         elif type(value) is list:
             for val in value:
                 child = QtGui.QTreeWidgetItem()
                 item.addChild(child)
                 if type(val) is dict:
                     child.setText(0, '[dict]')
-                    self.fill_tree_item(child,val)
+                    self.fillTreeItem(child,val)
                 elif type(val) is OrderedDict:
                     child.setText(0, '[odict]')
-                    self.fill_tree_item(child,val)
+                    self.fillTreeItem(child,val)
                 elif type(val) is list:
                     child.setText(0, '[list]')
-                    self.fill_tree_item(child,val)
+                    self.fillTreeItem(child,val)
                 else:
                     child.setText(0, str(val))
                 child.setExpanded(True)
@@ -133,14 +139,23 @@ class ManagerGui(Base):
             child.setText(0, str(value))
             item.addChild(child)
 
-    def fill_tree_widget(self, widget, value):
+    def getSoftwareVersion(self):
+        try:
+            repo = svn.local.LocalClient('.')
+            info = repo.info()
+            return (info['url'], info['commit#revision'])
+        except:
+            return ('unknown', -1)
+            
+
+    def fillTreeWidget(self, widget, value):
         """ Fill a QTreeWidget with the content of a dictionary
            
           @param QTreeWidget widget: the tree widget to fill
           @param dict,OrderedDict value: the dictionary to fill in
         """
         widget.clear()
-        self.fill_tree_item(widget.invisibleRootItem(), value)
+        self.fillTreeItem(widget.invisibleRootItem(), value)
 
 
 class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
@@ -155,7 +170,7 @@ class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
         self.logiclayout = QtGui.QVBoxLayout(self.logicscroll)
         self.hwlayout = QtGui.QVBoxLayout(self.hwscroll)
 
-class AboutDialog(QtGui.QDialog, Ui_Dialog):
+class AboutDialog(QtGui.QDialog, Ui_AboutDialog):
     """ This class represents the QuDi About dialog.
     """
     def __init__(self):
