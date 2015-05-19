@@ -241,7 +241,7 @@ class CounterLogic(GenericLogic):
         self.countdata=np.zeros((self._count_length,))
         self.countdata_smoothed=np.zeros((self._count_length,))
         self.rawdata=np.zeros((self._counting_samples,))
-        self._sampling_data=np.ones((self._counting_samples,2))
+        self._sampling_data=np.empty((self._counting_samples,2))
         
         # set a lock, to signify the measurment is running
         self.lock()
@@ -282,6 +282,7 @@ class CounterLogic(GenericLogic):
         if self._saving:
              # if oversampling is necessary
             if self._counting_samples > 1:
+                self._sampling_data=np.empty((self._counting_samples,2))
                 self._sampling_data[:,0]=time.time()-self._saving_start_time
                 self._sampling_data[:,1]=self.rawdata
                 self._data_to_save.extend(list(self._sampling_data))

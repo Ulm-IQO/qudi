@@ -56,7 +56,7 @@ class CounterGui(Base):
         self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
         
         self._pw.setLabel('left', 'Value', units='counts/s')
-        self._pw.setLabel('bottom', 'Time', units='#')
+        self._pw.setLabel('bottom', 'Time', units='s')
                 
         # defining buttons
         self._start_stop_button = QtGui.QPushButton('Start')
@@ -67,7 +67,7 @@ class CounterGui(Base):
         self._save_button.clicked.connect(self.save_clicked)
         
         # defining the parameters to edit
-        self._count_length_label = QtGui.QLabel('Count lenght (s):')
+        self._count_length_label = QtGui.QLabel('Count lenght (#):')
         self._count_length_display = QtGui.QSpinBox()
         self._count_length_display.setRange(1,1e6)
         self._count_length_display.setValue(self._counting_logic.get_count_length())
@@ -126,7 +126,7 @@ class CounterGui(Base):
         self._curve2.setPen('r', width=4)
         
         # setting the x axis length correctly
-        self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
+        self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
         
         # starting the physical measurement
         # self._counting_logic.startme()
@@ -146,8 +146,8 @@ class CounterGui(Base):
         """
         if self._counting_logic.getState() == 'locked':
             self._counts_label.setText('{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1]))
-            self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(1, self._counting_logic.get_count_length()+1))
-            self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(1, self._counting_logic.get_count_length()+1))
+            self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
+            self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -174,15 +174,17 @@ class CounterGui(Base):
         """
 #        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._count_length_display.value())
-        self._pw.setXRange(1, self._counting_logic.get_count_length()+1)
+        self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
         
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
 #        print ('count_frequency_changed: {0:d}'.format(self._count_frequency_display.value()))
         self._counting_logic.set_count_frequency(self._count_frequency_display.value())
+        self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
         
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
         """
         self._counting_logic.set_counting_samples(samples=self._oversampling_display.value())
+        self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
