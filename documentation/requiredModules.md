@@ -6,4 +6,5 @@ Install these via *pip install*:
 * pyvisa: https://pypi.python.org/pypi/PyVISA
 * PyDAQmx: https://pypi.python.org/pypi/PyDAQmx
 * Pyro4: https://pypi.python.org/pypi/Pyro4
+* svn: https://pypi.python.org/pypi/svn
 
