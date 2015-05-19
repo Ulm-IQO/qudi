@@ -458,25 +458,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         # Update the inputed/displayed numbers if return key is hit:
 
-        self._mw.x_current_InputWidget.returnPressed.connect(self.update_x_slider)
-        self._mw.x_current_InputWidget.returnPressed.connect(self.update_y_slider)
-        self._mw.z_current_InputWidget.returnPressed.connect(self.update_z_slider)
-        
-        self._mw.xy_res_InputWidget.returnPressed.connect(self.change_xy_resolution)
-        self._mw.z_res_InputWidget.returnPressed.connect(self.change_z_resolution)
-        
-        self._mw.x_min_InputWidget.returnPressed.connect(self.change_x_image_range)
-        self._mw.x_max_InputWidget.returnPressed.connect(self.change_x_image_range)
-        self._mw.y_min_InputWidget.returnPressed.connect(self.change_y_image_range)
-        self._mw.y_max_InputWidget.returnPressed.connect(self.change_y_image_range)
-        self._mw.z_min_InputWidget.returnPressed.connect(self.change_z_image_range)
-        self._mw.z_max_InputWidget.returnPressed.connect(self.change_z_image_range)
+        self._mw.xy_cb_min_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
+        self._mw.xy_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
 
-#        self._mw.xy_cb_min_InputWidget.returnPressed.connect(self.refresh_xy_image)
-#        self._mw.xy_cb_max_InputWidget.returnPressed.connect(self.refresh_xy_image)
-#
-#        self._mw.xz_cb_min_InputWidget.returnPressed.connect(self.refresh_xz_image)
-#        self._mw.xz_cb_max_InputWidget.returnPressed.connect(self.refresh_xz_image)
+        self._mw.xz_cb_min_InputWidget.returnPressed.connect(self.shortcut_to_xz_cb_manual)
+        self._mw.xz_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xz_cb_manual)
         
         # Update the inputed/displayed numbers if the cursor has left the field:
 
@@ -606,8 +592,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
-        self._mw.xy_cb_ViewWidget.addItem(pg.TextItem('TEST') )
+        self._mw.xy_cb_ViewWidget.setLabel( 'left', ' ', units='counts/s' )
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
+        self._mw.xz_cb_ViewWidget.setLabel( 'left', ' ', units='counts/s' )
         
         
         self.adjust_aspect_roi_xy()
@@ -972,6 +959,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._scanning_logic.image_z_range = [float(self._mw.z_min_InputWidget.text()), 
                                               float(self._mw.z_max_InputWidget.text())]
 
+    def shortcut_to_xy_cb_manual(self):
+        self._mw.xy_cb_auto_CheckBox.setChecked(False)
+        self.update_xy_cb_range()
+    
+    def shortcut_to_xz_cb_manual(self):
+        self._mw.xz_cb_auto_CheckBox.setChecked(False)
+        self.update_xz_cb_range()
+    
     def update_xy_cb_range(self):
         self.refresh_xy_colorbar()
         self.refresh_xy_image()
