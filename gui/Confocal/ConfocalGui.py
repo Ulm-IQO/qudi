@@ -271,6 +271,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget.addItem(self.xz_image)
+        
+        # Label the axes
+        
+        self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
+        self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='micron' )
+        self._mw.xz_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
+        self._mw.xz_ViewWidget.setLabel( 'left', 'Z position', units='micron' )
     
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], 
@@ -536,6 +543,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         xy_viewbox.state['limits']['xLimits'][1] = self._scanning_logic.x_range[1]
         xy_viewbox.state['limits']['yLimits'][0] = self._scanning_logic.y_range[0]
         xy_viewbox.state['limits']['yLimits'][1] = self._scanning_logic.y_range[1]
+        
+        
   
         # the same for xz viewbox:
   
@@ -590,11 +599,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_cb = ColorBar(self.colmap_norm, 100, 0,100000, label='Counts')              
         
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
-        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
-        self._mw.xy_cb_ViewWidget.setLabel( 'left', ' ', units='counts/s' )
+        #self._mw.xy_cb_ViewWidget.hideAxis('left')
+        self._mw.xy_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        
+        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
-        self._mw.xz_cb_ViewWidget.setLabel( 'left', ' ', units='counts/s' )
+        #self._mw.xz_cb_ViewWidget.hideAxis('left')
+        self._mw.xz_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
         
         
         self.adjust_aspect_roi_xy()
