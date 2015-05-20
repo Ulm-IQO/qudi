@@ -47,9 +47,9 @@ class ManagerGui(Base):
         self._mw = ManagerMainWindow()
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
-        self._about.label.setText('<a href=\"{0}\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
+        self._about.label.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
         self.versionLabel = QtGui.QLabel()
-        self.versionLabel.setText('<a href=\"{0}\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
+        self.versionLabel.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
