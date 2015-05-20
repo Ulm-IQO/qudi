@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>974</width>
+    <height>871</height>
+   </rect>
+  </property>
+  <property name="contextMenuPolicy">
+   <enum>Qt::DefaultContextMenu</enum>
+  </property>
+  <property name="windowTitle">
+   <string>qudi: pulsed measurement</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="measurement_tab">
+       <attribute name="title">
+        <string>measurement</string>
+       </attribute>
+       <widget class="PlotWidget" name="lasertrace_plot_ViewWidget">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>490</y>
+          <width>931</width>
+          <height>290</height>
+         </rect>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+       </widget>
+       <widget class="PlotWidget" name="lasertrace_plot_ViewWidget_2">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>190</y>
+          <width>931</width>
+          <height>290</height>
+         </rect>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+       </widget>
+       <widget class="QWidget" name="gridLayoutWidget">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>931</width>
+          <height>161</height>
+         </rect>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="frequency_InputWidget_2">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QRadioButton" name="radioButton_2">
+           <property name="text">
+            <string>Run</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>Frequency [MHz] :</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QLineEdit" name="power_InputWidget_2">
+           <property name="maximumSize">
+            <size>
+             <width>50</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QRadioButton" name="radioButton">
+           <property name="text">
+            <string>Idle</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="comboBox_2"/>
+         </item>
+         <item row="3" column="0" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Power [dBm] :</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>Fast counter binning [ns] :</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>200</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="4">
+          <widget class="QComboBox" name="comboBox">
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_9">
+           <property name="text">
+            <string>Pulse sequence to run :</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <zorder>lasertrace_plot_ViewWidget</zorder>
+       <zorder></zorder>
+       <zorder>lasertrace_plot_ViewWidget_2</zorder>
+       <zorder>gridLayoutWidget</zorder>
+      </widget>
+      <widget class="QWidget" name="sequence_tab">
+       <attribute name="title">
+        <string>sequence</string>
+       </attribute>
+       <widget class="QTableWidget" name="tableWidget">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>160</y>
+          <width>931</width>
+          <height>611</height>
+         </rect>
+        </property>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>27</number>
+        </attribute>
+        <row>
+         <property name="text">
+          <string>Neue Zeile</string>
+         </property>
+        </row>
+        <column>
+         <property name="text">
+          <string>Chnl 0</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 1</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 2</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 3</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 4</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 5</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 6</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Chnl 7</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Duration [bins]</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Use as tau?</string>
+         </property>
+        </column>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>974</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+   </widget>
+   <addaction name="menu_File"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_Settings">
+   <property name="text">
+    <string>&amp;Settings</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
