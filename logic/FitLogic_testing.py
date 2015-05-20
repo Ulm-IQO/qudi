@@ -73,7 +73,7 @@ class FitLogic():
                 error= -1
             if error==0:
                 try:
-                    FIXME: This is the actual fitting-function
+#                    FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
                     self.logMsg('The fit did not work.', msgType='warning')
