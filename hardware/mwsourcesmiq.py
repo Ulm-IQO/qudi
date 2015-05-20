@@ -4,6 +4,7 @@ from core.Base import Base
 from hardware.mwsourceinterface import MWInterface
 import visa
 import numpy as np
+from collections import OrderedDict
 
 class mwsourcesmiq(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
@@ -13,8 +14,12 @@ class mwsourcesmiq(Base,MWInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
-        self._modclass = 'mwsourcedummy'
+        self._modclass = 'mwsourcesmiq'
         self._modtype = 'mwsource'
+        
+        ## declare connectors        
+        self.connector['out']['mwsourcesmiq'] = OrderedDict()
+        self.connector['out']['mwsourcesmiq']['class'] = 'MWSource' 
                       
         # checking for the right configuration
         if 'gpib_address' in config.keys():
@@ -123,6 +128,8 @@ class mwsourcesmiq(Base,MWInterface):
             self.set_frequency(f)
         if power != None:
             self.set_power(power)
+        
+        self.on()
             
         return 0
         
