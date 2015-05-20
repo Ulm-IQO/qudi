@@ -194,7 +194,7 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         ##                      Connect signals                              ##
         #######################################################################
        
-       # Connect the RadioButtons and connect to the events if they are clicked:
+        # Connect the RadioButtons and connect to the events if they are clicked:
         self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
         self._mw.run_StateWidget.toggled.connect(self.run_clicked)
                 
