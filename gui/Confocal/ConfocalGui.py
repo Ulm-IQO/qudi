@@ -95,8 +95,6 @@ class ColorBar(pg.GraphicsObject):
         Since this colorbar object is in the end a GraphicsObject, it will
         drop an implementation error, since you have to write your own paint
         function for the created GraphicsObject.
-
-        
         """        
         # paint colorbar
         p.drawPicture(0, 0, self.pic)
@@ -372,7 +370,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Some additional settings for the xy ViewWidget
         #self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
        # self._mw.xz_ViewWidget.disableAutoRange()
-#        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
+        #self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1)
 
         # Create Region of Interest for xz image and add to xy Image Widget:
         self.roi_xz = CrossROI([ini_pos_x_crosshair, ini_pos_z_crosshair], 
@@ -473,7 +471,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
 
         # Update the inputed/displayed numbers if return key is hit:
-
         self._mw.xy_cb_min_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
         self._mw.xy_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
 
@@ -481,7 +478,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xz_cb_manual)
         
         # Update the inputed/displayed numbers if the cursor has left the field:
-
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_z_slider)
@@ -503,8 +499,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_cb_max_InputWidget.editingFinished.connect(self.update_xz_cb_range)
         
         
-        # Connect the RadioButtons and connect to the events if they are 
-        # clicked. Connect also the adjustment of the displayed windows.
+#         Connect the RadioButtons and connect to the events if they are 
+#         clicked. Connect also the adjustment of the displayed windows.
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
@@ -644,9 +640,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def refresh_xy_colorbar(self):
         """ Adjust the xy colorbar.
         
-        Currently everytime the update is performed, a new ColorBar object is 
-        created and add to the display while the old one is deleted. This must
-        be fixed in the class.
+        Calls the refresh method from colorbar, which takes either the lowest 
+        and higherst value in the image or predefined ranges. Note that you can 
+        invert the colorbar if the lower border is bigger then the higher one.
         """
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
@@ -664,9 +660,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def refresh_xz_colorbar(self):
         """ Adjust the xz colorbar.
         
-        Currently everytime the update is performed, a new ColorBar object is 
-        created and add to the display while the old one is deleted. This must
-        be fixed in the class.
+        Calls the refresh method from colorbar, which takes either the lowest 
+        and higherst value in the image or predefined ranges. Note that you can 
+        invert the colorbar if the lower border is bigger then the higher one.
         """
 
         # If "Auto" is checked, adjust colour scaling to fit all data.
@@ -700,27 +696,23 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self.disable_scan_buttons(newstate=True)
             
     def menue_settings(self):
-        """ This method opens the settings menue
-        """
+        """ This method opens the settings menue. """
         self._sd.exec_()
         
     def update_settings(self):
-        """ This method writes the new settings from the gui to the file
-        """        
+        """ Write new settings from the gui to the file. """        
         self._scanning_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
         self._scanning_logic.return_slowness = int(self._sd.return_slowness_InputWidget.text())
 
                 
     def reject_settings(self):
-        """ This method keeps the old settings and restores the old settings in the gui
-        """
+        """ Keep the old settings and restores them in the gui. """
         self._sd.clock_frequency_InputWidget.setText(str(int(self._scanning_logic._clock_frequency)))
         self._sd.return_slowness_InputWidget.setText(str(self._scanning_logic.return_slowness))
 
 
     def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready.
-        """            
+        """ Stopp the scan if the state has switched to ready. """            
         if self._scanning_logic.getState() == 'locked':
             self._scanning_logic.stop_scanning()
         if self._optimiser_logic.getState() == 'locked':
@@ -770,7 +762,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def roi_xy_change_x(self,x_pos):
         """ Adjust the xy ROI position if the x value has changed.
         
-        @param tuple or float x_pos: real value of the current x position 
+        @param float x_pos: real value of the current x position 
         
         Since the origin of the region of interest (ROI) is not the crosshair
         point but the lowest left point of the square, you have to shift the
@@ -789,7 +781,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def roi_xy_change_y(self,y_pos):
         """ Adjust the xy ROI position if the y value has changed.
         
-        @param tuple or float y_pos: real value of the current y value
+        @param float y_pos: real value of the current y value
         
         Since the origin of the region of interest (ROI) is not the crosshair
         point but the lowest left point of the square, you have to shift the
@@ -809,7 +801,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def roi_xz_change_x(self,x_pos):
         """ Adjust the xz ROI position if the x value has changed.
         
-        @param tuple or float x_pos: real value of the current x value
+        @param float x_pos: real value of the current x value
         
         Since the origin of the region of interest (ROI) is not the crosshair
         point but the lowest left point of the square, you have to shift the
@@ -829,7 +821,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def roi_xz_change_z(self,z_pos):
         """ Adjust the xz ROI position if the z value has changed.
         
-        @param tuple or float z_pos: real value of the current z value
+        @param float z_pos: real value of the current z value
         
         Since the origin of the region of interest (ROI) is not the crosshair
         point but the lowest left point of the square, you have to shift the
@@ -851,7 +843,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param float x_pos: the current value of the x position        
         """
         # Convert x_pos to number of points for the slider:
-        self._mw.x_current_InputWidget.setText('{0:.5}'.format(x_pos*self.slider_res))
+        self._mw.x_current_InputWidget.setText('{0:.5}'.format(self._scanning_logic.x_range[0] + x_pos*self.slider_res))
 
         
     def update_current_y(self,y_pos):
@@ -860,7 +852,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         @param float y_pos: the current value of the y position        
         """
         # Convert x_pos to number of points for the slider:
-        self._mw.y_current_InputWidget.setText('{0:.5}'.format(y_pos*self.slider_res))        
+        self._mw.y_current_InputWidget.setText('{0:.5}'.format(self._scanning_logic.y_range[0]  + y_pos*self.slider_res))        
 
 
     def update_current_z(self,z_pos):
@@ -882,7 +874,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self._mw.x_SliderWidget.setValue( int(float(self._mw.x_current_InputWidget.text())/self.slider_res)   )
         else:
             self._mw.x_SliderWidget.setValue( int( (roi.pos()[0]+ 0.5*roi.size()[0]- self._scanning_logic.x_range[0])/self.slider_res) )
-
+        
     def update_y_slider(self,roi=None):
         """ Update the y slider if a change happens.
         
@@ -893,7 +885,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self._mw.y_SliderWidget.setValue( int(float(self._mw.y_current_InputWidget.text())/self.slider_res)    )
         else:
             self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1]- self._scanning_logic.y_range[0])/self.slider_res) ) 
-
 
     def update_z_slider(self,roi=None):
         """ Update the z slider if a change happens.
@@ -906,18 +897,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         else:
             self._mw.z_SliderWidget.setValue(int( ( roi.pos()[1] + 0.5*roi.size()[1]  - self._scanning_logic.z_range[0] )/self.slider_res) ) 
             
-
     def change_xy_resolution(self):
         """ Update the xy resolution in the logic according to the GUI.
         """
         self._scanning_logic.xy_resolution = float(self._mw.xy_res_InputWidget.text())
 
-
     def change_z_resolution(self):
         """ Update the z resolution in the logic according to the GUI.
         """        
         self._scanning_logic.z_resolution = float(self._mw.z_res_InputWidget.text())
-
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic.
@@ -925,13 +913,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._scanning_logic.image_x_range = [float(self._mw.x_min_InputWidget.text()), 
                                               float(self._mw.x_max_InputWidget.text())]
 
-
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
         self._scanning_logic.image_y_range = [float(self._mw.y_min_InputWidget.text()), 
                                               float(self._mw.y_max_InputWidget.text())]
-
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
@@ -962,11 +948,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         image is rebuild and updated in the GUI.        
         """
         self.adjust_xy_window()
-            
+             
         self.xy_image.getViewBox().updateAutoRange()
+        self.adjust_aspect_roi_xy()
         self.put_cursor_in_xy_scan()
         self.adjust_aspect_roi_xy()
-        
+
 #        self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
 #        self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
         
@@ -979,8 +966,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             cb_min = float(self._mw.xy_cb_min_InputWidget.text())
             cb_max = float(self._mw.xy_cb_max_InputWidget.text())
             self.xy_image.setImage(image=self._scanning_logic.xy_image[:,:,3].transpose(),levels=(cb_min,cb_max) )
-
-            
+            self.refresh_xy_colorbar()
+  
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
 
@@ -991,11 +978,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         image is rebuild and updated in the GUI.        
         """
         self.adjust_xz_window()
-            
+    
         self.xz_image.getViewBox().updateAutoRange()
+        self.adjust_aspect_roi_xz()
         self.put_cursor_in_xz_scan()
-        self.adjust_aspect_roi_xz()              
-
+        self.adjust_aspect_roi_xz()            
+        
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
         if self._mw.xz_cb_auto_CheckBox.isChecked():
@@ -1011,8 +999,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             self._mw.ready_StateWidget.click()
             
     def refresh_refocus_image(self):
-        ''' This method refreshes the xy image, the crosshair and the colorbar
-        '''
+        """Refreshes the xy image, the crosshair and the colorbar. """
         self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
         self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
         self.vLine.setValue(self._optimiser_logic.refocus_x)
@@ -1025,16 +1012,27 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
         
     def adjust_xy_window(self):
+        """ Fit the visible window in the xy scan to full view.
+        
+        Be careful in using that method, since it uses the input values for
+        the ranges to adjust x and y. Make sure that in the process of the xz scan
+        no method is calling adjust_xz_window, otherwise it will adjust for you
+        a window which does not correspond to the scan! 
+        """
         
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_y_min = float(self._mw.y_min_InputWidget.text())
-        view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min  
-        self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, 
-                                            view_x_max, view_y_max))    
-        self.xy_image.getViewBox().updateAutoRange()
+        view_y_max = float(self._mw.y_max_InputWidget.text())-view_y_min 
         
-        xy_viewbox = self.xy_image.getViewBox()
+        # change only the displayed image of the data, so that it is streched
+        # according to the limits on the x and y axis:
+        self.xy_image.setRect(QtCore.QRectF(view_x_min, view_y_min, 
+                                            view_x_max, view_y_max))  
+                                            
+        xy_viewbox = self.xy_image.getViewBox()      
+        xy_viewbox.updateAutoRange()
+        # change the maximal view range to minimal/maximal limits:
         xy_viewbox.setLimits(xMin = float(self._mw.x_min_InputWidget.text()),
                              xMax = float(self._mw.x_max_InputWidget.text()), 
                              yMin = float(self._mw.y_min_InputWidget.text()), 
@@ -1043,17 +1041,27 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
 
     def adjust_xz_window(self):
+        """ Fit the visible window in the xz scan to full view.
+        
+        Be careful in using that method, since it uses the input values for
+        the ranges to adjust x and z. Make sure that in the process of the xz scan
+        no method is calling adjust_xy_window, otherwise it will adjust for you
+        a window which does not correspond to the scan! 
+        """
         
         view_x_min = float(self._mw.x_min_InputWidget.text())
         view_x_max = float(self._mw.x_max_InputWidget.text())-view_x_min
         view_z_min = float(self._mw.z_min_InputWidget.text())
         view_z_max = float(self._mw.z_max_InputWidget.text())-view_z_min  
         
+        # change only the displayed image of the data, so that it is streched
+        # according to the limits on the x and z axis:
         self.xz_image.setRect(QtCore.QRectF(view_x_min, view_z_min,
                                             view_x_max, view_z_max))           
-        self.xz_image.getViewBox().updateAutoRange()
-        
-        xz_viewbox = self.xy_image.getViewBox()
+                                            
+        xz_viewbox = self.xz_image.getViewBox()
+        xz_viewbox.updateAutoRange()
+        # change the maximal view range to minimal/maximal limits:
         xz_viewbox.setLimits(xMin = float(self._mw.x_min_InputWidget.text()),
                              xMax = float(self._mw.x_max_InputWidget.text()), 
                              yMin = float(self._mw.z_min_InputWidget.text()), 
@@ -1134,9 +1142,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Here it is really necessary not to update, otherwise you will
         # calculate the position of the roi in a wrong way.
-        self.roi_xy.setSize([new_size_x_roi,new_size_y_roi],update=False)
+        self.roi_xy.setSize([new_size_x_roi,new_size_y_roi], update=False)
         pos = self.roi_xy.pos()
-        self.roi_xy.setPos([pos[0]+diff_size_x_roi,pos[1]+diff_size_y_roi],update=True)
+        self.roi_xy.setPos([pos[0]+diff_size_x_roi,pos[1]+diff_size_y_roi], update=True)
 
     
     def adjust_aspect_roi_xz(self,viewbox=None):
@@ -1161,9 +1169,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Here it is really necessary not to update, otherwise you will
         # calculate the position of the roi in a wrong way.
-        self.roi_xz.setSize([new_size_x_roi,new_size_z_roi],update=False)
+        self.roi_xz.setSize([new_size_x_roi,new_size_z_roi], update=False)
         pos = self.roi_xz.pos()
-        self.roi_xz.setPos([pos[0]+diff_size_x_roi,pos[1]+diff_size_z_roi],update=True)
+        self.roi_xz.setPos([pos[0]+diff_size_x_roi,pos[1]+diff_size_z_roi], update=True)
 
     def save_xy_scan(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
