@@ -6,6 +6,8 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 
+from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
+
 import numpy as np
 import scipy.optimize as opt#, scipy.stats
 
@@ -107,10 +109,10 @@ class FitLogic(GenericLogic):
                 error= -1
             if error==0:
                 try:
-                    #FIXME: This is the actual fitting-function
+#                    FIXME: This is the actual fitting-function
                     popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
                 except:
-                    self.logMsg('The fit did not work.', msgType='error')
+                    self.logMsg('The fit did not work.', msgType='warning')
                     error=-1
             if details==False:
                 return error,popt
@@ -278,7 +280,8 @@ class FitLogic(GenericLogic):
                     self.logMsg('Given range of parameter is no float or int.', \
                                 msgType='error')  
             gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
-            return gaussian
+            return gaussian 
+            
         
         def gaussian_estimator(self,x_axis=None,data=None):
             """ This method provides a one dimensional gaussian function.
@@ -313,43 +316,43 @@ class FitLogic(GenericLogic):
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
 
-        def make_gaussian_fit(self,axis=None,data=None,details=False):
-            """ This method performes a gaussian fit on the provided data.
-        
-            @param array [] axis: axis values
-            @param array[]  x_data: data
-            @param bool details: If details is True, additional to the fit 
-                                 parameters also the covariance matrix is
-                                 returned
-            
-                    
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of gaussian_function(xdata, *popt)
-                    is minimized
-            @return 2d array pcov : The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)). This is only returned
-                    when details is set to true.
-                    
-            """
-                
-            error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
-                                                                    axis,data)
-                                                                    
-            if details==False:
-                error,popt= self.make_fit(self.gaussian_function, axis, 
-                                          data,initial_guess=(amplitude, 
-                                          x_zero, sigma, offset),
-                                          details=details)   
-                return error,popt
-            elif details==True:
-                error,popt,pcov= self.make_fit(self.gaussian_function, axis, 
-                                               data,initial_guess=(amplitude, 
-                                               x_zero, sigma, offset),
-                                               details=details)
-                return error,popt, pcov
+#        def make_gaussian_fit(self,axis=None,data=None,details=False):
+#            """ This method performes a gaussian fit on the provided data.
+#        
+#            @param array [] axis: axis values
+#            @param array[]  x_data: data
+#            @param bool details: If details is True, additional to the fit 
+#                                 parameters also the covariance matrix is
+#                                 returned
+#            
+#                    
+#            @return int error: error code (0:OK, -1:error)
+#            @return array popt: Optimal values for the parameters so that 
+#                    the sum of the squared error of gaussian_function(xdata, *popt)
+#                    is minimized
+#            @return 2d array pcov : The estimated covariance of popt. The 
+#                    diagonals provide the variance of the parameter estimate. 
+#                    To compute one standard deviation errors on the parameters 
+#                    use perr = np.sqrt(np.diag(pcov)). This is only returned
+#                    when details is set to true.
+#                    
+#            """
+#                
+#            error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
+#                                                                    axis,data)
+#                                                                    
+#            if details==False:
+#                error,popt= self.make_fit(self.gaussian_function, axis, 
+#                                          data,initial_guess=(amplitude, 
+#                                          x_zero, sigma, offset),
+#                                          details=details)   
+#                return error,popt
+#            elif details==True:
+#                error,popt,pcov= self.make_fit(self.gaussian_function, axis, 
+#                                               data,initial_guess=(amplitude, 
+#                                               x_zero, sigma, offset),
+#                                               details=details)
+#                return error,popt, pcov
 
         def lorentzian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
             """ This method provides a one dimensional Lorentzian function.
@@ -379,6 +382,7 @@ class FitLogic(GenericLogic):
             lorentzian = amplitude / np.pi * (  sigma / ( (x_data-x_zero)**2 + sigma**2 )  ) + offset
             return lorentzian
             
+           
         def lorentzian_estimator(self,x_axis=None,data=None):
             """ This method provides a one dimensional Lorentzian function.
         
@@ -461,3 +465,48 @@ class FitLogic(GenericLogic):
                                                x_zero, sigma, offset),
                                                details=details)
                 return error,popt, pcov
+               
+
+        def make_gaussian(self,axis=None,data=None,positive=True):
+            """ This method performes a gaussian fit on the provided data.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data
+            @param bool details: If details is True, additional to the fit 
+                                 parameters also the covariance matrix is
+                                 returned
+            
+                    
+            @return int error: error code (0:OK, -1:error)
+            @return array popt: Optimal values for the parameters so that 
+                    the sum of the squared error of gaussian_function(xdata, *popt)
+                    is minimized
+            @return 2d array pcov : The estimated covariance of popt. The 
+                    diagonals provide the variance of the parameter estimate. 
+                    To compute one standard deviation errors on the parameters 
+                    use perr = np.sqrt(np.diag(pcov)). This is only returned
+                    when details is set to true.
+                    
+            """
+                
+            error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
+                                                                    axis,data)
+                      
+            mod_final = GaussianModel()+ConstantModel()
+#            params=mod_final.make_params()
+            
+            if positive==True:
+                mod_final.set_param_hint('amplitude',min=100,max=1e7)
+                        
+            mod_final.set_param_hint('sigma',min=2*(axis[1]-axis[0]),max=2*(axis[-1]-axis[0]))
+            mod_final.set_param_hint('center',min=(axis[0])/2,max=axis[-1]*2)
+                
+
+            try:
+                result=mod_final.fit(data, x=axis,amplitude=amplitude, center=x_zero, sigma=sigma, c=offset)
+            except:
+                error=-1
+                print("Fit did not work")
+            return error,result
+                
+
