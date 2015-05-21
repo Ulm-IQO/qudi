@@ -202,22 +202,91 @@
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_6">
-            <item row="2" column="0">
-             <widget class="PlotWidget" name="xy_refocus_ViewWidget">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>6</verstretch>
-               </sizepolicy>
+            <item row="4" column="0">
+             <widget class="QLabel" name="label_6">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>X :</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
+            <item row="4" column="2">
+             <widget class="QLabel" name="label_8">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Y :</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="3" alignment="Qt::AlignHCenter">
+             <widget class="QLineEdit" name="y_refocus_position_ViewWidget">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="4">
+             <widget class="QLabel" name="label_7">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Z :</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1" alignment="Qt::AlignHCenter">
+             <widget class="QLineEdit" name="x_refocus_position_ViewWidget">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="5" alignment="Qt::AlignHCenter">
+             <widget class="QLineEdit" name="z_refocus_position_ViewWidget">
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0" colspan="6">
              <widget class="PlotWidget" name="xz_refocus_ViewWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>4</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="6">
+             <widget class="PlotWidget" name="xy_refocus_ViewWidget">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>6</verstretch>
                </sizepolicy>
               </property>
              </widget>
