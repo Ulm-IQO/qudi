@@ -1021,9 +1021,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
         self.xz_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
 #        self.refresh_xy_colorbar()
-#        self._mw.optimal_x.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
-#        self._mw.optimal_y.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
-#        self._mw.optimal_z.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
+        self._mw.x_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
+        self._mw.y_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
+        self._mw.z_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
         
     def adjust_xy_window(self):
         
