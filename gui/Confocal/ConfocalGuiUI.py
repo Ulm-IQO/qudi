@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Thu May 21 11:31:56 2015
+# Created: Thu May 21 11:38:37 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -140,7 +140,7 @@ class Ui_MainWindow(object):
         self.xz_refocus_ViewWidget = PlotWidget(self.tab_6)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(5)
+        sizePolicy.setVerticalStretch(4)
         sizePolicy.setHeightForWidth(self.xz_refocus_ViewWidget.sizePolicy().hasHeightForWidth())
         self.xz_refocus_ViewWidget.setSizePolicy(sizePolicy)
         self.xz_refocus_ViewWidget.setObjectName(_fromUtf8("xz_refocus_ViewWidget"))
