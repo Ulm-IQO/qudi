@@ -202,7 +202,7 @@
          <layout class="QGridLayout" name="gridLayout_7">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_6">
-            <item row="1" column="0">
+            <item row="2" column="0">
              <widget class="PlotWidget" name="xy_refocus_ViewWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -212,17 +212,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
-             <widget class="PlotWidget" name="xy_refocus_cb_ViewWidget">
-              <property name="maximumSize">
-               <size>
-                <width>50</width>
-                <height>16777215</height>
-               </size>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0" colspan="2">
+            <item row="3" column="0">
              <widget class="PlotWidget" name="xz_refocus_ViewWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -763,6 +753,7 @@
      <string>&amp;Options</string>
     </property>
     <addaction name="action_Settings"/>
+    <addaction name="action_optimiser_settings"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menu_Options"/>
@@ -793,12 +784,17 @@
     <string>Save XZ Scan</string>
    </property>
   </action>
+  <action name="action_optimiser_settings">
+   <property name="text">
+    <string>Optimiser Settings</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -820,10 +816,7 @@
   <tabstop>xz_scan_StateWidget</tabstop>
   <tabstop>refocus_StateWidget</tabstop>
   <tabstop>z_SliderWidget</tabstop>
-  <tabstop>xz_refocus_ViewWidget</tabstop>
   <tabstop>y_SliderWidget</tabstop>
-  <tabstop>xy_refocus_cb_ViewWidget</tabstop>
-  <tabstop>xy_refocus_ViewWidget</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
  </tabstops>

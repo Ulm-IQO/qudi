@@ -12,6 +12,7 @@ from core.Base import Base
 from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
 
+
 # ============= HowTo Convert the corresponding *.ui file =====================
 # To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -289,6 +290,38 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                                             self._scanning_logic.image_z_range[0], 
                                             self._scanning_logic.image_x_range[1]-self._scanning_logic.image_x_range[0], 
                                             self._scanning_logic.image_z_range[1]-self._scanning_logic.image_z_range[0]))
+                                            
+        #######################################################################
+        ###               Configuration of the optimiser tab                ###
+        #######################################################################
+        
+        # Load the image for the optimiser tab                                    
+        self.xy_refocus_image = pg.ImageItem(self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
+                                                    self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
+                                                    self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.xz_refocus_image = pg.ScatterPlotItem(self._optimiser_logic._zimage_Z_values,
+                                                self._optimiser_logic.z_refocus_line, 
+                                                symbol='o')
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._fit_zimage_Z_values,
+                                                    self._optimiser_logic.z_fit_data, 
+                                                    pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+                                                    
+        # Add the display item to the xy and xz VieWidget, which was defined in
+        # the UI file.
+        self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
+        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
+        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
+        
+        #Add crosshair to the xy refocus scan
+        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=0, movable=False)
+        self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
+        self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
+        
+        
+        
+        
         
         # Set the state button as ready button as default setting.
         self._mw.ready_StateWidget.click()
@@ -490,6 +523,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # a refresh of the GUI picture: 
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
         self._scanning_logic.signal_xz_image_updated.connect(self.refresh_xz_image)
+        self._optimiser_logic.signal_image_updated.connect(self.refresh_refocus_image)
         
         # Connect the signal from the logic with an update of the cursor position
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
@@ -549,7 +583,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
             
         self.xy_image.setLookupTable(lut)
-        self.xz_image.setLookupTable(lut)        
+        self.xz_image.setLookupTable(lut)
+        self.xy_refocus_image.setLookupTable(lut)        
         
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
@@ -975,6 +1010,20 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         if self._scanning_logic.getState() != 'locked':
             self._mw.ready_StateWidget.click()
+            
+    def refresh_refocus_image(self):
+        ''' This method refreshes the xy image, the crosshair and the colorbar
+        '''
+        self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.vLine.setValue(self._optimiser_logic.refocus_x)
+        self.hLine.setValue(self._optimiser_logic.refocus_y)
+        self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
+        self.xz_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
+#        self.refresh_xy_colorbar()
+#        self._mw.optimal_x.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
+#        self._mw.optimal_y.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
+#        self._mw.optimal_z.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
         
     def adjust_xy_window(self):
         
