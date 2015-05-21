@@ -467,7 +467,7 @@ class FitLogic(GenericLogic):
                 return error,popt, pcov
                
 
-        def make_gaussian(self,axis=None,data=None,positive=True):
+        def make_gaussian_fit(self,axis=None,data=None):
             """ This method performes a gaussian fit on the provided data.
         
             @param array [] axis: axis values
@@ -495,13 +495,13 @@ class FitLogic(GenericLogic):
             mod_final = GaussianModel()+ConstantModel()
 #            params=mod_final.make_params()
             
-            if positive==True:
-                mod_final.set_param_hint('amplitude',min=100,max=1e7)
+
+            mod_final.set_param_hint('amplitude',min=100,max=1e7)
                         
             mod_final.set_param_hint('sigma',min=2*(axis[1]-axis[0]),max=2*(axis[-1]-axis[0]))
             mod_final.set_param_hint('center',min=(axis[0])/2,max=axis[-1]*2)
                 
-
+            print("new fit method")
             try:
                 result=mod_final.fit(data, x=axis,amplitude=amplitude, center=x_zero, sigma=sigma, c=offset)
             except:
