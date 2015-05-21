@@ -1,49 +1,90 @@
 # -*- coding: utf-8 -*-
 
 from pyqtgraph.Qt import QtCore
-import queue
-import Pyro4
+import rpyc
 import socket
+from urllib.parse import urlparse
 
 
 class RemoteObjectManager(QtCore.QObject):
     def __init__(self, threadManager, logger):
         super().__init__()
         self.hostname = socket.gethostname()
-        #self.nameserver = Pyro4.locateNS()
         self.tm = threadManager
         self.logger = logger
         #self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
+        self.remoteModules = list()
+        self.sharedModules = dict()
+
+    def makeRemoteService(self):
+        class RemoteModuleService(rpyc.Service):
+            modules = self.sharedModules
+            def on_connect(self):
+                # code that runs when a connection is created
+                # (to init the serivce, if needed)
+                print('Client connected!')
+
+            def on_disconnect(self):
+                # code that runs when the connection has already closed
+                # (to finalize the service, if needed)
+                print('Client disconnected!')
+
+            def exposed_getModule(self, name):
+                if name in self.modules:
+                    return self.modules[name]
+                else:
+                    return None
 
     def refresNameserver(self):
         #self.nameserver = Pyro4.locateNS()
         pass
 
-    def createServer(self, name, obj):
-        thread = self.tm.newThread('pyro-{0}'.format(name))
-        server = PyroModuleServer(self.hostname, obj)
-        server.moveToThread(thread)
-        thread.started.connect(server.run)
+    def createServer(self, port):
+        thread = self.tm.newThread('rpyc-server')
+        self.server = RPyCServer(self.makeRemoteService(), port)
+        self.server.moveToThread(thread)
         thread.start()
         #self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
-        self.logger.logMsg('Module {0} registered as {1} and as {2}-{0} at nameserver {3}'.format(name, server.uri, self.hostname, 'NameServer'), msgType='status')
+        self.logger.logMsg('Started module server at {0} on port {1}'.format(self.hostname, port), msgType='status')
 
-    def getRemoteModule(self, name):
-        #uri = self.nameserver.lookup(name)
-        return Pyro4.Proxy(uri)
+    def stopServer(self):
+        if hasattr(self, 'server'):
+            self.server.close()
+
+    def shareModule(self, name, obj):
+        if name in self.sharedModules:
+            self.logger.logMsg('Module {0} already shared.'.format(name), msgType='warning')
+        self.sharedModules['name'] = obj
+        self.logger.logMsg('Shared module {0}.'.format(name), msgType='status')
+
+    def unshareModule(self, name):
+        if name in self.sharedModules:
+            self.logger.logMsg('Module {0} was not shared.'.format(name), msgType='error')
+        self.sharedModules.popKey(name, None)
+
+    def getRemoteModuleUrl(self, url):
+        parsed = urlparse(url)
+        name = parsed.path.replace('/', '')
+        return self.getRemoteModule(parsed.hostname, parsed.port, name)
+
+    def getRemoteModule(self, host, port, name):
+        module = RemoteModule(host, port, name)
+        self.remoteModules.append(module)
+        return module
 
 
-class PyroModuleServer(QtCore.QObject):
-    def __init__(self, host, module):
+class RPyCServer(QtCore.QObject):
+    def __init__(self, serviceClass, port):
         super().__init__()
-        Pyro4.config.COMMTIMEOUT = 0.5
-        self.daemon = Pyro4.Daemon(host=host)
-        self.uri = self.daemon.register(module)
+        self.serviceClass = serviceClass
+        self.port = port
 
     def run(self):
-        self.daemon.requestLoop(loopCondition=self.checkEvents)
+        self.server = ThreadedServer(self.serviceClass, self.port, protocol_config = {'allow_all_attrs': True })
+        self.server.start()
 
-    
-    def checkEvents(self):
-        QtCore.QCoreApplication.processEvents()
-        return QtCore.QThread.currentThread().isRunning()
+class RemoteModule: 
+    def __init__(self, host, port, name):
+        self.connection = rpyc.connect(host, port, config={'allow_all_attrs': True})
+        self.module = self.connection.root.getModule(name)
+        self.name = name

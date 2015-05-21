@@ -5,7 +5,7 @@ Install these via *pip install*:
 * pyqtgraph: http://www.pyqtgraph.org/
 * pyvisa: https://pypi.python.org/pypi/PyVISA
 * PyDAQmx: https://pypi.python.org/pypi/PyDAQmx
-* Pyro4: https://pypi.python.org/pypi/Pyro4
 * svn: https://pypi.python.org/pypi/svn
 * lmfit: https://pypi.python.org/pypi/lmfit
+* RPyC: https://pypi.python.org/pypi/rpyc
 

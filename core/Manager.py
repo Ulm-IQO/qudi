@@ -176,7 +176,8 @@ class Manager(QtCore.QObject):
             self.readConfig(configFile)
 
             self.rm = RemoteObjectManager(self.tm, self.logger)
-            
+            self.rm.createServer(12345)
+
             self.logger.logMsg('QuDi started.', importance=9)
             
             # Act on options if they were specified..
@@ -676,7 +677,7 @@ class Manager(QtCore.QObject):
                     self.logger.logMSG('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
                     return
                 try:
-                    instance = self.rm.getRemoteModule(self.tree['defined'][base][key]['remote'])
+                    instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][base][key] = instance
@@ -697,7 +698,7 @@ class Manager(QtCore.QObject):
                         self.tree['loaded'][base][key].moveToThread(modthread)
                         modthread.start()
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
-                        self.rm.createServer('{0}-{1}'.format(base,key), self.tree['loaded'][base][key])
+                        self.rm.shareModule('{0}-{1}'.format(base,key), self.tree['loaded'][base][key])
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
                     return
