@@ -250,7 +250,6 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #       integrate in the code. --Alex
 # FIXME: Make the slider resolution adjustable
 # FIXME: Make the format display of the current values adjustable.
-# FIXME: Insert labels for axis for xy and xz scan.
 # FIXME: Make the xy scan and the xz scan saveable either as png or svg.
         
         # @LOCHLAN: Would be great to have svg support in our wiki.
@@ -372,7 +371,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Some additional settings for the xy ViewWidget
         #self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
-        self._mw.xz_ViewWidget.disableAutoRange()
+       # self._mw.xz_ViewWidget.disableAutoRange()
 #        self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1) 
 
         # Create Region of Interest for xz image and add to xy Image Widget:
@@ -597,12 +596,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
         #self._mw.xy_cb_ViewWidget.hideAxis('left')
         self._mw.xy_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.xy_cb_ViewWidget.setMouseEnabled(x=False,y=False)
         
         self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
         self._mw.xz_cb_ViewWidget.hideAxis('bottom')
         #self._mw.xz_cb_ViewWidget.hideAxis('left')
         self._mw.xz_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
-        self._mw.xy_cb_ViewWidget.setMouseEnabled(x=False,y=False)
         self._mw.xz_cb_ViewWidget.setMouseEnabled(x=False,y=False)
         
         
