@@ -401,7 +401,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         # Some additional settings for the xz ViewWidget
         #self._mw.xz_ViewWidget.setMouseEnabled(x=False,y=False)
-        self._mw.xz_ViewWidget.disableAutoRange()
+        #self._mw.xz_ViewWidget.disableAutoRange()
         #self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)               
         
         # Setup the Sliders:
