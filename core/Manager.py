@@ -674,10 +674,11 @@ class Manager(QtCore.QObject):
         if 'module' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
                 if not isinstance(self.tree['defined'][base][key]['remote'], str):
-                    self.logger.logMSG('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
+                    self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
                     return
                 try:
                     instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
+                    self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][base][key] = instance
@@ -749,7 +750,9 @@ class Manager(QtCore.QObject):
           @param string key: module which is going to be activated.
             
         """
-        if self.tree['loaded'][base][key].getState() != 'deactivated' and key in self.tree['start'][base]:
+        if self.tree['loaded'][base][key].getState() != 'deactivated' and (
+                ( base in self.tree['defined'] and key in self.tree['defined'][base]  and 'remote' in self.tree['defined'][base][key])
+                or (base in self.tree['start'] and  key in self.tree['start'][base])) :
             return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
             self.logger.logMsg('{0} module {1} not deactivated anymore'.format(base, key),
