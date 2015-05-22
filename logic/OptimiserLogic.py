@@ -273,22 +273,18 @@ class OptimiserLogic(GenericLogic):
             
             self.signal_image_updated.emit()
             
+            #TODO: This part has to be adjusted to the new fitting methods, but not before the programming of FitLogic is finished.
             #z-fit
-            error, amplitude_z, x_zero_z, sigma_z, offset_z=self._fit_logic.gaussian_estimator(x_axis=self._zimage_Z_values,data=self.z_refocus_line)
-            if error == -1:
-                self.logMsg('error in initial_guess z fit.', \
-                            msgType='error')
-                #hier abbrechen
-            else:
-                initial_guess_z = (amplitude_z, x_zero_z, sigma_z, offset_z)
             
-            error,result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
+            result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
+
             oneD_values=np.zeros(4)
             oneD_values[0]=result.best_values['amplitude']/np.sqrt(2*np.pi)/result.best_values['sigma']
             oneD_values[1]=result.best_values['center']
             oneD_values[2]=result.best_values['sigma']
             oneD_values[3]=result.best_values['c']
-            if error == -1:
+            
+            if result.success == False:
                 self.logMsg('error in 1D Gaussian Fit.', \
                             msgType='error')
                 self.refocus_z = self._trackpoint_z
@@ -302,17 +298,13 @@ class OptimiserLogic(GenericLogic):
                     else: #new pos is too far away
                         if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
                             if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
-                                print('hello 1')
                                 self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
                             else:
                                 self.refocus_z = self.z_range[1] #moves to highest possible value
-                                print('hello 2')
                         else:
                             if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
-                                print('hello 3')
                                 self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to lower edge of scan range
                             else:
-                                print('hello 4')
                                 self.refocus_z = self.z_range[0] #moves to lowest possible value
                         
             
