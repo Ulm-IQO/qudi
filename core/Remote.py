@@ -2,6 +2,7 @@
 
 from pyqtgraph.Qt import QtCore
 import rpyc
+from rpyc.utils.server import ThreadedServer
 import socket
 from urllib.parse import urlparse
 
@@ -35,6 +36,8 @@ class RemoteObjectManager(QtCore.QObject):
                 else:
                     return None
 
+        return RemoteModuleService
+
     def refresNameserver(self):
         #self.nameserver = Pyro4.locateNS()
         pass
@@ -43,6 +46,7 @@ class RemoteObjectManager(QtCore.QObject):
         thread = self.tm.newThread('rpyc-server')
         self.server = RPyCServer(self.makeRemoteService(), port)
         self.server.moveToThread(thread)
+        thread.started.connect(self.server.run)
         thread.start()
         #self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
         self.logger.logMsg('Started module server at {0} on port {1}'.format(self.hostname, port), msgType='status')
@@ -54,7 +58,7 @@ class RemoteObjectManager(QtCore.QObject):
     def shareModule(self, name, obj):
         if name in self.sharedModules:
             self.logger.logMsg('Module {0} already shared.'.format(name), msgType='warning')
-        self.sharedModules['name'] = obj
+        self.sharedModules[name] = obj
         self.logger.logMsg('Shared module {0}.'.format(name), msgType='status')
 
     def unshareModule(self, name):
@@ -70,7 +74,7 @@ class RemoteObjectManager(QtCore.QObject):
     def getRemoteModule(self, host, port, name):
         module = RemoteModule(host, port, name)
         self.remoteModules.append(module)
-        return module
+        return module.module
 
 
 class RPyCServer(QtCore.QObject):
@@ -80,7 +84,7 @@ class RPyCServer(QtCore.QObject):
         self.port = port
 
     def run(self):
-        self.server = ThreadedServer(self.serviceClass, self.port, protocol_config = {'allow_all_attrs': True })
+        self.server = ThreadedServer(self.serviceClass, port = self.port, protocol_config = {'allow_all_attrs': True })
         self.server.start()
 
 class RemoteModule: 

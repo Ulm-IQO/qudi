@@ -698,7 +698,7 @@ class Manager(QtCore.QObject):
                         self.tree['loaded'][base][key].moveToThread(modthread)
                         modthread.start()
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
-                        self.rm.shareModule('{0}-{1}'.format(base,key), self.tree['loaded'][base][key])
+                        self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
                     return
