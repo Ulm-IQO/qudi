@@ -347,33 +347,33 @@ class ConfocalLogic(GenericLogic):
                                self._AL) )
                 
             line_counts = self._scanning_device.scan_line(line)
-        except Exception:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
-            self.stop_scanning()           
-            self.signal_scan_lines_next.emit()
-            
-        
-        return_line = np.vstack( (self._return_XL, 
+            return_line = np.vstack( (self._return_XL, 
                                   image[self._scan_counter,0,1] * np.ones(self._return_XL.shape), 
                                   image[self._scan_counter,0,2] * np.ones(self._return_XL.shape), 
                                   self._return_AL) )
         
-        return_line_counts = self._scanning_device.scan_line(return_line)
+            return_line_counts = self._scanning_device.scan_line(return_line)
             
-        if self._zscan:
+            if self._zscan:
                 self.xz_image[self._scan_counter,:,3] = line_counts
                 self.signal_xz_image_updated.emit()
-        else:
+            else:
                 self.xy_image[self._scan_counter,:,3] = line_counts
                 self.signal_xy_image_updated.emit()
 #            self.return_image[i,:] = return_line_counts
             #self.sigImageNext.emit()
         # call this again from event loop
-        self._scan_counter += 1
+            self._scan_counter += 1
         
-        if self._scan_counter >= np.size(self._image_vert_axis): 
+            if self._scan_counter >= np.size(self._image_vert_axis): 
+                self.stop_scanning()           
+            self.signal_scan_lines_next.emit()
+        
+        except Exception as e:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_scanning()           
-        self.signal_scan_lines_next.emit()
+            self.signal_scan_lines_next.emit()
+            raise e
 
     def save_xy_data(self):
         """ Save the current confocal xy data to a file.
