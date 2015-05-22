@@ -400,6 +400,12 @@ class FitLogic():
 # new methods with lmfit           
                 
 ###############################################################################
+                
+                
+        def make_gaussian_model(self):
+            model=GaussianModel()+ConstantModel()
+            params=model.make_params()
+            return model,params
             
         def make_gaussian_fit(self,axis=None,data=None):
             """ This method performes a gaussian fit on the provided data.
@@ -426,8 +432,7 @@ class FitLogic():
             error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
                                                                     axis,data)
                       
-            mod_final = GaussianModel()+ConstantModel()
-            params=mod_final.make_params()
+            mod_final,params = self.make_gaussian_model()
             
             params.add('amplitude',min=100,max=1e7,value=amplitude)   
             params.add('sigma',min=2*(axis[1]-axis[0]),max=2*(axis[-1]-axis[0]),value=sigma)
@@ -474,193 +479,33 @@ class FitLogic():
             offset=data.min()
             return error, amplitude, x_zero, sigma, offset
 
-        @staticmethod
-        def twoD_gaussian_model(x,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta, offset):
-                                        
-            #FIXME: x_data_tuple: dimension of arrays
-                                    
-            """ This method provides a two dimensional gaussian function.
-            
-            @param (k,M)-shaped array x_data_tuple: x and y values
-            @param float or int amplitude: Amplitude of gaussian
-            @param float or int x_zero: x value of maximum
-            @param float or int y_zero: y value of maximum
-            @param float or int sigma_x: standard deviation in x direction
-            @param float or int sigma_y: standard deviation in y direction
-            @param float or int theta: angle for eliptical gaussians
-            @param float or int offset: offset
-        
-            @return callable function: returns the function
-            
-            """
-##            # check if parameters make sense
-##            #FIXME: Check for 2D matrix
-#            if not isinstance( x,(frozenset, list, set, tuple,\
-#                                np.ndarray)):
-#                self.logMsg('Given range of axes is no array type.', \
-#                            msgType='error')  
-#        
-#            parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
-#            for var in parameters:
-#                if not isinstance(var,(float,int)):
-#                    self.logMsg('Given range of parameter' 
-#                                    'is no float or int.',msgType='error')
-                                        
-            u = x[:, 0]
-            v = x[:, 1]                            
-            x_zero = float(x_zero)
-            y_zero = float(y_zero) 
-            
-            a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                        + (np.sin(theta)**2)/(2*sigma_y**2)
-            b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                        + (np.sin(2*theta))/(4*sigma_y**2)
-            c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                        + (np.cos(theta)**2)/(2*sigma_y**2)
-            g = offset + amplitude*np.exp( - (a*((u-x_zero)**2) \
-                                    + 2*b*(u-x_zero)*(v-y_zero) \
-                                    + c*((v-y_zero)**2)))
-            return g
-            
-            
-        def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
-#            TODO:Make clever estimator
-            #FIXME: Idea: x_zero@max x_axis
-            #FIXME: 1D array x_axis, y_axis, 2D data???
-            """ This method provides a two dimensional gaussian function.
-        
-            @param array x_axis: x values
-            @param array y_axis: y values
-            @param array data: value of each data point corresponding to
-                                x and y values
-
-            @return float amplitude: estimated amplitude
-            @return float x_zero: estimated x value of maximum
-            @return float y_zero: estimated y value of maximum
-            @return float sigma_x: estimated standard deviation in x direction
-            @return float sigma_y: estimated  standard deviation in y direction
-            @return float theta: estimated angle for eliptical gaussians
-            @return float offset: estimated offset
-            @return int error: error code (0:OK, -1:error)                    
-            """                                 
-            amplitude=float(data.max()-data.min())
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
-            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
-            sigma_x=(x_axis.max()-x_axis.min())/3.
-            sigma_y =(y_axis.max()-y_axis.min())/3.
-            theta=0.0
-            offset=float(data.min())
-            error=0
-            #check for sensible values
-            parameters=[x_axis,y_axis,data]
-            for var in parameters:
-                #FIXME: Why don't you check earlier?
-                #FIXME: Check for 1D array, 2D
-                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                    self.logMsg('Given parameter is not an array.', \
-                                msgType='error') 
-                    amplitude=0.
-                    x_zero=0.
-                    y_zero=0.
-                    sigma_x=0.
-                    sigma_y =0.
-                    theta=0.0
-                    offset=0.
-                    error=-1
-       
-            return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
-
-
-        def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
-            #FIXME: dimensions of arrays
-        
-            """ This method performes a 2D gaussian fit on the provided data.
-
-            @param array x_axis: x values
-            @param array y_axis: y values
-            @param array data: value of each data point corresponding to
-                                x and y values        
-            @param bool details: If details is True, additional to the fit 
-                                 parameters also the covariance matrix is
-                                 returned
-            
-                    
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of f(xdata, *popt) - ydata 
-                    is minimized
-            @return 2d array pcov: The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)).
-                    
-            """
-                      
-            #FIXME: Would be nice in several rows....
-            error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
-            initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
-            
-            if details==False:
-                error,popt = self.make_fit(function=self.twoD_gaussian_function
-                                        ,axes=(x_axis,y_axis), data=data,
-                                        initial_guess=initial_guess_estimated)
-                return error,popt
-            elif details==True:
-                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
-                                                data=data,initial_guess=initial_guess_estimated,
-                                                details=details)
-                return error,popt, pcov                      
 
 
         def oneD_testing(self):
-            self.x = np.linspace(0, 1, 11)
-            mod=GaussianModel()
-            params=mod.make_params()
-
-            off=ConstantModel()
-            params.update(off.make_params())
+            self.x = np.linspace(0, 5, 11)
+            x_nice=np.linspace(0, 5, 101)
+#            mod=GaussianModel()
+#            params=mod.make_params()
+#
+#            off=ConstantModel()
+#            params.update(off.make_params())
             
-            mod_final = mod+off
-            self.data_noisy=mod_final.eval(x=self.x, amplitude=50000,center=0.5,sigma=2, c=10000) + 100*np.random.normal(size=self.x.shape)
-            
+            mod_final,params = self.make_gaussian_model()
+            self.data_noisy=mod_final.eval(x=self.x, amplitude=50000,center=1,sigma=0.8, c=10000) + 100*np.random.normal(size=self.x.shape)
+#    
 #            print(mod_final.param_names)
-#            
+##            
             error,result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy)
-            print(result.fit_report())
+#            
+#            print(result.fit_report())
             plt.figure()
             plt.plot(self.x,self.data_noisy)
+#            plt.plot(self.x,self.gaussian_function(self.x,result.best_values['amplitude']/result.best_values['sigma']/np.sqrt(2*np.pi),result.best_values['center'],result.best_values['sigma'],result.best_values['c']),'r')
             plt.plot(self.x,result.best_fit)
+            gauss=GaussianModel()+ConstantModel()
+            gauss.make_params()
+            plt.plot(x_nice,gauss.eval(x=x_nice,params=result.params),'r')
             plt.show()  
-            
-                        
-        def twoD_testing(self):    
-            data = np.empty((2500,1))
-            x = np.arange(-2,3,0.1)
-            y = np.arange(-2,3,0.1)
-            xx, yy = np.meshgrid(x, y)
-            #data[:,0] = xx.flatten()
-            #data[:,1] = yy.flatten()
-            
-            axes = np.empty((2500,2))
-            axes[:,0]=xx.flatten()
-            axes[:,1]=yy.flatten()
-
-            data= self.twoD_gaussian_model(x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3)
-            
-            gmod = Model(self.twoD_gaussian_model)
-            params = gmod.make_params()
-            
-            result = gmod.fit(data, x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3)
-            
-            
-            fig, ax = plt.subplots(1, 1)
-            ax.hold(True)
-            ax.imshow(gmod.eval(x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3).reshape(50, 50), cmap=plt.cm.jet, 
-                      origin='bottom', extent=(x.min(), x.max(), 
-                                               y.min(), y.max()))
-            ax.contour(x, y, result.best_fit.reshape(50, 50), 8
-                        , colors='w')
-
 
 test=FitLogic()
-test.twoD_testing()   
+test.oneD_testing()   
