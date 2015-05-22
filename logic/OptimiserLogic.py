@@ -6,7 +6,8 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-                
+from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
+               
 
 class OptimiserLogic(GenericLogic):
     """unstable: Christoph Müller
@@ -281,7 +282,12 @@ class OptimiserLogic(GenericLogic):
             else:
                 initial_guess_z = (amplitude_z, x_zero_z, sigma_z, offset_z)
             
-            error, oneD_values = self._fit_logic.make_fit(function=self._fit_logic.gaussian_function, axes=self._zimage_Z_values, data=self.z_refocus_line,initial_guess=initial_guess_z)
+            error,result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
+            oneD_values=np.zeros(4)
+            oneD_values[0]=result.best_values['amplitude']/np.sqrt(2*np.pi)/result.best_values['sigma']
+            oneD_values[1]=result.best_values['center']
+            oneD_values[2]=result.best_values['sigma']
+            oneD_values[3]=result.best_values['c']
             if error == -1:
                 self.logMsg('error in 1D Gaussian Fit.', \
                             msgType='error')
@@ -291,19 +297,24 @@ class OptimiserLogic(GenericLogic):
                 if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset: #checks if new pos is too far away
                     if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]: #checks if new pos is within the scanner range
                         self.refocus_z = oneD_values[1]
-                        self.z_fit_data = self._fit_logic.gaussian_function(x_data=self._fit_zimage_Z_values,amplitude=oneD_values[0], x_zero=oneD_values[1], sigma=oneD_values[2], offset=oneD_values[3])
-                else: #new pos is too far away
-                    if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
-                        if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
-                            self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
+                        gauss,params=self._fit_logic.make_gaussian_model()
+                        self.z_fit_data = gauss.eval(x=self._fit_zimage_Z_values,params=result.params)
+                    else: #new pos is too far away
+                        if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
+                            if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
+                                print('hello 1')
+                                self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
+                            else:
+                                self.refocus_z = self.z_range[1] #moves to highest possible value
+                                print('hello 2')
                         else:
-                            self.refocus_z = self.z_range[1] #moves to highest possible value
-                    else:
-                        if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
-                            self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to lower edge of scan range
-                        else:
-                            self.refocus_z = self.z_range[0] #moves to lowest possible value
-                    
+                            if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
+                                print('hello 3')
+                                self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to lower edge of scan range
+                            else:
+                                print('hello 4')
+                                self.refocus_z = self.z_range[0] #moves to lowest possible value
+                        
             
             self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(\
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z,\
