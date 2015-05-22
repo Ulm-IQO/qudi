@@ -877,7 +877,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # wait for the scanner counter to finish
         daq.DAQmxWaitUntilTaskDone(self._scanner_counter_daq_task, #define task
                                    self._RWTimeout*2*self._line_length) # maximal timeout for the counter times the positions
-        
+        # wait for the scanner clock to finish
+        daq.DAQmxWaitUntilTaskDone(self._scanner_clock_daq_task, #define task
+                                   self._RWTimeout*2*self._line_length) # maximal timeout for the counter times the positions
+                                   
         # count data will be written here
         self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
         
