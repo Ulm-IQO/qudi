@@ -306,15 +306,15 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                                                     
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
-        self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
-        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
-        self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
+        self._mw.xy_refocus_ViewWidget_2.addItem(self.xy_refocus_image)
+        self._mw.xz_refocus_ViewWidget_2.addItem(self.xz_refocus_image)
+        self._mw.xz_refocus_ViewWidget_2.addItem(self.xz_refocus_fit_image)
         
         #Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=90, movable=False)
         self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=0, movable=False)
-        self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
-        self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
+        self._mw.xy_refocus_ViewWidget_2.addItem(self.vLine, ignoreBounds=True)
+        self._mw.xy_refocus_ViewWidget_2.addItem(self.hLine, ignoreBounds=True)
         
         
         
@@ -332,14 +332,14 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Add the display item to the xy and xz ViewWidget, which was defined 
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
-        self._mw.xz_ViewWidget.addItem(self.xz_image)
+        self._mw.xz_ViewWidget_2.addItem(self.xz_image)
         
         # Label the axes
         
         self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
         self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='micron' )
-        self._mw.xz_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
-        self._mw.xz_ViewWidget.setLabel( 'left', 'Z position', units='micron' )
+        self._mw.xz_ViewWidget_2.setLabel( 'bottom', 'X position', units='micron' )
+        self._mw.xz_ViewWidget_2.setLabel( 'left', 'Z position', units='micron' )
     
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI([ini_pos_x_crosshair, ini_pos_y_crosshair], 
@@ -369,7 +369,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         # Some additional settings for the xy ViewWidget
         #self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
-       # self._mw.xz_ViewWidget.disableAutoRange()
+       # self._mw.xz_ViewWidget_2.disableAutoRange()
         #self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1)
 
         # Create Region of Interest for xz image and add to xy Image Widget:
@@ -377,7 +377,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
                                [len(arr02)/20, len(arr02)/20], 
                                pen={'color': "F0F", 'width': 1},
                                removable=True )
-        self._mw.xz_ViewWidget.addItem(self.roi_xz)
+        self._mw.xz_ViewWidget_2.addItem(self.roi_xz)
 
         # create horizontal and vertical line as a crosshair in xz image:
         self.hline_xz = CrossLine(pos=self.roi_xz.pos()+self.roi_xz.size()*0.5, 
@@ -394,13 +394,13 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.roi_xz.sigRegionChanged.connect(self.update_z_slider)        
         
         # add the configured crosshair to the xz Widget:
-        self._mw.xz_ViewWidget.addItem(self.hline_xz)
-        self._mw.xz_ViewWidget.addItem(self.vline_xz)
+        self._mw.xz_ViewWidget_2.addItem(self.hline_xz)
+        self._mw.xz_ViewWidget_2.addItem(self.vline_xz)
 
         # Some additional settings for the xz ViewWidget
-        #self._mw.xz_ViewWidget.setMouseEnabled(x=False,y=False)
-        #self._mw.xz_ViewWidget.disableAutoRange()
-        #self._mw.xz_ViewWidget.setAspectLocked(lock=True, ratio=1)               
+        #self._mw.xz_ViewWidget_2.setMouseEnabled(x=False,y=False)
+        #self._mw.xz_ViewWidget_2.disableAutoRange()
+        #self._mw.xz_ViewWidget_2.setAspectLocked(lock=True, ratio=1)               
         
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming 
@@ -594,11 +594,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xy_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
         self._mw.xy_cb_ViewWidget.setMouseEnabled(x=False,y=False)
         
-        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
-        self._mw.xz_cb_ViewWidget.hideAxis('bottom')
-        #self._mw.xz_cb_ViewWidget.hideAxis('left')
-        self._mw.xz_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
-        self._mw.xz_cb_ViewWidget.setMouseEnabled(x=False,y=False)
+        self._mw.xz_cb_ViewWidget_2.addItem(self.xz_cb)
+        self._mw.xz_cb_ViewWidget_2.hideAxis('bottom')
+        #self._mw.xz_cb_ViewWidget_2.hideAxis('left')
+        self._mw.xz_cb_ViewWidget_2.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.xz_cb_ViewWidget_2.setMouseEnabled(x=False,y=False)
         
         
         self.adjust_aspect_roi_xy()
@@ -675,7 +675,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             cb_max = float(self._mw.xz_cb_max_InputWidget.text())
 
         self.xz_cb.refresh_colorbar(cb_min,cb_max)
-        self._mw.xz_cb_ViewWidget.addItem(self.xz_cb)
+        self._mw.xz_cb_ViewWidget_2.addItem(self.xz_cb)
 
 
     def disable_scan_buttons(self, newstate=False):
@@ -1007,9 +1007,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
         self.xz_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
 #        self.refresh_xy_colorbar()
-        self._mw.x_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
-        self._mw.y_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
-        self._mw.z_refocus_position_ViewWidget.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
+        self._mw.x_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
+        self._mw.y_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
+        self._mw.z_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
         
     def adjust_xy_window(self):
         """ Fit the visible window in the xy scan to full view.
