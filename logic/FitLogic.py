@@ -465,48 +465,139 @@ class FitLogic(GenericLogic):
                                                x_zero, sigma, offset),
                                                details=details)
                 return error,popt, pcov
-               
 
+############################################################################################################               
+############################################################################################################               
+############################################################################################################               
+
+###########################    New methods with lmfit libraray  ############################################
+
+############################################################################################################               
+############################################################################################################               
+############################################################################################################               
+
+        def substitute_parameter(self, parameters=None, update_parameters=None):
+#TODO: Docstring
+            
+            for para in update_parameters:
+                #vary is set by default to True
+                parameters[para].vary=update_parameters[para].vary 
+                #check for other parameters and set in case
+                
+                #store value because when max,min is set the value is overwritten
+                # by the same number
+                store_value=parameters[para].value
+                if update_parameters[para].min!=None:
+                    parameters[para].min=update_parameters[para].min  
+                    
+                if update_parameters[para].max!=None:
+                    parameters[para].max=update_parameters[para].max   
+                    
+                if update_parameters[para].expr!=None:
+                    parameters[para].expr=update_parameters[para].expr 
+                
+                parameters[para].value=store_value
+                if update_parameters[para].value!=None:
+                    parameters[para].value=update_parameters[para].value 
+                    
+            return parameters
+            
         def make_gaussian_model(self):
+            """ This method creates a model of agaussian with an offset. The
+            parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset 
+            'c'. For function see: 
+            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+                            
+            @return lmfit.model.CompositeModel model: Returns an object of the
+                                                      class CompositeModel
+            @return lmfit.parameter.Parameters params: Returns an object of the 
+                                                       class Parameters with all
+                                                       parameters for the 
+                                                       gaussian model.
+                    
+            """
+            
             model=GaussianModel()+ConstantModel()
             params=model.make_params()
+            
             return model,params
             
-        def make_gaussian_fit(self,axis=None,data=None):
-            """ This method performes a gaussian fit on the provided data.
+        def make_gaussian_fit(self,axis=None,data=None, add_parameters=None):
+            """ This method performes a 1D gaussian fit on the provided data.
         
             @param array [] axis: axis values
-            @param array[]  x_data: data
-            @param bool details: If details is True, additional to the fit 
-                                 parameters also the covariance matrix is
-                                 returned
-            
+            @param array[]  x_data: data   
+            @param dictionary add_parameters: Additional parameters
                     
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of gaussian_function(xdata, *popt)
-                    is minimized
-            @return 2d array pcov : The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)). This is only returned
-                    when details is set to true.
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
                     
             """
                 
-            error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
+            error,amplitude, x_zero, sigma, offset = self.estimate_gaussian(
                                                                     axis,data)
-                      
-            mod_final,params = self.make_gaussian_model()
+                                                                    
+            mod_final,params = self.make_gaussian_model() 
             
-            params.add('amplitude',min=100,max=1e7,value=amplitude)   
-            params.add('sigma',min=2*(axis[1]-axis[0]),max=2*(axis[-1]-axis[0]),value=sigma)
-            params.add('center',min=(axis[0])/2,max=axis[-1]*2,value=x_zero)
-            params.add('c',value=offset)    
+            #auxiliary variables
+            stepsize=axis[1]-axis[0]
+            n_steps=len(axis)
+            
+            #Defining standard parameters
+            #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
+            params.add_many(('amplitude',amplitude, True,         100,                    1e7,                    None),
+                           (  'sigma',    sigma,    True,     3*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
+                           (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
+                           (    'c',      offset,   True,        None,                    None,                  None))
 
+#TODO: Add logmessage when value is changed            
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
             try:
                 result=mod_final.fit(data, x=axis,params=params)
             except:
-                error=-1
-                print("Fit did not work")
-            return error,result
+                print("Fit did not work!")
+            #                self.logMsg('The 1D gaussian fit did not work.', \
+            #                            msgType='message')
+                result=mod_final.fit(data, x=axis,params=params)
+                print(result.message)
+            
+            return result
+
+        def estimate_gaussian(self,x_axis=None,data=None):
+            """ This method provides a one dimensional gaussian function.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return int error: error code (0:OK, -1:error)
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float offset: estimated offset
+                                
+                    
+            """
+            error=0
+            # check if parameters make sense
+            parameters=[x_axis,data]
+            for var in parameters:
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.', \
+                                msgType='error') 
+                    error=-1
+                elif len(np.shape(var))!=1:
+                    self.logMsg('Given parameter is no one dimensional array.', \
+                                msgType='error')                     
+            #set paraameters 
+            x_zero=x_axis[np.argmax(data)]
+            sigma = (x_axis.max()-x_axis.min())/3.            
+            amplitude=(data.max()-data.min())*(sigma*np.sqrt(2*np.pi))
+            offset=data.min()
+            
+            return error, amplitude, x_zero, sigma, offset
