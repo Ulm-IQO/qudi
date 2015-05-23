@@ -18,6 +18,8 @@ class ConfocalLogic(GenericLogic):
     signal_xy_image_updated = QtCore.Signal()
     signal_xz_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal()
+    sigImageXYInitialized = QtCore.Signal()
+    sigImageXZInitialized = QtCore.Signal()
     
     # counter for scan_image    
     _scan_counter = 0
@@ -220,6 +222,7 @@ class ConfocalLogic(GenericLogic):
             self.xz_image[:,:,1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
             z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
             self.xz_image[:,:,2] = z_value_matrix.transpose()
+            self.sigImageXZInitialized.emit()
         else:
             self._image_vert_axis = self._Y
             #creats an image where each pixel will be [x,y,z,counts]
@@ -228,7 +231,8 @@ class ConfocalLogic(GenericLogic):
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:,:,1] = y_value_matrix.transpose()
             self.xy_image[:,:,2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
-            
+            self.sigImageXYInitialized.emit()
+        
         return 0
 
     def start_scanner(self):

@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Fri May 22 13:05:39 2015
-#      by: PyQt4 UI code generator 4.9.5
+# Created: Sat May 23 16:24:56 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -145,7 +154,7 @@ class Ui_MainWindow(object):
         self.y_refocus_position_ViewWidget.setAlignment(QtCore.Qt.AlignCenter)
         self.y_refocus_position_ViewWidget.setReadOnly(True)
         self.y_refocus_position_ViewWidget.setObjectName(_fromUtf8("y_refocus_position_ViewWidget"))
-        self.gridLayout_6.addWidget(self.y_refocus_position_ViewWidget, 4, 3, 1, 1)
+        self.gridLayout_6.addWidget(self.y_refocus_position_ViewWidget, 4, 3, 1, 1, QtCore.Qt.AlignHCenter)
         self.label_7 = QtGui.QLabel(self.tab_6)
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -157,12 +166,12 @@ class Ui_MainWindow(object):
         self.x_refocus_position_ViewWidget.setAlignment(QtCore.Qt.AlignCenter)
         self.x_refocus_position_ViewWidget.setReadOnly(True)
         self.x_refocus_position_ViewWidget.setObjectName(_fromUtf8("x_refocus_position_ViewWidget"))
-        self.gridLayout_6.addWidget(self.x_refocus_position_ViewWidget, 4, 1, 1, 1)
+        self.gridLayout_6.addWidget(self.x_refocus_position_ViewWidget, 4, 1, 1, 1, QtCore.Qt.AlignHCenter)
         self.z_refocus_position_ViewWidget = QtGui.QLineEdit(self.tab_6)
         self.z_refocus_position_ViewWidget.setAlignment(QtCore.Qt.AlignCenter)
         self.z_refocus_position_ViewWidget.setReadOnly(True)
         self.z_refocus_position_ViewWidget.setObjectName(_fromUtf8("z_refocus_position_ViewWidget"))
-        self.gridLayout_6.addWidget(self.z_refocus_position_ViewWidget, 4, 5, 1, 1)
+        self.gridLayout_6.addWidget(self.z_refocus_position_ViewWidget, 4, 5, 1, 1, QtCore.Qt.AlignHCenter)
         self.xz_refocus_ViewWidget = PlotWidget(self.tab_6)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -192,19 +201,19 @@ class Ui_MainWindow(object):
         font.setPointSize(10)
         self.label_9.setFont(font)
         self.label_9.setObjectName(_fromUtf8("label_9"))
-        self.gridLayout_9.addWidget(self.label_9, 5, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.label_9, 5, 0, 1, 1, QtCore.Qt.AlignRight)
         self.label_10 = QtGui.QLabel(self.tab)
         font = QtGui.QFont()
         font.setPointSize(10)
         self.label_10.setFont(font)
         self.label_10.setObjectName(_fromUtf8("label_10"))
-        self.gridLayout_9.addWidget(self.label_10, 5, 2, 1, 1)
+        self.gridLayout_9.addWidget(self.label_10, 5, 2, 1, 1, QtCore.Qt.AlignRight)
         self.label_11 = QtGui.QLabel(self.tab)
         font = QtGui.QFont()
         font.setPointSize(10)
         self.label_11.setFont(font)
         self.label_11.setObjectName(_fromUtf8("label_11"))
-        self.gridLayout_9.addWidget(self.label_11, 5, 4, 1, 1)
+        self.gridLayout_9.addWidget(self.label_11, 5, 4, 1, 1, QtCore.Qt.AlignRight)
         self.x_refocus_position_ViewWidget_2 = QtGui.QLineEdit(self.tab)
         self.x_refocus_position_ViewWidget_2.setMaximumSize(QtCore.QSize(60, 16777215))
         font = QtGui.QFont()
@@ -553,52 +562,52 @@ class Ui_MainWindow(object):
         MainWindow.setTabOrder(self.tabWidget, self.x_SliderWidget)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "qudi: Confocal", None, QtGui.QApplication.UnicodeUTF8))
-        self.xy_cb_max_InputWidget.setText(QtGui.QApplication.translate("MainWindow", "100000", None, QtGui.QApplication.UnicodeUTF8))
-        self.xy_cb_auto_CheckBox.setText(QtGui.QApplication.translate("MainWindow", "Auto", None, QtGui.QApplication.UnicodeUTF8))
-        self.xy_cb_min_InputWidget.setText(QtGui.QApplication.translate("MainWindow", "100", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_max_InputWidget.setText(QtGui.QApplication.translate("MainWindow", "100000", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_min_InputWidget.setText(QtGui.QApplication.translate("MainWindow", "100", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_auto_CheckBox.setText(QtGui.QApplication.translate("MainWindow", "Auto", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), QtGui.QApplication.translate("MainWindow", "Z-Scan", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_6.setText(QtGui.QApplication.translate("MainWindow", "X :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_8.setText(QtGui.QApplication.translate("MainWindow", "Y :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_7.setText(QtGui.QApplication.translate("MainWindow", "Z :", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), QtGui.QApplication.translate("MainWindow", "Optimiser", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_9.setText(QtGui.QApplication.translate("MainWindow", "X :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_10.setText(QtGui.QApplication.translate("MainWindow", "Y :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_11.setText(QtGui.QApplication.translate("MainWindow", "Z :", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_auto_CheckBox_2.setText(QtGui.QApplication.translate("MainWindow", "Auto", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_min_InputWidget_2.setText(QtGui.QApplication.translate("MainWindow", "100", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_cb_max_InputWidget_2.setText(QtGui.QApplication.translate("MainWindow", "100000", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "test", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Z-Axis :", None, QtGui.QApplication.UnicodeUTF8))
-        self.z_res_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-Resolution</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.z_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.z_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.z_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.ready_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Ready", None, QtGui.QApplication.UnicodeUTF8))
-        self.xy_scan_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Scan XY", None, QtGui.QApplication.UnicodeUTF8))
-        self.xz_scan_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Scan Z", None, QtGui.QApplication.UnicodeUTF8))
-        self.refocus_StateWidget.setText(QtGui.QApplication.translate("MainWindow", "Optimise position", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_4.setText(QtGui.QApplication.translate("MainWindow", "Resolution", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Scan Range", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Y-Axis :", None, QtGui.QApplication.UnicodeUTF8))
-        self.y_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.y_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.y_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("MainWindow", "X-Axis :", None, QtGui.QApplication.UnicodeUTF8))
-        self.xy_res_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">XY-Resolution</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.x_min_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Min</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.x_max_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Max</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.x_current_InputWidget.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X-position</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "&File", None, QtGui.QApplication.UnicodeUTF8))
-        self.menu_Options.setTitle(QtGui.QApplication.translate("MainWindow", "&Options", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionSave_XY_Scan.setText(QtGui.QApplication.translate("MainWindow", "Save XY Scan", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionSave_configuration.setText(QtGui.QApplication.translate("MainWindow", "Save &configuration", None, QtGui.QApplication.UnicodeUTF8))
-        self.action_Settings.setText(QtGui.QApplication.translate("MainWindow", "&Settings", None, QtGui.QApplication.UnicodeUTF8))
-        self.action_Exit.setText(QtGui.QApplication.translate("MainWindow", "&Exit", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionSave_XZ_Scan.setText(QtGui.QApplication.translate("MainWindow", "Save XZ Scan", None, QtGui.QApplication.UnicodeUTF8))
-        self.action_optimiser_settings.setText(QtGui.QApplication.translate("MainWindow", "Optimiser Settings", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Confocal", None))
+        self.xy_cb_max_InputWidget.setText(_translate("MainWindow", "100000", None))
+        self.xy_cb_auto_CheckBox.setText(_translate("MainWindow", "Auto", None))
+        self.xy_cb_min_InputWidget.setText(_translate("MainWindow", "100", None))
+        self.xz_cb_max_InputWidget.setText(_translate("MainWindow", "100000", None))
+        self.xz_cb_min_InputWidget.setText(_translate("MainWindow", "100", None))
+        self.xz_cb_auto_CheckBox.setText(_translate("MainWindow", "Auto", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("MainWindow", "Z-Scan", None))
+        self.label_6.setText(_translate("MainWindow", "X :", None))
+        self.label_8.setText(_translate("MainWindow", "Y :", None))
+        self.label_7.setText(_translate("MainWindow", "Z :", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Optimiser", None))
+        self.label_9.setText(_translate("MainWindow", "X :", None))
+        self.label_10.setText(_translate("MainWindow", "Y :", None))
+        self.label_11.setText(_translate("MainWindow", "Z :", None))
+        self.xz_cb_auto_CheckBox_2.setText(_translate("MainWindow", "Auto", None))
+        self.xz_cb_min_InputWidget_2.setText(_translate("MainWindow", "100", None))
+        self.xz_cb_max_InputWidget_2.setText(_translate("MainWindow", "100000", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "test", None))
+        self.label_3.setText(_translate("MainWindow", "Z-Axis :", None))
+        self.z_res_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-Resolution</span></p></body></html>", None))
+        self.z_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Min</span></p></body></html>", None))
+        self.z_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z_Max</span></p></body></html>", None))
+        self.z_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z-position</span></p></body></html>", None))
+        self.ready_StateWidget.setText(_translate("MainWindow", "Ready", None))
+        self.xy_scan_StateWidget.setText(_translate("MainWindow", "Scan XY", None))
+        self.xz_scan_StateWidget.setText(_translate("MainWindow", "Scan Z", None))
+        self.refocus_StateWidget.setText(_translate("MainWindow", "Optimise position", None))
+        self.label_4.setText(_translate("MainWindow", "Resolution", None))
+        self.label_5.setText(_translate("MainWindow", "Scan Range", None))
+        self.label_2.setText(_translate("MainWindow", "Y-Axis :", None))
+        self.y_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Min</span></p></body></html>", None))
+        self.y_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y_Max</span></p></body></html>", None))
+        self.y_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y-position</span></p></body></html>", None))
+        self.label.setText(_translate("MainWindow", "X-Axis :", None))
+        self.xy_res_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">XY-Resolution</span></p></body></html>", None))
+        self.x_min_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Min</span></p></body></html>", None))
+        self.x_max_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X_Max</span></p></body></html>", None))
+        self.x_current_InputWidget.setToolTip(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X-position</span></p></body></html>", None))
+        self.menuFile.setTitle(_translate("MainWindow", "&File", None))
+        self.menu_Options.setTitle(_translate("MainWindow", "&Options", None))
+        self.actionSave_XY_Scan.setText(_translate("MainWindow", "Save XY Scan", None))
+        self.actionSave_configuration.setText(_translate("MainWindow", "Save &configuration", None))
+        self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
+        self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
+        self.actionSave_XZ_Scan.setText(_translate("MainWindow", "Save XZ Scan", None))
+        self.action_optimiser_settings.setText(_translate("MainWindow", "Optimiser Settings", None))
 
 from pyqtgraph import PlotWidget
