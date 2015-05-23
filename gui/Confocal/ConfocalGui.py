@@ -1044,20 +1044,19 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         yMax = self._scanning_logic.image_y_range[1]
         
         if self.fixed_aspect_ratio_xy:
-            xy_viewbox.state['limits']['xLimits'] =[None, None]
-            xy_viewbox.state['limits']['yLimits'] =[None, None]
-            xy_viewbox.state['limits']['xRange'] =[None, None]
-            xy_viewbox.state['limits']['yRange'] =[None, None]
+            xy_viewbox.state['limits']['xLimits'] = [None, None]
+            xy_viewbox.state['limits']['yLimits'] = [None, None]
+            xy_viewbox.state['limits']['xRange']  = [None, None]
+            xy_viewbox.state['limits']['yRange']  = [None, None]
             
             xy_viewbox.setAspectLocked(lock=True, ratio = 1.0)
             xy_viewbox.updateViewRange()
             
         else:
-            
             xy_viewbox.setLimits(xMin = xMin - xMin*self.image_x_padding,
                                  xMax = xMax + xMax*self.image_x_padding, 
                                  yMin = yMin - yMin*self.image_y_padding,
-                                 yMax = yMax + yMax*self.image_y_padding, )                                                 
+                                 yMax = yMax + yMax*self.image_y_padding)                                                 
                                                 
         self.xy_image.setRect(QtCore.QRectF(xMin, yMin, xMax - xMin, yMax - yMin))
         xy_viewbox.updateAutoRange()
@@ -1087,20 +1086,19 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         if self.fixed_aspect_ratio_xz:
             # Reset the limit settings so that the method 'setAspectLocked'
             # works properly.
-            xz_viewbox.state['limits']['xLimits'] =[None, None]
-            xz_viewbox.state['limits']['yLimits'] =[None, None]
-            xz_viewbox.state['limits']['xRange'] =[None, None]
-            xz_viewbox.state['limits']['yRange'] =[None, None]
+            xz_viewbox.state['limits']['xLimits'] = [None, None]
+            xz_viewbox.state['limits']['yLimits'] = [None, None]
+            xz_viewbox.state['limits']['xRange']  = [None, None]
+            xz_viewbox.state['limits']['yRange']  = [None, None]
             
             xz_viewbox.setAspectLocked(lock=True, ratio = 1.0)
             xz_viewbox.updateViewRange()
             
         else:
-            
             xz_viewbox.setLimits(xMin = xMin - xMin*self.image_x_padding,
                                  xMax = xMax + xMax*self.image_x_padding, 
                                  yMin = zMin - zMin*self.image_z_padding,
-                                 yMax = zMax + zMax*self.image_z_padding, )         
+                                 yMax = zMax + zMax*self.image_z_padding)         
         
         self.xy_image.setRect(QtCore.QRectF(xMin, zMin, xMax - xMin, zMax - zMin))
         xz_viewbox.updateAutoRange()
@@ -1109,10 +1107,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def put_cursor_in_xy_scan(self):
         """Put the xy crosshair back if it is outside of the visible range. """
         
-        view_x_min = float(self._mw.x_min_InputWidget.text())
-        view_x_max = float(self._mw.x_max_InputWidget.text())
-        view_y_min = float(self._mw.y_min_InputWidget.text())
-        view_y_max = float(self._mw.y_max_InputWidget.text())
+        view_x_min = self._scanning_logic.image_x_range[0]
+        view_x_max = self._scanning_logic.image_x_range[1]
+        view_y_min = self._scanning_logic.image_y_range[0]
+        view_y_max = self._scanning_logic.image_y_range[1]
         
         x_value = self.roi_xy.pos()[0]
         y_value = self.roi_xy.pos()[1]
@@ -1135,10 +1133,10 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
     def put_cursor_in_xz_scan(self):
         """Put the xz crosshair back if it is outside of the visible range. """
         
-        view_x_min = float(self._mw.x_min_InputWidget.text())
-        view_x_max = float(self._mw.x_max_InputWidget.text())
-        view_z_min = float(self._mw.z_min_InputWidget.text())
-        view_z_max = float(self._mw.z_max_InputWidget.text()) 
+        view_x_min = self._scanning_logic.image_x_range[0]
+        view_x_max = self._scanning_logic.image_x_range[1]
+        view_z_min = self._scanning_logic.image_z_range[0]
+        view_z_max = self._scanning_logic.image_z_range[1]
         
         x_value = self.roi_xz.pos()[0]
         z_value = self.roi_xz.pos()[1]
