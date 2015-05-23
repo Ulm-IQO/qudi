@@ -245,11 +245,9 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         *.ui file and configures the event handling between the modules. 
         Moreover it sets default values.
         """
-# FIXME: The aspect ratio should be selectable by the user.
 #FIXME: can we delete all the commented stuff in this method? I have deleted 
 #       all commented stuff which I do not need. The rest of them I will later
 #       integrate in the code. --Alex
-# FIXME: Make the slider resolution adjustable
 # FIXME: Make the format display of the current values adjustable.
 # FIXME: Make the xy scan and the xz scan saveable either as png or svg.
 
@@ -769,11 +767,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         x_pos = self._scanning_logic.x_range[0] + x_pos*self.slider_res  
       
-        roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
-        roi_y_view = self.roi_xy.pos()[1]
-        
-        self.roi_xy.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(x=x_pos)        
+        try:  
+            roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
+            roi_y_view = self.roi_xy.pos()[1]
+            
+            self.roi_xy.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(x=x_pos)   
+        except:
+            self.logMsg('Recursion error in update_roi_xy_change_x', 
+                        msgType='warning')
+            pass
         
     def update_roi_xy_change_y(self,y_pos):
         """ Adjust the xy ROI position if the y value has changed.
@@ -788,12 +791,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         y_pos = self._scanning_logic.y_range[0] + y_pos*self.slider_res  
         
-        roi_x_view = self.roi_xy.pos()[0]
-        roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
-        
-        self.roi_xy.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(y=y_pos)    
-
+        try:
+            roi_x_view = self.roi_xy.pos()[0]
+            roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
+            
+            self.roi_xy.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(y=y_pos)    
+        except:
+            self.logMsg('Recursion error in update_roi_xy_change_y', 
+                        msgType='warning')
+            pass
         
     def update_roi_xz_change_x(self,x_pos):
         """ Adjust the xz ROI position if the x value has changed.
@@ -808,12 +815,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         x_pos = self._scanning_logic.x_range[0] + x_pos*self.slider_res  
         
-        roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
-        roi_y_view = self.roi_xz.pos()[1]
-        
-        self.roi_xz.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(x=x_pos)        
-
+        try:
+            roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
+            roi_y_view = self.roi_xz.pos()[1]
+            
+            self.roi_xz.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(x=x_pos)        
+        except:
+            self.logMsg('Recursion error in update_roi_xz_change_x', 
+                        msgType='warning')
+            pass
 
     def update_roi_xz_change_z(self,z_pos):
         """ Adjust the xz ROI position if the z value has changed.
@@ -828,11 +839,16 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         z_pos = self._scanning_logic.z_range[0] + z_pos*self.slider_res         
         
-        roi_x_view = self.roi_xz.pos()[0]
-        roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
-        
-        self.roi_xz.setPos([roi_x_view , roi_y_view])
-        self._scanning_logic.set_position(z=z_pos)         
+        try:
+            roi_x_view = self.roi_xz.pos()[0]
+            roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
+            
+            self.roi_xz.setPos([roi_x_view , roi_y_view])
+            self._scanning_logic.set_position(z=z_pos)
+        except:
+            self.logMsg('Recursion error in update_roi_xz_change_z', 
+                        msgType='warning')
+            pass
         
     def update_current_x(self,x_pos):
         """ Update the displayed x-value.
