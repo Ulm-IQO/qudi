@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Sun May 24 01:35:24 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Sun May 24 21:49:55 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -283,11 +283,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.setObjectName(_fromUtf8("horizontalLayout_5"))
         self.xy_refocus_ViewWidget_2 = PlotWidget(self.tab)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.xy_refocus_ViewWidget_2.sizePolicy().hasHeightForWidth())
         self.xy_refocus_ViewWidget_2.setSizePolicy(sizePolicy)
-        self.xy_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(0, 220))
+        self.xy_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(220, 220))
         self.xy_refocus_ViewWidget_2.setObjectName(_fromUtf8("xy_refocus_ViewWidget_2"))
         self.horizontalLayout_5.addWidget(self.xy_refocus_ViewWidget_2)
         self.xz_refocus_ViewWidget_2 = PlotWidget(self.tab)
@@ -299,7 +299,6 @@ class Ui_MainWindow(object):
         self.xz_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(0, 220))
         self.xz_refocus_ViewWidget_2.setObjectName(_fromUtf8("xz_refocus_ViewWidget_2"))
         self.horizontalLayout_5.addWidget(self.xz_refocus_ViewWidget_2)
-        self.horizontalLayout_5.setStretch(0, 5)
         self.horizontalLayout_5.setStretch(1, 5)
         self.gridLayout_9.addLayout(self.horizontalLayout_5, 2, 0, 2, 7)
         self.gridLayout_11.addLayout(self.gridLayout_9, 0, 0, 1, 1)
@@ -634,7 +633,7 @@ class Ui_MainWindow(object):
         self.gridLayout_8.addLayout(self.gridLayout_3, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1122, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1122, 20))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
