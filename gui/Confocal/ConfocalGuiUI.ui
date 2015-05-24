@@ -35,24 +35,8 @@
       </item>
       <item>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="1" column="0">
-         <widget class="PlotWidget" name="xy_cb_ViewWidget">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>70</width>
-            <height>16777215</height>
-           </size>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="0">
-         <widget class="QLineEdit" name="xy_cb_max_InputWidget">
+         <widget class="QSpinBox" name="xy_cb_max_InputWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -65,8 +49,69 @@
             <height>16777215</height>
            </size>
           </property>
-          <property name="text">
-           <string>100000</string>
+          <property name="mouseTracking">
+           <bool>true</bool>
+          </property>
+          <property name="acceptDrops">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="accelerated">
+           <bool>true</bool>
+          </property>
+          <property name="minimum">
+           <number>-100000000</number>
+          </property>
+          <property name="maximum">
+           <number>100000000</number>
+          </property>
+          <property name="singleStep">
+           <number>1000</number>
+          </property>
+          <property name="value">
+           <number>100000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QSpinBox" name="xy_cb_min_InputWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="mouseTracking">
+           <bool>true</bool>
+          </property>
+          <property name="acceptDrops">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="accelerated">
+           <bool>true</bool>
+          </property>
+          <property name="minimum">
+           <number>-100000000</number>
+          </property>
+          <property name="maximum">
+           <number>100000000</number>
+          </property>
+          <property name="singleStep">
+           <number>1000</number>
+          </property>
+          <property name="value">
+           <number>100</number>
           </property>
          </widget>
         </item>
@@ -80,10 +125,10 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLineEdit" name="xy_cb_min_InputWidget">
+        <item row="1" column="0">
+         <widget class="PlotWidget" name="xy_cb_ViewWidget">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -93,9 +138,6 @@
             <width>70</width>
             <height>16777215</height>
            </size>
-          </property>
-          <property name="text">
-           <string>100</string>
           </property>
          </widget>
         </item>
@@ -141,44 +183,6 @@
                 </property>
                </widget>
               </item>
-              <item row="0" column="0">
-               <widget class="QLineEdit" name="xz_cb_max_InputWidget">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>100000</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLineEdit" name="xz_cb_min_InputWidget">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>100</string>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="0">
                <widget class="QCheckBox" name="xz_cb_auto_CheckBox">
                 <property name="text">
@@ -186,6 +190,77 @@
                 </property>
                 <property name="checked">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QSpinBox" name="xz_cb_min_InputWidget">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="mouseTracking">
+                 <bool>true</bool>
+                </property>
+                <property name="acceptDrops">
+                 <bool>true</bool>
+                </property>
+                <property name="minimum">
+                 <number>-100000000</number>
+                </property>
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="singleStep">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QSpinBox" name="xz_cb_max_InputWidget">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="mouseTracking">
+                 <bool>true</bool>
+                </property>
+                <property name="acceptDrops">
+                 <bool>true</bool>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+                <property name="minimum">
+                 <number>-100000001</number>
+                </property>
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="singleStep">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>100000</number>
                 </property>
                </widget>
               </item>
@@ -413,18 +488,45 @@
             </item>
             <item row="7" column="6">
              <layout class="QGridLayout" name="gridLayout_10">
-              <item row="3" column="0">
-               <widget class="QCheckBox" name="xz_cb_auto_CheckBox_2">
-                <property name="text">
-                 <string>Auto</string>
+              <item row="0" column="0">
+               <widget class="QSpinBox" name="xz_cb_max_InputWidget_2">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
                 </property>
-                <property name="checked">
+                <property name="maximumSize">
+                 <size>
+                  <width>70</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="mouseTracking">
                  <bool>true</bool>
+                </property>
+                <property name="acceptDrops">
+                 <bool>true</bool>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+                <property name="minimum">
+                 <number>-100000000</number>
+                </property>
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="singleStep">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>100000</number>
                 </property>
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QLineEdit" name="xz_cb_min_InputWidget_2">
+               <widget class="QSpinBox" name="xz_cb_min_InputWidget_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -437,27 +539,29 @@
                   <height>16777215</height>
                  </size>
                 </property>
-                <property name="text">
-                 <string>100</string>
+                <property name="mouseTracking">
+                 <bool>true</bool>
                 </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QLineEdit" name="xz_cb_max_InputWidget_2">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+                <property name="acceptDrops">
+                 <bool>true</bool>
                 </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                 </property>
-                <property name="text">
-                 <string>100000</string>
+                <property name="accelerated">
+                 <bool>true</bool>
+                </property>
+                <property name="minimum">
+                 <number>-100000000</number>
+                </property>
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="singleStep">
+                 <number>1000</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
                 </property>
                </widget>
               </item>
@@ -468,6 +572,16 @@
                   <width>70</width>
                   <height>16777215</height>
                  </size>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QCheckBox" name="xz_cb_auto_CheckBox_2">
+                <property name="text">
+                 <string>Auto</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -578,7 +692,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -625,7 +739,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -668,7 +782,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -724,7 +838,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -957,7 +1071,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1000,7 +1114,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1077,7 +1191,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1096,6 +1210,9 @@
           </property>
           <property name="decimals">
            <number>3</number>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
           </property>
          </widget>
         </item>
@@ -1144,7 +1261,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1191,7 +1308,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1240,7 +1357,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1299,7 +1416,7 @@
            <bool>true</bool>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::WheelFocus</enum>
           </property>
           <property name="acceptDrops">
            <bool>true</bool>
@@ -1321,6 +1438,9 @@
           </property>
           <property name="maximum">
            <double>1000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
           </property>
          </widget>
         </item>
@@ -1411,34 +1531,51 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>xy_ViewWidget</tabstop>
-  <tabstop>xz_ViewWidget</tabstop>
+  <tabstop>xy_res_InputWidget</tabstop>
+  <tabstop>z_res_InputWidget</tabstop>
+  <tabstop>x_min_InputWidget</tabstop>
+  <tabstop>x_max_InputWidget</tabstop>
+  <tabstop>y_min_InputWidget</tabstop>
+  <tabstop>y_max_InputWidget</tabstop>
+  <tabstop>z_min_InputWidget</tabstop>
+  <tabstop>z_max_InputWidget</tabstop>
+  <tabstop>x_current_InputWidget</tabstop>
+  <tabstop>y_current_InputWidget</tabstop>
+  <tabstop>z_current_InputWidget</tabstop>
+  <tabstop>xy_cb_max_InputWidget</tabstop>
+  <tabstop>xy_cb_min_InputWidget</tabstop>
+  <tabstop>xy_cb_auto_CheckBox</tabstop>
+  <tabstop>xz_cb_max_InputWidget</tabstop>
+  <tabstop>xz_cb_min_InputWidget</tabstop>
+  <tabstop>xz_cb_auto_CheckBox</tabstop>
   <tabstop>ready_StateWidget</tabstop>
   <tabstop>xy_scan_StateWidget</tabstop>
   <tabstop>xz_scan_StateWidget</tabstop>
   <tabstop>refocus_StateWidget</tabstop>
+  <tabstop>z_refocus_position_ViewWidget_2</tabstop>
+  <tabstop>y_refocus_position_ViewWidget_2</tabstop>
+  <tabstop>xz_cb_ViewWidget_2</tabstop>
+  <tabstop>xz_ViewWidget_2</tabstop>
+  <tabstop>xy_refocus_ViewWidget_2</tabstop>
+  <tabstop>xz_refocus_ViewWidget_2</tabstop>
+  <tabstop>xz_ViewWidget</tabstop>
   <tabstop>z_SliderWidget</tabstop>
-  <tabstop>y_SliderWidget</tabstop>
   <tabstop>tabWidget</tabstop>
+  <tabstop>xz_cb_ViewWidget</tabstop>
+  <tabstop>xy_ViewWidget</tabstop>
+  <tabstop>z_refocus_position_ViewWidget</tabstop>
+  <tabstop>xy_cb_ViewWidget</tabstop>
+  <tabstop>y_SliderWidget</tabstop>
+  <tabstop>y_refocus_position_ViewWidget</tabstop>
+  <tabstop>x_refocus_position_ViewWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
+  <tabstop>xz_cb_auto_CheckBox_2</tabstop>
+  <tabstop>xz_refocus_ViewWidget</tabstop>
+  <tabstop>xz_cb_min_InputWidget_2</tabstop>
+  <tabstop>xz_cb_max_InputWidget_2</tabstop>
+  <tabstop>xy_refocus_ViewWidget</tabstop>
+  <tabstop>x_refocus_position_ViewWidget_2</tabstop>
  </tabstops>
  <resources/>
- <connections>
-  <connection>
-   <sender>action_Exit</sender>
-   <signal>triggered()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>close()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>510</x>
-     <y>339</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

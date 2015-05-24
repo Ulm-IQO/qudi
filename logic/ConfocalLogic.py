@@ -407,7 +407,7 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness   
         
-        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_data.dat') 
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_imagedata.dat') 
         self._save_logic.save_data(image_data, filepath, parameters=parameters, 
                                    filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
                                    
@@ -464,7 +464,7 @@ class ConfocalLogic(GenericLogic):
         parameters['Clock frequency of scanner (Hz)'] = self._clock_frequency
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness   
         
-        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xz_data.dat') 
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xz_imagedata.dat') 
         self._save_logic.save_data(image_data, filepath, parameters=parameters, 
                                    filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
                                    
