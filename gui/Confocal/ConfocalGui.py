@@ -56,7 +56,7 @@ class ColorBar(pg.GraphicsObject):
         
         self.refresh_colorbar(cb_min, cb_max) 
 
-    def refresh_colorbar(self, cb_min, cb_max, width = None):
+    def refresh_colorbar(self, cb_min, cb_max, width = None, height = None, xMin = None, yMin = None):
         """ Refresh the appearance of the colorbar for a changed count range.
         
         @param float cb_min: The minimal count value should be passed here.
@@ -80,14 +80,20 @@ class ColorBar(pg.GraphicsObject):
         for stop, color in zip(self.stops, self.colors):
             grad.setColorAt(1.0 - stop, pg.QtGui.QColor(*[255*c for c in color]))
         p.setBrush(pg.QtGui.QBrush(grad))
-        p.drawRect(pg.QtCore.QRectF(0, cb_min, width, cb_max-cb_min))        
+        if xMin is None:
+            p.drawRect(pg.QtCore.QRectF(0, cb_min, width, cb_max-cb_min))
+        else:
+            # If this picture whants to be set in a plot, which is going to be 
+            # saved:
+            p.drawRect(pg.QtCore.QRectF(xMin, yMin, width, height)) 
         p.end()
 
         vb = self.getViewBox()
         # check whether a viewbox is already created for this object. If yes,
         # then it should be adjusted according to the full screen.        
         if vb is not None:
-            vb.updateAutoRange()        
+            vb.updateAutoRange()
+            vb.enableAutoRange()
         
     def paint(self, p, *args):
         """ Overwrite the paint method from GraphicsObject.     
@@ -109,7 +115,6 @@ class ColorBar(pg.GraphicsObject):
         Get the position, width and hight of the displayed object.
         """
         return pg.QtCore.QRectF(self.pic.boundingRect())
-
 
 
 class CustomViewBox(pg.ViewBox):
@@ -255,8 +260,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 #FIXME: can we delete all the commented stuff in this method? I have deleted 
 #       all commented stuff which I do not need. The rest of them I will later
 #       integrate in the code. --Alex
-# FIXME: Make the format display of the current values adjustable.
-# FIXME: Make the xy scan and the xz scan saveable either as png or svg.
+# FIXME: Save in the png or svg images also the colorbar
 
         
         
@@ -340,7 +344,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.xz_ViewWidget_2.setLabel( 'left', 'Z position', units='micron' )
     
         # Create Region of Interest for xy image and add to xy Image Widget:
-        self.roi_xy = CrossROI([ini_pos_x_crosshair-len(arr01)/20, ini_pos_y_crosshair-len(arr01)/20], 
+        self.roi_xy = CrossROI([ini_pos_x_crosshair-len(arr01)/40, ini_pos_y_crosshair-len(arr01)/40], 
                                [len(arr01)/20, len(arr01)/20], 
                                pen={'color': "F0F", 'width': 1}, 
                                removable=True)
@@ -394,6 +398,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # add the configured crosshair to the xz Widget:
         self._mw.xz_ViewWidget_2.addItem(self.hline_xz)
         self._mw.xz_ViewWidget_2.addItem(self.vline_xz)
+        
 
         # Some additional settings for the xz ViewWidget
         #self._mw.xz_ViewWidget_2.setMouseEnabled(x=False,y=False)
@@ -470,11 +475,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.z_SliderWidget.valueChanged.connect(self.update_current_z)
 
         # Update the inputed/displayed numbers if return key is hit:
-        self._mw.xy_cb_min_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
-        self._mw.xy_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xy_cb_manual)
+        self._mw.xy_cb_min_InputWidget.editingFinished.connect(self.shortcut_to_xy_cb_manual)
+        self._mw.xy_cb_max_InputWidget.editingFinished.connect(self.shortcut_to_xy_cb_manual)
 
-        self._mw.xz_cb_min_InputWidget.returnPressed.connect(self.shortcut_to_xz_cb_manual)
-        self._mw.xz_cb_max_InputWidget.returnPressed.connect(self.shortcut_to_xz_cb_manual)
+        self._mw.xz_cb_min_InputWidget.editingFinished.connect(self.shortcut_to_xz_cb_manual)
+        self._mw.xz_cb_max_InputWidget.editingFinished.connect(self.shortcut_to_xz_cb_manual)
         
         # Update the inputed/displayed numbers if the cursor has left the field:
         self._mw.x_current_InputWidget.editingFinished.connect(self.update_x_slider)
@@ -600,6 +605,7 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Now that the ROI for xy and xz is connected to events, update the
         # default position:
         self.update_crosshair_position()
+        
         self.adjust_xy_window()
         self.adjust_xz_window()
 
@@ -1057,7 +1063,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         if self.fixed_aspect_ratio_xy:
             # Reset the limit settings so that the method 'setAspectLocked'
-            # works properly.
+            # works properly. It has to be done in a manual way since no method
+            # exists yet to reset the set limits:
             xy_viewbox.state['limits']['xLimits'] = [None, None]
             xy_viewbox.state['limits']['yLimits'] = [None, None]
             xy_viewbox.state['limits']['xRange']  = [None, None]
@@ -1099,7 +1106,8 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
 
         if self.fixed_aspect_ratio_xz:
             # Reset the limit settings so that the method 'setAspectLocked'
-            # works properly.
+            # works properly. It has to be done in a manual way since no method
+            # exists yet to reset the set limits:
             xz_viewbox.state['limits']['xLimits'] = [None, None]
             xz_viewbox.state['limits']['yLimits'] = [None, None]
             xz_viewbox.state['limits']['xRange']  = [None, None]
@@ -1184,11 +1192,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         new_size_x_roi = current_x_view_range/20
         new_size_y_roi = current_y_view_range/20
         
-        if self.fixed_aspect_ratio_xy:
-            if new_size_x_roi > new_size_y_roi:
-                new_size_y_roi = new_size_x_roi
-            else:
-                new_size_x_roi = new_size_y_roi
+#        if self.fixed_aspect_ratio_xy:
+#            if new_size_x_roi > new_size_y_roi:
+#                new_size_y_roi = new_size_x_roi
+#            else:
+#                new_size_x_roi = new_size_y_roi
         old_size_x_roi = self.roi_xy.size()[0] 
         old_size_y_roi = self.roi_xy.size()[1]
 
@@ -1243,22 +1251,45 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')        
         filename = filepath + time.strftime('\\%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image') 
-
         
         self._mw.xy_ViewWidget.plotItem.removeItem(self.roi_xy)
         self._mw.xy_ViewWidget.plotItem.removeItem(self.hline_xy)
         self._mw.xy_ViewWidget.plotItem.removeItem(self.vline_xy)
-
+        
+#        self._mw.xy_cb_ViewWidget.removeItem(self.xy_cb)
+#        self._mw.xy_ViewWidget.addItem(self.xy_cb) 
+#        
+#        
+#        cb_min = self._mw.xy_cb_min_InputWidget.value()
+#        cb_max = self._mw.xy_cb_max_InputWidget.value()
+#        
+#        curr_x_min = self._scanning_logic.image_x_range[0]
+#        curr_x_max = self._scanning_logic.image_x_range[1]
+#        curr_y_min = self._scanning_logic.image_y_range[0]
+#        curr_y_max = self._scanning_logic.image_y_range[1]
+#        # 2% of the image width should be the width of the colorbar:
+#        width_cb = (curr_x_max - curr_x_min)*0.02
+#        x_min_cb = (curr_x_max -curr_x_min)*0.02 + curr_x_max
+#        
+#        self.xy_cb.refresh_colorbar(cb_min,cb_max,width = width_cb , height=curr_y_max-curr_y_min , xMin=x_min_cb ,yMin= curr_y_min)
         exporter = pg.exporters.SVGExporter(self._mw.xy_ViewWidget.plotItem)
         exporter.export(filename+'.svg')    
         
         if self._sd.savePNG_checkBox.isChecked():
             exporter = pg.exporters.ImageExporter(self._mw.xy_ViewWidget.plotItem)
             exporter.export(filename+'.png')
+            
+        if self._sd.save_purePNG_checkBox.isChecked():
+            self.xy_image.save(filename+'_raw.png') 
         
+#        self._mw.xy_ViewWidget.removeItem(self.xy_cb)
+#        self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
+#        self.refresh_xy_colorbar() 
         self._mw.xy_ViewWidget.plotItem.addItem(self.roi_xy)
         self._mw.xy_ViewWidget.plotItem.addItem(self.hline_xy)
         self._mw.xy_ViewWidget.plotItem.addItem(self.vline_xy)
+        
+        self.save_xy_scan_data()
         
     def save_xz_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""      
@@ -1281,6 +1312,11 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
             exporter = pg.exporters.ImageExporter(self._mw.xz_ViewWidget_2.plotItem)
             exporter.export(filename+'.png')
         
+        if self._sd.save_purePNG_checkBox.isChecked():
+            self.xz_image.save(filename+'_raw.png') 
+        
         self._mw.xz_ViewWidget_2.plotItem.addItem(self.roi_xz)
         self._mw.xz_ViewWidget_2.plotItem.addItem(self.hline_xz)
         self._mw.xz_ViewWidget_2.plotItem.addItem(self.vline_xz)
+        
+        self.save_xz_scan_data()

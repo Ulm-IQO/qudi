@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>281</width>
-    <height>249</height>
+    <height>265</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,39 +16,37 @@
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="1">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_4">
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_5">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
         </font>
        </property>
        <property name="text">
-        <string>Fixed Aspect Ratio XZ Scan :</string>
+        <string>Slider Stepwidth with Keys :</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+     <item row="5" column="2">
+      <widget class="QDoubleSpinBox" name="x_padding_InputWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-       <property name="text">
-        <string>Return slowness :</string>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
        </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
-       <property name="text">
-        <string>Clock frequency :</string>
+       <property name="value">
+        <double>0.010000000000000</double>
        </property>
       </widget>
      </item>
@@ -64,37 +62,15 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_5">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_4">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
         </font>
        </property>
        <property name="text">
-        <string>Slider Stepwidth with Keys :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="2">
-      <widget class="QCheckBox" name="fixed_aspect_xz_checkBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
+        <string>Fixed Aspect Ratio XZ Scan :</string>
        </property>
       </widget>
      </item>
@@ -119,7 +95,7 @@
         <string/>
        </property>
        <property name="layoutDirection">
-        <enum>Qt::LeftToRight</enum>
+        <enum>Qt::RightToLeft</enum>
        </property>
        <property name="autoFillBackground">
         <bool>false</bool>
@@ -129,6 +105,18 @@
        </property>
        <property name="checked">
         <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>x Padding for image display (%)</string>
        </property>
       </widget>
      </item>
@@ -154,95 +142,15 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_6">
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
         </font>
        </property>
        <property name="text">
-        <string>x Padding for image display (%)</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="2">
-      <widget class="QDoubleSpinBox" name="slider_stepwidth_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::UpDownArrows</enum>
-       </property>
-       <property name="accelerated">
-        <bool>true</bool>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.001000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Fixed Aspect Ratio XY Scan :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0">
-      <widget class="QLabel" name="label_8">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>z Padding for image display (%)</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="2">
-      <widget class="QDoubleSpinBox" name="x_padding_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="value">
-        <double>0.010000000000000</double>
+        <string>Return slowness :</string>
        </property>
       </widget>
      </item>
@@ -294,6 +202,95 @@
        <property name="accelerated">
         <bool>true</bool>
        </property>
+       <property name="maximum">
+        <number>1000000</number>
+       </property>
+       <property name="value">
+        <number>1000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Fixed Aspect Ratio XY Scan :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QCheckBox" name="fixed_aspect_xz_checkBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QDoubleSpinBox" name="slider_stepwidth_InputWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::UpDownArrows</enum>
+       </property>
+       <property name="accelerated">
+        <bool>true</bool>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="singleStep">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.001000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>z Padding for image display (%)</string>
+       </property>
       </widget>
      </item>
      <item row="1" column="2">
@@ -321,6 +318,30 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Clock frequency :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Save ImageScene also as png file</string>
+       </property>
+      </widget>
+     </item>
      <item row="8" column="2">
       <widget class="QCheckBox" name="savePNG_checkBox">
        <property name="sizePolicy">
@@ -338,20 +359,48 @@
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;If you have pressed the save&lt;br&gt;routine in the Menu Bar,&lt;br&gt;with the svg file a png&lt;br&gt;file will be saved.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
        <property name="text">
         <string/>
        </property>
       </widget>
      </item>
-     <item row="8" column="0">
-      <widget class="QLabel" name="label_9">
+     <item row="9" column="2">
+      <widget class="QCheckBox" name="save_purePNG_checkBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="0">
+      <widget class="QLabel" name="label_10">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
         </font>
        </property>
        <property name="text">
-        <string>Save Image also as png file</string>
+        <string>Save pure Image as png</string>
        </property>
       </widget>
      </item>
@@ -369,6 +418,19 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>clock_frequency_InputWidget</tabstop>
+  <tabstop>return_slowness_InputWidget</tabstop>
+  <tabstop>fixed_aspect_xy_checkBox</tabstop>
+  <tabstop>fixed_aspect_xz_checkBox</tabstop>
+  <tabstop>slider_stepwidth_InputWidget</tabstop>
+  <tabstop>x_padding_InputWidget</tabstop>
+  <tabstop>y_padding_InputWidget</tabstop>
+  <tabstop>z_padding_InputWidget</tabstop>
+  <tabstop>savePNG_checkBox</tabstop>
+  <tabstop>save_purePNG_checkBox</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
