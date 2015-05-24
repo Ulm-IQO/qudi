@@ -484,7 +484,7 @@
              </widget>
             </item>
             <item row="2" column="0" rowspan="2" colspan="7">
-             <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="5,5">
+             <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,5">
               <property name="sizeConstraint">
                <enum>QLayout::SetMaximumSize</enum>
               </property>
@@ -492,13 +492,13 @@
                <widget class="PlotWidget" name="xy_refocus_ViewWidget_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>1</horstretch>
+                  <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
                 </property>
                 <property name="minimumSize">
                  <size>
-                  <width>0</width>
+                  <width>220</width>
                   <height>220</height>
                  </size>
                 </property>
@@ -1336,7 +1336,7 @@
      <x>0</x>
      <y>0</y>
      <width>1122</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1407,7 +1407,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header>pyqtgraph.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
