@@ -167,52 +167,6 @@ class FitLogic(GenericLogic):
                                     + c*((y-y_zero)**2)))
             return g.ravel()
             
-        def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
-#            TODO:Make clever estimator
-            #FIXME: Idea: x_zero@max x_axis
-            #FIXME: 1D array x_axis, y_axis, 2D data???
-            """ This method provides a two dimensional gaussian function.
-        
-            @param array x_axis: x values
-            @param array y_axis: y values
-            @param array data: value of each data point corresponding to
-                                x and y values
-
-            @return float amplitude: estimated amplitude
-            @return float x_zero: estimated x value of maximum
-            @return float y_zero: estimated y value of maximum
-            @return float sigma_x: estimated standard deviation in x direction
-            @return float sigma_y: estimated  standard deviation in y direction
-            @return float theta: estimated angle for eliptical gaussians
-            @return float offset: estimated offset
-            @return int error: error code (0:OK, -1:error)                    
-            """                                 
-            amplitude=float(data.max()-data.min())
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
-            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
-            sigma_x=(x_axis.max()-x_axis.min())/3.
-            sigma_y =(y_axis.max()-y_axis.min())/3.
-            theta=0.0
-            offset=float(data.min())
-            error=0
-            #check for sensible values
-            parameters=[x_axis,y_axis,data]
-            for var in parameters:
-                #FIXME: Why don't you check earlier?
-                #FIXME: Check for 1D array, 2D
-                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                    self.logMsg('Given parameter is not an array.', \
-                                msgType='error') 
-                    amplitude=0.
-                    x_zero=0.
-                    y_zero=0.
-                    sigma_x=0.
-                    sigma_y =0.
-                    theta=0.0
-                    offset=0.
-                    error=-1
-       
-            return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
 
         def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
@@ -282,77 +236,6 @@ class FitLogic(GenericLogic):
             gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
             return gaussian 
             
-        
-        def gaussian_estimator(self,x_axis=None,data=None):
-            """ This method provides a one dimensional gaussian function.
-        
-            @param array x_axis: x values
-            @param array data: value of each data point corresponding to
-                                x values
-
-            @return int error: error code (0:OK, -1:error)
-            @return float amplitude: estimated amplitude
-            @return float x_zero: estimated x value of maximum
-            @return float sigma_x: estimated standard deviation in x direction
-            @return float offset: estimated offset
-                                
-                    
-            """
-            error=0
-            # check if parameters make sense
-            parameters=[x_axis,data]
-            for var in parameters:
-                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                    self.logMsg('Given parameter is no array.', \
-                                msgType='error') 
-                    error=-1
-                elif len(np.shape(var))!=1:
-                    self.logMsg('Given parameter is no one dimensional array.', \
-                                msgType='error')                     
-            #set paraameters 
-            amplitude=data.max()-data.min()
-            x_zero=x_axis[np.argmax(data)]
-            sigma = (x_axis.max()-x_axis.min())/3.
-            offset=data.min()
-            return error, amplitude, x_zero, sigma, offset
-
-#        def make_gaussian_fit(self,axis=None,data=None,details=False):
-#            """ This method performes a gaussian fit on the provided data.
-#        
-#            @param array [] axis: axis values
-#            @param array[]  x_data: data
-#            @param bool details: If details is True, additional to the fit 
-#                                 parameters also the covariance matrix is
-#                                 returned
-#            
-#                    
-#            @return int error: error code (0:OK, -1:error)
-#            @return array popt: Optimal values for the parameters so that 
-#                    the sum of the squared error of gaussian_function(xdata, *popt)
-#                    is minimized
-#            @return 2d array pcov : The estimated covariance of popt. The 
-#                    diagonals provide the variance of the parameter estimate. 
-#                    To compute one standard deviation errors on the parameters 
-#                    use perr = np.sqrt(np.diag(pcov)). This is only returned
-#                    when details is set to true.
-#                    
-#            """
-#                
-#            error,amplitude, x_zero, sigma, offset = self.gaussian_estimator(
-#                                                                    axis,data)
-#                                                                    
-#            if details==False:
-#                error,popt= self.make_fit(self.gaussian_function, axis, 
-#                                          data,initial_guess=(amplitude, 
-#                                          x_zero, sigma, offset),
-#                                          details=details)   
-#                return error,popt
-#            elif details==True:
-#                error,popt,pcov= self.make_fit(self.gaussian_function, axis, 
-#                                               data,initial_guess=(amplitude, 
-#                                               x_zero, sigma, offset),
-#                                               details=details)
-#                return error,popt, pcov
 
         def lorentzian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
             """ This method provides a one dimensional Lorentzian function.
@@ -549,7 +432,7 @@ class FitLogic(GenericLogic):
             #Defining standard parameters
             #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
             params.add_many(('amplitude',amplitude, True,         100,                    1e7,                    None),
-                           (  'sigma',    sigma,    True,     3*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
+                           (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
                            (    'c',      offset,   True,        None,                    None,                  None))
 
@@ -601,3 +484,50 @@ class FitLogic(GenericLogic):
             offset=data.min()
             
             return error, amplitude, x_zero, sigma, offset
+            
+        def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
+#            TODO:Make clever estimator
+            #FIXME: Idea: x_zero@max x_axis
+            #FIXME: 1D array x_axis, y_axis, 2D data???
+            """ This method provides a two dimensional gaussian function.
+        
+            @param array x_axis: x values
+            @param array y_axis: y values
+            @param array data: value of each data point corresponding to
+                                x and y values
+
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float y_zero: estimated y value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float sigma_y: estimated  standard deviation in y direction
+            @return float theta: estimated angle for eliptical gaussians
+            @return float offset: estimated offset
+            @return int error: error code (0:OK, -1:error)                    
+            """                                 
+            amplitude=float(data.max()-data.min())
+            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
+            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
+            sigma_x=(x_axis.max()-x_axis.min())/3.
+            sigma_y =(y_axis.max()-y_axis.min())/3.
+            theta=0.0
+            offset=float(data.min())
+            error=0
+            #check for sensible values
+            parameters=[x_axis,y_axis,data]
+            for var in parameters:
+                #FIXME: Why don't you check earlier?
+                #FIXME: Check for 1D array, 2D
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is not an array.', \
+                                msgType='error') 
+                    amplitude=0.
+                    x_zero=0.
+                    y_zero=0.
+                    sigma_x=0.
+                    sigma_y =0.
+                    theta=0.0
+                    offset=0.
+                    error=-1
+       
+            return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
