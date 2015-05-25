@@ -858,6 +858,8 @@ class Manager(QtCore.QObject):
           @param str base: Module category
           @param str key: Unique module name
 
+            If the module is already loaded, just activate it.
+            If the module is an active GUI module, show its window.
         """
         deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = Manager.toposort(deps)
@@ -869,9 +871,31 @@ class Manager(QtCore.QObject):
                     self.connectModule(mbase, mkey)
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
+                elif mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
+                    if self.tree['loaded'][mbase][mkey].getState() == 'deactivated':
+                        self.tree['loaded'][mbase][mkey].activate()
+                    elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
+                        self.tree['loaded'][mbase][mkey].show()
+
+    @QtCore.pyqtSlot(str, str)
+    def stopModule(self, base, key):
+        """Deactivate Module.
+          @param str base: Module category
+          @param str key: Unique module name
+        """
+        for mbase in ['hardware', 'logic', 'gui']:
+            if key in self.tree['loaded'][mbase] and self.tree['loaded'][mbase][key].getState() in ['idle', 'running']:
+                self.tree['loaded'][mbase][key].deactivate()
+            
 
     @QtCore.pyqtSlot(str, str)
     def restartModuleSimple(self, base, key):
+        """Deactivate, reloade, activate module.
+          @param str base: Module category
+          @param str key: Unique module name
+
+            Deactivates and activates all modules that depend on it in order to ensure correct connections.
+        """
         deps = self.getSimpleModuleDependencies(base, key)
         if deps is None:
             return
