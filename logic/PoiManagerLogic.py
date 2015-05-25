@@ -12,9 +12,6 @@ class PoI(object):
     """ unstable: Kay Jahnke    
     The actual individual poi is saved in this generic object.
 
-    TODO: (Lachlan) thinks it would be better vocabulary to change name from "poi" to "point of interest (POI)".  This is a better fit with the metaphor of "sample maps" and "regions of interest".  Not all POIs will be "tracked".  
-
-    TODO: In general, we are working to make the code naturally match the usage metaphor of "sample maps" with fluorescent spots at certain positions.  The spots should normally keep a fixed position relative to each other, but the sample itself shifts.
     """
     
     def __init__(self, point = None, name=None):
