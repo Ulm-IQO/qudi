@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
 #
-# Created: Sun May 24 22:33:19 2015
+# Created: Mon May 25 17:06:28 2015
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!

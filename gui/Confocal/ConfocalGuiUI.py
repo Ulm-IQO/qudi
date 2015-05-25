@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Sun May 24 23:38:47 2015
+# Created: Mon May 25 17:06:22 2015
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -327,11 +327,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.setObjectName(_fromUtf8("horizontalLayout_5"))
         self.xy_refocus_ViewWidget_2 = PlotWidget(self.tab)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.xy_refocus_ViewWidget_2.sizePolicy().hasHeightForWidth())
         self.xy_refocus_ViewWidget_2.setSizePolicy(sizePolicy)
-        self.xy_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(220, 220))
+        self.xy_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(0, 220))
         self.xy_refocus_ViewWidget_2.setObjectName(_fromUtf8("xy_refocus_ViewWidget_2"))
         self.horizontalLayout_5.addWidget(self.xy_refocus_ViewWidget_2)
         self.xz_refocus_ViewWidget_2 = PlotWidget(self.tab)
@@ -343,6 +343,7 @@ class Ui_MainWindow(object):
         self.xz_refocus_ViewWidget_2.setMinimumSize(QtCore.QSize(0, 220))
         self.xz_refocus_ViewWidget_2.setObjectName(_fromUtf8("xz_refocus_ViewWidget_2"))
         self.horizontalLayout_5.addWidget(self.xz_refocus_ViewWidget_2)
+        self.horizontalLayout_5.setStretch(0, 5)
         self.horizontalLayout_5.setStretch(1, 5)
         self.gridLayout_9.addLayout(self.horizontalLayout_5, 2, 0, 2, 7)
         self.gridLayout_11.addLayout(self.gridLayout_9, 0, 0, 1, 1)
@@ -442,6 +443,7 @@ class Ui_MainWindow(object):
         self.z_current_InputWidget.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.z_current_InputWidget.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
         self.z_current_InputWidget.setDecimals(3)
+        self.z_current_InputWidget.setSingleStep(0.01)
         self.z_current_InputWidget.setObjectName(_fromUtf8("z_current_InputWidget"))
         self.horizontalLayout_2.addWidget(self.z_current_InputWidget)
         self.gridLayout_3.addLayout(self.horizontalLayout_2, 3, 0, 1, 1)
@@ -679,7 +681,7 @@ class Ui_MainWindow(object):
         self.gridLayout_8.addLayout(self.gridLayout_3, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1122, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1122, 21))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
