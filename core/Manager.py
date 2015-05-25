@@ -1,15 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-Manager.py -  Defines main Manager class for ACQ4
-Copyright 2010  Luke Campagnola
-Distributed under MIT/X11 license. See license.txt for more infomation.
+This file contains the QuDi Manager class.
 
-This class must be invoked once to initialize the ACQ4 core system.
-The class is responsible for:
-    - Configuring devices
-    - Invoking/managing modules
-    - Creating and executing acquisition tasks. 
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+
+Derived form ACQ4:
+Copyright 2010  Luke Campagnola
+Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
+
 import os
 import sys
 import gc
@@ -35,7 +47,7 @@ from .Remote import RemoteObjectManager
 from .Base import Base
 
 class Manager(QtCore.QObject):
-    """Manager class is responsible for:
+    """The Manager object is responsible for:
       - Loading/configuring device modules and storing their handles
       - Providing unified timestamps
       - Making sure all devices/modules are properly shut down

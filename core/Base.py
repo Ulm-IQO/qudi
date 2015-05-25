@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-Base class for all loadable modules
+This file contains the QuDi module base class.
 
-* Ensure that the program will not die during the load of modules in any case,
-  and therefore do nothing!!!
-* Initialise modules
-* Provides a self identification of the used module
-* Output redirection (instead of print)
-* Provides a self de-initialization of the used module
-* Reload the module with code changes
-* Get your own configuration (for save)
-* Get name of status variables
-* Get status variables
-* Reload module data (from saved variables)
-* Pyro interconnection
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from pyqtgraph.Qt import QtCore
@@ -22,6 +24,22 @@ from collections import OrderedDict
 import os
 
 class Base(QtCore.QObject, Fysom):
+    """
+    Base class for all loadable modules
+
+    * Ensure that the program will not die during the load of modules in any case,
+      and therefore do nothing!!!
+    * Initialise modules
+    * Provides a self identification of the used module
+    * Output redirection (instead of print)
+    * Provides a self de-initialization of the used module
+    * Reload the module with code changes
+    * Get your own configuration (for save)
+    * Get name of status variables
+    * Get status variables
+    * Reload module data (from saved variables)
+    """
+
     sigStateChanged = QtCore.Signal(str, object)  #(module name, state change)
     sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'

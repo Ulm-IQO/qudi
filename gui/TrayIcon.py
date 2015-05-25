@@ -1,16 +1,33 @@
 # -*- coding: utf-8 -*-
-""" This module contains a tray icon implementation for QuDi.
-When this module is loaded into QuDi, it will show the QuDi icon in the system tray.
-Left-clicking this icon will show an action menu that lets you bring the Manager window to the front.
-Right-clicking this icon will bring up a Quit button that will colse the whole application.
+"""
+This file contains the QuDi GUI module base class.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 
 class TrayIcon(GUIBase):
-    """ The QuDi modlue class for the tray icon.
+    """ This module contains a tray icon implementation for QuDi.
+    When this module is loaded into QuDi, it will show the QuDi icon in the system tray.
+    Left-clicking this icon will show an action menu that lets you bring the Manager window to the front.
+    Right-clicking this icon will bring up a Quit button that will colse the whole application.
     """
+
     def __init__(self, manager, name, config = {}, **kwargs):
         """ Constructor for QuDi tray icon module.
           @param object manager: the manager object that this tray icon belongs to
