@@ -16,7 +16,7 @@ from gui.Confocal.ConfocalGui import ColorBar
 
 
 
-class PointMarker(pg.CircleROI):
+class PoiMark(pg.CircleROI):
     """Creates a circle as a marker. 
         
         @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
@@ -28,13 +28,15 @@ class PointMarker(pg.CircleROI):
     """
     
     def __init__(self, pos, size, text='', **args):
-        pg.CircleROI.__init__(self, pos, size, **args)
-#        text_item = pg.TextItem(text=text)
-#        self.addItem(text_item)
-#        handles=self.getHandles()
-#        for handle in handles:
-#            print(handle)
-#            self.removeHandle(handle)
+        self = pg.CircleROI.__init__(self, pos, size, **args)
+       # mark.removeHandle(0)
+     #   self.addRotateHandle([0, 0], [0.5, 0.5])
+     #   text_item = pg.TextItem(text=text)
+     #   self.addItem(text_item)
+     #   handles=self.getHandles()
+     #   for handle in handles:
+     #       print(handle)
+     #       self.removeHandle(handle)
 
 
 class CustomViewBox(pg.ViewBox):
@@ -194,12 +196,15 @@ class PoiManagerGui(GUIBase):
 
         self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
 
-        self._markers=[]
+        self._mw.active_poi_Input.currentIndexChanged.connect(self._redraw_poi_markers)
+
+        self._markers = dict()
         
         #Signal at end of refocus
         self._poi_manager_logic.signal_refocus_finished.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_poi_updated.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+        self._poi_manager_logic.signal_poi_updated.connect(self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
  
 #        print('Main POI Manager Window shown:')
         self._mw.show()
@@ -233,6 +238,7 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
         
         self._redraw_sample_shift()
+        self._redraw_poi_markers()
         
     def delete_last_point(self):
         ''' This method deletes the last track position of a chosen poi
@@ -336,31 +342,52 @@ class PoiManagerGui(GUIBase):
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
         
+
+    def _redraw_poi_markers(self):
+
         for marker in self._markers:
             self._mw.roi_map_ViewWidget.removeItem(marker)
             del marker
             
         self._markers=[]
         
+        curkey = self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
+                
+
+                if key == curkey:
+                    markercolor = "F0F"
+                else:
+                    markercolor = "FFF"
                 
                 # Create Region of Interest as marker:
                 position=self._poi_manager_logic.get_last_point(poikey=key)
                 position=position[:2]-[1,1]
-                self._markers.append(\
-                    PointMarker(position, 
+                marker = PoiMark(position, 
                                 [2, 2],
-                                text = self._poi_manager_logic.get_name(poikey=key),
-                                pen={'color': "F0F", 'width': 2}, 
+                                pen={'color': markercolor, 'width': 2}, 
                                 movable=False, 
-                                scaleSnap=True, 
-                                snapSize=1.0))
+                                scaleSnap=False, 
+                                snapSize=1.0)
+
                 # Add to the Map Widget
-                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
+                self._mw.roi_map_ViewWidget.addItem(marker)
+
+                # Removing the handle from this CricleROI
+                marker.removeHandle(0)
+                marker.addRotateFreeHandle([0.75, 0.933],[0.5,0.5])
+
+                self._markers.append(marker)
+
+
                 self._markers.append(\
                     pg.TextItem(text=self._poi_manager_logic.get_name(poikey=key),\
-                    anchor=(0,1)) )
+                                anchor=(0,1),
+                                color= markercolor
+                    ) )
+
                 self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
                 position+=[2,2]
                 self._markers[-1].setPos(position[0],position[1])
