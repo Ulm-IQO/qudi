@@ -187,14 +187,14 @@ class CrossLine(pg.InfiniteLine):
         
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
-    """Create the Mainwindow based on the *.ui file.
-    """
+    """ Create the Mainwindow based on the corresponding *.ui file. """
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
         
 class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+    """ Create the SettingsDialog window, based on the corresponding *.ui file."""
     def __init__(self):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
@@ -244,6 +244,21 @@ class ConfocalGui(GUIBase):
         self.image_z_padding = config['image_z_padding']
 
     def initUI(self, e=None):
+        """ Initializes all needed UI files and establishes the connectors.
+        
+        This method executes the all the inits for the differnt GUIs and passes
+        the event argument from fysom to the methods."""
+        
+        # Getting an access to all connectors:
+        self._scanning_logic = self.connector['in']['confocallogic1']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
+        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']        
+        
+        self.initMainUI(e)  # initialize the main GUI
+        self.initSettingsUI(e)  # initialize the settings GUI
+
+    def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
           
         @param class e: event class from Fysom
@@ -257,19 +272,10 @@ class ConfocalGui(GUIBase):
 #       all commented stuff which I do not need. The rest of them I will later
 #       integrate in the code. --Alex
 # FIXME: Save in the png or svg images also the colorbar
-
         
-        
-        # Getting an access to all connectors:
-        self._scanning_logic = self.connector['in']['confocallogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
-        
-        # Use the inherited class 'Ui_ConfocalGuiTemplate' to create now the 
+        # Use the inherited class 'ConfocalGuiUI' to create now the 
         # GUI element:
         self._mw = ConfocalMainWindow()
-        self._sd = ConfocalSettingDialog()
         
         # Get the image for the display from the logic. Transpose the received
         # matrix to get the proper scan. The graphig widget displays vector-
@@ -321,19 +327,12 @@ class ConfocalGui(GUIBase):
         # Set the state button as ready button as default setting.
         self._mw.ready_StateWidget.click()
 
-        # The main windows of the xy scan is a PlotWidget object, which itself
-        # inherits all functions from PlotItem. And PlotItem provides the
-        # ViewBox object, which can change the appearance of the displayed xy
-        # image:
-        # self._mw.xy_ViewWidget.plotItem
-
         # Add the display item to the xy and xz ViewWidget, which was defined 
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.xz_ViewWidget_2.addItem(self.xz_image)
         
-        # Label the axes
-        
+        # Label the axes:
         self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
         self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='micron' )
         self._mw.xz_ViewWidget_2.setLabel( 'bottom', 'X position', units='micron' )
@@ -364,14 +363,10 @@ class ConfocalGui(GUIBase):
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
         self._mw.xy_ViewWidget.addItem(self.vline_xy)
-        
-        # Some additional settings for the xy ViewWidget
-        #self._mw.xy_ViewWidget.setMouseEnabled(x=False,y=False)
-       # self._mw.xz_ViewWidget_2.disableAutoRange()
-        #self._mw.xy_ViewWidget.setAspectLocked(lock=True, ratio=1)
 
         # Create Region of Interest for xz image and add to xy Image Widget:
-        self.roi_xz = CrossROI([ini_pos_x_crosshair-len(arr02)/20, ini_pos_z_crosshair-len(arr02)/20], 
+        self.roi_xz = CrossROI([ini_pos_x_crosshair-len(arr02)/20, 
+                                ini_pos_z_crosshair-len(arr02)/20], 
                                [len(arr02)/20, len(arr02)/20], 
                                pen={'color': "F0F", 'width': 1},
                                removable=True )
@@ -395,16 +390,9 @@ class ConfocalGui(GUIBase):
         self._mw.xz_ViewWidget_2.addItem(self.hline_xz)
         self._mw.xz_ViewWidget_2.addItem(self.vline_xz)
         
-
-        # Some additional settings for the xz ViewWidget
-        #self._mw.xz_ViewWidget_2.setMouseEnabled(x=False,y=False)
-        #self._mw.xz_ViewWidget_2.disableAutoRange()
-        #self._mw.xz_ViewWidget_2.setAspectLocked(lock=True, ratio=1)               
-        
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming 
         # from the Logic module must be in micrometer.
-
         self.slider_res = 0.001 # 1 nanometer resolution per one change, units 
                                 # are micrometer
         
@@ -434,36 +422,9 @@ class ConfocalGui(GUIBase):
         self._mw.x_SliderWidget.valueChanged.connect(self.update_roi_xz_change_x)
         self._mw.z_SliderWidget.valueChanged.connect(self.update_roi_xz_change_z)
 
-             
-        # Add to all QLineEdit Widget a Double Validator to ensure only a 
-        # float input: 
-#        validator = QtGui.QDoubleValidator()
-#        validator2 = QtGui.QIntValidator()
-#        
-#        self._mw.x_current_InputWidget.setValidator(validator)
-#        self._mw.y_current_InputWidget.setValidator(validator)
-#        self._mw.z_current_InputWidget.setValidator(validator)
-#        
-#        self._mw.x_min_InputWidget.setValidator(validator)
-#        self._mw.x_max_InputWidget.setValidator(validator)
-#        self._mw.y_min_InputWidget.setValidator(validator)
-#        self._mw.y_max_InputWidget.setValidator(validator)
-#        self._mw.z_min_InputWidget.setValidator(validator)
-#        self._mw.z_max_InputWidget.setValidator(validator)
-#        
-#        self._mw.xy_res_InputWidget.setValidator(validator)
-#        self._mw.z_res_InputWidget.setValidator(validator)
-#        
-#        self._sd.clock_frequency_InputWidget.setValidator(validator2)
-#        self._sd.return_slowness_InputWidget.setValidator(validator2)
-        #self._sd.slider_stepwidth_InputWidget.setValidator(validator)
-
         # Take the default values from logic:
         self._mw.xy_res_InputWidget.setValue(self._scanning_logic.xy_resolution)     
         self._mw.z_res_InputWidget.setValue(self._scanning_logic.z_resolution)
-        
-        # write the configuration to the settings window of the GUI. 
-        self.keep_former_settings()       
         
         # Connect the Slider with an update in the current values of x,y and z.
         self._mw.x_SliderWidget.valueChanged.connect(self.update_current_x)
@@ -498,9 +459,12 @@ class ConfocalGui(GUIBase):
         self._mw.xz_cb_min_InputWidget.editingFinished.connect(self.update_xz_cb_range)
         self._mw.xz_cb_max_InputWidget.editingFinished.connect(self.update_xz_cb_range)
         
+        # Connect the change of the viewed area to an adjustment of the ROI:
+        self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
+        self.xz_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xz)
         
-#         Connect the RadioButtons and connect to the events if they are 
-#         clicked. Connect also the adjustment of the displayed windows.
+        # Connect the RadioButtons to the events if they are clicked. Connect
+        # also the adjustment of the displayed windows.
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
@@ -519,27 +483,27 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
         self._scanning_logic.sigImageXZInitialized.connect(self.adjust_xz_window) 
         
-        
         # Connect the signal from the logic with an update of the cursor position
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
         
         # Connect the tracker
         self._optimiser_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
         self._optimiser_logic.signal_refocus_started.connect(self.disable_scan_buttons)
-        
-        # connect settings signals
+
+        # Connect the 'File' Menu dialog and the Settings window in confocal
+        # with the methods:        
         self._mw.action_Settings.triggered.connect(self.menue_settings)
-        self._sd.accepted.connect(self.update_settings)
-        self._sd.rejected.connect(self.keep_former_settings)
-        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
+        self._mw.actionSave_XZ_Scan.triggered.connect(self.save_xz_scan_data) 
+        self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image) 
+        self._mw.actionSave_XZ_Image_Data.triggered.connect(self.save_xz_scan_image) 
 
         # create a color map that goes from dark red to dark blue:
-        
-        #colormap1:
         color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
                           [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
                           [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
                           [  0,  0,132,255]], dtype=np.ubyte)
+                          
         # Absolute scale relative to the expected data not important. This 
         # should have the same amount of entries (num parameter) as the number
         # of values given in color. 
@@ -582,36 +546,42 @@ class ConfocalGui(GUIBase):
         self._mw.xz_cb_ViewWidget_2.setLabel( 'left', 'Fluorescence', units='c/s' )
         self._mw.xz_cb_ViewWidget_2.setMouseEnabled(x=False,y=False)
         
-        
+        # Now that the ROI for xy and xz is connected to events, update the
+        # default position and initialize the position of the crosshair and
+        # all other components:
         self.adjust_aspect_roi_xy()
         self.adjust_aspect_roi_xz()
-      
-        self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
-        self.xz_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xz)
-        
-        #self.xy_image.getViewBox().setXRange(min, max, padding=None, update=True)
         self._mw.ready_StateWidget.click()
-        
-        # Connect the 'File' Menu dialog in confocal with the methods:
-        self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
-        self._mw.actionSave_XZ_Scan.triggered.connect(self.save_xz_scan_data) 
-        self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image) 
-        self._mw.actionSave_XZ_Image_Data.triggered.connect(self.save_xz_scan_image) 
-        
-        # Now that the ROI for xy and xz is connected to events, update the
-        # default position:
         self.update_crosshair_position()
-        
         self.adjust_xy_window()
         self.adjust_xz_window()
 
-        # Show the Main Confocal GUI:
-        self._mw.show()
+
+    def initSettingsUI(self, e=None):
+        """ Definition, configuration and initialisation of the settings GUI.
+          
+        @param class e: event class from Fysom
+
+
+        This init connects all the graphic modules, which were created in the
+        *.ui file and configures the event handling between the modules. 
+        Moreover it sets default values if not existed in the logic modules.
+        """
+        
+        # Create the Settings window
+        self._sd = ConfocalSettingDialog()
+        # Connect the action of the settings window with the code:
+        self._sd.accepted.connect(self.update_settings)
+        self._sd.rejected.connect(self.keep_former_settings)
+        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        
+        # write the configuration to the settings window of the GUI. 
+        self.keep_former_settings()    
         
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
-        QtGui.QMainWindow.show(self._mw)
+        """Make window visible and put it above all other windows. """
+        # Show the Main Confocal GUI:
+        self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
         
@@ -627,7 +597,6 @@ class ConfocalGui(GUIBase):
         roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
         roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
         self.roi_xz.setPos([roi_x_view , roi_y_view])
-        
         
     def refresh_xy_colorbar(self):
         """ Adjust the xy colorbar.
@@ -741,7 +710,6 @@ class ConfocalGui(GUIBase):
         #Firstly stop any scan that might be in progress
         self._scanning_logic.stop_scanning() 
              
-        
         #Then if enabled. start a new scan.
         if enabled:
             self._scanning_logic.start_scanning()
@@ -752,6 +720,8 @@ class ConfocalGui(GUIBase):
         
         @param bool enabled: start scan if that is possible
         """
+        #Firstly stop any scan that might be in progress
+        self._scanning_logic.stop_scanning()
 
         if enabled:
             self._scanning_logic.start_scanning(zscan = True)
@@ -980,9 +950,6 @@ class ConfocalGui(GUIBase):
         self.adjust_aspect_roi_xy()
         self.put_cursor_in_xy_scan()
         self.adjust_aspect_roi_xy()
-
-#        self.xy_image.getViewBox().setXRange(view_x_min, view_x_max, padding=None, update=True)            
-#        self.xy_image.getViewBox().setYRange(view_y_min, view_y_max, padding=None, update=True) 
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
