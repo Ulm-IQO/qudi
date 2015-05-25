@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 # Test gui (test)
 
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 
 
-class TestGui(Base):
+class TestGui(GUIBase):
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,

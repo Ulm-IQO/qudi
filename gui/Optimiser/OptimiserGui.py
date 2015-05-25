@@ -10,13 +10,10 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from gui.Optimiser.OptimiserGuiUI import Ui_MainWindow
 from gui.Optimiser.OptimiserSettingsUI import Ui_SettingsDialog
 from gui.Confocal.ConfocalGui import ColorBar
-
-
-
 
 
 class CustomViewBox(pg.ViewBox):
@@ -36,7 +33,6 @@ class CustomViewBox(pg.ViewBox):
             pg.ViewBox.mouseDragEvent(self, ev,axis)
         else:
             ev.ignore()
-  
           
             
 class OptimiserMainWindow(QtGui.QMainWindow,Ui_MainWindow):
@@ -50,26 +46,21 @@ class OptimiserSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
         self.setupUi(self)
 
             
-               
-            
-class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class OptimiserGui(GUIBase):
     """
     This is the GUI Class for Optimiser
     """
-    
-    
+    _modclass = 'OptimiserGui'
+    _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
                     c_dict)
-        
-        self._modclass = 'OptimiserGui'
-        self._modtype = 'gui'
         
         ## declare connectors
         self.connector['in']['optimiserlogic1'] = OrderedDict()
@@ -189,7 +180,6 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.count_freq_InputWidget.setValidator(validator2)
         self._sw.return_slow_InputWidget.setValidator(validator)
         
-                
         # Connect signals
         self._optimiser_logic.signal_image_updated.connect(self.refresh_image)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
@@ -197,10 +187,15 @@ class OptimiserGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._sw.rejected.connect(self.reject_settings)
         self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         
-        
 #        print('Main Optimiser Windows shown:')
         self._mw.show()
     
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
     
     def update_settings(self):
         ''' This method writes the new settings from the gui to the file

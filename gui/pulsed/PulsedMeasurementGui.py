@@ -4,7 +4,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from gui.pulsed.PulsedMeasurementGuiUI import Ui_MainWindow
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
@@ -16,37 +16,26 @@ from gui.pulsed.PulsedMeasurementGuiUI import Ui_MainWindow
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py"ODMRGuiUI.ui > ODMRGuiUI.py
 
-
-# set manually the background color in hex code according to our color scheme: 
-pg.setConfigOption('background', QtGui.QColor('#222'))
-
-
 class PulsedMeasurementMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
-
             
-               
-            
-class PulsedMeasurementGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class PulsedMeasurementGui(GUIBase):
     """
     This is the GUI Class for pulsed measurements
     """
-    
-    
+    _modclass = 'PulsedMeasurementGui'
+    _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
                     c_dict)
-        
-        self._modclass = 'PulsedMeasurementGui'
-        self._modtype = 'gui'
         
         ## declare connectors
         self.connector['in']['pulseanalysislogic'] = OrderedDict()
@@ -188,12 +177,15 @@ class PulsedMeasurementGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._pulse_analysis_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulse_analysis_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
         
-        
-        
-         # Show the Main ODMR GUI:
+        # Show the Main ODMR GUI:
         self._mw.show()
 
-
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """

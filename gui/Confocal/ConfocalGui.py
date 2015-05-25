@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
-
 #from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
@@ -11,7 +9,7 @@ import copy
 import time
 
 from collections import OrderedDict
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
 
@@ -28,8 +26,6 @@ from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
 #
 # to convert to ConfocalGuiUI.py.
 # =============================================================================
-
-
 
 
 class ColorBar(pg.GraphicsObject):
@@ -204,16 +200,16 @@ class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
         self.setupUi(self)
         
 
-class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and xz scans.
     """
+    _modclass = 'ConfocalGui'
+    _modtype = 'gui'
+        
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self, manager, name, config, c_dict)
-        
-        self._modclass = 'ConfocalGui'
-        self._modtype = 'gui'
+        super().__init__(manager, name, config, c_dict)
         
         ## declare connectors
         self.connector['in']['confocallogic1'] = OrderedDict()
@@ -612,7 +608,12 @@ class ConfocalGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Show the Main Confocal GUI:
         self._mw.show()
         
-        
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
         
     def update_crosshair_position(self):
         """ Update the GUI position of the crosshair from the logic. """       
