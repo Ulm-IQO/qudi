@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 # Cosole from pyqtgraph
 
-from core.Base import Base
+from gui.GUIBase import GUIBase
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
 from . import Console
 
-class ConsoleGui(Base):
+class ConsoleGui(GUIBase):
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self, manager, name, config, c_dict)
+        super().__init__(manager, name, config, c_dict)
 
     def initUI(self, e=None):
         namespace = {

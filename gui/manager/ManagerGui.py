@@ -3,7 +3,7 @@
 It can load and reload modules, show the configuration, and re-open closed windows.
 """
 
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 from .ManagerWindowTemplate import Ui_MainWindow
 from .ModuleWidgetTemplate import Ui_ModuleWidget
@@ -11,7 +11,7 @@ from .aboutdialog import Ui_AboutDialog
 from collections import OrderedDict
 import svn.local
 
-class ManagerGui(Base):
+class ManagerGui(GUIBase):
     """This class provides a GUI to the QuDi manager.
 
       @signal sigStartAll: sent when all modules should be loaded
@@ -22,9 +22,9 @@ class ManagerGui(Base):
         It supports module loading, reloading, logging and other administrative tasks.
     """
     sigStartAll = QtCore.Signal()
-    sigStartThis = QtCore.Signal(str, str)
-    sigReloadThis = QtCore.Signal(str, str)
-    sigStopThis = QtCore.Signal(str, str)
+    sigStartModule = QtCore.Signal(str, str)
+    sigReloadModule = QtCore.Signal(str, str)
+    sigStopModule = QtCore.Signal(str, str)
 
     def __init__(self, manager, name, config, **kwargs):
         """Create an instance of the module.
@@ -34,7 +34,7 @@ class ManagerGui(Base):
           @param dict config:
         """
         c_dict = {'onactivate': self.activation}
-        Base.__init__(self, manager, name, config, c_dict)
+        super().__init__(manager, name, config, c_dict)
         self.modlist = list()
 
     def activation(self, e=None):
@@ -63,8 +63,9 @@ class ManagerGui(Base):
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
-        self.sigStartThis.connect(self._manager.startModule)
-        self.sigReloadThis.connect(self._manager.restartModuleSimple)
+        self.sigStartModule.connect(self._manager.startModule)
+        self.sigReloadModule.connect(self._manager.restartModuleSimple)
+        self.sigStopModule.connect(self._manager.stopModule)
         self.updateModuleList()
 
     def show(self):
@@ -102,8 +103,8 @@ class ManagerGui(Base):
             widget = ModuleListItem(base, module)
             self.modlist.append(widget)
             layout.addWidget(widget)
-            widget.sigActivateThis.connect(self.sigStartThis)
-            widget.sigReloadThis.connect(self.sigReloadThis)
+            widget.sigActivateThis.connect(self.sigStartModule)
+            widget.sigReloadThis.connect(self.sigReloadModule)
 
     def fillTreeItem(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
@@ -210,6 +211,8 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
         """Send activation singal for module.
         """
         self.sigActivateThis.emit(self.base, self.name)
+        if self.base == 'gui':
+            self.loadButton.setText('Show {0}'.format(self.name))
 
     def reactivateButtonClicked(self):
         """ Send reload signal for module.

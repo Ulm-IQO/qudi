@@ -1,29 +1,27 @@
 # -*- coding: utf-8 -*-
 # Test gui (test)
 
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
 
 
-class CounterGui(Base):
+class CounterGui(GUIBase):
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
+    _modclass = 'countergui'
+    _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
                     c_dict)
-        
-        self._modclass = 'countergui'
-        self._modtype = 'gui'
-        
         ## declare connectors
         self.connector['in']['counterlogic1'] = OrderedDict()
         self.connector['in']['counterlogic1']['class'] = 'CounterLogic'
@@ -140,6 +138,12 @@ class CounterGui(Base):
 
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
         
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
