@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from core.Base import Base
-#import Queue
 
 class GenericLogic(Base):
-    """This is the Interface class to define the controls for the simple 
-    microwave hardware.
+    """A generic logic interface class.
     """
-    
+    _modclass = 'GenericLogic'
+    _modtype = 'Logic'
     def __init__(self, manager, name, configuation, callbacks, **kwargs):
-        Base.__init__(self, manager, name, configuation, callbacks, **kwargs)
-        self._modclass = 'GenericLogic'
-        self._modtype = 'Logic'
+        super().__init__(manager, name, configuation, callbacks, **kwargs)
         
 #        self.logMsg('The following configuration was found.', 
 #                    msgType='status')
