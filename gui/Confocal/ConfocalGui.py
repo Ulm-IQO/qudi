@@ -255,14 +255,19 @@ class ConfocalGui(GUIBase):
         self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']        
         
-        self.initMainUI(e)  # initialize the main GUI
+        self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
           
-        @param class e: event class from Fysom
-
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules. 
@@ -273,8 +278,6 @@ class ConfocalGui(GUIBase):
 #       integrate in the code. --Alex
 # FIXME: Save in the png or svg images also the colorbar
         
-        # Use the inherited class 'ConfocalGuiUI' to create now the 
-        # GUI element:
         self._mw = ConfocalMainWindow()
         
         # Get the image for the display from the logic. Transpose the received
