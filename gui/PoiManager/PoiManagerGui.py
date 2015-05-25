@@ -10,7 +10,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from gui.PoiManager.PoiManagerGuiUI import Ui_PoiManager
 from gui.Confocal.ConfocalGui import ColorBar
 
@@ -55,35 +55,27 @@ class CustomViewBox(pg.ViewBox):
         else:
             ev.ignore()
   
-          
-            
 class PoiManagerMainWindow(QtGui.QMainWindow,Ui_PoiManager):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
-        
-
-            
-               
-            
-class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
+                    
+class PoiManagerGui(GUIBase):
     """
     This is the GUI Class for PoiManager
     """
-    
-    
+    _modclass = 'PoiManagerGui'
+    _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
                     c_dict)
         
-        self._modclass = 'PoiManagerGui'
-        self._modtype = 'gui'
         
         ## declare connectors
         self.connector['in']['poimanagerlogic1'] = OrderedDict()
@@ -211,7 +203,14 @@ class PoiManagerGui(Base,QtGui.QMainWindow,Ui_PoiManager):
  
 #        print('Main POI Manager Window shown:')
         self._mw.show()
-    
+
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
     def get_confocal_image(self):
         self.roi_map_image.getViewBox().enableAutoRange()
         self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[1]-self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1]-self._confocal_logic.image_y_range[0]))

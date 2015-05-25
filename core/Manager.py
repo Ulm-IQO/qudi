@@ -863,6 +863,8 @@ class Manager(QtCore.QObject):
         """
         deps = self.getRecursiveModuleDependencies(base, key)
         sorteddeps = Manager.toposort(deps)
+        if len(sorteddeps) == 0:
+            sorteddeps.append(key)
 
         for mkey in sorteddeps:
             for mbase in ['hardware', 'logic', 'gui']:

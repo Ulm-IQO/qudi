@@ -11,7 +11,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from gui.ODMR.ODMRGuiUI import Ui_MainWindow
 from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
 
@@ -36,26 +36,21 @@ class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
         self.setupUi(self)
 
             
-               
-            
-class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
+class ODMRGui(GUIBase):
     """
     This is the GUI Class for ODMR
     """
-    
-    
+    _modclass = 'ODMRGui'
+    _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
                     c_dict)
-        
-        self._modclass = 'ODMRGui'
-        self._modtype = 'gui'
         
         ## declare connectors
         self.connector['in']['odmrlogic1'] = OrderedDict()
@@ -142,7 +137,6 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.mode_ComboWidget.addItem('Off')
         self._mw.mode_ComboWidget.addItem('CW')
         
-        
         #######################################################################
         ##                Configuration of the InputWidgets                  ##
         #######################################################################
@@ -188,8 +182,6 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         self._mw.power_InputWidget.editingFinished.connect(self.change_power)
         self._mw.runtime_InputWidget.editingFinished.connect(self.change_runtime)
         
-        
-        
         #######################################################################
         ##                      Connect signals                              ##
         #######################################################################
@@ -210,12 +202,15 @@ class ODMRGui(Base,QtGui.QMainWindow,Ui_MainWindow):
         # Combo Widget
         self._mw.mode_ComboWidget.activated[str].connect(self.mw_stop)
         
-        
-        
          # Show the Main ODMR GUI:
         self._mw.show()
 
-
+    def show(self):
+        """Make window visible and put it above all other windows.
+        """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """

@@ -5,10 +5,10 @@ Left-clicking this icon will show an action menu that lets you bring the Manager
 Right-clicking this icon will bring up a Quit button that will colse the whole application.
 """
 
-from core.Base import Base
+from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 
-class TrayIcon(Base):
+class TrayIcon(GUIBase):
     """ The QuDi modlue class for the tray icon.
     """
     def __init__(self, manager, name, config = {}, **kwargs):
@@ -19,7 +19,7 @@ class TrayIcon(Base):
           @param dict kwargs: further named arguments
         """
         callback = {'onactivate': self.initUI}
-        Base.__init__(self,
+        super().__init__(
                     manager,
                     name,
                     config,
@@ -37,6 +37,11 @@ class TrayIcon(Base):
         self._tray.show()
         self._tray.quitAction.triggered.connect(self._manager.quit)
         self._tray.managerAction.triggered.connect(lambda: self._manager.sigShowManager.emit())
+
+    def show(self):
+        """Trayicon has no window to show.
+        """
+        pass
 
 class SystemTrayIcon(QtGui.QSystemTrayIcon):
     """Tray icon class subclassing QSystemTrayIcon for custom functionality.
