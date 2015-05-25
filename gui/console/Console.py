@@ -80,6 +80,7 @@ class ConsoleWidget(QtGui.QWidget):
             self.output.setPlainText(text)
 
         self.historyFile = historyFile
+        self.stylesheet = ''
         
         history = self.loadHistory()
         if history is not None:
@@ -103,6 +104,10 @@ class ConsoleWidget(QtGui.QWidget):
         
         self.currentTraceback = None
         
+    def applyStyleSheet(self, stylesheet):
+        self.stylesheet = stylesheet
+        self.output.document().setDefaultStyleSheet(self.stylesheet)
+
     def loadHistory(self):
         """Return the list of previously-invoked command strings (or None)."""
         if self.historyFile is not None:
@@ -130,7 +135,7 @@ class ConsoleWidget(QtGui.QWidget):
                 self.write("<br><b>%s</b>\n"%encCmd, html=True)
                 self.execMulti(cmd)
             else:
-                self.write("<br><div><b>%s</b>\n"%encCmd, html=True)
+                self.write("<br><div class='cmd'><b>%s</b>\n"%encCmd, html=True)
                 self.inCmd = True
                 self.execSingle(cmd)
             
@@ -189,7 +194,6 @@ class ConsoleWidget(QtGui.QWidget):
             
             
     def execMulti(self, nextLine):
-        #self.stdout.write(nextLine+"\n")
         if nextLine.strip() != '':
             self.multiline += "\n" + nextLine
             return
@@ -224,10 +228,8 @@ class ConsoleWidget(QtGui.QWidget):
         else:
             if self.inCmd:
                 self.inCmd = False
-                self.output.textCursor().insertHtml("</div><br><div style='font-weight: normal;'>")
-                #self.stdout.write("</div><br><div style='font-weight: normal; background-color: #FFF;'>")
+                self.output.textCursor().insertHtml("</div><br><div class='nocmd' style='font-weight: normal;'>")
             self.output.insertPlainText(strn)
-        #self.stdout.write(strn)
     
     def displayException(self):
         """
