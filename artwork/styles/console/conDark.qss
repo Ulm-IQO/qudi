@@ -1,0 +1,4 @@
+body {color: #FFF; font-family: sans;}
+.cmd {color: #FF0; background-color: #444;}
+.nocmd {color: #EEE;}
+
