@@ -132,45 +132,45 @@ class FitLogic():
             
 
 
-        def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
-            #FIXME: dimensions of arrays
-        
-            """ This method performes a 2D gaussian fit on the provided data.
-
-            @param array x_axis: x values
-            @param array y_axis: y values
-            @param array data: value of each data point corresponding to
-                                x and y values        
-            @param bool details: If details is True, additional to the fit 
-                                 parameters also the covariance matrix is
-                                 returned
-            
-                    
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of f(xdata, *popt) - ydata 
-                    is minimized
-            @return 2d array pcov: The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)).
-                    
-            """
-                      
-            #FIXME: Would be nice in several rows....
-            error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
-            initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
-            
-            if details==False:
-                error,popt = self.make_fit(function=self.twoD_gaussian_function
-                                        ,axes=(x_axis,y_axis), data=data,
-                                        initial_guess=initial_guess_estimated)
-                return error,popt
-            elif details==True:
-                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
-                                                data=data,initial_guess=initial_guess_estimated,
-                                                details=details)
-                return error,popt, pcov            
+#        def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
+#            #FIXME: dimensions of arrays
+#        
+#            """ This method performes a 2D gaussian fit on the provided data.
+#
+#            @param array x_axis: x values
+#            @param array y_axis: y values
+#            @param array data: value of each data point corresponding to
+#                                x and y values        
+#            @param bool details: If details is True, additional to the fit 
+#                                 parameters also the covariance matrix is
+#                                 returned
+#            
+#                    
+#            @return int error: error code (0:OK, -1:error)
+#            @return array popt: Optimal values for the parameters so that 
+#                    the sum of the squared error of f(xdata, *popt) - ydata 
+#                    is minimized
+#            @return 2d array pcov: The estimated covariance of popt. The 
+#                    diagonals provide the variance of the parameter estimate. 
+#                    To compute one standard deviation errors on the parameters 
+#                    use perr = np.sqrt(np.diag(pcov)).
+#                    
+#            """
+#                      
+#            #FIXME: Would be nice in several rows....
+#            error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
+#            initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
+#            
+#            if details==False:
+#                error,popt = self.make_fit(function=self.twoD_gaussian_function
+#                                        ,axes=(x_axis,y_axis), data=data,
+#                                        initial_guess=initial_guess_estimated)
+#                return error,popt
+#            elif details==True:
+#                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
+#                                                data=data,initial_guess=initial_guess_estimated,
+#                                                details=details)
+#                return error,popt, pcov            
             
         def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
             """ This method provides a one dimensional gaussian function.
@@ -464,6 +464,53 @@ class FitLogic():
 
 ##############################################################################
 ##############################################################################  
+        def make_twoD_gaussian_fit(self,axis=None,data=None, add_parameters=None):
+            """ This method performes a 1D gaussian fit on the provided data.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data   
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """
+            error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(
+                                                                            x_axis=axis[:,0],y_axis=axis[:,0],data=data)
+            mod,params = self.make_twoD_gaussian_model() 
+             
+            #auxiliary variables
+            stepsize_x=axis[1,0]-axis[0,0]
+            stepsize_y=axis[1,1]-axis[0,1]
+            n_steps_x=len(axis[:,0])
+            n_steps_y=len(axis[:,1])
+            
+            #Defining standard parameters
+            #                  (Name,       Value,      Vary,           Min,                             Max,                       Expr)
+            params.add_many(('amplitude',   amplitude,  True,        100,                               1e7,                        None),
+                           (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(axis[-1,0]-axis[0,0]),        None),
+                           (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(axis[-1,0]-axis[0,0]) ,  None), 
+                           (  'x_zero',    x_zero,      True,     (axis[0,0])-n_steps_x*stepsize_x ,         (axis[-1,0])+n_steps_x*stepsize_x,               None),
+                           (  'y_zero',     y_zero,     True,    (axis[0,1])-n_steps_y*stepsize_y ,         (axis[-1,1])+n_steps_y*stepsize_y,         None),
+                           (  'theta',    0,        True,           0 ,                             np.pi,               None),
+                           (  'offset',      offset,    True,           0,                              1e7,                       None))
+
+#TODO: Add logmessage when value is changed            
+#            #redefine values of additional parameters
+            if add_parameters!=None:  
+                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters) 
+            try:
+                result=mod.fit(data, x=axis,params=params)
+            except:
+                print("Fit did not work!")
+            #                self.logMsg('The 1D gaussian fit did not work.', \
+            #                            msgType='message')
+            
+            return result
+            
         @staticmethod
         def twoD_gaussian_model(x,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta, offset):
                                         
@@ -550,7 +597,7 @@ class FitLogic():
             @return float theta: estimated angle for eliptical gaussians
             @return float offset: estimated offset
             @return int error: error code (0:OK, -1:error)                    
-            """                                 
+            """ 
             amplitude=float(data.max()-data.min())
             x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
             y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
@@ -585,20 +632,20 @@ class FitLogic():
             y = np.arange(-2,3,0.1)
             xx, yy = np.meshgrid(x, y)
             
-            axes = np.empty((2500,2))
+            axes = np.empty((len(data),2))
             axes[:,0]=xx.flatten()
-            axes[:,1]=yy.flatten()
-            
-            #x,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta, offset
-            data= self.twoD_gaussian_model(x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3)
+            axes[:,1]=yy.flatten()           
+            theta_here=110./360.*(2*np.pi)
+            data= self.twoD_gaussian_model(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000)
             gmod,params = self.make_twoD_gaussian_model()
             
-            result = gmod.fit(data, x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3)
-#            
-#            
+            para=Parameters()
+#            para.add('sigma_x',expr='0.5*sigma_y')
+            para.add('amplitude',min=20000)
+            result=self.make_twoD_gaussian_fit(axis=axes,data=data,add_parameters=para)
             fig, ax = plt.subplots(1, 1)
             ax.hold(True)
-            ax.imshow(gmod.eval(x=axes,amplitude=10,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=20, offset=3).reshape(50, 50), cmap=plt.cm.jet, 
+            ax.imshow(gmod.eval(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000).reshape(50, 50), cmap=plt.cm.jet, 
                       origin='bottom', extent=(x.min(), x.max(), 
                                                y.min(), y.max()))
             ax.contour(x, y, result.best_fit.reshape(50, 50), 8
@@ -611,26 +658,25 @@ class FitLogic():
             x_nice=np.linspace(0, 5, 101)
             
             mod_final,params = self.make_gaussian_model()
+#            print('Parameters of the model',mod_final.param_names)
+
             p=Parameters()
-            p.add('center',value=3,min=50000000000)
-            print(p['center'])
-            print('max',p['center'].max)
             
-            self.data_noisy=mod_final.eval(x=self.x, amplitude=50000,center=1,sigma=0.8, c=10000) + 5000*np.random.normal(size=self.x.shape)
+#            p.add('center',max=-1)
+            
+            self.data_noisy=mod_final.eval(x=self.x, amplitude=100000,center=1,sigma=0.8, c=10000) + 10000*np.random.normal(size=self.x.shape)
             result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy,add_parameters=p)
-            
-#           Plot with residuals
-            plt.close('all')
-            f,ax=plt.subplots(2, sharex=True)
-            ax[1].plot(self.x,self.data_noisy)
-            ax[1].plot(self.x,result.best_fit)
-            gauss,params=self.make_gaussian_model()
-            ax[1].plot(x_nice,gauss.eval(x=x_nice,params=result.params),'r-')
 
-            ax[0].plot(self.x,result.residual) 
-            plt.show()  
+            plt.plot(self.x,self.data_noisy)
+            plt.plot(self.x,result.init_fit,'-g')
+            plt.plot(self.x,result.best_fit,'-r')
+#            plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r')
+            plt.show()
             
             
-
+#nice things from this class
+#            print('success',result.success)
+#            print('center',result.params['center'].value)
+            
 test=FitLogic()
-test.twoD_testing()   
+test.oneD_testing()   
