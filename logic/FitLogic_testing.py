@@ -641,7 +641,7 @@ class FitLogic():
             
             para=Parameters()
 #            para.add('sigma_x',expr='0.5*sigma_y')
-            para.add('amplitude',min=20000)
+#            para.add('theta',vary=False)
             result=self.make_twoD_gaussian_fit(axis=axes,data=data,add_parameters=para)
             fig, ax = plt.subplots(1, 1)
             ax.hold(True)
@@ -679,4 +679,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.oneD_testing()   
+test.twoD_testing()   
