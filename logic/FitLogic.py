@@ -384,6 +384,14 @@ class FitLogic(GenericLogic):
                     parameters[para].value=update_parameters[para].value 
                     
             return parameters
+
+##############################################################################
+##############################################################################
+
+                        #1D gaussian model
+
+##############################################################################
+##############################################################################   
             
         def make_gaussian_model(self):
             """ This method creates a model of agaussian with an offset. The
@@ -484,6 +492,81 @@ class FitLogic(GenericLogic):
             offset=data.min()
             
             return error, amplitude, x_zero, sigma, offset
+ 
+
+##############################################################################
+##############################################################################
+
+                        #2D gaussian model
+
+##############################################################################
+##############################################################################  
+        @staticmethod
+        def twoD_gaussian_model(x,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta, offset):
+                                        
+            #FIXME: x_data_tuple: dimension of arrays
+                                    
+            """ This method provides a two dimensional gaussian function.
+            
+            @param (k,M)-shaped array x_data_tuple: x and y values
+            @param float or int amplitude: Amplitude of gaussian
+            @param float or int x_zero: x value of maximum
+            @param float or int y_zero: y value of maximum
+            @param float or int sigma_x: standard deviation in x direction
+            @param float or int sigma_y: standard deviation in y direction
+            @param float or int theta: angle for eliptical gaussians
+            @param float or int offset: offset
+
+            @return callable function: returns the function
+            
+            """
+            # check if parameters make sense
+            #FIXME: Check for 2D matrix
+            if not isinstance( x,(frozenset, list, set, tuple,\
+                                np.ndarray)):
+                self.logMsg('Given range of axes is no array type.', \
+                            msgType='error') 
+
+            parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
+            for var in parameters:
+                if not isinstance(var,(float,int)):
+                    self.logMsg('Given range of parameter' 
+                                    'is no float or int.',msgType='error')
+                                        
+            u = x[:, 0]
+            v = x[:, 1]                            
+            x_zero = float(x_zero)
+            y_zero = float(y_zero) 
+            
+            a = (np.cos(theta)**2)/(2*sigma_x**2) \
+                                        + (np.sin(theta)**2)/(2*sigma_y**2)
+            b = -(np.sin(2*theta))/(4*sigma_x**2) \
+                                        + (np.sin(2*theta))/(4*sigma_y**2)
+            c = (np.sin(theta)**2)/(2*sigma_x**2) \
+                                        + (np.cos(theta)**2)/(2*sigma_y**2)
+            g = offset + amplitude*np.exp( - (a*((u-x_zero)**2) \
+                                    + 2*b*(u-x_zero)*(v-y_zero) \
+                                    + c*((v-y_zero)**2)))
+            return g.ravel()
+            
+        def make_twoD_gaussian_model(self):
+            """ This method creates a model of the 2D gaussian function. The
+            parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset 
+            'c'. For function see: 
+                            
+            @return lmfit.model.CompositeModel model: Returns an object of the
+                                                      class CompositeModel
+            @return lmfit.parameter.Parameters params: Returns an object of the 
+                                                       class Parameters with all
+                                                       parameters for the 
+                                                       gaussian model.
+                    
+            """
+            
+            model=Model(self.twoD_gaussian_model)
+            params=model.make_params()
+            
+            return model,params
             
         def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
 #            TODO:Make clever estimator
