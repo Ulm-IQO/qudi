@@ -1,4 +1,24 @@
 # -*- coding: utf-8 -*-
+"""
+This file contains the QuDi couner logic class.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Kay D. Jahnke
+Copyright (C) 2015 Alexander Stark
+Copyright (C) 2015 Jan M. Binder
+"""
 
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
@@ -8,18 +28,27 @@ import numpy as np
 import time
 
 class CounterLogic(GenericLogic):
-    """This is the Interface class to define the controls for the simple 
-    microwave hardware.
+    """This logic module gathers data from a hardware counting device.
+      @signal sigCounterUpdate: there is new counting data available
+      @signal sigCountNext: used to simulate a loop that the data acquisition runs in
     """
     sigCounterUpdated = QtCore.Signal()
     sigCountNext = QtCore.Signal()
 
+    _modclass = 'counterlogic'
+    _modtype = 'logic'
+
     def __init__(self, manager, name, config, **kwargs):
+        """ Create CounterLogic object with connectors.
+            
+          @param object manager: Manager object thath loaded this module
+          @param str name: unique module name
+          @param dict config: module configuration
+          @param dict kwargs: optional parameters
+        """
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'counterlogic'
-        self._modtype = 'logic'
+        super().__init__(manager, name, config, state_actions, **kwargs)
 
         ## declare connectors
         self.connector['in']['counter1'] = OrderedDict()
@@ -36,8 +65,7 @@ class CounterLogic(GenericLogic):
         #locking for thread safety
         self.threadlock = Mutex()
 
-        self.logMsg('The following configuration was found.', 
-                    msgType='status')
+        self.logMsg('The following configuration was found.', msgType='status')
                             
         # checking for the right configuration
         for key in config.keys():
@@ -53,6 +81,8 @@ class CounterLogic(GenericLogic):
                         
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+            
+          @param object e: Fysom state change event
         """
         self.countdata = np.zeros((self._count_length,))
         self.countdata_smoothed=np.zeros((self._count_length,))
@@ -80,7 +110,6 @@ class CounterLogic(GenericLogic):
         
         This makes sure, the counter is stopped first and restarted afterwards.
         """
-        
         # do I need to restart the counter?
         restart = False
         
@@ -108,7 +137,6 @@ class CounterLogic(GenericLogic):
         
         This makes sure, the counter is stopped first and restarted afterwards.
         """
-        
         # do I need to restart the counter?
         restart = False
         
@@ -181,7 +209,6 @@ class CounterLogic(GenericLogic):
         
         @return bool: saving state
         """
-        
         return self._saving
         
     def start_saving(self):
@@ -189,7 +216,6 @@ class CounterLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        
         self._data_to_save=[]
         self._saving_start_time=time.time()
         self._saving=True
@@ -200,7 +226,6 @@ class CounterLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        
         self._saving=False
         self._saving_stop_time=time.time()
 
@@ -232,7 +257,9 @@ class CounterLogic(GenericLogic):
         return 0
 
     def startCount(self):
-        
+        """Prepare to start counting:
+            zero variables, change state and start counting "loop"
+        """
         # setting up the counter
         self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
         self._counting_device.set_up_counter()
@@ -248,13 +275,16 @@ class CounterLogic(GenericLogic):
         self.sigCountNext.emit()
  
     def stopCount(self):
+        """ Set a flag to request stopping counting.
+        """
         with self.threadlock:
             self.stopRequested = True
 
     def countLoopBody(self):
-        """ The actual measurement method which is run in a thread.
+        """ This method gets the count data from the hardware.
+            It runs repeatedly in the logic module event loop by being connected
+            to sigCountNext and emitting sigCountNext through a queued connection.
         """
-        
         # check for aborts of the thread in break if necessary 
         if self.stopRequested:
             with self.threadlock:
@@ -268,7 +298,6 @@ class CounterLogic(GenericLogic):
         
         # read the current counter value
         self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-       
         # remember the new count data in circular array
         self.countdata[0] = np.average(self.rawdata)
         # move the array to the left to make space for the new data
