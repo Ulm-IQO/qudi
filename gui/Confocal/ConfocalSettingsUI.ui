@@ -85,7 +85,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Fixed Aspect Ratio XZ Scan :</string>
+        <string>Fixed Aspect Ratio Depth Scan :</string>
        </property>
       </widget>
      </item>
@@ -271,7 +271,7 @@
       </widget>
      </item>
      <item row="3" column="2">
-      <widget class="QCheckBox" name="fixed_aspect_xz_checkBox">
+      <widget class="QCheckBox" name="fixed_aspect_depth_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -488,7 +488,7 @@
   <tabstop>clock_frequency_InputWidget</tabstop>
   <tabstop>return_slowness_InputWidget</tabstop>
   <tabstop>fixed_aspect_xy_checkBox</tabstop>
-  <tabstop>fixed_aspect_xz_checkBox</tabstop>
+  <tabstop>fixed_aspect_depth_checkBox</tabstop>
   <tabstop>slider_stepwidth_InputWidget</tabstop>
   <tabstop>x_padding_InputWidget</tabstop>
   <tabstop>y_padding_InputWidget</tabstop>

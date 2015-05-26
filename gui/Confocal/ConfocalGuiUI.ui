@@ -162,7 +162,7 @@
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
             <item row="0" column="0">
-             <widget class="PlotWidget" name="xz_ViewWidget">
+             <widget class="PlotWidget" name="depth_ViewWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>1</horstretch>
@@ -174,7 +174,7 @@
             <item row="0" column="1">
              <layout class="QGridLayout" name="gridLayout_2">
               <item row="1" column="0">
-               <widget class="PlotWidget" name="xz_cb_ViewWidget">
+               <widget class="PlotWidget" name="depth_cb_ViewWidget">
                 <property name="maximumSize">
                  <size>
                   <width>70</width>
@@ -184,7 +184,7 @@
                </widget>
               </item>
               <item row="3" column="0">
-               <widget class="QCheckBox" name="xz_cb_auto_CheckBox">
+               <widget class="QCheckBox" name="depth_cb_auto_CheckBox">
                 <property name="text">
                  <string>Auto</string>
                 </property>
@@ -194,7 +194,7 @@
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QSpinBox" name="xz_cb_min_InputWidget">
+               <widget class="QSpinBox" name="depth_cb_min_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -228,7 +228,7 @@
                </widget>
               </item>
               <item row="0" column="0">
-               <widget class="QSpinBox" name="xz_cb_max_InputWidget">
+               <widget class="QSpinBox" name="depth_cb_max_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -347,7 +347,7 @@
              </widget>
             </item>
             <item row="3" column="0" colspan="6">
-             <widget class="PlotWidget" name="xz_refocus_ViewWidget">
+             <widget class="PlotWidget" name="depth_refocus_ViewWidget">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
@@ -489,7 +489,7 @@
             <item row="7" column="6">
              <layout class="QGridLayout" name="gridLayout_10">
               <item row="0" column="0">
-               <widget class="QSpinBox" name="xz_cb_max_InputWidget_2">
+               <widget class="QSpinBox" name="depth_cb_max_InputWidget_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -526,7 +526,7 @@
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QSpinBox" name="xz_cb_min_InputWidget_2">
+               <widget class="QSpinBox" name="depth_cb_min_InputWidget_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -566,7 +566,7 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="PlotWidget" name="xz_cb_ViewWidget_2">
+               <widget class="PlotWidget" name="depth_cb_ViewWidget_2">
                 <property name="maximumSize">
                  <size>
                   <width>70</width>
@@ -576,7 +576,7 @@
                </widget>
               </item>
               <item row="3" column="0">
-               <widget class="QCheckBox" name="xz_cb_auto_CheckBox_2">
+               <widget class="QCheckBox" name="depth_cb_auto_CheckBox_2">
                 <property name="text">
                  <string>Auto</string>
                 </property>
@@ -588,7 +588,7 @@
              </layout>
             </item>
             <item row="7" column="0" colspan="6">
-             <widget class="PlotWidget" name="xz_ViewWidget_2">
+             <widget class="PlotWidget" name="depth_ViewWidget_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>1</horstretch>
@@ -619,7 +619,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PlotWidget" name="xz_refocus_ViewWidget_2">
+               <widget class="PlotWidget" name="depth_refocus_ViewWidget_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>1</horstretch>
@@ -895,7 +895,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QRadioButton" name="xz_scan_StateWidget">
+         <widget class="QRadioButton" name="depth_scan_StateWidget">
           <property name="text">
            <string>Scan Z</string>
           </property>
@@ -1467,9 +1467,9 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionSave_XY_Scan"/>
-    <addaction name="actionSave_XZ_Scan"/>
+    <addaction name="actionSave_Depth_Scan"/>
     <addaction name="actionSave_XY_Image_Data"/>
-    <addaction name="actionSave_XZ_Image_Data"/>
+    <addaction name="actionSave_Depth_Image_Data"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
     <addaction name="action_Exit"/>
@@ -1505,9 +1505,9 @@
     <string>&amp;Exit</string>
    </property>
   </action>
-  <action name="actionSave_XZ_Scan">
+  <action name="actionSave_Depth_Scan">
    <property name="text">
-    <string>Save XZ Data</string>
+    <string>Save Depth Data</string>
    </property>
   </action>
   <action name="action_optimiser_settings">
@@ -1520,9 +1520,9 @@
     <string>Save XY Image+Data</string>
    </property>
   </action>
-  <action name="actionSave_XZ_Image_Data">
+  <action name="actionSave_Depth_Image_Data">
    <property name="text">
-    <string>Save XZ Image+Data</string>
+    <string>Save Depth Image+Data</string>
    </property>
   </action>
  </widget>
@@ -1548,23 +1548,23 @@
   <tabstop>xy_cb_max_InputWidget</tabstop>
   <tabstop>xy_cb_min_InputWidget</tabstop>
   <tabstop>xy_cb_auto_CheckBox</tabstop>
-  <tabstop>xz_cb_max_InputWidget</tabstop>
-  <tabstop>xz_cb_min_InputWidget</tabstop>
-  <tabstop>xz_cb_auto_CheckBox</tabstop>
+  <tabstop>depth_cb_max_InputWidget</tabstop>
+  <tabstop>depth_cb_min_InputWidget</tabstop>
+  <tabstop>depth_cb_auto_CheckBox</tabstop>
   <tabstop>ready_StateWidget</tabstop>
   <tabstop>xy_scan_StateWidget</tabstop>
-  <tabstop>xz_scan_StateWidget</tabstop>
+  <tabstop>depth_scan_StateWidget</tabstop>
   <tabstop>refocus_StateWidget</tabstop>
   <tabstop>z_refocus_position_ViewWidget_2</tabstop>
   <tabstop>y_refocus_position_ViewWidget_2</tabstop>
-  <tabstop>xz_cb_ViewWidget_2</tabstop>
-  <tabstop>xz_ViewWidget_2</tabstop>
+  <tabstop>depth_cb_ViewWidget_2</tabstop>
+  <tabstop>depth_ViewWidget_2</tabstop>
   <tabstop>xy_refocus_ViewWidget_2</tabstop>
-  <tabstop>xz_refocus_ViewWidget_2</tabstop>
-  <tabstop>xz_ViewWidget</tabstop>
+  <tabstop>depth_refocus_ViewWidget_2</tabstop>
+  <tabstop>depth_ViewWidget</tabstop>
   <tabstop>z_SliderWidget</tabstop>
   <tabstop>tabWidget</tabstop>
-  <tabstop>xz_cb_ViewWidget</tabstop>
+  <tabstop>depth_cb_ViewWidget</tabstop>
   <tabstop>xy_ViewWidget</tabstop>
   <tabstop>z_refocus_position_ViewWidget</tabstop>
   <tabstop>xy_cb_ViewWidget</tabstop>
@@ -1572,10 +1572,10 @@
   <tabstop>y_refocus_position_ViewWidget</tabstop>
   <tabstop>x_refocus_position_ViewWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
-  <tabstop>xz_cb_auto_CheckBox_2</tabstop>
-  <tabstop>xz_refocus_ViewWidget</tabstop>
-  <tabstop>xz_cb_min_InputWidget_2</tabstop>
-  <tabstop>xz_cb_max_InputWidget_2</tabstop>
+  <tabstop>depth_cb_auto_CheckBox_2</tabstop>
+  <tabstop>depth_refocus_ViewWidget</tabstop>
+  <tabstop>depth_cb_min_InputWidget_2</tabstop>
+  <tabstop>depth_cb_max_InputWidget_2</tabstop>
   <tabstop>xy_refocus_ViewWidget</tabstop>
   <tabstop>x_refocus_position_ViewWidget_2</tabstop>
  </tabstops>
