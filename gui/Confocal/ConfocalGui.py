@@ -559,6 +559,7 @@ class ConfocalGui(GUIBase):
         self.adjust_xy_window()
         self.adjust_xz_window()
 
+        self.show()
 
     def initSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the settings GUI.
@@ -592,7 +593,7 @@ class ConfocalGui(GUIBase):
         """ Update the GUI position of the crosshair from the logic. """       
         
         x_pos, y_pos, z_pos = self._scanning_logic.get_position()
-        
+
         roi_x_view = x_pos - self.roi_xy.size()[0]*0.5
         roi_y_view = y_pos - self.roi_xy.size()[1]*0.5
         self.roi_xy.setPos([roi_x_view , roi_y_view])
@@ -600,6 +601,7 @@ class ConfocalGui(GUIBase):
         roi_x_view = x_pos - self.roi_xz.size()[0]*0.5
         roi_y_view = z_pos - self.roi_xz.size()[1]*0.5
         self.roi_xz.setPos([roi_x_view , roi_y_view])
+
         
     def refresh_xy_colorbar(self):
         """ Adjust the xy colorbar.
@@ -951,8 +953,6 @@ class ConfocalGui(GUIBase):
           
         self.xy_image.getViewBox().updateAutoRange()
         self.adjust_aspect_roi_xy()
-        self.put_cursor_in_xy_scan()
-        self.adjust_aspect_roi_xy()
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
@@ -979,8 +979,6 @@ class ConfocalGui(GUIBase):
     
         self.xz_image.getViewBox().enableAutoRange()
         self.adjust_aspect_roi_xz()
-        self.put_cursor_in_xz_scan()
-        self.adjust_aspect_roi_xz()            
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
@@ -1045,12 +1043,16 @@ class ConfocalGui(GUIBase):
             xy_viewbox.updateViewRange()
             
         else:
-            xy_viewbox.setLimits(xMin = xMin - xMin*self.image_x_padding,
-                                 xMax = xMax + xMax*self.image_x_padding, 
-                                 yMin = yMin - yMin*self.image_y_padding,
-                                 yMax = yMax + yMax*self.image_y_padding)                                                 
+            xy_viewbox.setLimits(xMin = xMin - (xMax-xMin)*self.image_x_padding,
+                                 xMax = xMax + (xMax-xMin)*self.image_x_padding, 
+                                 yMin = yMin - (yMax-yMin)*self.image_y_padding,
+                                 yMax = yMax + (yMax-yMin)*self.image_y_padding)                                                 
                                                 
         self.xy_image.setRect(QtCore.QRectF(xMin, yMin, xMax - xMin, yMax - yMin))
+        
+        self.put_cursor_in_xy_scan()
+        self.adjust_aspect_roi_xy()
+        
         xy_viewbox.updateAutoRange()
         xy_viewbox.updateViewRange()
         
@@ -1094,6 +1096,10 @@ class ConfocalGui(GUIBase):
                                  yMax = zMax + zMax*self.image_z_padding)         
         
         self.xz_image.setRect(QtCore.QRectF(xMin, zMin, xMax - xMin, zMax - zMin))
+        
+        self.put_cursor_in_xz_scan()
+        self.adjust_aspect_roi_xz() 
+        
         xz_viewbox.updateAutoRange()
         xz_viewbox.updateViewRange()
 
