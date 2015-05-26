@@ -318,7 +318,15 @@ class ConfocalGui(GUIBase):
         # the UI file.
         self._mw.xy_refocus_ViewWidget_2.addItem(self.xy_refocus_image)
         self._mw.xz_refocus_ViewWidget_2.addItem(self.xz_refocus_image)
+
+        # Labelling axes
+        self._mw.xy_refocus_ViewWidget_2.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.xy_refocus_ViewWidget_2.setLabel( 'left', 'Y position', units='µm' )
+
         self._mw.xz_refocus_ViewWidget_2.addItem(self.xz_refocus_fit_image)
+
+        self._mw.xz_refocus_ViewWidget_2.setLabel( 'bottom', 'Z position', units='µm' )
+        self._mw.xz_refocus_ViewWidget_2.setLabel( 'left', 'Fluorescence', units='c/s' )
         
         #Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=90, movable=False)
@@ -336,10 +344,10 @@ class ConfocalGui(GUIBase):
         self._mw.xz_ViewWidget_2.addItem(self.xz_image)
         
         # Label the axes:
-        self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='micron' )
-        self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='micron' )
-        self._mw.xz_ViewWidget_2.setLabel( 'bottom', 'X position', units='micron' )
-        self._mw.xz_ViewWidget_2.setLabel( 'left', 'Z position', units='micron' )
+        self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='µm' )
+        self._mw.xz_ViewWidget_2.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.xz_ViewWidget_2.setLabel( 'left', 'Z position', units='µm' )
     
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI([ini_pos_x_crosshair-len(arr01)/40, ini_pos_y_crosshair-len(arr01)/40], 
