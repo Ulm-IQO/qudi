@@ -28,7 +28,7 @@ class IPythonLogic(GenericLogic):
             'on_activate': self.activation,
             'on_deactivate': self.deactivation
             }
-        super.__init__(self, manager, name, config, state_actions, **kwargs)
+        super().__init__(manager, name, config, state_actions, **kwargs)
     
         ## declare connectors    
         self.connector['out']['ipythonlogic'] = OrderedDict()
@@ -37,9 +37,6 @@ class IPythonLogic(GenericLogic):
         #locking for thread safety
         self.lock = Mutex()
     
-    def activation(self, e=None):
-        pass
-
     def deactivation(self, e=None):
         pass
 
@@ -59,70 +56,72 @@ class IPythonLogic(GenericLogic):
             self.namespace.pop(module, None)
         self.modules = currentModules
 
-    def initIPythonKernel():
-        # You can remotely connect to this kernel. See the output on stdout.
+    def cleanup_connection_file():
         try:
-            IPython.kernel.zmq.ipkernel.signal = lambda sig, f: None  # Overwrite.
-        except ImportError, e:
-            print "IPython import error, cannot start IPython kernel. %s" % e
-            return
+            os.remove(self.connection_file)
+        except (IOError, OSError):
+            pass
+
+    def activation(self, e=None):
+        print('IPython activate')
+        # You can remotely connect to this kernel. See the output on stdout.
+        IPython.kernel.zmq.ipkernel.signal = lambda sig, f: None  # Overwrite.
         # Do in mainthread to avoid history sqlite DB errors at exit.
         # https://github.com/ipython/ipython/issues/680
+        print('IPython activate2')
         try:
-            connection_file = "kernel-%s.json" % os.getpid()
-            def cleanup_connection_file():
-                try:
-                    os.remove(connection_file)
-                except (IOError, OSError):
-                    pass
-            atexit.register(cleanup_connection_file)
+            self.connection_file = 'kernel-{0}.json'.format(os.getpid())
+            atexit.register(self.cleanup_connection_file)
 
-            logger = logging.Logger("IPython")
-            logger.addHandler(logging.NullHandler())
-            session = Session(username='kernel')
+            self.logger = logging.Logger('IPython')
+            self.logger.addHandler(logging.NullHandler())
+            self.session = Session(username='kernel')
 
-            context = zmq.Context.instance()
-            ip = socket.gethostbyname(socket.gethostname())
-            transport = "tcp"
-            addr = "%s://%s" % (transport, ip)
-            shell_socket = context.socket(zmq.ROUTER)
-            shell_port = shell_socket.bind_to_random_port(addr)
-            iopub_socket = context.socket(zmq.PUB)
-            iopub_port = iopub_socket.bind_to_random_port(addr)
-            control_socket = context.socket(zmq.ROUTER)
-            control_port = control_socket.bind_to_random_port(addr)
+            self.context = zmq.Context.instance()
+            self.ip = socket.gethostbyname(socket.gethostname())
+            self.transport = 'tcp'
+            self.addr = '{0}://{1}'.format(transport, ip)
+            self.shell_socket = context.socket(zmq.ROUTER)
+            self.shell_port = shell_socket.bind_to_random_port(addr)
+            self.iopub_socket = context.socket(zmq.PUB)
+            self.iopub_port = iopub_socket.bind_to_random_port(addr)
+            self.control_socket = context.socket(zmq.ROUTER)
+            self.control_port = control_socket.bind_to_random_port(addr)
 
-            hb_ctx = zmq.Context()
-            heartbeat = Heartbeat(hb_ctx, (transport, ip, 0))
-            hb_port = heartbeat.port
-            heartbeat.start()
+            self.hb_ctx = zmq.Context()
+            self.heartbeat = Heartbeat(hb_ctx, (transport, ip, 0))
+            self.hb_port = heartbeat.port
+            self.heartbeat.start()
 
-            shell_stream = ZMQStream(shell_socket)
-            control_stream = ZMQStream(control_socket)
+            self.shell_stream = ZMQStream(shell_socket)
+            self.control_stream = ZMQStream(control_socket)
 
-            kernel = Kernel(
-                    session = session,
-                    shell_streams = [shell_stream, control_stream],
-                    iopub_socket = iopub_socket,
-                    log = logger)
+            print('IPython prekernel')
+            self.kernel = Kernel(
+                    session = self.session,
+                    shell_streams = [self.shell_stream, self.control_stream],
+                    iopub_socket = self.iopub_socket,
+                    log = self.logger)
 
+            print('IPython postkernel')
             write_connection_file(
-                    connection_file,
-                    shell_port = shell_port,
-                    iopub_port = iopub_port,
-                    control_port = control_port,
-                    hb_port = hb_port,
-                    ip = ip)
+                    self.connection_file,
+                    shell_port = self.shell_port,
+                    iopub_port = self.iopub_port,
+                    control_port = self.control_port,
+                    hb_port = self.hb_port,
+                    ip = self.ip)
 
-            print('To connect another client to this IPython kernel, use:',
-                'ipython console --existing {0}'.format(connection_file) )
-        except Exception, e:
-            print('Exception while initializing IPython ZMQ kernel. {0}'.format(e))
-            return
+            print('IPython prelog')
+            self.logMsg('To connect another client to this IPython kernel, use: ipython console --existing {0}'.format(connection_file), msgType='status')
 
-        def ipython_thread():
-            kernel.start()
-            try:
-                ioloop.IOLoop.instance().start()
-            except KeyboardInterrupt:
-                pass
+        except Exception as e:
+            self.logMsg('Exception while initializing IPython ZMQ kernel. {0}'.format(e), msgType='error')
+            raise
+
+    def runloop(self):
+        kernel.start()
+        try:
+            ioloop.IOLoop.instance().start()
+        except KeyboardInterrupt:
+            pass
