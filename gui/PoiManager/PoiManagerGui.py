@@ -168,16 +168,32 @@ class PoiManagerGui(GUIBase):
         #####################
         # Setting up display of sample shift plot
         #####################
+        
+        mysymbol = QtGui.QPainterPath()
+        mysymbol.addText(0, 0, QtGui.QFont("San Serif", 10), 'Y')
+        br = mysymbol.boundingRect()
+        scale = min(1. / br.width(), 1. / br.height())
+        tr = QtGui.QTransform()
+        tr.scale(scale, scale)
+        tr.translate(-br.x() - br.width()/2., -br.y() - br.height()/2.)
+        mysymbol = tr.map(mysymbol)
+
+        testsymbol = QtGui.QPainterPath()
+        testsymbol.addEllipse(QtCore.QRectF(-0.5, -0.5, 1, 1))
+
 
         # Load image in the display
-        self.x_shift_plot = pg.ScatterPlotItem([0],[0],symbol='o', pen='r')
-        self.y_shift_plot = pg.ScatterPlotItem([0],[0],symbol='s', pen='g')
-        self.z_shift_plot = pg.ScatterPlotItem([0],[0],symbol='t', pen='b')
+        self.x_shift_plot = pg.ScatterPlotItem([0],[0], symbol='o', pen='r')
+        self.y_shift_plot = pg.ScatterPlotItem([0],[0], symbol='s', pen='g')
+        self.z_shift_plot = pg.ScatterPlotItem([0],[0], symbol='t', pen='b')
 
         # Add the plot to the ViewWidget defined in the UI file
         self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.y_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.z_shift_plot)
+
+        #pg.ScatterPlotItem.symbols['x'] = testsymbol
+        #print(pg.ScatterPlotItem.Symbols)
 
 
         #####################        

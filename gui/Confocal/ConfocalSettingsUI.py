@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
 #
-# Created: Tue May 26 09:11:00 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Tue May 26 21:13:11 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -146,18 +146,18 @@ class Ui_SettingsDialog(object):
         self.label_3.setFont(font)
         self.label_3.setObjectName(_fromUtf8("label_3"))
         self.gridLayout.addWidget(self.label_3, 2, 0, 1, 1)
-        self.fixed_aspect_xz_checkBox = QtGui.QCheckBox(SettingsDialog)
+        self.fixed_aspect_depth_checkBox = QtGui.QCheckBox(SettingsDialog)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.fixed_aspect_xz_checkBox.sizePolicy().hasHeightForWidth())
-        self.fixed_aspect_xz_checkBox.setSizePolicy(sizePolicy)
-        self.fixed_aspect_xz_checkBox.setMaximumSize(QtCore.QSize(50, 16777215))
-        self.fixed_aspect_xz_checkBox.setLayoutDirection(QtCore.Qt.RightToLeft)
-        self.fixed_aspect_xz_checkBox.setText(_fromUtf8(""))
-        self.fixed_aspect_xz_checkBox.setChecked(True)
-        self.fixed_aspect_xz_checkBox.setObjectName(_fromUtf8("fixed_aspect_xz_checkBox"))
-        self.gridLayout.addWidget(self.fixed_aspect_xz_checkBox, 3, 2, 1, 1)
+        sizePolicy.setHeightForWidth(self.fixed_aspect_depth_checkBox.sizePolicy().hasHeightForWidth())
+        self.fixed_aspect_depth_checkBox.setSizePolicy(sizePolicy)
+        self.fixed_aspect_depth_checkBox.setMaximumSize(QtCore.QSize(50, 16777215))
+        self.fixed_aspect_depth_checkBox.setLayoutDirection(QtCore.Qt.RightToLeft)
+        self.fixed_aspect_depth_checkBox.setText(_fromUtf8(""))
+        self.fixed_aspect_depth_checkBox.setChecked(True)
+        self.fixed_aspect_depth_checkBox.setObjectName(_fromUtf8("fixed_aspect_depth_checkBox"))
+        self.gridLayout.addWidget(self.fixed_aspect_depth_checkBox, 3, 2, 1, 1)
         self.slider_stepwidth_InputWidget = QtGui.QDoubleSpinBox(SettingsDialog)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -251,8 +251,8 @@ class Ui_SettingsDialog(object):
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
         SettingsDialog.setTabOrder(self.clock_frequency_InputWidget, self.return_slowness_InputWidget)
         SettingsDialog.setTabOrder(self.return_slowness_InputWidget, self.fixed_aspect_xy_checkBox)
-        SettingsDialog.setTabOrder(self.fixed_aspect_xy_checkBox, self.fixed_aspect_xz_checkBox)
-        SettingsDialog.setTabOrder(self.fixed_aspect_xz_checkBox, self.slider_stepwidth_InputWidget)
+        SettingsDialog.setTabOrder(self.fixed_aspect_xy_checkBox, self.fixed_aspect_depth_checkBox)
+        SettingsDialog.setTabOrder(self.fixed_aspect_depth_checkBox, self.slider_stepwidth_InputWidget)
         SettingsDialog.setTabOrder(self.slider_stepwidth_InputWidget, self.x_padding_InputWidget)
         SettingsDialog.setTabOrder(self.x_padding_InputWidget, self.y_padding_InputWidget)
         SettingsDialog.setTabOrder(self.y_padding_InputWidget, self.z_padding_InputWidget)
@@ -264,7 +264,7 @@ class Ui_SettingsDialog(object):
         SettingsDialog.setWindowTitle(_translate("SettingsDialog", "qudi: Confocal - Settings", None))
         self.label_5.setText(_translate("SettingsDialog", "Slider Stepwidth with Keys :", None))
         self.label_7.setText(_translate("SettingsDialog", "y Padding for image display (%)", None))
-        self.label_4.setText(_translate("SettingsDialog", "Fixed Aspect Ratio XZ Scan :", None))
+        self.label_4.setText(_translate("SettingsDialog", "Fixed Aspect Ratio Depth Scan :", None))
         self.label_6.setText(_translate("SettingsDialog", "x Padding for image display (%)", None))
         self.label_2.setText(_translate("SettingsDialog", "Return slowness :", None))
         self.label_3.setText(_translate("SettingsDialog", "Fixed Aspect Ratio XY Scan :", None))
