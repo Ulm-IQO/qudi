@@ -634,6 +634,12 @@ class FitLogic():
             
             axes = np.empty((len(data),2))
             axes[:,0]=xx.flatten()
+            axes[:,1]=yy.flatten()
+            print('shape',np.shape(axes))
+            print('axis 1',len(axes[:,1]))
+            print('axis 0',len(axes[:,0]))            
+            theta_here=110./360.*(2*np.pi)
+            data= self.twoD_gaussian_model(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000)
             axes[:,1]=yy.flatten()           
             theta_here=110./360.*(2*np.pi)
             data= self.twoD_gaussian_model(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000)
