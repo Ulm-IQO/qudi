@@ -70,15 +70,15 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
                                               self._position_range[1][1],
                                               self._num_points)
         # sigma_x
-        self._points[:,3] = np.random.normal( 0.5,
-                                              0.3,
+        self._points[:,3] = np.random.normal( 0.7,
+                                              0.1,
                                               self._num_points)
         # sigma_y
-        self._points[:,4] = np.random.normal( 0.5,
-                                              0.3,
+        self._points[:,4] = np.random.normal( 0.7,
+                                              0.1,
                                               self._num_points)
         # theta
-        self._points[:,5] = 45
+        self._points[:,5] = 10
         # offset
         self._points[:,6] = 0
         
