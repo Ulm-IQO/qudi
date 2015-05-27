@@ -251,6 +251,7 @@
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -260,8 +261,49 @@
      <height>20</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuMenu">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+    <addaction name="actionNew_ROI"/>
+    <addaction name="actionOpen_ROI"/>
+    <addaction name="actionSave_ROI"/>
+   </widget>
+   <addaction name="menuMenu"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionNew_ROI">
+   <property name="icon">
+    <iconset theme="document-new"/>
+   </property>
+   <property name="text">
+    <string>New ROI</string>
+   </property>
+   <property name="toolTip">
+    <string>Start a new ROI (such as after moving to a different part of the sample</string>
+   </property>
+  </action>
+  <action name="actionSave_ROI">
+   <property name="icon">
+    <iconset theme="document-save"/>
+   </property>
+   <property name="text">
+    <string>Save ROI</string>
+   </property>
+   <property name="toolTip">
+    <string>Save ROI for future reuse</string>
+   </property>
+  </action>
+  <action name="actionOpen_ROI">
+   <property name="icon">
+    <iconset theme="document-open"/>
+   </property>
+   <property name="text">
+    <string>Open ROI</string>
+   </property>
+   <property name="toolTip">
+    <string>Load a saved ROI</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
