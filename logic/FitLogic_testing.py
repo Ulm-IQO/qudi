@@ -690,9 +690,15 @@ class FitLogic():
             
             para=Parameters()
 #            para.add('theta',vary=False)
-            para.add('x_zero',min=89.)
+#            para.add('x_zero',min=89.)
+#            para.add('sigma_x',min=0.2*((92.-90.)/11.) ,           max=   10*(x[-1]-y[0]) )
+#            para.add('sigma_y',min=0.2*((15.-13.)/12.) ,           max=   10*(y[-1]-y[0])) 
+            
+
             result=self.make_twoD_gaussian_fit(axis=axes,data=data,add_parameters=para)
 #            print(result.fit_report())
+#            FIXME: What does "Tolerance seems to be too small." mean in message?
+#            print(result.message)
             plt.close('all')
             fig, ax = plt.subplots(1, 1)
             ax.hold(True)
