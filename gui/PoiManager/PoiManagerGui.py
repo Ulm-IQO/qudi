@@ -27,16 +27,70 @@ class PoiMark(pg.CircleROI):
         http://www.pyqtgraph.org/documentation/graphicsItems/roi.html    
     """
     
-    def __init__(self, pos, size, text='', **args):
-        self = pg.CircleROI.__init__(self, pos, size, **args)
-       # mark.removeHandle(0)
-     #   self.addRotateHandle([0, 0], [0.5, 0.5])
-     #   text_item = pg.TextItem(text=text)
-     #   self.addItem(text_item)
-     #   handles=self.getHandles()
-     #   for handle in handles:
-     #       print(handle)
-     #       self.removeHandle(handle)
+    color = "F0F"
+    selectcolor = "FFF"
+    
+    def __init__(self, pos, size, poi=None, viewwidget=None, **args):
+        pg.CircleROI.__init__(self, pos, size, pen={'color': self.color, 'width': 2}, **args)
+        
+        self.poi=None
+        self.viewwidget=None
+        self.position=None
+        self.label=None
+        
+        if not viewwidget is None:
+            self.viewwidget=viewwidget
+        if not poi is None:
+            self.poi=poi            
+        if not pos is None:
+            self.position=pos
+        
+            
+    def add_to_viewwidget(self, viewwidget=None):
+        if not viewwidget is None:
+            self.viewwidget=viewwidget
+        self.viewwidget.addItem(self)
+        
+        # Removing the handle from this CricleROI
+        self.removeHandle(0)
+        
+        # create a new free handle for the name tag
+        self.my_handle = self.addFreeHandle([1, 0.5])
+        self.sigRegionChangeFinished.connect(self._redraw_label)
+        self.label=pg.TextItem(text=self.poi.get_name(),\
+                               anchor=(0,1),
+                               color= self.color
+                               ) 
+                               
+        self.viewwidget.addItem(self.label)
+    
+    def _redraw_label(self):
+        if not self.label is None:
+#            print(self.my_handle.pos(),self.angle())
+#            position=self.position\
+#                     +[1,1]\
+#                     +[1.0*np.cos(self.angle()/180.*np.pi),1.0*np.sin(self.angle()/180.*np.pi)]
+            position=self.poi.get_last_point()
+            position=position[:2]-[1,1]+self.my_handle.pos()
+#            print(position)
+            self.label.setPos(position[0],position[1])        
+        
+    def delete_from_viewwidget(self, viewwidget=None):
+        if not viewwidget is None:
+            self.viewwidget=viewwidget
+        self.viewwidget.removeItem(self.label)
+        self.viewwidget.removeItem(self)
+        
+    def select(self):
+        self.setPen({'color': self.selectcolor, 'width': 2})
+        if not self.label is None:
+            self.label.setText(text=self.poi.get_name(),color= self.selectcolor)
+        
+    def disselect(self):
+        self.setPen({'color': self.color, 'width': 2})
+        if not self.label is None:
+            self.label.setText(text=self.poi.get_name(),color= self.color)
+        
 
 
 class CustomViewBox(pg.ViewBox):
@@ -258,6 +312,10 @@ class PoiManagerGui(GUIBase):
         '''This method deletes a poi from the list of managed points
         '''
         key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        
+        self._markers[key].delete_from_viewwidget()        
+        del self._markers[key]
+        
         self._poi_manager_logic.delete_poi(poikey=key)
     
         self.population_poi_list()
@@ -353,57 +411,33 @@ class PoiManagerGui(GUIBase):
         
 
     def _redraw_poi_markers(self):
-
-        for marker in self._markers:
-            self._mw.roi_map_ViewWidget.removeItem(marker)
-            del marker
-            
-        self._markers=[]
         
         curkey = self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
-                
-
-                if key == curkey:
-                    markercolor = "F0F"
-                else:
-                    markercolor = "FFF"
-                
-                # Create Region of Interest as marker:
                 position=self._poi_manager_logic.get_last_point(poikey=key)
                 position=position[:2]-[1,1]
-                marker = PoiMark(position, 
-                                [2, 2],
-                                pen={'color': markercolor, 'width': 2}, 
-                                movable=False, 
-                                scaleSnap=False, 
-                                snapSize=1.0)
-
-                # Add to the Map Widget
-                self._mw.roi_map_ViewWidget.addItem(marker)
-
-                # Removing the handle from this CricleROI
-                marker.removeHandle(0)
-                marker.addRotateFreeHandle([0.75, 0.933],[0.5,0.5])
-
-                self._markers.append(marker)
-
-
-                self._markers.append(\
-                    pg.TextItem(text=self._poi_manager_logic.get_name(poikey=key),\
-                                anchor=(0,1),
-                                color= markercolor
-                    ) )
-
-                self._mw.roi_map_ViewWidget.addItem(self._markers[-1])
-                position+=[2,2]
-                self._markers[-1].setPos(position[0],position[1])
-                    
                 
-#        print (self._poi_manager_logic.get_trace(poikey='sample'))
-
+                if key in self._markers.keys():
+                    self._markers[key].setPos(position)                    
+                    self._markers[key].disselect()
+                else:
+                    # Create Region of Interest as marker:
+                    marker = PoiMark(position, 
+                                    [2, 2], 
+                                    poi = self._poi_manager_logic.track_point_list[key],
+                                    movable=False, 
+                                    scaleSnap=False, 
+                                    snapSize=1.0)
+                    
+                    # Add to the Map Widget
+                    marker.add_to_viewwidget(self._mw.roi_map_ViewWidget)
+                    self._markers[key]=marker
+                    
+                if key == curkey:
+                    self._markers[key].select()
+                
 
     def make_new_roi(self):
         '''Start new ROI by removing all POIs and resetting the sample history.
