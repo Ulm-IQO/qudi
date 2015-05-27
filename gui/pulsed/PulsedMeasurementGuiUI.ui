@@ -430,6 +430,12 @@
           <height>23</height>
          </rect>
         </property>
+        <property name="numDigits">
+         <number>10</number>
+        </property>
+        <property name="intValue" stdset="0">
+         <number>0</number>
+        </property>
        </widget>
        <widget class="QLineEdit" name="pg_frequency_lineEdit">
         <property name="geometry">

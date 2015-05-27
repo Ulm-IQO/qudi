@@ -66,29 +66,27 @@ class SequenceGeneratorLogic(GenericLogic):
 #        self._save_logic = self.connector['in']['savelogic']['object']
       
     
-    def save_current_sequence(self):
-        ''' Saves the matrix of the current sequence of name "current_sequence_name" into the class variable dictionary "_saved_sequences" after encoding it in a proper sequence block list.
+    def save_sequence(self, matrix, name, repetitions):
+        ''' Saves the matrix, name and number of repetitions in matrix_info into the class variable dictionary "_saved_sequences" after encoding it in a proper sequence block list.
         '''
-        self.encode_matrix()
-        print(self.current_matrix)
-#        print(self.current_sequence)
-        self._saved_sequences[self.current_sequence_name] = self.current_sequence
-        self._saved_matrices[self.current_sequence_name] = self.current_matrix
-        self._saved_repetitions[self.current_sequence_name] = self.current_sequence_reps
+        sequence = self.encode_matrix(matrix, repetitions)
+        self._saved_sequences[name] = sequence
+        self._saved_matrices[name] = matrix
+        self._saved_repetitions[name] = repetitions
         return
     
     
-    def encode_matrix(self):
+    def encode_matrix(self, matrix, repetitions):
         ''' Encodes the current matrix coming from the GUI into a proper pulse sequence with blocks etc and create the tau_vector.
         '''
         # Create empty sequence
         sequence = []
         
         # First create a nested list "repeat_blocks" of block indices with corresponding repeat flags ([True/False, [1,2,3,...]]), i.e. sort out what part to repeat and what not. 
-        repeat_indices = np.nonzero(self.current_matrix[:,10])[0]
+        repeat_indices = np.nonzero(matrix[:,10])[0]
         temp_index_list = []
         repeat_blocks = []
-        for index in range(self.current_matrix.shape[0]):
+        for index in range(matrix.shape[0]):
             current_flag = index in repeat_indices
             if index == 0:
                 last_flag = current_flag                
@@ -105,16 +103,16 @@ class SequenceGeneratorLogic(GenericLogic):
             # create the first iteration of the current block set
             # get active channel lists for the current block set
             active_channels = []
-            for row in self.current_matrix[indices]:
+            for row in matrix[indices]:
                 active_channels.append(np.nonzero(row[0:8])[0])
             # get starting lengths for the current block set
-            block_length = self.current_matrix[indices, 8]
+            block_length = matrix[indices, 8]
             # check if the current block set is set as repeat.
             if rep_flag:
                 # get increment values for the current block set
-                increments = self.current_matrix[indices, 9]
+                increments = matrix[indices, 9]
                 # repeat the current block set and increment each individual block length
-                for rep in range(self.current_sequence_reps):
+                for rep in range(repetitions):
                     for blocknum, channel_list in enumerate(active_channels):
                         # calculate current block length for this repetition
                         temp_length = block_length[blocknum] + (rep * increments[blocknum])
@@ -124,15 +122,14 @@ class SequenceGeneratorLogic(GenericLogic):
                 # run through the current blocks and append them to the sequence
                 for blocknum, channel_list in enumerate(active_channels):
                     sequence.append([channel_list, block_length[blocknum]])
-            
-            # write the sequence into the class variable
-            self.current_sequence = sequence
-        return
+        return sequence
     
     
-    def delete_current_sequence(self):
-        # remove the current sequence from the dictionary of saved sequences
-        del self._saved_sequences[self.current_sequence_name]
+    def delete_sequence(self, name):
+        # remove the sequence "name" from the dictionary of saved sequences
+        del self._saved_sequences[name]
+        del self._saved_matrices[name]
+        del self._saved_repetitions[name]
         return
      
 
@@ -142,13 +139,37 @@ class SequenceGeneratorLogic(GenericLogic):
             self.current_sequence = self._saved_sequences[name]
             self.current_matrix = self._saved_matrices[name]
             self.current_sequence_reps = self._saved_repetitions[name]
-            
+        else:
+            self.current_sequence_name = None
+            self.current_sequence = None
+            self.current_matrix = None
+            self.current_sequence_reps = None
+     
+    def calculate_sequence_parameters(self, matrix, repetitions):
+        # Calculate sequence length in bins.
+        # Calculate the sum over all "length" entries
+        sequence_length_bins = np.sum(matrix[:,8])
+        # Add the increments and repetitions when the repeat-flag is checked
+        for length, increment, flag in matrix[:,8:11]:
+            if flag:
+                for i in range(repetitions-1):
+                    sequence_length_bins += length + (increment*(i+1))
+                    
+        # Calculate sequence length in ms
+        sequence_length_ms = sequence_length_bins / (950. * 1000.)
+        return (sequence_length_bins, sequence_length_ms)
+       
     
     def get_sequence(self, name):
-        sequence = []
+        sequence = None
         if (name in self._saved_sequences):
             sequence = self._saved_sequences[name]
         return sequence
+        
+    
+    def get_sequence_names(self):
+        names = list(self._saved_sequences.keys())
+        return names
             
      
     def pulse_generator_on(self):
@@ -159,12 +180,6 @@ class SequenceGeneratorLogic(GenericLogic):
     def pulse_generator_off(self):
         time.sleep(1)
         return
-
-    
-    def get_sequence_names(self):
-        names = list(self._saved_sequences.keys())
-#        names = ['rabi', 'hahn', 'xy8']
-        return names
 
         
     def get_binwidth(self):

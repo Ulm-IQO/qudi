@@ -95,9 +95,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns))
         self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns*2.))
         
-        for seq_name in self._pulse_analysis_logic._sequence_names:
-            self._mw.sequence_name_comboBox.addItem(seq_name)
-            self._mw.sequence_list_comboBox.addItem(seq_name)
+        self.sequence_list_changed()
         
         
         #######################################################################
@@ -167,14 +165,13 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.deleterow_pushButton.clicked.connect(self.delete_row)
         self._mw.clear_list_pushButton.clicked.connect(self.clear_list)
         self._mw.save_sequence_pushButton.clicked.connect(self.save_sequence)
-#        self._mw.delete_sequence_pushButton.clicked.connect(self.update_sequence_parameters)
+        self._mw.delete_sequence_pushButton.clicked.connect(self.delete_sequence)
         
         # Connect the TableWidget to events when changed
         self._mw.sequence_tableWidget.itemChanged.connect(self.sequence_parameters_changed)
         
         # Connect the ComboBox to events when changed
-        self._mw.sequence_list_comboBox.view().pressed.connect(self.current_sequence_changed)
-        
+        self._mw.sequence_list_comboBox.activated.connect(self.current_sequence_changed)
         # Show the Main ODMR GUI:
 
         self._mw.show()
@@ -218,6 +215,8 @@ class PulsedMeasurementGui(GUIBase):
     def create_row(self):
         ''' This method creates a new row in the TableWidget at the current cursor position.
         '''
+        # block all signals from the TableWidget
+        self._mw.sequence_tableWidget.blockSignals(True)
         # insert empty row after current cursor position  
         current_row = self._mw.sequence_tableWidget.currentRow()+1
         if current_row == 0:
@@ -246,6 +245,8 @@ class PulsedMeasurementGui(GUIBase):
         
         # increment current row
         self._mw.sequence_tableWidget.setCurrentCell(current_row, 0)
+        # unblock all signals from the TableWidget
+        self._mw.sequence_tableWidget.blockSignals(False)
         return
         
         
@@ -261,7 +262,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.sequence_tableWidget.removeRow(current_row)
         
         # decrement current row and update parameters
-        self._mw.sequence_tableWidget.setCurrentCell(current_row-1, 0)
+        self._mw.sequence_tableWidget.setCurrentCell(current_row-1, 8)
         self.update_sequence_parameters()
         return
         
@@ -277,8 +278,8 @@ class PulsedMeasurementGui(GUIBase):
             number_of_rows -= 1
         
         # create a single row to start with and update parameters
-        self.update_sequence_parameters()
         self.create_row()
+        self.update_sequence_parameters()
         return
     
     
@@ -288,45 +289,40 @@ class PulsedMeasurementGui(GUIBase):
         @param QTableWidgetItem item: Table item that has been changed
         '''
         # Check if the changed item is of importance for the parameters
-        if (item.column() != 8) and (item.column() != 9):
+        if (item.column() != 8) and (item.column() != 9) and (item.column() != 10):
             return
             
         # calculate the current sequence parameters
         self.update_sequence_parameters()
         return
 
-        
     def update_sequence_parameters(self):
-        ''' This method calculates and updates all parameters (size, length etc.).
-        '''
-        # calculate the current sequence length in bins
-        self._sequence_generator_logic.sequence_length_bins = 0
-        for i in range(self._mw.sequence_tableWidget.rowCount()):
-            item = self._mw.sequence_tableWidget.item(i, 8)
-            self._sequence_generator_logic.sequence_length_bins += int(item.data(0))
-            
-        # calculate the current sequence length in s
-        self._sequence_generator_logic.sequence_length_ms = self._sequence_generator_logic.sequence_length_bins / (self._sequence_generator_logic.pg_frequency_MHz * 1000.)
+        # calculate the current sequence parameters
+        repetitions = int(self._mw.repetitions_lineEdit.text())
+        matrix = self.get_matrix()
+        sequence_length_bins, sequence_length_ms = self._sequence_generator_logic.calculate_sequence_parameters(matrix, repetitions)
         
         # update the DisplayWidgets
-        self._mw.length_bins_lcdNumber.display(self._sequence_generator_logic.sequence_length_bins)
-        self._mw.length_s_lcdNumber.display(self._sequence_generator_logic.sequence_length_ms)
+        self._mw.length_bins_lcdNumber.display(sequence_length_bins)
+        self._mw.length_s_lcdNumber.display(sequence_length_ms)
         return
-        
+
 
     def save_sequence(self):
         ''' This method encodes the currently edited sequence into a matrix for passing it to the logic module. 
             There the sequence will be created and saved.
         '''
-        # Call "create_matrix" to pass the data to the logic module where it will be saved
-        self.create_matrix()
-        self._sequence_generator_logic.save_current_sequence()
+        # Create matrix to pass the data to the logic module where it will be saved
+        matrix = self.get_matrix()
+        name = str(self._mw.sequence_name_lineEdit.text())
+        repetitions = int(self._mw.repetitions_lineEdit.text())
+        self._sequence_generator_logic.save_sequence(matrix, name, repetitions)
         # update sequence combo boxes
         self.sequence_list_changed()
         return
         
         
-    def create_matrix(self):
+    def get_matrix(self):
         ''' This method creates a matrix out of the current TableWidget to be further processed by the logic module.
         '''
         # get the number of rows and columns
@@ -347,10 +343,11 @@ class PulsedMeasurementGui(GUIBase):
                     matrix[row, column] = int(item.data(0))
             
         # Pass matrix, sequence name and number of repetitions to the logic module
-        self._sequence_generator_logic.current_matrix = matrix
-        self._sequence_generator_logic.current_sequence_name = str(self._mw.sequence_name_lineEdit.text())
-        self._sequence_generator_logic.current_sequence_reps = int(self._mw.repetitions_lineEdit.text())
-        return
+#        self._sequence_generator_logic.current_matrix = matrix
+#        self._sequence_generator_logic.current_sequence_name = str(self._mw.sequence_name_lineEdit.text())
+#        self._sequence_generator_logic.current_sequence_reps = int(self._mw.repetitions_lineEdit.text())
+#        name_matrix_reps = [str(self._mw.sequence_name_lineEdit.text()), matrix, int(self._mw.repetitions_lineEdit.text())]
+        return matrix
       
       
     def create_table(self):
@@ -382,9 +379,12 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method completely removes the currently selected sequence.
         '''
         # call the delete method in the sequence generator logic
-        self._sequence_generator_logic.delete_current_sequence()
+        name = self._mw.sequence_list_comboBox.currentText()
+        self._sequence_generator_logic.delete_sequence(name)
         # update the combo boxes
         self.sequence_list_changed()
+        self.clear_list()
+        return
         
         
     def sequence_list_changed(self):
@@ -406,8 +406,13 @@ class PulsedMeasurementGui(GUIBase):
         '''
         name = self._mw.sequence_list_comboBox.currentText()
         self._sequence_generator_logic.update_current_sequence(name)
-        print(self._sequence_generator_logic.current_matrix)
         self.create_table()
+        self._mw.repetitions_lineEdit.setText(str(self._sequence_generator_logic.current_sequence_reps))
+        return
+        
+    def test(self):
+        print('called test function!')
+        print(str(self._mw.sequence_list_comboBox.currentText()))
         return
 #            
 #
