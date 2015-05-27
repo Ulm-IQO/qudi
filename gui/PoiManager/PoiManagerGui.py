@@ -169,32 +169,20 @@ class PoiManagerGui(GUIBase):
         # Setting up display of sample shift plot
         #####################
         
-        mysymbol = QtGui.QPainterPath()
-        mysymbol.addText(0, 0, QtGui.QFont("San Serif", 10), 'Y')
-        br = mysymbol.boundingRect()
-        scale = min(1. / br.width(), 1. / br.height())
-        tr = QtGui.QTransform()
-        tr.scale(scale, scale)
-        tr.translate(-br.x() - br.width()/2., -br.y() - br.height()/2.)
-        mysymbol = tr.map(mysymbol)
-
-        testsymbol = QtGui.QPainterPath()
-        testsymbol.addEllipse(QtCore.QRectF(-0.5, -0.5, 1, 1))
-
 
         # Load image in the display
-        self.x_shift_plot = pg.ScatterPlotItem([0],[0], symbol='o', pen='r')
+        self.x_shift_plot = pg.ScatterPlotItem([0],[0], symbol='x', pen='r')
         self.y_shift_plot = pg.ScatterPlotItem([0],[0], symbol='s', pen='g')
-        self.z_shift_plot = pg.ScatterPlotItem([0],[0], symbol='t', pen='b')
+        self.z_shift_plot = pg.ScatterPlotItem([0],[0], symbol='o', pen='b')
+
 
         # Add the plot to the ViewWidget defined in the UI file
         self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.y_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.z_shift_plot)
 
-        #pg.ScatterPlotItem.symbols['x'] = testsymbol
-        #print(pg.ScatterPlotItem.Symbols)
 
+        
 
         #####################        
         # Connect signals
@@ -213,6 +201,8 @@ class PoiManagerGui(GUIBase):
         self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
 
         self._mw.active_poi_Input.currentIndexChanged.connect(self._redraw_poi_markers)
+
+        self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
 
         self._markers = dict()
         
@@ -332,6 +322,9 @@ class PoiManagerGui(GUIBase):
         # After POI name is changed, empty name field
         self._mw.poi_name_Input.setText('')
 
+        self._markers[-2].setPen({'color': "F00", 'width': 1})
+        self._markers[-2].stateChanged()
+
     def update_poi_pos(self):
 
         key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
@@ -410,3 +403,16 @@ class PoiManagerGui(GUIBase):
                     
                 
 #        print (self._poi_manager_logic.get_trace(poikey='sample'))
+
+
+    def make_new_roi(self):
+        '''Start new ROI by removing all POIs and resetting the sample history.
+        '''
+
+        for key in self._poi_manager_logic.get_all_pois():
+            if key is not 'crosshair' and key is not 'sample':
+        
+                self._poi_manager_logic.delete_poi(poikey=key)
+
+        print(self._poi_manager_logic.track_point_list['sample'] )
+

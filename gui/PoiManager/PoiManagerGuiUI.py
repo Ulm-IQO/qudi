@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Mon May 18 06:33:38 2015
+# Created: Wed May 27 15:03:33 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -156,13 +156,31 @@ class Ui_PoiManager(object):
         self.horizontalLayout_5.addWidget(self.delete_last_pos_Button)
         self.verticalLayout_3.addLayout(self.horizontalLayout_5)
         PoiManager.setCentralWidget(self.centralwidget)
-        self.menubar = QtGui.QMenuBar(PoiManager)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 530, 20))
-        self.menubar.setObjectName(_fromUtf8("menubar"))
-        PoiManager.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(PoiManager)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         PoiManager.setStatusBar(self.statusbar)
+        self.menubar = QtGui.QMenuBar(PoiManager)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 530, 20))
+        self.menubar.setObjectName(_fromUtf8("menubar"))
+        self.menuMenu = QtGui.QMenu(self.menubar)
+        self.menuMenu.setObjectName(_fromUtf8("menuMenu"))
+        PoiManager.setMenuBar(self.menubar)
+        self.actionNew_ROI = QtGui.QAction(PoiManager)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("document-new"))
+        self.actionNew_ROI.setIcon(icon)
+        self.actionNew_ROI.setObjectName(_fromUtf8("actionNew_ROI"))
+        self.actionSave_ROI = QtGui.QAction(PoiManager)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("document-save"))
+        self.actionSave_ROI.setIcon(icon)
+        self.actionSave_ROI.setObjectName(_fromUtf8("actionSave_ROI"))
+        self.actionOpen_ROI = QtGui.QAction(PoiManager)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("document-open"))
+        self.actionOpen_ROI.setIcon(icon)
+        self.actionOpen_ROI.setObjectName(_fromUtf8("actionOpen_ROI"))
+        self.menuMenu.addAction(self.actionNew_ROI)
+        self.menuMenu.addAction(self.actionOpen_ROI)
+        self.menuMenu.addAction(self.actionSave_ROI)
+        self.menubar.addAction(self.menuMenu.menuAction())
 
         self.retranslateUi(PoiManager)
         self.tabWidget.setCurrentIndex(0)
@@ -189,5 +207,12 @@ class Ui_PoiManager(object):
         self.manual_update_poi_Button.setToolTip(_translate("PoiManager", "This is for telling QuDi a totally new position for a known trackpoint.  For example, after manually shifting the sample to re-centre the ROI in the scan range.", None))
         self.manual_update_poi_Button.setText(_translate("PoiManager", "Manual update position", None))
         self.delete_last_pos_Button.setText(_translate("PoiManager", "Delete last position", None))
+        self.menuMenu.setTitle(_translate("PoiManager", "Menu", None))
+        self.actionNew_ROI.setText(_translate("PoiManager", "New ROI", None))
+        self.actionNew_ROI.setToolTip(_translate("PoiManager", "Start a new ROI (such as after moving to a different part of the sample", None))
+        self.actionSave_ROI.setText(_translate("PoiManager", "Save ROI", None))
+        self.actionSave_ROI.setToolTip(_translate("PoiManager", "Save ROI for future reuse", None))
+        self.actionOpen_ROI.setText(_translate("PoiManager", "Open ROI", None))
+        self.actionOpen_ROI.setToolTip(_translate("PoiManager", "Load a saved ROI", None))
 
 from pyqtgraph import PlotWidget
