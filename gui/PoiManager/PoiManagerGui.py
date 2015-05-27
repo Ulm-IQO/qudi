@@ -29,6 +29,7 @@ class PoiMark(pg.CircleROI):
     
     color = "F0F"
     selectcolor = "FFF"
+    selected = False
     
     def __init__(self, pos, size, poi=None, viewwidget=None, **args):
         pg.CircleROI.__init__(self, pos, size, pen={'color': self.color, 'width': 2}, **args)
@@ -44,6 +45,8 @@ class PoiMark(pg.CircleROI):
             self.poi=poi            
         if not pos is None:
             self.position=pos
+
+        self.setAngle(30)
         
             
     def add_to_viewwidget(self, viewwidget=None):
@@ -55,25 +58,46 @@ class PoiMark(pg.CircleROI):
         self.removeHandle(0)
         
         # create a new free handle for the name tag
-        self.my_handle = self.addFreeHandle([1, 0.5])
+        self.my_handle = self.addRotateHandle([1.0,0.5],[0.5, 0.5])
         self.sigRegionChangeFinished.connect(self._redraw_label)
         self.label=pg.TextItem(text=self.poi.get_name(),\
                                anchor=(0,1),
                                color= self.color
                                ) 
                                
-        self.viewwidget.addItem(self.label)
+        #self.viewwidget.addItem(self.label)
     
     def _redraw_label(self):
         if not self.label is None:
-#            print(self.my_handle.pos(),self.angle())
-#            position=self.position\
-#                     +[1,1]\
-#                     +[1.0*np.cos(self.angle()/180.*np.pi),1.0*np.sin(self.angle()/180.*np.pi)]
-            position=self.poi.get_last_point()
-            position=position[:2]-[1,1]+self.my_handle.pos()
-#            print(position)
+            self.viewwidget.removeItem(self.label)
+            
+            cos_th = np.cos(self.angle()/180.*np.pi)
+            sin_th = np.sin(self.angle()/180.*np.pi)
+
+            position=self.position\
+                     +[0.5,0.5]\
+                     +[0.5*cos_th,0.5*sin_th]
+
+            if cos_th > 0 and sin_th > 0:
+                my_anchor = (0,1)
+            elif cos_th > 0 and sin_th < 0:
+                my_anchor = (0,0)
+            elif cos_th < 0 and sin_th < 0:
+                my_anchor = (1,0)
+            else:
+                my_anchor = (1,1)
+
+
+            my_color = self.color
+            if self.selected:
+                my_color = self.selectcolor
+
+            self.label=pg.TextItem(text=self.poi.get_name(),\
+                               anchor = my_anchor,
+                               color = my_color
+                               ) 
             self.label.setPos(position[0],position[1])        
+            self.viewwidget.addItem(self.label)
         
     def delete_from_viewwidget(self, viewwidget=None):
         if not viewwidget is None:
@@ -82,14 +106,16 @@ class PoiMark(pg.CircleROI):
         self.viewwidget.removeItem(self)
         
     def select(self):
+        self.selected = True
         self.setPen({'color': self.selectcolor, 'width': 2})
         if not self.label is None:
-            self.label.setText(text=self.poi.get_name(),color= self.selectcolor)
-        
-    def disselect(self):
+            self._redraw_label()
+
+    def deselect(self):
+        self.selected = False
         self.setPen({'color': self.color, 'width': 2})
         if not self.label is None:
-            self.label.setText(text=self.poi.get_name(),color= self.color)
+            self._redraw_label()
         
 
 
@@ -380,8 +406,6 @@ class PoiManagerGui(GUIBase):
         # After POI name is changed, empty name field
         self._mw.poi_name_Input.setText('')
 
-        self._markers[-2].setPen({'color': "F00", 'width': 1})
-        self._markers[-2].stateChanged()
 
     def update_poi_pos(self):
 
@@ -417,15 +441,15 @@ class PoiManagerGui(GUIBase):
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
                 position=self._poi_manager_logic.get_last_point(poikey=key)
-                position=position[:2]-[1,1]
+                position=position[:2]-[0.5,0.5]
                 
                 if key in self._markers.keys():
                     self._markers[key].setPos(position)                    
-                    self._markers[key].disselect()
+                    self._markers[key].deselect()
                 else:
                     # Create Region of Interest as marker:
                     marker = PoiMark(position, 
-                                    [2, 2], 
+                                    [1, 1], 
                                     poi = self._poi_manager_logic.track_point_list[key],
                                     movable=False, 
                                     scaleSnap=False, 
