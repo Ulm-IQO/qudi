@@ -22,7 +22,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_8">
     <item row="0" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0,1">
+     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0,0">
       <item>
        <widget class="PlotWidget" name="xy_ViewWidget">
         <property name="sizePolicy">
@@ -147,232 +147,16 @@
        <widget class="QTabWidget" name="tabWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
+          <horstretch>1</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>0</number>
         </property>
-        <widget class="QWidget" name="tab_5">
-         <attribute name="title">
-          <string>Z-Scan</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_5">
-          <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_4">
-            <item row="0" column="0">
-             <widget class="PlotWidget" name="depth_ViewWidget">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>1</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <layout class="QGridLayout" name="gridLayout_2">
-              <item row="1" column="0">
-               <widget class="PlotWidget" name="depth_cb_ViewWidget">
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QCheckBox" name="depth_cb_auto_CheckBox">
-                <property name="text">
-                 <string>Auto</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QSpinBox" name="depth_cb_min_InputWidget">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="mouseTracking">
-                 <bool>true</bool>
-                </property>
-                <property name="acceptDrops">
-                 <bool>true</bool>
-                </property>
-                <property name="minimum">
-                 <number>-100000000</number>
-                </property>
-                <property name="maximum">
-                 <number>100000000</number>
-                </property>
-                <property name="singleStep">
-                 <number>1000</number>
-                </property>
-                <property name="value">
-                 <number>100</number>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QSpinBox" name="depth_cb_max_InputWidget">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="mouseTracking">
-                 <bool>true</bool>
-                </property>
-                <property name="acceptDrops">
-                 <bool>true</bool>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-                <property name="minimum">
-                 <number>-100000001</number>
-                </property>
-                <property name="maximum">
-                 <number>100000000</number>
-                </property>
-                <property name="singleStep">
-                 <number>1000</number>
-                </property>
-                <property name="value">
-                 <number>100000</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-        <widget class="QWidget" name="tab_6">
-         <attribute name="title">
-          <string>Optimiser</string>
-         </attribute>
-         <layout class="QGridLayout" name="gridLayout_7">
-          <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_6">
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_6">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>X :</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="2">
-             <widget class="QLabel" name="label_8">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Y :</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="3" alignment="Qt::AlignHCenter">
-             <widget class="QLineEdit" name="y_refocus_position_ViewWidget">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="4">
-             <widget class="QLabel" name="label_7">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Z :</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1" alignment="Qt::AlignHCenter">
-             <widget class="QLineEdit" name="x_refocus_position_ViewWidget">
-              <property name="enabled">
-               <bool>true</bool>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="5" alignment="Qt::AlignHCenter">
-             <widget class="QLineEdit" name="z_refocus_position_ViewWidget">
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0" colspan="6">
-             <widget class="PlotWidget" name="depth_refocus_ViewWidget">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>4</verstretch>
-               </sizepolicy>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0" colspan="6">
-             <widget class="PlotWidget" name="xy_refocus_ViewWidget">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>6</verstretch>
-               </sizepolicy>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </widget>
         <widget class="QWidget" name="tab">
          <attribute name="title">
-          <string>test</string>
+          <string>Main</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_11">
           <item row="0" column="0">
@@ -489,7 +273,7 @@
             <item row="7" column="6">
              <layout class="QGridLayout" name="gridLayout_10">
               <item row="0" column="0">
-               <widget class="QSpinBox" name="depth_cb_max_InputWidget_2">
+               <widget class="QSpinBox" name="depth_cb_max_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -526,7 +310,7 @@
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QSpinBox" name="depth_cb_min_InputWidget_2">
+               <widget class="QSpinBox" name="depth_cb_min_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -576,7 +360,7 @@
                </widget>
               </item>
               <item row="3" column="0">
-               <widget class="QCheckBox" name="depth_cb_auto_CheckBox_2">
+               <widget class="QCheckBox" name="depth_cb_auto_CheckBox">
                 <property name="text">
                  <string>Auto</string>
                 </property>
@@ -607,13 +391,31 @@
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>1</horstretch>
-                  <verstretch>0</verstretch>
+                  <verstretch>1</verstretch>
                  </sizepolicy>
                 </property>
                 <property name="minimumSize">
                  <size>
-                  <width>0</width>
+                  <width>220</width>
                   <height>220</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>220</width>
+                  <height>220</height>
+                 </size>
+                </property>
+                <property name="sizeIncrement">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="baseSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
                  </size>
                 </property>
                </widget>
@@ -639,6 +441,11 @@
            </layout>
           </item>
          </layout>
+        </widget>
+        <widget class="QWidget" name="tab_2">
+         <attribute name="title">
+          <string>ROI</string>
+         </attribute>
         </widget>
        </widget>
       </item>
@@ -1507,7 +1314,7 @@
   </action>
   <action name="actionSave_Depth_Scan">
    <property name="text">
-    <string>Save Depth Data</string>
+    <string>Save XZ Data</string>
    </property>
   </action>
   <action name="action_optimiser_settings">
@@ -1522,7 +1329,7 @@
   </action>
   <action name="actionSave_Depth_Image_Data">
    <property name="text">
-    <string>Save Depth Image+Data</string>
+    <string>Save XZ Image+Data</string>
    </property>
   </action>
  </widget>
@@ -1548,9 +1355,6 @@
   <tabstop>xy_cb_max_InputWidget</tabstop>
   <tabstop>xy_cb_min_InputWidget</tabstop>
   <tabstop>xy_cb_auto_CheckBox</tabstop>
-  <tabstop>depth_cb_max_InputWidget</tabstop>
-  <tabstop>depth_cb_min_InputWidget</tabstop>
-  <tabstop>depth_cb_auto_CheckBox</tabstop>
   <tabstop>ready_StateWidget</tabstop>
   <tabstop>xy_scan_StateWidget</tabstop>
   <tabstop>depth_scan_StateWidget</tabstop>
@@ -1561,22 +1365,15 @@
   <tabstop>depth_ViewWidget_2</tabstop>
   <tabstop>xy_refocus_ViewWidget_2</tabstop>
   <tabstop>depth_refocus_ViewWidget_2</tabstop>
-  <tabstop>depth_ViewWidget</tabstop>
   <tabstop>z_SliderWidget</tabstop>
   <tabstop>tabWidget</tabstop>
-  <tabstop>depth_cb_ViewWidget</tabstop>
   <tabstop>xy_ViewWidget</tabstop>
-  <tabstop>z_refocus_position_ViewWidget</tabstop>
   <tabstop>xy_cb_ViewWidget</tabstop>
   <tabstop>y_SliderWidget</tabstop>
-  <tabstop>y_refocus_position_ViewWidget</tabstop>
-  <tabstop>x_refocus_position_ViewWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
-  <tabstop>depth_cb_auto_CheckBox_2</tabstop>
-  <tabstop>depth_refocus_ViewWidget</tabstop>
-  <tabstop>depth_cb_min_InputWidget_2</tabstop>
-  <tabstop>depth_cb_max_InputWidget_2</tabstop>
-  <tabstop>xy_refocus_ViewWidget</tabstop>
+  <tabstop>depth_cb_auto_CheckBox</tabstop>
+  <tabstop>depth_cb_min_InputWidget</tabstop>
+  <tabstop>depth_cb_max_InputWidget</tabstop>
   <tabstop>x_refocus_position_ViewWidget_2</tabstop>
  </tabstops>
  <resources/>
