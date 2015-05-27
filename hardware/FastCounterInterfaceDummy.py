@@ -79,6 +79,11 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         data = np.random.randint(900, 1101, size=(100,3800))
         time.sleep(1)
         return data
+        
+    def get_frequency(self):
+        freq = 950.
+        time.sleep(0.5)
+        return freq
 
         
 #    def save_raw_trace(self,path):

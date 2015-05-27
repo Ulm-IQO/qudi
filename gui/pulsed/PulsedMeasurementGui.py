@@ -2,19 +2,20 @@
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 import numpy as np
+import time
 
 from collections import OrderedDict
 from gui.GUIBase import GUIBase
 from gui.pulsed.PulsedMeasurementGuiUI import Ui_MainWindow
 
-# To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
+# To convert the *.ui file to a raw PulsedMeasurementsGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
 #
 # Then use that script like
 #
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py"ODMRGuiUI.ui > ODMRGuiUI.py
+# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py PulsedMeasurementsGuiUI.ui > PulsedMeasurementsGuiUI.py
 
 class PulsedMeasurementMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
@@ -41,6 +42,11 @@ class PulsedMeasurementGui(GUIBase):
         self.connector['in']['pulseanalysislogic'] = OrderedDict()
         self.connector['in']['pulseanalysislogic']['class'] = 'PulseAnalysisLogic'
         self.connector['in']['pulseanalysislogic']['object'] = None
+        
+        self.connector['in']['sequencegeneratorlogic'] = OrderedDict()
+        self.connector['in']['sequencegeneratorlogic']['class'] = 'SequenceGeneratorLogic'
+        self.connector['in']['sequencegeneratorlogic']['object'] = None
+        
 #        self.connector['in']['savelogic'] = OrderedDict()
 #        self.connector['in']['savelogic']['class'] = 'SaveLogic'
 #        self.connector['in']['savelogic']['object'] = None
@@ -54,21 +60,17 @@ class PulsedMeasurementGui(GUIBase):
                         msgType='status')  
                         
     def initUI(self, e=None):
-        """ Definition, configuration and initialisation of the ODMR GUI.
+        """ Definition, configuration and initialisation of the pulsed measurement GUI.
           
           @param class e: event class from Fysom
 
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
-        
         """
-        
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-#        print("ODMR logic is", self._odmr_logic)
-        
-#        self._save_logic = self.connector['in']['savelogic']['object']
-#        print("Save logic is", self._save_logic)  
+        self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
+#        self._save_logic = self.connector['in']['savelogic']['object']  
         
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the 
         # GUI element:
@@ -80,44 +82,22 @@ class PulsedMeasurementGui(GUIBase):
         self.lasertrace_image = pg.PlotDataItem(self._pulse_analysis_logic.laser_plot_x, self._pulse_analysis_logic.laser_plot_y)
         
         
-        # Add the display item to the xy and xz VieWidget, which was defined in
+        # Add the display item to the xy VieWidget, which was defined in
         # the UI file.
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.lasertrace_plot_ViewWidget_2.addItem(self.lasertrace_image)
-        
-        
-        # create a color map that goes from dark red to dark blue:
-
-        # Absolute scale relative to the expected data not important. This 
-        # should have the same amount of entries (num parameter) as the number
-        # of values given in color. 
-#        pos = np.linspace(0.0, 1.0, num=10)
-#        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
-#                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
-#                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
-#                          [  0,  0,132,255]], dtype=np.ubyte)
-#                          
-#        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-#                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-#                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
-#                               [127,  0,  0,255] ], dtype=np.ubyte)
-#                          
-#        colmap = pg.ColorMap(pos, color_inv)        
-#        self.colmap_norm = pg.ColorMap(pos, color/255)
-        
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap(). 
-        # I believe last one just has to be >= the difference between the min and max level set later
-#        lut = colmap.getLookupTable(0, 1, 2000)
-            
-#        self.odmr_matrix_image.setLookupTable(lut)
+        self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+    
         
         # Set the state button as ready button as default setting.
-        self._mw.radioButton.click()
+        self._mw.idle_radioButton.click()
         
         # Configuration of the comboWidget
-#        self._mw.mode_ComboWidget.addItem('Off')
-#        self._mw.mode_ComboWidget.addItem('CW')
+        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns))
+        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns*2.))
+        
+        for seq_name in self._pulse_analysis_logic._sequence_names:
+            self._mw.sequence_name_comboBox.addItem(seq_name)
+            self._mw.sequence_list_comboBox.addItem(seq_name)
         
         
         #######################################################################
@@ -125,59 +105,78 @@ class PulsedMeasurementGui(GUIBase):
         #######################################################################
         
 #        # Add Validators to InputWidgets 
-#        validator = QtGui.QDoubleValidator()
-#        validator2 = QtGui.QIntValidator()
+        validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
+        
+        self._mw.frequency_InputWidget.setValidator(validator)
+        self._mw.power_InputWidget.setValidator(validator)
+        self._mw.pg_frequency_lineEdit.setValidator(validator2)
 #        
-#        self._mw.frequency_InputWidget.setValidator(validator)
-#        self._mw.start_freq_InputWidget.setValidator(validator)
-#        self._mw.step_freq_InputWidget.setValidator(validator)
-#        self._mw.stop_freq_InputWidget.setValidator(validator)
-#        self._mw.power_InputWidget.setValidator(validator)
-#        self._mw.runtime_InputWidget.setValidator(validator2)
-#        self._sd.matrix_lines_InputWidget.setValidator(validator)
-#        
-#        # Take the default values from logic:
-#        self._mw.frequency_InputWidget.setText(str(self._odmr_logic.MW_frequency))     
-#        self._mw.start_freq_InputWidget.setText(str(self._odmr_logic.MW_start))
-#        self._mw.step_freq_InputWidget.setText(str(self._odmr_logic.MW_step))
-#        self._mw.stop_freq_InputWidget.setText(str(self._odmr_logic.MW_stop))
-#        self._mw.power_InputWidget.setText(str(self._odmr_logic.MW_power))
-#        self._mw.runtime_InputWidget.setText(str())
-#        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
-#        self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
+#        # Fill in default values:
+        self._mw.frequency_InputWidget.setText(str(-1.))     
+        self._mw.power_InputWidget.setText(str(-1.))
+        self._mw.pg_frequency_lineEdit.setText(str(self._sequence_generator_logic.pg_frequency_MHz))
+        
+        self._mw.repetitions_lineEdit.setText(str(1))
 #        
 #        # Update the inputed/displayed numbers if return key is hit:
 #
 #        self._mw.frequency_InputWidget.returnPressed.connect(self.change_frequency)
-#        self._mw.start_freq_InputWidget.returnPressed.connect(self.change_start_freq)
-#        self._mw.step_freq_InputWidget.returnPressed.connect(self.change_step_freq)
-#        self._mw.stop_freq_InputWidget.returnPressed.connect(self.change_stop_freq)
-#        self._mw.power_InputWidget.returnPressed.connect(self.change_power)
-#        self._mw.runtime_InputWidget.returnPressed.connect(self.change_runtime)
+#        self._mw.power_InputWidget.returnPressed.connect(self.change_start_freq)
+#        self._mw.pg_frequency_lineEdit.returnPressed.connect(self.change_step_freq)
 #        
 #        # Update the inputed/displayed numbers if the cursor has left the field:
 #
 #        self._mw.frequency_InputWidget.editingFinished.connect(self.change_frequency)
-#        self._mw.start_freq_InputWidget.editingFinished.connect(self.change_start_freq)
-#        self._mw.step_freq_InputWidget.editingFinished.connect(self.change_step_freq)
-#        self._mw.stop_freq_InputWidget.editingFinished.connect(self.change_stop_freq)
 #        self._mw.power_InputWidget.editingFinished.connect(self.change_power)
-#        self._mw.runtime_InputWidget.editingFinished.connect(self.change_runtime)
+#        self._mw.pg_frequency_lineEdit.editingFinished.connect(self.change_pg_frequency)
         
+        
+        #######################################################################
+        ##                  Configuration of the TableWidget                 ##
+        #######################################################################
+        # insert first empty row 
+        self.create_row()
+        
+        # adjust table format
+        header = self._mw.sequence_tableWidget.horizontalHeader()
+        for i in range(8):
+            header.resizeSection(i, 50)
+            
+        header.resizeSection(8, 100)
+        header.resizeSection(9, 100)
+        header.resizeSection(10, 70)
+        header.resizeSection(11, 70)
+#        self._mw.sequence_tableWidget.resizeRowsToContents()
+#        self._mw.sequence_tableWidget.resizeColumnToContents(i)
         
         
         #######################################################################
         ##                      Connect signals                              ##
         #######################################################################
        
-       # Connect the RadioButtons and connect to the events if they are clicked:
-        self._mw.radioButton.toggled.connect(self.idle_clicked)
-        self._mw.radioButton_2.toggled.connect(self.run_clicked)
+        # Connect the RadioButtons and connect to the events if they are clicked:
+        self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
+        self._mw.run_radioButton.toggled.connect(self.run_clicked)
                 
         self._pulse_analysis_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulse_analysis_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
         
+        # Connect the PushButtons and connect to the corresponding events.
+        self._mw.addrow_pushButton.clicked.connect(self.create_row)
+        self._mw.deleterow_pushButton.clicked.connect(self.delete_row)
+        self._mw.clear_list_pushButton.clicked.connect(self.clear_list)
+        self._mw.save_sequence_pushButton.clicked.connect(self.save_sequence)
+#        self._mw.delete_sequence_pushButton.clicked.connect(self.update_sequence_parameters)
+        
+        # Connect the TableWidget to events when changed
+        self._mw.sequence_tableWidget.itemChanged.connect(self.sequence_parameters_changed)
+        
+        # Connect the ComboBox to events when changed
+        self._mw.sequence_list_comboBox.view().pressed.connect(self.current_sequence_changed)
+        
         # Show the Main ODMR GUI:
+
         self._mw.show()
 
     def show(self):
@@ -215,6 +214,201 @@ class PulsedMeasurementGui(GUIBase):
         '''       
         self.signal_image.setData(self._pulse_analysis_logic.signal_plot_x, self._pulse_analysis_logic.signal_plot_y)
 
+
+    def create_row(self):
+        ''' This method creates a new row in the TableWidget at the current cursor position.
+        '''
+        # insert empty row after current cursor position  
+        current_row = self._mw.sequence_tableWidget.currentRow()+1
+        if current_row == 0:
+            current_row = self._mw.sequence_tableWidget.rowCount()
+        
+        self._mw.sequence_tableWidget.insertRow(current_row)
+        
+        # create the checkbox item to fill the channel rows and the "use as tau" row with
+        chkBoxItem  = QtGui.QTableWidgetItem()
+        chkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+        chkBoxItem.setCheckState(QtCore.Qt.Unchecked)
+        
+        # fill channel rows with the checkbox item
+        for i in range(8):
+            self._mw.sequence_tableWidget.setItem(current_row, i, chkBoxItem.clone())
+
+        # create text field item and put it in the "length" and "increment" column
+        textItem = QtGui.QTableWidgetItem('0')
+        textItem.setFlags(QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled)
+        self._mw.sequence_tableWidget.setItem(current_row, 8, textItem)
+        self._mw.sequence_tableWidget.setItem(current_row, 9, textItem.clone())
+
+        # put checkbox items into "repeat?" and "use as tau?" column        
+        self._mw.sequence_tableWidget.setItem(current_row, 10, chkBoxItem.clone())
+        self._mw.sequence_tableWidget.setItem(current_row, 11, chkBoxItem.clone())
+        
+        # increment current row
+        self._mw.sequence_tableWidget.setCurrentCell(current_row, 0)
+        return
+        
+        
+    def delete_row(self):
+        ''' This method deletes a row in the TableWidget at the current cursor position.
+        '''
+        # check if a current row is selected. Select last row if not.
+        current_row = self._mw.sequence_tableWidget.currentRow()
+        if current_row == -1:
+            current_row = self._mw.sequence_tableWidget.rowCount()
+            
+        # delete current row and all its items
+        self._mw.sequence_tableWidget.removeRow(current_row)
+        
+        # decrement current row and update parameters
+        self._mw.sequence_tableWidget.setCurrentCell(current_row-1, 0)
+        self.update_sequence_parameters()
+        return
+        
+    
+    def clear_list(self):
+        ''' This method deletes all rows in the TableWidget.
+        '''
+        # clear the TableWidget
+        number_of_rows = self._mw.sequence_tableWidget.rowCount()
+        
+        while number_of_rows >= 0:
+            self._mw.sequence_tableWidget.removeRow(number_of_rows)
+            number_of_rows -= 1
+        
+        # create a single row to start with and update parameters
+        self.update_sequence_parameters()
+        self.create_row()
+        return
+    
+    
+    def sequence_parameters_changed(self, item):
+        ''' This method calculates and updates all parameters (size, length etc.) upon a change of a sequence entry.
+        
+        @param QTableWidgetItem item: Table item that has been changed
+        '''
+        # Check if the changed item is of importance for the parameters
+        if (item.column() != 8) and (item.column() != 9):
+            return
+            
+        # calculate the current sequence parameters
+        self.update_sequence_parameters()
+        return
+
+        
+    def update_sequence_parameters(self):
+        ''' This method calculates and updates all parameters (size, length etc.).
+        '''
+        # calculate the current sequence length in bins
+        self._sequence_generator_logic.sequence_length_bins = 0
+        for i in range(self._mw.sequence_tableWidget.rowCount()):
+            item = self._mw.sequence_tableWidget.item(i, 8)
+            self._sequence_generator_logic.sequence_length_bins += int(item.data(0))
+            
+        # calculate the current sequence length in s
+        self._sequence_generator_logic.sequence_length_ms = self._sequence_generator_logic.sequence_length_bins / (self._sequence_generator_logic.pg_frequency_MHz * 1000.)
+        
+        # update the DisplayWidgets
+        self._mw.length_bins_lcdNumber.display(self._sequence_generator_logic.sequence_length_bins)
+        self._mw.length_s_lcdNumber.display(self._sequence_generator_logic.sequence_length_ms)
+        return
+        
+
+    def save_sequence(self):
+        ''' This method encodes the currently edited sequence into a matrix for passing it to the logic module. 
+            There the sequence will be created and saved.
+        '''
+        # Call "create_matrix" to pass the data to the logic module where it will be saved
+        self.create_matrix()
+        self._sequence_generator_logic.save_current_sequence()
+        # update sequence combo boxes
+        self.sequence_list_changed()
+        return
+        
+        
+    def create_matrix(self):
+        ''' This method creates a matrix out of the current TableWidget to be further processed by the logic module.
+        '''
+        # get the number of rows and columns
+        num_of_rows = self._mw.sequence_tableWidget.rowCount()
+        num_of_columns = self._mw.sequence_tableWidget.columnCount()
+        
+        # Initialize a matrix of proper size and integer data type
+        matrix = np.empty([num_of_rows, num_of_columns], dtype=int)
+        # Loop through all matrix entries and fill them with the data of the TableWidgetItems
+        for row in range(num_of_rows):
+            for column in range(num_of_columns):
+                # Get the item of the current row and column
+                item = self._mw.sequence_tableWidget.item(row, column)
+                # check if the current column is a checkbox or a textfield
+                if (int(item.flags()) & 16):
+                    matrix[row, column] = int(bool(item.checkState()))
+                else:
+                    matrix[row, column] = int(item.data(0))
+            
+        # Pass matrix, sequence name and number of repetitions to the logic module
+        self._sequence_generator_logic.current_matrix = matrix
+        self._sequence_generator_logic.current_sequence_name = str(self._mw.sequence_name_lineEdit.text())
+        self._sequence_generator_logic.current_sequence_reps = int(self._mw.repetitions_lineEdit.text())
+        return
+      
+      
+    def create_table(self):
+        ''' This method creates a TableWidget out of a matrix passed from the logic module.
+        '''
+        # get matrix from the sequence generator logic
+        matrix = self._sequence_generator_logic.current_matrix
+        # clear current table widget
+        self.clear_list()
+        self.delete_row()
+        # create as many rows in the table widget as the matrix has and fill them with entries
+        for row_number, row in enumerate(matrix):
+            # create the row
+            self.create_row()
+            # edit all items in the row
+            for column_number in range(matrix.shape[1]):
+                item = self._mw.sequence_tableWidget.item(row_number, column_number)
+                # is the current item a checkbox or a number?
+                if (int(item.flags()) & 16):
+                    # check ckeckbox if the corresponding matrix entry is "1"
+                    if matrix[row_number, column_number] == 1:
+                        item.setCheckState(QtCore.Qt.Checked)
+                else:
+                    item.setText(str(matrix[row_number, column_number]))
+        return
+        
+
+    def delete_sequence(self):
+        ''' This method completely removes the currently selected sequence.
+        '''
+        # call the delete method in the sequence generator logic
+        self._sequence_generator_logic.delete_current_sequence()
+        # update the combo boxes
+        self.sequence_list_changed()
+        
+        
+    def sequence_list_changed(self):
+        ''' This method updates the Seqeuence combo boxes upon the adding or removal of a sequence
+        '''
+        # get the names of all saved sequences from the sequence generator logic
+        names = self._sequence_generator_logic.get_sequence_names()
+        # clear combo boxes
+        self._mw.sequence_name_comboBox.clear()
+        self._mw.sequence_list_comboBox.clear()
+        # fill combo boxes with current names
+        self._mw.sequence_name_comboBox.addItems(names)
+        self._mw.sequence_list_comboBox.addItems(names)
+        return
+        
+        
+    def current_sequence_changed(self):
+        ''' This method updates the current sequence variables in the sequence generator logic.
+        '''
+        name = self._mw.sequence_list_comboBox.currentText()
+        self._sequence_generator_logic.update_current_sequence(name)
+        print(self._sequence_generator_logic.current_matrix)
+        self.create_table()
+        return
 #            
 #
 #        
@@ -223,19 +417,13 @@ class PulsedMeasurementGui(GUIBase):
 #    ###########################################################################
 #    
 #    def change_frequency(self):
-#        self._odmr_logic.MW_frequency = float(self._mw.frequency_InputWidget.text())
-#        
-#    def change_start_freq(self):
-#        self._odmr_logic.MW_start = float(self._mw.start_freq_InputWidget.text())
-#        
-#    def change_step_freq(self):
-#        self._odmr_logic.MW_step = float(self._mw.step_freq_InputWidget.text())
-#        
-#    def change_stop_freq(self):
-#        self._odmr_logic.MW_stop = float(self._mw.stop_freq_InputWidget.text())
+#        self._pulse_analysis_logic.MW_frequency = float(self._mw.frequency_InputWidget.text())
 #        
 #    def change_power(self):
-#        self._odmr_logic.MW_power = float(self._mw.power_InputWidget.text())
+#        self._pulse_analysis_logic.MW_power = float(self._mw.power_InputWidget.text())
+#        
+#    def change_pg_frequency(self):
+#        self._pulse_analysis_logic.pulse_generator_frequency = float(self._mw.pg_frequency_lineEdit.text())
 #        
 #    def change_runtime(self):
 #        pass
