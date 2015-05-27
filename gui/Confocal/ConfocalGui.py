@@ -423,6 +423,15 @@ class ConfocalGui(GUIBase):
         self._mw.x_SliderWidget.setRange(0,num_of_points_x)
         self._mw.y_SliderWidget.setRange(0,num_of_points_y)
         self._mw.z_SliderWidget.setRange(0,num_of_points_z)
+        
+        # Just to be sure, set also the possible maximal values for the spin
+        # boxes of the current values:
+        self._mw.x_current_InputWidget.setRange(self._scanning_logic.x_range[0], 
+                                                self._scanning_logic.x_range[1])
+        self._mw.y_current_InputWidget.setRange(self._scanning_logic.y_range[0], 
+                                                self._scanning_logic.y_range[1])
+        self._mw.z_current_InputWidget.setRange(self._scanning_logic.z_range[0], 
+                                                self._scanning_logic.z_range[1])
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
