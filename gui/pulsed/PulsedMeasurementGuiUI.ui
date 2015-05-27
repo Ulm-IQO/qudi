@@ -21,7 +21,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="measurement_tab">
        <attribute name="title">
@@ -40,7 +40,7 @@
          <bool>false</bool>
         </property>
        </widget>
-       <widget class="PlotWidget" name="lasertrace_plot_ViewWidget_2">
+       <widget class="PlotWidget" name="signal_plot_ViewWidget">
         <property name="geometry">
          <rect>
           <x>10</x>
@@ -63,32 +63,18 @@
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="frequency_InputWidget_2">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QRadioButton" name="radioButton_2">
+         <item row="3" column="0" colspan="2" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_12">
            <property name="text">
-            <string>Run</string>
+            <string>MW Power [dBm] :</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="0" alignment="Qt::AlignRight">
-          <widget class="QLabel" name="label_11">
-           <property name="text">
-            <string>Frequency [MHz] :</string>
-           </property>
-          </widget>
+         <item row="1" column="2">
+          <widget class="QComboBox" name="binning_comboBox"/>
          </item>
-         <item row="3" column="1">
-          <widget class="QLineEdit" name="power_InputWidget_2">
+         <item row="3" column="2">
+          <widget class="QLineEdit" name="power_InputWidget">
            <property name="maximumSize">
             <size>
              <width>50</width>
@@ -97,48 +83,46 @@
            </property>
           </widget>
          </item>
+         <item row="0" column="1">
+          <widget class="QRadioButton" name="run_radioButton">
+           <property name="text">
+            <string>Run</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="2" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>MW Frequency [MHz] :</string>
+           </property>
+          </widget>
+         </item>
          <item row="0" column="0">
-          <widget class="QRadioButton" name="radioButton">
+          <widget class="QRadioButton" name="idle_radioButton">
            <property name="text">
             <string>Idle</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QComboBox" name="comboBox_2"/>
-         </item>
-         <item row="3" column="0" alignment="Qt::AlignRight">
-          <widget class="QLabel" name="label_12">
-           <property name="text">
-            <string>Power [dBm] :</string>
+         <item row="2" column="2">
+          <widget class="QLineEdit" name="frequency_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
            </property>
           </widget>
          </item>
-         <item row="1" column="0" alignment="Qt::AlignRight">
+         <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_10">
            <property name="text">
             <string>Fast counter binning [ns] :</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="2">
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>200</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="1" column="4">
-          <widget class="QComboBox" name="comboBox">
+         <item row="1" column="5">
+          <widget class="QComboBox" name="sequence_name_comboBox">
            <property name="minimumSize">
             <size>
              <width>300</width>
@@ -147,84 +131,116 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="3" alignment="Qt::AlignRight">
+         <item row="1" column="4" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_9">
            <property name="text">
             <string>Pulse sequence to run :</string>
            </property>
           </widget>
          </item>
+         <item row="1" column="3">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
         </layout>
        </widget>
-       <zorder>lasertrace_plot_ViewWidget</zorder>
-       <zorder></zorder>
-       <zorder>lasertrace_plot_ViewWidget_2</zorder>
-       <zorder>gridLayoutWidget</zorder>
       </widget>
       <widget class="QWidget" name="sequence_tab">
        <attribute name="title">
         <string>sequence</string>
        </attribute>
-       <widget class="QTableWidget" name="tableWidget">
+       <widget class="QTableWidget" name="sequence_tableWidget">
         <property name="geometry">
          <rect>
           <x>10</x>
-          <y>160</y>
+          <y>140</y>
           <width>931</width>
           <height>611</height>
          </rect>
         </property>
-        <attribute name="horizontalHeaderMinimumSectionSize">
-         <number>27</number>
+        <property name="alternatingRowColors">
+         <bool>false</bool>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <attribute name="horizontalHeaderCascadingSectionResizes">
+         <bool>false</bool>
         </attribute>
-        <row>
-         <property name="text">
-          <string>Neue Zeile</string>
-         </property>
-        </row>
+        <attribute name="horizontalHeaderDefaultSectionSize">
+         <number>70</number>
+        </attribute>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>false</bool>
+        </attribute>
         <column>
          <property name="text">
-          <string>Chnl 0</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Chnl 1</string>
+          <string>Ch 0</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 2</string>
+          <string>Ch 1</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 3</string>
+          <string>Ch 2</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 4</string>
+          <string>Ch 3</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 5</string>
+          <string>Ch 4</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 6</string>
+          <string>Ch 5</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Chnl 7</string>
+          <string>Ch 6</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Duration [bins]</string>
+          <string>Ch 7</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Length [bins]</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Increment [bins]</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Repeat?</string>
          </property>
         </column>
         <column>
@@ -232,6 +248,293 @@
           <string>Use as tau?</string>
          </property>
         </column>
+       </widget>
+       <widget class="QPushButton" name="addrow_pushButton">
+        <property name="geometry">
+         <rect>
+          <x>100</x>
+          <y>90</y>
+          <width>31</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="deleterow_pushButton">
+        <property name="geometry">
+         <rect>
+          <x>140</x>
+          <y>90</y>
+          <width>31</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="save_sequence_pushButton">
+        <property name="geometry">
+         <rect>
+          <x>270</x>
+          <y>60</y>
+          <width>111</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Save sequence</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="sequence_name_lineEdit">
+        <property name="geometry">
+         <rect>
+          <x>100</x>
+          <y>60</y>
+          <width>161</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>60</y>
+          <width>81</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence name :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="sequence_list_comboBox">
+        <property name="geometry">
+         <rect>
+          <x>100</x>
+          <y>20</y>
+          <width>161</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_2">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>20</y>
+          <width>81</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequences :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_3">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>90</y>
+          <width>81</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Add/Delete row :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLCDNumber" name="length_s_lcdNumber">
+        <property name="geometry">
+         <rect>
+          <x>590</x>
+          <y>70</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+        <property name="smallDecimalPoint">
+         <bool>false</bool>
+        </property>
+        <property name="digitCount">
+         <number>5</number>
+        </property>
+        <property name="value" stdset="0">
+         <double>0.000000000000000</double>
+        </property>
+       </widget>
+       <widget class="Line" name="line">
+        <property name="geometry">
+         <rect>
+          <x>380</x>
+          <y>10</y>
+          <width>20</width>
+          <height>121</height>
+         </rect>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_4">
+        <property name="geometry">
+         <rect>
+          <x>460</x>
+          <y>40</y>
+          <width>121</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence length [bins] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_5">
+        <property name="geometry">
+         <rect>
+          <x>460</x>
+          <y>70</y>
+          <width>121</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence length [ms] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_6">
+        <property name="geometry">
+         <rect>
+          <x>410</x>
+          <y>10</y>
+          <width>171</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Pulse generator frequency [MHz] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLCDNumber" name="length_bins_lcdNumber">
+        <property name="geometry">
+         <rect>
+          <x>590</x>
+          <y>40</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="pg_frequency_lineEdit">
+        <property name="geometry">
+         <rect>
+          <x>590</x>
+          <y>10</y>
+          <width>101</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_7">
+        <property name="geometry">
+         <rect>
+          <x>460</x>
+          <y>100</y>
+          <width>121</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence size [MB] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLCDNumber" name="size_MB_lcdNumber">
+        <property name="geometry">
+         <rect>
+          <x>590</x>
+          <y>100</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="clear_list_pushButton">
+        <property name="geometry">
+         <rect>
+          <x>180</x>
+          <y>100</y>
+          <width>81</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Clear list</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="delete_sequence_pushButton">
+        <property name="geometry">
+         <rect>
+          <x>270</x>
+          <y>20</y>
+          <width>111</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Delete sequence</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_8">
+        <property name="geometry">
+         <rect>
+          <x>710</x>
+          <y>10</y>
+          <width>121</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Number of laser pulses :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLCDNumber" name="laser_number_lcdNumber">
+        <property name="geometry">
+         <rect>
+          <x>840</x>
+          <y>10</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_13">
+        <property name="geometry">
+         <rect>
+          <x>710</x>
+          <y>760</y>
+          <width>121</width>
+          <height>21</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Number of repetitions :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="repetitions_lineEdit">
+        <property name="geometry">
+         <rect>
+          <x>840</x>
+          <y>760</y>
+          <width>101</width>
+          <height>21</height>
+         </rect>
+        </property>
        </widget>
       </widget>
      </widget>
@@ -255,11 +558,6 @@
    <addaction name="menu_File"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="action_Settings">
-   <property name="text">
-    <string>&amp;Settings</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>

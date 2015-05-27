@@ -75,7 +75,7 @@ class PulseAnalysisLogic(GenericLogic):
         """Gets the important parameters from the sequence generator module
         """
         self._sequence_names = self._sequence_generator_logic.get_sequence_names()
-        self._binwidth_ns = self._sequence_generator_logic.get_binwidth()
+        self._binwidth_ns = 1000./self._fast_counter_device.get_frequency()
         self._number_of_laser_pulses = self._sequence_generator_logic.get_number_of_laser_pulses()
         self._tau_vector_ns = self._sequence_generator_logic.get_tau_vector()
         self._laser_length_bins = self._sequence_generator_logic.get_laser_length()
@@ -229,12 +229,12 @@ class PulseAnalysisLogic(GenericLogic):
         return error_code
         
         
-    def do_fit(self, fit_function = None):
-        '''Performs the chosen fit on the measured data.
-        
-        @param string fit_function: name of the chosen fit function
-        '''
-        if fit_function == None:
-            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
-            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
+#    def do_fit(self, fit_function = None):
+#        '''Performs the chosen fit on the measured data.
+#        
+#        @param string fit_function: name of the chosen fit function
+#        '''
+#        if fit_function == None:
+#            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
+#            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
             
