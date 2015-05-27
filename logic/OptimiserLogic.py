@@ -6,7 +6,6 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
                
 
 class OptimiserLogic(GenericLogic):
@@ -239,28 +238,25 @@ class OptimiserLogic(GenericLogic):
             #x,y-fit
             fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
             xy_fit_data = self.xy_refocus_image[:,:,3].ravel()
-            error,amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset = self._fit_logic.twoD_gaussian_estimator(x_axis=fit_x, y_axis=fit_y,  data=xy_fit_data)
-            if error == -1:
-                self.logMsg('error in initial_guess xy fit.', \
-                            msgType='error')
-                #hier abbrechen
-            else:
-                initial_guess_xy = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
-            
-            error, twoD_values = self._fit_logic.make_fit(function=self._fit_logic.twoD_gaussian_function,axes=(fit_x, fit_y),data=xy_fit_data,initial_guess=initial_guess_xy)
-            if error == -1:
+            axes = np.empty((len(self._X_values)*len(self._Y_values),2))
+            axes=(fit_x.flatten(),fit_y.flatten())
+            result_2D_gaus = self._fit_logic.make_twoD_gaussian_fit(axis=axes,data=xy_fit_data)
+#            print(result_2D_gaus.fit_report())
+                        
+            if result_2D_gaus.success == False:
                 self.logMsg('error in 2D Gaussian Fit.', \
                             msgType='error')
+                print('2D gaussian fit not successfull')
                 self.refocus_x = self._trackpoint_x
                 self.refocus_y = self._trackpoint_y
                 #hier abbrechen
             else:
-                if abs(self._trackpoint_x - twoD_values[1]) < self._max_offset and abs(self._trackpoint_x - twoD_values[1]) < self._max_offset:
-                    if twoD_values[1] >= self.x_range[0] and twoD_values[1] <= self.x_range[1]:
-                        if twoD_values[2] >= self.y_range[0] and twoD_values[2] <= self.y_range[1]:
-                            self.refocus_x = twoD_values[1]
-                            self.refocus_y = twoD_values[2]
-#                            print('xy fit is',self.refocus_x,self.refocus_y)
+#                @reviewer: Do we need this. With constraints not one of these cases will be possible....
+                if abs(self._trackpoint_x - result_2D_gaus.best_values['x_zero']) < self._max_offset and abs(self._trackpoint_x - result_2D_gaus.best_values['x_zero']) < self._max_offset:
+                    if result_2D_gaus.best_values['x_zero'] >= self.x_range[0] and result_2D_gaus.best_values['x_zero'] <= self.x_range[1]:
+                        if result_2D_gaus.best_values['y_zero'] >= self.y_range[0] and result_2D_gaus.best_values['y_zero'] <= self.y_range[1]:
+                            self.refocus_x = result_2D_gaus.best_values['x_zero']
+                            self.refocus_y = result_2D_gaus.best_values['y_zero']
                 else:
                     self.refocus_x = self._trackpoint_x
                     self.refocus_y = self._trackpoint_y
@@ -272,17 +268,10 @@ class OptimiserLogic(GenericLogic):
             self.unlock()
             
             self.signal_image_updated.emit()
-            
-            #TODO: This part has to be adjusted to the new fitting methods, but not before the programming of FitLogic is finished.
+
             #z-fit
             
             result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
-
-            oneD_values=np.zeros(4)
-            oneD_values[0]=result.best_values['amplitude']/np.sqrt(2*np.pi)/result.best_values['sigma']
-            oneD_values[1]=result.best_values['center']
-            oneD_values[2]=result.best_values['sigma']
-            oneD_values[3]=result.best_values['c']
             
             if result.success == False:
                 self.logMsg('error in 1D Gaussian Fit.', \
@@ -290,13 +279,14 @@ class OptimiserLogic(GenericLogic):
                 self.refocus_z = self._trackpoint_z
                 #hier abbrechen
             else: #move to new position
-                if abs(self._trackpoint_z - oneD_values[1]) < self._max_offset: #checks if new pos is too far away
-                    if oneD_values[1] >= self.z_range[0] and oneD_values[1] <= self.z_range[1]: #checks if new pos is within the scanner range
-                        self.refocus_z = oneD_values[1]
+#                @reviewer: Do we need this. With constraints not one of these cases will be possible....
+                if abs(self._trackpoint_z - result.best_values['center']) < self._max_offset: #checks if new pos is too far away
+                    if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]: #checks if new pos is within the scanner range
+                        self.refocus_z = result.best_values['center']
                         gauss,params=self._fit_logic.make_gaussian_model()
                         self.z_fit_data = gauss.eval(x=self._fit_zimage_Z_values,params=result.params)
                     else: #new pos is too far away
-                        if oneD_values[1] > self._trackpoint_z: #checks if new pos is too high
+                        if result.best_values['center'] > self._trackpoint_z: #checks if new pos is too high
                             if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
                                 self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size #moves to higher edge of scan range
                             else:
