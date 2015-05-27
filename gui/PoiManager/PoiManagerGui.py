@@ -289,8 +289,8 @@ class PoiManagerGui(GUIBase):
         key=self._poi_manager_logic.add_poi()
 
         print('new poi '+key)
-        print(self._poi_manager_logic.get_all_pois())
-        print(self._poi_manager_logic.get_last_point(poikey=key))
+#        print(self._poi_manager_logic.get_all_pois())
+#        print(self._poi_manager_logic.get_last_point(poikey=key))
 
         self.population_poi_list()
 
@@ -348,7 +348,7 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.go_to_poi(poikey=key)
 
-        print(self._poi_manager_logic.get_last_point(poikey=key))
+#        print(self._poi_manager_logic.get_last_point(poikey=key))
 
 
     def population_poi_list(self):
