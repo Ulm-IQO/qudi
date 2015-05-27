@@ -533,6 +533,7 @@ class FitLogic(GenericLogic):
 
 ##############################################################################
 ##############################################################################  
+
         def make_twoD_gaussian_fit(self,axis=None,data=None, add_parameters=None):
             """ This method performes a 1D gaussian fit on the provided data.
         
@@ -667,7 +668,7 @@ class FitLogic(GenericLogic):
             @return int error: error code (0:OK, -1:error)                    
             """ 
             
-#            #needed me 1 hour to think about but not needed...maybe needed at a later point
+#            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
 #            len_x=np.where(x_axis[0]==x_axis)[0][1]
 #            len_y=len(data)/len_x
             
