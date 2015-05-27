@@ -391,13 +391,17 @@ class FitLogic(GenericLogic):
 #TODO: Docstring
             
             for para in update_parameters:
-                #vary is set by default to True
-                parameters[para].vary=update_parameters[para].vary 
-                #check for other parameters and set in case
                 
                 #store value because when max,min is set the value is overwritten
                 # by the same number
                 store_value=parameters[para].value
+                value_is_new=(abs(update_parameters[para].value/store_value-1)<1e-20)
+                
+                #vary is set by default to True
+                parameters[para].vary=update_parameters[para].vary 
+                #check for other parameters and set in case
+                
+
                 if update_parameters[para].min!=None:
                     parameters[para].min=update_parameters[para].min  
                     
@@ -408,7 +412,7 @@ class FitLogic(GenericLogic):
                     parameters[para].expr=update_parameters[para].expr 
                 
                 parameters[para].value=store_value
-                if update_parameters[para].value!=None:
+                if value_is_new:
                     parameters[para].value=update_parameters[para].value 
                     
             return parameters
@@ -547,7 +551,6 @@ class FitLogic(GenericLogic):
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(
                                                                             x_axis=x_axis,y_axis=y_axis,data=data)
             mod,params = self.make_twoD_gaussian_model() 
-#            print('1',params['x_zero'])
             #auxiliary variables
             stepsize_x=x_axis[1]-x_axis[0]
             stepsize_y=y_axis[1]-y_axis[0]
@@ -561,15 +564,13 @@ class FitLogic(GenericLogic):
                            (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,  None), 
                            (  'x_zero',    x_zero,      True,     (x_axis[0])-n_steps_x*stepsize_x ,         x_axis[-1]+n_steps_x*stepsize_x,               None),
                            (  'y_zero',     y_zero,     True,    (y_axis[0])-n_steps_y*stepsize_y ,         (y_axis[-1])+n_steps_y*stepsize_y,         None),
-                           (  'theta',    0.,        True,           0. ,                             np.pi,               None),
+                           (  'theta',       0.,        True,           0. ,                             np.pi,               None),
                            (  'offset',      offset,    True,           0,                              1e7,                       None))
-#            print('2',params['x_zero'])
            
 #TODO: Add logmessage when value is changed            
 #            #redefine values of additional parameters
             if add_parameters!=None:  
                 params=self.substitute_parameter(parameters=params,update_parameters=add_parameters) 
-#            print('3',params['x_zero'])
 
             try:
                 result=mod.fit(data, x=axis,params=params)
