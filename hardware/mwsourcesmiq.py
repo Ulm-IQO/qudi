@@ -50,7 +50,8 @@ class mwsourcesmiq(Base,MWInterface):
             
         self.logMsg("MWSMIQ initialised and connected to hardware.", 
                     msgType='status')
-        
+
+
     def on(self):
         """ Switches on any preconfigured microwave output. 
         
@@ -61,7 +62,8 @@ class mwsourcesmiq(Base,MWInterface):
         self._gpib_connetion.write('*WAI')
         
         return 0
-    
+
+
     def off(self):
         """ Switches off any microwave output. 
         
@@ -74,7 +76,8 @@ class mwsourcesmiq(Base,MWInterface):
         self._gpib_connetion.write('*WAI')
         
         return 0
-    
+
+
     def get_power(self):
         """ Gets the microwave output power. 
         
@@ -82,8 +85,9 @@ class mwsourcesmiq(Base,MWInterface):
         """
         
         return float(self._gpib_connetion.ask(':POW?'))
-        
-    def set_power(self,power=None):
+
+
+    def set_power(self, power = None):
         """ Sets the microwave output power. 
         
         @param float power: this power is set at the device
@@ -91,8 +95,11 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._gpib_connetion.write(':POW {:f}'.format(power))
-        return 0
+        if power != None:
+            self._gpib_connetion.write(':POW {:f}'.format(power))
+            return 0
+        else:
+            return -1
         
         
     def get_frequency(self):
@@ -102,19 +109,23 @@ class mwsourcesmiq(Base,MWInterface):
         """
         
         return float(self._gpib_connetion.ask(':FREQ?'))
-        
-    def set_frequency(self,frequency=0):
+
+
+    def set_frequency(self, frequency = None):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
         
         @return int: error code (0:OK, -1:error)
         """
-        
-        self._gpib_connetion.write(':FREQ {:e}'.format(frequency))
-        return 0
-        
-    def set_cw(self,f=None, power=None):
+        if frequency != None:
+            self._gpib_connetion.write(':FREQ {:e}'.format(frequency))
+            return 0
+        else:
+            return -1
+
+
+    def set_cw(self, f = None, power = None):
         """ Sets the MW mode to cw and additionally frequency and power
         
         @param float f: frequency to set
@@ -126,13 +137,17 @@ class mwsourcesmiq(Base,MWInterface):
         
         if f != None:
             self.set_frequency(f)
+        else:
+            return -1
         if power != None:
             self.set_power(power)
+        else:
+            return -1
         
-        self.on()
-            
+        self.on()            
         return 0
-        
+
+
     def set_list(self,freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list f: list of frequencies
