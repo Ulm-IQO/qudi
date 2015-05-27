@@ -17,71 +17,18 @@ class FitLogic():
         
         """
         
-        def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
-            """ Makes a fit of the desired function with the one and two 
-                dimensional data.
-        
-            @param callable function: The model function, f(x, ...).
-                    It must take the independent variable as the first argument
-                    and the parameters to fit as separate remaining arguments.
-            @param M-length sequence or an (k,M)-shaped array axes: Here the 
-                    axis or the axes are input. In one-dimensional case, simple
-                    array of x_axis; in two-dimensional case tuple of x_axis 
-                    and y_axis
-            @param M-length sequence data: The dependent data — nominally 
-                    f(xdata, ...)
-            @param None, scalar, or N-length sequence initial_guess: initial 
-                    guess with as many parameters as needed for the function
-            @param bool details: (optional) If set to False only the optimized 
-                    parameters will be returned. If set to True also the 
-                    estimated covariance is returned.
-        
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of f(xdata, *popt) - ydata 
-                    is minimized
-            @return 2d array pcov: The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)).
-                    
-            """
-            # check if parameters make sense
-            error=0
-            popt=initial_guess
-            if initial_guess==None:
-                pcov=None
-            else:
-                pcov=np.zeros((len(initial_guess),len(initial_guess)))
-            
-            if not callable(function):
-                self.logMsg('Given "function" is no function.', \
-                            msgType='error')  
-                error =-1
-            if not isinstance( data,(frozenset, list, set, tuple, np.ndarray)):
-                self.logMsg('Given range of data is no array type.', \
-                            msgType='error')
-                error= -1
-            if not isinstance( axes,(frozenset, list, set, tuple, np.ndarray)):
-                self.logMsg('Given range of axes is no array type.', \
-                            msgType='error')
-                error= -1
-            if not isinstance(details,bool):
-                self.logMsg('Given bool details is not of type bool.', \
-                            msgType='error')
-                error= -1
-            if error==0:
-                try:
-#                    FIXME: This is the actual fitting-function
-                    popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
-                except:
-                    self.logMsg('The fit did not work.', msgType='warning')
-                    error=-1
-            if details==False:
-                return error,popt
-            elif details==True:
-                return error,popt, pcov
-        
+##############################################################################
+##############################################################################
+##############################################################################
+
+    # the following two functions are needed for the ConfocalInterfaceDummy
+
+
+##############################################################################
+##############################################################################
+##############################################################################
+
+
         def twoD_gaussian_function(self,x_data_tuple=None,amplitude=None,\
                                     x_zero=None, y_zero=None, sigma_x=None, \
                                     sigma_y=None, theta=None, offset=None):
@@ -130,6 +77,113 @@ class FitLogic():
                                     + c*((y-y_zero)**2)))
             return g.ravel()
             
+            
+        def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
+            """ This method provides a one dimensional gaussian function.
+        
+            @param array x_data: x values
+            @param float or int amplitude: Amplitude of gaussian
+            @param float or int x_zero: x value of maximum
+            @param float or int sigma: standard deviation
+            @param float or int offset: offset
+
+            @return callable function: returns a 1D Gaussian function
+            
+            """            
+            # check if parameters make sense
+            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
+                self.logMsg('Given range of axis is no array type.', \
+                            msgType='error') 
+
+
+            parameters=[amplitude,x_zero,sigma,offset]
+            for var in parameters:
+                if not isinstance(var,(float,int)):
+                    print('error',var)
+                    self.logMsg('Given range of parameter is no float or int.', \
+                                msgType='error')  
+            gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
+            return gaussian 
+
+
+
+##############################################################################
+##############################################################################
+##############################################################################
+
+#                           old code
+
+
+##############################################################################
+##############################################################################
+##############################################################################
+
+                
+#        def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
+#            """ Makes a fit of the desired function with the one and two 
+#                dimensional data.
+#        
+#            @param callable function: The model function, f(x, ...).
+#                    It must take the independent variable as the first argument
+#                    and the parameters to fit as separate remaining arguments.
+#            @param M-length sequence or an (k,M)-shaped array axes: Here the 
+#                    axis or the axes are input. In one-dimensional case, simple
+#                    array of x_axis; in two-dimensional case tuple of x_axis 
+#                    and y_axis
+#            @param M-length sequence data: The dependent data — nominally 
+#                    f(xdata, ...)
+#            @param None, scalar, or N-length sequence initial_guess: initial 
+#                    guess with as many parameters as needed for the function
+#            @param bool details: (optional) If set to False only the optimized 
+#                    parameters will be returned. If set to True also the 
+#                    estimated covariance is returned.
+#        
+#            @return int error: error code (0:OK, -1:error)
+#            @return array popt: Optimal values for the parameters so that 
+#                    the sum of the squared error of f(xdata, *popt) - ydata 
+#                    is minimized
+#            @return 2d array pcov: The estimated covariance of popt. The 
+#                    diagonals provide the variance of the parameter estimate. 
+#                    To compute one standard deviation errors on the parameters 
+#                    use perr = np.sqrt(np.diag(pcov)).
+#                    
+#            """
+#            # check if parameters make sense
+#            error=0
+#            popt=initial_guess
+#            if initial_guess==None:
+#                pcov=None
+#            else:
+#                pcov=np.zeros((len(initial_guess),len(initial_guess)))
+#            
+#            if not callable(function):
+#                self.logMsg('Given "function" is no function.', \
+#                            msgType='error')  
+#                error =-1
+#            if not isinstance( data,(frozenset, list, set, tuple, np.ndarray)):
+#                self.logMsg('Given range of data is no array type.', \
+#                            msgType='error')
+#                error= -1
+#            if not isinstance( axes,(frozenset, list, set, tuple, np.ndarray)):
+#                self.logMsg('Given range of axes is no array type.', \
+#                            msgType='error')
+#                error= -1
+#            if not isinstance(details,bool):
+#                self.logMsg('Given bool details is not of type bool.', \
+#                            msgType='error')
+#                error= -1
+#            if error==0:
+#                try:
+##                    FIXME: This is the actual fitting-function
+#                    popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
+#                except:
+#                    self.logMsg('The fit did not work.', msgType='warning')
+#                    error=-1
+#            if details==False:
+#                return error,popt
+#            elif details==True:
+#                return error,popt, pcov
+       
 
 
 #        def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
@@ -171,146 +225,120 @@ class FitLogic():
 #                                                data=data,initial_guess=initial_guess_estimated,
 #                                                details=details)
 #                return error,popt, pcov            
-            
-        def gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-            """ This method provides a one dimensional gaussian function.
-        
-            @param array x_data: x values
-            @param float or int amplitude: Amplitude of gaussian
-            @param float or int x_zero: x value of maximum
-            @param float or int sigma: standard deviation
-            @param float or int offset: offset
 
-            @return callable function: returns a 1D Gaussian function
-            
-            """            
-            # check if parameters make sense
-            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-                self.logMsg('Given range of axis is no array type.', \
-                            msgType='error') 
-
-
-            parameters=[amplitude,x_zero,sigma,offset]
-            for var in parameters:
-                if not isinstance(var,(float,int)):
-                    print('error',var)
-                    self.logMsg('Given range of parameter is no float or int.', \
-                                msgType='error')  
-            gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
-            return gaussian 
             
 
-        def lorentzian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-            """ This method provides a one dimensional Lorentzian function.
-        
-            @param array x_data: x values
-            @param float or int amplitude: Amplitude of Lorentzian
-            @param float or int x_zero: x value of maximum
-            @param float or int sigma: half width half maximum
-            @param float or int offset: offset
-
-            @return callable function: returns a 1D Lorentzian function
-            
-            """            
-            # check if parameters make sense
-            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-                self.logMsg('Given range of axis is no array type.', \
-                            msgType='error') 
-
-
-            parameters=[amplitude,x_zero,sigma,offset]
-            for var in parameters:
-                if not isinstance(var,(float,int)):
-                    print('error',var)
-                    self.logMsg('Given range of parameter is no float or int.', \
-                                msgType='error') 
-                                
-            lorentzian = amplitude / np.pi * (  sigma / ( (x_data-x_zero)**2 + sigma**2 )  ) + offset
-            return lorentzian
-            
-           
-        def lorentzian_estimator(self,x_axis=None,data=None):
-            """ This method provides a one dimensional Lorentzian function.
-        
-            @param array x_axis: x values
-            @param array data: value of each data point corresponding to
-                                x values
-
-            @return int error: error code (0:OK, -1:error)
-            @return float amplitude: estimated amplitude
-            @return float x_zero: estimated x value of maximum
-            @return float sigma_x: estimated standard deviation in x direction
-            @return float offset: estimated offset
-                                
-                    
-            """
-            error=0
-            # check if parameters make sense
-            parameters=[x_axis,data]
-            for var in parameters:
-                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                    self.logMsg('Given parameter is no array.', \
-                                msgType='error') 
-                    error=-1
-                elif len(np.shape(var))!=1:
-                    self.logMsg('Given parameter is no one dimensional array.', \
-                                msgType='error')                     
-            #set paraameters 
-            offset=np.median(self.xdata)
-            #check if the amplitude is negative or positive and set x_zero:
-            data_norm=data-offset
-            if data_norm.max()>abs(data_norm.min()):
-                y_zero=data_norm.max()
-                x_zero=x_axis[np.argmax(data)]
-            else:
-                y_zero=data_norm.min()
-                x_zero=x_axis[np.argmin(data)]
-
-            #estimate amplitude and HWHM
-            Y = np.sum(data_norm) * (x_axis[-1] - x_axis[0]) / len(x_axis)
-            sigma = Y / (np.pi * y_zero)
-            amplitude = y_zero * np.pi * sigma
-
-            return error, amplitude, x_zero, sigma, offset     
- 
-
-        def make_lorentzian_fit(self,axis=None,data=None,details=False):
-            """ This method performes a gaussian fit on the provided data.
-        
-            @param array [] axis: axis values
-            @param array[]  x_data: data
-            @param bool details: If details is True, additional to the fit 
-                                 parameters also the covariance matrix is
-                                 returned
-            
-                    
-            @return int error: error code (0:OK, -1:error)
-            @return array popt: Optimal values for the parameters so that 
-                    the sum of the squared error of lorentzian_function(xdata,
-                    *popt)is minimized
-            @return 2d array pcov : The estimated covariance of popt. The 
-                    diagonals provide the variance of the parameter estimate. 
-                    To compute one standard deviation errors on the parameters 
-                    use perr = np.sqrt(np.diag(pcov)). This is only returned
-                    when details is set to true.
-                    
-            """
-                
-            error,amplitude, x_zero, sigma, offset = self.lorentzian_estimator(
-                                                                    axis,data)
-                                                                    
-            if details==False:
-                error,popt= self.make_fit(self.lorentzian_function, axis, 
-                                          data,initial_guess=(amplitude, 
-                                          x_zero, sigma, offset),
-                                          details=details)   
-                return error,popt
-            elif details==True:
-                error,popt,pcov= self.make_fit(self.lorentzian_function, axis, 
-                                               data,initial_guess=(amplitude, 
-                                               x_zero, sigma, offset),
-                                               details=details)
-                return error,popt, pcov
+#        def lorentzian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
+#            """ This method provides a one dimensional Lorentzian function.
+#        
+#            @param array x_data: x values
+#            @param float or int amplitude: Amplitude of Lorentzian
+#            @param float or int x_zero: x value of maximum
+#            @param float or int sigma: half width half maximum
+#            @param float or int offset: offset
+#
+#            @return callable function: returns a 1D Lorentzian function
+#            
+#            """            
+#            # check if parameters make sense
+#            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
+#                self.logMsg('Given range of axis is no array type.', \
+#                            msgType='error') 
+#
+#
+#            parameters=[amplitude,x_zero,sigma,offset]
+#            for var in parameters:
+#                if not isinstance(var,(float,int)):
+#                    print('error',var)
+#                    self.logMsg('Given range of parameter is no float or int.', \
+#                                msgType='error') 
+#                                
+#            lorentzian = amplitude / np.pi * (  sigma / ( (x_data-x_zero)**2 + sigma**2 )  ) + offset
+#            return lorentzian
+#            
+#           
+#        def lorentzian_estimator(self,x_axis=None,data=None):
+#            """ This method provides a one dimensional Lorentzian function.
+#        
+#            @param array x_axis: x values
+#            @param array data: value of each data point corresponding to
+#                                x values
+#
+#            @return int error: error code (0:OK, -1:error)
+#            @return float amplitude: estimated amplitude
+#            @return float x_zero: estimated x value of maximum
+#            @return float sigma_x: estimated standard deviation in x direction
+#            @return float offset: estimated offset
+#                                
+#                    
+#            """
+#            error=0
+#            # check if parameters make sense
+#            parameters=[x_axis,data]
+#            for var in parameters:
+#                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+#                    self.logMsg('Given parameter is no array.', \
+#                                msgType='error') 
+#                    error=-1
+#                elif len(np.shape(var))!=1:
+#                    self.logMsg('Given parameter is no one dimensional array.', \
+#                                msgType='error')                     
+#            #set paraameters 
+#            offset=np.median(self.xdata)
+#            #check if the amplitude is negative or positive and set x_zero:
+#            data_norm=data-offset
+#            if data_norm.max()>abs(data_norm.min()):
+#                y_zero=data_norm.max()
+#                x_zero=x_axis[np.argmax(data)]
+#            else:
+#                y_zero=data_norm.min()
+#                x_zero=x_axis[np.argmin(data)]
+#
+#            #estimate amplitude and HWHM
+#            Y = np.sum(data_norm) * (x_axis[-1] - x_axis[0]) / len(x_axis)
+#            sigma = Y / (np.pi * y_zero)
+#            amplitude = y_zero * np.pi * sigma
+#
+#            return error, amplitude, x_zero, sigma, offset     
+# 
+#
+#        def make_lorentzian_fit(self,axis=None,data=None,details=False):
+#            """ This method performes a gaussian fit on the provided data.
+#        
+#            @param array [] axis: axis values
+#            @param array[]  x_data: data
+#            @param bool details: If details is True, additional to the fit 
+#                                 parameters also the covariance matrix is
+#                                 returned
+#            
+#                    
+#            @return int error: error code (0:OK, -1:error)
+#            @return array popt: Optimal values for the parameters so that 
+#                    the sum of the squared error of lorentzian_function(xdata,
+#                    *popt)is minimized
+#            @return 2d array pcov : The estimated covariance of popt. The 
+#                    diagonals provide the variance of the parameter estimate. 
+#                    To compute one standard deviation errors on the parameters 
+#                    use perr = np.sqrt(np.diag(pcov)). This is only returned
+#                    when details is set to true.
+#                    
+#            """
+#                
+#            error,amplitude, x_zero, sigma, offset = self.lorentzian_estimator(
+#                                                                    axis,data)
+#                                                                    
+#            if details==False:
+#                error,popt= self.make_fit(self.lorentzian_function, axis, 
+#                                          data,initial_guess=(amplitude, 
+#                                          x_zero, sigma, offset),
+#                                          details=details)   
+#                return error,popt
+#            elif details==True:
+#                error,popt,pcov= self.make_fit(self.lorentzian_function, axis, 
+#                                               data,initial_guess=(amplitude, 
+#                                               x_zero, sigma, offset),
+#                                               details=details)
+#                return error,popt, pcov
 
 ############################################################################################################               
 ############################################################################################################               
@@ -326,13 +354,17 @@ class FitLogic():
 #TODO: Docstring
             
             for para in update_parameters:
-                #vary is set by default to True
-                parameters[para].vary=update_parameters[para].vary 
-                #check for other parameters and set in case
                 
                 #store value because when max,min is set the value is overwritten
                 # by the same number
                 store_value=parameters[para].value
+                value_is_new=(abs(update_parameters[para].value/store_value-1)<1e-20)
+                
+                #vary is set by default to True
+                parameters[para].vary=update_parameters[para].vary 
+                #check for other parameters and set in case
+                
+
                 if update_parameters[para].min!=None:
                     parameters[para].min=update_parameters[para].min  
                     
@@ -343,7 +375,7 @@ class FitLogic():
                     parameters[para].expr=update_parameters[para].expr 
                 
                 parameters[para].value=store_value
-                if update_parameters[para].value!=None:
+                if value_is_new:
                     parameters[para].value=update_parameters[para].value 
                     
             return parameters
@@ -464,6 +496,7 @@ class FitLogic():
 
 ##############################################################################
 ##############################################################################  
+
         def make_twoD_gaussian_fit(self,axis=None,data=None, add_parameters=None):
             """ This method performes a 1D gaussian fit on the provided data.
         
@@ -478,30 +511,31 @@ class FitLogic():
                                                  fit with given axis,...
                     
             """
+            (x_axis,y_axis)=axis
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(
-                                                                            x_axis=axis[:,0],y_axis=axis[:,0],data=data)
+                                                                            x_axis=x_axis,y_axis=y_axis,data=data)
             mod,params = self.make_twoD_gaussian_model() 
-             
             #auxiliary variables
-            stepsize_x=axis[1,0]-axis[0,0]
-            stepsize_y=axis[1,1]-axis[0,1]
-            n_steps_x=len(axis[:,0])
-            n_steps_y=len(axis[:,1])
+            stepsize_x=x_axis[1]-x_axis[0]
+            stepsize_y=y_axis[1]-y_axis[0]
+            n_steps_x=len(x_axis)
+            n_steps_y=len(y_axis)
             
             #Defining standard parameters
             #                  (Name,       Value,      Vary,           Min,                             Max,                       Expr)
             params.add_many(('amplitude',   amplitude,  True,        100,                               1e7,                        None),
-                           (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(axis[-1,0]-axis[0,0]),        None),
-                           (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(axis[-1,0]-axis[0,0]) ,  None), 
-                           (  'x_zero',    x_zero,      True,     (axis[0,0])-n_steps_x*stepsize_x ,         (axis[-1,0])+n_steps_x*stepsize_x,               None),
-                           (  'y_zero',     y_zero,     True,    (axis[0,1])-n_steps_y*stepsize_y ,         (axis[-1,1])+n_steps_y*stepsize_y,         None),
-                           (  'theta',    0,        True,           0 ,                             np.pi,               None),
+                           (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(x_axis[-1]-x_axis[0]),        None),
+                           (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,  None), 
+                           (  'x_zero',    x_zero,      True,     (x_axis[0])-n_steps_x*stepsize_x ,         x_axis[-1]+n_steps_x*stepsize_x,               None),
+                           (  'y_zero',     y_zero,     True,    (y_axis[0])-n_steps_y*stepsize_y ,         (y_axis[-1])+n_steps_y*stepsize_y,         None),
+                           (  'theta',       0.,        True,           0. ,                             np.pi,               None),
                            (  'offset',      offset,    True,           0,                              1e7,                       None))
-
+           
 #TODO: Add logmessage when value is changed            
 #            #redefine values of additional parameters
             if add_parameters!=None:  
                 params=self.substitute_parameter(parameters=params,update_parameters=add_parameters) 
+
             try:
                 result=mod.fit(data, x=axis,params=params)
             except:
@@ -542,9 +576,8 @@ class FitLogic():
                 if not isinstance(var,(float,int)):
                     self.logMsg('Given range of parameter' 
                                     'is no float or int.',msgType='error')
-                                        
-            u = x[:, 0]
-            v = x[:, 1]                            
+                                           
+            (u,v)=x
             x_zero = float(x_zero)
             y_zero = float(y_zero) 
             
@@ -580,7 +613,6 @@ class FitLogic():
             
         def twoD_gaussian_estimator(self,x_axis=None,y_axis=None,data=None):
 #            TODO:Make clever estimator
-            #FIXME: Idea: x_zero@max x_axis
             #FIXME: 1D array x_axis, y_axis, 2D data???
             """ This method provides a two dimensional gaussian function.
         
@@ -598,9 +630,17 @@ class FitLogic():
             @return float offset: estimated offset
             @return int error: error code (0:OK, -1:error)                    
             """ 
+            
+#            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
+#            len_x=np.where(x_axis[0]==x_axis)[0][1]
+#            len_y=len(data)/len_x
+            
+            
             amplitude=float(data.max()-data.min())
-            x_zero = x_axis.min() + (x_axis.max()-x_axis.min())/2.  
-            y_zero = y_axis.min() + (y_axis.max()-y_axis.min())/2.  
+
+            x_zero = x_axis[data.argmax()]  
+            y_zero = y_axis[data.argmax()]
+            
             sigma_x=(x_axis.max()-x_axis.min())/3.
             sigma_y =(y_axis.max()-y_axis.min())/3.
             theta=0.0
@@ -625,39 +665,46 @@ class FitLogic():
        
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
-
+                                    
         def twoD_testing(self):
-            data = np.empty((2500,1))
-            x = np.arange(-2,3,0.1)
-            y = np.arange(-2,3,0.1)
+            data = np.empty((121,1))
+            amplitude=np.random.normal(3e5,1e5)
+            x_zero=91+np.random.normal(0,0.8)
+            y_zero=14+np.random.normal(0,0.8)
+            sigma_x=np.random.normal(0.7,0.2)
+            sigma_y=np.random.normal(0.7,0.2)
+            offset=0
+            x = np.linspace(90,92,11)
+            y = np.linspace(13,15,12)
             xx, yy = np.meshgrid(x, y)
+
+            axes=(xx.flatten(),yy.flatten())
+      
+            theta_here=10./360.*(2*np.pi)
             
-            axes = np.empty((len(data),2))
-            axes[:,0]=xx.flatten()
-            axes[:,1]=yy.flatten()
-            print('shape',np.shape(axes))
-            print('axis 1',len(axes[:,1]))
-            print('axis 0',len(axes[:,0]))            
-            theta_here=110./360.*(2*np.pi)
-            data= self.twoD_gaussian_model(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000)
-            axes[:,1]=yy.flatten()           
-            theta_here=110./360.*(2*np.pi)
-            data= self.twoD_gaussian_model(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000)
+#            data=self.twoD_gaussian_function((xx,yy),*(amplitude,x_zero,y_zero,sigma_x,sigma_y,theta_here,offset)) 
+            data= self.twoD_gaussian_model(x=axes,amplitude=amplitude,x_zero=x_zero,y_zero=y_zero,sigma_x=sigma_x,sigma_y=sigma_y,theta=theta_here, offset=offset)
+            data+=50000*np.random.random_sample(np.shape(data))
+            
             gmod,params = self.make_twoD_gaussian_model()
             
             para=Parameters()
-#            para.add('sigma_x',expr='0.5*sigma_y')
 #            para.add('theta',vary=False)
+            para.add('x_zero',min=89.)
             result=self.make_twoD_gaussian_fit(axis=axes,data=data,add_parameters=para)
+#            print(result.fit_report())
+            plt.close('all')
             fig, ax = plt.subplots(1, 1)
             ax.hold(True)
-            ax.imshow(gmod.eval(x=axes,amplitude=100000,x_zero=0.9,y_zero=0.5,sigma_x=2,sigma_y=1,theta=theta_here, offset=10000).reshape(50, 50), cmap=plt.cm.jet, 
-                      origin='bottom', extent=(x.min(), x.max(), 
-                                               y.min(), y.max()))
-            ax.contour(x, y, result.best_fit.reshape(50, 50), 8
+                        
+            ax.imshow(result.data.reshape(len(y),len(x)), 
+                      cmap=plt.cm.jet, origin='bottom', extent=(x.min(), x.max(), 
+                                               y.min(), y.max()),interpolation="nearest")
+            ax.contour(x, y, result.best_fit.reshape(len(y),len(x)), 8
                         , colors='w')
-                                    
-                                    
+        
+#            print('Message:',result.message)
+                
 
         def oneD_testing(self):
             self.x = np.linspace(0, 5, 11)
