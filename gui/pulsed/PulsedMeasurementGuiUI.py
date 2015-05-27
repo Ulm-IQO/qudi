@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PulsedMeasurementGuiUI.ui'
 #
-# Created: Thu May 21 15:59:11 2015
+# Created: Wed May 27 19:01:07 2015
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -170,6 +170,8 @@ class Ui_MainWindow(object):
         self.label_6.setObjectName(_fromUtf8("label_6"))
         self.length_bins_lcdNumber = QtGui.QLCDNumber(self.sequence_tab)
         self.length_bins_lcdNumber.setGeometry(QtCore.QRect(590, 40, 101, 23))
+        self.length_bins_lcdNumber.setNumDigits(10)
+        self.length_bins_lcdNumber.setProperty("intValue", 0)
         self.length_bins_lcdNumber.setObjectName(_fromUtf8("length_bins_lcdNumber"))
         self.pg_frequency_lineEdit = QtGui.QLineEdit(self.sequence_tab)
         self.pg_frequency_lineEdit.setGeometry(QtCore.QRect(590, 10, 101, 21))
@@ -256,7 +258,7 @@ class Ui_MainWindow(object):
         self.label_2.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Sequences :</p></body></html>", None))
         self.label_3.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\">Add/Delete row :</p></body></html>", None))
         self.label_4.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Sequence length [bins] :</p></body></html>", None))
-        self.label_5.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Sequence length [s] :</p></body></html>", None))
+        self.label_5.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Sequence length [ms] :</p></body></html>", None))
         self.label_6.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Pulse generator frequency [MHz] :</p></body></html>", None))
         self.label_7.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Sequence size [MB] :</p></body></html>", None))
         self.clear_list_pushButton.setText(_translate("MainWindow", "Clear list", None))
