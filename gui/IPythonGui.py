@@ -55,6 +55,7 @@ class IPythonGui(GUIBase):
         """Make sure that the window is visible and at the top.
         """
         ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
-        con = connect_qtconsole(ipythonlogic.connection_file)
+        if ipythonlogic.getState() != 'deactivated':
+            con = connect_qtconsole(ipythonlogic.ipykernel.connection_file)
         self.consoles.append(con)
  

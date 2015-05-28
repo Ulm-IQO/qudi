@@ -26,13 +26,25 @@ def _on_os_x_10_9():
     from distutils.version import LooseVersion as V
     return sys.platform == 'darwin' and V(platform.mac_ver()[0]) >= V('10.9')
 
+old_register = atexit.register
+old_unregister = atexit.unregister
+
+def debug_register(func, *args, **kargs):
+    print('register', func, *args, **kargs)
+    old_register(func, *args, **kargs)
+
+def debug_unregister(func):
+    print('unregister', func)
+    old_unregister(func)
+
+atexit.register = debug_register
+atexit.unregister = debug_unregister
 
 class IPythonLogic(GenericLogic):        
     """ Logic module containing an IPython kernel.
     """
     _modclass = 'ipythonlogic'
     _modtype = 'logic'
-    sigRunKernel = QtCore.Signal()
         
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -46,21 +58,20 @@ class IPythonLogic(GenericLogic):
         #locking for thread safety
         self.lock = Mutex()
         self.connectionFileClean = True
-    
+ 
+    def activation(self, e=None):
+        self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
+        self.ipythread = QtCore.QThread()
+        self.ipykernel = IPythonKernel(self)
+        self.ipykernel.moveToThread(self.ipythread)
+        self.ipythread.started.connect(self.ipykernel.prepare)
+        self.ipythread.start()
+
     def deactivation(self, e=None):
-        # remove connection file
-        self.cleanupConnectionFile()
-        atexit.unregister(self.cleanupConnectionFile)
-        # stop ipython loop
-        self.loop.loop.stop()
-        # stop heartbeat
-
-        # destroy heartbeat zmq context
-
-        # close and remove zmq streams
-
-        # close and remove zmq sockets
-
+        self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
+        self.ipykernel.loop.stop()
+        self.ipythread.quit()
+        self.ipythread.wait()
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace, 
@@ -78,16 +89,15 @@ class IPythonLogic(GenericLogic):
             self.namespace.pop(module, None)
         self.modules = currentModules
 
-    def cleanupConnectionFile(self):
-        try:
-            if not self.connectionFileClean:
-                os.remove(self.connection_file)
-                self.connectionFileClean = True
-        except (IOError, OSError):
-            pass
+class IPythonKernel(QtCore.QObject):
+    sigRunKernel = QtCore.Signal()
 
-    def activation(self, e=None):
-        self.logMsg('IPython kernel created in thread{0}'.format(threading.get_ident()), msgType='thread')
+    def __init__(self, ipylogic):
+        super().__init__()
+        self.ipylogic = ipylogic
+
+    def prepare(self):
+        self.ipylogic.logMsg('IPython kernel created in thread {0}'.format(threading.get_ident()), msgType='thread')
         # You can remotely connect to this kernel. See the output on stdout.
         IPython.kernel.zmq.ipkernel.signal = lambda sig, f: None  # Overwrite.
         # Do in mainthread to avoid history sqlite DB errors at exit.
@@ -118,7 +128,7 @@ class IPythonLogic(GenericLogic):
             self.shell_stream = ZMQStream(self.shell_socket)
             self.control_stream = ZMQStream(self.control_socket)
 
-            self.namespace = {'manager': self._manager}
+            self.namespace = {'manager': self.ipylogic._manager}
             self.kernel = Kernel(
                     session = self.session,
                     user_ns = self.namespace,
@@ -140,29 +150,51 @@ class IPythonLogic(GenericLogic):
                     hb_port = self.hb_port,
                     ip = self.ip)
 
-            self.logMsg('To connect another client to this IPython kernel, use: ipython console --existing {0}'.format(self.connection_file), msgType='status')
-            self.sigRunKernel.connect(self.runloop, QtCore.Qt.QueuedConnection)
+            self.ipylogic.logMsg('To connect another client to this IPython kernel, use: ipython console --existing {0}'.format(self.connection_file), msgType='status')
         except Exception as e:
-            self.logMsg('Exception while initializing IPython ZMQ kernel. {0}'.format(e), msgType='error')
+            self.ipylogic.logMsg('Exception while initializing IPython ZMQ kernel. {0}'.format(e), msgType='error')
             raise
+        self.sigRunKernel.connect(self.runKernel)
         self.sigRunKernel.emit()
 
-    def runloop(self):
+    def cleanupConnectionFile(self):
+        try:
+            if not self.connectionFileClean:
+                os.remove(self.connection_file)
+                self.connectionFileClean = True
+        except (IOError, OSError):
+            pass
+
+    def runKernel(self):
         self.heartbeat.start()
         self.kernel.start()
-        self.loop = IPythonMainLoop()
-        self.loop.start()
-        self.logMsg('IPython running.', msgType='status')
-
-class IPythonMainLoop(QtCore.QThread):
-    def __init__(self):
-        super().__init__()
+        self.ipylogic.logMsg('IPython running.', msgType='status')
+        self.ipylogic.logMsg('IPython kernel started in thread {0}'.format(threading.get_ident()), msgType='thread')
         self.loop = IOLoop.instance()
-
-    def run(self):
-        #self.logMsg('IPython kernel running in thread{0}'.format(threading.get_ident()), msgType='thread')
+        self.ipylogic.logMsg('IPython kernel running in thread {0}'.format(threading.get_ident()), msgType='thread')
         # start ipython main loop
         self.loop.start()
+        self.ipylogic.logMsg('IPython kernel stopped in thread {0}'.format(threading.get_ident()), msgType='thread')
+
+        # remove connection file
+        self.cleanupConnectionFile()
+        atexit.unregister(self.cleanupConnectionFile)
+        # stop ipython loop
         # cleanup directly after loop terminates, needs to be in same thread
-        InteractiveShell.instance().atexit_operations()
-        atexit.unregister(InteractiveShell.instance().atexit_operations)
+        self.kernel.shell.atexit_operations()
+        atexit.unregister(self.kernel.shell.atexit_operations)
+        #print(self.kernel.shell.magics_manager.registry)
+        if 'ScriptMagics' in self.kernel.shell.magics_manager.registry:
+             self.kernel.shell.magics_manager.registry['ScriptMagics'].kill_bg_processes()
+             atexit.unregister(self.kernel.shell.magics_manager.registry['ScriptMagics'].kill_bg_processes)
+        self.kernel.shell.history_manager.save_thread.stop()
+        atexit.unregister(self.kernel.shell.history_manager.save_thread.stop)
+        # stop heartbeat
+        # destroy heartbeat zmq context
+        # close and remove zmq streams
+        # close and remove zmq sockets
+        self.control_socket.close()
+        self.iopub_socket.close()
+        self.shell_socket.close()
+        #stop session
+
