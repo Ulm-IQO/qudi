@@ -43,8 +43,6 @@ class PulseAnalysisLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
-        self._sequence_names = None
-        
 #        self._binwidth_ns = 1.
 #        self._laser_length_bins = 3800
 #        self._number_of_laser_pulses = 100
@@ -72,24 +70,24 @@ class PulseAnalysisLogic(GenericLogic):
 
 
     def _get_measurement_parameters(self):
-        """Gets the important parameters from the sequence generator module
+        """Gets the important parameters from the sequence generator module and the fast counter
         """
-        self._sequence_names = self._sequence_generator_logic.get_sequence_names()
         self._binwidth_ns = 1000./self._fast_counter_device.get_frequency()
-        self._number_of_laser_pulses = self._sequence_generator_logic.get_number_of_laser_pulses()
-        self._tau_vector_ns = self._sequence_generator_logic.get_tau_vector()
-        self._laser_length_bins = self._sequence_generator_logic.get_laser_length()
+        self._number_of_laser_pulses = self._sequence_generator_logic._current_sequence_parameters['number_of_lasers']
+        self._tau_vector_ns = self._sequence_generator_logic._current_sequence_parameters['tau_vector']
+        self._laser_length_bins = self._sequence_generator_logic._current_sequence_parameters['laser_length_vector'][0]
     
     
     def start_pulsed_measurement(self):
         '''Calculate the fluorescence contrast and create plots.
         '''
-        # initialize plots
-        self._initialize_signal_plot()
-        self._initialize_laser_plot()
         
         # get parameters for the measurement
         self._get_measurement_parameters()
+        
+        # initialize plots
+        self._initialize_signal_plot()
+        self._initialize_laser_plot()
         
         # start pulse generator
         self.pulse_generator_on()
