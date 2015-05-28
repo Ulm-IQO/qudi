@@ -388,32 +388,81 @@ class FitLogic(GenericLogic):
 ############################################################################################################               
 
         def substitute_parameter(self, parameters=None, update_parameters=None):
-#TODO: Docstring
+            """ This method substitutes all parameters handed in the 
+            update_parameters object in an initial set of parameters.
+                            
+            @param lmfit.parameter.Parameters parameters: Initial parameters
+            @param lmfit.parameter.Parameters update_parameters: New parameters
+            
+            @return lmfit.parameter.Parameters parameters: New object with
+                                                           substituted parameters
+                    
+            """
             
             for para in update_parameters:
-                
                 #store value because when max,min is set the value is overwritten
-                # by the same number
                 store_value=parameters[para].value
-                value_is_new=(abs(update_parameters[para].value/store_value-1)<1e-20)
                 
+                #the Parameter object changes the value, min and max when the 
+#                value is called therefore the parameters have to be saved from 
+#                the reseted Parameter object therefore the Parameters have to be
+#                saved also here
+                para_temp=update_parameters                
+                if para_temp[para].value!=None:
+                    value_new=True
+                    value_value=para_temp[para].value
+                else: 
+                    value_new=False
+                    
+                para_temp=update_parameters
+                if para_temp[para].min!=None:                 
+                    min_new=True
+                    min_value=para_temp[para].min
+                else: 
+                    min_new=False 
+                    
+                para_temp=update_parameters
+                if para_temp[para].max!=None:                 
+                    max_new=True
+                    max_value=para_temp[para].max
+                else: 
+                    max_new=False
+                    
                 #vary is set by default to True
                 parameters[para].vary=update_parameters[para].vary 
-                #check for other parameters and set in case
-                
 
-                if update_parameters[para].min!=None:
-                    parameters[para].min=update_parameters[para].min  
+#                if the min, max and expression and value are new overwrite them here                    
+                if min_new:
+                    parameters[para].min=update_parameters[para].min
                     
-                if update_parameters[para].max!=None:
+                if max_new:
                     parameters[para].max=update_parameters[para].max   
-                    
-                if update_parameters[para].expr!=None:
-                    parameters[para].expr=update_parameters[para].expr 
                 
-                parameters[para].value=store_value
-                if value_is_new:
-                    parameters[para].value=update_parameters[para].value 
+                if update_parameters[para].expr!=None:
+                    parameters[para].expr=update_parameters[para].expr
+                
+                if value_new:
+                    parameters[para].value=value_value
+                    
+#                if the min or max are changed they overwrite the value therefore
+#                    here the values have to be reseted to the initial value also
+#                    when no new value was set in the beginning
+                if min_new:
+                    if abs(min_value/parameters[para].value-1.)<1e-12:
+                        parameters[para].value=store_value                        
+                if max_new:
+                    if abs(max_value/parameters[para].value-1.)<1e-12:
+                        parameters[para].value=store_value
+
+                #check if the suggested value or the value in parameters is smaller/
+#                bigger than min/max values and set then the value to min or max                        
+                if min_new:
+                    if parameters[para].value<min_value:
+                        parameters[para].value=min_value 
+
+                if max_new:
+                    if parameters[para].value>max_value:
+                        parameters[para].value=max_value 
                     
             return parameters
 
