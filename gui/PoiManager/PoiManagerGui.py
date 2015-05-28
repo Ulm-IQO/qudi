@@ -20,7 +20,6 @@ class PoiMark(pg.CircleROI):
     """Creates a circle as a marker. 
         
         @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
-        @param int[2] size: (length-2 sequence) The size of the ROI’s bounding rectangle.
         @param **args: All extra keyword arguments are passed to ROI()
         
         Have a look at: 
@@ -30,9 +29,10 @@ class PoiMark(pg.CircleROI):
     color = "F0F"
     selectcolor = "FFF"
     selected = False
+    radius = 0.6
     
-    def __init__(self, pos, size, poi=None, viewwidget=None, **args):
-        pg.CircleROI.__init__(self, pos, size, pen={'color': self.color, 'width': 2}, **args)
+    def __init__(self, pos, poi=None, viewwidget=None, **args):
+        pg.CircleROI.__init__(self, pos, [2*self.radius, 2*self.radius], pen={'color': self.color, 'width': 2}, **args)
         
         self.poi=None
         self.viewwidget=None
@@ -44,9 +44,10 @@ class PoiMark(pg.CircleROI):
         if not poi is None:
             self.poi=poi            
         if not pos is None:
-            self.position=pos
+            self.position=pos # This is the POI pos, so the centre of the marker circle.
 
-        self.setAngle(30)
+        #self.sigClicked.connect()
+
         
             
     def add_to_viewwidget(self, viewwidget=None):
@@ -57,14 +58,16 @@ class PoiMark(pg.CircleROI):
         # Removing the handle from this CricleROI
         self.removeHandle(0)
         
-        # create a new free handle for the name tag
-        self.my_handle = self.addRotateHandle([1.0,0.5],[0.5, 0.5])
+        # create a new free handle for the name tag, positioned at "east" on the circle.
+        self.my_handle = self.addRotateHandle([1,0.5],[0.5, 0.5])
         self.sigRegionChangeFinished.connect(self._redraw_label)
         self.label=pg.TextItem(text=self.poi.get_name(),\
                                anchor=(0,1),
                                color= self.color
                                ) 
                                
+        self.setAngle(30)
+        self.setPos( self.position + self.get_marker_offset() )
         #self.viewwidget.addItem(self.label)
     
     def _redraw_label(self):
@@ -74,9 +77,8 @@ class PoiMark(pg.CircleROI):
             cos_th = np.cos(self.angle()/180.*np.pi)
             sin_th = np.sin(self.angle()/180.*np.pi)
 
-            position=self.position\
-                     +[0.5,0.5]\
-                     +[0.5*cos_th,0.5*sin_th]
+            text_pos=self.position\
+                     +[self.radius*cos_th,self.radius*sin_th]
 
             if cos_th > 0 and sin_th > 0:
                 my_anchor = (0,1)
@@ -87,6 +89,10 @@ class PoiMark(pg.CircleROI):
             else:
                 my_anchor = (1,1)
 
+            # Updating the position of the circleROI origin in case it has been rotated.
+            # It is important for finish=False so that this action does not call this 
+            # _redraw_label method recursively
+            self.setPos( self.position + self.get_marker_offset() , finish=False)
 
             my_color = self.color
             if self.selected:
@@ -96,8 +102,23 @@ class PoiMark(pg.CircleROI):
                                anchor = my_anchor,
                                color = my_color
                                ) 
-            self.label.setPos(position[0],position[1])        
+            self.label.setPos(text_pos[0],text_pos[1])        
             self.viewwidget.addItem(self.label)
+        
+    def get_marker_offset(self):
+        
+        # The origin of the circleROI is in the lower left corner, which is at -135 degrees
+        # when the circleROI is in its initial unrotated state.
+        origin_angle = self.angle() - 135
+
+        # We wish to rotate the circleROI about its centre, and so from this angle
+        # we calculate the necessary offset that will essentially rotate the circleROI origin
+        # correspondingly.
+        x_offset = np.sqrt(2.0) * self.radius * np.cos(origin_angle/180.*np.pi)
+        y_offset = np.sqrt(2.0) * self.radius * np.sin(origin_angle/180.*np.pi)
+
+        return [x_offset, y_offset]
+        
         
     def delete_from_viewwidget(self, viewwidget=None):
         if not viewwidget is None:
@@ -441,7 +462,7 @@ class PoiManagerGui(GUIBase):
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
                 position=self._poi_manager_logic.get_last_point(poikey=key)
-                position=position[:2]-[0.5,0.5]
+                position=position[:2]
                 
                 if key in self._markers.keys():
                     self._markers[key].setPos(position)                    
@@ -449,7 +470,6 @@ class PoiManagerGui(GUIBase):
                 else:
                     # Create Region of Interest as marker:
                     marker = PoiMark(position, 
-                                    [1, 1], 
                                     poi = self._poi_manager_logic.track_point_list[key],
                                     movable=False, 
                                     scaleSnap=False, 
