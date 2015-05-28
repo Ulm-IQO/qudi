@@ -32,6 +32,7 @@ import time
 import atexit
 import weakref
 import importlib
+import threading
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.reload as reload
@@ -150,6 +151,7 @@ class Manager(QtCore.QObject):
             # Thread management
             self.tm = ThreadManager()
             self.tm.sigLogMessage.connect(self.logger.queuedLogMsg)
+            self.logger.logMsg('Main thread is {0}'.format(threading.get_ident()), msgType='thread')
             #mthread = self.tm.newThread('manager')
             #self.moveToThread(mthread)
             #mthread.start()
@@ -970,6 +972,9 @@ class Manager(QtCore.QObject):
 
     def quit(self):
         """Nicely request that all modules shut down."""
+        for mbase in ['hardware', 'logic', 'gui']:
+            for module in self.tree['loaded'][mbase]:
+                self.stopModule(mbase, module)
         self.sigManagerQuit.emit(self)
 
     # Staticmethods are used to group functions which have some logical 
