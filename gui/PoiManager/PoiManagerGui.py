@@ -31,13 +31,14 @@ class PoiMark(pg.CircleROI):
     selected = False
     radius = 0.6
     
-    def __init__(self, pos, poi=None, viewwidget=None, **args):
+    def __init__(self, pos, poi=None, click_action=None, viewwidget=None, **args):
         pg.CircleROI.__init__(self, pos, [2*self.radius, 2*self.radius], pen={'color': self.color, 'width': 2}, **args)
         
         self.poi=None
         self.viewwidget=None
         self.position=None
         self.label=None
+        self.click_action=None
         
         if not viewwidget is None:
             self.viewwidget=viewwidget
@@ -45,8 +46,10 @@ class PoiMark(pg.CircleROI):
             self.poi=poi            
         if not pos is None:
             self.position=pos # This is the POI pos, so the centre of the marker circle.
-
-        #self.sigClicked.connect()
+        if not click_action is None:
+            self.click_action=click_action
+        self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
+        self.sigClicked.connect(self._activate_poi_from_marker)
 
         
             
@@ -69,6 +72,9 @@ class PoiMark(pg.CircleROI):
         self.setAngle(30)
         self.setPos( self.position + self.get_marker_offset() )
         #self.viewwidget.addItem(self.label)
+
+    def _activate_poi_from_marker(self):
+        self.click_action( self.poi.get_key() )
     
     def _redraw_label(self):
         if not self.label is None:
@@ -427,6 +433,14 @@ class PoiManagerGui(GUIBase):
         # After POI name is changed, empty name field
         self._mw.poi_name_Input.setText('')
 
+    def select_poi_from_marker(self, poikey = None):
+        '''Process the selection of a POI from click on POImark
+        '''
+        
+        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(poikey))
+        print("hello")
+        self._redraw_sample_shift()
+        
 
     def update_poi_pos(self):
 
@@ -471,6 +485,7 @@ class PoiManagerGui(GUIBase):
                     # Create Region of Interest as marker:
                     marker = PoiMark(position, 
                                     poi = self._poi_manager_logic.track_point_list[key],
+                                    click_action = self.select_poi_from_marker,
                                     movable=False, 
                                     scaleSnap=False, 
                                     snapSize=1.0)
