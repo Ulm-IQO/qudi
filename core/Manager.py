@@ -975,6 +975,7 @@ class Manager(QtCore.QObject):
         for mbase in ['hardware', 'logic', 'gui']:
             for module in self.tree['loaded'][mbase]:
                 self.stopModule(mbase, module)
+                QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self)
 
     # Staticmethods are used to group functions which have some logical 
