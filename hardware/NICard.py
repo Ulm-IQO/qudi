@@ -748,13 +748,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                 self._scanner_counter_channel,  # counter channel to ouput the
                                                 # counting results
                 self._photon_source )           # which channel to count  
-        
-        # see above, same idea but connecting the counted photons with the 
-        # Counter Task
-        daq.DAQmxSetCICtrTimebaseSrc(   
-                self._counter_daq_task,     # which task
-                self._counter_channel,      # which output channel
-                self._photon_source )       # which channel to count  
+    
         
         return 0
     
