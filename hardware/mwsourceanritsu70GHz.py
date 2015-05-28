@@ -6,7 +6,7 @@ import visa
 import numpy as np
 from collections import OrderedDict
 
-class mwsourceanritsu70GHz(Base,MWInterface):
+class mwsourceanritsu70GHz(Base, MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -61,7 +61,8 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         self._gpib_connetion.write('RF1')
         
         return 0
-        
+
+ 
     def off(self):
         """ Switches off any microwave output. 
         
@@ -71,7 +72,8 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         self._gpib_connetion.write('RF0')
         
         return 0
-        
+
+
     def get_power(self):
         """ Gets the microwave output power. 
         
@@ -79,8 +81,9 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         """
         
         return float(self._gpib_connetion.ask('OL0'))
-        
-    def set_power(self,power=None):
+
+
+    def set_power(self, power=None):
         """ Sets the microwave output power. 
         
         @param float power: this power is set at the device
@@ -90,9 +93,11 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         
         if power != None:
             self._gpib_connetion.write('RF0 L0 {:f} DM RF1'.format(power))
-        
-        return 0
-        
+            return 0
+        else:
+            return -1
+
+
     def get_frequency(self):
         """ Gets the frequency of the microwave output. 
         
@@ -100,8 +105,9 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         """
         
         return float(self._gpib_connetion.ask('OF0'))
-        
-    def set_frequency(self,frequency=None):
+
+
+    def set_frequency(self, frequency=None):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
@@ -111,10 +117,11 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         
         if frequency != None:
             self._gpib_connetion.write('RF0 F0 {:f} HZ RF1'.format(frequency))
-            
-        return 0
-        
-    def set_cw(self,f=None, power=None):
+            return 0
+        else: return -1
+
+
+    def set_cw(self, f=None, power=None):
         """ Sets the MW mode to cw and additionally frequency and power
         
         @param float f: frequency to set
@@ -123,12 +130,17 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.set_frequency(f)
-        self.set_power(power)
+        errorcode1 = self.set_frequency(f)
+        errorcode2 = self.set_power(power)
         
-        self.on()
-        
-    def set_list(self,freq=None, power=None):
+        if errorcode1 == 0 and errorcode2 == 0:
+            self.on()
+            return 0
+        else:
+            return -1
+
+
+    def set_list(self, freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list f: list of frequencies
         @param float power: MW power
@@ -157,7 +169,8 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         self._gpib_connetion.write('RF0 LST ELN0 ELI0000 LF ' + f + ' LP ' + p + 'LIB0000 LIE{:s}'.format(stop) + 'RF1')
         
         return error
-        
+
+
     def reset_listpos(self):#
         """Reset of MW List Mode
          
@@ -168,7 +181,8 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         self._gpib_connetion.write('*WAI')
         
         return 0
-        
+
+
     def list_on(self):
         """Activates MW List Mode
          
@@ -176,8 +190,9 @@ class mwsourceanritsu70GHz(Base,MWInterface):
         """
         
         pass
-    
-    def trigger(self,source,pol):
+
+
+    def trigger(self, source, pol):
         
         self._gpib_connetion.write(':TRIG:SOUR '+source)
         self._gpib_connetion.write(':TRIG:SLOP '+pol)
