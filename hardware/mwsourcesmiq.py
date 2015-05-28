@@ -133,19 +133,19 @@ class mwsourcesmiq(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+        error = 0
         self._gpib_connetion.write(':FREQ:MODE CW')
         
         if f != None:
-            self.set_frequency(f)
+            error = self.set_frequency(f)
         else:
             return -1
         if power != None:
-            self.set_power(power)
+            error = self.set_power(power)
         else:
             return -1
         
-        self.on()            
-        return 0
+        return error
 
 
     def set_list(self,freq=None, power=None):
