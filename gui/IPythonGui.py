@@ -19,7 +19,9 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 import os
 import numpy as np
+from collections import OrderedDict
 from gui.GUIBase import GUIBase
+from IPython.lib.kernel import connect_qtconsole
 
 class IPythonGui(GUIBase):
     """
@@ -41,15 +43,18 @@ class IPythonGui(GUIBase):
         self.connector['in']['ipythonlogic']['class'] = 'IPythonLogic'
         self.connector['in']['ipythonlogic']['object'] = None
 
-        self.modules = set()
+        self.consoles = list()
 
     def initUI(self, e=None):
         """Create all UI objects and show the window.
           @param object e: Fysom state change notice
         """
         pass
-
+       
     def show(self):
         """Make sure that the window is visible and at the top.
         """
-        pass
+        ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
+        con = connect_qtconsole(ipythonlogic.connection_file)
+        self.consoles.append(con)
+ 
