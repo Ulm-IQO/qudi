@@ -129,15 +129,12 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+        error = 0        
         
-        errorcode1 = self.set_frequency(f)
-        errorcode2 = self.set_power(power)
+        error = self.set_frequency(f)
+        error = self.set_power(power)
         
-        if errorcode1 == 0 and errorcode2 == 0:
-            self.on()
-            return 0
-        else:
-            return -1
+        return error
 
 
     def set_list(self, freq=None, power=None):
