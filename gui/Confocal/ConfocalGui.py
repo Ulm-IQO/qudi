@@ -1,5 +1,25 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi GUI module base class.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 #from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
@@ -303,6 +323,7 @@ class ConfocalGui(GUIBase):
         # Load the images for xy and depth in the display:
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
+        self.depth_image_2 = pg.ImageItem(arr02)
 
                                             
         #######################################################################
@@ -349,12 +370,15 @@ class ConfocalGui(GUIBase):
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
         self._mw.depth_ViewWidget_2.addItem(self.depth_image)
+        self._mw.depth_ViewWidget.addItem(self.depth_image_2)
         
         # Label the axes:
         self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
         self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='µm' )
         self._mw.depth_ViewWidget_2.setLabel( 'bottom', 'X position', units='µm' )
         self._mw.depth_ViewWidget_2.setLabel( 'left', 'Z position', units='µm' )
+        self._mw.depth_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.depth_ViewWidget.setLabel( 'left', 'Z position', units='µm' )
     
         # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI([ini_pos_x_crosshair-len(arr01)/40, ini_pos_y_crosshair-len(arr01)/40], 
@@ -553,6 +577,7 @@ class ConfocalGui(GUIBase):
             
         self.xy_image.setLookupTable(lut)
         self.depth_image.setLookupTable(lut)
+        self.depth_image_2.setLookupTable(lut)
         self.xy_refocus_image.setLookupTable(lut)        
         
         # Create colorbars and add them at the desired place in the GUI. Add
@@ -1054,11 +1079,15 @@ class ConfocalGui(GUIBase):
         if self._mw.depth_cb_auto_CheckBox.isChecked():
             self.depth_image.setImage(image=self._scanning_logic.depth_image[:,:,3].transpose(),
                                    autoLevels=True)
+            self.depth_image_2.setImage(image=self._scanning_logic.depth_image[:,:,3].transpose(),
+                                   autoLevels=True)
             self.refresh_depth_colorbar()
         else:
             cb_min = float(self._mw.depth_cb_min_InputWidget.text())
             cb_max = float(self._mw.depth_cb_max_InputWidget.text())
             self.depth_image.setImage(image=self._scanning_logic.depth_image[:,:,3].transpose(),
+                                   levels=(cb_min,cb_max) )
+            self.depth_image_2.setImage(image=self._scanning_logic.depth_image[:,:,3].transpose(),
                                    levels=(cb_min,cb_max) )
 
 
