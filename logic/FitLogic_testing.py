@@ -713,6 +713,67 @@ class FitLogic():
                     error=-1
        
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+
+
+ 
+
+##############################################################################
+##############################################################################
+
+                        #Lorentzian Model
+
+##############################################################################
+##############################################################################  
+
+            
+        def make_lorentzian_model(self):
+            """ This method creates a model of lorentzian with an offset. The
+            parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset 
+            'c'. For function see: 
+            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LaurentzianModel
+                            
+            @return lmfit.model.CompositeModel model: Returns an object of the
+                                                      class CompositeModel
+            @return lmfit.parameter.Parameters params: Returns an object of the 
+                                                       class Parameters with all
+                                                       parameters for the 
+                                                       lorentzian model.
+                    
+            """
+            
+            model=LorentzianModel()+ConstantModel()
+            params=model.make_params()
+            
+            return model,params
+ 
+
+##############################################################################
+##############################################################################
+
+                        #Testing routines
+
+##############################################################################
+##############################################################################  
+
+        def lorentzian_testing(self):
+            x = np.linspace(2600, 2900, 101)
+            x_nice=np.linspace(0, 5, 101)
+            
+            mod_final,params = self.make_lorentzian_model()
+            print('Parameters of the model',mod_final.param_names)
+            p=Parameters()
+            
+#            p.add('center',max=-1)
+            
+            self.data_noisy=(mod_final.eval(x=x, amplitude=-30,center=2800,sigma=10, c=100) 
+                                    + 0*np.random.normal(size=x.shape))
+#            result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy,add_parameters=p)
+
+            plt.plot(x,self.data_noisy)
+#            plt.plot(self.x,result.init_fit,'-g')
+#            plt.plot(self.x,result.best_fit,'-r')
+#            plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r')
+            plt.show()
             
                                     
         def twoD_testing(self):
@@ -788,4 +849,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.twoD_testing()   
+test.lorentzian_testing()   
