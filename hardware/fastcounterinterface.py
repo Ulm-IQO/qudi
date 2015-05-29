@@ -34,12 +34,12 @@ class FastCounterInterface():
         raise InterfaceImplementationError('FastCounterInterface>get_status')
         return -1
     
-    def start(self):
+    def start_measure(self):
         
         raise InterfaceImplementationError('FastCounterInterface>start')
         return -1
         
-    def stop(self):
+    def stop_measure(self):
         
         raise InterfaceImplementationError('FastCounterInterface>stop')
         return -1

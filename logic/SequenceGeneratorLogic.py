@@ -47,7 +47,7 @@ class SequenceGeneratorLogic(GenericLogic):
 #        
         self._pg_frequency_MHz = 950
         self._current_matrix = None
-        self._current_sequence = None
+        self._current_sequence = []
         self._current_sequence_parameters = {}
         self._current_sequence_parameters['length_bins'] = 0
         self._current_sequence_parameters['length_ms'] = 0
@@ -78,9 +78,8 @@ class SequenceGeneratorLogic(GenericLogic):
         '''
         sequence = self.encode_matrix(self._current_matrix, self._current_sequence_parameters['repetitions'])
         self._saved_sequences[name] = sequence
-        self._saved_matrices[name] = self._current_matrix
-        print('saved_reps: ', self._current_sequence_parameters['repetitions'])
-        self._saved_sequence_parameters[name] = self._current_sequence_parameters
+        self._saved_matrices[name] = self._current_matrix.copy()
+        self._saved_sequence_parameters[name] = self._current_sequence_parameters.copy()
         return
     
     
@@ -213,7 +212,6 @@ class SequenceGeneratorLogic(GenericLogic):
             self._current_sequence = self._saved_sequences[name]
             self._current_matrix = self._saved_matrices[name]
             self._current_sequence_parameters = self._saved_sequence_parameters[name]
-            print('set_sequence_reps: ', self._current_sequence_parameters['repetitions'])
         else:
             self._current_sequence = None
             self._current_matrix = None
@@ -258,7 +256,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self._current_sequence_parameters['laser_length_vector'] = laser_length_vector
         self._current_sequence_parameters['repetitions'] = repetitions
         self._current_matrix = matrix
-        print('updated_reps: ', repetitions)
         return
        
     
@@ -269,7 +266,16 @@ class SequenceGeneratorLogic(GenericLogic):
         if (name in self._saved_sequences):
             sequence = self._saved_sequences[name]
         return sequence
-        
+    
+    
+    def get_sequence_parameters(self, name):
+        ''' This method searches for a sequence with name "name" in all saved sequences and returns the parameters dictionary
+        '''
+        parameter_dict = None
+        if (name in self._saved_sequence_parameters):
+            parameter_dict = self._saved_sequence_parameters[name]
+        return parameter_dict
+    
     
     def get_sequence_names(self):
         names = list(self._saved_sequences.keys())

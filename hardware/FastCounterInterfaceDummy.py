@@ -48,17 +48,21 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
     
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
+        status = {'binwidth_ns': 1000./950.}
+        time.sleep(1)
+        return status
+    
+    def start_measure(self):
+        time.sleep(1)
+        return 0
+    
+    def pause_measure(self):
+        time.sleep(1)
+        return 0
         
-        raise InterfaceImplementationError('FastCounterInterface>get_status')
-        return -1
-    
-    def start(self):
+    def stop_measure(self):
         time.sleep(1)
-        return
-    
-    def halt(self):
-        time.sleep(1)
-        return
+        return 0
     
     def continue_measure(self):
         
