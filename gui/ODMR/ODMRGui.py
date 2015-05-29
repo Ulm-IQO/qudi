@@ -228,7 +228,7 @@ class ODMRGui(GUIBase):
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
         self._odmr_logic.stop_ODMR_scan()
-        self._odmr_logic.kill_ODMR()
+#        self._odmr_logic.kill_ODMR()
 
 
     def run_clicked(self, enabled):
@@ -239,10 +239,9 @@ class ODMRGui(GUIBase):
         
         #Firstly stop any scan that might be in progress
         self._odmr_logic.stop_ODMR_scan()
-        self._odmr_logic.kill_ODMR()
+#        self._odmr_logic.kill_ODMR()
         #Then if enabled. start a new odmr scan.
         if enabled:
-            self._odmr_logic.start_ODMR()
             self._odmr_logic.start_ODMR_scan()
             
     def menue_settings(self):
@@ -286,7 +285,7 @@ class ODMRGui(GUIBase):
     ###########################################################################
     
     def change_frequency(self):
-        self._odmr_logic.MW_frequency = float(self._mw.frequency_InputWidget.text())
+        self._odmr_logic.set_frequency(frequency = float(self._mw.frequency_InputWidget.text()))
         
     def change_start_freq(self):
         self._odmr_logic.MW_start = float(self._mw.start_freq_InputWidget.text())
@@ -299,6 +298,7 @@ class ODMRGui(GUIBase):
         
     def change_power(self):
         self._odmr_logic.MW_power = float(self._mw.power_InputWidget.text())
+        self._odmr_logic.set_power(power = self._odmr_logic.MW_power)
         
     def change_runtime(self):
         pass

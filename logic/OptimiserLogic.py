@@ -53,10 +53,10 @@ class OptimiserLogic(GenericLogic):
         self._clock_frequency = 200
         self.return_slowness = 20
         
-        self.refocus_XY_size =  2
-        self.refocus_XY_step = 0.2
+        self.refocus_XY_size =  0.6
+        self.refocus_XY_step = 0.06
         self.refocus_Z_size = 2
-        self.refocus_Z_step = 0.2
+        self.refocus_Z_step = 0.1
         self.fit_Z_step = 0.01
         
         #locking for thread safety

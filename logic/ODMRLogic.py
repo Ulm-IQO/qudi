@@ -53,10 +53,10 @@ class ODMRLogic(GenericLogic):
         self._clock_frequency = 200
         
         self.MW_frequency = 2870.    #in MHz
-        self.MW_power = -20.         #in dBm
-        self.MW_start = 2700.        #in MHz
-        self.MW_stop = 3030.         #in MHz
-        self.MW_step = 5.            #in MHz
+        self.MW_power = -30.         #in dBm
+        self.MW_start = 2800.        #in MHz
+        self.MW_stop = 2950.         #in MHz
+        self.MW_step = 2.            #in MHz
         
         #number of lines in the matrix plot
         self.NumberofLines = 50 
@@ -81,7 +81,8 @@ class ODMRLogic(GenericLogic):
         self._initialize_ODMR_matrix()        
         
         #setting to low power and turning off the input during activation
-        self.set_frequency(frequency = -20.)
+        self.set_frequency(frequency = self.MW_frequency)
+        self.set_power(power = self.MW_power)
         self.MW_off()
         self._MW_device.trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
 
@@ -124,7 +125,9 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter = 0
         
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
-        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
+#        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
+        
+        self.start_ODMR()
         
         self._MW_device.set_list(self._MW_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
         self._MW_device.list_on()
@@ -166,6 +169,7 @@ class ODMRLogic(GenericLogic):
         if self.stopRequested:
             with self.threadlock:
                 self.MW_off()
+                self._MW_device.set_cw(f=self.MW_frequency,power=self.MW_power)
                 self.kill_ODMR()
                 self.stopRequested = False
                 self.unlock()
@@ -217,6 +221,12 @@ class ODMRLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
+        
+        if isinstance(frequency,(int, float)):
+            self.MW_frequency = frequency
+        else:
+            return -1
+        
         if self.getState() == 'locked':
             return -1
         else:
