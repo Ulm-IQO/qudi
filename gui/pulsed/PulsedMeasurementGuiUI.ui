@@ -156,7 +156,7 @@
       </widget>
       <widget class="QWidget" name="sequence_tab">
        <attribute name="title">
-        <string>sequence</string>
+        <string>block generation</string>
        </attribute>
        <widget class="QTableWidget" name="sequence_tableWidget">
         <property name="geometry">
@@ -542,6 +542,11 @@
          </rect>
         </property>
        </widget>
+      </widget>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>sequence editor</string>
+       </attribute>
       </widget>
      </widget>
     </item>

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PulsedMeasurementGuiUI.ui'
 #
-# Created: Wed May 27 19:01:07 2015
+# Created: Fri May 29 13:46:40 2015
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -201,6 +201,9 @@ class Ui_MainWindow(object):
         self.repetitions_lineEdit.setGeometry(QtCore.QRect(840, 760, 101, 21))
         self.repetitions_lineEdit.setObjectName(_fromUtf8("repetitions_lineEdit"))
         self.tabWidget.addTab(self.sequence_tab, _fromUtf8(""))
+        self.tab = QtGui.QWidget()
+        self.tab.setObjectName(_fromUtf8("tab"))
+        self.tabWidget.addTab(self.tab, _fromUtf8(""))
         self.gridLayout_2.addWidget(self.tabWidget, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
@@ -265,7 +268,8 @@ class Ui_MainWindow(object):
         self.delete_sequence_pushButton.setText(_translate("MainWindow", "Delete sequence", None))
         self.label_8.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Number of laser pulses :</p></body></html>", None))
         self.label_13.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">Number of repetitions :</p></body></html>", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.sequence_tab), _translate("MainWindow", "sequence", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.sequence_tab), _translate("MainWindow", "block generation", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "sequence editor", None))
         self.menu_File.setTitle(_translate("MainWindow", "&File", None))
 
 from pyqtgraph import PlotWidget

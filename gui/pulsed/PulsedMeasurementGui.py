@@ -92,8 +92,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.idle_radioButton.click()
         
         # Configuration of the comboWidget
-        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns))
-        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic._binwidth_ns*2.))
+        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic.fast_counter_status['binwidth_ns']))
+        self._mw.binning_comboBox.addItem(str(self._pulse_analysis_logic.fast_counter_status['binwidth_ns']*2.))
         
         self.sequence_list_changed()
         
@@ -172,6 +172,7 @@ class PulsedMeasurementGui(GUIBase):
         
         # Connect the ComboBox to events when changed
         self._mw.sequence_list_comboBox.activated.connect(self.current_sequence_changed)
+        self._mw.sequence_name_comboBox.activated.connect(self.sequence_to_run_changed)
         # Show the Main ODMR GUI:
 
         self._mw.show()
@@ -429,7 +430,15 @@ class PulsedMeasurementGui(GUIBase):
         repetitions = self._sequence_generator_logic._current_sequence_parameters['repetitions']
         self._mw.repetitions_lineEdit.setText(str(repetitions))
         return
-        
+    
+
+    def sequence_to_run_changed(self):
+        ''' This method updates the parameter set of the sequence to run in the PulseAnalysisLogic.
+        '''
+        name = self._mw.sequence_name_comboBox.currentText()
+        self._pulse_analysis_logic.update_sequence_parameters(name)
+        return
+    
 
     def clear_list_clicked(self):
         ''' This method clears the current tableWidget, inserts a single empty row and updates the sequence parameters in the GUI and SequenceGeneratorLogic       

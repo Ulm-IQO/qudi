@@ -53,6 +53,12 @@ class PulseAnalysisLogic(GenericLogic):
         self.norm_width_bins = 200
 #        self._tau_vector_ns = np.array(range(100))
         
+        self.fast_counter_status = {'binwidth_ns': 1000./950.}
+        self.running_sequence_parameters = {}
+        self.running_sequence_parameters['laser_length_vector'] = np.full(100, 3800, int)
+        self.running_sequence_parameters['tau_vector'] = np.array(range(100))
+        self.running_sequence_parameters['number_of_lasers'] = 100
+        
         self.threadlock = Mutex()
         
         self.stopRequested = False
@@ -63,28 +69,31 @@ class PulseAnalysisLogic(GenericLogic):
         """        
         self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
-        self._get_measurement_parameters()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self.signal_analysis_next.connect(self._analyze_data, QtCore.Qt.QueuedConnection)
 
 
-    def _get_measurement_parameters(self):
-        """Gets the important parameters from the sequence generator module and the fast counter
+    def update_sequence_parameters(self, name):
+        """Gets the sequence parameters of sequence "name" from the sequence generator module
         """
-        self._binwidth_ns = 1000./self._fast_counter_device.get_frequency()
-        self._number_of_laser_pulses = self._sequence_generator_logic._current_sequence_parameters['number_of_lasers']
-        self._tau_vector_ns = self._sequence_generator_logic._current_sequence_parameters['tau_vector']
-        self._laser_length_bins = self._sequence_generator_logic._current_sequence_parameters['laser_length_vector'][0]
+        self.running_sequence_parameters = self._sequence_generator_logic._saved_sequence_parameters[name].copy()
+        return
+#        self._number_of_laser_pulses = self._sequence_generator_logic._current_sequence_parameters['number_of_lasers']
+#        self._tau_vector_ns = self._sequence_generator_logic._current_sequence_parameters['tau_vector']
+#        self._laser_length_bins = self._sequence_generator_logic._current_sequence_parameters['laser_length_vector'][0]
+
+    
+    def update_fast_counter_status(self):
+        ''' This method captures the fast counter status and updates the corresponding class variable
+        '''
+        self.fast_counter_status = self._fast_counter_device.get_status()
+        return
     
     
     def start_pulsed_measurement(self):
         '''Calculate the fluorescence contrast and create plots.
-        '''
-        
-        # get parameters for the measurement
-        self._get_measurement_parameters()
-        
+        '''  
         # initialize plots
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -123,8 +132,8 @@ class PulseAnalysisLogic(GenericLogic):
                 self.signal_laser_plot_updated.emit() 
                 return
         
-        norm_mean = np.zeros(self._number_of_laser_pulses, dtype=np.float)
-        signal_mean = np.zeros(self._number_of_laser_pulses, dtype=np.float)
+        norm_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
+        signal_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
         
         norm_start = self.norm_start_bin
         norm_end = self.norm_start_bin + self.norm_width_bins
@@ -133,7 +142,7 @@ class PulseAnalysisLogic(GenericLogic):
         
         new_laser_data = self._fast_counter_device.get_data_laserpulses()   
         
-        for i in range(self._number_of_laser_pulses):
+        for i in range(self.running_sequence_parameters['number_of_lasers']):
             norm_mean[i] = new_laser_data[i][norm_start:norm_end].mean()
             signal_mean[i] = (new_laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
@@ -147,66 +156,62 @@ class PulseAnalysisLogic(GenericLogic):
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
-        self.signal_plot_x = self._tau_vector_ns
-        self.signal_plot_y = np.zeros(self._number_of_laser_pulses, dtype=np.float)
+        self.signal_plot_x = self.running_sequence_parameters['tau_vector']
+        self.signal_plot_y = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
     
     
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.laser_plot_x = self._binwidth_ns * np.arange(1, self._laser_length_bins+1, dtype=np.int)
-        self.laser_plot_y = np.zeros(self._laser_length_bins, dtype=np.int)
+        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, self.running_sequence_parameters['laser_length_vector'][0]+1, dtype=int)
+        self.laser_plot_y = np.zeros(self.running_sequence_parameters['laser_length_vector'][0], dtype=int)
 
     
-    def get_tau_list(self):
-        """Get the list containing all tau values in ns for the current measurement.
-        
-        @return numpy array: tau_vector_ns
-        """
-        return self._tau_vector_ns
-
-        
-    def get_number_of_laser_pulses(self):
-        """Get the number of laser pulses for the current measurement.
-        
-        @return int: number_of_laser_pulses
-        """
-        return self._number_of_laser_pulses
-        
-        
-    def get_laser_length(self):
-        """Get the laser pulse length in ns for the current measurement.
-        
-        @return float: laser_length_ns
-        """
-        laser_length_ns = self._laser_length_bins * self._binwidth_ns
-        return laser_length_ns
-        
-        
-    def get_binwidth(self):
-        """Get the binwidth of the fast counter in ns for the current measurement.
-        
-        @return float: binwidth_ns
-        """
-        return self._binwidth_ns
+#    def get_tau_list(self):
+#        """Get the list containing all tau values in ns for the current measurement.
+#        
+#        @return numpy array: tau_vector_ns
+#        """
+#        return self._tau_vector_ns
+#
+#        
+#    def get_number_of_laser_pulses(self):
+#        """Get the number of laser pulses for the current measurement.
+#        
+#        @return int: number_of_laser_pulses
+#        """
+#        return self._number_of_laser_pulses
+#        
+#        
+#    def get_laser_length(self):
+#        """Get the laser pulse length in ns for the current measurement.
+#        
+#        @return float: laser_length_ns
+#        """
+#        laser_length_ns = self._laser_length_bins * self._binwidth_ns
+#        return laser_length_ns
+#        
+#        
+#    def get_binwidth(self):
+#        """Get the binwidth of the fast counter in ns for the current measurement.
+#        
+#        @return float: binwidth_ns
+#        """
+#        return self._binwidth_ns
     
         
     def pulse_generator_on(self):
         """Switching on the pulse generator.
-        
-        @return int: error code (0:OK, -1:error)
         """
-        error_code = self._sequence_generator_logic.pulse_generator_on()
-        return error_code
+        time.sleep(0.1)
+        return 0
     
     
     def pulse_generator_off(self):
         """Switching off the pulse generator.
-        
-        @return int: error code (0:OK, -1:error)
         """
-        error_code = self._sequence_generator_logic.pulse_generator_off()
-        return error_code
+        time.sleep(0.1)
+        return 0
         
         
     def fast_counter_on(self):
@@ -214,7 +219,7 @@ class PulseAnalysisLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        error_code = self._fast_counter_device.start()
+        error_code = self._fast_counter_device.start_measure()
         return error_code
 
         
@@ -223,7 +228,7 @@ class PulseAnalysisLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        error_code = self._fast_counter_device.halt()
+        error_code = self._fast_counter_device.stop_measure()
         return error_code
         
         
