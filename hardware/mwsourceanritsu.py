@@ -131,8 +131,11 @@ class mwsourceanritsu(Base, MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         error = 0
-        error = self.set_frequency(f)
-        error = self.set_power(power)
+        self._gpib_connetion.write(':FREQ:MODE CW')
+        if not f is None:
+            error = self.set_frequency(f)
+        if not power is None:
+            error = self.set_power(power)
         
         return error
 
@@ -154,13 +157,13 @@ class mwsourceanritsu(Base, MWInterface):
         self._gpib_connetion.write(':LIST:IND 0')
         s = ''
         for f in freq[:-1]:
-            s += ' {:f},'.format(f)
-        s += ' {:f}'.format(freq[-1])
+            s += ' {0:f},'.format(f)
+        s += ' {0:f}'.format(freq[-1])
         self._gpib_connetion.write(':LIST:FREQ' + s)
         self._gpib_connetion.write(':LIST:STAR 0')
-        self._gpib_connetion.write(':LIST:STOP {:i}'.format( (len(freq)-1) ))
+        self._gpib_connetion.write(':LIST:STOP {0:d}'.format( (len(freq)-1) ))
         self._gpib_connetion.write(':LIST:MODE MAN')
-        self._gpib_connetion.write(':LIST:IND {:s}'.format(start_pos))
+        self._gpib_connetion.write(':LIST:IND {0:d}'.format(start_pos))
         self._gpib_connetion.write('*WAI')
         
         return error
