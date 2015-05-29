@@ -4,7 +4,7 @@ import numpy as np
 import scipy.optimize as opt
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
 from lmfit import Parameters
-
+import scipy
 import pylab as plt
 
 #TODO:
@@ -730,8 +730,8 @@ class FitLogic():
             """ This method creates a model of lorentzian with an offset. The
             parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset 
             'c'. For function see: 
-            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LaurentzianModel
-                            
+            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel                            
+
             @return lmfit.model.CompositeModel model: Returns an object of the
                                                       class CompositeModel
             @return lmfit.parameter.Parameters params: Returns an object of the 
@@ -745,8 +745,105 @@ class FitLogic():
             params=model.make_params()
             
             return model,params
- 
+            
+        def estimate_lorentz(self,x_axis=None,data=None):
+            """ This method provides a lorentzian function.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
 
+            @return int error: error code (0:OK, -1:error)
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float offset: estimated offset
+                                
+                    
+            """
+#           TODO: make sigma and amplitude good, this is only a dirty fast solution
+            error=0
+            # check if parameters make sense
+            parameters=[x_axis,data]
+            for var in parameters:
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.', \
+                                msgType='error') 
+                    error=-1
+                elif len(np.shape(var))!=1:
+                    self.logMsg('Given parameter is no one dimensional array.', \
+                                msgType='error')                     
+            #set paraameters 
+            offset=np.median(data)
+            data_median=data-offset        
+            data_min=data_median.min()       
+            data_max=data_median.max()
+
+            #estimate sigma
+            numerical_integral=np.sum(data_median) * (x_axis[-1] - x_axis[0]) / len(x_axis)
+
+            sigma = (x_axis.max()-x_axis.min())/3.
+
+            if data_max>abs(data_min):
+                amplitude_median=data_max
+                x_zero=x_axis[np.argmax(data)]
+            else:
+                amplitude_median=data_min
+                x_zero=x_axis[np.argmin(data)]
+
+            sigma = numerical_integral / (np.pi * amplitude_median)            
+            amplitude=amplitude_median * np.pi * sigma
+            
+            return error, amplitude, x_zero, sigma, offset
+
+        def make_lorentzian_fit(self,axis=None,data=None, add_parameters=None):
+            """ This method performes a 1D lorentzian fit on the provided data.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data   
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """
+                
+            error,amplitude, x_zero, sigma, offset = self.estimate_lorentz(
+                                                                    axis,data)
+                                                                    
+            model,params = self.make_lorentzian_model() 
+            
+            #auxiliary variables
+            stepsize=axis[1]-axis[0]
+            n_steps=len(axis)
+
+#            TODO: Make sigma amplitude and x_zero better            
+            #Defining standard parameters
+            #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
+            params.add_many(('amplitude',amplitude, True,         None,                    -1e-12,                    None),
+                           (  'sigma',    sigma,    True,     None ,              None,   None),
+                           (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
+                           (    'c',      offset,   True,        None,                    None,                  None))
+
+#TODO: Add logmessage when value is changed            
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
+            try:
+                result=model.fit(data, x=axis,params=params)
+            except:
+                print("Fit did not work!")
+            #                self.logMsg('The 1D gaussian fit did not work.', \
+            #                            msgType='message')
+                result=model.fit(data, x=axis,params=params)
+                print(result.message)
+            
+            return result
+
+            
 ##############################################################################
 ##############################################################################
 
@@ -757,22 +854,32 @@ class FitLogic():
 
         def lorentzian_testing(self):
             x = np.linspace(2600, 2900, 101)
-            x_nice=np.linspace(0, 5, 101)
             
-            mod_final,params = self.make_lorentzian_model()
-            print('Parameters of the model',mod_final.param_names)
+            mod,params = self.make_lorentzian_model()
+            print('Parameters of the model',mod.param_names)
             p=Parameters()
             
 #            p.add('center',max=-1)
+            p.add('amplitude',value=-30.)
+            p.add('center',value=2800.)
+            p.add('sigma',value=10.)
+            p.add('c',value=10.)
             
-            self.data_noisy=(mod_final.eval(x=x, amplitude=-30,center=2800,sigma=10, c=100) 
-                                    + 0*np.random.normal(size=x.shape))
-#            result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy,add_parameters=p)
+            data_noisy=(mod.eval(x=x,params=p) 
+                                    + 0.2*np.random.normal(size=x.shape))
+                                    
+            para=Parameters()
+            para.add('sigma',min=0.1)
 
-            plt.plot(x,self.data_noisy)
-#            plt.plot(self.x,result.init_fit,'-g')
-#            plt.plot(self.x,result.best_fit,'-r')
-#            plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r')
+#            result=mod.fit(data_noisy,x=x,params=p)
+            result=self.make_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+#            result=mod.fit(axis=x,data=data_noisy,add_parameters=p)
+                 
+            print(result.fit_report())
+            plt.plot(x,data_noisy)
+            plt.plot(x,result.init_fit,'-g')
+            plt.plot(x,result.best_fit,'-r')
+#            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
             plt.show()
             
                                     
