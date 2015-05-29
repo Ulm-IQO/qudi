@@ -126,8 +126,7 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
         self.lock()
         
         
-        if length != self._odmr_length:
-            self.set_up_line(length)
+        self._odmr_length = length
             
         count_data = np.empty((self._odmr_length,), dtype=np.uint32)
         
