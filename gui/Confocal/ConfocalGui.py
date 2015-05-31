@@ -51,42 +51,42 @@ from gui.Optimiser.OptimiserSettingsUI import Ui_SettingsDialog as Ui_OptimiserS
 
 class ColorBar(pg.GraphicsObject):
     """ Create a ColorBar according to a previously defined color map.
-        
+
     @param object pyqtgraph.ColorMap cmap: a defined colormap
     @param float width: width of the colorbar in x direction, starting from
                         the origin.
     @param numpy.array ticks: optional, definition of the relative ticks marks
-    """    
+    """
     def __init__(self, cmap, width, cb_min, cb_max):
 
         pg.GraphicsObject.__init__(self)
-         
+
         # handle the passed arguments:
         self.stops, self.colors = cmap.getStops('float')
         self.stops = (self.stops - self.stops.min())/self.stops.ptp()
         self.width = width
- 
+
         # Constructs an empty picture which can be altered by QPainter 
         # commands. The picture is a serialization of painter commands to an IO
         # device in a platform-independent format.
         self.pic = pg.QtGui.QPicture()
-        
+
         self.refresh_colorbar(cb_min, cb_max) 
 
     def refresh_colorbar(self, cb_min, cb_max, width = None, height = None, xMin = None, yMin = None):
         """ Refresh the appearance of the colorbar for a changed count range.
-        
+
         @param float cb_min: The minimal count value should be passed here.
         @param float cb_max: The maximal count value should be passed here.
         @param float width: optional, with that you can change the width of the
                             colorbar in the display.
         """
-        
+
         if width is None:
             width = self.width
         else:
             self.width = width
-                
+
 #       FIXME: Until now, if you want to refresh the colorbar, a new QPainter
 #              object has been created, but I think that it is not necassary.
 #              I have to figure out how to use the created object properly. 
@@ -325,7 +325,6 @@ class ConfocalGui(GUIBase):
         self.depth_image = pg.ImageItem(arr02)
         self.depth_image_2 = pg.ImageItem(arr02)
 
-                                            
         #######################################################################
         ###               Configuration of the optimiser tab                ###
         #######################################################################
