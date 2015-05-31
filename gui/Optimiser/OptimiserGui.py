@@ -157,7 +157,6 @@ class OptimiserGui(GUIBase):
         # I believe last one just has to be >= the difference between the min and max level set later
         lut = colmap.getLookupTable(0, 1, 2000)
 
-            
         self.xy_refocus_image.setLookupTable(lut)
         
         # Add color bar:        
