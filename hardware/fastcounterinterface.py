@@ -7,13 +7,7 @@
 #####################################################
 
 
-
-
-class InterfaceImplementationError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+from core.util.CustomExceptions import InterfaceImplementationError
 
 class FastCounterInterface():
     """This is the Interface class to define the controls for the simple 
@@ -22,7 +16,7 @@ class FastCounterInterface():
     
     
     def configure(self):
-        """Configures the Fast Counter."""
+        """ Initialize and open the collection to the Fast Counter and configure it."""
         
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1
