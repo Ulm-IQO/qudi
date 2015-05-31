@@ -257,6 +257,11 @@ class PoiManagerGui(GUIBase):
         
         # Add the display item to the roi map ViewWidget defined in the UI file
         self._mw.roi_map_ViewWidget.addItem(self.roi_map_image)
+        self._mw.roi_map_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.roi_map_ViewWidget.setLabel( 'left', 'Y position', units='µm' )
+
+        # Set to fixed 1.0 aspect ratio, since the metaphor is a "map" of the sample
+        self._mw.roi_map_ViewWidget.setAspectLocked( lock=True, ratio=1.0 )
         
         # create a color map that goes from dark red to dark blue:
 
@@ -302,12 +307,25 @@ class PoiManagerGui(GUIBase):
         self.y_shift_plot = pg.ScatterPlotItem([0],[0], symbol='s', pen='g')
         self.z_shift_plot = pg.ScatterPlotItem([0],[0], symbol='o', pen='b')
 
+        # It seems there is a bug with legends for ScatterPlotItem.
+        # as a workaround, here are three plotCurveItems to populate the legend.
+        self.x_legend_plot = pg.PlotCurveItem([0],[0], pen='r', name='x')
+        self.y_legend_plot = pg.PlotCurveItem([0],[0], pen='g', name='y')
+        self.z_legend_plot = pg.PlotCurveItem([0],[0], pen='b', name='z')
+        self._mw.sample_shift_ViewWidget.addLegend()
+
 
         # Add the plot to the ViewWidget defined in the UI file
         self._mw.sample_shift_ViewWidget.addItem(self.x_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.y_shift_plot)
         self._mw.sample_shift_ViewWidget.addItem(self.z_shift_plot)
+        self._mw.sample_shift_ViewWidget.addItem(self.x_legend_plot)
+        self._mw.sample_shift_ViewWidget.addItem(self.y_legend_plot)
+        self._mw.sample_shift_ViewWidget.addItem(self.z_legend_plot)
 
+        # Label axes
+        self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='s' )
+        self._mw.sample_shift_ViewWidget.setLabel( 'left', 'Sample shift', units='µm' )
 
         
 
