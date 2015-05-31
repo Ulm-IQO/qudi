@@ -3,7 +3,6 @@
 
 import ctypes
 import numpy as np
-import os
 from collections import OrderedDict
 from core.Base import Base
 # =============================================================================
@@ -62,24 +61,26 @@ correspond to standard C/C++ data types as follows:
 #WARNING_TIME_SPAN_TOO_SMALL    = 0x0400    # 1024
 #WARNING_OFFSET_UNNECESSARY     = 0x0800    # 2048
 
+#FIXME: The interface connetion to the fast counter must be established!
 
 class PicoHarp300(Base):
     """Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
+    STABLE AND TESTED VERSION: Alex S.
     """
 
     def __init__(self,manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, 
+        Base.__init__(self, manager, name,
                       configuation=config, callback_dict = {})
-                      
+
         self._modclass = 'PicoHarp300'
-        self._modtype = 'hardware'                      
-            
-        # declare connectors        
+        self._modtype = 'hardware'
+
+        # declare connectors
         self.connector['out']['PicoHarp300'] = OrderedDict()
-        self.connector['out']['PicoHarp300']['class'] = 'PicoHarp300' 
-    
+        self.connector['out']['PicoHarp300']['class'] = 'PicoHarp300'
+
         if 'deviceID' in config.keys():
             self._deviceID = config['deviceID']
         else:
@@ -87,9 +88,9 @@ class PicoHarp300(Base):
                         'Devide ID = 0 will be taken, but without any '
                         'warranty to be able to connect now correctly to the '
                         'device.', msgType='warning')
-                        
+
             self._deviceID = 0
-                        
+
         if 'mode' in config.keys():
             self._mode = config['mode']
         else:
@@ -97,15 +98,22 @@ class PicoHarp300(Base):
                         'Mode will be set to 0 (= Histogram Mode) as a '
                         'default.', msgType='warning')
             self._mode = 0
-    
+
         self.errorcode = self._create_errorcode()
         self._set_constants()
 
         # the library can communicate with 8 devices:
         self._connected_to_device = False
-        
-        # Load the phlib64.dll from the folder <Windows>/System32/
-        self.phlib = ctypes.windll.LoadLibrary('phlib64')
+
+        #FIXME: Check which architecture the host PC is and choose the dll
+        # according to that!
+
+        # Load the picoharp library file phlib64.dll from the folder
+        # <Windows>/System32/
+
+        #FIXME: use this instead:ctypes.cdll.LoadLibrary(libname)
+        # but that must be tested at first!
+        self._dll = ctypes.windll.LoadLibrary('phlib64')
 
         self.open_connection()
         self.initialize(self._mode)
@@ -177,10 +185,17 @@ class PicoHarp300(Base):
     def check(self, func_val):
         """ Check routine for the received error codes.
 
-        @param func int: return error code of the called function.
+        @param func_val int: return error code of the called function.
 
         @return int: pass the error code further so that other functions have
-                     the possibility to use it."""
+                     the possibility to use it.
+
+        Each called function in the dll has an 32-bit return integer, which
+        indicates, whether the function was called and finished successfully
+        (then func_val = 0) or if any error has occured (func_val < 0). The
+        errorcode, which corresponds to the return value can be looked up in
+        the file 'errorcodes.h'.
+        """
 
         if not func_val == 0:
             self.logMsg('Error in PicoHarp300 with errorcode {0}:\n'
@@ -198,7 +213,7 @@ class PicoHarp300(Base):
         @return string: string representation of the
                         Version number of the current library."""
         buf = ctypes.create_string_buffer(16)   # at least 8 byte
-        self.check(self.phlib.PH_GetLibraryVersion(ctypes.byref(buf)))
+        self.check(self._dll.PH_GetLibraryVersion(ctypes.byref(buf)))
         return buf.value # .decode() converts byte to string
 
     def get_error_string(self, errcode):
@@ -214,7 +229,7 @@ class PicoHarp300(Base):
         """
 
         buf = ctypes.create_string_buffer(80)   # at least 40 byte
-        self.check(self.phlib.PH_GetErrorString(ctypes.byref(buf), errcode))
+        self.check(self._dll.PH_GetErrorString(ctypes.byref(buf), errcode))
         return buf.value.decode() # .decode() converts byte to string
 
     # =========================================================================
@@ -224,9 +239,9 @@ class PicoHarp300(Base):
     def open_connection(self):
         """ Open a connection to this device. """
 
-        
+
         buf = ctypes.create_string_buffer(16)   # at least 8 byte
-        ret = self.check(self.phlib.PH_OpenDevice(self._deviceID, ctypes.byref(buf)))
+        ret = self.check(self._dll.PH_OpenDevice(self._deviceID, ctypes.byref(buf)))
         self._serial = buf.value.decode()   # .decode() converts byte to string
         if ret >= 0:
             self._connected_to_device = True
@@ -252,7 +267,7 @@ class PicoHarp300(Base):
                                          self.MODE_T3, mode),
                         msgType='error')
         else:
-            self.check(self.phlib.PH_Initialize(self._deviceID, mode))
+            self.check(self._dll.PH_Initialize(self._deviceID, mode))
 
     def close_connection(self):
         """Close the connection to the device.
@@ -260,7 +275,7 @@ class PicoHarp300(Base):
         @param int deviceID: a divice index from 0 to 7.
         """
         self._connected_to_device = False
-        self.check(self.phlib.PH_CloseDevice(self._deviceID))
+        self.check(self._dll.PH_CloseDevice(self._deviceID))
         self.logMsg('Connection to the Picoharp 300 closed.', msgType='status')
 
 #    def __del__(self):
@@ -280,7 +295,7 @@ class PicoHarp300(Base):
         model = ctypes.create_string_buffer(32)     # at least 16 byte
         version = ctypes.create_string_buffer(16)   # at least 8 byte
         partnum = ctypes.create_string_buffer(16)   # at least 8 byte
-        self.check(self.phlib.PH_GetHardwareInfo(self._deviceID, ctypes.byref(model),
+        self.check(self._dll.PH_GetHardwareInfo(self._deviceID, ctypes.byref(model),
                                                     ctypes.byref(partnum), ctypes.byref(version)))
 
         # the .decode() function converts byte objects to string objects
@@ -293,7 +308,7 @@ class PicoHarp300(Base):
         """
 
         serialnum = ctypes.create_string_buffer(16)   # at least 8 byte
-        self.check(self.phlib.PH_GetSerialNumber(self._deviceID, ctypes.byref(serialnum)))
+        self.check(self._dll.PH_GetSerialNumber(self._deviceID, ctypes.byref(serialnum)))
         return serialnum.value.decode() # .decode() converts byte to string
 
     def get_base_resolution(self):
@@ -303,12 +318,12 @@ class PicoHarp300(Base):
         """
 
         res = ctypes.c_double()
-        self.check(self.phlib.PH_GetBaseResolution(self._deviceID, ctypes.byref(res)))
+        self.check(self._dll.PH_GetBaseResolution(self._deviceID, ctypes.byref(res)))
         return res.value
 
     def calibrate(self):
         """ Calibrate the device."""
-        self.check(self.phlib.PH_Calibrate(self._deviceID))
+        self.check(self._dll.PH_Calibrate(self._deviceID))
 
     def get_features(self):
         """ Retrieve the possible features of the device.
@@ -316,7 +331,7 @@ class PicoHarp300(Base):
         @return int: a bit pattern indicating the feature.
         """
         features = ctypes.c_int32()
-        self.check(self.phlib.PH_GetFeatures(self._deviceID, ctypes.byref(features)))
+        self.check(self._dll.PH_GetFeatures(self._deviceID, ctypes.byref(features)))
         return features.value
 
     def set_input_CFD(self, channel, level, zerocross):
@@ -348,7 +363,7 @@ class PicoHarp300(Base):
                          msgType='error')
             return
 
-        self.check(self.phlib.PH_SetInputCFD(self._deviceID, channel,
+        self.check(self._dll.PH_SetInputCFD(self._deviceID, channel,
                                              level, zerocross))
 
 
@@ -368,7 +383,7 @@ class PicoHarp300(Base):
                         'passed.'.format(div), msgType='error')
             return
         else:
-            self.check(self.phlib.PH_SetSyncDiv(self._deviceID, div))
+            self.check(self._dll.PH_SetSyncDiv(self._deviceID, div))
 
     def set_sync_offset(self, offset):
         """ Set the offset of the synchronization.
@@ -384,7 +399,7 @@ class PicoHarp300(Base):
                         'has been passed.'.format(self.SYNCOFFSMIN, self.SYNCOFFSMAX, offset),
                          msgType='error')
         else:
-            self.check(self.phlib.PH_SetSyncOffset(self._deviceID, offset))
+            self.check(self._dll.PH_SetSyncOffset(self._deviceID, offset))
 
 
     def set_stop_overflow(self, stop_ovfl, stopcount):
@@ -405,15 +420,15 @@ class PicoHarp300(Base):
                         'value of {0} was passed.'.format(stop_ovfl),
                          msgType='error')
             return
-        
+
         if (stopcount < 0) or (self.HISTCHAN < stopcount):
             self.logMsg('PicoHarp: Invalid stopcount parameter.\n'
                         'stopcount must be within the range [0,{0}] but a '
                         'value of {1} was passed.'.format(self.HISTCHAN,stopcount),
                          msgType='error')
             return
-            
-        self.check(self.phlib.PH_SetStopOverflow(self._deviceID, stop_ovfl,
+
+        self.check(self._dll.PH_SetStopOverflow(self._deviceID, stop_ovfl,
                                                  stopcount))
 
     def set_binning(self, binning):
@@ -435,7 +450,7 @@ class PicoHarp300(Base):
                         'passed.'.format(0, self.BINSTEPSMAX, binning),
                          msgType='error')
         else:
-            self.check(self.phlib.PH_SetRange(self._deviceID, binning))
+            self.check(self._dll.PH_SetRange(self._deviceID, binning))
 
     def set_multistop_enable(self, enable=True):
         """ Set whether multistops are possible within a measurement.
@@ -448,9 +463,9 @@ class PicoHarp300(Base):
         enabled after PH_Initialize.
         """
         if enable:
-            self.check(self.phlib.PH_SetMultistopEnable(self._deviceID, 1))
+            self.check(self._dll.PH_SetMultistopEnable(self._deviceID, 1))
         else:
-            self.check(self.phlib.PH_SetMultistopEnable(self._deviceID, 0))
+            self.check(self._dll.PH_SetMultistopEnable(self._deviceID, 0))
 
     def set_offset(self, offset):
         """ Set an offset time.
@@ -469,14 +484,14 @@ class PicoHarp300(Base):
                         'passed.'.format(self.OFFSETMIN, self.OFFSETMAX, offset),
                          msgType='error')
         else:
-            self.check(self.phlib.PH_SetOffset(self._deviceID, offset))
+            self.check(self._dll.PH_SetOffset(self._deviceID, offset))
 
     def clear_hist_memory(self, block=0):
         """ Clear the histogram memory.
 
         @param int block: set which block number to clear.
         """
-        self.check(self.phlib.PH_ClearHistMem(self._deviceID, block))
+        self.check(self._dll.PH_ClearHistMem(self._deviceID, block))
 
     def start(self, acq_time):
         """ Start acquisition for 'acq_time' ms.
@@ -491,11 +506,11 @@ class PicoHarp300(Base):
                         'passed.'.format(self.ACQTMIN, self.ACQTMAX, acq_time),
                          msgType='error')
         else:
-            self.check(self.phlib.PH_StartMeas(self._deviceID, acq_time))
+            self.check(self._dll.PH_StartMeas(self._deviceID, acq_time))
 
     def stop(self):
         """ Stop the measurement."""
-        self.check(self.phlib.PH_StopMeas(self._deviceID))
+        self.check(self._dll.PH_StopMeas(self._deviceID))
 
     def get_status(self):
         """ Check the status of the device.
@@ -504,7 +519,7 @@ class PicoHarp300(Base):
                       > 0: acquisition time has ended, measurement finished.
         """
         ctcstatus = ctypes.c_int32()
-        self.check(self.phlib.PH_CTCStatus(self._deviceID, ctypes.byref(ctcstatus)))
+        self.check(self._dll.PH_CTCStatus(self._deviceID, ctypes.byref(ctcstatus)))
         return ctcstatus.value
 
     def get_histogram(self, block=0, xdata=True):
@@ -522,7 +537,7 @@ class PicoHarp300(Base):
         """
         chcount = np.zeros((self.HISTCHAN,), dtype=np.uint32)
         # buf.ctypes.data is the reference to the array in the memory.
-        self.check(self.phlib.PH_GetHistogram(self._deviceID, chcount.ctypes.data, block))
+        self.check(self._dll.PH_GetHistogram(self._deviceID, chcount.ctypes.data, block))
         if xdata:
             xbuf = np.arange(self.HISTCHAN) * self.get_resolution() / 1000
             return xbuf, chcount
@@ -535,7 +550,7 @@ class PicoHarp300(Base):
         """
 
         resolution = ctypes.c_double()
-        self.check(self.phlib.PH_GetResolution(self._deviceID, ctypes.byref(resolution)))
+        self.check(self._dll.PH_GetResolution(self._deviceID, ctypes.byref(resolution)))
         return resolution.value
 
     def get_count_rate(self, channel):
@@ -562,7 +577,7 @@ class PicoHarp300(Base):
             return -1
         else:
             rate = ctypes.c_int32()
-            self.check(self.phlib.PH_GetCountRate(self._deviceID, channel, ctypes.byref(rate)))
+            self.check(self._dll.PH_GetCountRate(self._deviceID, channel, ctypes.byref(rate)))
             return rate.value
 
     def get_flags(self):
@@ -578,7 +593,7 @@ class PicoHarp300(Base):
         """
 
         flags = ctypes.c_int32()
-        self.check(self.phlib.PH_GetFlags(self._deviceID, ctypes.byref(flags)))
+        self.check(self._dll.PH_GetFlags(self._deviceID, ctypes.byref(flags)))
         return flags.value
 
     def get_elepased_meas_time(self):
@@ -587,7 +602,7 @@ class PicoHarp300(Base):
         @return double: the elapsed measurement time in ms.
         """
         elapsed = ctypes.c_double()
-        self.check(self.phlib.PH_GetElapsedMeasTime(self._deviceID, ctypes.byref(elapsed)))
+        self.check(self._dll.PH_GetElapsedMeasTime(self._deviceID, ctypes.byref(elapsed)))
         return elapsed.value
 
     def get_warnings(self):
@@ -599,7 +614,7 @@ class PicoHarp300(Base):
               call!
         """
         warnings = ctypes.c_int32()
-        self.check(self.phlib.PH_GetWarnings(self._deviceID, ctypes.byref(warnings)))
+        self.check(self._dll.PH_GetWarnings(self._deviceID, ctypes.byref(warnings)))
         return warnings.value
 
     def get_warnings_text(self, warning_num):
@@ -611,7 +626,7 @@ class PicoHarp300(Base):
 
         """
         text = ctypes.create_string_buffer(32568) # buffer at least 16284 byte
-        self.check(self.phlib.PH_GetWarningsText(self._deviceID, warning_num, text))
+        self.check(self._dll.PH_GetWarningsText(self._deviceID, warning_num, text))
         return text.value
 
     def get_hardware_debug_info(self):
@@ -620,7 +635,7 @@ class PicoHarp300(Base):
         @return char[32568]: the information for debugging.
         """
         debuginfo = ctypes.create_string_buffer(32568) # buffer at least 16284 byte
-        self.check(self.phlib.PH_GetHardwareDebugInfo(self._deviceID, debuginfo))
+        self.check(self._dll.PH_GetHardwareDebugInfo(self._deviceID, debuginfo))
         return debuginfo.value
 
     # =========================================================================
@@ -642,8 +657,8 @@ class PicoHarp300(Base):
                                         NOT CHECKED FOR PERFORMANCE REASONS, SO
                                         BE  CAREFUL! Maximum is TTREADMAX.
 
-        THIS FUNCTION SHOULD BE CALLED IN A SEPARATE THREAD!        
-        
+        THIS FUNCTION SHOULD BE CALLED IN A SEPARATE THREAD!
+
         Must not be called with count larger than buffer size permits. CPU time
         during wait for completion will be yielded to other processes/threads.
         Function will return after a timeout period of 80 ms even if not all
@@ -653,7 +668,7 @@ class PicoHarp300(Base):
         buffer = np.zeros(num_counts, dtype=np.uint32)
         actual_num_counts = ctypes.c_int32()
         # counts.ctypes.data is the reference to the array in the memory.
-        self.check(self.phlib.PH_ReadFiFo(self._deviceID, buffer.ctypes.data,
+        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data,
                                             num_counts, ctypes.byref(actual_num_counts)))
 
         return (buffer, actual_num_counts)
@@ -679,7 +694,7 @@ class PicoHarp300(Base):
                          msgType='error')
             return
         else:
-            self.check(self.phlib.PH_TTSetMarkerEdges(self._deviceID, me0, me1,
+            self.check(self._dll.PH_TTSetMarkerEdges(self._deviceID, me0, me1,
                                                       me2, me3))
 
     def tttr_set_marker_enable(self, me0, me1, me2, me3):
@@ -704,7 +719,7 @@ class PicoHarp300(Base):
                          msgType='error')
             return
         else:
-            self.check(self.phlib.PH_TTSetMarkerEnable(self._deviceID, me0,
+            self.check(self._dll.PH_TTSetMarkerEnable(self._deviceID, me0,
                                                        me1, me2, me3))
 
     def tttr_set_marker_holdofftime(self, holfofftime):
@@ -727,7 +742,7 @@ class PicoHarp300(Base):
                         'was passed.'.format(self.HOLDOFFMAX, holfofftime),
                         msgType='error')
         else:
-            self.check(self.phlib.PH_SetMarkerHoldofftime(self._deviceID,
+            self.check(self._dll.PH_SetMarkerHoldofftime(self._deviceID,
                                                           holfofftime))
 
 
