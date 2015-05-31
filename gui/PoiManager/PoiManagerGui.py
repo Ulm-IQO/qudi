@@ -249,10 +249,10 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Get the image for the display from the logic: 
-        roi_map_data = self._confocal_logic.xy_image[:,:,3].transpose()
+        self.roi_map_data = self._confocal_logic.xy_image[:,:,3].transpose()
              
         # Load the image in the display:
-        self.roi_map_image = pg.ImageItem(roi_map_data)
+        self.roi_map_image = pg.ImageItem(self.roi_map_data)
         self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[1]-self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1]-self._confocal_logic.image_y_range[0]))
         
         # Add the display item to the roi map ViewWidget defined in the UI file
@@ -282,8 +282,15 @@ class PoiManagerGui(GUIBase):
         # I believe last one just has to be >= the difference between the min and max level set later
         lut = colmap.getLookupTable(0, 1, 2000)
 
-            
         self.roi_map_image.setLookupTable(lut)
+
+        # Add color bar:
+        self.roi_cb = ColorBar( self.colmap_norm, 100, 0, 100000 )
+
+        self._mw.roi_cb_ViewWidget.addItem( self.roi_cb )
+        self._mw.roi_cb_ViewWidget.hideAxis('bottom')
+        self._mw.roi_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.roi_cb_ViewWidget.setMouseEnabled( x=False, y=False )
 
         #####################
         # Setting up display of sample shift plot
@@ -323,6 +330,10 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_Input.currentIndexChanged.connect(self._redraw_poi_markers)
 
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
+        
+        self._mw.roi_cb_auto_CheckBox.toggled.connect( self.refresh_roi_colorscale )
+        self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
 
         self._markers = dict()
         
@@ -343,9 +354,54 @@ class PoiManagerGui(GUIBase):
         self._mw.raise_()
 
     def get_confocal_image(self):
+        """Get the current confocal xy scan and import as an image of the ROI
+        """
+        # TODO: The data (roi_map_data) should be held in PoiManager Logic, not GUI.
+
+        # Get the image data and hold it locally, so that new xy scans can be 
+        # done in Confocal without interferring with redrawing the ROI map (such as
+        # when the colorscale changes).
+        self.roi_map_data = self._confocal_logic.xy_image[:,:,3].transpose()
+
+        # Also get the x and y range limits and hold them locally
+        self.roi_map_xmin = self._confocal_logic.image_x_range[0]
+        self.roi_map_xmax = self._confocal_logic.image_x_range[1]
+        self.roi_map_ymin = self._confocal_logic.image_y_range[0]
+        self.roi_map_ymax = self._confocal_logic.image_y_range[1]
+
         self.roi_map_image.getViewBox().enableAutoRange()
-        self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[1]-self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1]-self._confocal_logic.image_y_range[0]))
-        self.roi_map_image.setImage(image=self._confocal_logic.xy_image[:,:,3].transpose(),autoLevels=True)
+        self.roi_map_image.setRect(QtCore.QRectF(self.roi_map_xmin, self.roi_map_ymin, self.roi_map_xmax - self.roi_map_xmin, self.roi_map_ymax - self.roi_map_ymin ) )
+        self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
+
+    def shortcut_to_roi_cb_manual(self):
+        self._mw.roi_cb_auto_CheckBox.setChecked(False)
+        self.refresh_roi_colorscale()
+
+    def refresh_roi_colorscale(self):
+        """ Adjust the colorbar in the ROI xy image, and update the image with the 
+        new color scale.
+        
+        Calls the refresh method from colorbar, which takes either the lowest 
+        and higherst value in the image or predefined ranges. Note that you can 
+        invert the colorbar if the lower border is bigger then the higher one.
+        """
+        
+        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # Otherwise, take user-defined values.
+        if self._mw.roi_cb_auto_CheckBox.isChecked():
+            cb_min = self.roi_map_image.image.min()
+            cb_max = self.roi_map_image.image.max()
+
+            self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
+
+        else:
+            cb_min = self._mw.roi_cb_min_InputWidget.value()
+            cb_max = self._mw.roi_cb_max_InputWidget.value()
+
+            self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max) )
+            
+        self.roi_cb.refresh_colorbar(cb_min,cb_max)    
+        self._mw.roi_cb_ViewWidget.update()  
 
     
     def set_new_poi(self):
