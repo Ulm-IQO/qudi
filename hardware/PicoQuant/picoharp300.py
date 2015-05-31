@@ -3,9 +3,9 @@
 
 import ctypes
 import numpy as np
-import logging
-
-
+import os
+from collections import OrderedDict
+from core.Base import Base
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
 # 'phdefin.h', 'phlib.h' and 'errorcodes.h'. The 'phdefin.h' contains all the
@@ -50,45 +50,65 @@ correspond to standard C/C++ data types as follows:
 #FLAG_SYSERROR   = 0x0100  # Hardware problem    # 256
 
 # The following are bitmasks for return values from GetWarnings()
-#WARNING_INP0_RATE_ZERO          = 0x0001    #
-#WARNING_INP0_RATE_TOO_LOW	    = 0x0002    #
-#WARNING_INP0_RATE_TOO_HIGH      = 0x0004    #
+#WARNING_INP0_RATE_ZERO         = 0x0001    # 1
+#WARNING_INP0_RATE_TOO_LOW      = 0x0002    # 2
+#WARNING_INP0_RATE_TOO_HIGH     = 0x0004    # 4
 #
-#WARNING_INP1_RATE_ZERO		    = 0x0010    #
-#WARNING_INP1_RATE_TOO_HIGH		= 0x0040    #
+#WARNING_INP1_RATE_ZERO         = 0x0010    # 16
+#WARNING_INP1_RATE_TOO_HIGH     = 0x0040    # 64
 #
-#WARNING_INP_RATE_RATIO			= 0x0100    #
-#WARNING_DIVIDER_GREATER_ONE		= 0x0200    #
-#WARNING_TIME_SPAN_TOO_SMALL     = 0x0400    #
-#WARNING_OFFSET_UNNECESSARY      = 0x0800    #
+#WARNING_INP_RATE_RATIO         = 0x0100    # 256
+#WARNING_DIVIDER_GREATER_ONE    = 0x0200    # 512
+#WARNING_TIME_SPAN_TOO_SMALL    = 0x0400    # 1024
+#WARNING_OFFSET_UNNECESSARY     = 0x0800    # 2048
 
 
-class PicoHarp300():
+class PicoHarp300(Base):
     """Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
     """
 
-    def __init__(self, deviceID, mode=0):
-
+    def __init__(self,manager, name, config = {}, **kwargs):
+        Base.__init__(self, manager, name, 
+                      configuation=config, callback_dict = {})
+                      
+        self._modclass = 'PicoHarp300'
+        self._modtype = 'hardware'                      
+            
+        # declare connectors        
+        self.connector['out']['PicoHarp300'] = OrderedDict()
+        self.connector['out']['PicoHarp300']['class'] = 'PicoHarp300' 
+    
+        if 'deviceID' in config.keys():
+            self._deviceID = config['deviceID']
+        else:
+            self.logMsg('Picoharp: No deviceID specified in the config!\n'
+                        'Devide ID = 0 will be taken, but without any '
+                        'warranty to be able to connect now correctly to the '
+                        'device.', msgType='warning')
+                        
+            self._deviceID = 0
+                        
+        if 'mode' in config.keys():
+            self._mode = config['mode']
+        else:
+            self.logMsg('Picoharp: No mode specified in the config!\n'
+                        'Mode will be set to 0 (= Histogram Mode) as a '
+                        'default.', msgType='warning')
+            self._mode = 0
+    
         self.errorcode = self._create_errorcode()
+        self._set_constants()
 
         # the library can communicate with 8 devices:
         self._connected_to_device = False
-        self._deviceID = deviceID
-
-
+        
         # Load the phlib64.dll from the folder <Windows>/System32/
         self.phlib = ctypes.windll.LoadLibrary('phlib64')
 
-        try:
-            self.open()
-            self.initialize(mode)
-        except:
-            logging.error('Error loading Picoharp. In use? Check USB connection?')
-
-
-
+        self.open_connection()
+        self.initialize(self._mode)
 
     def activate(self):
         pass
@@ -103,7 +123,9 @@ class PicoHarp300():
         with the appropriate integer value.
         """
 
-        filename = 'errorcodes.h'
+        maindir = self.get_main_dir()
+
+        filename = maindir +'\\hardware\\PicoQuant\\errorcodes.h'
         try:
             with open(filename) as f:
                 content = f.readlines()
@@ -173,11 +195,11 @@ class PicoHarp300():
     def get_version(self):
         """ Get the software/library version of the device.
 
-        @return byte: string representation in byte (32bit-integers) of the
-                      Version number of the current library."""
-        buf = ctypes.create_string_buffer(16)
-        self.check(self.phlib.PH_GetLibraryVersion(buf))
-        return buf.value
+        @return string: string representation of the
+                        Version number of the current library."""
+        buf = ctypes.create_string_buffer(16)   # at least 8 byte
+        self.check(self.phlib.PH_GetLibraryVersion(ctypes.byref(buf)))
+        return buf.value # .decode() converts byte to string
 
     def get_error_string(self, errcode):
         """ Get the string error code from the Picoharp Device.
@@ -191,9 +213,9 @@ class PicoHarp300():
         or lower, since interger bigger 0 are not defined as error.
         """
 
-        buf = ctypes.create_string_buffer(64)
-        self.check(self.phlib.PH_GetErrorString(buf, errcode))
-        return buf.value
+        buf = ctypes.create_string_buffer(80)   # at least 40 byte
+        self.check(self.phlib.PH_GetErrorString(ctypes.byref(buf), errcode))
+        return buf.value.decode() # .decode() converts byte to string
 
     # =========================================================================
     # Establish the connection and initialize the device or disconnect it.
@@ -202,10 +224,10 @@ class PicoHarp300():
     def open_connection(self):
         """ Open a connection to this device. """
 
-        # The string buffer must be at least 8 chars.
-        buf = ctypes.create_string_buffer(16)
-        ret = self.check(self.phlib.PH_OpenDevice(self._deviceID, buf))
-        self._serial = buf.value
+        
+        buf = ctypes.create_string_buffer(16)   # at least 8 byte
+        ret = self.check(self.phlib.PH_OpenDevice(self._deviceID, ctypes.byref(buf)))
+        self._serial = buf.value.decode()   # .decode() converts byte to string
         if ret >= 0:
             self._connected_to_device = True
             self.logMsg('Connection to the Picoharp 300 established',
@@ -219,8 +241,10 @@ class PicoHarp300():
                             2: T2
                             3: T3
         """
-        if (mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
-           (mode != self.MODE_T3):
+        mode = int(mode)    # for safety reasons, convert to integer
+        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
+                (mode != self.MODE_T3)):
+            print(mode)
             self.logMsg('Picoharp: Mode for the device could not be set. It '
                         'must be {0}=Histogram-Mode, {1}=T2-Mode or '
                         '{2}=T3-Mode, but the mode {3} was '
@@ -247,20 +271,20 @@ class PicoHarp300():
     # All functions below can be used if the device was successfully called.
     # =========================================================================
 
-    def get_hardware_version(self):
+    def get_hardware_info(self):
         """ Retrieve the device hardware information.
 
-        @return tuple(3): (Model, Partnum, Version)
+        @return string tuple(3): (Model, Partnum, Version)
         """
 
-        model = ctypes.create_string_buffer(32)     # at least 16 chars
-        version = ctypes.create_string_buffer(16)   # at least 8 chars
-        partnum = ctypes.create_string_buffer(16)   # at least 8 chars
-        version = ctypes.create_string_buffer(16)   # at least 8 chars
-        self.check(self.phlib.PH_GetHardwareVersion(self._deviceID, model,
-                                                    partnum, version))
+        model = ctypes.create_string_buffer(32)     # at least 16 byte
+        version = ctypes.create_string_buffer(16)   # at least 8 byte
+        partnum = ctypes.create_string_buffer(16)   # at least 8 byte
+        self.check(self.phlib.PH_GetHardwareInfo(self._deviceID, ctypes.byref(model),
+                                                    ctypes.byref(partnum), ctypes.byref(version)))
 
-        return (model.value, partnum.value, version.value)
+        # the .decode() function converts byte objects to string objects
+        return (model.value.decode(), partnum.value.decode(), version.value.decode())
 
     def get_serial_number(self):
         """ Retrieve the serial number of the device.
@@ -268,17 +292,18 @@ class PicoHarp300():
         @return string: serial number of the device
         """
 
-        serialnum = ctypes.create_string_buffer(16)   # at least 8 chars
-        self.check(self.phlib.PH_GetSerialNumber(self._deviceID, serialnum))
-        return serialnum.value
+        serialnum = ctypes.create_string_buffer(16)   # at least 8 byte
+        self.check(self.phlib.PH_GetSerialNumber(self._deviceID, ctypes.byref(serialnum)))
+        return serialnum.value.decode() # .decode() converts byte to string
 
     def get_base_resolution(self):
         """ Retrieve the base resolution of the device.
 
         @return double: the base resolution of the device
         """
+
         res = ctypes.c_double()
-        self.check(self.phlib.PH_GetBaseResolution(self._deviceID, res))
+        self.check(self.phlib.PH_GetBaseResolution(self._deviceID, ctypes.byref(res)))
         return res.value
 
     def calibrate(self):
@@ -291,7 +316,7 @@ class PicoHarp300():
         @return int: a bit pattern indicating the feature.
         """
         features = ctypes.c_int32()
-        self.check(self.phlib.PH_GetFeatures(self._deviceID, features))
+        self.check(self.phlib.PH_GetFeatures(self._deviceID, ctypes.byref(features)))
         return features.value
 
     def set_input_CFD(self, channel, level, zerocross):
@@ -330,14 +355,20 @@ class PicoHarp300():
     def set_sync_div(self, div):
         """ Synchronize the devider of the device.
 
-        @param int div: input rate devider applied at channel 0 (1,2,3, or 8)
+        @param int div: input rate devider applied at channel 0 (1,2,4, or 8)
 
         The sync devider must be used to keep the  effective sync rate at
         values <= 10MHz. It should only be used with sync sources of stable
         period. The readins obtained with PH_GetCountRate are corrected for the
         devider settin and deliver the external (undivided) rate.
         """
-        self.check(self.phlib.PH_SetSyncDiv(self._deviceID, div))
+        if not ( (div !=1) or (div !=2) or (div !=4) or (div !=8) ):
+            self.logMsg('PicoHarp: Invalid sync devider.\n'
+                        'Value must be 1, 2, 4 or 8 but a value of {0} was '
+                        'passed.'.format(div), msgType='error')
+            return
+        else:
+            self.check(self.phlib.PH_SetSyncDiv(self._deviceID, div))
 
     def set_sync_offset(self, offset):
         """ Set the offset of the synchronization.
@@ -368,6 +399,20 @@ class PicoHarp300():
         reaches the maximum set by stopcount. If stop_ofl is 0 the measurement
         will continue but counts above 65535 in any bin will be clipped.
         """
+        if not ( (stop_ovfl !=0) or (stop_ovfl !=1) ):
+            self.logMsg('PicoHarp: Invalid overflow parameter.\n'
+                        'The overflow parameter must be either 0 or 1 but a '
+                        'value of {0} was passed.'.format(stop_ovfl),
+                         msgType='error')
+            return
+        
+        if (stopcount < 0) or (self.HISTCHAN < stopcount):
+            self.logMsg('PicoHarp: Invalid stopcount parameter.\n'
+                        'stopcount must be within the range [0,{0}] but a '
+                        'value of {1} was passed.'.format(self.HISTCHAN,stopcount),
+                         msgType='error')
+            return
+            
         self.check(self.phlib.PH_SetStopOverflow(self._deviceID, stop_ovfl,
                                                  stopcount))
 
@@ -442,7 +487,8 @@ class PicoHarp300():
         if (acq_time < self.ACQTMIN) or (self.ACQTMAX < acq_time):
             self.logMsg('PicoHarp: No measurement could be started.\nThe '
                         'acquisition time must be within the range [{0},{1}] '
-                        'ms, but a value of {2} has been passed.'.format(self.ACQTMIN, self.ACQTMAX, acq_time),
+                        'ms, but a value of {2} has been '
+                        'passed.'.format(self.ACQTMIN, self.ACQTMAX, acq_time),
                          msgType='error')
         else:
             self.check(self.phlib.PH_StartMeas(self._deviceID, acq_time))
@@ -458,7 +504,7 @@ class PicoHarp300():
                       > 0: acquisition time has ended, measurement finished.
         """
         ctcstatus = ctypes.c_int32()
-        self.check(self.phlib.PH_CTCStatus(self._deviceID, ctcstatus))
+        self.check(self.phlib.PH_CTCStatus(self._deviceID, ctypes.byref(ctcstatus)))
         return ctcstatus.value
 
     def get_histogram(self, block=0, xdata=True):
@@ -474,13 +520,13 @@ class PicoHarp300():
                         ns.
 
         """
-        buf = np.zeros((self.HISTCHAN,), dtype=np.uint32)
+        chcount = np.zeros((self.HISTCHAN,), dtype=np.uint32)
         # buf.ctypes.data is the reference to the array in the memory.
-        self.check(self.phlib.PH_GetBlock(self._deviceID, buf.ctypes.data, block))
+        self.check(self.phlib.PH_GetHistogram(self._deviceID, chcount.ctypes.data, block))
         if xdata:
             xbuf = np.arange(self.HISTCHAN) * self.get_resolution() / 1000
-            return xbuf, buf
-        return buf
+            return xbuf, chcount
+        return chcount
 
     def get_resolution(self):
         """ Retrieve the current resolution of the picohard.
@@ -489,7 +535,7 @@ class PicoHarp300():
         """
 
         resolution = ctypes.c_double()
-        self.check(self.phlib.PH_GetResolution(self._deviceID, resolution))
+        self.check(self.phlib.PH_GetResolution(self._deviceID, ctypes.byref(resolution)))
         return resolution.value
 
     def get_count_rate(self, channel):
@@ -508,7 +554,7 @@ class PicoHarp300():
         are very low. If accurate rates are needed you must perform a full
         blown measurement and sum up the recorded events.
         """
-        if (channel !=0) or (channel != 1):
+        if not ((channel !=0) or (channel != 1)):
             self.logMsg('PicoHarp: Count Rate could not be read out, Channal '
                         'does not exist.\nChannel has to be 0 or 1 but {0} was '
                         'passed.'.format(channel),
@@ -516,7 +562,7 @@ class PicoHarp300():
             return -1
         else:
             rate = ctypes.c_int32()
-            self.check(self.phlib.PH_GetCountRate(self._deviceID, channel, rate))
+            self.check(self.phlib.PH_GetCountRate(self._deviceID, channel, ctypes.byref(rate)))
             return rate.value
 
     def get_flags(self):
@@ -532,7 +578,7 @@ class PicoHarp300():
         """
 
         flags = ctypes.c_int32()
-        self.check(self.phlib.PH_GetFlags(self._deviceID, flags))
+        self.check(self.phlib.PH_GetFlags(self._deviceID, ctypes.byref(flags)))
         return flags.value
 
     def get_elepased_meas_time(self):
@@ -541,7 +587,7 @@ class PicoHarp300():
         @return double: the elapsed measurement time in ms.
         """
         elapsed = ctypes.c_double()
-        self.check(self.phlib.PH_GetElapsedMeasTime(self._deviceID, elapsed))
+        self.check(self.phlib.PH_GetElapsedMeasTime(self._deviceID, ctypes.byref(elapsed)))
         return elapsed.value
 
     def get_warnings(self):
@@ -553,7 +599,7 @@ class PicoHarp300():
               call!
         """
         warnings = ctypes.c_int32()
-        self.check(self.phlib.PH_GetWarnings(self._deviceID, warnings))
+        self.check(self.phlib.PH_GetWarnings(self._deviceID, ctypes.byref(warnings)))
         return warnings.value
 
     def get_warnings_text(self, warning_num):
@@ -564,7 +610,7 @@ class PicoHarp300():
         @return char[32568]: the actual text of the warning.
 
         """
-        text = ctypes.create_string_buffer(32568) # buffer at least 16284
+        text = ctypes.create_string_buffer(32568) # buffer at least 16284 byte
         self.check(self.phlib.PH_GetWarningsText(self._deviceID, warning_num, text))
         return text.value
 
@@ -573,7 +619,7 @@ class PicoHarp300():
 
         @return char[32568]: the information for debugging.
         """
-        debuginfo = ctypes.create_string_buffer(32568) # buffer at least 16284
+        debuginfo = ctypes.create_string_buffer(32568) # buffer at least 16284 byte
         self.check(self.phlib.PH_GetHardwareDebugInfo(self._deviceID, debuginfo))
         return debuginfo.value
 
@@ -589,26 +635,28 @@ class PicoHarp300():
         @param int num_counts: number of TTTR records to be fetched. Maximal
                                TTREADMAX
 
-        @return tuple (counts, actual_num_counts):
-                    counts = data array where the TTTR data are stored.
+        @return tuple (buffer, actual_num_counts):
+                    buffer = data array where the TTTR data are stored.
                     actual_num_counts = how many numbers of TTTR could be
                                         actually be read out. THIS NUMBER IS
                                         NOT CHECKED FOR PERFORMANCE REASONS, SO
-                                        BE  CAREFUL!
+                                        BE  CAREFUL! Maximum is TTREADMAX.
 
+        THIS FUNCTION SHOULD BE CALLED IN A SEPARATE THREAD!        
+        
         Must not be called with count larger than buffer size permits. CPU time
         during wait for completion will be yielded to other processes/threads.
         Function will return after a timeout period of 80 ms even if not all
         data could be fetched. Return value indicates how many records were
         fetched. Buffer must not be accessed until the function returns!
         """
-        counts = np.zeros(num_counts, dtype=np.uint32)
+        buffer = np.zeros(num_counts, dtype=np.uint32)
         actual_num_counts = ctypes.c_int32()
         # counts.ctypes.data is the reference to the array in the memory.
-        self.check(self.phlib.PH_TTReadData(self._deviceID, counts.ctypes.data,
-                                            num_counts, actual_num_counts))
+        self.check(self.phlib.PH_ReadFiFo(self._deviceID, buffer.ctypes.data,
+                                            num_counts, ctypes.byref(actual_num_counts)))
 
-        return (counts, actual_num_counts)
+        return (buffer, actual_num_counts)
 
     def tttr_set_marker_edges(self, me0, me1, me2, me3):
         """ Set the marker edges
