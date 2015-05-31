@@ -10,13 +10,12 @@
 from core.util.CustomExceptions import InterfaceImplementationError
 
 class FastCounterInterface():
-    """This is the Interface class to define the controls for the simple 
-    microwave hardware.
-    """
+    """ UNSTABLE: Alex Stark 
+     Interface class to define the controls for fast counting devices. """
     
     
     def configure(self):
-        """ Initialize and open the collection to the Fast Counter and configure it."""
+        """ Initialize and open the connection to the Fast Counter and configure it."""
         
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1
