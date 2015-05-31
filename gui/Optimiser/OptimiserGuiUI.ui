@@ -59,35 +59,84 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QLabel" name="x_label">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string>X</string>
+         <string>X:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="optimal_x"/>
+       <widget class="QLabel" name="optimal_x">
+        <property name="text">
+         <string>?</string>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="y_label">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string>Y</string>
+         <string>Y:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="optimal_y"/>
+       <widget class="QLabel" name="optimal_y">
+        <property name="text">
+         <string>?</string>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="z_label">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string>Z</string>
+         <string>Z:</string>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::LinksAccessibleByMouse</set>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="optimal_z"/>
+       <widget class="QLabel" name="optimal_z">
+        <property name="text">
+         <string>?</string>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+        </property>
+       </widget>
       </item>
      </layout>
+    </item>
+    <item row="2" column="0">
+     <widget class="QPushButton" name="optimiseButton">
+      <property name="text">
+       <string>Optimise focus</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -97,7 +146,7 @@
      <x>0</x>
      <y>0</y>
      <width>255</width>
-     <height>26</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuOptions">

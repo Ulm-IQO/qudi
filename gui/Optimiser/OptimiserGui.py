@@ -108,7 +108,12 @@ class OptimiserGui(GUIBase):
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)       
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.xy_refocus_image.setRect(
+            QtCore.QRectF(
+                self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
+                self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
+                self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size
+            ))               
         self.xz_refocus_image = pg.ScatterPlotItem(self._optimiser_logic._zimage_Z_values,
                                                 arr02, 
                                                 symbol='o')
@@ -182,7 +187,10 @@ class OptimiserGui(GUIBase):
         
         # Connect signals
         self._optimiser_logic.signal_image_updated.connect(self.refresh_image)
+        self._optimiser_logic.signal_refocus_finished.connect(self.enable_button)
+        self._optimiser_logic.signal_refocus_started.connect(self.disable_button)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
+        self._mw.optimiseButton.clicked.connect(self.refocus_clicked)
         self._sw.accepted.connect(self.update_settings)
         self._sw.rejected.connect(self.reject_settings)
         self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
@@ -234,7 +242,12 @@ class OptimiserGui(GUIBase):
         ''' This method refreshes the xy image, the crosshair and the colorbar
         '''
         self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
+        self.xy_refocus_image.setRect(
+            QtCore.QRectF(
+                self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
+                self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
+                self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size
+            ))
         self.vLine.setValue(self._optimiser_logic.refocus_x)
         self.hLine.setValue(self._optimiser_logic.refocus_y)
         self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
@@ -243,3 +256,15 @@ class OptimiserGui(GUIBase):
         self._mw.optimal_x.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
         self._mw.optimal_y.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
         self._mw.optimal_z.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
+
+    def refocus_clicked(self):
+        """ Manages what happens if the optimizer is started.
+        """        
+        self._optimiser_logic.start_refocus()
+        self.disable_button()
+    
+    def disable_button(self):
+        self._mw.optimiseButton.setEnabled(False)
+
+    def enable_button(self):
+        self._mw.optimiseButton.setEnabled(True)
