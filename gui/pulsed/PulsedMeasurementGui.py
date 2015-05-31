@@ -304,6 +304,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def update_sequence_parameters(self):
+        """ Initialize the matrix creation and update the logic. """
         # calculate the current sequence parameters
         repetitions = int(self._mw.repetitions_lineEdit.text())
         matrix = self.get_matrix()
@@ -346,11 +347,18 @@ class PulsedMeasurementGui(GUIBase):
         
         
     def get_matrix(self):
-        ''' This method creates a matrix out of the current TableWidget to be further processed by the logic module.
-        '''
+        """ Create a Matrix from the GUI's TableWidget. 
+        
+        This method creates a matrix out of the current TableWidget to be 
+        further processed by the logic module.
+        """
         # get the number of rows and columns
         num_of_rows = self._mw.sequence_tableWidget.rowCount()
         num_of_columns = self._mw.sequence_tableWidget.columnCount()
+        
+        #FIXME: the matrix should not be in the future not an integer type
+        #       since the length of a pulse can and have sometimes to be an 
+        #       float value.
         
         # Initialize a matrix of proper size and integer data type
         matrix = np.empty([num_of_rows, num_of_columns], dtype=int)

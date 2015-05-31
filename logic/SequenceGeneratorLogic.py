@@ -219,8 +219,12 @@ class SequenceGeneratorLogic(GenericLogic):
      
      
     def update_sequence_parameters(self, matrix, repetitions):
-        ''' This method calculates all sequence parameters from a given matrix and number of repetitions
-        '''
+        """ Calulate sequence
+        
+        
+        This method calculates all sequence parameters from a
+        given matrix and number of repetitions.
+        """
         # Calculate sequence length in bins.
         # Calculate the sum over all "length" entries
         sequence_length_bins = np.sum(matrix[:,8])
@@ -260,8 +264,11 @@ class SequenceGeneratorLogic(GenericLogic):
        
     
     def get_sequence(self, name):
-        ''' This method is searching for a sequence with name "name" in all saved sequences and returns it if found.
-        '''
+        """ Retrieve the sequence for the corresponding name.
+        
+        This method returns for a sequence with name "name" 
+        in all saved sequences and returns it if found.
+        """
         sequence = None
         if (name in self._saved_sequences):
             sequence = self._saved_sequences[name]
@@ -269,8 +276,10 @@ class SequenceGeneratorLogic(GenericLogic):
     
     
     def get_sequence_parameters(self, name):
-        ''' This method searches for a sequence with name "name" in all saved sequences and returns the parameters dictionary
-        '''
+        """ Retrieve
+        
+        This method searches for a sequence with name "name" in all saved sequences and returns the parameters dictionary
+        """
         parameter_dict = None
         if (name in self._saved_sequence_parameters):
             parameter_dict = self._saved_sequence_parameters[name]
