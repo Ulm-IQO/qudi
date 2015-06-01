@@ -349,7 +349,8 @@ class PoiManagerGui(GUIBase):
 
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
         
-        self._mw.roi_cb_auto_CheckBox.toggled.connect( self.refresh_roi_colorscale )
+        self._mw.roi_cb_auto_RadioButton.toggled.connect( self.refresh_roi_colorscale )
+        self._mw.roi_cb_5_95_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
         self._mw.roi_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
 
@@ -392,7 +393,8 @@ class PoiManagerGui(GUIBase):
         self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
 
     def shortcut_to_roi_cb_manual(self):
-        self._mw.roi_cb_auto_CheckBox.setChecked(False)
+        self._mw.roi_cb_auto_RadioButton.setChecked(False)
+        self._mw.roi_cb_5_95_RadioButton.setChecked(False)
         self.refresh_roi_colorscale()
 
     def refresh_roi_colorscale(self):
@@ -406,11 +408,17 @@ class PoiManagerGui(GUIBase):
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
-        if self._mw.roi_cb_auto_CheckBox.isChecked():
-            cb_min = self.roi_map_image.image.min()
-            cb_max = self.roi_map_image.image.max()
+        if self._mw.roi_cb_auto_RadioButton.isChecked():
+            cb_min = self.roi_map_data.min()
+            cb_max = self.roi_map_data.max()
 
             self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
+
+        elif self._mw.roi_cb_5_95_RadioButton.isChecked():
+            cb_min = np.percentile( self.roi_map_data, 5 ) 
+            cb_max = np.percentile( self.roi_map_data, 95 ) 
+
+            self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max) )
 
         else:
             cb_min = self._mw.roi_cb_min_InputWidget.value()
@@ -588,11 +596,14 @@ class PoiManagerGui(GUIBase):
     def make_new_roi(self):
         '''Start new ROI by removing all POIs and resetting the sample history.
         '''
-
+        
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
-        
-                self._poi_manager_logic.delete_poi(poikey=key)
+                self._markers[key].delete_from_viewwidget()
 
-        print(self._poi_manager_logic.track_point_list['sample'] )
+        del self._markers
+        self._markers = dict()
 
+        self._poi_manager_logic.reset_roi()
+
+        self.population_poi_list()

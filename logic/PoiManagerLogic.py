@@ -226,8 +226,15 @@ class PoiManagerLogic(GenericLogic):
         The initial position is taken from the current crosshair.
         """
         
+        if len( self.track_point_list ) == 2:
+            self.track_point_list['sample']._creation_time = time.time()
+            self.track_point_list['sample'].delete_last_point()
+            self.track_point_list['sample'].set_new_position(point=[0,0,0] )
+        
+
         new_track_point=PoI(point=self._confocal_logic.get_position())
         self.track_point_list[new_track_point.get_key()] = new_track_point
+
         
         return new_track_point.get_key()
         
@@ -511,3 +518,21 @@ class PoiManagerLogic(GenericLogic):
             self.logMsg('The given POI ({}) does not exist.'.format(self._current_poi_key), 
                 msgType='error')
             return -1
+
+    def reset_roi(self):
+        
+        del self.track_point_list
+
+        self.track_point_list=dict()
+
+        # initally add crosshair to the pois
+        crosshair=PoI(point=[0,0,0], name='crosshair')
+        crosshair._key='crosshair'
+        self.track_point_list[crosshair._key] = crosshair
+
+        # Re-initialise sample in the poi list
+        sample=PoI(point=[0,0,0], name='sample')
+        sample._key='sample'
+        self.track_point_list[sample._key] = sample
+        
+        self.signal_poi_updated.emit()

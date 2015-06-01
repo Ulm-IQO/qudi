@@ -121,11 +121,19 @@ class OptimiserGui(GUIBase):
                                                     self._optimiser_logic.z_fit_data, 
                                                     pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
-        # Add the display item to the xy and xz VieWidget, which was defined in
+        # Add the display item to the xy and xz VieWidget defined in
         # the UI file.
         self._mw.xy_refocus_ViewWidget.addItem(self.xy_refocus_image)
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_image)
         self._mw.xz_refocus_ViewWidget.addItem(self.xz_refocus_fit_image)
+
+        # Add labels and set aspect ratio
+        self._mw.xy_refocus_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
+        self._mw.xy_refocus_ViewWidget.setLabel( 'left', 'Y position', units='µm' )
+        self._mw.xy_refocus_ViewWidget.setAspectLocked( lock=True, ratio=1.0 )
+
+        self._mw.xz_refocus_ViewWidget.setLabel('bottom', 'Z position', units='µm')
+        self._mw.xz_refocus_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
         
         #Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255,0,255,255), 0.02), pos=50, angle=90, movable=False)
@@ -164,6 +172,8 @@ class OptimiserGui(GUIBase):
              
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
+        self._mw.xy_refocus_cb_ViewWidget.hideAxis('left')
+        self._mw.xy_refocus_cb_ViewWidget.setLabel('right', 'Fluorescence', units='c/s')
         
         # Connect to default values:
         self._sw.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
