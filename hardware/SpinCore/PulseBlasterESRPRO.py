@@ -2,7 +2,7 @@
 
 
 import ctypes
-import sys
+import platform
 import os
 
 
@@ -43,7 +43,7 @@ class PulseBlasterESRPRO():
 
 
         # Check the platform architecture:
-        arch = sys.platform.architecture()
+        arch = platform.architecture()
         if arch == ('32bit', 'WindowsPE'):
             libname = 'spinapi.dll'
         elif arch == ('64bit', 'WindowsPE'):
@@ -58,7 +58,7 @@ class PulseBlasterESRPRO():
         self._dll = ctypes.cdll.LoadLibrary(libname)
 
 
-        self.initialize()
+        self.open_connection()
 
 
 
@@ -86,15 +86,32 @@ class PulseBlasterESRPRO():
 
         if not func_val == 0:
 
-            self._dll.pb_get_error.restype = ctypes.c_char_p
-            err_str = self._dll.pb_get_error()
-
+            err_str = self.get_error_string()
 
             self.logMsg('Error in PulseBlaster with errorcode {0}:\n'
                         '{1}'.format(func_val, err_str),
                         msgType='error')
         return func_val
-
+        
+    def get_error_string(self): 
+        """ Return the most recent error string.
+        
+        @return string: A string describing the last error is returned. A 
+                        string containing "No Error" is returned if the last 
+                        function call was successfull.
+        
+        Anytime a function (such as pb_init(), pb_start_programming(), etc.) 
+        encounters an error, this function will return a description of what 
+        went wrong.
+        """
+        self._dll.pb_get_error.restype = ctypes.c_char_p 
+            
+            # The output value of this function is as decladed above a pointer
+            # to an address where the received data is stored as characters 
+            # (8bit per char). Use the decode method to convert a char to a 
+            # string.
+        return self._dll.pb_get_error().decode()
+        
     def count_boards(self):
         """ Return the number of SpinCore boards present in your system.
 
@@ -104,7 +121,7 @@ class PulseBlasterESRPRO():
         """
 
         self._dll.pb_count_boards.restype = ctypes.c_int
-        return self._dll.pb_count_boards
+        return self._dll.pb_count_boards()
 
     def select_board(self,board_num):
         """ Select the proper SpinCore card, if multiple are present.
@@ -122,39 +139,85 @@ class PulseBlasterESRPRO():
         self.check(self._dll.pb_select_board)
 
     def get_version(self):
-        """Get the version of this library. 
+        """Get the version date of this library. 
         
         @return string: A string indicating the version of this library is 
                         returned. The version is a string in the form YYYYMMDD. 
         """
         self._dll.spinpts_get_version.restype = ctypes.c_char_p
-        return self._dll.spinpts_get_version()
+        # .decode converts char into string:
+        return self._dll.spinpts_get_version().decode() 
 
     def get_firmware_id(self):
         """Gets the current version of the SpinPTS API being used. 
         
         @return : Returns a pointer to a C string containing the version string."""
         self._dll.pb_get_firmware_id.restype = ctypes.c_uint
-        return self._dll.pb_get_firmware_id()
+
+        firmware_id = self._dll.pb_get_firmware_id()        
+        
+        if firmware_id == 0 :
+            self.logMsg('Retrieving the Firmware ID is not a feature of this ' 
+                        'board', msgType='status')
+        
+        return firmware_id
 
     def start(self):
-        self._dll.pb_start()
+        """ Send a software trigger to the board. 
+        
+        @return int: A negative number is returned on failure, and spinerr is 
+                     set to a description of the error. 0 is returned on 
+                     success. 
+        
+        This will start execution of a pulse program.It will also trigger a 
+        program which is currently paused due to a WAIT instruction. Triggering
+        can also be accomplished through hardware, please see your board's 
+        manual for details on how to accomplish this.
+        """
+        return self.check(self._dll.pb_start())
 
 
-    def initialize(self):
+    def open_connection(self):
         """Initializes the board. 
         
         @return int: A negative number is returned on failure, and spinerr is 
                      set to a description of the error. 0 is returned on 
                      success.
+                     
+        This must be called before any other functions are used which 
+        communicate with the board. If you have multiple boards installed in 
+        your system, pb_select_board() may be called first to select which 
+        board to initialize.
         """
-        val = self.check(self._dll.pb_init())
-        return val
+        return self.check(self._dll.pb_init())
 
     def close_connection(self):
-        self._dll.pb_close()
+        """End communication with the board. 
+        
+        @return: A negative number is returned on failure, and spinerr is set
+                 to a description of the error. 0 is returned on success.
+                 
+        This is generally called as the last line in a program. Once this is 
+        called, no further communication can take place with the board unless 
+        the board is reinitialized with pb_init(). However, any pulse program 
+        that is loaded and running at the time of calling this function will 
+        continue to run indefinitely.
+        """
+        return self.check(self._dll.pb_close())
 
-    def start_programming(self):
+    def start_programming(self,device):
+        """ Tell the board to start programming one of the onboard devices. 
+        
+        @ return int: A negative number is returned on failure, and spinerr is 
+                      set to a description of the error. 0 is returned on 
+                      success.         
+        
+        For all the devices, the method of programming follows the following 
+        form:
+            a call to pb_start_programming(), a call to one or more functions 
+            which transfer the actual data, and a call to 
+            pb_stop_programming(). Only one device can be programmed at a time.
+            """
         self._dll.pb_start_programming()
 
     def stop_programming(self):
