@@ -18,8 +18,10 @@ class PulserInterfaceDummy(Base, PulserInterface):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate'   : self.activation,
+                         'ondeactivate' : self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
+        
         self._modclass = 'PulserInterface'
         self._modtype = 'hardware'
 
@@ -33,6 +35,12 @@ class PulserInterfaceDummy(Base, PulserInterface):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
+
+    def activation(self, e):
+        pass
+    
+    def deactivation(self, e):
+        pass
 
     def on(self):
         """ Switches on any preconfigured pulsing source on. 
