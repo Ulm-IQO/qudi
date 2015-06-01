@@ -110,10 +110,7 @@ class PicoHarp300(Base):
 
         # Load the picoharp library file phlib64.dll from the folder
         # <Windows>/System32/
-
-        #FIXME: use this instead:ctypes.cdll.LoadLibrary(libname)
-        # but that must be tested at first!
-        self._dll = ctypes.windll.LoadLibrary('phlib64')
+        self._dll = ctypes.cdll.LoadLibrary('phlib64')
 
         self.open_connection()
         self.initialize(self._mode)
