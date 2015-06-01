@@ -53,7 +53,7 @@ class CounterGui(GUIBase):
         # creating a plot in pyqtgraph and configuring it
         self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
         
-        self._pw.setLabel('left', 'Value', units='counts/s')
+        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='s')
                 
         # defining buttons
