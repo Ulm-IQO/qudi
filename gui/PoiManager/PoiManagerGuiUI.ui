@@ -21,7 +21,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="roiMap">
        <attribute name="title">
@@ -129,16 +129,6 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
-             <widget class="QCheckBox" name="roi_cb_auto_CheckBox">
-              <property name="text">
-               <string>Auto</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="0">
              <widget class="PlotWidget" name="roi_cb_ViewWidget">
               <property name="sizePolicy">
@@ -152,6 +142,26 @@
                 <width>70</width>
                 <height>16777215</height>
                </size>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QRadioButton" name="roi_cb_auto_RadioButton">
+              <property name="text">
+               <string>Auto</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QRadioButton" name="roi_cb_5_95_RadioButton">
+              <property name="text">
+               <string>5-95%</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
               </property>
              </widget>
             </item>

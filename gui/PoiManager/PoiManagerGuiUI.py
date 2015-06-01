@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Sun May 31 23:22:37 2015
+# Created: Mon Jun  1 10:53:42 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -87,10 +87,6 @@ class Ui_PoiManager(object):
         self.roi_cb_min_InputWidget.setProperty("value", 100)
         self.roi_cb_min_InputWidget.setObjectName(_fromUtf8("roi_cb_min_InputWidget"))
         self.gridLayout.addWidget(self.roi_cb_min_InputWidget, 2, 0, 1, 1)
-        self.roi_cb_auto_CheckBox = QtGui.QCheckBox(self.roiMap)
-        self.roi_cb_auto_CheckBox.setChecked(True)
-        self.roi_cb_auto_CheckBox.setObjectName(_fromUtf8("roi_cb_auto_CheckBox"))
-        self.gridLayout.addWidget(self.roi_cb_auto_CheckBox, 3, 0, 1, 1)
         self.roi_cb_ViewWidget = PlotWidget(self.roiMap)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -100,6 +96,14 @@ class Ui_PoiManager(object):
         self.roi_cb_ViewWidget.setMaximumSize(QtCore.QSize(70, 16777215))
         self.roi_cb_ViewWidget.setObjectName(_fromUtf8("roi_cb_ViewWidget"))
         self.gridLayout.addWidget(self.roi_cb_ViewWidget, 1, 0, 1, 1)
+        self.roi_cb_auto_RadioButton = QtGui.QRadioButton(self.roiMap)
+        self.roi_cb_auto_RadioButton.setChecked(False)
+        self.roi_cb_auto_RadioButton.setObjectName(_fromUtf8("roi_cb_auto_RadioButton"))
+        self.gridLayout.addWidget(self.roi_cb_auto_RadioButton, 3, 0, 1, 1)
+        self.roi_cb_5_95_RadioButton = QtGui.QRadioButton(self.roiMap)
+        self.roi_cb_5_95_RadioButton.setChecked(True)
+        self.roi_cb_5_95_RadioButton.setObjectName(_fromUtf8("roi_cb_5_95_RadioButton"))
+        self.gridLayout.addWidget(self.roi_cb_5_95_RadioButton, 4, 0, 1, 1)
         self.horizontalLayout_4.addLayout(self.gridLayout)
         self.verticalLayout.addLayout(self.horizontalLayout_4)
         self.tabWidget.addTab(self.roiMap, _fromUtf8(""))
@@ -254,13 +258,14 @@ class Ui_PoiManager(object):
         self.menubar.addAction(self.menuMenu.menuAction())
 
         self.retranslateUi(PoiManager)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(PoiManager)
 
     def retranslateUi(self, PoiManager):
         PoiManager.setWindowTitle(_translate("PoiManager", "qudi: POI Manager", None))
         self.get_confocal_image_Button.setText(_translate("PoiManager", "Get Confocal image", None))
-        self.roi_cb_auto_CheckBox.setText(_translate("PoiManager", "Auto", None))
+        self.roi_cb_auto_RadioButton.setText(_translate("PoiManager", "Auto", None))
+        self.roi_cb_5_95_RadioButton.setText(_translate("PoiManager", "5-95%", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.roiMap), _translate("PoiManager", "ROI Map", None))
         self.radioButton_2.setText(_translate("PoiManager", "Duration (seconds)", None))
         self.radioButton.setText(_translate("PoiManager", "Cliock time", None))
