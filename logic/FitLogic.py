@@ -38,7 +38,7 @@ class FitLogic(GenericLogic):
         
         def __init__(self, manager, name, config, **kwargs):
             ## declare actions for state transitions
-            state_actions = {}
+            state_actions = {'onactivate':self.activation,'ondeactivate':self.deactivation}
             GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
             self._modclass = 'fitlogic'
             self._modtype = 'logic'
@@ -54,6 +54,11 @@ class FitLogic(GenericLogic):
             self.logMsg('The following configuration was found.', 
                         msgType='status')
 
+        def activation(self,e):
+            pass
+
+        def deactivation(self,e):
+            pass            
 ##############################################################################
 ##############################################################################
 ##############################################################################
