@@ -7,12 +7,29 @@ import os
 
 
 
+# =============================================================================
+# Wrapper around the spinapi.DLL. The current file is based on the header file
+# 'spinapi.h' contains all the functions exported within the dll
+# file.
+#
+# The wrappered commands are based on the SpinAPI Version 2013-09-25. For 
+# further information visit the side:
+# http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
+# =============================================================================
+"""
+The PicoHarp programming library PHLib.DLL is written in C and its data types
+correspond to standard C/C++ data types as follows:
 
-
-
-
-
-
+    char                    8 bit, byte (or characters in ASCII)
+    short int               16 bit signed integer
+    unsigned short int      16 bit unsigned integer
+    int                     32 bit signed integer
+    long int                32 bit signed integer
+    unsigned int            32 bit unsigned integer
+    unsigned long int       32 bit unsigned integer
+    float                   32 bit floating point number
+    double                  64 bit floating point number
+"""
 
 
 class PulseBlasterESRPRO():
@@ -59,9 +76,6 @@ class PulseBlasterESRPRO():
 
 
         self.open_connection()
-
-
-
 
 
     # =========================================================================
@@ -174,9 +188,26 @@ class PulseBlasterESRPRO():
         can also be accomplished through hardware, please see your board's 
         manual for details on how to accomplish this.
         """
+        self._dll.pb_start.restype = ctypes.c_int
         return self.check(self._dll.pb_start())
 
+    def stop(self):
+        """Stops output of board. 
 
+        @return int: A negative number is returned on failure, and spinerr is 
+                     set to a description of the error. 0 is returned on 
+                     success.
+        
+        Analog output will return to ground, and TTL outputs will either remain
+        in the same state they were in when the reset command was received or 
+        return to ground. This also resets the PulseBlaster so that the 
+        PulseBlaster Core can be run again using pb_start() or a hardware 
+        trigger. 
+        """
+        
+        self._dll.pb_stop.restype = ctypes.c_int
+        return self.check(self._dll.pb_stop())
+        
     def open_connection(self):
         """Initializes the board. 
         
@@ -205,7 +236,7 @@ class PulseBlasterESRPRO():
         """
         return self.check(self._dll.pb_close())
 
-    def start_programming(self,device):
+    def start_programming(self, program=0):
         """ Tell the board to start programming one of the onboard devices. 
         
         @ return int: A negative number is returned on failure, and spinerr is 
@@ -217,38 +248,29 @@ class PulseBlasterESRPRO():
             a call to pb_start_programming(), a call to one or more functions 
             which transfer the actual data, and a call to 
             pb_stop_programming(). Only one device can be programmed at a time.
+        
+        There are actually several programming methods possible, but since this
+        card has only pulsing outputs, without DDS (Direct Digital Synthesis)
+        or RadioProcessor output, the programming will be set by default to 
+        the PULSE_PROGRAM = 0.
+            
+            PULSE_PROGRAM - The pulse program will be programmed using one of the pb_inst* instructions. 
             """
-        self._dll.pb_start_programming()
+        return self.check(self._dll.pb_start_programming(program))
 
     def stop_programming(self):
-        self._dll.pb_stop_programming()
-
-    def set_clock(self):
-        self._dll.pb_set_clock()
-
-    def write_pulse(self):
-        self._dll.pb_inst_pbonly()
-
-    def pb_read_status(self):
-        self._dll.pb_read_status.restype = ctypes.c_uint32
-        status = self._dll.pb_read_status()
-
-#        # convert to reversed binary string
-#        # convert to binary string, and remove 0b
-#        status = bin(status)[2:]
-#        # reverse string
-#        status = status[::-1]
-#        # pad to make sure we have enough bits!
-#        status = status + "0000"
-#
-#        return {"stopped":bool(int(status[0])),"reset":bool(int(status[1])),"running":bool(int(status[2])), "waiting":bool(int(status[3]))}
-
-
+        """ Finishes the programming for a specific onboard devices.
+        
+        @return int: A negative number is returned on failure, and spinerr is 
+                     set to a description of the error. 0 is returned on 
+                     success.
+        """
+        return self.check(self._dll.pb_stop_programming())
 
     def set_core_clock(self,clock_freq):
         """Tell the library what clock frequency the board uses.
         
-        @return int: Frequency of the clock in MHz. 
+        @param int clock_freq: Frequency of the clock in MHz. 
         
         This should be called at the beginning of each program, right after you
         initialize the board with pb_init(). Note that this does not actually 
@@ -261,9 +283,90 @@ class PulseBlasterESRPRO():
         frequency. 
         """
 
+        # it seems that the spin api has no return value for that funtion
+        # there is no get_core_clock method available. Strange.
         self._dll.pb_core_clock.restype = ctypes.c_void_p
-         
-        return self._dll.pb_core_clock(ctypes.c_double(clock_freq)) # returns void, so ignore return value.
+        self._dll.pb_core_clock(ctypes.c_double(clock_freq))
+
+    def write_pulse(self, flags, inst, inst_data, length):
+        """Instruction programming function for boards without a DDS. 
+        
+        @param umsigned int flags: Set every bit to one for each flag you want 
+                                   to set high
+        @param int inst: Specify the instruction you want. Valid instructions 
+                         are:
+                         Opcode #	Instruction	Meaning of inst_data field
+                             0    CONTINUE          Not Used
+                             1    STOP              Not Used
+                             2    LOOP              Number of desired loops
+                             3    END_LOOP          Address of instruction 
+                                                    originating loop
+                             4    JSR               Address of first 
+                                                    instruction in subroutine
+                             5    RTS               Not Used
+                             6    BRANCH            Address of instruction to 
+                                                    branch to
+                             7    LONG_DELAY        Number of desired 
+                                                    repetitions
+                             8    WAIT              Not Used 
+        @param int inst_data: Instruction specific data. Internally this is a 
+                              20 bit unsigned number, so the largest value that
+                              can be passed is 2^20-1 (the largest value 
+                              possible for a 20 bit number). See above table 
+                              to find out what this means for each instruction. 
+        @param double length: Length of this instruction in nanoseconds. 
+        
+        @return int: The address of the created instruction is returned. This 
+                     can be used as the branch address for any branch 
+                     instructions. A negative number is returned on failure, 
+                     and spinerr is set to a description of the error.
+        
+        (DDS = Direct Digital Synthesis). The old version of this command was
+        'pb_set_clock', which is still valid, but should not be used.
+        """
+
+        length = ctypes.c_double(length)        
+        
+        self.check(self._dll.pb_inst_pbonly(flags,inst,inst_data,length))
+
+    def pb_read_status(self):
+        """Read status from the board.  
+        
+        @return int: Word that indicates the state of the current board like
+                     the representation 2^(<bit>), whereas the value of bit is
+                        bit 0 - Stopped     (2^0 = 1)
+                        bit 1 - Reset       (2^1 = 2)
+                        bit 2 - Running     (2^2 = 4)
+                        bit 3 - Waiting     (2^3 = 8)
+                        bit 4 - Scanning (RadioProcessor boards only, 2^4 = 16)
+        
+        Not all boards support this, see your manual. Each bit of the returned
+        integer indicates whether the board is in that state. Bit 0 is the 
+        least significant bit.
+        
+        *Note on Reset Bit: The Reset Bit will be true as soon as the board is 
+                            initialized. It will remain true until a hardware 
+                            or software trigger occurs, at which point it will
+                            stay false until the board is reset again.
+                            
+        *Note on Activation Levels: The activation level of each bit depends on
+                                    the board, please see your product's 
+                                    manual for details.
+                                    
+        Bits 5-31 are reserved for future use. It should not be assumed that 
+        these will be set to 0.
+        
+        The output is converted to integer representation directly, and not
+        bit representation, as it is mentioned in the spinapi documentation.
+        """
+        
+        self._dll.pb_read_status.restype = ctypes.c_uint32
+        #FIXME the usage of a state maschine would be a good idea
+
+        return self._dll.pb_read_status()
+
+
+
     # =========================================================================
     # Below are all the higher level routines are situated which use the
     # wrapped routines as a basis to perform the desired task.
