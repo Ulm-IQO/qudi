@@ -58,6 +58,9 @@ class ODMRLogic(GenericLogic):
         self.MW_stop = 2950.         #in MHz
         self.MW_step = 2.            #in MHz
         
+        self.RunTime = 6000
+        self.ElapsedTime = 0
+        
         #number of lines in the matrix plot
         self.NumberofLines = 50 
         
@@ -130,6 +133,8 @@ class ODMRLogic(GenericLogic):
         '''Starting an ODMR scan.
         '''
         self._odmrscan_counter = 0
+        self._StartTime = time.time()
+        self.ElapsedTime = 0
         
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
 #        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
@@ -192,6 +197,10 @@ class ODMRLogic(GenericLogic):
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
         
         self._odmrscan_counter += 1
+        
+        self.ElapsedTime = time.time() - self._StartTime
+        if self.ElapsedTime >= self.RunTime:
+            self.stopRequested = True
         
         self.signal_ODMR_plot_updated.emit() 
         self.signal_ODMR_matrix_updated.emit() 
