@@ -87,6 +87,13 @@ class ODMRLogic(GenericLogic):
         self._MW_device.trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
 
 
+    def deactivation(self, e):
+        '''Tasks that are required to be performed during deactivation of the module.
+        '''
+        #deconnecting from the MW-source
+        pass
+
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
         
