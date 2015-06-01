@@ -4,33 +4,8 @@
 import ctypes
 import platform
 import os
-
-
-
-# =============================================================================
-# Wrapper around the spinapi.DLL. The current file is based on the header file
-# 'spinapi.h' contains all the functions exported within the dll
-# file.
-#
-# The wrappered commands are based on the SpinAPI Version 2013-09-25. For 
-# further information visit the side:
-# http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
-# =============================================================================
-"""
-The PicoHarp programming library PHLib.DLL is written in C and its data types
-correspond to standard C/C++ data types as follows:
-
-    char                    8 bit, byte (or characters in ASCII)
-    short int               16 bit signed integer
-    unsigned short int      16 bit unsigned integer
-    int                     32 bit signed integer
-    long int                32 bit signed integer
-    unsigned int            32 bit unsigned integer
-    unsigned long int       32 bit unsigned integer
-    float                   32 bit floating point number
-    double                  64 bit floating point number
-"""
-
+from collections import OrderedDict
+from core.Base import Base
 
 class PulseBlasterESRPRO():
     """ UNSTABLE: ALEX
@@ -39,26 +14,45 @@ class PulseBlasterESRPRO():
 
     This file is compatible with the PCI version SP18A of the PulseBlasterESR.
     The wrapped commands based on the 'spinapi.h' header file and can be looked
-    up in the SpinAPI Documentation on the website:
+    up in the SpinAPI Documentation (Version 2013-09-25) on the website:
 
     http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
 
     or for an other version (not recommended):
     http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
+    
+    The SpinCore programming library spinapi.DLL is written in C and its data 
+    types correspond to standard C/C++ data types as follows:
+
+            char                    8 bit, byte (or characters in ASCII)
+            short int               16 bit signed integer
+            unsigned short int      16 bit unsigned integer
+            int                     32 bit signed integer
+            long int                32 bit signed integer
+            unsigned int            32 bit unsigned integer
+            unsigned long int       32 bit unsigned integer
+            float                   32 bit floating point number
+            double                  64 bit floating point number
     """
 
-#http://www.bkprecision.com/support/downloads/function-and-arbitrary-waveform-generator-guidebook.html
+    def __init__(self,manager, name, config = {}, **kwargs):
+        
+        state_actions = {'onactivate'   : self.activation,
+                         'ondeactivate' : self.deactivation}
 
-    def __init__(self):
+        Base.__init__(self, manager, name, configuation=config, 
+                      state_actions, **kwargs)
+                      
+        self._modclass = 'PulseBlasterESRPRO'
+        self._modtype = 'hardware'  
 
+        # declare connectors
+        self.connector['out']['PulseBlasterESRPRO'] = OrderedDict()
+        self.connector['out']['PulseBlasterESRPRO']['class'] = 'PulseBlasterESRPRO'                    
 
-        # Load the spinapi.dll from the folder <Windows>/System32/
-
-        # Load the spinapi library file spinapi.dll from the folder
-        # <Windows>/System32/
-
-
-
+    def activation(self, e):
+        """Set should be happen if the hardware is activated. """
+        
         # Check the platform architecture:
         arch = platform.architecture()
         if arch == ('32bit', 'WindowsPE'):
@@ -72,16 +66,24 @@ class PulseBlasterESRPRO():
             folderpath = self.get_main_dir() + '\\hardware\\SpinCore\\'
             libname = os.path.join(folderpath, 'libspinapi64.so')
 
+        # In Windows load the spinapi library file spinapi.dll from the folder
+        # <Windows>/System32/. For Unix systems, the shared object (=so) file
+        # muss be within the same directory, where the file is situated.
         self._dll = ctypes.cdll.LoadLibrary(libname)
-
 
         self.open_connection()
 
-
+    def deactivation(self, e):
+        """Set what happens if the hardware is deactivated. """
+        self.close_connection()
+        
     # =========================================================================
-    # Below are all the low level routines which are wrapped with ctypes which
+    # Below all the low level routines which are wrapped with ctypes which
     # are talking directly to the hardware via the SpinAPI dll library.
     # =========================================================================
+
+    def logMsg(self,msg, importance=5, msgType='status'):
+        print(msg,'\nStatus:',msgType)
 
     def check(self, func_val):
         """ Check routine for the received error codes.
@@ -137,10 +139,11 @@ class PulseBlasterESRPRO():
         self._dll.pb_count_boards.restype = ctypes.c_int
         return self._dll.pb_count_boards()
 
-    def select_board(self,board_num):
+    def select_board(self,board_num=0):
         """ Select the proper SpinCore card, if multiple are present.
 
-        @param int board_num: Specifies which board to select. Counting starts at 0.
+        @param int board_num: Specifies which board to select. Counting starts 
+                              at 0.
 
         If multiple boards from SpinCore Technologies are present in your
         system, this function allows you to select which board to talk to. Once
@@ -149,8 +152,13 @@ class PulseBlasterESRPRO():
         change which board is selected at any time.
         If you have only one board, it is not necessary to call this function.
         """
-
-        self.check(self._dll.pb_select_board)
+        
+        # check whether the input is an integer
+        if not isinstance( board_num, int ):
+            self.logMsg('PulseBlaster cannot choose a board, since an integer '
+                        'type was expected, but the following value was '
+                        'passed:\n{0}'.format(board_num), msgType='error')
+        self.check(self._dll.pb_select_board(board_num))
 
     def get_version(self):
         """Get the version date of this library. 
@@ -165,7 +173,8 @@ class PulseBlasterESRPRO():
     def get_firmware_id(self):
         """Gets the current version of the SpinPTS API being used. 
         
-        @return : Returns a pointer to a C string containing the version string."""
+        @return : Return a pointer to a C string containing the version string.
+        """
         self._dll.pb_get_firmware_id.restype = ctypes.c_uint
 
         firmware_id = self._dll.pb_get_firmware_id()        
@@ -253,9 +262,7 @@ class PulseBlasterESRPRO():
         card has only pulsing outputs, without DDS (Direct Digital Synthesis)
         or RadioProcessor output, the programming will be set by default to 
         the PULSE_PROGRAM = 0.
-            
-            PULSE_PROGRAM - The pulse program will be programmed using one of the pb_inst* instructions. 
-            """
+        """
         return self.check(self._dll.pb_start_programming(program))
 
     def stop_programming(self):
@@ -329,7 +336,7 @@ class PulseBlasterESRPRO():
         
         self.check(self._dll.pb_inst_pbonly(flags,inst,inst_data,length))
 
-    def pb_read_status(self):
+    def get_status(self):
         """Read status from the board.  
         
         @return int: Word that indicates the state of the current board like
@@ -366,9 +373,8 @@ class PulseBlasterESRPRO():
         return self._dll.pb_read_status()
 
 
-
     # =========================================================================
-    # Below are all the higher level routines are situated which use the
+    # Below all the higher level routines are situated which use the
     # wrapped routines as a basis to perform the desired task.
     # =========================================================================
 
