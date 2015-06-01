@@ -412,14 +412,17 @@ class Manager(QtCore.QObject):
           @return dict: configuration from file
         """
         with self.lock:
-            fileName = self.configFileName(fileName)
             if os.path.isfile(fileName):
                 return configfile.readConfigFile(fileName)
             else:
-                if missingOk: 
-                    return {}
+                fileName = self.configFileName(fileName)
+                if os.path.isfile(fileName):
+                    return configfile.readConfigFile(fileName)
                 else:
-                    raise Exception('Config file {0} not found.'.format(fileName) )
+                    if missingOk: 
+                        return {}
+                    else:
+                        raise Exception('Config file {0} not found.'.format(fileName) )
             
     def writeConfigFile(self, data, fileName):
         """Write a file into the currently used config directory.
@@ -457,6 +460,14 @@ class Manager(QtCore.QObject):
         """
         with self.lock:
             return os.path.join(self.configDir, name)
+
+    def saveConfig(self, filename):
+        self.writeConfigFile(self.tree['defined'], filename)
+        self.logger.logMsg('Saved configuration to {0}'.format(filename), msgType='status')
+
+    def loadConfig(self, filename):
+        newconfig = self.readConfigFile(filename)
+        self.logger.logMsg('Loaded configuration from {0}'.format(filename), msgType='status')
 
     def setBaseDir(self, path):
         """Set base directory for data
