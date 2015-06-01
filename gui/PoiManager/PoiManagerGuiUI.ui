@@ -146,19 +146,29 @@
              </widget>
             </item>
             <item row="3" column="0">
-             <widget class="QRadioButton" name="roi_cb_auto_RadioButton">
+             <widget class="QRadioButton" name="roi_cb_manual_RadioButton">
               <property name="text">
-               <string>Auto</string>
+               <string>Manual</string>
               </property>
               <property name="checked">
                <bool>false</bool>
               </property>
              </widget>
             </item>
-            <item row="4" column="0">
+            <item row="5" column="0">
              <widget class="QRadioButton" name="roi_cb_5_95_RadioButton">
               <property name="text">
                <string>5-95%</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QRadioButton" name="roi_cb_auto_RadioButton">
+              <property name="text">
+               <string>Min/Max</string>
               </property>
               <property name="checked">
                <bool>true</bool>
@@ -195,6 +205,9 @@
            <widget class="QRadioButton" name="radioButton_2">
             <property name="text">
              <string>Duration (seconds)</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>

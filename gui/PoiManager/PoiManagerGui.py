@@ -351,6 +351,7 @@ class PoiManagerGui(GUIBase):
         
         self._mw.roi_cb_auto_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_5_95_RadioButton.toggled.connect( self.refresh_roi_colorscale )
+        self._mw.roi_cb_manual_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
         self._mw.roi_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
 
@@ -393,8 +394,7 @@ class PoiManagerGui(GUIBase):
         self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
 
     def shortcut_to_roi_cb_manual(self):
-        self._mw.roi_cb_auto_RadioButton.setChecked(False)
-        self._mw.roi_cb_5_95_RadioButton.setChecked(False)
+        self._mw.roi_cb_manual_RadioButton.setChecked(True)
         self.refresh_roi_colorscale()
 
     def refresh_roi_colorscale(self):

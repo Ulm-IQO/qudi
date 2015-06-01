@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Mon Jun  1 10:53:42 2015
+# Created: Mon Jun  1 16:52:04 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -96,14 +96,18 @@ class Ui_PoiManager(object):
         self.roi_cb_ViewWidget.setMaximumSize(QtCore.QSize(70, 16777215))
         self.roi_cb_ViewWidget.setObjectName(_fromUtf8("roi_cb_ViewWidget"))
         self.gridLayout.addWidget(self.roi_cb_ViewWidget, 1, 0, 1, 1)
-        self.roi_cb_auto_RadioButton = QtGui.QRadioButton(self.roiMap)
-        self.roi_cb_auto_RadioButton.setChecked(False)
-        self.roi_cb_auto_RadioButton.setObjectName(_fromUtf8("roi_cb_auto_RadioButton"))
-        self.gridLayout.addWidget(self.roi_cb_auto_RadioButton, 3, 0, 1, 1)
+        self.roi_cb_manual_RadioButton = QtGui.QRadioButton(self.roiMap)
+        self.roi_cb_manual_RadioButton.setChecked(False)
+        self.roi_cb_manual_RadioButton.setObjectName(_fromUtf8("roi_cb_manual_RadioButton"))
+        self.gridLayout.addWidget(self.roi_cb_manual_RadioButton, 3, 0, 1, 1)
         self.roi_cb_5_95_RadioButton = QtGui.QRadioButton(self.roiMap)
-        self.roi_cb_5_95_RadioButton.setChecked(True)
+        self.roi_cb_5_95_RadioButton.setChecked(False)
         self.roi_cb_5_95_RadioButton.setObjectName(_fromUtf8("roi_cb_5_95_RadioButton"))
-        self.gridLayout.addWidget(self.roi_cb_5_95_RadioButton, 4, 0, 1, 1)
+        self.gridLayout.addWidget(self.roi_cb_5_95_RadioButton, 5, 0, 1, 1)
+        self.roi_cb_auto_RadioButton = QtGui.QRadioButton(self.roiMap)
+        self.roi_cb_auto_RadioButton.setChecked(True)
+        self.roi_cb_auto_RadioButton.setObjectName(_fromUtf8("roi_cb_auto_RadioButton"))
+        self.gridLayout.addWidget(self.roi_cb_auto_RadioButton, 6, 0, 1, 1)
         self.horizontalLayout_4.addLayout(self.gridLayout)
         self.verticalLayout.addLayout(self.horizontalLayout_4)
         self.tabWidget.addTab(self.roiMap, _fromUtf8(""))
@@ -116,6 +120,7 @@ class Ui_PoiManager(object):
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_6.addItem(spacerItem)
         self.radioButton_2 = QtGui.QRadioButton(self.sampleShift)
+        self.radioButton_2.setChecked(True)
         self.radioButton_2.setObjectName(_fromUtf8("radioButton_2"))
         self.horizontalLayout_6.addWidget(self.radioButton_2)
         self.radioButton = QtGui.QRadioButton(self.sampleShift)
@@ -264,8 +269,9 @@ class Ui_PoiManager(object):
     def retranslateUi(self, PoiManager):
         PoiManager.setWindowTitle(_translate("PoiManager", "qudi: POI Manager", None))
         self.get_confocal_image_Button.setText(_translate("PoiManager", "Get Confocal image", None))
-        self.roi_cb_auto_RadioButton.setText(_translate("PoiManager", "Auto", None))
+        self.roi_cb_manual_RadioButton.setText(_translate("PoiManager", "Manual", None))
         self.roi_cb_5_95_RadioButton.setText(_translate("PoiManager", "5-95%", None))
+        self.roi_cb_auto_RadioButton.setText(_translate("PoiManager", "Min/Max", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.roiMap), _translate("PoiManager", "ROI Map", None))
         self.radioButton_2.setText(_translate("PoiManager", "Duration (seconds)", None))
         self.radioButton.setText(_translate("PoiManager", "Cliock time", None))
