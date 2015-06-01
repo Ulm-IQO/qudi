@@ -132,7 +132,7 @@ class SequenceGeneratorLogic(GenericLogic):
 #        return sequence
         
     def encode_matrix(self, matrix, repetitions):
-        ''' Encodes the current matrix coming from the GUI into a proper pulse sequence with blocks etc and create the tau_vector.
+        ''' Encodes the current matrix coming from the GUI into a proper pulse sequence with blocks etc.
         '''
         # Create empty sequence
         sequence = []
@@ -246,9 +246,24 @@ class SequenceGeneratorLogic(GenericLogic):
                 number_of_lasers += repetitions
             else:
                 number_of_lasers += 1
+        
+        # find the rows with "use_as_tau" enabled.
+        tau_rows = np.nonzero(matrix[:,11])[0]
+        # Check if just one row is set as tau
+        if tau_rows.size > 1:
+            print('Uuuuuh, big mistake! Use only one row as tau!')
+        if tau_rows.size == 0:
+            print('No block set as tau. Using laser pulses as index.')
+            tau_vector = np.array(range(number_of_lasers))
+        else:
+            tau_row_index = tau_rows[0]
+            # create tau_vector
+            if matrix[tau_row_index,10]:
+                tau_vector = np.empty(repetitions)
+            else:
+                tau_vector = np.array([matrix[tau_row_index,8]]) * (1000. / self._pg_frequency_MHz)
                 
         # not yet implemented
-        tau_vector = np.array(range(100))
         laser_length_vector = np.empty(number_of_lasers)
         laser_length_vector.fill(3800)
         

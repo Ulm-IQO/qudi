@@ -32,6 +32,10 @@ class PulseAnalysisLogic(GenericLogic):
         self.connector['in']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'
         self.connector['in']['sequencegenerator']['object'] = None
         
+        self.connector['in']['pulsegenerator'] = OrderedDict()
+        self.connector['in']['pulsegenerator']['class'] = 'PulserInterfaceDummy'
+        self.connector['in']['pulsegenerator']['object'] = None
+        
         self.connector['out']['pulseanalysislogic'] = OrderedDict()
         self.connector['out']['pulseanalysislogic']['class'] = 'PulseAnalysisLogic'        
 
@@ -69,6 +73,7 @@ class PulseAnalysisLogic(GenericLogic):
         """        
         self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
+        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self.signal_analysis_next.connect(self._analyze_data, QtCore.Qt.QueuedConnection)
