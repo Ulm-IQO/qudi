@@ -82,7 +82,9 @@ class PulseAnalysisLogic(GenericLogic):
     def update_sequence_parameters(self, name):
         """Gets the sequence parameters of sequence "name" from the sequence generator module
         """
-        self.running_sequence_parameters = self._sequence_generator_logic._saved_sequence_parameters[name].copy()
+        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name)
+        print(self.running_sequence_parameters['tau_vector'])
+        print(self.running_sequence_parameters['number_of_lasers'])
         return
 #        self._number_of_laser_pulses = self._sequence_generator_logic._current_sequence_parameters['number_of_lasers']
 #        self._tau_vector_ns = self._sequence_generator_logic._current_sequence_parameters['tau_vector']
