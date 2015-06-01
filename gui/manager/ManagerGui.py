@@ -25,6 +25,7 @@ from .ModuleWidgetTemplate import Ui_ModuleWidget
 from .aboutdialog import Ui_AboutDialog
 from collections import OrderedDict
 import svn.local
+import os
 
 class ManagerGui(GUIBase):
     """This class provides a GUI to the QuDi manager.
@@ -40,6 +41,8 @@ class ManagerGui(GUIBase):
     sigStartModule = QtCore.Signal(str, str)
     sigReloadModule = QtCore.Signal(str, str)
     sigStopModule = QtCore.Signal(str, str)
+    sigLoadConfig = QtCore.Signal(str)
+    sigSaveConfig = QtCore.Signal(str)
 
     def __init__(self, manager, name, config, **kwargs):
         """Create an instance of the module.
@@ -69,6 +72,8 @@ class ManagerGui(GUIBase):
         # Connect up the buttons.
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
+        self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
+        self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
         self._mw.actionLog.triggered.connect(lambda: self._manager.sigShowLog.emit())
         self._mw.actionConsole.triggered.connect(lambda: self._manager.sigShowConsole.emit())
@@ -81,6 +86,8 @@ class ManagerGui(GUIBase):
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
         self.sigStopModule.connect(self._manager.stopModule)
+        self.sigLoadConfig.connect(self._manager.loadConfig)
+        self.sigSaveConfig.connect(self._manager.saveConfig)
         self.updateModuleList()
 
     def show(self):
@@ -172,6 +179,26 @@ class ManagerGui(GUIBase):
         """
         widget.clear()
         self.fillTreeItem(widget.invisibleRootItem(), value)
+
+    def getLoadFile(self):
+        defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
+        filename = QtGui.QFileDialog.getOpenFileName(
+                self._mw,
+                'Load Configration',
+                defaultconfigpath , 
+                'Configuration files (*.cfg)')
+        if filename != '':
+            self.sigLoadConfig.emit(filename)
+
+    def getSaveFile(self):
+        defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
+        filename = QtGui.QFileDialog.getSaveFileName(
+                self._mw,
+                'Save Configration',
+                defaultconfigpath , 
+                'Configuration files (*.cfg)')
+        if filename != '':
+            self.sigSaveConfig.emit(filename)
 
 
 class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
