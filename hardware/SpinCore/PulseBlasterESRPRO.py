@@ -7,7 +7,7 @@ import os
 from collections import OrderedDict
 from core.Base import Base
 
-class PulseBlasterESRPRO():
+class PulseBlasterESRPRO(Base):
     """ UNSTABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
@@ -40,8 +40,7 @@ class PulseBlasterESRPRO():
         state_actions = {'onactivate'   : self.activation,
                          'ondeactivate' : self.deactivation}
 
-        Base.__init__(self, manager, name, configuation=config, 
-                      state_actions, **kwargs)
+        Base.__init__(self, manager, name, config, state_actions, **kwargs)
                       
         self._modclass = 'PulseBlasterESRPRO'
         self._modtype = 'hardware'  
