@@ -59,6 +59,11 @@ class Base(QtCore.QObject, Fysom):
         # Qt signal/slot capabilities
         QtCore.QObject.__init__(self)
         
+        default_callbacks = {
+            'onactivate': self.default_activate,
+            'ondeactivate': self.default_deactivate}
+        default_callbacks.update(callbacks)
+
         # State machine definition
         _baseStateList = {
             'initial': 'deactivated',
@@ -78,7 +83,7 @@ class Base(QtCore.QObject, Fysom):
                 {'name': 'runlock',     'src': 'locked',        'dst': 'running' },
                 {'name': 'runblock',    'src': 'blocked',       'dst': 'running' }
             ],
-            'callbacks': callbacks
+            'callbacks': default_callbacks
         }
         # the abbrivations for the event list are the following:
         #   name:   event name,
@@ -98,6 +103,21 @@ class Base(QtCore.QObject, Fysom):
         self._name = name
         self._configuration = configuration
 
+    def default_activate(self, e):
+        """ The default activation callback gives an error if not overwritten.
+
+            @param object e: Fysom state change descriptor
+        """
+        self.logMsg('Please implement and specify the activation method for {0}.'.format(self.__class__.__name__), msgType='error')
+
+    def default_deactivate(self,e ):
+        """ The default deactivation callback gives an error if not overwritten.
+
+            @param object e: Fysom state change descriptor
+        """
+        self.logMsg('Please implement and specify the deactivation method {0}.'.format(self.__class__.__name__), msgType='error')
+        
+
     def getStatusVariableList(self):
         """Return a list of variable names for variables that can be saved and restored.
 
@@ -105,7 +125,7 @@ class Base(QtCore.QObject, Fysom):
 
           Please implement this function when subclassing.
         """
-        self.logMsg("Please implement this function.", msgType='warning')
+        self.logMsg('Please implement this function', msgType='warning')
         return list()
 
     def getStatusVariables(self):
