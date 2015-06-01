@@ -60,7 +60,7 @@ class MWSourceSMR20(Base,MWInterface):
         """ 
         
         self._gpib_connetion.write(':OUTP ON')
-        self._gpib_connetion.write('*WAI')
+        #self._gpib_connetion.write('*WAI')
         
         return 0
         
@@ -73,7 +73,7 @@ class MWSourceSMR20(Base,MWInterface):
         if self._gpib_connetion.ask(':FREQ:MODE?') == 'LIST':
             self._gpib_connetion.write(':FREQ:MODE CW')
         self._gpib_connetion.write(':OUTP OFF')
-        self._gpib_connetion.write('*WAI')
+        #self._gpib_connetion.write('*WAI')
         
         return 0
         
