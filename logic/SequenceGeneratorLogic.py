@@ -259,7 +259,11 @@ class SequenceGeneratorLogic(GenericLogic):
             tau_row_index = tau_rows[0]
             # create tau_vector
             if matrix[tau_row_index,10]:
-                tau_vector = np.empty(repetitions)
+                tau_vector = np.zeros(repetitions)
+                for i in range(repetitions):
+                    start_length = matrix[tau_row_index,8]
+                    tau_increment = matrix[tau_row_index,9]
+                    tau_vector[i] = (start_length + (i * tau_increment)) * (1000. / self._pg_frequency_MHz)
             else:
                 tau_vector = np.array([matrix[tau_row_index,8]]) * (1000. / self._pg_frequency_MHz)
                 
@@ -295,9 +299,8 @@ class SequenceGeneratorLogic(GenericLogic):
         
         This method searches for a sequence with name "name" in all saved sequences and returns the parameters dictionary
         """
-        parameter_dict = None
         if (name in self._saved_sequence_parameters):
-            parameter_dict = self._saved_sequence_parameters[name]
+            parameter_dict = self._saved_sequence_parameters[name].copy()
         return parameter_dict
     
     
