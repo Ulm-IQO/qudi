@@ -55,13 +55,10 @@ class PulseBlasterESRPRO():
             folderpath = self.get_main_dir() + '\\hardware\\SpinCore\\'
             libname = os.path.join(folderpath, 'libspinapi64.so')
 
-        #FIXME the load method for the library should not be windll!
-        # Use instead: ctypes.cdll.LoadLibrary(libname)
-        # But that must be tested first.
-        self._dll = ctypes.windll.LoadLibrary(libname)
+        self._dll = ctypes.cdll.LoadLibrary(libname)
 
 
-
+        self.initialize()
 
 
 
@@ -125,12 +122,18 @@ class PulseBlasterESRPRO():
         self.check(self._dll.pb_select_board)
 
     def get_version(self):
-
+        """Get the version of this library. 
+        
+        @return string: A string indicating the version of this library is 
+                        returned. The version is a string in the form YYYYMMDD. 
+        """
         self._dll.spinpts_get_version.restype = ctypes.c_char_p
         return self._dll.spinpts_get_version()
 
     def get_firmware_id(self):
-
+        """Gets the current version of the SpinPTS API being used. 
+        
+        @return : Returns a pointer to a C string containing the version string."""
         self._dll.pb_get_firmware_id.restype = ctypes.c_uint
         return self._dll.pb_get_firmware_id()
 
@@ -139,7 +142,14 @@ class PulseBlasterESRPRO():
 
 
     def initialize(self):
-        self._dll.pb_init()
+        """Initializes the board. 
+        
+        @return int: A negative number is returned on failure, and spinerr is 
+                     set to a description of the error. 0 is returned on 
+                     success.
+        """
+        val = self.check(self._dll.pb_init())
+        return val
 
     def close_connection(self):
         self._dll.pb_close()
@@ -173,10 +183,24 @@ class PulseBlasterESRPRO():
 
 
     def set_core_clock(self,clock_freq):
+        """Tell the library what clock frequency the board uses.
+        
+        @return int: Frequency of the clock in MHz. 
+        
+        This should be called at the beginning of each program, right after you
+        initialize the board with pb_init(). Note that this does not actually 
+        set the clock frequency, it simply tells the driver what frequency the
+        board is using, since this cannot (currently) be autodetected.
+        Also note that this frequency refers to the speed at which the 
+        PulseBlaster core itself runs. On many boards, this is different than 
+        the value printed on the oscillator. On RadioProcessor devices, the A/D
+        converter and the PulseBlaster core operate at the same clock 
+        frequency. 
+        """
 
         self._dll.pb_core_clock.restype = ctypes.c_void_p
-        self._dll.pb_core_clock(ctypes.c_double(clock_freq)) # returns void, so ignore return value.
-
+         
+        return self._dll.pb_core_clock(ctypes.c_double(clock_freq)) # returns void, so ignore return value.
     # =========================================================================
     # Below are all the higher level routines are situated which use the
     # wrapped routines as a basis to perform the desired task.
