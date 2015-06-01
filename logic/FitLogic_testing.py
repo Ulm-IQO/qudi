@@ -7,6 +7,12 @@ from lmfit import Parameters
 import scipy
 import pylab as plt
 
+#for filters:
+from scipy.interpolate import UnivariateSpline
+from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
+from scipy.ndimage import filters
+import scipy.optimize as op
+
 #TODO:
 #Make Estimator, Fit method, comments, try smooth as estimator
 class FitLogic():        
@@ -776,14 +782,17 @@ class FitLogic():
                                 msgType='error')                     
             #set paraameters 
                                 
-            #TODO: smooth curve before estimation
-            offset=np.median(data)
-            data_median=data-offset        
-            data_min=data_median.min()       
-            data_max=data_median.max()
+#           gaussian filter            
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
+            offset=data_smooth.max()
+
+            data_level=data-offset        
+            data_min=data_level.min()       
+            data_max=data_level.max()
 
             #estimate sigma
-            numerical_integral=np.sum(data_median) * (x_axis[-1] - x_axis[0]) / len(x_axis)
+            numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
 
             sigma = (x_axis.max()-x_axis.min())/3.
 
@@ -793,8 +802,9 @@ class FitLogic():
                                     msgType='warning')     
                 except:
                     print('The lorentzian estimator set the peak to the minimal value, if you want to fit a peak instead of a dip rewrite the estimator.')
+
             amplitude_median=data_min
-            x_zero=x_axis[np.argmin(data)]
+            x_zero=x_axis[np.argmin(data_smooth)]
 
             sigma = numerical_integral / (np.pi * amplitude_median)            
             amplitude=amplitude_median * np.pi * sigma
@@ -833,6 +843,7 @@ class FitLogic():
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
                            (    'c',      offset,   True,        None,                    None,                  None))
 
+            print('offset in m',offset)
 #TODO: Add logmessage when value is changed            
             #redefine values of additional parameters
             if add_parameters!=None:  
@@ -897,7 +908,6 @@ class FitLogic():
                     
             """
 #           TODO: make sigma and amplitude good, this is only a dirty fast solution
-            #TODO: smooth curve before estimation
 
             error=0
             # check if parameters make sense
@@ -909,27 +919,39 @@ class FitLogic():
                     error=-1
                 elif len(np.shape(var))!=1:
                     self.logMsg('Given parameter is no one dimensional array.', \
-                                msgType='error')                     
+                                msgType='error')
+                                
+            
             #set paraameters 
-            offset=np.median(data)
-            data_median=data-offset        
+            
+            #gaussian filter            
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
+            
+            #finding most frequent value which is supposed to be the offset
+            hist=np.histogram(data_smooth,bins=10)
+            offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+            
+            data_level=data-offset        
 
             #minima search
             mid_index=int(len(x_axis)/2)
             
-            absolute_min=data_median.min()
+            absolute_min=data_level.min()
             
-            #TODO: make treshold value a config variable
-            treshold=0.3*absolute_min
+            #TODO: make treshold and deadzone value a config variable
+            treshold=0.4*absolute_min
+            minimal_treshold=0.001
+            deadzone=int(4)
             
             left_index=int(0)
             right_index=len(x_axis)-1
             
             while True:                
-                left_min=data_median[left_index:mid_index].min()
-                left_argmin=data_median[left_index:mid_index].argmin()
-                right_min=data_median[mid_index:right_index].min()
-                right_argmin=data_median[mid_index:right_index].argmin()
+                left_min=data_level[left_index:mid_index-deadzone+1].min()
+                left_argmin=data_level[left_index:mid_index-deadzone+1].argmin()
+                right_min=data_level[mid_index:right_index].min()
+                right_argmin=data_level[mid_index:right_index].argmin()
                 
                 if abs(right_min)>abs(treshold) and abs(left_min)>abs(treshold):
                     #found two minima successfully
@@ -947,32 +969,42 @@ class FitLogic():
                     left_index=mid_index
                     mid_index=int((right_index+left_index)/2.-1)
                 else: 
-                    #no minimum at all over treshold so lowering treshold
-                    treshold=treshold/2.*3.
+                    #no minimum at all over treshold so lowering treshold and resetting search area
+                    treshold=treshold*2./3.
+                    left_index=int(0)
+                    right_index=len(x_axis)-1
+                    mid_index=int(len(x_axis)/2)        
+                    if (treshold/absolute_min)<minimal_treshold:
+                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima.', \
+                                msgType='message') 
+                        lorentz0_center=x_axis[data.argmin()]   
+                        lorentz1_center=lorentz0_center
+                        break
                     print('treshold')
                     
-                if abs(mid_index-left_index)<5 or abs(right_index-mid_index)<5:
+                if abs(mid_index-left_index)<deadzone or abs(right_index-mid_index)<deadzone:
                     #peaks are too close, probably there is only one
                     if abs(left_min)<abs(right_min):
                         print('here 1')
                         left_argmin=right_argmin
-                        lorentz0_amplitude=right_min
+                        lorentz0_amplitude=right_min/2.
                         lorentz0_center=x_axis[right_argmin+mid_index]                     
                     else:
                         right_argmin=left_argmin
-                        lorentz0_amplitude=left_min
+                        lorentz0_amplitude=left_min/2.
                         lorentz0_center=x_axis[left_argmin+left_index] 
                         print('here')
-                    lorentz1_amplitude=lorentz0_amplitude
+                    lorentz1_amplitude=lorentz0_amplitude/2.
                     lorentz1_center=lorentz0_center
                     break
             
             #estimate sigma
-            numerical_integral=np.sum(data_median) * (x_axis[-1] - x_axis[0]) / len(x_axis)
+            numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
 
             lorentz0_sigma = abs(numerical_integral / (np.pi * lorentz0_amplitude) )  
             lorentz1_sigma = abs( numerical_integral / (np.pi * lorentz1_amplitude)  )
 
+            #esstimate amplitude
             lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
             lorentz1_amplitude=-1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
 
@@ -1014,7 +1046,7 @@ class FitLogic():
 
 #            print(params)
 
-#TODO: Add logmessage when value is changed            
+#           TODO: Add logmessage when value is changed            
             #redefine values of additional parameters
 #            if add_parameters!=None:  
 #                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
@@ -1037,7 +1069,9 @@ class FitLogic():
 
 ##############################################################################
 ##############################################################################  
+         
 
+            
         def double_lorentzian_testing(self):
             x = np.linspace(2800, 2900, 101)
             
@@ -1047,12 +1081,12 @@ class FitLogic():
             p=Parameters()
             
 #            p.add('center',max=-1)
-            p.add('lorentz0_amplitude',value=-20.)
-            p.add('lorentz0_center',value=np.random.normal(2850,30))
-            p.add('lorentz0_sigma',value=3.)
-            p.add('lorentz1_amplitude',value=-20.)
-            p.add('lorentz1_center',value=np.random.normal(2850,30))
-            p.add('lorentz1_sigma',value=3.)
+            p.add('lorentz0_amplitude',value=-abs(np.random.normal(15,5)))
+            p.add('lorentz0_center',value=np.random.normal(2840,15))
+            p.add('lorentz0_sigma',value=abs(np.random.normal(3,2)))
+            p.add('lorentz1_amplitude',value=-abs(np.random.normal(15,5)))
+            p.add('lorentz1_center',value=np.random.normal(2860,15))
+            p.add('lorentz1_sigma',value=abs(np.random.normal(3,1)))
             p.add('c',value=100.)
             
             print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
@@ -1063,21 +1097,27 @@ class FitLogic():
 #            para.add('sigma',min=0.1)
 
             result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+            print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
+            
+            print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
+            #           gaussian filter            
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
+                   
 
             try:
 #            print(result.fit_report()
                 plt.plot(x,result.init_fit,'-g')
                 plt.plot(x,result.best_fit,'-r')
+                plt.plot(x,data_smooth,'-y')
             except:
                 print('exception')
 ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
             plt.plot(x,data_noisy)
             plt.show()
             
-            
-            
         def lorentzian_testing(self):
-            x = np.linspace(900, 1000, 101)
+            x = np.linspace(900, 1000, 31)
             
             mod,params = self.make_lorentzian_model()
             print('Parameters of the model',mod.param_names)
@@ -1085,12 +1125,12 @@ class FitLogic():
             
 #            p.add('center',max=-1)
             p.add('amplitude',value=-100.)
-            p.add('center',value=950.)
-            p.add('sigma',value=40)
+            p.add('center',value=920.)
+            p.add('sigma',value=10)
             p.add('c',value=10.)
             
             data_noisy=(mod.eval(x=x,params=p)
-                                    + 0.0*np.random.normal(size=x.shape))
+                                    + 0.2*np.random.normal(size=x.shape))
                                     
             para=Parameters()
             para.add('sigma',value=p['sigma'].value)
@@ -1099,11 +1139,18 @@ class FitLogic():
 #            result=mod.fit(data_noisy,x=x,params=p)
             result=self.make_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
 #            result=mod.fit(axis=x,data=data_noisy,add_parameters=p)
-                 
-            print(result.fit_report())
+
+#            print(result.fit_report())
+#           gaussian filter            
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
+                   
+            print(result.init_values['c'])
             plt.plot(x,data_noisy)
             plt.plot(x,result.init_fit,'-g')
             plt.plot(x,result.best_fit,'-r')
+            plt.plot(x,data_smooth,'-y')
+            
 #            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
             plt.show()
             
