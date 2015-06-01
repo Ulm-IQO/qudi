@@ -14,7 +14,8 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
         self._modclass = 'slowcounterinterface'
         self._modtype = 'hardware'
 
@@ -42,7 +43,12 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
             self._samples_number=10
             self.logMsg('No samples_number configured taking 10 instead.', \
             msgType='warning')
-            
+
+    def activation(self, e):
+        pass
+
+    def deactivation(self, e):
+        pass
     
     def set_up_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
