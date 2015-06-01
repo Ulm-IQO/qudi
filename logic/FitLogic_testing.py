@@ -12,13 +12,14 @@ from scipy.interpolate import UnivariateSpline
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
 import scipy.optimize as op
+import time
 
 #TODO:
 #Make Estimator, Fit method, comments, try smooth as estimator
 class FitLogic():        
         """
         UNSTABLE:Jochen Scheuer
-        This is the fitting class where  fit functions are defined and methods
+        This is the fitting class where fit models are defined and methods
         are implemented to process the data.
         
         """
@@ -494,16 +495,15 @@ class FitLogic():
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
                            (    'c',      offset,   True,        None,                    None,                  None))
 
-#TODO: Add logmessage when value is changed            
+
             #redefine values of additional parameters
             if add_parameters!=None:  
                 params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
             try:
                 result=mod_final.fit(data, x=axis,params=params)
             except:
-                print("Fit did not work!")
-            #                self.logMsg('The 1D gaussian fit did not work.', \
-            #                            msgType='message')
+                self.logMsg('The 1D gaussian fit did not work.', \
+                            msgType='message')
                 result=mod_final.fit(data, x=axis,params=params)
                 print(result.message)
             
@@ -553,7 +553,7 @@ class FitLogic():
 ##############################################################################  
 
         def make_twoD_gaussian_fit(self,axis=None,data=None, add_parameters=None):
-            """ This method performes a 1D gaussian fit on the provided data.
+            """ This method performes a 2D gaussian fit on the provided data.
         
             @param array [] axis: axis values
             @param array[]  x_data: data   
@@ -570,6 +570,7 @@ class FitLogic():
             error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(
                                                                             x_axis=x_axis,y_axis=y_axis,data=data)
             mod,params = self.make_twoD_gaussian_model() 
+            
             #auxiliary variables
             stepsize_x=x_axis[1]-x_axis[0]
             stepsize_y=y_axis[1]-y_axis[0]
@@ -581,24 +582,24 @@ class FitLogic():
             #Defining standard parameters
             #                  (Name,       Value,      Vary,           Min,                             Max,                       Expr)
             params.add_many(('amplitude',   amplitude,  True,        100,                               1e7,                           None),
-                           (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(x_axis[-1]-x_axis[0]),           None),
-                           (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,    None), 
+                           (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(x_axis[-1]-x_axis[0]),          None),
+                           (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,   None), 
                            (  'x_zero',    x_zero,      True,     (x_axis[0])-n_steps_x*stepsize_x ,         x_axis[-1]+n_steps_x*stepsize_x,               None),
                            (  'y_zero',     y_zero,     True,    (y_axis[0])-n_steps_y*stepsize_y ,         (y_axis[-1])+n_steps_y*stepsize_y,         None),
                            (  'theta',       0.,        True,           0. ,                             np.pi,               None),
                            (  'offset',      offset,    True,           0,                              1e7,                       None))
            
-#TODO: Add logmessage when value is changed            
-#            #redefine values of additional parameters
+
+#           redefine values of additional parameters
             if add_parameters!=None:  
                 params=self.substitute_parameter(parameters=params,update_parameters=add_parameters) 
 
             try:
                 result=mod.fit(data, x=axis,params=params)
             except:
-                print("Fit did not work!")
-            #                self.logMsg('The 1D gaussian fit did not work.', \
-            #                            msgType='message')
+                result=mod.fit(data, x=axis,params=params)
+                self.logMsg('The 2D gaussian fit did not work:'+result.message, \
+                                        msgType='message')
             
             return result
             
@@ -794,8 +795,6 @@ class FitLogic():
             #estimate sigma
             numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
 
-            sigma = (x_axis.max()-x_axis.min())/3.
-
             if data_max>abs(data_min):
                 try:
                     self.logMsg('The lorentzian estimator set the peak to the minimal value, if you want to fit a peak instead of a dip rewrite the estimator.', \
@@ -900,14 +899,15 @@ class FitLogic():
                                 x values
 
             @return int error: error code (0:OK, -1:error)
-            @return float amplitude: estimated amplitude
-            @return float x_zero: estimated x value of maximum
-            @return float sigma_x: estimated standard deviation in x direction
+            @return float lorentz0_amplitude: estimated amplitude of 1st peak
+            @return float lorentz1_amplitude: estimated amplitude of 2nd peak
+            @return float lorentz0_center: estimated x value of 1st maximum
+            @return float lorentz1_center: estimated x value of 2nd maximum
+            @return float lorentz0_sigma: estimated sigma of 1st peak
+            @return float lorentz1_sigma: estimated sigma of 2nd peak
             @return float offset: estimated offset
                                 
-                    
             """
-#           TODO: make sigma and amplitude good, this is only a dirty fast solution
 
             error=0
             # check if parameters make sense
@@ -932,17 +932,17 @@ class FitLogic():
             hist=np.histogram(data_smooth,bins=10)
             offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
             
-            data_level=data-offset        
+            data_level=data_smooth-offset        
 
-            #minima search
+            #search for double lorentzian
             mid_index=int(len(x_axis)/2)
             
             absolute_min=data_level.min()
             
             #TODO: make treshold and deadzone value a config variable
-            treshold=0.4*absolute_min
+            treshold=0.3*absolute_min
             minimal_treshold=0.001
-            deadzone=int(4)
+            deadzone=int(3)
             
             left_index=int(0)
             right_index=len(x_axis)-1
@@ -977,15 +977,14 @@ class FitLogic():
                     if (treshold/absolute_min)<minimal_treshold:
                         self.logMsg('Treshold to minimum ratio was too small to estimate two minima.', \
                                 msgType='message') 
+                        error=-1
                         lorentz0_center=x_axis[data.argmin()]   
                         lorentz1_center=lorentz0_center
                         break
-                    print('treshold')
                     
                 if abs(mid_index-left_index)<deadzone or abs(right_index-mid_index)<deadzone:
                     #peaks are too close, probably there is only one
                     if abs(left_min)<abs(right_min):
-                        print('here 1')
                         left_argmin=right_argmin
                         lorentz0_amplitude=right_min/2.
                         lorentz0_center=x_axis[right_argmin+mid_index]                     
@@ -993,16 +992,15 @@ class FitLogic():
                         right_argmin=left_argmin
                         lorentz0_amplitude=left_min/2.
                         lorentz0_center=x_axis[left_argmin+left_index] 
-                        print('here')
-                    lorentz1_amplitude=lorentz0_amplitude/2.
+                    lorentz1_amplitude=lorentz0_amplitude
                     lorentz1_center=lorentz0_center
                     break
             
             #estimate sigma
             numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
 
-            lorentz0_sigma = abs(numerical_integral / (np.pi * lorentz0_amplitude) )  
-            lorentz1_sigma = abs( numerical_integral / (np.pi * lorentz1_amplitude)  )
+            lorentz0_sigma = abs(numerical_integral/2. / (np.pi * lorentz0_amplitude) )  
+            lorentz1_sigma = abs( numerical_integral /2./ (np.pi * lorentz1_amplitude)  )
 
             #esstimate amplitude
             lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
@@ -1033,7 +1031,7 @@ class FitLogic():
             #auxiliary variables
             stepsize=axis[1]-axis[0]
             n_steps=len(axis)
-#            TODO: Make sigma amplitude and x_zero better            
+            
             #Defining standard parameters
             #            (Name,                  Value,          Vary,         Min,                    Max,                    Expr)
             params.add('lorentz0_amplitude',lorentz0_amplitude,  True,         None,                    -0.01,                    None)
@@ -1044,20 +1042,15 @@ class FitLogic():
             params.add(  'lorentz1_center',  lorentz1_center,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None)
             params.add(    'c',                   offset,        True,        None,                    None,                  None)
 
-#            print(params)
-
-#           TODO: Add logmessage when value is changed            
             #redefine values of additional parameters
-#            if add_parameters!=None:  
-#                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
+            if add_parameters!=None:  
+                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
             try:
                 result=model.fit(data, x=axis,params=params)
             except:
-                print("Fit did not work!")
-            #                self.logMsg('The 1D gaussian fit did not work.', \
-            #                            msgType='message')
                 result=model.fit(data, x=axis,params=params)
-                print(result.message)
+                self.logMsg('The double lorentuab fit did not work:'+result.message, \
+                            msgType='message')
             
             return result
 
@@ -1073,47 +1066,70 @@ class FitLogic():
 
             
         def double_lorentzian_testing(self):
-            x = np.linspace(2800, 2900, 101)
-            
-            mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
-#            print('Parameters of the model',mod.param_names)
-            
-            p=Parameters()
-            
-#            p.add('center',max=-1)
-            p.add('lorentz0_amplitude',value=-abs(np.random.normal(15,5)))
-            p.add('lorentz0_center',value=np.random.normal(2840,15))
-            p.add('lorentz0_sigma',value=abs(np.random.normal(3,2)))
-            p.add('lorentz1_amplitude',value=-abs(np.random.normal(15,5)))
-            p.add('lorentz1_center',value=np.random.normal(2860,15))
-            p.add('lorentz1_sigma',value=abs(np.random.normal(3,1)))
-            p.add('c',value=100.)
-            
-            print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
-            data_noisy=(mod.eval(x=x,params=p) 
-                                    + 0.3*np.random.normal(size=x.shape))
-                                    
-            para=Parameters()
-#            para.add('sigma',min=0.1)
-
-            result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
-            print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
-            
-            print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
-            #           gaussian filter            
-            gaus=gaussian(10,10)
-            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
-                   
-
-            try:
-#            print(result.fit_report()
-                plt.plot(x,result.init_fit,'-g')
-                plt.plot(x,result.best_fit,'-r')
-                plt.plot(x,data_smooth,'-y')
-            except:
-                print('exception')
-##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
-            plt.plot(x,data_noisy)
+            runs=np.linspace(0,30,31)
+            results=np.array([runs,runs,runs,runs])
+            for ii in runs:
+                x = np.linspace(2800, 2900, 101)
+                
+                mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+    #            print('Parameters of the model',mod.param_names)
+                
+                p=Parameters()
+                
+                center=np.random.random(1)*50+2805
+    #            p.add('center',max=-1)
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*5+150))
+                p.add('lorentz0_center',value=center)
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*1.+4.))
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*5+150))
+#                p.add('lorentz1_center',value=np.random.random(1)*0.0+2860)
+                p.add('lorentz1_center',value=center+20.)
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*1.+4.))
+                p.add('c',value=100.)
+                
+                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
+                data_noisy=(mod.eval(x=x,params=p) 
+                                        + 2.*np.random.normal(size=x.shape))
+                                        
+                para=Parameters()
+                para.add('lorentz1_center',expr='lorentz0_center+20.0')
+    
+                result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
+                
+                print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
+                #           gaussian filter            
+                gaus=gaussian(10,10)
+                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
+                       
+                print(result.params)
+                try:
+    #            print(result.fit_report()
+                    plt.plot(x,result.init_fit,'-g')
+                    plt.plot(x,result.best_fit,'-r')
+                    plt.plot(x,data_smooth,'-y')
+                except:
+                    print('exception')
+    ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
+                plt.plot(x,data_noisy)
+                plt.show()
+                if p['lorentz0_center'].value<p['lorentz1_center'].value:
+                    results[0,ii]=p['lorentz0_center'].value
+                    results[1,ii]=p['lorentz1_center'].value
+                else:
+                    results[0,ii]=p['lorentz1_center'].value
+                    results[1,ii]=p['lorentz0_center'].value
+                if result.best_values['lorentz0_center']<result.best_values['lorentz1_center']:
+                    results[2,ii]=result.best_values['lorentz0_center']
+                    results[3,ii]=result.best_values['lorentz1_center']
+                else:
+                    results[2,ii]=result.best_values['lorentz1_center']
+                    results[3,ii]=result.best_values['lorentz0_center']  
+                time.sleep(1)
+            plt.plot(runs[:],results[0,:],'-r')
+            plt.plot(runs[:],results[1,:],'-g')
+            plt.plot(runs[:],results[2,:],'-b')
+            plt.plot(runs[:],results[3,:],'-y')
             plt.show()
             
         def lorentzian_testing(self):
@@ -1124,17 +1140,17 @@ class FitLogic():
             p=Parameters()
             
 #            p.add('center',max=-1)
-            p.add('amplitude',value=-100.)
-            p.add('center',value=920.)
-            p.add('sigma',value=10)
-            p.add('c',value=10.)
+            params.add('amplitude',value=-100.)
+            params.add('center',value=920.)
+            params.add('sigma',value=10)
+            params.add('c',value=10.)
             
-            data_noisy=(mod.eval(x=x,params=p)
+            data_noisy=(mod.eval(x=x,params=params)
                                     + 0.2*np.random.normal(size=x.shape))
                                     
             para=Parameters()
-            para.add('sigma',value=p['sigma'].value)
-            para.add('amplitude',value=p['amplitude'].value)
+#            para.add('sigma',value=p['sigma'].value)
+#            para.add('amplitude',value=p['amplitude'].value)
 
 #            result=mod.fit(data_noisy,x=x,params=p)
             result=self.make_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
@@ -1228,4 +1244,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.double_lorentzian_testing()   
+test.lorentzian_testing()   
