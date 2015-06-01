@@ -130,12 +130,21 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
             
         count_data = np.empty((self._odmr_length,), dtype=np.uint32)
         
-#        for i in range(self._odmr_length):
-#            count_data[i] = random.uniform(0, 1e6)
         count_data = np.random.uniform(0,5e4,length)
-            
-        count_data += self._fit_logic.gaussian_function(x_data = np.arange(1,length+1,1),amplitude=-30000, x_zero=length/3, sigma=3, offset=50000)
-        count_data += self._fit_logic.gaussian_function(x_data = np.arange(1,length+1,1),amplitude=-30000, x_zero=2*length/3, sigma=3, offset=50000)
+        
+        lorentians,params = self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+        
+        sigma=3.
+       
+        params.add('lorentz0_amplitude',value=-30000.*np.pi*sigma)
+        params.add('lorentz0_center',value=length/3)
+        params.add('lorentz0_sigma',value=sigma)
+        params.add('lorentz1_amplitude',value=-30000*np.pi*sigma)
+        params.add('lorentz1_center',value=2*length/3)
+        params.add('lorentz1_sigma',value=sigma)
+        params.add('c',value=50000.)
+
+        count_data += lorentians.eval(x = np.arange(1,length+1,1),params=params)
             
         time.sleep(self._odmr_length*1./self._clock_frequency)
         
