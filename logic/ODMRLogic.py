@@ -51,6 +51,7 @@ class ODMRLogic(GenericLogic):
         
         self._odmrscan_counter = 0
         self._clock_frequency = 200
+        self.fit_function = 'No Fit'
         
         self.MW_frequency = 2870.    #in MHz
         self.MW_power = -30.         #in dBm
@@ -58,7 +59,7 @@ class ODMRLogic(GenericLogic):
         self.MW_stop = 2950.         #in MHz
         self.MW_step = 2.            #in MHz
         
-        self.RunTime = 6000
+        self.RunTime = 10
         self.ElapsedTime = 0
         
         #number of lines in the matrix plot
@@ -200,6 +201,7 @@ class ODMRLogic(GenericLogic):
         
         self.ElapsedTime = time.time() - self._StartTime
         if self.ElapsedTime >= self.RunTime:
+            self.do_fit(fit_function = 'Double Lorentzian')
             self.stopRequested = True
         
         self.signal_ODMR_plot_updated.emit() 
@@ -282,7 +284,20 @@ class ODMRLogic(GenericLogic):
         
         @param string fit_function: name of the chosen fit function
         '''
-        if fit_function == None:
+        self.fit_function = fit_function
+        
+        if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
-            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
+            self.signal_ODMR_plot_updated.emit()#ist das hier nötig?
+            
+        elif self.fit_function == 'Lorentzian':
+            result = self._fit_logic.make_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            self.ODMR_fit_y = lorentzian.eval(x=self._MW_frequency_list, params=result.params)
+            
+            
+        elif self.fit_function =='Double Lorentzian':
+            result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            self.ODMR_fit_y = double_lorentzian.eval(x=self._MW_frequency_list, params=result.params)
             
