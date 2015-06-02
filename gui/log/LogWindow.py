@@ -57,7 +57,7 @@ class LogWindow(GUIBase):
           @param dict config: configuration of this module in a dictionary
 
         """
-        callback = {'onactivate': self.initUI}
+        callback = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, callback)
         self.buttons = [] ## weak references to all Log Buttons get added to this list, so it's easy to make them all do things, like flash red.
         self.lock = Mutex()
@@ -92,6 +92,13 @@ class LogWindow(GUIBase):
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)
         self._manager.sigShowLog.connect(self.show)
         self.mw.show()
+
+    def deactivation(self, e):
+        """ Hide logwindow and disconnect signals.
+            
+          @param object e: Fysom state change notification
+        """
+        self.mw.close()
 
     def addMessage(self, entry):
         """ Add message to log window.
@@ -156,7 +163,7 @@ class ErrorDialog(QtGui.QDialog):
           @param object logWindow: reference to LogWindow object that this popup belongs to
 
         """
-        QtGui.QDialog.__init__(self)
+        super().__init__()
         self.logWindow = logWindow
         self.setWindowFlags(QtCore.Qt.Window)
         #self.setWindowModality(QtCore.Qt.NonModal)

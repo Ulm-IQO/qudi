@@ -34,7 +34,7 @@ class ConsoleGui(GUIBase):
           @param dict config: Module configuration
           @param dict kwargs: Optional arguments as a dict
         """
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
         self.modules = set()
 
@@ -73,6 +73,13 @@ Go, play.
         self._manager.sigShowConsole.connect(self.show)
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self._cw.show()
+
+    def deactivation(self, e):
+        """ Close window and remove connections.
+
+          @param object e: Fysom state change notification
+        """
+        self._cw.close()
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace, 
