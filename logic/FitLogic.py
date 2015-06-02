@@ -652,12 +652,9 @@ class FitLogic(GenericLogic):
             try:
                 result=model.fit(data, x=axis,params=params)
             except:
-                print("Fit did not work!")
-            #                self.logMsg('The 1D gaussian fit did not work.', \
-            #                            msgType='message')
                 result=model.fit(data, x=axis,params=params)
-                print(result.message)
-            
+                self.logMsg('The 1D gaussian fit did not work. Error message:'+result.message, \
+                            msgType='message')            
             return result
 
 ##############################################################################
@@ -737,66 +734,83 @@ class FitLogic(GenericLogic):
             data_level=data_smooth-offset        
 
             #search for double lorentzian
-            mid_index=int(len(x_axis)/2)
-            
+
             absolute_min=data_level.min()
+            absolute_argmin=data_level.argmin()
             
-            #TODO: make treshold and deadzone value a config variable
+            lorentz0_center=x_axis[absolute_argmin]
+            lorentz0_amplitude=data.min()-offset
+            
+            #TODO: make treshold,minimal_treshold and sigma_treshold value a config variable
+            
             treshold=0.3*absolute_min
-            minimal_treshold=0.001
-            deadzone=int(3)
+            minimal_treshold=0.01
+            sigma_treshold=0.6*absolute_min
+#            print('sigma treshold',sigma_treshold)
+            
+            #search for first peak and calculate the sigma as an area where the
+            #second peak should not be searched for
+            sigma_argleft=int(0)
+            sigma_argright=int(0)
+            ii=1            
+            while True:
+                if sigma_argleft==0 or sigma_argright==0:
+                    if abs(data_level[absolute_argmin-ii])<abs(sigma_treshold) and sigma_argleft==0:
+                        sigma_argleft=absolute_argmin-ii
+#                        print('here left', sigma_argleft,data_level[absolute_argmin-ii])
+                    if abs(data_level[absolute_argmin+ii])<abs(sigma_treshold) and sigma_argright==0:
+                        sigma_argright=absolute_argmin+ii 
+#                        print('here right', sigma_argright,data_level[absolute_argmin+ii])
+                else:
+#                    print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argright],x_axis[sigma_argright],data_level[sigma_argright])
+                    break
+                if absolute_argmin-ii<0 or absolute_argmin+ii>len(data)-2:
+                    sigma_treshold*=0.8
+                    print('reducing treshold to',sigma_treshold)
+                    ii=0
+                if abs(sigma_treshold)<abs(treshold):
+                    break
+                ii+=1
+
+
             
             left_index=int(0)
             right_index=len(x_axis)-1
             
+            mid_index_left=sigma_argleft
+            mid_index_right=sigma_argright
+                   
             while True:                
-                left_min=data_level[left_index:mid_index-deadzone+1].min()
-                left_argmin=data_level[left_index:mid_index-deadzone+1].argmin()
-                right_min=data_level[mid_index:right_index].min()
-                right_argmin=data_level[mid_index:right_index].argmin()
-                
-                if abs(right_min)>abs(treshold) and abs(left_min)>abs(treshold):
-                    #found two minima successfully
-                    lorentz0_amplitude=left_min
-                    lorentz0_center=x_axis[left_argmin+left_index]
-                    lorentz1_amplitude=right_min
-                    lorentz1_center=x_axis[right_argmin+mid_index]
+                left_min=data_level[left_index:mid_index_left].min()
+                left_argmin=data_level[left_index:mid_index_left].argmin()
+                right_min=data_level[mid_index_right:right_index].min()
+                right_argmin=data_level[mid_index_right:right_index].argmin()
+                              
+                if abs(left_min)>abs(treshold) and abs(left_min)>abs(right_min):
+                    #there is a minimum on the left side
+                    lorentz1_amplitude=left_min
+                    lorentz1_center=x_axis[left_argmin+left_index]
                     break
-                elif abs(left_min)>abs(treshold):
-                    #there is no minimum exceeding treshold so shift area to search
-                    right_index=mid_index
-                    mid_index=int((right_index+left_index)/2.-1)
                 elif abs(right_min)>abs(treshold):
-                    #there is no minimum exceeding treshold so shift area to search
-                    left_index=mid_index
-                    mid_index=int((right_index+left_index)/2.-1)
+                    #there is a minimum on the right side
+                    lorentz1_amplitude=right_min
+                    lorentz1_center=x_axis[right_argmin+mid_index_right]
+                    break
                 else: 
                     #no minimum at all over treshold so lowering treshold and resetting search area
-                    treshold=treshold*2./3.
+                    treshold=treshold*3./4.
                     left_index=int(0)
                     right_index=len(x_axis)-1
-                    mid_index=int(len(x_axis)/2)        
-                    if (treshold/absolute_min)<minimal_treshold:
-                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima.', \
+                    mid_index_left=sigma_argleft
+                    mid_index_right=sigma_argright
+                    if abs(treshold/absolute_min)<abs(minimal_treshold):
+                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
                                 msgType='message') 
                         error=-1
-                        lorentz0_center=x_axis[data.argmin()]   
                         lorentz1_center=lorentz0_center
+                        lorentz0_amplitude/=2.
+                        lorentz1_amplitude=lorentz0_amplitude/2.
                         break
-                    
-                if abs(mid_index-left_index)<deadzone or abs(right_index-mid_index)<deadzone:
-                    #peaks are too close, probably there is only one
-                    if abs(left_min)<abs(right_min):
-                        left_argmin=right_argmin
-                        lorentz0_amplitude=right_min/2.
-                        lorentz0_center=x_axis[right_argmin+mid_index]                     
-                    else:
-                        right_argmin=left_argmin
-                        lorentz0_amplitude=left_min/2.
-                        lorentz0_center=x_axis[left_argmin+left_index] 
-                    lorentz1_amplitude=lorentz0_amplitude
-                    lorentz1_center=lorentz0_center
-                    break
             
             #estimate sigma
             numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)

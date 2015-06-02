@@ -113,240 +113,6 @@ class FitLogic():
             return gaussian 
 
 
-
-##############################################################################
-##############################################################################
-##############################################################################
-
-#                           old code
-
-
-##############################################################################
-##############################################################################
-##############################################################################
-
-                
-#        def make_fit(self,function=None,axes=None,data=None,initial_guess=None,details=False):
-#            """ Makes a fit of the desired function with the one and two 
-#                dimensional data.
-#        
-#            @param callable function: The model function, f(x, ...).
-#                    It must take the independent variable as the first argument
-#                    and the parameters to fit as separate remaining arguments.
-#            @param M-length sequence or an (k,M)-shaped array axes: Here the 
-#                    axis or the axes are input. In one-dimensional case, simple
-#                    array of x_axis; in two-dimensional case tuple of x_axis 
-#                    and y_axis
-#            @param M-length sequence data: The dependent data — nominally 
-#                    f(xdata, ...)
-#            @param None, scalar, or N-length sequence initial_guess: initial 
-#                    guess with as many parameters as needed for the function
-#            @param bool details: (optional) If set to False only the optimized 
-#                    parameters will be returned. If set to True also the 
-#                    estimated covariance is returned.
-#        
-#            @return int error: error code (0:OK, -1:error)
-#            @return array popt: Optimal values for the parameters so that 
-#                    the sum of the squared error of f(xdata, *popt) - ydata 
-#                    is minimized
-#            @return 2d array pcov: The estimated covariance of popt. The 
-#                    diagonals provide the variance of the parameter estimate. 
-#                    To compute one standard deviation errors on the parameters 
-#                    use perr = np.sqrt(np.diag(pcov)).
-#                    
-#            """
-#            # check if parameters make sense
-#            error=0
-#            popt=initial_guess
-#            if initial_guess==None:
-#                pcov=None
-#            else:
-#                pcov=np.zeros((len(initial_guess),len(initial_guess)))
-#            
-#            if not callable(function):
-#                self.logMsg('Given "function" is no function.', \
-#                            msgType='error')  
-#                error =-1
-#            if not isinstance( data,(frozenset, list, set, tuple, np.ndarray)):
-#                self.logMsg('Given range of data is no array type.', \
-#                            msgType='error')
-#                error= -1
-#            if not isinstance( axes,(frozenset, list, set, tuple, np.ndarray)):
-#                self.logMsg('Given range of axes is no array type.', \
-#                            msgType='error')
-#                error= -1
-#            if not isinstance(details,bool):
-#                self.logMsg('Given bool details is not of type bool.', \
-#                            msgType='error')
-#                error= -1
-#            if error==0:
-#                try:
-##                    FIXME: This is the actual fitting-function
-#                    popt,pcov = opt.curve_fit(function,axes,data,initial_guess)
-#                except:
-#                    self.logMsg('The fit did not work.', msgType='warning')
-#                    error=-1
-#            if details==False:
-#                return error,popt
-#            elif details==True:
-#                return error,popt, pcov
-       
-
-
-#        def make_twoD_gaussian_fit(self,x_axis=None,y_axis=None,data=None,details=False):
-#            #FIXME: dimensions of arrays
-#        
-#            """ This method performes a 2D gaussian fit on the provided data.
-#
-#            @param array x_axis: x values
-#            @param array y_axis: y values
-#            @param array data: value of each data point corresponding to
-#                                x and y values        
-#            @param bool details: If details is True, additional to the fit 
-#                                 parameters also the covariance matrix is
-#                                 returned
-#            
-#                    
-#            @return int error: error code (0:OK, -1:error)
-#            @return array popt: Optimal values for the parameters so that 
-#                    the sum of the squared error of f(xdata, *popt) - ydata 
-#                    is minimized
-#            @return 2d array pcov: The estimated covariance of popt. The 
-#                    diagonals provide the variance of the parameter estimate. 
-#                    To compute one standard deviation errors on the parameters 
-#                    use perr = np.sqrt(np.diag(pcov)).
-#                    
-#            """
-#                      
-#            #FIXME: Would be nice in several rows....
-#            error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset = self.twoD_gaussian_estimator(x_axis,y_axis,data)
-#            initial_guess_estimated = (amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset)
-#            
-#            if details==False:
-#                error,popt = self.make_fit(function=self.twoD_gaussian_function
-#                                        ,axes=(x_axis,y_axis), data=data,
-#                                        initial_guess=initial_guess_estimated)
-#                return error,popt
-#            elif details==True:
-#                error,popt,pcov = self.make_fit(function=self.twoD_gaussian_function,axes=(x_axis,y_axis), 
-#                                                data=data,initial_guess=initial_guess_estimated,
-#                                                details=details)
-#                return error,popt, pcov            
-
-            
-
-#        def lorentzian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-#            """ This method provides a one dimensional Lorentzian function.
-#        
-#            @param array x_data: x values
-#            @param float or int amplitude: Amplitude of Lorentzian
-#            @param float or int x_zero: x value of maximum
-#            @param float or int sigma: half width half maximum
-#            @param float or int offset: offset
-#
-#            @return callable function: returns a 1D Lorentzian function
-#            
-#            """            
-#            # check if parameters make sense
-#            if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-#                self.logMsg('Given range of axis is no array type.', \
-#                            msgType='error') 
-#
-#
-#            parameters=[amplitude,x_zero,sigma,offset]
-#            for var in parameters:
-#                if not isinstance(var,(float,int)):
-#                    print('error',var)
-#                    self.logMsg('Given range of parameter is no float or int.', \
-#                                msgType='error') 
-#                                
-#            lorentzian = amplitude / np.pi * (  sigma / ( (x_data-x_zero)**2 + sigma**2 )  ) + offset
-#            return lorentzian
-#            
-#           
-#        def lorentzian_estimator(self,x_axis=None,data=None):
-#            """ This method provides a one dimensional Lorentzian function.
-#        
-#            @param array x_axis: x values
-#            @param array data: value of each data point corresponding to
-#                                x values
-#
-#            @return int error: error code (0:OK, -1:error)
-#            @return float amplitude: estimated amplitude
-#            @return float x_zero: estimated x value of maximum
-#            @return float sigma_x: estimated standard deviation in x direction
-#            @return float offset: estimated offset
-#                                
-#                    
-#            """
-#            error=0
-#            # check if parameters make sense
-#            parameters=[x_axis,data]
-#            for var in parameters:
-#                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-#                    self.logMsg('Given parameter is no array.', \
-#                                msgType='error') 
-#                    error=-1
-#                elif len(np.shape(var))!=1:
-#                    self.logMsg('Given parameter is no one dimensional array.', \
-#                                msgType='error')                     
-#            #set paraameters 
-#            offset=np.median(self.xdata)
-#            #check if the amplitude is negative or positive and set x_zero:
-#            data_norm=data-offset
-#            if data_norm.max()>abs(data_norm.min()):
-#                y_zero=data_norm.max()
-#                x_zero=x_axis[np.argmax(data)]
-#            else:
-#                y_zero=data_norm.min()
-#                x_zero=x_axis[np.argmin(data)]
-#
-#            #estimate amplitude and HWHM
-#            Y = np.sum(data_norm) * (x_axis[-1] - x_axis[0]) / len(x_axis)
-#            sigma = Y / (np.pi * y_zero)
-#            amplitude = y_zero * np.pi * sigma
-#
-#            return error, amplitude, x_zero, sigma, offset     
-# 
-#
-#        def make_lorentzian_fit(self,axis=None,data=None,details=False):
-#            """ This method performes a gaussian fit on the provided data.
-#        
-#            @param array [] axis: axis values
-#            @param array[]  x_data: data
-#            @param bool details: If details is True, additional to the fit 
-#                                 parameters also the covariance matrix is
-#                                 returned
-#            
-#                    
-#            @return int error: error code (0:OK, -1:error)
-#            @return array popt: Optimal values for the parameters so that 
-#                    the sum of the squared error of lorentzian_function(xdata,
-#                    *popt)is minimized
-#            @return 2d array pcov : The estimated covariance of popt. The 
-#                    diagonals provide the variance of the parameter estimate. 
-#                    To compute one standard deviation errors on the parameters 
-#                    use perr = np.sqrt(np.diag(pcov)). This is only returned
-#                    when details is set to true.
-#                    
-#            """
-#                
-#            error,amplitude, x_zero, sigma, offset = self.lorentzian_estimator(
-#                                                                    axis,data)
-#                                                                    
-#            if details==False:
-#                error,popt= self.make_fit(self.lorentzian_function, axis, 
-#                                          data,initial_guess=(amplitude, 
-#                                          x_zero, sigma, offset),
-#                                          details=details)   
-#                return error,popt
-#            elif details==True:
-#                error,popt,pcov= self.make_fit(self.lorentzian_function, axis, 
-#                                               data,initial_guess=(amplitude, 
-#                                               x_zero, sigma, offset),
-#                                               details=details)
-#                return error,popt, pcov
-
 ############################################################################################################               
 ############################################################################################################               
 ############################################################################################################               
@@ -842,7 +608,6 @@ class FitLogic():
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
                            (    'c',      offset,   True,        None,                    None,                  None))
 
-            print('offset in m',offset)
 #TODO: Add logmessage when value is changed            
             #redefine values of additional parameters
             if add_parameters!=None:  
@@ -850,12 +615,9 @@ class FitLogic():
             try:
                 result=model.fit(data, x=axis,params=params)
             except:
-                print("Fit did not work!")
-            #                self.logMsg('The 1D gaussian fit did not work.', \
-            #                            msgType='message')
                 result=model.fit(data, x=axis,params=params)
-                print(result.message)
-            
+                self.logMsg('The 1D gaussian fit did not work. Error message:'+result.message, \
+                            msgType='message')            
             return result
 
 ##############################################################################
@@ -935,66 +697,83 @@ class FitLogic():
             data_level=data_smooth-offset        
 
             #search for double lorentzian
-            mid_index=int(len(x_axis)/2)
-            
+
             absolute_min=data_level.min()
+            absolute_argmin=data_level.argmin()
             
-            #TODO: make treshold and deadzone value a config variable
+            lorentz0_center=x_axis[absolute_argmin]
+            lorentz0_amplitude=data.min()-offset
+            
+            #TODO: make treshold,minimal_treshold and sigma_treshold value a config variable
+            
             treshold=0.3*absolute_min
-            minimal_treshold=0.001
-            deadzone=int(3)
+            minimal_treshold=0.01
+            sigma_treshold=0.6*absolute_min
+#            print('sigma treshold',sigma_treshold)
+            
+            #search for first peak and calculate the sigma as an area where the
+            #second peak should not be searched for
+            sigma_argleft=int(0)
+            sigma_argright=int(0)
+            ii=1            
+            while True:
+                if sigma_argleft==0 or sigma_argright==0:
+                    if abs(data_level[absolute_argmin-ii])<abs(sigma_treshold) and sigma_argleft==0:
+                        sigma_argleft=absolute_argmin-ii
+#                        print('here left', sigma_argleft,data_level[absolute_argmin-ii])
+                    if abs(data_level[absolute_argmin+ii])<abs(sigma_treshold) and sigma_argright==0:
+                        sigma_argright=absolute_argmin+ii 
+#                        print('here right', sigma_argright,data_level[absolute_argmin+ii])
+                else:
+#                    print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argright],x_axis[sigma_argright],data_level[sigma_argright])
+                    break
+                if absolute_argmin-ii<0 or absolute_argmin+ii>len(data)-2:
+                    sigma_treshold*=0.8
+                    print('reducing treshold to',sigma_treshold)
+                    ii=0
+                if abs(sigma_treshold)<abs(treshold):
+                    break
+                ii+=1
+
+
             
             left_index=int(0)
             right_index=len(x_axis)-1
             
+            mid_index_left=sigma_argleft
+            mid_index_right=sigma_argright
+                   
             while True:                
-                left_min=data_level[left_index:mid_index-deadzone+1].min()
-                left_argmin=data_level[left_index:mid_index-deadzone+1].argmin()
-                right_min=data_level[mid_index:right_index].min()
-                right_argmin=data_level[mid_index:right_index].argmin()
-                
-                if abs(right_min)>abs(treshold) and abs(left_min)>abs(treshold):
-                    #found two minima successfully
-                    lorentz0_amplitude=left_min
-                    lorentz0_center=x_axis[left_argmin+left_index]
-                    lorentz1_amplitude=right_min
-                    lorentz1_center=x_axis[right_argmin+mid_index]
+                left_min=data_level[left_index:mid_index_left].min()
+                left_argmin=data_level[left_index:mid_index_left].argmin()
+                right_min=data_level[mid_index_right:right_index].min()
+                right_argmin=data_level[mid_index_right:right_index].argmin()
+                              
+                if abs(left_min)>abs(treshold) and abs(left_min)>abs(right_min):
+                    #there is a minimum on the left side
+                    lorentz1_amplitude=left_min
+                    lorentz1_center=x_axis[left_argmin+left_index]
                     break
-                elif abs(left_min)>abs(treshold):
-                    #there is no minimum exceeding treshold so shift area to search
-                    right_index=mid_index
-                    mid_index=int((right_index+left_index)/2.-1)
                 elif abs(right_min)>abs(treshold):
-                    #there is no minimum exceeding treshold so shift area to search
-                    left_index=mid_index
-                    mid_index=int((right_index+left_index)/2.-1)
+                    #there is a minimum on the right side
+                    lorentz1_amplitude=right_min
+                    lorentz1_center=x_axis[right_argmin+mid_index_right]
+                    break
                 else: 
                     #no minimum at all over treshold so lowering treshold and resetting search area
-                    treshold=treshold*2./3.
+                    treshold=treshold*3./4.
                     left_index=int(0)
                     right_index=len(x_axis)-1
-                    mid_index=int(len(x_axis)/2)        
-                    if (treshold/absolute_min)<minimal_treshold:
-                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima.', \
+                    mid_index_left=sigma_argleft
+                    mid_index_right=sigma_argright
+                    if abs(treshold/absolute_min)<abs(minimal_treshold):
+                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
                                 msgType='message') 
                         error=-1
-                        lorentz0_center=x_axis[data.argmin()]   
                         lorentz1_center=lorentz0_center
+                        lorentz0_amplitude/=2.
+                        lorentz1_amplitude=lorentz0_amplitude/2.
                         break
-                    
-                if abs(mid_index-left_index)<deadzone or abs(right_index-mid_index)<deadzone:
-                    #peaks are too close, probably there is only one
-                    if abs(left_min)<abs(right_min):
-                        left_argmin=right_argmin
-                        lorentz0_amplitude=right_min/2.
-                        lorentz0_center=x_axis[right_argmin+mid_index]                     
-                    else:
-                        right_argmin=left_argmin
-                        lorentz0_amplitude=left_min/2.
-                        lorentz0_center=x_axis[left_argmin+left_index] 
-                    lorentz1_amplitude=lorentz0_amplitude
-                    lorentz1_center=lorentz0_center
-                    break
             
             #estimate sigma
             numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
@@ -1066,7 +845,7 @@ class FitLogic():
 
             
         def double_lorentzian_testing(self):
-            runs=np.linspace(0,30,31)
+            runs=np.linspace(0,1,1)
             results=np.array([runs,runs,runs,runs])
             for ii in runs:
                 x = np.linspace(2800, 2900, 101)
@@ -1087,27 +866,27 @@ class FitLogic():
                 p.add('lorentz1_sigma',value=abs(np.random.random(1)*1.+4.))
                 p.add('c',value=100.)
                 
-                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
+#                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
                 data_noisy=(mod.eval(x=x,params=p) 
                                         + 2.*np.random.normal(size=x.shape))
                                         
                 para=Parameters()
-                para.add('lorentz1_center',expr='lorentz0_center+20.0')
+#                para.add('lorentz1_center',expr='lorentz0_center+20.0')
     
                 result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
-                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
+#                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
                 
-                print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
+#                print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
                 #           gaussian filter            
                 gaus=gaussian(10,10)
                 data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
                        
-                print(result.params)
+#                print(result.params)
                 try:
     #            print(result.fit_report()
-                    plt.plot(x,result.init_fit,'-g')
+                    plt.plot(x,result.init_fit,'-y')
                     plt.plot(x,result.best_fit,'-r')
-                    plt.plot(x,data_smooth,'-y')
+                    plt.plot(x,data_smooth,'-g')
                 except:
                     print('exception')
     ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
@@ -1126,11 +905,11 @@ class FitLogic():
                     results[2,ii]=result.best_values['lorentz1_center']
                     results[3,ii]=result.best_values['lorentz0_center']  
                 time.sleep(1)
-            plt.plot(runs[:],results[0,:],'-r')
-            plt.plot(runs[:],results[1,:],'-g')
-            plt.plot(runs[:],results[2,:],'-b')
-            plt.plot(runs[:],results[3,:],'-y')
-            plt.show()
+#            plt.plot(runs[:],results[0,:],'-r')
+#            plt.plot(runs[:],results[1,:],'-g')
+#            plt.plot(runs[:],results[2,:],'-b')
+#            plt.plot(runs[:],results[3,:],'-y')
+#            plt.show()
             
         def lorentzian_testing(self):
             x = np.linspace(900, 1000, 31)
@@ -1244,4 +1023,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.lorentzian_testing()   
+test.double_lorentzian_testing()   
