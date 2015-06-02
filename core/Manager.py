@@ -342,16 +342,20 @@ class Manager(QtCore.QObject):
 
                 # global config
                 elif key == 'global':
+                    self.tree['global'] = OrderedDict()
                     for m in cfg['global']:
                         if m == 'storageDir':
                             self.logger.print_logMsg("=== Setting base directory: {0} ===".format(m) + cfg['global']['storageDir'])
                             self.setBaseDir(cfg['global']['storageDir'])
+                            self.tree['global']['stotageDir'] = cfg['global']['storageDir']
                 
                         elif m == 'useOpenGL':
                             # use accelerated drawing
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
+                            self.tree['global']['useOpenGL'] = cfg['global']['useOpenGL']
 
                         elif m == 'stylesheet':
+                            self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
                             stylesheetpath = os.path.join(self.getMainDir(), 'artwork', 'styles', 'application', cfg['global']['stylesheet'])
                             if not os.path.isfile(stylesheetpath):
                                 self.logger.print_logMsg("Stylesheet not found at {0}".format(stylesheetpath), importance=6, msgType='warning')
@@ -462,7 +466,12 @@ class Manager(QtCore.QObject):
             return os.path.join(self.configDir, name)
 
     def saveConfig(self, filename):
-        self.writeConfigFile(self.tree['defined'], filename)
+        saveconfig = OrderedDict()
+        saveconfig.update(self.tree['defined'])
+        saveconfig['startup'] = self.tree['start']
+        saveconfig['global'] = self.tree['global']
+
+        self.writeConfigFile(saveconfig, filename)
         self.logger.logMsg('Saved configuration to {0}'.format(filename), msgType='status')
 
     def loadConfig(self, filename):
