@@ -301,7 +301,7 @@ class ODMRGui(GUIBase):
         self._odmr_logic.set_power(power = self._odmr_logic.MW_power)
         
     def change_runtime(self):
-        pass
+        self._odmr_logic.RunTime = float(self._mw.runtime_InputWidget.text())
 
         
         
