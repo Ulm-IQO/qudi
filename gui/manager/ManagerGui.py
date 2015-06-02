@@ -51,7 +51,7 @@ class ManagerGui(GUIBase):
           @param str name:
           @param dict config:
         """
-        c_dict = {'onactivate': self.activation}
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
         self.modlist = list()
 
@@ -89,6 +89,27 @@ class ManagerGui(GUIBase):
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
         self.updateModuleList()
+
+    def deactivation(self,e):
+        """Close window and remove connections.
+
+          @param object eFysom state change notification
+        """
+        self.sigStartModule.disconnect()
+        self.sigReloadModule.disconnect()
+        self.sigStopModule.disconnect()
+        self.sigLoadConfig.disconnect()
+        self.sigSaveConfig.disconnect()
+        self._mw.show()
+        self._mw.loadAllButton.clicked.disconnect()
+        self._mw.actionQuit.triggered.disconnect()
+        self._mw.actionLoad_configuration.triggered.disconnect()
+        self._mw.actionSave_configuration.triggered.disconnect()
+        self._mw.action_Load_all_modules.triggered.disconnect()
+        self._mw.actionLog.triggered.disconnect()
+        self._mw.actionConsole.triggered.disconnect()
+        self._mw.actionAbout_Qt.triggered.disconnect()
+        self._mw.actionAbout_QuDi.triggered.disconnect()
 
     def show(self):
         """Show the window and bring it t the top.

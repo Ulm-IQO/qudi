@@ -35,7 +35,7 @@ class TrayIcon(GUIBase):
           @param dict config: the configuration dict for the module
           @param dict kwargs: further named arguments
         """
-        callback = {'onactivate': self.initUI}
+        callback = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(
                     manager,
                     name,
@@ -54,6 +54,15 @@ class TrayIcon(GUIBase):
         self._tray.show()
         self._tray.quitAction.triggered.connect(self._manager.quit)
         self._tray.managerAction.triggered.connect(lambda: self._manager.sigShowManager.emit())
+
+    def deactivation(self, e):
+        """ Remove all the stuff that we set up.
+
+          @param object e: Fysom state change notification
+        """
+        self._tray.hide()
+        self._tray.quitAction.triggered.disconnect()
+        self._tray.managerAction.triggered.disconnect()
 
     def show(self):
         """Trayicon has no window to show.
