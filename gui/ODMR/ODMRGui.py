@@ -108,11 +108,14 @@ class ODMRGui(GUIBase):
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+        self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_fit_y,
+                                                    pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
         
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.odmr_ViewWidget.addItem(self.odmr_image)
+        self._mw.odmr_ViewWidget.addItem(self.odmr_fit_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
         self._mw.odmr_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         
@@ -253,6 +256,7 @@ class ODMRGui(GUIBase):
         ''' This method refreshes the xy-plot image
         '''
         self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
+        self.odmr_fit_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_fit_y)
         
     def refresh_matrix(self):
         ''' This method refreshes the xy-matrix image
