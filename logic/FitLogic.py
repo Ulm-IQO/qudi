@@ -7,6 +7,8 @@ from core.util.Mutex import Mutex
 from collections import OrderedDict
 
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
+from scipy.signal import gaussian
+from scipy.ndimage import filters
 
 import numpy as np
 import scipy.optimize as opt#, scipy.stats
@@ -643,7 +645,6 @@ class FitLogic(GenericLogic):
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
                            (    'c',      offset,   True,        None,                    None,                  None))
 
-            print('offset in m',offset)
 #TODO: Add logmessage when value is changed            
             #redefine values of additional parameters
             if add_parameters!=None:  
