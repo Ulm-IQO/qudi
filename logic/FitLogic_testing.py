@@ -8,7 +8,6 @@ import scipy
 import pylab as plt
 
 #for filters:
-from scipy.interpolate import UnivariateSpline
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
 import scipy.optimize as op
@@ -549,10 +548,7 @@ class FitLogic():
                                 msgType='error')                     
             #set paraameters 
                                 
-##           gaussian filter            
-#            gaus=gaussian(10,10)
-#            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
-            #lorentzian filter            
+          
             mod,params = self.make_lorentzian_model()
             lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
             data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())            
@@ -704,104 +700,101 @@ class FitLogic():
 
             #search for double lorentzian
 
+            #first search for absolute minimum
             absolute_min=data_level.min()
             absolute_argmin=data_level.argmin()
             
             lorentz0_center=x_axis[absolute_argmin]
             lorentz0_amplitude=data.min()-offset
             
-            #TODO: make treshold,minimal_treshold and sigma_treshold value a config variable
+            #TODO: make threshold,minimal_threshold and sigma_threshold value a config variable
             
-            treshold=0.3*absolute_min
-            minimal_treshold=0.01
-            sigma_treshold_fraction=0.5
-            sigma_treshold=sigma_treshold_fraction*absolute_min
-            print('absolute_argmin',absolute_argmin)
+            #set thresholds            
+            threshold=0.3*absolute_min
+            minimal_threshold=0.01
+            sigma_threshold_fraction=0.5
+            sigma_threshold=sigma_threshold_fraction*absolute_min
             
-            #search for first peak and calculate the sigma as an area where the
-            #second peak should not be searched for
+#            search for the left end of the dip
             sigma_argleft=int(0)
             ii=0
-            if absolute_argmin!=0:
+            if absolute_argmin!=0:#if the minimum is at the end set this as boarder
                 while True:
-                    if absolute_argmin-ii<0:
-                        sigma_treshold*=0.9
-                        print('reducing left treshold to',sigma_treshold)
+                    if absolute_argmin-ii<0: # if no minimum can be found decrease threshold
+                        sigma_threshold*=0.9
                         ii=0
-                    if abs(sigma_treshold)<abs(treshold):
+                    if abs(sigma_threshold)<abs(threshold): #if the dip is alsways over threshold the end is the 0 as set before
                         break
-                    if sigma_argleft==0:
-                        if abs(data_level[absolute_argmin-ii])<abs(sigma_treshold):
+                    if sigma_argleft==0: #check if value was changed and search is finished
+                        if abs(data_level[absolute_argmin-ii])<abs(sigma_threshold): # check if if value is lower as threshold this is the searched value
                             sigma_argleft=absolute_argmin-ii
     #                        print('here left', sigma_argleft,data_level[absolute_argmin-ii])
-                    else:
+                    else: #if value is not zero the search was successful and finished
     #                    print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argright],x_axis[sigma_argright],data_level[sigma_argright])
                         break
                     ii+=1
-            print('sigma_argleft',sigma_argleft)
-            sigma_treshold=sigma_treshold_fraction*absolute_min
+
+            #search for the right end of the dip
+            sigma_threshold=sigma_threshold_fraction*absolute_min
             sigma_argright=int(0)                
             ii=0
-            if absolute_argmin!=len(data)-1:
+            if absolute_argmin!=len(data)-1: #if the minimum is at the end set this as boarder
                 while True:
-                    if absolute_argmin+ii>len(data)-1:
-                        sigma_treshold*=0.9
-                        print('reducing right treshold to',sigma_treshold)
+                    if absolute_argmin+ii>len(data)-1: # if no minimum can be found decrease threshold
+                        sigma_threshold*=0.9
                         ii=0
-                    if abs(sigma_treshold)<abs(treshold):
+                    if abs(sigma_threshold)<abs(threshold):#if the dip is alsways over threshold the end is the most right index
                         sigma_argright=len(data)-1
                         break
-                    if sigma_argright==0:
-                        if abs(data_level[absolute_argmin+ii])<abs(sigma_treshold):
+                    if sigma_argright==0: #check if value was changed and search is finished
+                        if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold): # check if if value is lower as threshold this is the searched value
                                 sigma_argright=absolute_argmin+ii 
-                                print('here right', sigma_argright,data_level[absolute_argmin+ii])
-                    else:
-                        print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argleft],x_axis[sigma_argright],data_level[sigma_argright])
+                    else: #if value is not zero the search was successful and finished
                         break
                     ii+=1
-            else:
+            else: #in this case the value is the last index and should be search set as right argument
                 sigma_argright=absolute_argmin
-            print('sigma_argright',sigma_argright)
-            
+
+#           search for second lorentzian dip            
             left_index=int(0)
             right_index=len(x_axis)-1
                 
             mid_index_left=sigma_argleft
             mid_index_right=sigma_argright
-            print('mid_index_right',mid_index_right,right_index)
-            if sigma_argleft==left_index:
+
+            if sigma_argleft==left_index: #if main first dip covers the whole left side search on the right side only
                 lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+mid_index_right]
                 lorentz1_amplitude=data_level[mid_index_right:right_index].min()
-                print('here',lorentz1_center,lorentz1_amplitude)
-            elif sigma_argright==right_index:
+            elif sigma_argright==right_index:  #if main first dip covers the whole right side search on the left side only
                 lorentz1_amplitude=data_level[left_index:mid_index_left].min()
                 lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
-            else:
-                while True:                
+            else: # search for peak left and right of the dip
+                while True: 
+                    #set search area excluding the first dip
                     left_min=data_level[left_index:mid_index_left].min()
                     left_argmin=data_level[left_index:mid_index_left].argmin()
                     right_min=data_level[mid_index_right:right_index].min()
                     right_argmin=data_level[mid_index_right:right_index].argmin()
                     
-                    if abs(left_min)>abs(treshold) and abs(left_min)>abs(right_min):
-                        #there is a minimum on the left side
+                    if abs(left_min)>abs(threshold) and abs(left_min)>abs(right_min):
+                        #there is a minimum on the left side which is higher than right side
                         lorentz1_amplitude=left_min
                         lorentz1_center=x_axis[left_argmin+left_index]
                         break
-                    elif abs(right_min)>abs(treshold):
-                        #there is a minimum on the right side
+                    elif abs(right_min)>abs(threshold):
+                        #there is a minimum on the right side which is higher than on left side
                         lorentz1_amplitude=right_min
                         lorentz1_center=x_axis[right_argmin+mid_index_right]
                         break
                     else: 
-                        #no minimum at all over treshold so lowering treshold and resetting search area
-                        treshold=treshold*3./4.
+                        #no minimum at all over threshold so lowering threshold and resetting search area
+                        threshold=threshold*3./4.
                         left_index=int(0)
                         right_index=len(x_axis)-1
                         mid_index_left=sigma_argleft
                         mid_index_right=sigma_argright
-                        if abs(treshold/absolute_min)<abs(minimal_treshold):
-                            self.logMsg('Treshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
+                        if abs(threshold/absolute_min)<abs(minimal_threshold): #if no second dip can be found set both to same value
+                            self.logMsg('threshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
                                     msgType='message') 
                             error=-1
                             lorentz1_center=lorentz0_center
@@ -876,7 +869,42 @@ class FitLogic():
 ##############################################################################
 ##############################################################################  
          
+        def N14_testing(self):
+            x = np.linspace(2850, 2860, 101)
+                
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+#            print('Parameters of the model',mod.param_names)
+            
+            p=Parameters()
+            
+#                center=np.random.random(1)*50+2805
+#            p.add('center',max=-1)
+            p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*5+150))
+            p.add('lorentz0_center',value=np.random.random(1)*5.+2850)
+            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1.+0.1))
+            p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*5+150))
+            p.add('lorentz1_center',value=p['lorentz0_center']+2.15)
+            p.add('lorentz1_sigma',value=p['lorentz0_sigma'])
+            p.add('lorentz2_amplitude',value=-abs(np.random.random(1)*5+150))
+            p.add('lorentz2_center',value=p['lorentz0_center']+2.*2.15)
+            p.add('lorentz2_sigma',value=p['lorentz0_sigma'])
+            p.add('c',value=100.)
+            
+            data_noisy=(mod.eval(x=x,params=p) 
+                                    + 1.*np.random.normal(size=x.shape))
 
+            #lorentzian filter            
+            lorentz=mod.eval(x=np.linspace(0,10,11),params=p)
+            print(lorentz,np.linspace(0,10,11))
+#            data_smooth = filters.convolve1d(data_noisy, lorentz/lorentz.sum()) 
+            gaus=gaussian(10,10)
+#            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())            
+                                   
+            plt.plot(x,data_noisy)
+#            plt.plot(x,result.init_fit,'-y')
+#            plt.plot(x,result.best_fit,'-r')
+#            plt.plot(x,data_smooth,'-g')
+            plt.show()
             
         def double_lorentzian_testing(self):
             runs=np.linspace(0,100,101)
@@ -1057,4 +1085,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.double_lorentzian_testing()   
+test.N14_testing()   
