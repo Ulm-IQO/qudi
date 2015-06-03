@@ -549,9 +549,14 @@ class FitLogic():
                                 msgType='error')                     
             #set paraameters 
                                 
-#           gaussian filter            
-            gaus=gaussian(10,10)
-            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
+##           gaussian filter            
+#            gaus=gaussian(10,10)
+#            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
+            #lorentzian filter            
+            mod,params = self.make_lorentzian_model()
+            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
+            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())            
+            
             offset=data_smooth.max()
 
             data_level=data-offset        
@@ -686,9 +691,10 @@ class FitLogic():
             
             #set paraameters 
             
-            #gaussian filter            
-            gaus=gaussian(10,10)
-            data_smooth = filters.convolve1d(data, gaus/gaus.sum())
+            #lorentzian filter            
+            mod,params = self.make_lorentzian_model()
+            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
+            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())   
             
             #finding most frequent value which is supposed to be the offset
             hist=np.histogram(data_smooth,bins=10)
@@ -708,72 +714,100 @@ class FitLogic():
             
             treshold=0.3*absolute_min
             minimal_treshold=0.01
-            sigma_treshold=0.6*absolute_min
-#            print('sigma treshold',sigma_treshold)
+            sigma_treshold_fraction=0.5
+            sigma_treshold=sigma_treshold_fraction*absolute_min
+            print('absolute_argmin',absolute_argmin)
             
             #search for first peak and calculate the sigma as an area where the
             #second peak should not be searched for
             sigma_argleft=int(0)
-            sigma_argright=int(0)
-            ii=1            
-            while True:
-                if sigma_argleft==0 or sigma_argright==0:
-                    if abs(data_level[absolute_argmin-ii])<abs(sigma_treshold) and sigma_argleft==0:
-                        sigma_argleft=absolute_argmin-ii
-#                        print('here left', sigma_argleft,data_level[absolute_argmin-ii])
-                    if abs(data_level[absolute_argmin+ii])<abs(sigma_treshold) and sigma_argright==0:
-                        sigma_argright=absolute_argmin+ii 
-#                        print('here right', sigma_argright,data_level[absolute_argmin+ii])
-                else:
-#                    print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argright],x_axis[sigma_argright],data_level[sigma_argright])
-                    break
-                if absolute_argmin-ii<0 or absolute_argmin+ii>len(data)-2:
-                    sigma_treshold*=0.8
-                    print('reducing treshold to',sigma_treshold)
-                    ii=0
-                if abs(sigma_treshold)<abs(treshold):
-                    break
-                ii+=1
-
-
+            ii=0
+            if absolute_argmin!=0:
+                while True:
+                    if absolute_argmin-ii<0:
+                        sigma_treshold*=0.9
+                        print('reducing left treshold to',sigma_treshold)
+                        ii=0
+                    if abs(sigma_treshold)<abs(treshold):
+                        break
+                    if sigma_argleft==0:
+                        if abs(data_level[absolute_argmin-ii])<abs(sigma_treshold):
+                            sigma_argleft=absolute_argmin-ii
+    #                        print('here left', sigma_argleft,data_level[absolute_argmin-ii])
+                    else:
+    #                    print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argright],x_axis[sigma_argright],data_level[sigma_argright])
+                        break
+                    ii+=1
+            print('sigma_argleft',sigma_argleft)
+            sigma_treshold=sigma_treshold_fraction*absolute_min
+            sigma_argright=int(0)                
+            ii=0
+            if absolute_argmin!=len(data)-1:
+                while True:
+                    if absolute_argmin+ii>len(data)-1:
+                        sigma_treshold*=0.9
+                        print('reducing right treshold to',sigma_treshold)
+                        ii=0
+                    if abs(sigma_treshold)<abs(treshold):
+                        sigma_argright=len(data)-1
+                        break
+                    if sigma_argright==0:
+                        if abs(data_level[absolute_argmin+ii])<abs(sigma_treshold):
+                                sigma_argright=absolute_argmin+ii 
+                                print('here right', sigma_argright,data_level[absolute_argmin+ii])
+                    else:
+                        print('sigma left right',x_axis[sigma_argleft],data_level[sigma_argleft],x_axis[sigma_argright],data_level[sigma_argright])
+                        break
+                    ii+=1
+            else:
+                sigma_argright=absolute_argmin
+            print('sigma_argright',sigma_argright)
             
             left_index=int(0)
             right_index=len(x_axis)-1
-            
+                
             mid_index_left=sigma_argleft
             mid_index_right=sigma_argright
-                   
-            while True:                
-                left_min=data_level[left_index:mid_index_left].min()
-                left_argmin=data_level[left_index:mid_index_left].argmin()
-                right_min=data_level[mid_index_right:right_index].min()
-                right_argmin=data_level[mid_index_right:right_index].argmin()
-                              
-                if abs(left_min)>abs(treshold) and abs(left_min)>abs(right_min):
-                    #there is a minimum on the left side
-                    lorentz1_amplitude=left_min
-                    lorentz1_center=x_axis[left_argmin+left_index]
-                    break
-                elif abs(right_min)>abs(treshold):
-                    #there is a minimum on the right side
-                    lorentz1_amplitude=right_min
-                    lorentz1_center=x_axis[right_argmin+mid_index_right]
-                    break
-                else: 
-                    #no minimum at all over treshold so lowering treshold and resetting search area
-                    treshold=treshold*3./4.
-                    left_index=int(0)
-                    right_index=len(x_axis)-1
-                    mid_index_left=sigma_argleft
-                    mid_index_right=sigma_argright
-                    if abs(treshold/absolute_min)<abs(minimal_treshold):
-                        self.logMsg('Treshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
-                                msgType='message') 
-                        error=-1
-                        lorentz1_center=lorentz0_center
-                        lorentz0_amplitude/=2.
-                        lorentz1_amplitude=lorentz0_amplitude/2.
+            print('mid_index_right',mid_index_right,right_index)
+            if sigma_argleft==left_index:
+                lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+mid_index_right]
+                lorentz1_amplitude=data_level[mid_index_right:right_index].min()
+                print('here',lorentz1_center,lorentz1_amplitude)
+            elif sigma_argright==right_index:
+                lorentz1_amplitude=data_level[left_index:mid_index_left].min()
+                lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
+            else:
+                while True:                
+                    left_min=data_level[left_index:mid_index_left].min()
+                    left_argmin=data_level[left_index:mid_index_left].argmin()
+                    right_min=data_level[mid_index_right:right_index].min()
+                    right_argmin=data_level[mid_index_right:right_index].argmin()
+                    
+                    if abs(left_min)>abs(treshold) and abs(left_min)>abs(right_min):
+                        #there is a minimum on the left side
+                        lorentz1_amplitude=left_min
+                        lorentz1_center=x_axis[left_argmin+left_index]
                         break
+                    elif abs(right_min)>abs(treshold):
+                        #there is a minimum on the right side
+                        lorentz1_amplitude=right_min
+                        lorentz1_center=x_axis[right_argmin+mid_index_right]
+                        break
+                    else: 
+                        #no minimum at all over treshold so lowering treshold and resetting search area
+                        treshold=treshold*3./4.
+                        left_index=int(0)
+                        right_index=len(x_axis)-1
+                        mid_index_left=sigma_argleft
+                        mid_index_right=sigma_argright
+                        if abs(treshold/absolute_min)<abs(minimal_treshold):
+                            self.logMsg('Treshold to minimum ratio was too small to estimate two minima. So both are set to the same value', \
+                                    msgType='message') 
+                            error=-1
+                            lorentz1_center=lorentz0_center
+                            lorentz0_amplitude/=2.
+                            lorentz1_amplitude=lorentz0_amplitude/2.
+                            break
             
             #estimate sigma
             numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
@@ -845,27 +879,27 @@ class FitLogic():
 
             
         def double_lorentzian_testing(self):
-            runs=np.linspace(0,1,1)
+            runs=np.linspace(0,100,101)
             results=np.array([runs,runs,runs,runs])
             for ii in runs:
-                x = np.linspace(2800, 2900, 101)
+                x = np.linspace(2850, 2900, 51)
                 
                 mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
     #            print('Parameters of the model',mod.param_names)
                 
                 p=Parameters()
                 
-                center=np.random.random(1)*50+2805
+#                center=np.random.random(1)*50+2805
     #            p.add('center',max=-1)
                 p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*5+150))
-                p.add('lorentz0_center',value=center)
-                p.add('lorentz0_sigma',value=abs(np.random.random(1)*1.+4.))
+                p.add('lorentz0_center',value=np.random.random(1)*50.0+2850)
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*5.+1.))
                 p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*5+150))
-#                p.add('lorentz1_center',value=np.random.random(1)*0.0+2860)
-                p.add('lorentz1_center',value=center+20.)
-                p.add('lorentz1_sigma',value=abs(np.random.random(1)*1.+4.))
+                p.add('lorentz1_center',value=np.random.random(1)*50.0+2850)
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*5.+1.))
                 p.add('c',value=100.)
                 
+                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
 #                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
                 data_noisy=(mod.eval(x=x,params=p) 
                                         + 2.*np.random.normal(size=x.shape))
@@ -884,13 +918,13 @@ class FitLogic():
 #                print(result.params)
                 try:
     #            print(result.fit_report()
+                    plt.plot(x,data_noisy)
                     plt.plot(x,result.init_fit,'-y')
                     plt.plot(x,result.best_fit,'-r')
                     plt.plot(x,data_smooth,'-g')
                 except:
                     print('exception')
     ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
-                plt.plot(x,data_noisy)
                 plt.show()
                 if p['lorentz0_center'].value<p['lorentz1_center'].value:
                     results[0,ii]=p['lorentz0_center'].value
@@ -904,12 +938,12 @@ class FitLogic():
                 else:
                     results[2,ii]=result.best_values['lorentz1_center']
                     results[3,ii]=result.best_values['lorentz0_center']  
-                time.sleep(1)
-#            plt.plot(runs[:],results[0,:],'-r')
-#            plt.plot(runs[:],results[1,:],'-g')
-#            plt.plot(runs[:],results[2,:],'-b')
-#            plt.plot(runs[:],results[3,:],'-y')
-#            plt.show()
+#                time.sleep(1)
+            plt.plot(runs[:],results[0,:],'-r')
+            plt.plot(runs[:],results[1,:],'-g')
+            plt.plot(runs[:],results[2,:],'-b')
+            plt.plot(runs[:],results[3,:],'-y')
+            plt.show()
             
         def lorentzian_testing(self):
             x = np.linspace(900, 1000, 31)
