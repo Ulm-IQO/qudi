@@ -5,6 +5,8 @@ import ctypes
 import numpy as np
 from collections import OrderedDict
 from core.Base import Base
+from hardware.SlowCounterInterface import SlowCounterInterface
+import time
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
 # 'phdefin.h', 'phlib.h' and 'errorcodes.h'. The 'phdefin.h' contains all the
@@ -63,23 +65,28 @@ correspond to standard C/C++ data types as follows:
 
 #FIXME: The interface connetion to the fast counter must be established!
 
-class PicoHarp300(Base):
+#FIXME: Addapt to the slowCounter Interface
+class PicoHarp300(Base, SlowCounterInterface):
     """Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
     STABLE AND TESTED VERSION: Alex S.
     """
 
-    def __init__(self,manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name,
-                      configuation=config, callback_dict = {})
+    def __init__(self,manager, name, config, **kwargs):
+        c_dict = {'onactivate': self.activation,
+                  'ondeactivate' : self.deactivation}
+        Base.__init__(self, manager, name, config, c_dict)
 
         self._modclass = 'PicoHarp300'
         self._modtype = 'hardware'
 
         # declare connectors
-        self.connector['out']['PicoHarp300'] = OrderedDict()
-        self.connector['out']['PicoHarp300']['class'] = 'PicoHarp300'
+        self.connector['out']['picocounter'] = OrderedDict()
+        self.connector['out']['picocounter']['class'] = 'PicoHarp300'
+
+        self.connector['out']['counter'] = OrderedDict()
+        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
 
         if 'deviceID' in config.keys():
             self._deviceID = config['deviceID']
@@ -103,7 +110,7 @@ class PicoHarp300(Base):
         self._set_constants()
 
         # the library can communicate with 8 devices:
-        self._connected_to_device = False
+        self.connected_to_device = False
 
         #FIXME: Check which architecture the host PC is and choose the dll
         # according to that!
@@ -112,11 +119,31 @@ class PicoHarp300(Base):
         # <Windows>/System32/
         self._dll = ctypes.cdll.LoadLibrary('phlib64')
 
+
+
+    def activation(self, fysom_e=None):
+        """ Activate and establish the connection to Picohard and initialize.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
+        """
         self.open_connection()
         self.initialize(self._mode)
+        self.calibrate()
 
-    def activate(self):
-        pass
+    def deactivation(self, fysom_e=None):
+        """ Deactivates and disconnects the device.
+
+        @param object e: Event class object from Fysom. Detailed explanation
+                         see in method 'activation'.
+        """
+
+        self.close_connection()
 
     def _create_errorcode(self):
         """ Create a dictionary with the errorcode for the device.
@@ -178,6 +205,9 @@ class PicoHarp300(Base):
         self.BINSTEPSMAX = 8
         self.HISTCHAN = 65536    # number of histogram channels
         self.TTREADMAX = 131072  # 128K event records
+
+        # in Hz:
+        self.COUNTFREQ = 10
 
     def check(self, func_val):
         """ Check routine for the received error codes.
@@ -241,7 +271,7 @@ class PicoHarp300(Base):
         ret = self.check(self._dll.PH_OpenDevice(self._deviceID, ctypes.byref(buf)))
         self._serial = buf.value.decode()   # .decode() converts byte to string
         if ret >= 0:
-            self._connected_to_device = True
+            self.connected_to_device = True
             self.logMsg('Connection to the Picoharp 300 established',
                         msgType='status')
 
@@ -271,7 +301,7 @@ class PicoHarp300(Base):
 
         @param int deviceID: a divice index from 0 to 7.
         """
-        self._connected_to_device = False
+        self.connected_to_device = False
         self.check(self._dll.PH_CloseDevice(self._deviceID))
         self.logMsg('Connection to the Picoharp 300 closed.', msgType='status')
 
@@ -505,7 +535,7 @@ class PicoHarp300(Base):
         else:
             self.check(self._dll.PH_StartMeas(self._deviceID, acq_time))
 
-    def stop(self):
+    def stop_measure(self):
         """ Stop the measurement."""
         self.check(self._dll.PH_StopMeas(self._deviceID))
 
@@ -748,3 +778,76 @@ class PicoHarp300(Base):
 
     # FIXME: routing functions not yet wrapped, but will be wrapped if it will
     # be necessary to use them.
+
+
+    # =========================================================================
+    #  Higher Level function, which should be called directly from Logic
+    # =========================================================================
+
+
+    # =========================================================================
+    #  Functions for the SlowCounter Interface
+    # =========================================================================
+
+    def set_up_clock(self, clock_frequency = None, clock_channel = None):
+        """ Set here which channel you want to access of the Picoharp.
+
+        @param float clock_frequency: Sets the frequency of the clock. That
+                                      frequency will not be taken. It is not
+                                      needed, and argument will be omitted.
+        @param string clock_channel: This is the physical channel
+                                     of the clock. It is not needed, and
+                                     argument will be omitted.
+
+        The Hardware clock for the Picoharp is not programmable. It is a gated
+        counter every 100ms. That you cannot change. You can retrieve from both
+        channels simultaniously the count rates.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        return 0
+
+    def set_up_counter(self, counter_channel = 0, photon_source = None,
+                       clock_channel = None):
+        """ Ensure Interface compatibility. The counter does not to be set up.
+
+        @param string counter_channel: Set the actual channel which you want to
+                                       read out. Default it is 0. It can
+                                       also be 1.
+        @param string photon_source: is not needed, arg will be omitted.
+        @param string clock_channel: is not needed, arg will be omitted.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._count_channel = counter_channel
+
+        return 0
+
+    def get_counter(self, samples=None):
+        """ Returns the current counts per second of the counter.
+
+        @param int samples: if defined, number of samples to read in one go
+
+        @return float: the photon counts per second
+        """
+        time.sleep(0.001)
+        return self.get_count_rate(self._count_channel)#*self.COUNTFREQ
+
+    def close_counter(self):
+        """ Closes the counter and cleans up afterwards. Actually, you do not
+        have to do anything with the picoharp. Therefore this command will do
+        nothing and is only here for SlowCounterInterface compatibility.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0
+
+    def close_clock(self):
+        """Closes the clock and cleans up afterwards.. Actually, you do not
+        have to do anything with the picoharp. Therefore this command will do
+        nothing and is only here for SlowCounterInterface compatibility.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0
