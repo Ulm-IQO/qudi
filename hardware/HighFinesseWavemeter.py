@@ -47,15 +47,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     _cReturnWavelangthAir        = ctypes.c_long(0x0001)
     _cReturnWavelangthVac        = ctypes.c_long(0x0000)
 
-    #############################################
-    # Class parameters
-    #############################################
-    
-    # the current wavelength read by the wavemeter in nm (vac)
-    _current_wavelenght=0.0
-    _current_wavelenght2=0.0
-    # time between two measurement points of the wavemeter in milliseconds
-    _measurement_timing=10
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -69,6 +60,19 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         
         #locking for thread safety
         self.threadlock = Mutex()
+        
+        # the current wavelength read by the wavemeter in nm (vac)
+        self._current_wavelenght=0.0
+        self._current_wavelenght2=0.0
+        
+        # time between two measurement points of the wavemeter in milliseconds
+        if 'measurement_timing' in config.keys():
+            self._measurement_timing=config['measurement_timing']
+        else:
+            self._measurement_timing = 10.
+            self.logMsg('No measurement_timing configured, '\
+                        'using {} instead.'.format(self._measurement_timing), 
+                        msgType='warning')
 
 
     def activation(self, e):
