@@ -27,30 +27,12 @@ from core.util.Mutex import Mutex
 
 from pyqtgraph.Qt import QtGui, QtCore
 
-import ctypes   # is a foreign function library for Python. It provides C 
-                # compatible data types, and allows calling functions in DLLs 
-                # or shared libraries. It can be used to wrap these libraries 
-                # in pure Python.
+import random
 
 
 
 class HighFinesseWavemeter(Base,WavemeterInterface):
-    
-    #############################################
-    # Flags for the external DLL
-    #############################################
-    
-    # define constants as flags for the wavemeter
-    _cCtrlStop                   = ctypes.c_uint16(0x00)
-    # this following flag is modified to override every existing file
-    _cCtrlStartMeasurment        = ctypes.c_uint16(0x1002)
-    _cReturnWavelangthAir        = ctypes.c_long(0x0001)
-    _cReturnWavelangthVac        = ctypes.c_long(0x0000)
-
-    #############################################
-    # Class parameters
-    #############################################
-    
+        
     # the current wavelength read by the wavemeter in nm (vac)
     _current_wavelenght=0.0
     _current_wavelenght2=0.0
@@ -72,45 +54,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
 
     def activation(self, e):
-        #############################################
-        # Initialisation to access external DLL
-        #############################################
-        try:
-            #imports the spectrometer specific function from dll
-            wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll') 
-            
-            # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength2 = wavemeterdll.GetWavelength2
-            # return data type of the GetWavelength function of the wavemeter
-            self._GetWavelength2.restype = ctypes.c_double
-            # parameter data type of the GetWavelength function of the wavemeter
-            self._GetWavelength2.argtypes = [ctypes.c_double]
-            
-            # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength = wavemeterdll.GetWavelength
-            # return data type of the GetWavelength function of the wavemeter
-            self._GetWavelength.restype = ctypes.c_double
-            # parameter data type of the GetWavelength function of the wavemeter
-            self._GetWavelength.argtypes = [ctypes.c_double]
-            
-            # define the use of the ConvertUnit function of the wavemeter
-            self._ConvertUnit = wavemeterdll.ConvertUnit
-            # return data type of the ConvertUnit function of the wavemeter
-            self._ConvertUnit.restype = ctypes.c_double
-            # parameter data type of the ConvertUnit function of the wavemeter
-            self._ConvertUnit.argtypes = [ctypes.c_double,ctypes.c_long,ctypes.c_long]
-            
-            # manipulate perdefined operations with simple flags
-            self._Operation= wavemeterdll.Operation
-            # return data type of the Operation function of the wavemeter
-            self._ConvertUnit.restype = ctypes.c_long
-            # parameter data type of the Operation function of the wavemeter
-            self._ConvertUnit.argtypes = [ctypes.c_ushort]
-            
-        except:
-            self.logMsg('There is no Wavemeter installed on this Computer.\n Please install a High Finesse Wavemeter and try again.', 
-                    msgType='error')
-
+        pass
 
     def deactivation(self, e):
         pass
@@ -137,7 +81,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         
         self.run()
         # actually start the wavemeter
-        self._Operation(self._cCtrlStartMeasurment) #starts measurement         
+        self.logMsg('starting Wavemeter', 
+                msgType='warning')       
         
         # start the measuring thread
         self._timer.start(self._measurement_timing)
@@ -158,7 +103,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self._timer.stop()
                 
         # Stop the actual wavemeter measurement
-        self._Operation(self._cCtrlStop) 
+        self.logMsg('stopping Wavemeter', 
+                msgType='warning')       
         
         # set status to idle again
         self.stop()
@@ -173,8 +119,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         @return float: wavelength (or negative value for errors)
         """
         if kind in "air":
-            # for air we need the convert the current wavelength. The Wavemeter DLL already gives us a nice tool do do so.
-            return float(self._ConvertUnit(self._current_wavelenght,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
+            # for air we need the convert the current wavelength. T
+            return float(self._current_wavelenght)
         if kind in "vac":
             # for vacuum just return the current wavelength
             return float(self._current_wavelenght)
@@ -188,8 +134,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         @return float: wavelength (or negative value for errors)
         """
         if kind in "air":
-            # for air we need the convert the current wavelength. The Wavemeter DLL already gives us a nice tool do do so.
-            return float(self._ConvertUnit(self._current_wavelenght2,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
+            # for air we need the convert the current wavelength. 
+            return float(self._current_wavelenght2)
         if kind in "vac":
             # for vacuum just return the current wavelength
             return float(self._current_wavelenght2)
@@ -219,6 +165,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # update as long as the status is busy
         if self.getStatus() == 'running':
             # get the current wavelength from the wavemeter
-            self.current_wavelenght = self._GetWavelength(ctypes.c_double(0))
-            self.current_wavelenght2 = self._GetWavelength2(ctypes.c_double(0))
+            self.current_wavelenght  += random.uniform(-1, 1)
+            self.current_wavelenght2 += random.uniform(-1, 1)
             
