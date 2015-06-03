@@ -31,13 +31,8 @@ import random
 
 
 
-class HighFinesseWavemeter(Base,WavemeterInterface):
+class WavemeterInterfaceDummy(Base,WavemeterInterface):
         
-    # the current wavelength read by the wavemeter in nm (vac)
-    _current_wavelenght=0.0
-    _current_wavelenght2=0.0
-    # time between two measurement points of the wavemeter in milliseconds
-    _measurement_timing=10
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -51,6 +46,19 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         
         #locking for thread safety
         self.threadlock = Mutex()
+        
+        # the current wavelength read by the wavemeter in nm (vac)
+        self._current_wavelenght=700.0
+        self._current_wavelenght2=700.0
+        
+        # time between two measurement points of the wavemeter in milliseconds
+        if 'measurement_timing' in config.keys():
+            self._measurement_timing=config['measurement_timing']
+        else:
+            self._measurement_timing = 10.
+            self.logMsg('No measurement_timing configured, '\
+                        'using {} instead.'.format(self._measurement_timing), 
+                        msgType='warning')
 
 
     def activation(self, e):
@@ -71,7 +79,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         
         # first check its status
-        if self.getStatus() is 'running':
+        if self.getState() is 'running':
             self.logMsg('Wavemeter busy', 
                     msgType='error')
             return -1
@@ -95,7 +103,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getStatus() == 'idle':
+        if self.getState() == 'idle':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
                 
@@ -163,8 +171,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         
         # update as long as the status is busy
-        if self.getStatus() == 'running':
+        if self.getState() == 'running':
             # get the current wavelength from the wavemeter
-            self.current_wavelenght  += random.uniform(-1, 1)
-            self.current_wavelenght2 += random.uniform(-1, 1)
+            self._current_wavelenght  += random.uniform(-1, 1)
+            self._current_wavelenght2 += random.uniform(-1, 1)
             
