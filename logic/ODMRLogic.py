@@ -6,6 +6,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+from lmfit import Parameters
 import time
 
 class ODMRLogic(GenericLogic):
@@ -302,4 +303,22 @@ class ODMRLogic(GenericLogic):
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
+
+        elif self.fit_function =='Double Lorentzian with fixed splitting':
+            p=Parameters()
+#            TODO: insert this in gui config of ODMR
+            splitting_from_gui_config=3.03 #in MHz
+            p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+            result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
+            double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
             
+        elif self.fit_function =='N14':
+            result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
+            
+        elif self.fit_function =='N15':
+            result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)

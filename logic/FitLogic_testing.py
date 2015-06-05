@@ -489,7 +489,47 @@ class FitLogic():
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
 
- 
+##############################################################################
+##############################################################################
+
+            #Additional routines for Lorentzian-like models
+
+##############################################################################
+############################################################################## 
+        
+        def find_offset_parameter(self,x_values=None,data=None):
+            """ This method convolves the data with a lorentzian and the finds the
+            offset which is supposed to be the most likely valy via a histogram.
+            Additional the smoothed data is returned
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return int error: error code (0:OK, -1:error)
+            @return float array data_smooth: smoothed data
+            @return float offset: estimated offset
+                                
+                    
+            """
+            #lorentzian filter            
+            mod,params = self.make_lorentzian_model()
+            
+            if len(x_values)<20.:
+                len_x=5
+            if len(x_values)>=100.:
+                len_x=10
+            else:
+                len_x=int(len(x_values)/10.)+1
+                
+            lorentz=mod.eval(x=np.linspace(0,len_x,len_x),amplitude=1,c=0.,sigma=len_x/4.,center=len_x/2.)
+            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),mode='constant',cval=data.max())   
+            
+            #finding most frequent value which is supposed to be the offset
+            hist=np.histogram(data_smooth,bins=10)
+            offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+            
+            return data_smooth,offset
 
 ##############################################################################
 ##############################################################################
@@ -546,14 +586,9 @@ class FitLogic():
                 elif len(np.shape(var))!=1:
                     self.logMsg('Given parameter is no one dimensional array.', \
                                 msgType='error')                     
-            #set paraameters 
-                                
-          
-            mod,params = self.make_lorentzian_model()
-            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
-            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())            
+            #set paraameters          
             
-            offset=data_smooth.max()
+            data_smooth,offset=self.find_offset_parameter(x_axis,data)
 
             data_level=data-offset        
             data_min=data_level.min()       
@@ -686,15 +721,7 @@ class FitLogic():
                                 
             
             #set paraameters 
-            
-            #lorentzian filter            
-            mod,params = self.make_lorentzian_model()
-            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
-            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())   
-            
-            #finding most frequent value which is supposed to be the offset
-            hist=np.histogram(data_smooth,bins=10)
-            offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+            data_smooth,offset=self.find_offset_parameter(x_axis,data)            
             
             data_level=data_smooth-offset        
 
@@ -860,6 +887,176 @@ class FitLogic():
             
             return result
 
+
+##############################################################################
+##############################################################################
+
+                        #N14 fitting
+
+##############################################################################
+##############################################################################  
+
+        def estimate_N14(self,x_axis=None,data=None):
+            """ This method provides an estimation of all fitting parameters for 
+            fitting the three equdistant lorentzian dips of the hyperfine interaction
+            of a N14 nuclear spin. Here the splitting is set as an expression, if the
+            splitting is not exactly 2.15MHz the fit will not work.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return lmfit.parameter.Parameters parameters: New object corresponding
+                                                           parameters like offset,
+                                                           the three sigma's, the 
+                                                           three amplitudes and centers
+                                
+            """
+
+            data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+            
+            #filter should always have a length of approx linewidth 1MHz
+            stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
+            lorentz=np.ones(int(stepsize_in_x)+1)
+            x_filter=np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
+            lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
+                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5), 
+                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5), 
+                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5), 
+                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
+            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())   
+
+            parameters=Parameters()
+            
+            parameters.add('lorentz0_amplitude',value=data_smooth_lorentz.min()-offset,max=-1e-6)
+            parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-2.15)
+            parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
+            parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+2.15,expr='lorentz0_center+2.15')
+            parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('lorentz2_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz2_center',value=parameters['lorentz1_center'].value+2.15,expr='lorentz0_center+4.3')
+            parameters.add('lorentz2_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('c',value=offset)
+                        
+            return parameters
+            
+            
+        def make_N14_fit(self,axis=None,data=None,add_parameters=None):
+            """ This method performes a fit on the provided data where a N14 
+            hyperfine interaction of 2.15 MHz is taken into accound.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data 
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """            
+
+            parameters=self.estimate_N14(axis,data)    
+
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                parameters=self.substitute_parameter(parameters=parameters,update_parameters=add_parameters)  
+
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+                                
+            result=mod.fit(data=data,x=axis,params=parameters)
+
+
+            return result
+
+##############################################################################
+##############################################################################
+
+                        #N15 fitting
+
+##############################################################################
+##############################################################################  
+
+        def estimate_N15(self,x_axis=None,data=None):
+            """ This method provides an estimation of all fitting parameters for 
+            fitting the three equdistant lorentzian dips of the hyperfine interaction
+            of a N15 nuclear spin. Here the splitting is set as an expression, if the
+            splitting is not exactly 3.03MHz the fit will not work.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return lmfit.parameter.Parameters parameters: New object corresponding
+                                                           parameters like offset,
+                                                           the three sigma's, the 
+                                                           three amplitudes and centers
+                                
+            """
+
+            data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+            
+            hf_splitting=3.03
+            #filter should always have a length of approx linewidth 1MHz
+            stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
+            lorentz=np.zeros(int(stepsize_in_x)+1)
+            x_filter=np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
+            lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
+                                            (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4), 
+                                            (x_filter >= len(x_filter)*3/4)], [1, 0,1])
+            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())   
+
+#            plt.plot(x_axis[:len(lorentz)],lorentz)
+#            plt.show()
+
+#            plt.plot(x_axis,data)
+#            plt.plot(x_axis,data_smooth)
+#            plt.plot(x_axis,data_smooth_lorentz)
+#            plt.show()
+            
+            parameters=Parameters()
+            
+            parameters.add('lorentz0_amplitude',value=data_smooth.min()-offset,max=-1e-6)
+            parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
+            parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
+            parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+hf_splitting,expr='lorentz0_center+3.03')
+            parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('c',value=offset)
+                        
+            return parameters
+            
+            
+        def make_N15_fit(self,axis=None,data=None,add_parameters=None):
+            """ This method performes a fit on the provided data where a N14 
+            hyperfine interaction of 3.03 MHz is taken into accound. 
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data 
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """            
+
+            parameters=self.estimate_N15(axis,data)    
+
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                parameters=self.substitute_parameter(parameters=parameters,update_parameters=add_parameters)  
+
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+                                
+            result=mod.fit(data=data,x=axis,params=parameters)
+
+
+            return result
             
 ##############################################################################
 ##############################################################################
@@ -868,7 +1065,33 @@ class FitLogic():
 
 ##############################################################################
 ##############################################################################  
-         
+
+        def N15_testing(self):
+            x = np.linspace(2840, 2860, 101)
+                
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+#            print('Parameters of the model',mod.param_names)
+            
+            p=Parameters()
+            
+            p.add('lorentz0_amplitude',value=-35)
+            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
+            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
+            p.add('lorentz1_amplitude',value=-20)
+            p.add('lorentz1_center',value=p['lorentz0_center'].value+3.03)
+            p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
+            p.add('c',value=100.)
+            
+            data_noisy=(mod.eval(x=x,params=p) 
+                                    + 1.5*np.random.normal(size=x.shape))
+            
+            result=self.make_N15_fit(x,data_noisy)
+            print(result.best_values['lorentz0_center'])            
+            plt.plot(x,data_noisy)
+            plt.plot(x,result.init_fit,'-y')
+            plt.plot(x,result.best_fit,'-r')
+            plt.show()
+            
         def N14_testing(self):
             x = np.linspace(2850, 2860, 101)
                 
@@ -877,37 +1100,31 @@ class FitLogic():
             
             p=Parameters()
             
-#                center=np.random.random(1)*50+2805
-#            p.add('center',max=-1)
-            p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*5+150))
-            p.add('lorentz0_center',value=np.random.random(1)*5.+2850)
-            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1.+0.1))
-            p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*5+150))
-            p.add('lorentz1_center',value=p['lorentz0_center']+2.15)
-            p.add('lorentz1_sigma',value=p['lorentz0_sigma'])
-            p.add('lorentz2_amplitude',value=-abs(np.random.random(1)*5+150))
-            p.add('lorentz2_center',value=p['lorentz0_center']+2.*2.15)
-            p.add('lorentz2_sigma',value=p['lorentz0_sigma'])
+            p.add('lorentz0_amplitude',value=-35)
+            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
+            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
+            p.add('lorentz1_amplitude',value=-20)
+            p.add('lorentz1_center',value=p['lorentz0_center'].value+2.15)
+            p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
+            p.add('lorentz2_amplitude',value=-10.)
+            p.add('lorentz2_center',value=p['lorentz1_center'].value+2.15)
+            p.add('lorentz2_sigma',value=p['lorentz0_sigma'].value)
             p.add('c',value=100.)
             
             data_noisy=(mod.eval(x=x,params=p) 
-                                    + 1.*np.random.normal(size=x.shape))
-
-            #lorentzian filter            
-            lorentz=mod.eval(x=np.linspace(0,10,11),params=p)
-            print(lorentz,np.linspace(0,10,11))
-#            data_smooth = filters.convolve1d(data_noisy, lorentz/lorentz.sum()) 
-            gaus=gaussian(10,10)
-#            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())            
-                                   
+                                    + 2*np.random.normal(size=x.shape))
+            
+            result=self.make_N14_fit(x,data_noisy)
+#            print(result.best_values['lorentz0_center'])            
             plt.plot(x,data_noisy)
-#            plt.plot(x,result.init_fit,'-y')
-#            plt.plot(x,result.best_fit,'-r')
-#            plt.plot(x,data_smooth,'-g')
+            plt.plot(x,result.init_fit,'-y')
+            plt.plot(x,result.best_fit,'-r')
             plt.show()
+
+
             
         def double_lorentzian_testing(self):
-            runs=np.linspace(0,100,101)
+            runs=np.linspace(0,1,1)
             results=np.array([runs,runs,runs,runs])
             for ii in runs:
                 x = np.linspace(2850, 2900, 51)
@@ -919,15 +1136,15 @@ class FitLogic():
                 
 #                center=np.random.random(1)*50+2805
     #            p.add('center',max=-1)
-                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*5+150))
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
                 p.add('lorentz0_center',value=np.random.random(1)*50.0+2850)
-                p.add('lorentz0_sigma',value=abs(np.random.random(1)*5.+1.))
-                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*5+150))
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
                 p.add('lorentz1_center',value=np.random.random(1)*50.0+2850)
-                p.add('lorentz1_sigma',value=abs(np.random.random(1)*5.+1.))
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
                 p.add('c',value=100.)
                 
-                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
+#                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
 #                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
                 data_noisy=(mod.eval(x=x,params=p) 
                                         + 2.*np.random.normal(size=x.shape))
@@ -936,6 +1153,7 @@ class FitLogic():
 #                para.add('lorentz1_center',expr='lorentz0_center+20.0')
     
                 result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+                print(result)
 #                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
                 
 #                print('center 1 und 2',result.best_values['lorentz0_center'],result.best_values['lorentz1_center'])
@@ -943,7 +1161,7 @@ class FitLogic():
                 gaus=gaussian(10,10)
                 data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum())
                        
-#                print(result.params)
+#                print(result.fit_result())
                 try:
     #            print(result.fit_report()
                     plt.plot(x,data_noisy)
@@ -954,34 +1172,33 @@ class FitLogic():
                     print('exception')
     ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
                 plt.show()
-                if p['lorentz0_center'].value<p['lorentz1_center'].value:
-                    results[0,ii]=p['lorentz0_center'].value
-                    results[1,ii]=p['lorentz1_center'].value
-                else:
-                    results[0,ii]=p['lorentz1_center'].value
-                    results[1,ii]=p['lorentz0_center'].value
-                if result.best_values['lorentz0_center']<result.best_values['lorentz1_center']:
-                    results[2,ii]=result.best_values['lorentz0_center']
-                    results[3,ii]=result.best_values['lorentz1_center']
-                else:
-                    results[2,ii]=result.best_values['lorentz1_center']
-                    results[3,ii]=result.best_values['lorentz0_center']  
+#                if p['lorentz0_center'].value<p['lorentz1_center'].value:
+#                    results[0,ii]=p['lorentz0_center'].value
+#                    results[1,ii]=p['lorentz1_center'].value
+#                else:
+#                    results[0,ii]=p['lorentz1_center'].value
+#                    results[1,ii]=p['lorentz0_center'].value
+#                if result.best_values['lorentz0_center']<result.best_values['lorentz1_center']:
+#                    results[2,ii]=result.best_values['lorentz0_center']
+#                    results[3,ii]=result.best_values['lorentz1_center']
+#                else:
+#                    results[2,ii]=result.best_values['lorentz1_center']
+#                    results[3,ii]=result.best_values['lorentz0_center']  
 #                time.sleep(1)
-            plt.plot(runs[:],results[0,:],'-r')
-            plt.plot(runs[:],results[1,:],'-g')
-            plt.plot(runs[:],results[2,:],'-b')
-            plt.plot(runs[:],results[3,:],'-y')
-            plt.show()
+#            plt.plot(runs[:],results[0,:],'-r')
+#            plt.plot(runs[:],results[1,:],'-g')
+#            plt.plot(runs[:],results[2,:],'-b')
+#            plt.plot(runs[:],results[3,:],'-y')
+#            plt.show()
             
         def lorentzian_testing(self):
-            x = np.linspace(900, 1000, 31)
+            x = np.linspace(800, 1000, 301)
             
             mod,params = self.make_lorentzian_model()
             print('Parameters of the model',mod.param_names)
             p=Parameters()
             
-#            p.add('center',max=-1)
-            params.add('amplitude',value=-100.)
+            params.add('amplitude',value=-30.)
             params.add('center',value=920.)
             params.add('sigma',value=10)
             params.add('c',value=10.)
@@ -1085,4 +1302,4 @@ class FitLogic():
 #            print('center',result.params['center'].value)
             
 test=FitLogic()
-test.N14_testing()   
+test.N15_testing()   
