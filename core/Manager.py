@@ -385,28 +385,6 @@ class Manager(QtCore.QObject):
         # print self.tree['config']
         self.sigConfigChanged.emit()
 
-    def listConfigurations(self):
-        """Return a list of the available named configurations.
-
-          @return list: user configurations
-        """
-        with self.lock:
-            if 'configurations' in self.tree['config']:
-                return list(self.tree['config']['configurations'].keys())
-            else:
-                return []
-
-    def loadDefinedConfig(self, name):
-        """ Loads the specified configuration file encoded in name parameter.
-        
-          @param string name: Name of the loadable configuration file.
-        """
-        with self.lock:
-            if name not in self.tree['config']['configurations']:
-                raise Exception('Could not find configuration named {0}'.format(name) )
-            cfg = self.tree['config']['configurations'].get(name, )
-        self.configure(cfg)
-
     def readConfigFile(self, fileName, missingOk=True):
         """Actually check if the configuration file exists and read it
 
@@ -441,20 +419,6 @@ class Manager(QtCore.QObject):
                 os.makedirs(dirName)
             configfile.writeConfigFile(data, fileName)
     
-    def appendConfigFile(self, data, fileName):
-        """Append configuration to a file in the currently used config directory.
-
-          @param dict data: dictionary to write into file
-          @param string fileName: path for filr to be written
-        """
-        with self.lock:
-            fileName = self.configFileName(fileName)
-            if os.path.exists(fileName):
-                configfile.appendConfigFile(data, fileName)
-            else:
-                raise Exception("Could not find file {0}".format(fileName) )
-        
-        
     def configFileName(self, name):
         """Get the full path of a configuration file from its filename.
 
@@ -466,6 +430,10 @@ class Manager(QtCore.QObject):
             return os.path.join(self.configDir, name)
 
     def saveConfig(self, filename):
+        """Save configuration to a file.
+            
+          @param str filename: path where the config flie should be saved
+        """
         saveconfig = OrderedDict()
         saveconfig.update(self.tree['defined'])
         saveconfig['startup'] = self.tree['start']
@@ -475,7 +443,12 @@ class Manager(QtCore.QObject):
         self.logger.logMsg('Saved configuration to {0}'.format(filename), msgType='status')
 
     def loadConfig(self, filename):
+        """ Load configuration from file.
+
+          @param str filename: path of file to be loaded
+        """
         newconfig = self.readConfigFile(filename)
+        # FIXME: Does nothing right now
         self.logger.logMsg('Loaded configuration from {0}'.format(filename), msgType='status')
 
     def setBaseDir(self, path):
