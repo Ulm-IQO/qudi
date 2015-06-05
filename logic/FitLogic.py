@@ -9,16 +9,9 @@ from collections import OrderedDict
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
 from scipy.signal import gaussian
 from scipy.ndimage import filters
-
+ 
 import numpy as np
 import scipy.optimize as opt#, scipy.stats
-
-#TODO:
-#try smooth as estimator
-#Missing functions:  
-#                    - N15
-#                    - N14
-#                    - C13 variabler
 
 
 #FIXME: In general is it needed for any purposes to use weighting?
@@ -527,7 +520,47 @@ class FitLogic(GenericLogic):
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
 
- 
+##############################################################################
+##############################################################################
+
+            #Additional routines for Lorentzian-like models
+
+##############################################################################
+############################################################################## 
+        
+        def find_offset_parameter(self,x_values=None,data=None):
+            """ This method convolves the data with a lorentzian and the finds the
+            offset which is supposed to be the most likely valy via a histogram.
+            Additional the smoothed data is returned
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return int error: error code (0:OK, -1:error)
+            @return float array data_smooth: smoothed data
+            @return float offset: estimated offset
+                                
+                    
+            """
+            #lorentzian filter            
+            mod,params = self.make_lorentzian_model()
+            
+            if len(x_values)<20.:
+                len_x=5
+            if len(x_values)>=100.:
+                len_x=10
+            else:
+                len_x=int(len(x_values)/10.)+1
+                
+            lorentz=mod.eval(x=np.linspace(0,len_x,len_x),amplitude=1,c=0.,sigma=len_x/4.,center=len_x/2.)
+            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),mode='constant',cval=data.max())   
+            
+            #finding most frequent value which is supposed to be the offset
+            hist=np.histogram(data_smooth,bins=10)
+            offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+            
+            return data_smooth,offset
 
 ##############################################################################
 ##############################################################################
@@ -584,14 +617,9 @@ class FitLogic(GenericLogic):
                 elif len(np.shape(var))!=1:
                     self.logMsg('Given parameter is no one dimensional array.', \
                                 msgType='error')                     
-            #set paraameters 
-                                
-          
-            mod,params = self.make_lorentzian_model()
-            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
-            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())            
+            #set paraameters          
             
-            offset=data_smooth.max()
+            data_smooth,offset=self.find_offset_parameter(x_axis,data)
 
             data_level=data-offset        
             data_min=data_level.min()       
@@ -724,15 +752,7 @@ class FitLogic(GenericLogic):
                                 
             
             #set paraameters 
-            
-            #lorentzian filter            
-            mod,params = self.make_lorentzian_model()
-            lorentz=mod.eval(x=np.linspace(0,10,11),amplitude=1,c=0.,sigma=2.,center=5.)
-            data_smooth = filters.convolve1d(data, lorentz/lorentz.sum())   
-            
-            #finding most frequent value which is supposed to be the offset
-            hist=np.histogram(data_smooth,bins=10)
-            offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+            data_smooth,offset=self.find_offset_parameter(x_axis,data)            
             
             data_level=data_smooth-offset        
 
@@ -896,4 +916,175 @@ class FitLogic(GenericLogic):
                 self.logMsg('The double lorentuab fit did not work:'+result.message, \
                             msgType='message')
             
+            return result
+
+
+##############################################################################
+##############################################################################
+
+                        #N14 fitting
+
+##############################################################################
+##############################################################################  
+
+        def estimate_N14(self,x_axis=None,data=None):
+            """ This method provides an estimation of all fitting parameters for 
+            fitting the three equdistant lorentzian dips of the hyperfine interaction
+            of a N14 nuclear spin. Here the splitting is set as an expression, if the
+            splitting is not exactly 2.15MHz the fit will not work.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return lmfit.parameter.Parameters parameters: New object corresponding
+                                                           parameters like offset,
+                                                           the three sigma's, the 
+                                                           three amplitudes and centers
+                                
+            """
+
+            data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+            
+            #filter should always have a length of approx linewidth 1MHz
+            stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
+            lorentz=np.ones(int(stepsize_in_x)+1)
+            x_filter=np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
+            lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
+                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5), 
+                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5), 
+                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5), 
+                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
+            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())   
+
+            parameters=Parameters()
+            
+            parameters.add('lorentz0_amplitude',value=data_smooth_lorentz.min()-offset,max=-1e-6)
+            parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-2.15)
+            parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
+            parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+2.15,expr='lorentz0_center+2.15')
+            parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('lorentz2_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz2_center',value=parameters['lorentz1_center'].value+2.15,expr='lorentz0_center+4.3')
+            parameters.add('lorentz2_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('c',value=offset)
+                        
+            return parameters
+            
+            
+        def make_N14_fit(self,axis=None,data=None,add_parameters=None):
+            """ This method performes a fit on the provided data where a N14 
+            hyperfine interaction of 2.15 MHz is taken into accound.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data 
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """            
+
+            parameters=self.estimate_N14(axis,data)    
+
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                parameters=self.substitute_parameter(parameters=parameters,update_parameters=add_parameters)  
+
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+                                
+            result=mod.fit(data=data,x=axis,params=parameters)
+
+
+            return result
+
+##############################################################################
+##############################################################################
+
+                        #N15 fitting
+
+##############################################################################
+##############################################################################  
+
+        def estimate_N15(self,x_axis=None,data=None):
+            """ This method provides an estimation of all fitting parameters for 
+            fitting the three equdistant lorentzian dips of the hyperfine interaction
+            of a N15 nuclear spin. Here the splitting is set as an expression, if the
+            splitting is not exactly 3.03MHz the fit will not work.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return lmfit.parameter.Parameters parameters: New object corresponding
+                                                           parameters like offset,
+                                                           the three sigma's, the 
+                                                           three amplitudes and centers
+                                
+            """
+
+            data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+            
+            hf_splitting=3.03
+            #filter should always have a length of approx linewidth 1MHz
+            stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
+            lorentz=np.zeros(int(stepsize_in_x)+1)
+            x_filter=np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
+            lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
+                                            (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4), 
+                                            (x_filter >= len(x_filter)*3/4)], [1, 0,1])
+            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())   
+
+#            plt.plot(x_axis[:len(lorentz)],lorentz)
+#            plt.show()
+
+#            plt.plot(x_axis,data)
+#            plt.plot(x_axis,data_smooth)
+#            plt.plot(x_axis,data_smooth_lorentz)
+#            plt.show()
+            
+            parameters=Parameters()
+            
+            parameters.add('lorentz0_amplitude',value=data_smooth.min()-offset,max=-1e-6)
+            parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
+            parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
+            parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+            parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+hf_splitting,expr='lorentz0_center+3.03')
+            parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
+            parameters.add('c',value=offset)
+                        
+            return parameters
+            
+            
+        def make_N15_fit(self,axis=None,data=None,add_parameters=None):
+            """ This method performes a fit on the provided data where a N14 
+            hyperfine interaction of 3.03 MHz is taken into accound. 
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data 
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """            
+
+            parameters=self.estimate_N15(axis,data)    
+
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                parameters=self.substitute_parameter(parameters=parameters,update_parameters=add_parameters)  
+
+            mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+                                
+            result=mod.fit(data=data,x=axis,params=parameters)
+
+
             return result
