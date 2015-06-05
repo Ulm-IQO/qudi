@@ -27,7 +27,12 @@ from urllib.parse import urlparse
 
 
 class RemoteObjectManager(QtCore.QObject):
+    """ This shares modules with other computers and is resonsible
+        for obtaining modules shared by other computer.
+    """
     def __init__(self, threadManager, logger):
+        """ Handle sharing and getting shared modules.
+        """
         super().__init__()
         self.hostname = socket.gethostname()
         self.tm = threadManager
@@ -37,6 +42,8 @@ class RemoteObjectManager(QtCore.QObject):
         self.sharedModules = dict()
 
     def makeRemoteService(self):
+        """ A function that returns a class containing a module list hat can be manipulated from the host.
+        """
         class RemoteModuleService(rpyc.Service):
             modules = self.sharedModules
             def on_connect(self):
