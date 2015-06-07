@@ -7,19 +7,21 @@ from pyqtgraph.Qt import QtCore
 
 import os
 import sys
-import zmq
-import IPython.kernel.zmq.ipkernel
-from IPython.kernel.zmq.ipkernel import Kernel
-from IPython.kernel.zmq.heartbeat import Heartbeat
-from IPython.kernel.zmq.session import Session
-from IPython.kernel import write_connection_file
-from IPython.core.interactiveshell import InteractiveShell
-from zmq.eventloop.zmqstream import ZMQStream
-from zmq.eventloop.ioloop import IOLoop
+#import zmq
+#import IPython.kernel.zmq.ipkernel
+#from IPython.kernel.zmq.ipkernel import Kernel
+#from IPython.kernel.zmq.heartbeat import Heartbeat
+#from IPython.kernel.zmq.session import Session
+#from IPython.kernel import write_connection_file
+#from IPython.core.interactiveshell import InteractiveShell
+#from zmq.eventloop.zmqstream import ZMQStream
+#from zmq.eventloop.ioloop import IOLoop
 import atexit
 import socket
 import logging
 import threading
+
+from IPython.qt.inprocess import QtInProcessKernelManager
 
 def _on_os_x_10_9():
     import platform
@@ -61,17 +63,24 @@ class IPythonLogic(GenericLogic):
  
     def activation(self, e=None):
         self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
-        self.ipythread = QtCore.QThread()
-        self.ipykernel = IPythonKernel(self)
-        self.ipykernel.moveToThread(self.ipythread)
-        self.ipythread.started.connect(self.ipykernel.prepare)
-        self.ipythread.start()
+        self.kernel_manager = QtInProcessKernelManager()
+        self.kernel_manager.start_kernel()
+        self.kernel = self.kernel_manager.kernel
+        self.kernel.gui = 'qt4'
+        self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
+        self.logMsg('IPython kernel alive {0}'.format(self.kernel_manager.is_alive()))
+        #self.ipythread = QtCore.QThread()
+        #self.ipykernel = IPythonKernel(self)
+        #self.ipykernel.moveToThread(self.ipythread)
+        #self.ipythread.started.connect(self.ipykernel.prepare)
+        #self.ipythread.start()
 
     def deactivation(self, e=None):
         self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
-        self.ipykernel.loop.stop()
-        self.ipythread.quit()
-        self.ipythread.wait()
+        self.kernel_manager.shutdown_kernel()
+        #self.ipykernel.loop.stop()
+        #self.ipythread.quit()
+        #self.ipythread.wait()
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace, 

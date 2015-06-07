@@ -76,6 +76,8 @@ if set_api:
         import sip
         sip.setapi('QString', 2)
         sip.setapi('QVariant', 2)
+        # IPython needs this
+        os.environ['QT_API'] = 'pyqt'
     except ImportError:
         print('Import Error in core/__init__.py: no sip module found. '
                'Implement the error handling!')

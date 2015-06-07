@@ -21,7 +21,10 @@ import os
 import numpy as np
 from collections import OrderedDict
 from gui.GUIBase import GUIBase
-from IPython.lib.kernel import connect_qtconsole
+from pyqtgraph.Qt import QtCore, QtGui
+
+from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
+#from IPython.lib.kernel import connect_qtconsole
 
 class IPythonGui(GUIBase):
     """
@@ -35,7 +38,7 @@ class IPythonGui(GUIBase):
           @param dict config: Module configuration
           @param dict kwargs: Optional arguments as a dict
         """
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
         ## declare connectors
@@ -43,19 +46,34 @@ class IPythonGui(GUIBase):
         self.connector['in']['ipythonlogic']['class'] = 'IPythonLogic'
         self.connector['in']['ipythonlogic']['object'] = None
 
-        self.consoles = list()
+       # self.consoles = list()
+        #self.clients = list()
 
     def initUI(self, e=None):
         """Create all UI objects and show the window.
           @param object e: Fysom state change notice
         """
-        pass
+        ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
+
+        self._mw = QtGui.QMainWindow()
+        self._mw.setWindowTitle('qudi: IPython Console')
+        self._central = QtGui.QWidget()
+        self._mw.setCentralWidget(self._central)
+        self._layout = QtGui.QVBoxLayout(self._central)
+        self._pywid = RichIPythonWidget()
+        self._pywid.kernel_manager = ipythonlogic.kernel_manager
+        self._pywid.kernel_client = self._pywid.kernel_manager.client()
+        self._pywid.kernel_client.start_channels()
+        self._layout.addWidget(self._pywid)
        
     def show(self):
         """Make sure that the window is visible and at the top.
         """
-        ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
-        if ipythonlogic.getState() != 'deactivated':
-            con = connect_qtconsole(ipythonlogic.ipykernel.connection_file)
-        self.consoles.append(con)
+        self._mw.show()
  
+    def deactivation(self, e=None):
+        """ Hide window and stop ipython console.
+          @param object e: Fysom state change notice
+        """
+        self._pywid.kernel_client.stop_channels()
+        self._mw.close()
