@@ -53,6 +53,7 @@ class OptimiserLogic(GenericLogic):
         self._clock_frequency = 200
         self.return_slowness = 20
         
+        #setting standard parameter for refocus
         self.refocus_XY_size =  0.6
         self.refocus_XY_step = 0.06
         self.refocus_Z_size = 2
@@ -67,6 +68,8 @@ class OptimiserLogic(GenericLogic):
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+        @param e: error code
+        @return int: error code (0:OK, -1:error)
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
 #        print("Scanning device is", self._scanning_device)
@@ -86,14 +89,25 @@ class OptimiserLogic(GenericLogic):
         
         self._max_offset = 3.
         
+        # Initialization of internal counter for scanning 
         self._scan_counter = 0
         
+        # Sets connections between signals and functions  
         self.signal_scan_xy_line_next.connect(self._refocus_line, QtCore.Qt.QueuedConnection)
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
         
-#        self.testing()
+        return 0
+                
+    def deactivation(self,e):
+        
+        """ Reverse steps of activation 
+        
+        @param e: error code
+        @return int: error code (0:OK, -1:error)
+        """        
+        return 0    
         
     def testing(self):
         pass
@@ -114,9 +128,12 @@ class OptimiserLogic(GenericLogic):
             return 0
             
     def start_refocus(self, trackpoint=None):
-        """Starts refocus        
+        """Starts refocus 
+        @param trackpoint
         """
         print('start refocusing')
+        # checking if refocus corresponding to crosshair or corresponding 
+        # to trackpoint
         if isinstance(trackpoint, (np.ndarray,)) and trackpoint.size == 3:
             self.is_crosshair = False
             self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
@@ -149,10 +166,10 @@ class OptimiserLogic(GenericLogic):
         """Initialisation of the xy refocus image
         """
         self._scan_counter = 0
-        
+        # defining center of refocus image
         x0 = self._trackpoint_x
         y0 = self._trackpoint_y
-        
+         # defining position intervals for refocus
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         xmax = np.clip(x0 + 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         ymin = np.clip(y0 - 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
@@ -193,6 +210,7 @@ class OptimiserLogic(GenericLogic):
         
         try:                         
             if self._scan_counter == 0:
+                
                 start_line = np.vstack( (np.linspace(self._trackpoint_x, \
                                                      self.xy_refocus_image[self._scan_counter,0,0], \
                                                      self.return_slowness), \
@@ -232,10 +250,11 @@ class OptimiserLogic(GenericLogic):
         self.signal_image_updated.emit()
         self._scan_counter += 1
         
-        if self._scan_counter < np.size(self._Y_values):            
+        if self._scan_counter < np.size(self._Y_values):   
+            #calling next line scan in refocus procedure
             self.signal_scan_xy_line_next.emit()
         else:
-            #x,y-fit
+            #x,y-fit when refocus is finished
             fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
             xy_fit_data = self.xy_refocus_image[:,:,3].ravel()
             axes = np.empty((len(self._X_values)*len(self._Y_values),2))
@@ -332,6 +351,7 @@ class OptimiserLogic(GenericLogic):
     def _scan_z_line(self):
         """Scans the z line for refocus
         """
+        #defining trace of positions for z-refocus 
         Z_line = self._zimage_Z_values    #todo: tilt_correction
         X_line = self.refocus_x * np.ones(self._zimage_Z_values.shape)
         Y_line = self.refocus_y * np.ones(self._zimage_Z_values.shape)
