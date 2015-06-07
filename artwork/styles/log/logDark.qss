@@ -1,4 +1,5 @@
 body {color: #FFF; font-family: sans;}
+a {color: #0FF;}
 .entry {}
 .error .message {color: #F11}
 .warning .message {color: #F90}
