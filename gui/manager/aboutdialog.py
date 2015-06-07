@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'aboutdialog.ui'
+# Form implementation generated from reading ui file './gui/manager/aboutdialog.ui'
 #
-# Created: Mon Jun  1 09:06:08 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -48,6 +47,7 @@ class Ui_AboutDialog(object):
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
         self.gridLayout.addWidget(self.buttonBox, 3, 0, 1, 1)
         self.label = QtGui.QLabel(AboutDialog)
+        self.label.setOpenExternalLinks(True)
         self.label.setObjectName(_fromUtf8("label"))
         self.gridLayout.addWidget(self.label, 1, 0, 1, 1)
         self.tabWidget = QtGui.QTabWidget(AboutDialog)
@@ -69,7 +69,7 @@ class Ui_AboutDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName(_fromUtf8("scrollArea"))
         self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 479, 192))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 98, 300))
         self.scrollAreaWidgetContents.setObjectName(_fromUtf8("scrollAreaWidgetContents"))
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_3.setObjectName(_fromUtf8("verticalLayout_3"))
@@ -88,12 +88,13 @@ class Ui_AboutDialog(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollArea_2.setObjectName(_fromUtf8("scrollArea_2"))
         self.scrollAreaWidgetContents_2 = QtGui.QWidget()
-        self.scrollAreaWidgetContents_2.setGeometry(QtCore.QRect(0, 0, 479, 186))
+        self.scrollAreaWidgetContents_2.setGeometry(QtCore.QRect(0, 0, 468, 168))
         self.scrollAreaWidgetContents_2.setObjectName(_fromUtf8("scrollAreaWidgetContents_2"))
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.scrollAreaWidgetContents_2)
         self.verticalLayout_4.setObjectName(_fromUtf8("verticalLayout_4"))
         self.aboutText_3 = QtGui.QLabel(self.scrollAreaWidgetContents_2)
         self.aboutText_3.setWordWrap(True)
+        self.aboutText_3.setOpenExternalLinks(True)
         self.aboutText_3.setObjectName(_fromUtf8("aboutText_3"))
         self.verticalLayout_4.addWidget(self.aboutText_3)
         self.scrollArea_2.setWidget(self.scrollAreaWidgetContents_2)
