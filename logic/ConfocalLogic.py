@@ -14,6 +14,7 @@ class ConfocalLogic(GenericLogic):
     """
     
     signal_start_scanning = QtCore.Signal()
+    signal_continue_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
@@ -102,6 +103,7 @@ class ConfocalLogic(GenericLogic):
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
+        self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
         
         self.initialize_image()
         self._zscan = True
@@ -159,16 +161,12 @@ class ConfocalLogic(GenericLogic):
         
         return 0
         
-    def continue_scanning(self, zscan = False):
+    def continue_scanning(self):
         """Continue scanning 
-        
-        @param bool zscan: zscan if true, xyscan if false
         
         @return int: error code (0:OK, -1:error)
         """
-            
-        self._zscan=zscan
-        self.signal_start_scanning.emit()
+        self.signal_continue_scanning.emit()
         
         return 0
         
@@ -256,13 +254,26 @@ class ConfocalLogic(GenericLogic):
         return 0
 
     def start_scanner(self):
-        """Setting up the scanner device.
+        """Setting up the scanner device and starts the scanning procedure
         
         @return int: error code (0:OK, -1:error)
         """
         
         self.lock()
         self.initialize_image()
+        self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        self._scanning_device.set_up_scanner()
+        self.signal_scan_lines_next.emit()
+        
+        return 0
+        
+    def continue_scanner(self):
+        """Continue the scanning procedure
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        self.lock()
         self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         self._scanning_device.set_up_scanner()
         self.signal_scan_lines_next.emit()
