@@ -67,7 +67,7 @@ class ConfocalLogic(GenericLogic):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         
-        @parameter?????????
+        @param e: error code
         """        
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
 #        print("Scanning device is", self._scanning_device)
@@ -95,9 +95,10 @@ class ConfocalLogic(GenericLogic):
         self.xy_resolution = 100
         self.z_resolution = 50
         
-          
+        # Initialization of internal counter for scanning  
         self._scan_counter=0
-        #??????????   
+       
+        # Sets connections between signals and functions   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
@@ -106,9 +107,15 @@ class ConfocalLogic(GenericLogic):
         self._zscan = True
         self.initialize_image()
         self._zscan = False
+
         
-        self.testing()
+    def deactivation(self, e):
+        """ Reverse steps of activation 
         
+        @param e: error code
+        @return int: error code (0:OK, -1:error)
+        """        
+        return 0
         
     def testing(self):
         """ Debug method. """
@@ -147,6 +154,19 @@ class ConfocalLogic(GenericLogic):
 #            time.sleep(0.01)
             
         self._scan_counter = 0
+        self._zscan=zscan
+        self.signal_start_scanning.emit()
+        
+        return 0
+        
+    def continue_scanning(self, zscan = False):
+        """Continue scanning 
+        
+        @param bool zscan: zscan if true, xyscan if false
+        
+        @return int: error code (0:OK, -1:error)
+        """
+            
         self._zscan=zscan
         self.signal_start_scanning.emit()
         
@@ -330,6 +350,7 @@ class ConfocalLogic(GenericLogic):
             
         try:
             if self._scan_counter == 0:
+                # defines trace of positions for single line scan 
                 start_line = np.vstack( (np.linspace(self._current_x, \
                                                      image[self._scan_counter,0,0], \
                                                      self.return_slowness), \
@@ -342,22 +363,23 @@ class ConfocalLogic(GenericLogic):
                                          np.linspace(self._current_a, \
                                                      0, \
                                                      self.return_slowness) ))
-                
+                # scan of a single line
                 start_line_counts = self._scanning_device.scan_line(start_line)
-                   
+            # defines trace of positions for a single line scan        
             line = np.vstack( (image[self._scan_counter,:,0],
                                image[self._scan_counter,:,1], 
                                image[self._scan_counter,:,2], 
                                self._AL) )
-                
+            # scan of a single line    
             line_counts = self._scanning_device.scan_line(line)
+            # defines trace of positions for a single return line scan 
             return_line = np.vstack( (self._return_XL, 
                                   image[self._scan_counter,0,1] * np.ones(self._return_XL.shape), 
                                   image[self._scan_counter,0,2] * np.ones(self._return_XL.shape), 
                                   self._return_AL) )
-        
+            # scan of a single return-line  
             return_line_counts = self._scanning_device.scan_line(return_line)
-            
+            # updating images
             if self._zscan:
                 self.depth_image[self._scan_counter,:,3] = line_counts
                 self.signal_depth_image_updated.emit()
@@ -368,7 +390,7 @@ class ConfocalLogic(GenericLogic):
             #self.sigImageNext.emit()
         # call this again from event loop
             self._scan_counter += 1
-        
+            # stop scanning when last line scan was performed
             if self._scan_counter >= np.size(self._image_vert_axis): 
                 self.stop_scanning()           
             self.signal_scan_lines_next.emit()
