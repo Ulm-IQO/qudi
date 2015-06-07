@@ -49,6 +49,9 @@
      <property name="text">
       <string>Software Version</string>
      </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item row="2" column="0">
@@ -88,8 +91,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>479</width>
-            <height>192</height>
+            <width>98</width>
+            <height>300</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -124,8 +127,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>479</width>
-            <height>186</height>
+            <width>468</width>
+            <height>168</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -135,6 +138,9 @@
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;QuDi is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.&lt;/p&gt;&lt;p&gt;QuDi is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.&lt;/p&gt;&lt;p&gt;You should have received a copy of the GNU General Public License along with QuDi. If not, see &lt;a href=&quot;http://www.gnu.org/licenses/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#00ffff;&quot;&gt;http://www.gnu.org/licenses/&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+             <property name="openExternalLinks">
               <bool>true</bool>
              </property>
             </widget>
