@@ -349,11 +349,12 @@ class PoiManagerGui(GUIBase):
 
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
         
-        self._mw.roi_cb_auto_RadioButton.toggled.connect( self.refresh_roi_colorscale )
-        self._mw.roi_cb_5_95_RadioButton.toggled.connect( self.refresh_roi_colorscale )
+        self._mw.roi_cb_centiles_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_manual_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
         self._mw.roi_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_low_centile_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
+        self._mw.roi_cb_high_centile_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
 
         self._markers = dict()
         
@@ -397,6 +398,10 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_manual_RadioButton.setChecked(True)
         self.refresh_roi_colorscale()
 
+    def shortcut_to_roi_cb_centiles(self):
+        self._mw.roi_cb_centiles_RadioButton.setChecked(True)
+        self.refresh_roi_colorscale()
+
     def refresh_roi_colorscale(self):
         """ Adjust the colorbar in the ROI xy image, and update the image with the 
         new color scale.
@@ -408,15 +413,12 @@ class PoiManagerGui(GUIBase):
         
         # If "Auto" is checked, adjust colour scaling to fit all data.
         # Otherwise, take user-defined values.
-        if self._mw.roi_cb_auto_RadioButton.isChecked():
-            cb_min = self.roi_map_data.min()
-            cb_max = self.roi_map_data.max()
+        if self._mw.roi_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.roi_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.roi_cb_high_centile_InputWidget.value() 
 
-            self.roi_map_image.setImage(image=self.roi_map_data,autoLevels=True)
-
-        elif self._mw.roi_cb_5_95_RadioButton.isChecked():
-            cb_min = np.percentile( self.roi_map_data, 5 ) 
-            cb_max = np.percentile( self.roi_map_data, 95 ) 
+            cb_min = np.percentile( self.roi_map_data, low_centile ) 
+            cb_max = np.percentile( self.roi_map_data, high_centile ) 
 
             self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max) )
 
