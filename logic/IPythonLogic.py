@@ -4,29 +4,28 @@ from logic.GenericLogic import GenericLogic
 from core.util.Mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
-
-import os
-import sys
-import atexit
-import socket
-import logging
+import pyqtgraph as pg
+import numpy as np
 import threading
+import atexit
+import sys
+import os
 
 from IPython.qt.inprocess import QtInProcessKernelManager
 
-old_register = atexit.register
-old_unregister = atexit.unregister
-
-def debug_register(func, *args, **kargs):
-    print('register', func, *args, **kargs)
-    old_register(func, *args, **kargs)
-
-def debug_unregister(func):
-    print('unregister', func)
-    old_unregister(func)
-
-atexit.register = debug_register
-atexit.unregister = debug_unregister
+##old_register = atexit.register
+#old_unregister = atexit.unregister
+#
+#def debug_register(func, *args, **kargs):
+#    print('register', func, *args, **kargs)
+#    old_register(func, *args, **kargs)
+#
+#def debug_unregister(func):
+#    print('unregister', func)
+#    old_unregister(func)
+#
+#atexit.register = debug_register
+#atexit.unregister = debug_unregister
 
 class IPythonLogic(GenericLogic):        
     """ Logic module containing an IPython kernel.
@@ -53,6 +52,12 @@ class IPythonLogic(GenericLogic):
         self.kernel_manager.start_kernel()
         self.kernel = self.kernel_manager.kernel
         self.namespace = self.kernel.shell.user_ns
+        self.namespace.update({
+            'pg': pg,
+            'np': np,
+            'config': self._manager.tree['defined'],
+            'manager': self._manager
+            })
         self.updateModuleList()
         self.kernel.gui = 'qt4'
         self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
