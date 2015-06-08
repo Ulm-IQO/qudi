@@ -17,6 +17,7 @@ class ODMRLogic(GenericLogic):
     signal_ODMR_plot_updated = QtCore.Signal()
     signal_ODMR_matrix_updated = QtCore.Signal()
     signal_ODMR_finished = QtCore.Signal()
+    signal_ODMR_elapsedtime_changed = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -138,6 +139,7 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter = 0
         self._StartTime = time.time()
         self.ElapsedTime = 0
+        self.signal_ODMR_elapsedtime_changed.emit()
         
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
@@ -203,9 +205,11 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter += 1
         
         self.ElapsedTime = time.time() - self._StartTime
+        self.signal_ODMR_elapsedtime_changed.emit()
         if self.ElapsedTime >= self.RunTime:
             self.do_fit(fit_function = 'Double Lorentzian')
             self.stopRequested = True
+            self.signal_ODMR_finished.emit()
         
         self.signal_ODMR_plot_updated.emit() 
         self.signal_ODMR_matrix_updated.emit() 

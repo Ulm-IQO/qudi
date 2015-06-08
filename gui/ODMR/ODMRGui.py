@@ -176,7 +176,8 @@ class ODMRGui(GUIBase):
         self._mw.step_freq_InputWidget.setText(str(self._odmr_logic.MW_step))
         self._mw.stop_freq_InputWidget.setText(str(self._odmr_logic.MW_stop))
         self._mw.power_InputWidget.setText(str(self._odmr_logic.MW_power))
-        self._mw.runtime_InputWidget.setText(str())
+        self._mw.runtime_InputWidget.setText(str(self._odmr_logic.RunTime))
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))      
         self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
         self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
         
@@ -208,6 +209,7 @@ class ODMRGui(GUIBase):
                 
         self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
         self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
+        self._odmr_logic.signal_ODMR_elapsedtime_changed.connect(self.refresh_elapsedtime)
         # connect settings signals
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sd.accepted.connect(self.update_settings)
@@ -263,7 +265,10 @@ class ODMRGui(GUIBase):
         '''       
         self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
-        
+     
+    def refresh_elapsedtime(self):
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
+     
     def update_settings(self):
         ''' This method writes the new settings from the gui to the file
         '''
