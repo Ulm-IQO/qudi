@@ -28,8 +28,11 @@ import numpy as np
 import time
 
 class LaserScanningLogic(GenericLogic):
-    """This logic module gathers data from a hardware counting device.
+    """This logic module gathers data from wavemeter and the counter logic.
     """
+    
+    sig_data_updated = QtCore.Signal()
+    sig_update_histogram_next = QtCore.Signal()
 
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
@@ -73,15 +76,17 @@ class LaserScanningLogic(GenericLogic):
                         msgType='status')
                         
         self._wavemeter_timing = 10.
-        self._logic_update_timing = 500.
+        self._logic_acquisition_timing = 10.
+        self._logic_update_timing = 100.
         self._acqusition_start_time = 0
-        self.bins = 200
-        self.data_index = 0
-        self.xmin = 600
-        self.xmax = 800
+        self._bins = 200
+        self._data_index = 0
+        self._xmin = 650
+        self._xmax = 750
         # internal min and max wavelength determined by the measured wavelength
         self.intern_xmax = -1.0
         self.intern_xmin = 1.0e10
+        self.current_wavelength = 0
         
                         
     def activation(self, e):
@@ -101,9 +106,19 @@ class LaserScanningLogic(GenericLogic):
         self._counter_logic = self.connector['in']['counterlogic']['object']
         
         # create a new x axis from xmin to xmax with bins points
-        self.histogram_axis=np.arange(self.xmin, self.xmax, (self.xmax-self.xmin)/self.bins)
-        self.histogram = np.zeros(self.histogram_axis.shape)
+        self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
+        self.histogram = np.zeros(self.histogram_axis.shape)        
         
+        self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
+        
+    def get_max_wavelength(self):
+        return self._xmax
+        
+    def get_min_wavelength(self):
+        return self._xmin
+        
+    def get_bins(self):
+        return self._bins
     
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -157,11 +172,12 @@ class LaserScanningLogic(GenericLogic):
         self._wavemeter_device.start_acqusition()
         
         self.data_index = 0
-        self.rawhisto=np.zeros(self.bins)
-        self.sumhisto=np.ones(self.bins)*1.0e-10
+        self.rawhisto=np.zeros(self._bins)
+        self.sumhisto=np.ones(self._bins)*1.0e-10
         
         # start the measuring thread
-        self._timer.start(self._logic_update_timing)
+        self._timer.start(self._logic_acquisition_timing)
+        self.sig_update_histogram_next.emit()
         
         return 0
  
@@ -187,37 +203,52 @@ class LaserScanningLogic(GenericLogic):
             to sigCountNext and emitting sigCountNext through a queued connection.
         """
         
-        current_wavelength = self._wavemeter_device.get_current_wavelength()
+        self.current_wavelength = self._wavemeter_device.get_current_wavelength()
         time_stamp = time.time()-self._acqusition_start_time
-        
+                
         # only wavelength >200 nm make sense, ignore the rest
-        if current_wavelength>200:
-            self._wavelength_data.append(np.array([time_stamp,current_wavelength]))
+        if self.current_wavelength>200:
+            self._wavelength_data.append(np.array([time_stamp,self.current_wavelength]))
                 
         # check if we have a new min or max and save it if so
-        if current_wavelength > self.intern_xmax:
-            self.intern_xmax=current_wavelength
-        if current_wavelength < self.intern_xmin:
-            self.intern_xmin=current_wavelength
-                        
+        if self.current_wavelength > self.intern_xmax:
+            self.intern_xmax=self.current_wavelength
+        if self.current_wavelength < self.intern_xmin:
+            self.intern_xmin=self.current_wavelength
+        
+#        time.sleep(self._logic_acquisition_timing*1e-3)
+#        if self.getState() is 'running':
+#            self.sig_update_data_next.emit()
+        
+    def _update_histogram(self, complete=False):
+        count_window = min(100,len(self._counter_logic._data_to_save))
+#        print (self._counter_logic._data_to_save[-5:])
+        
         # only do something, if there is data to work with
-        if len(self._counter_logic._data_to_save)>0:     
-            # only work with the new data points (indizees>data)
-            for i in self._counter_logic._data_to_save[self.data_index:]:
-                self.data_index += 1
+        if len(self._wavelength_data)>0:
+            
+            for i in self._wavelength_data[self._data_index:]:
+                self._data_index += 1
                 
                 # calculate the bin the new wavelength needs to go in
-                newbin=np.digitize([current_wavelength],self.histogram_axis)[0]
+                newbin=np.digitize([i[1]],self.histogram_axis)[0]
                 # if the bin make no sense, start from the beginning
                 if  newbin > len(self.rawhisto)-1:
-                    continue
-                print (self._counter_logic._data_to_save)
-                # sum the counts in rawhisto and count the occurence of the bin in sumhisto
-#                self.rawhisto[newbin]+=np.interp(time_stamp, 
-#                                                 x=self._counter_logic._data_to_save[0][-max(100,len(self._counter_logic._data_to_save)):], 
-#                                                 y=self._counter_logic._data_to_save[1][-max(100,len(self._counter_logic._data_to_save)):])
-                self.sumhisto[newbin]+=1.0
+                    self.sig_update_histogram_next.emit()
+                    return
                 
+                # sum the counts in rawhisto and count the occurence of the bin in sumhisto
+                temp=np.array(self._counter_logic._data_to_save[-count_window:])
+                self.rawhisto[newbin]+=np.interp(i[0], 
+                                                 xp=temp[:,0], 
+                                                 fp=temp[:,1])
+                self.sumhisto[newbin]+=1.0                
         
-        # the plot data is the summed counts divided by the occurence of the respective bins
-        self.histogram=self.rawhisto/self.sumhisto
+            # the plot data is the summed counts divided by the occurence of the respective bins
+            self.histogram=self.rawhisto/self.sumhisto
+            
+        self.sig_data_updated.emit()
+        
+        time.sleep(self._logic_update_timing*1e-3)
+        if self.getState() is 'running':
+            self.sig_update_histogram_next.emit()
