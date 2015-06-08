@@ -1147,10 +1147,12 @@ class FitLogic():
 #                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
                 data_noisy=(mod.eval(x=x,params=p) 
                                         + 2.*np.random.normal(size=x.shape))
-                                        
+                
                 para=Parameters()
 #                para.add('lorentz1_center',expr='lorentz0_center+20.0')
-    
+                error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset = self.estimate_double_lorentz(x,data_noisy)
+
+                print(lorentz0_center>lorentz1_center)
                 result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
                 print(result)
 #                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
@@ -1340,4 +1342,4 @@ class FitLogic():
 #            plt.show()
             
 test=FitLogic()
-test.useful_object_variables()   
+test.double_lorentzian_testing()   
