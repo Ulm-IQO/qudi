@@ -54,13 +54,19 @@ class IPythonGui(GUIBase):
           @param object e: Fysom state change notice
         """
         ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
-
+        banner = """
+This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'. 
+Configuration is in 'config', the manager is 'manager' and all loaded modules are in this namespace with their configured name.
+View the current namespace with dir().
+Go, play.
+"""
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: IPython Console')
         self._central = QtGui.QWidget()
         self._mw.setCentralWidget(self._central)
         self._layout = QtGui.QVBoxLayout(self._central)
         self._pywid = RichIPythonWidget()
+        self._pywid.banner = banner
         self._pywid.kernel_manager = ipythonlogic.kernel_manager
         self._pywid.kernel_client = self._pywid.kernel_manager.client()
         self._pywid.kernel_client.start_channels()
