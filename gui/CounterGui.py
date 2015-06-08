@@ -168,13 +168,11 @@ class CounterGui(GUIBase):
         """
         if self._counting_logic.get_saving_state():
             self._save_button.setText('Start Saving Data')
-            self._count_length_display.setEnabled(True)
             self._count_frequency_display.setEnabled(True)
             self._oversampling_display.setEnabled(True)
             self._counting_logic.save_data()
         else:
             self._save_button.setText('Save')
-            self._count_length_display.setEnabled(False)
             self._count_frequency_display.setEnabled(False)
             self._oversampling_display.setEnabled(False)
             self._counting_logic.start_saving()
