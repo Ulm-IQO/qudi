@@ -153,6 +153,13 @@ class ODMRGui(GUIBase):
         self._mw.mode_ComboWidget.addItem('Off')
         self._mw.mode_ComboWidget.addItem('CW')
         
+        self._mw.fit_methods_ComboWidget.addItem('No Fit')
+        self._mw.fit_methods_ComboWidget.addItem('Lorentzian')
+        self._mw.fit_methods_ComboWidget.addItem('Double Lorentzian')
+        self._mw.fit_methods_ComboWidget.addItem('Double Lorentzian with fixed splitting')
+        self._mw.fit_methods_ComboWidget.addItem('N14')
+        self._mw.fit_methods_ComboWidget.addItem('N15')
+        
         #######################################################################
         ##                Configuration of the InputWidgets                  ##
         #######################################################################
@@ -219,6 +226,9 @@ class ODMRGui(GUIBase):
         self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
         # Combo Widget
         self._mw.mode_ComboWidget.activated[str].connect(self.mw_stop)
+        self._mw.fit_methods_ComboWidget.activated[str].connect(self.update_fit_variable)
+        # Push Buttons
+        self._mw.do_fit_PushButton.clicked.connect(self.update_fit)
         
          # Show the Main ODMR GUI:
         self._mw.show()
@@ -274,6 +284,12 @@ class ODMRGui(GUIBase):
         '''
         self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
         self._odmr_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
+        
+    def update_fit_variable(self, txt):
+        self._odmr_logic.current_fit_function = txt
+        
+    def update_fit(self):
+        self._odmr_logic.do_fit(fit_function = self._odmr_logic.current_fit_function)
 
                 
     def reject_settings(self):

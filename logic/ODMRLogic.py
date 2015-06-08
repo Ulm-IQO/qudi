@@ -63,6 +63,7 @@ class ODMRLogic(GenericLogic):
         
         self.RunTime = 10
         self.ElapsedTime = 0
+        self.current_fit_function = 'No Fit'
         
         #number of lines in the matrix plot
         self.NumberofLines = 50 
@@ -207,7 +208,7 @@ class ODMRLogic(GenericLogic):
         self.ElapsedTime = time.time() - self._StartTime
         self.signal_ODMR_elapsedtime_changed.emit()
         if self.ElapsedTime >= self.RunTime:
-            self.do_fit(fit_function = 'Double Lorentzian')
+            self.do_fit(fit_function = self.current_fit_function)
             self.stopRequested = True
             self.signal_ODMR_finished.emit()
         
