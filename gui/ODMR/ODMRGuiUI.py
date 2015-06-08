@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ODMRGuiUI.ui'
 #
-# Created: Tue May 12 15:40:30 2015
+# Created: Mon Jun 08 12:22:25 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,10 +26,10 @@ class Ui_MainWindow(object):
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.gridLayout.addItem(spacerItem, 0, 8, 1, 1)
+        self.gridLayout.addItem(spacerItem, 0, 9, 1, 1)
         self.odmr_matrix_ViewWidget = PlotWidget(self.centralwidget)
         self.odmr_matrix_ViewWidget.setObjectName(_fromUtf8("odmr_matrix_ViewWidget"))
-        self.gridLayout.addWidget(self.odmr_matrix_ViewWidget, 6, 0, 1, 9)
+        self.gridLayout.addWidget(self.odmr_matrix_ViewWidget, 6, 0, 1, 10)
         self.idle_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.idle_StateWidget.setMaximumSize(QtCore.QSize(50, 16777215))
         self.idle_StateWidget.setObjectName(_fromUtf8("idle_StateWidget"))
@@ -61,10 +61,6 @@ class Ui_MainWindow(object):
         self.label_7 = QtGui.QLabel(self.centralwidget)
         self.label_7.setObjectName(_fromUtf8("label_7"))
         self.gridLayout.addWidget(self.label_7, 3, 2, 1, 1)
-        self.elapsed_time_InputWidget = QtGui.QLineEdit(self.centralwidget)
-        self.elapsed_time_InputWidget.setMaximumSize(QtCore.QSize(50, 16777215))
-        self.elapsed_time_InputWidget.setObjectName(_fromUtf8("elapsed_time_InputWidget"))
-        self.gridLayout.addWidget(self.elapsed_time_InputWidget, 3, 6, 1, 1)
         self.stop_freq_InputWidget = QtGui.QLineEdit(self.centralwidget)
         self.stop_freq_InputWidget.setMaximumSize(QtCore.QSize(75, 16777215))
         self.stop_freq_InputWidget.setObjectName(_fromUtf8("stop_freq_InputWidget"))
@@ -97,7 +93,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.label, 0, 0, 1, 2)
         self.odmr_ViewWidget = PlotWidget(self.centralwidget)
         self.odmr_ViewWidget.setObjectName(_fromUtf8("odmr_ViewWidget"))
-        self.gridLayout.addWidget(self.odmr_ViewWidget, 5, 0, 1, 9)
+        self.gridLayout.addWidget(self.odmr_ViewWidget, 5, 0, 1, 10)
         self.frequency_InputWidget = QtGui.QLineEdit(self.centralwidget)
         self.frequency_InputWidget.setMaximumSize(QtCore.QSize(75, 16777215))
         self.frequency_InputWidget.setObjectName(_fromUtf8("frequency_InputWidget"))
@@ -107,6 +103,9 @@ class Ui_MainWindow(object):
         self.line_2.setFrameShadow(QtGui.QFrame.Sunken)
         self.line_2.setObjectName(_fromUtf8("line_2"))
         self.gridLayout.addWidget(self.line_2, 0, 7, 4, 1)
+        self.elapsed_time_DisplayWidget = QtGui.QLCDNumber(self.centralwidget)
+        self.elapsed_time_DisplayWidget.setObjectName(_fromUtf8("elapsed_time_DisplayWidget"))
+        self.gridLayout.addWidget(self.elapsed_time_DisplayWidget, 3, 6, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
