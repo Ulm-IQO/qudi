@@ -313,7 +313,15 @@ class ODMRLogic(GenericLogic):
             p=Parameters()
 #            TODO: insert this in gui config of ODMR
             splitting_from_gui_config=3.03 #in MHz
-            p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+            
+            error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset = self._fit_logic.estimate_double_lorentz(self._MW_frequency_list,self.ODMR_plot_y)
+
+            if lorentz0_center<lorentz1_center:
+                p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+            else: 
+                splitting_from_gui_config*=-1
+                p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
