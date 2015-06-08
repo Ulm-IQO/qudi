@@ -515,8 +515,8 @@ class FitLogic():
             #lorentzian filter            
             mod,params = self.make_lorentzian_model()
             
-            if len(x_values)<20.:
-                len_x=5
+            if len(x_values)<50.:
+                len_x=6
             if len(x_values)>=100.:
                 len_x=10
             else:
@@ -589,7 +589,6 @@ class FitLogic():
             #set paraameters          
             
             data_smooth,offset=self.find_offset_parameter(x_axis,data)
-
             data_level=data-offset        
             data_min=data_level.min()       
             data_max=data_level.max()
@@ -1296,10 +1295,49 @@ class FitLogic():
 #            plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r')
             plt.show()
             
+
+        def useful_object_variables(self):
+            x = np.linspace(2800, 2900, 101)
+                
+                
+            ##there are useful builtin models: Constantmodel(), LinearModel(),GaussianModel()
+#                LorentzianModel(),DampedOscillatorModel()
+                
+            #but you can also define your own:
+            model,params = self.make_lorentzian_model()
+#            print('Parameters of the model',model.param_names)
             
-#nice things from this class
-#            print('success',result.success)
-#            print('center',result.params['center'].value)
+            ##Parameters:            
+            p=Parameters()
+            
+            p.add('amplitude',value=-35)
+            p.add('center',value=2845+abs(np.random.random(1)*8))
+            p.add('sigma',value=abs(np.random.random(1)*1)+3)
+            p.add('c',value=100.)
+            
+            
+            data_noisy=(model.eval(x=x,params=p) 
+                                    + 0.5*np.random.normal(size=x.shape))
+            para=Parameters()
+#            para.add('sigma',vary=False,min=3,max=4)
+            #also expression possible
+            
+            result=self.make_lorentzian_fit(x,data_noisy,add_parameters=para)
+
+#            print('success',result.success)            
+#            print('best value',result.best_values['center'])            
+##
+#            print('Fit report:',result.fit_report())
+            
+            plt.plot(x,data_noisy)
+#            plt.plot(x,result.init_fit,'-g')
+#            plt.plot(x,result.best_fit,'-r')
+            plt.show()       
+            
+#            data_smooth,offset=self.find_offset_parameter(x,data_noisy)
+#            plt.plot(data_noisy,'-b')
+#            plt.plot(data_smooth,'-r')
+#            plt.show()
             
 test=FitLogic()
-test.N15_testing()   
+test.useful_object_variables()   
