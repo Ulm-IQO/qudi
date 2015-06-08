@@ -6,6 +6,8 @@ from pyqtgraph.Qt import QtCore, QtGui
 from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.exporters
+import time
 
 
 class LaserScanningGui(GUIBase):
@@ -26,6 +28,10 @@ class LaserScanningGui(GUIBase):
         self.connector['in']['laserscanninglogic1'] = OrderedDict()
         self.connector['in']['laserscanninglogic1']['class'] = 'LaserScanningLogic'
         self.connector['in']['laserscanninglogic1']['object'] = None
+        
+        self.connector['in']['savelogic'] = OrderedDict()
+        self.connector['in']['savelogic']['class'] = 'SaveLogic'
+        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -42,6 +48,7 @@ class LaserScanningGui(GUIBase):
 
         self._scanning_logic = self.connector['in']['laserscanninglogic1']['object']
 #        print("Counting logic is", self._counting_logic)
+        self._save_logic = self.connector['in']['savelogic']['object']
                 
         # setting up the window
         self._mw = QtGui.QMainWindow()
@@ -69,19 +76,19 @@ class LaserScanningGui(GUIBase):
         self._bins_display = QtGui.QSpinBox()
         self._bins_display.setRange(1,1e4)
         self._bins_display.setValue(self._scanning_logic.get_bins())
-        self._bins_display.valueChanged.connect(self.recalculate_histogram)
+        self._bins_display.editingFinished.connect(self.recalculate_histogram)
         
         self._min_wavelength_label = QtGui.QLabel('Min (nm):')
         self._min_wavelength_display = QtGui.QSpinBox()
         self._min_wavelength_display.setRange(1,1e6)
         self._min_wavelength_display.setValue(self._scanning_logic.get_min_wavelength())
-        self._min_wavelength_display.valueChanged.connect(self.recalculate_histogram)
+        self._min_wavelength_display.editingFinished.connect(self.recalculate_histogram)
         
         self._max_wavelength_label = QtGui.QLabel('Max (nm):')
         self._max_wavelength_display = QtGui.QSpinBox()
         self._max_wavelength_display.setRange(1,1e4)
         self._max_wavelength_display.setValue(self._scanning_logic.get_max_wavelength())
-        self._max_wavelength_display.valueChanged.connect(self.recalculate_histogram)
+        self._max_wavelength_display.editingFinished.connect(self.recalculate_histogram)
         
         # creating a layout for the parameters to live in and aranging it nicely
         self._hbox_layout = QtGui.QHBoxLayout()
@@ -118,6 +125,8 @@ class LaserScanningGui(GUIBase):
         self._curve1 = self._pw.plot()
         self._curve1.setPen('g')
         
+        self._save_PNG = True
+        
         self._scanning_logic.sig_data_updated.connect(self.updateData)
         
     def show(self):
@@ -146,18 +155,21 @@ class LaserScanningGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        if self._counting_logic.get_saving_state():
-            self._save_button.setText('Start Saving Data')
-            self._count_length_display.setEnabled(True)
-            self._count_frequency_display.setEnabled(True)
-            self._oversampling_display.setEnabled(True)
-            self._counting_logic.save_data()
-        else:
-            self._save_button.setText('Save')
-            self._count_length_display.setEnabled(False)
-            self._count_frequency_display.setEnabled(False)
-            self._oversampling_display.setEnabled(False)
-            self._counting_logic.start_saving()
+                
+        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
+        filename = filepath + time.strftime('\\%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss')
+                
+        exporter = pg.exporters.SVGExporter(self._pw.plotItem)
+        exporter.export(filename+'.svg')
+            
+        if self._save_PNG:
+            exporter = pg.exporters.ImageExporter(self._pw.plotItem)
+            exporter.export(filename+'.png')              
+        
+        self._scanning_logic.save_data()
             
     def recalculate_histogram(self):
-        pass
+        self._scanning_logic.recalculate_histogram(\
+        bins=self._bins_display.value(),\
+        xmin=self._min_wavelength_display.value(),\
+        xmax=self._max_wavelength_display.value())

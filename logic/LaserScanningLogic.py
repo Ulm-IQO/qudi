@@ -94,7 +94,6 @@ class LaserScanningLogic(GenericLogic):
             
           @param object e: Fysom state change event
         """
-        self.count_data = []
         self._wavelength_data = []
         
         self.stopRequested = False
@@ -107,7 +106,7 @@ class LaserScanningLogic(GenericLogic):
         
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
-        self.histogram = np.zeros(self.histogram_axis.shape)        
+        self.histogram = np.zeros(self.histogram_axis.shape)
         
         self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
         
@@ -119,34 +118,88 @@ class LaserScanningLogic(GenericLogic):
         
     def get_bins(self):
         return self._bins
+        
+    def recalculate_histogram(self, bins=None, xmin=None, xmax=None):
+        if not bins is None:
+            self._bins=bins
+        if not xmin is None:
+            self._xmin=xmin
+        if not xmax is None:
+            self._xmax=xmax
+            
+#        print('New histogram', self._bins,self._xmin,self._xmax)
+        # create a new x axis from xmin to xmax with bins points
+        self.rawhisto=np.zeros(self._bins)
+        self.sumhisto=np.ones(self._bins)*1.0e-10
+        self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
+        self._complete_histogram = True
     
+        
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
         
         @return int: error code (0:OK, -1:error)
         """
-        self._saving=False
+        
         self._saving_stop_time=time.time()
-
-
-        filepath = self._save_logic.get_path_for_module(module_name='Counter')
+        
+        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filename = time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss.dat')
         
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)':self._data_to_save}        
+        data = {'Wavelength (nm), Signal (counts/s)':self.histogram}        
 
         # write the parameters:
         parameters = OrderedDict() 
-        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length       
+        parameters['Bins (#)'] = self._bins
+        parameters['Xmin (nm)'] = self._xmin
+        parameters['XMax (nm)'] = self._xmax
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        
+        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
+        filename = time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss_wavemeter.dat')
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Time (s), Wavelength (nm)':self._wavelength_data}        
+
+        # write the parameters:
+        parameters = OrderedDict() 
+        parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._acqusition_start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
         
         self._save_logic.save_data(data, filepath, parameters=parameters, 
                                    filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
                   
+        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
+        filename = time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss_counts.dat')
+        
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Time (s),Signal (counts/s)':self._counter_logic._data_to_save}        
+
+        # write the parameters:
+        parameters = OrderedDict() 
+        parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._counter_logic._saving_start_time))
+        parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        parameters['Length of counter window (# of events)'] = self._counter_logic._count_length
+        parameters['Count frequency (Hz)'] = self._counter_logic._count_frequency
+        parameters['Oversampling (Samples)'] = self._counter_logic._counting_samples
+        parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length       
+        
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                  
+                  
         self.logMsg('Laser Scan saved to:\n{0}'.format(filepath), 
                     msgType='status', importance=3)
-
-        #print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
         
         return 0
 
@@ -168,6 +221,7 @@ class LaserScanningLogic(GenericLogic):
             
         self._counter_logic.start_saving()
         self._acqusition_start_time = self._counter_logic._saving_start_time
+        self._wavelength_data = []
         
         self._wavemeter_device.start_acqusition()
         
@@ -177,6 +231,7 @@ class LaserScanningLogic(GenericLogic):
         
         # start the measuring thread
         self._timer.start(self._logic_acquisition_timing)
+        self._complete_histogram = True
         self.sig_update_histogram_next.emit()
         
         return 0
@@ -190,7 +245,7 @@ class LaserScanningLogic(GenericLogic):
         self._wavemeter_device.stop_acqusition()
         
         if self._counter_logic.get_saving_state():
-            self._counter_logic.save_data()
+            self._counter_logic.save_data(save=False)
         
         # set status to idle again
         self.stop()
@@ -203,7 +258,7 @@ class LaserScanningLogic(GenericLogic):
             to sigCountNext and emitting sigCountNext through a queued connection.
         """
         
-        self.current_wavelength = self._wavemeter_device.get_current_wavelength()
+        self.current_wavelength = 1.0*self._wavemeter_device.get_current_wavelength()
         time_stamp = time.time()-self._acqusition_start_time
                 
         # only wavelength >200 nm make sense, ignore the rest
@@ -220,9 +275,22 @@ class LaserScanningLogic(GenericLogic):
 #        if self.getState() is 'running':
 #            self.sig_update_data_next.emit()
         
-    def _update_histogram(self, complete=False):
-        count_window = min(100,len(self._counter_logic._data_to_save))
-#        print (self._counter_logic._data_to_save[-5:])
+    def _update_histogram(self):
+        if self._complete_histogram:
+            self._complete_histogram = False
+            count_window = len(self._counter_logic._data_to_save)
+            self._data_index = 0
+            self.logMsg('Recalcutating Laser Scanning Histogram for: {0:d} counts and {1:d} wavelength.'.format(count_window, len(self._wavelength_data)), 
+                    msgType='status')
+        else:
+            count_window = min(100,len(self._counter_logic._data_to_save))
+            
+        if  count_window < 2:
+            time.sleep(self._logic_update_timing*1e-3)
+            self.sig_update_histogram_next.emit()
+            return
+                    
+        temp=np.array(self._counter_logic._data_to_save[-count_window:])
         
         # only do something, if there is data to work with
         if len(self._wavelength_data)>0:
@@ -234,11 +302,11 @@ class LaserScanningLogic(GenericLogic):
                 newbin=np.digitize([i[1]],self.histogram_axis)[0]
                 # if the bin make no sense, start from the beginning
                 if  newbin > len(self.rawhisto)-1:
+                    time.sleep(self._logic_update_timing*1e-3)
                     self.sig_update_histogram_next.emit()
                     return
                 
                 # sum the counts in rawhisto and count the occurence of the bin in sumhisto
-                temp=np.array(self._counter_logic._data_to_save[-count_window:])
                 self.rawhisto[newbin]+=np.interp(i[0], 
                                                  xp=temp[:,0], 
                                                  fp=temp[:,1])

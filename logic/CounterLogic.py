@@ -221,7 +221,7 @@ class CounterLogic(GenericLogic):
         self._saving=True
         return 0
     
-    def save_data(self):
+    def save_data(self, save=True):
         """ Save the counter trace data and writes it to a file.
         
         @return int: error code (0:OK, -1:error)
@@ -229,31 +229,29 @@ class CounterLogic(GenericLogic):
         self._saving=False
         self._saving_stop_time=time.time()
 
+        if save:
+            filepath = self._save_logic.get_path_for_module(module_name='Counter')
+            filename = time.strftime('%Y-%m-%d_trace_from_%Hh%Mm%Ss.dat')
+            
+            # prepare the data in a dict or in an OrderedDict:
+            data = OrderedDict()
+            data = {'Time (s),Signal (counts/s)':self._data_to_save}        
+    
+            # write the parameters:
+            parameters = OrderedDict() 
+            parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
+            parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+            parameters['Length of counter window (# of events)'] = self._count_length
+            parameters['Count frequency (Hz)'] = self._count_frequency
+            parameters['Oversampling (Samples)'] = self._counting_samples
+            parameters['Smooth Window Length (# of events)'] = self._smooth_window_length       
+            
+            self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                       filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                      
+            self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), 
+                        msgType='status', importance=3)
 
-        filepath = self._save_logic.get_path_for_module(module_name='Counter')
-        filename = time.strftime('%Y-%m-%d_trace_from_%Hh%Mm%Ss.dat')
-        
-        # prepare the data in a dict or in an OrderedDict:
-        data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)':self._data_to_save}        
-
-        # write the parameters:
-        parameters = OrderedDict() 
-        parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
-        parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
-        parameters['Length of counter window (# of events)'] = self._count_length
-        parameters['Count frequency (Hz)'] = self._count_frequency
-        parameters['Oversampling (Samples)'] = self._counting_samples
-        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length       
-        
-        self._save_logic.save_data(data, filepath, parameters=parameters, 
-                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
-                  
-        self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), 
-                    msgType='status', importance=3)
-
-        #print ('Want to save data of length {0:d}, please implement'.format(len(self._data_to_save)))
-        
         return 0
 
     def startCount(self):
