@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1255</width>
-    <height>830</height>
+    <height>892</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -34,8 +34,8 @@
        </widget>
       </item>
       <item>
-       <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0">
+        <item>
          <widget class="QSpinBox" name="xy_cb_max_InputWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -45,7 +45,7 @@
           </property>
           <property name="maximumSize">
            <size>
-            <width>70</width>
+            <width>80</width>
             <height>16777215</height>
            </size>
           </property>
@@ -75,7 +75,92 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <item>
+           <widget class="QSpinBox" name="xy_cb_high_centile_InputWidget">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="minimum">
+             <number>50</number>
+            </property>
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_6">
+            <property name="maximumSize">
+             <size>
+              <width>30</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>%</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="PlotWidget" name="xy_cb_ViewWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>80</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
+          <item>
+           <widget class="QSpinBox" name="xy_cb_low_centile_InputWidget">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
+            <property name="value">
+             <number>0</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="maximumSize">
+             <size>
+              <width>30</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>%</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <widget class="QSpinBox" name="xy_cb_min_InputWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -85,7 +170,7 @@
           </property>
           <property name="maximumSize">
            <size>
-            <width>70</width>
+            <width>80</width>
             <height>16777215</height>
            </size>
           </property>
@@ -115,29 +200,23 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
-         <widget class="QCheckBox" name="xy_cb_auto_CheckBox">
+        <item>
+         <widget class="QRadioButton" name="xy_cb_centiles_RadioButton">
           <property name="text">
-           <string>Auto</string>
+           <string>Centiles</string>
           </property>
           <property name="checked">
            <bool>true</bool>
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="PlotWidget" name="xy_cb_ViewWidget">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+        <item>
+         <widget class="QRadioButton" name="xy_cb_manual_RadioButton">
+          <property name="text">
+           <string>Manual</string>
           </property>
-          <property name="maximumSize">
-           <size>
-            <width>70</width>
-            <height>16777215</height>
-           </size>
+          <property name="checked">
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -152,7 +231,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -271,8 +350,8 @@
              </spacer>
             </item>
             <item row="7" column="6">
-             <layout class="QGridLayout" name="gridLayout_10">
-              <item row="0" column="0">
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <item>
                <widget class="QSpinBox" name="depth_cb_max_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -282,7 +361,7 @@
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>70</width>
+                  <width>80</width>
                   <height>16777215</height>
                  </size>
                 </property>
@@ -309,7 +388,86 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_13">
+                <item>
+                 <widget class="QSpinBox" name="depth_cb_high_centile_InputWidget">
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="minimum">
+                   <number>50</number>
+                  </property>
+                  <property name="maximum">
+                   <number>100</number>
+                  </property>
+                  <property name="value">
+                   <number>100</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_14">
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="PlotWidget" name="depth_cb_ViewWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>80</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_12">
+                <item>
+                 <widget class="QSpinBox" name="depth_cb_low_centile_InputWidget">
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="maximum">
+                   <number>50</number>
+                  </property>
+                  <property name="value">
+                   <number>0</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_13">
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
                <widget class="QSpinBox" name="depth_cb_min_InputWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -319,7 +477,7 @@
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>70</width>
+                  <width>80</width>
                   <height>16777215</height>
                  </size>
                 </property>
@@ -349,23 +507,23 @@
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
-               <widget class="PlotWidget" name="depth_cb_ViewWidget_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>70</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QCheckBox" name="depth_cb_auto_CheckBox">
+              <item>
+               <widget class="QRadioButton" name="depth_cb_centiles_RadioButton">
                 <property name="text">
-                 <string>Auto</string>
+                 <string>Centiles</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="depth_cb_manual_RadioButton">
+                <property name="text">
+                 <string>Manual</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -458,9 +616,9 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <layout class="QGridLayout" name="gridLayout_13">
-            <item row="0" column="0">
-             <widget class="QSpinBox" name="depth_cb_max_InputWidget_3">
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QSpinBox" name="depth_cb_max_InputWidget_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -469,7 +627,7 @@
               </property>
               <property name="maximumSize">
                <size>
-                <width>70</width>
+                <width>80</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -496,8 +654,87 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QSpinBox" name="depth_cb_min_InputWidget_3">
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_11">
+              <item>
+               <widget class="QSpinBox" name="depth_cb_high_centile_InputWidget_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="minimum">
+                 <number>50</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_12">
+                <property name="maximumSize">
+                 <size>
+                  <width>30</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="PlotWidget" name="depth_cb_ViewWidget_2">
+              <property name="maximumSize">
+               <size>
+                <width>80</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_10">
+              <item>
+               <widget class="QSpinBox" name="depth_cb_low_centile_InputWidget_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="maximum">
+                 <number>50</number>
+                </property>
+                <property name="value">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_8">
+                <property name="maximumSize">
+                 <size>
+                  <width>30</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>%</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="depth_cb_min_InputWidget_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -506,7 +743,7 @@
               </property>
               <property name="maximumSize">
                <size>
-                <width>70</width>
+                <width>80</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -536,23 +773,23 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="0">
-             <widget class="PlotWidget" name="depth_cb_ViewWidget">
-              <property name="maximumSize">
-               <size>
-                <width>70</width>
-                <height>16777215</height>
-               </size>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QCheckBox" name="depth_cb_auto_CheckBox_3">
+            <item>
+             <widget class="QRadioButton" name="depth_cb_centiles_RadioButton_2">
               <property name="text">
-               <string>Auto</string>
+               <string>Centiles</string>
               </property>
               <property name="checked">
                <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="depth_cb_manual_RadioButton_2">
+              <property name="text">
+               <string>Manual</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -1394,7 +1631,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1428,13 +1665,15 @@
     <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
-    <bool>true</bool>
+    <bool>false</bool>
    </attribute>
    <addaction name="action_zoom"/>
   </widget>
   <action name="actionSave_XY_Scan">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XY Data</string>
@@ -1442,7 +1681,9 @@
   </action>
   <action name="actionSave_configuration">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save &amp;configuration</string>
@@ -1450,7 +1691,9 @@
   </action>
   <action name="action_Settings">
    <property name="icon">
-    <iconset theme="settings"/>
+    <iconset theme="settings">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Settings</string>
@@ -1458,7 +1701,9 @@
   </action>
   <action name="action_Exit">
    <property name="icon">
-    <iconset theme="application-exit"/>
+    <iconset theme="application-exit">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Exit</string>
@@ -1466,7 +1711,9 @@
   </action>
   <action name="actionSave_Depth_Scan">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XZ Data</string>
@@ -1474,7 +1721,9 @@
   </action>
   <action name="action_optimiser_settings">
    <property name="icon">
-    <iconset theme="settings"/>
+    <iconset theme="settings">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Optimiser Settings</string>
@@ -1482,7 +1731,9 @@
   </action>
   <action name="actionSave_XY_Image_Data">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XY Image+Data</string>
@@ -1490,7 +1741,9 @@
   </action>
   <action name="actionSave_Depth_Image_Data">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XZ Image+Data</string>
@@ -1501,7 +1754,9 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="search"/>
+    <iconset theme="search">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>zoom</string>
@@ -1512,7 +1767,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header>pyqtgraph.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -1529,14 +1784,13 @@
   <tabstop>z_current_InputWidget</tabstop>
   <tabstop>xy_cb_max_InputWidget</tabstop>
   <tabstop>xy_cb_min_InputWidget</tabstop>
-  <tabstop>xy_cb_auto_CheckBox</tabstop>
   <tabstop>ready_StateWidget</tabstop>
   <tabstop>xy_scan_StateWidget</tabstop>
   <tabstop>depth_scan_StateWidget</tabstop>
   <tabstop>refocus_StateWidget</tabstop>
   <tabstop>z_refocus_position_ViewWidget_2</tabstop>
   <tabstop>y_refocus_position_ViewWidget_2</tabstop>
-  <tabstop>depth_cb_ViewWidget_2</tabstop>
+  <tabstop>depth_cb_ViewWidget</tabstop>
   <tabstop>depth_ViewWidget_2</tabstop>
   <tabstop>xy_refocus_ViewWidget_2</tabstop>
   <tabstop>depth_refocus_ViewWidget_2</tabstop>
@@ -1546,7 +1800,6 @@
   <tabstop>xy_cb_ViewWidget</tabstop>
   <tabstop>y_SliderWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
-  <tabstop>depth_cb_auto_CheckBox</tabstop>
   <tabstop>depth_cb_min_InputWidget</tabstop>
   <tabstop>depth_cb_max_InputWidget</tabstop>
   <tabstop>x_refocus_position_ViewWidget_2</tabstop>
