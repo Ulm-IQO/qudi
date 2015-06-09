@@ -281,6 +281,8 @@ class ConfocalGui(GUIBase):
         self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']        
         
+        self._hardware_state = True
+        
         self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimiserSettingsUI(e) # initialize the optimiser settings GUI
@@ -644,6 +646,7 @@ class ConfocalGui(GUIBase):
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.keep_former_settings)
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
+        self._sd.hardware_switch.clicked.connect(self.switch_hardware) 
         
         # write the configuration to the settings window of the GUI. 
         self.keep_former_settings()
@@ -1511,3 +1514,14 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget_2.plotItem.addItem(self.vline_depth)
         
         self.save_depth_scan_data()
+        
+    def switch_hardware(self):
+        """ Switches the hardware state. """
+#        if self._hardware_state:
+#            self._hardware_state=False
+#            self._sd.hardware_switch.setText('Switch on Hardware')
+        self._scanning_logic.switch_hardware(to_on=False)
+#        else:
+#            self._hardware_state=True
+#            self._sd.hardware_switch.setText('Switch off Hardware')
+#            self._scanning_logic.switch_hardware(to_on=True)

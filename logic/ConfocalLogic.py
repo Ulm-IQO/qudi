@@ -115,9 +115,24 @@ class ConfocalLogic(GenericLogic):
         """ Reverse steps of activation 
         
         @param e: error code
+        
         @return int: error code (0:OK, -1:error)
-        """        
+        """
+        self._scanning_device.reset_hardware()
         return 0
+        
+    def switch_hardware(self, to_on=False):
+        """ Switches the Hardware off or on.
+        
+        @param to_on: True switches on, False switched off
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        if to_on:
+            return self._scanning_device.activation()
+        else:
+            return self._scanning_device.reset_hardware()
         
     def testing(self):
         """ Debug method. """
@@ -291,8 +306,12 @@ class ConfocalLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.close_scanner()
-        self._scanning_device.close_scanner_clock()
+        try:
+            self._scanning_device.close_scanner()
+            self._scanning_device.close_scanner_clock()
+        except Exception as e:
+            self.logMsg('Could not even close the scanner, giving up.', msgType='error')
+            raise e
         
         return 0
         

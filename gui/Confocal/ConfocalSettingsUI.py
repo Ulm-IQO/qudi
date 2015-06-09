@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
 #
-# Created: Tue May 26 21:13:11 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Tue Jun 09 15:59:29 2015
+#      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName(_fromUtf8("SettingsDialog"))
-        SettingsDialog.resize(281, 287)
+        SettingsDialog.resize(309, 366)
         self.gridLayout_2 = QtGui.QGridLayout(SettingsDialog)
         self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
         self.gridLayout = QtGui.QGridLayout()
@@ -73,11 +73,11 @@ class Ui_SettingsDialog(object):
         sizePolicy.setHeightForWidth(self.fixed_aspect_xy_checkBox.sizePolicy().hasHeightForWidth())
         self.fixed_aspect_xy_checkBox.setSizePolicy(sizePolicy)
         self.fixed_aspect_xy_checkBox.setMaximumSize(QtCore.QSize(50, 16777215))
-        self.fixed_aspect_xy_checkBox.setAccessibleDescription(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.fixed_aspect_xy_checkBox.setAutoFillBackground(False)
         self.fixed_aspect_xy_checkBox.setText(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setChecked(True)
+        self.fixed_aspect_xy_checkBox.setProperty("accessibleDescription", _fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setObjectName(_fromUtf8("fixed_aspect_xy_checkBox"))
         self.gridLayout.addWidget(self.fixed_aspect_xy_checkBox, 2, 2, 1, 1)
         self.label_6 = QtGui.QLabel(SettingsDialog)
@@ -243,7 +243,10 @@ class Ui_SettingsDialog(object):
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Apply|QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
-        self.gridLayout_2.addWidget(self.buttonBox, 1, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.buttonBox, 2, 1, 1, 1)
+        self.hardware_switch = QtGui.QPushButton(SettingsDialog)
+        self.hardware_switch.setObjectName(_fromUtf8("hardware_switch"))
+        self.gridLayout_2.addWidget(self.hardware_switch, 1, 1, 1, 1)
 
         self.retranslateUi(SettingsDialog)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), SettingsDialog.accept)
@@ -258,7 +261,8 @@ class Ui_SettingsDialog(object):
         SettingsDialog.setTabOrder(self.y_padding_InputWidget, self.z_padding_InputWidget)
         SettingsDialog.setTabOrder(self.z_padding_InputWidget, self.savePNG_checkBox)
         SettingsDialog.setTabOrder(self.savePNG_checkBox, self.save_purePNG_checkBox)
-        SettingsDialog.setTabOrder(self.save_purePNG_checkBox, self.buttonBox)
+        SettingsDialog.setTabOrder(self.save_purePNG_checkBox, self.hardware_switch)
+        SettingsDialog.setTabOrder(self.hardware_switch, self.buttonBox)
 
     def retranslateUi(self, SettingsDialog):
         SettingsDialog.setWindowTitle(_translate("SettingsDialog", "qudi: Confocal - Settings", None))
@@ -273,4 +277,5 @@ class Ui_SettingsDialog(object):
         self.label_9.setText(_translate("SettingsDialog", "Save ImageScene also as png file", None))
         self.savePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">If you have pressed the save<br>routine in the Menu Bar,<br>with the svg file a png<br>file will be saved.</span></p></body></html>", None))
         self.label_10.setText(_translate("SettingsDialog", "Save pure Image as png", None))
+        self.hardware_switch.setText(_translate("SettingsDialog", "Switch off Hardward", None))
 

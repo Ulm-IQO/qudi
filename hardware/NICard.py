@@ -9,6 +9,7 @@ from collections import OrderedDict
 
 import PyDAQmx as daq
 import numpy as np
+import re
 
 class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInterface):
     """unstable: Kay Jahnke
@@ -203,6 +204,23 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # Analoque output is always needed and it does not interfere with the 
         # rest, so start it always and leave it running
         self._start_analoque_output()
+        
+    def reset_hardware(self):
+        """ Resets the NI hardware, so the connection is lost and other programs can access it.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
+        if match:
+            device = match.group('device')
+            self.logMsg('NI Device "{}" will be reset.'.format(device),
+                        msgType='warning')
+            daq.DAQmxResetDevice(device)
+            return 0
+        else:
+            self.logMsg('Did not find device name in {}.'.format(self._clock_channel),
+                        msgType='error')
+            return -1
         
         
 ################################## Counter ###################################

@@ -7,6 +7,15 @@ class ConfocalScannerInterface():
     microwave hardware.
     """
     
+    def reset_hardware(self):
+        """ Resets the hardware, so the connection is lost and other programs can access it.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        
+        raise InterfaceImplementationError('ConfocalScannerInterface>reset_hardware')
+        return -1
+            
     def get_position_range(self):
         """ Returns the physical range of the scanner.
         
