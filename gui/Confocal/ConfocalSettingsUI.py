@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
 #
-# Created: Tue Jun 09 15:59:29 2015
-#      by: PyQt4 UI code generator 4.9.6
+# Created: Tue Jun  9 22:24:22 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -73,11 +73,11 @@ class Ui_SettingsDialog(object):
         sizePolicy.setHeightForWidth(self.fixed_aspect_xy_checkBox.sizePolicy().hasHeightForWidth())
         self.fixed_aspect_xy_checkBox.setSizePolicy(sizePolicy)
         self.fixed_aspect_xy_checkBox.setMaximumSize(QtCore.QSize(50, 16777215))
+        self.fixed_aspect_xy_checkBox.setAccessibleDescription(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.fixed_aspect_xy_checkBox.setAutoFillBackground(False)
         self.fixed_aspect_xy_checkBox.setText(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setChecked(True)
-        self.fixed_aspect_xy_checkBox.setProperty("accessibleDescription", _fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setObjectName(_fromUtf8("fixed_aspect_xy_checkBox"))
         self.gridLayout.addWidget(self.fixed_aspect_xy_checkBox, 2, 2, 1, 1)
         self.label_6 = QtGui.QLabel(SettingsDialog)
@@ -277,5 +277,10 @@ class Ui_SettingsDialog(object):
         self.label_9.setText(_translate("SettingsDialog", "Save ImageScene also as png file", None))
         self.savePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">If you have pressed the save<br>routine in the Menu Bar,<br>with the svg file a png<br>file will be saved.</span></p></body></html>", None))
         self.label_10.setText(_translate("SettingsDialog", "Save pure Image as png", None))
-        self.hardware_switch.setText(_translate("SettingsDialog", "Switch off Hardward", None))
+        self.hardware_switch.setToolTip(_translate("SettingsDialog", "This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.\n"
+"\n"
+"Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).\n"
+"\n"
+"This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.", None))
+        self.hardware_switch.setText(_translate("SettingsDialog", "Switch off Hardware", None))
 
