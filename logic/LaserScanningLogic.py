@@ -67,17 +67,23 @@ class LaserScanningLogic(GenericLogic):
         
         #locking for thread safety
         self.threadlock = Mutex()
-
-        self.logMsg('The following configuration was found.', msgType='status')
-                            
-        # checking for the right configuration
-        for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
-                        msgType='status')
+        
+        if 'logic_acquisition_timing' in config.keys():
+            self._logic_acquisition_timing = config['logic_acquisition_timing']
+        else:
+            self._logic_acquisition_timing = 20.
+            self.logMsg('No logic_acquisition_timing configured, '
+                        'using {} instead.'.format(self._logic_acquisition_timing),
+                        msgType='warning')
                         
-        self._wavemeter_timing = 10.
-        self._logic_acquisition_timing = 10.
-        self._logic_update_timing = 100.
+        if 'logic_update_timing' in config.keys():
+            self._logic_update_timing = config['logic_update_timing']
+        else:
+            self._logic_update_timing = 100.
+            self.logMsg('No logic_update_timing configured, '
+                        'using {} instead.'.format(self._logic_update_timing),
+                        msgType='warning')
+                        
         self._acqusition_start_time = 0
         self._bins = 200
         self._data_index = 0
@@ -302,9 +308,7 @@ class LaserScanningLogic(GenericLogic):
                 newbin=np.digitize([i[1]],self.histogram_axis)[0]
                 # if the bin make no sense, start from the beginning
                 if  newbin > len(self.rawhisto)-1:
-                    time.sleep(self._logic_update_timing*1e-3)
-                    self.sig_update_histogram_next.emit()
-                    return
+                    continue
                 
                 # sum the counts in rawhisto and count the occurence of the bin in sumhisto
                 self.rawhisto[newbin]+=np.interp(i[0], 
