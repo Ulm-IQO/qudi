@@ -349,6 +349,7 @@ class PoiManagerGui(GUIBase):
 
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
         
+        # Connect the buttons and inputs for the colorbar
         self._mw.roi_cb_centiles_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_manual_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
@@ -411,7 +412,7 @@ class PoiManagerGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
         
-        # If "Auto" is checked, adjust colour scaling to fit all data.
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
             low_centile = self._mw.roi_cb_low_centile_InputWidget.value()
