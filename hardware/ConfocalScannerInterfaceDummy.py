@@ -106,7 +106,16 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
 #        print('Position of NV 1',self._points[0,:],self._points_z[0,:],len(self._points))
 #        print(self._points_z[:,0],self._points[:,0])
         
-                                              
+    
+    def reset_hardware(self):
+        """ Resets the hardware, so the connection is lost and other programs can access it.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        self.logMsg('Scanning Device will be reset.',
+                    msgType='warning')
+        return 0
+        
     def get_position_range(self):
         """ Returns the physical range of the scanner.
         

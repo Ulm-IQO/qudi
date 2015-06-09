@@ -258,6 +258,7 @@ class CounterLogic(GenericLogic):
         """Prepare to start counting:
             zero variables, change state and start counting "loop"
         """
+        print('starting counter')
         # setting up the counter
         self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
         self._counting_device.set_up_counter()
@@ -270,6 +271,7 @@ class CounterLogic(GenericLogic):
         
         # set a lock, to signify the measurment is running
         self.lock()
+        print ('locked')
         self.sigCountNext.emit()
  
     def stopCount(self):
@@ -283,19 +285,33 @@ class CounterLogic(GenericLogic):
             It runs repeatedly in the logic module event loop by being connected
             to sigCountNext and emitting sigCountNext through a queued connection.
         """
+        
         # check for aborts of the thread in break if necessary 
         if self.stopRequested:
             with self.threadlock:
-                # close off the actual counter
-                self._counting_device.close_counter()
-                self._counting_device.close_clock()
-                # switch the state variable off again
-                self.unlock()
-                self.stopRequested = False
-                return
+                try:
+                    # close off the actual counter
+                    self._counting_device.close_counter()
+                    self._counting_device.close_clock()
+                except Exception as e:
+                    self.logMsg('Could not even close the hardware, giving up.', msgType='error')
+                    raise e
+                finally:
+                    # switch the state variable off again
+                    self.unlock()
+                    self.stopRequested = False
+                    return
         
-        # read the current counter value
-        self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+        try:
+            # read the current counter value
+            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+        
+        except Exception as e:
+            self.logMsg('The counting went wrong, killing the counter.', msgType='error')
+            self.stopCount()           
+            self.sigCountNext.emit()
+            raise e
+            
         # remember the new count data in circular array
         self.countdata[0] = np.average(self.rawdata)
         # move the array to the left to make space for the new data
