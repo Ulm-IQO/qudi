@@ -59,8 +59,21 @@ class LaserScanningGui(GUIBase):
         
         # creating a plot in pyqtgraph and configuring it
         self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
+        self._plot_item = self._pw.plotItem
+        
+        ## create a new ViewBox, link the right axis to its coordinate system
+        self._right_axis = pg.ViewBox()
+        self._plot_item.showAxis('right')
+        self._plot_item.scene().addItem(self._right_axis)
+        self._plot_item.getAxis('right').linkToView(self._right_axis)
+        self._right_axis.setXLink(self._plot_item)
+        
+        # handle resizing of any of the elements
+        self._update_plot_views()
+        self._plot_item.vb.sigResized.connect(self._update_plot_views)
         
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
+        self._pw.setLabel('right', 'Number of Points', units='#')
         self._pw.setLabel('bottom', 'Wavelength', units='nm')
                 
         # defining buttons
@@ -111,9 +124,25 @@ class LaserScanningGui(GUIBase):
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._wavelength_label)
         
+        # creating the labels for the auto ranges
+        self._auto_min_label = QtGui.QLabel('Minimum: xxx.xxxxxx (nm)   ')
+        self._auto_max_label = QtGui.QLabel('Maximum: xxx.xxxxxx (nm)   ')
+        self._set_auto_range = QtGui.QPushButton('Set Auto Range')
+        self._set_auto_range.setFixedWidth(150)
+        self._set_auto_range.clicked.connect(self.set_auto_range)
+        self._ghz_x_axis = QtGui.QCheckBox('Display frequency')
+        
+        self._hbox_auto_range = QtGui.QHBoxLayout()
+        self._hbox_auto_range.addWidget(self._auto_min_label)
+        self._hbox_auto_range.addWidget(self._auto_max_label)
+        self._hbox_auto_range.addWidget(self._set_auto_range)
+        self._hbox_auto_range.addStretch(1)
+        self._hbox_auto_range.addWidget(self._ghz_x_axis)
+        
         # combining the layouts with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
         self._vbox_layout.addLayout(self._hbox_counter)
+        self._vbox_layout.addLayout(self._hbox_auto_range)
         self._vbox_layout.addWidget(self._pw)
         self._vbox_layout.addLayout(self._hbox_layout)
         
@@ -123,7 +152,12 @@ class LaserScanningGui(GUIBase):
         
         ## Create an empty plot curve to be filled later, set its pen
         self._curve1 = self._pw.plot()
-        self._curve1.setPen('g')
+        self._curve1.setPen({'color': '0F0', 'width': 2})
+        
+        self._curve2 =pg.PlotCurveItem() 
+        self._curve2.setPen({'color': 'F00', 'width': 1})
+        
+        self._right_axis.addItem(self._curve2)
         
         self._save_PNG = True
         
@@ -140,7 +174,17 @@ class LaserScanningGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
         self._wavelength_label.setText('{0:,.5f} nm'.format(self._scanning_logic.current_wavelength))
-        self._curve1.setData(y=self._scanning_logic.histogram, x=self._scanning_logic.histogram_axis)
+        self._auto_min_label.setText('Minimum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmin))
+        self._auto_max_label.setText('Maximum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmax))
+        if self._ghz_x_axis.isChecked():
+            self._pw.setLabel('bottom', 'Relative Frequency', units='Hz')
+            x_axis = 3.0e17/(self._scanning_logic.histogram_axis) \
+            - 6.0e17/(self._scanning_logic.get_max_wavelength() + self._scanning_logic.get_min_wavelength())
+        else:
+            self._pw.setLabel('bottom', 'Wavelength', units='nm')
+            x_axis = self._scanning_logic.histogram_axis
+        self._curve1.setData(y=self._scanning_logic.histogram, x=x_axis)
+        self._curve2.setData(y=self._scanning_logic.sumhisto, x=x_axis)
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -173,3 +217,18 @@ class LaserScanningGui(GUIBase):
         bins=self._bins_display.value(),\
         xmin=self._min_wavelength_display.value(),\
         xmax=self._max_wavelength_display.value())
+        
+    def set_auto_range(self):
+        self._min_wavelength_display.setValue(self._scanning_logic.intern_xmin)
+        self._max_wavelength_display.setValue(self._scanning_logic.intern_xmax)
+        self.recalculate_histogram()
+        
+    ## Handle view resizing 
+    def _update_plot_views(self):
+        ## view has resized; update auxiliary views to match
+        self._right_axis.setGeometry(self._plot_item.vb.sceneBoundingRect())
+        
+        ## need to re-update linked axes since this was called
+        ## incorrectly while views had different shapes.
+        ## (probably this should be handled in ViewBox.resizeEvent)
+        self._right_axis.linkedViewChanged(self._plot_item.vb, self._right_axis.XAxis)
