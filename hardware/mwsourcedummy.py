@@ -13,7 +13,9 @@ class mwsourcedummy(Base,MWInterface):
     """
     
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        # declare actions for state transitions
+        state_actions = {'onactivate': self.activation}
+        Base.__init__(self, manager, name, config, state_actions, **kwargs)
         self._modclass = 'mwsourcedummy'
         self._modtype = 'mwsource'
         
