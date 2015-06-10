@@ -289,7 +289,7 @@ class FitLogic(GenericLogic):
             params.add_many(('amplitude',amplitude, True,         100,                    1e7,                    None),
                            (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
-                           (    'c',      offset,   True,        None,                    None,                  None))
+                           (    'c',      offset,   True,        100,                    1e7,                  None))
 
 
             #redefine values of additional parameters
@@ -302,7 +302,7 @@ class FitLogic(GenericLogic):
                             msgType='message')
                 result=mod_final.fit(data, x=axis,params=params)
                 print(result.message)
-            
+        
             return result
 
         def estimate_gaussian(self,x_axis=None,data=None):
@@ -396,7 +396,7 @@ class FitLogic(GenericLogic):
                 result=mod.fit(data, x=axis,params=params)
                 self.logMsg('The 2D gaussian fit did not work:'+result.message, \
                                         msgType='message')
-            
+
             return result
             
         @staticmethod
