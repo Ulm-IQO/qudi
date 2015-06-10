@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Mon Jun  8 23:38:07 2015
+# Created: Tue Jun  9 22:31:01 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -121,10 +121,14 @@ class Ui_MainWindow(object):
         self.xy_cb_centiles_RadioButton = QtGui.QRadioButton(self.centralwidget)
         self.xy_cb_centiles_RadioButton.setChecked(True)
         self.xy_cb_centiles_RadioButton.setObjectName(_fromUtf8("xy_cb_centiles_RadioButton"))
+        self.xy_cb_buttonGroup = QtGui.QButtonGroup(MainWindow)
+        self.xy_cb_buttonGroup.setObjectName(_fromUtf8("xy_cb_buttonGroup"))
+        self.xy_cb_buttonGroup.addButton(self.xy_cb_centiles_RadioButton)
         self.verticalLayout.addWidget(self.xy_cb_centiles_RadioButton)
         self.xy_cb_manual_RadioButton = QtGui.QRadioButton(self.centralwidget)
         self.xy_cb_manual_RadioButton.setChecked(False)
         self.xy_cb_manual_RadioButton.setObjectName(_fromUtf8("xy_cb_manual_RadioButton"))
+        self.xy_cb_buttonGroup.addButton(self.xy_cb_manual_RadioButton)
         self.verticalLayout.addWidget(self.xy_cb_manual_RadioButton)
         self.verticalLayout.setStretch(2, 1)
         self.horizontalLayout_4.addLayout(self.verticalLayout)
@@ -492,15 +496,21 @@ class Ui_MainWindow(object):
         self.horizontalLayout_6.setObjectName(_fromUtf8("horizontalLayout_6"))
         self.ready_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.ready_StateWidget.setObjectName(_fromUtf8("ready_StateWidget"))
+        self.statewidget_buttonGroup = QtGui.QButtonGroup(MainWindow)
+        self.statewidget_buttonGroup.setObjectName(_fromUtf8("statewidget_buttonGroup"))
+        self.statewidget_buttonGroup.addButton(self.ready_StateWidget)
         self.horizontalLayout_6.addWidget(self.ready_StateWidget)
         self.xy_scan_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.xy_scan_StateWidget.setObjectName(_fromUtf8("xy_scan_StateWidget"))
+        self.statewidget_buttonGroup.addButton(self.xy_scan_StateWidget)
         self.horizontalLayout_6.addWidget(self.xy_scan_StateWidget)
         self.depth_scan_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.depth_scan_StateWidget.setObjectName(_fromUtf8("depth_scan_StateWidget"))
+        self.statewidget_buttonGroup.addButton(self.depth_scan_StateWidget)
         self.horizontalLayout_6.addWidget(self.depth_scan_StateWidget)
         self.refocus_StateWidget = QtGui.QRadioButton(self.centralwidget)
         self.refocus_StateWidget.setObjectName(_fromUtf8("refocus_StateWidget"))
+        self.statewidget_buttonGroup.addButton(self.refocus_StateWidget)
         self.horizontalLayout_6.addWidget(self.refocus_StateWidget)
         spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_6.addItem(spacerItem2)
@@ -787,7 +797,7 @@ class Ui_MainWindow(object):
         self.zoom_toolBar.addAction(self.action_zoom)
 
         self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.xy_res_InputWidget, self.z_res_InputWidget)

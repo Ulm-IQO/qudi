@@ -21,7 +21,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="roiMap">
        <attribute name="title">
@@ -295,11 +295,37 @@
        <attribute name="title">
         <string>Offset marker</string>
        </attribute>
+       <widget class="QLabel" name="label_7">
+        <property name="geometry">
+         <rect>
+          <x>120</x>
+          <y>40</y>
+          <width>251</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>This feature is yet to be implemented</string>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="triangulation">
        <attribute name="title">
         <string>Triangulation</string>
        </attribute>
+       <widget class="QLabel" name="label_8">
+        <property name="geometry">
+         <rect>
+          <x>120</x>
+          <y>40</y>
+          <width>251</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>This feature is yet to be implemented</string>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -420,7 +446,23 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="update_method_Input"/>
+       <widget class="QComboBox" name="update_method_Input">
+        <item>
+         <property name="text">
+          <string>plain optimisation</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>offset marker</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>triangulation</string>
+         </property>
+        </item>
+       </widget>
       </item>
       <item>
        <widget class="QCheckBox" name="checkBox">

@@ -208,6 +208,9 @@
           <property name="checked">
            <bool>true</bool>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">xy_cb_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
         <item>
@@ -218,6 +221,9 @@
           <property name="checked">
            <bool>false</bool>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">xy_cb_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
        </layout>
@@ -231,7 +237,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -1048,6 +1054,9 @@
           <property name="text">
            <string>Ready</string>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">statewidget_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
         <item>
@@ -1055,6 +1064,9 @@
           <property name="text">
            <string>Scan XY</string>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">statewidget_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
         <item>
@@ -1062,6 +1074,9 @@
           <property name="text">
            <string>Scan Z</string>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">statewidget_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
         <item>
@@ -1069,6 +1084,9 @@
           <property name="text">
            <string>Optimise position</string>
           </property>
+          <attribute name="buttonGroup">
+           <string notr="true">statewidget_buttonGroup</string>
+          </attribute>
          </widget>
         </item>
         <item>
@@ -1823,4 +1841,8 @@
    </hints>
   </connection>
  </connections>
+ <buttongroups>
+  <buttongroup name="xy_cb_buttonGroup"/>
+  <buttongroup name="statewidget_buttonGroup"/>
+ </buttongroups>
 </ui>
