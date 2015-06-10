@@ -85,8 +85,11 @@ class LaserScanningGui(GUIBase):
         self._save_button.clicked.connect(self.save_clicked)
         
         # defining the parameters to edit
+        bins_tooltip = 'Number of bins to split the wavelength range up into.\nHigh bin number gives noisy but detailed data.'
         self._bins_label = QtGui.QLabel('Bins (#):')
+        self._bins_label.setToolTip(bins_tooltip)
         self._bins_display = QtGui.QSpinBox()
+        self._bins_display.setToolTip(bins_tooltip)
         self._bins_display.setRange(1,1e4)
         self._bins_display.setValue(self._scanning_logic.get_bins())
         self._bins_display.editingFinished.connect(self.recalculate_histogram)
@@ -131,6 +134,8 @@ class LaserScanningGui(GUIBase):
         self._set_auto_range.setFixedWidth(150)
         self._set_auto_range.clicked.connect(self.set_auto_range)
         self._ghz_x_axis = QtGui.QCheckBox('Display frequency')
+        frequency_tooltip = 'Changes the x axis between frequency or wavelength.\nThe frequency is calculated as shift from the middle of the range.'
+        self._ghz_x_axis.setToolTip(frequency_tooltip)
         
         self._hbox_auto_range = QtGui.QHBoxLayout()
         self._hbox_auto_range.addWidget(self._auto_min_label)
