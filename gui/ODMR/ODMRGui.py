@@ -290,6 +290,7 @@ class ODMRGui(GUIBase):
         
     def update_fit(self):
         self._odmr_logic.do_fit(fit_function = self._odmr_logic.current_fit_function)
+        self.refresh_plot()
 
                 
     def reject_settings(self):
