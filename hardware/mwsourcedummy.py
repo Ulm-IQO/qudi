@@ -37,6 +37,10 @@ class mwsourcedummy(Base,MWInterface):
         except:
             self.logMsg("No visa connection installed. Please install pyvisa.", 
                         msgType='error')
+
+            
+    def activation(self, e):
+        pass
             
         
     def on(self):
