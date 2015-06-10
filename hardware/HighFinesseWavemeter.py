@@ -34,7 +34,41 @@ import ctypes   # is a foreign function library for Python. It provides C
 
 
 
+class HardwarePull(QtCore.QObject):
+    
+    sig_wavelength = QtCore.Signal(float, float)
+    
+    def __init__(self, parentclass):
+        super().__init__()
+        
+        self._parentclass = parentclass
+        
+        
+    def handle_timer(self, state_change):
+        if state_change:
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect(self._measure_thread)
+            self.timer.start(self._parentclass._measurement_timing)
+        else:
+            if hasattr(self, 'timer'):
+                self.timer.stop()
+        
+    def _measure_thread(self):
+        """ The threaded method querying the data from the wavemeter.
+        """
+        
+        # update as long as the status is busy
+        if self._parentclass.getState() == 'running':
+            # get the current wavelength from the wavemeter
+            temp1=float(self._parentclass._wavemeterdll.GetWavelength(0))
+            temp2=float(self._parentclass._wavemeterdll.GetWavelength(0))
+            self.sig_wavelength.emit(temp1, temp2)
+            
+
+
 class HighFinesseWavemeter(Base,WavemeterInterface):
+    
+    sig_handle_timer = QtCore.Signal(bool)
     
     #############################################
     # Flags for the external DLL
@@ -62,8 +96,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.threadlock = Mutex()
         
         # the current wavelength read by the wavemeter in nm (vac)
-        self._current_wavelenght=0.0
-        self._current_wavelenght2=0.0
+        self._current_wavelength=700.0
+        self._current_wavelength2=700.0
         
         # time between two measurement points of the wavemeter in milliseconds
         if 'measurement_timing' in config.keys():
@@ -82,40 +116,48 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         try:
             # imports the spectrometer specific function from dll
             # get the module handle and create a ctypes library object
-            self._libary_handle = ctypes.windll.kernel32.LoadLibraryA('wlmData.dll')
-            self._wavemeterdll = ctypes.WinDLL(None, handle=self._libary_handle)
-            
-            # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength2 = self._wavemeterdll.GetWavelength2
-            # return data type of the GetWavelength function of the wavemeter
-            self._GetWavelength2.restype = ctypes.c_double
-            # parameter data type of the GetWavelength function of the wavemeter
-            self._GetWavelength2.argtypes = [ctypes.c_double]
-            
-            # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength = self._wavemeterdll.GetWavelength
-            # return data type of the GetWavelength function of the wavemeter
-            self._GetWavelength.restype = ctypes.c_double
-            # parameter data type of the GetWavelength function of the wavemeter
-            self._GetWavelength.argtypes = [ctypes.c_double]
-            
-            # define the use of the ConvertUnit function of the wavemeter
-            self._ConvertUnit = self._wavemeterdll.ConvertUnit
-            # return data type of the ConvertUnit function of the wavemeter
-            self._ConvertUnit.restype = ctypes.c_double
-            # parameter data type of the ConvertUnit function of the wavemeter
-            self._ConvertUnit.argtypes = [ctypes.c_double,ctypes.c_long,ctypes.c_long]
-            
-            # manipulate perdefined operations with simple flags
-            self._Operation = self._wavemeterdll.Operation
-            # return data type of the Operation function of the wavemeter
-            self._ConvertUnit.restype = ctypes.c_long
-            # parameter data type of the Operation function of the wavemeter
-            self._ConvertUnit.argtypes = [ctypes.c_ushort]
+#            self._libary_handle = ctypes.windll.kernel32.LoadLibraryA('wlmData.dll')
+            self._wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll')
             
         except:
             self.logMsg('There is no Wavemeter installed on this Computer.\n Please install a High Finesse Wavemeter and try again.', 
                     msgType='error')
+
+        # define the use of the GetWavelength function of the wavemeter
+#        self._GetWavelength2 = self._wavemeterdll.GetWavelength2
+        # return data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetWavelength2.restype = ctypes.c_double
+        # parameter data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetWavelength2.argtypes = [ctypes.c_double]
+        
+        # define the use of the GetWavelength function of the wavemeter
+#        self._GetWavelength = self._wavemeterdll.GetWavelength
+        # return data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetWavelength.restype = ctypes.c_double
+        # parameter data type of the GetWavelength function of the wavemeter
+        self._wavemeterdll.GetWavelength.argtypes = [ctypes.c_double]
+        
+        # define the use of the ConvertUnit function of the wavemeter
+#        self._ConvertUnit = self._wavemeterdll.ConvertUnit
+        # return data type of the ConvertUnit function of the wavemeter
+        self._wavemeterdll.ConvertUnit.restype = ctypes.c_double
+        # parameter data type of the ConvertUnit function of the wavemeter
+        self._wavemeterdll.ConvertUnit.argtypes = [ctypes.c_double, ctypes.c_long, ctypes.c_long]
+        
+        # manipulate perdefined operations with simple flags
+#        self._Operation = self._wavemeterdll.Operation
+        # return data type of the Operation function of the wavemeter
+        self._wavemeterdll.Operation.restype = ctypes.c_long
+        # parameter data type of the Operation function of the wavemeter
+        self._wavemeterdll.Operation.argtypes = [ctypes.c_ushort]
+            
+                    
+        self.hardware_thread = QtCore.QThread()
+        self._hardware_pull = HardwarePull(self)
+        self._hardware_pull.moveToThread(self.hardware_thread)
+        self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
+        self._hardware_pull.sig_wavelength.connect(self.handle_wavelength)
+        self.hardware_thread.start()
 
 
     def deactivation(self, e):
@@ -124,7 +166,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
             del self._wavemeterdll
             
             # unload the DLL
-            ctypes.windll.kernel32.FreeLibrary(self._libary_handle)        
+#            ctypes.windll.kernel32.FreeLibrary(self._libary_handle)        
             return 0
         except:
             self.logMsg('Could not unload the wlmData.dll of the wavemeter.', 
@@ -133,6 +175,11 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     #############################################
     # Methods of the main class
     #############################################
+                        
+    def handle_wavelength(self, wavelength1, wavelength2):
+        self._current_wavelength = wavelength1
+        self._current_wavelength2 = wavelength2
+                        
     def start_acqusition(self):
         """ Method to start the wavemeter software. 
         
@@ -142,20 +189,18 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         
         # first check its status
-        if self.getStatus() is 'running':
+        if self.getState() == 'running':
             self.logMsg('Wavemeter busy', 
                     msgType='error')
             return -1
         
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self._measure_thread)
         
         self.run()
         # actually start the wavemeter
-        self._Operation(self._cCtrlStartMeasurment) #starts measurement         
+        self._wavemeterdll.Operation(self._cCtrlStartMeasurment) #starts measurement         
         
         # start the measuring thread
-        self._timer.start(self._measurement_timing)
+        self.sig_handle_timer.emit(True)
         
         return 0
         
@@ -165,17 +210,17 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getStatus() == 'idle':
+        if self.getState() == 'idle':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
         else:
             # stop the measurement thread
-            self._timer.stop()
+            self.sig_handle_timer.emit(True)
             # set status to idle again
             self.stop()                
                 
         # Stop the actual wavemeter measurement
-        self._Operation(self._cCtrlStop) 
+        self._wavemeterdll.Operation(self._cCtrlStop) 
                 
         return 0
         
@@ -188,10 +233,10 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         if kind in "air":
             # for air we need the convert the current wavelength. The Wavemeter DLL already gives us a nice tool do do so.
-            return float(self._ConvertUnit(self._current_wavelenght,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
+            return float(self._wavemeterdll.ConvertUnit(self._current_wavelength,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
         if kind in "vac":
             # for vacuum just return the current wavelength
-            return float(self._current_wavelenght)
+            return float(self._current_wavelength)
         return -2.0
         
     def get_current_wavelength2(self, kind="air"):
@@ -203,10 +248,10 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
         if kind in "air":
             # for air we need the convert the current wavelength. The Wavemeter DLL already gives us a nice tool do do so.
-            return float(self._ConvertUnit(self._current_wavelenght2,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
+            return float(self._wavemeterdll.ConvertUnit(self._current_wavelength2,self._cReturnWavelangthVac,self._cReturnWavelangthAir))
         if kind in "vac":
             # for vacuum just return the current wavelength
-            return float(self._current_wavelenght2)
+            return float(self._current_wavelength2)
         return -2.0
             
     def get_timing(self):
@@ -226,13 +271,3 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self._measurement_timing=float(timing)
         return 0
     
-    def _measure_thread(self):
-        """ The threaded method querying the data from the wavemeter.
-        """
-        
-        # update as long as the status is busy
-        if self.getStatus() == 'running':
-            # get the current wavelength from the wavemeter
-            self.current_wavelenght = self._GetWavelength(ctypes.c_double(0))
-            self.current_wavelenght2 = self._GetWavelength2(ctypes.c_double(0))
-            

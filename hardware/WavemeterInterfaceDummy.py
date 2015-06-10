@@ -30,9 +30,39 @@ from pyqtgraph.Qt import QtGui, QtCore
 import random
 
 
+class HardwarePull(QtCore.QObject):
+    
+    def __init__(self, parentclass):
+        super().__init__()
+        
+        self._parentclass = parentclass
+        
+        
+    def handle_timer(self, state_change):
+        if state_change:
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect(self._measure_thread)
+            self.timer.start(self._parentclass._measurement_timing)
+        else:
+            if hasattr(self, 'timer'):
+                self.timer.stop()
+        
+    def _measure_thread(self):
+        """ The threaded method querying the data from the wavemeter.
+        """
+        
+        range_step=0.1
+        
+        # update as long as the status is busy
+        if self._parentclass.getState() == 'running':
+            # get the current wavelength from the wavemeter
+            self._parentclass._current_wavelenght  += random.uniform(-range_step, range_step)
+            self._parentclass._current_wavelenght2 += random.uniform(-range_step, range_step)
+            
 
 class WavemeterInterfaceDummy(Base,WavemeterInterface):
         
+    sig_handle_timer = QtCore.Signal(bool)
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -62,7 +92,12 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
 
 
     def activation(self, e):
-        pass
+        
+        self.hardware_thread = QtCore.QThread()
+        self._hardware_pull = HardwarePull(self)
+        self._hardware_pull.moveToThread(self.hardware_thread)
+        self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
+        self.hardware_thread.start()
 
     def deactivation(self, e):
         pass
@@ -83,17 +118,14 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
             self.logMsg('Wavemeter busy', 
                     msgType='error')
             return -1
-        
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self._measure_thread)
-        
+                
         self.run()
         # actually start the wavemeter
         self.logMsg('starting Wavemeter', 
                 msgType='warning')       
         
         # start the measuring thread
-        self._timer.start(self._measurement_timing)
+        self.sig_handle_timer.emit(True)
         
         return 0
         
@@ -108,7 +140,7 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
                     msgType='warning')
         else:   
             # stop the measurement thread
-            self._timer.stop()
+            self.sig_handle_timer.emit(False)
             # set status to idle again
             self.stop()                 
                 
@@ -166,15 +198,3 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         self._measurement_timing=float(timing)
         return 0
     
-    def _measure_thread(self):
-        """ The threaded method querying the data from the wavemeter.
-        """
-        
-        range_step=0.1
-        
-        # update as long as the status is busy
-        if self.getState() == 'running':
-            # get the current wavelength from the wavemeter
-            self._current_wavelenght  += random.uniform(-range_step, range_step)
-            self._current_wavelenght2 += random.uniform(-range_step, range_step)
-            
