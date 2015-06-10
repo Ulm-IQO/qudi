@@ -137,7 +137,7 @@ class LaserScanningLogic(GenericLogic):
         # create a new x axis from xmin to xmax with bins points
         self.rawhisto=np.zeros(self._bins)
         self.sumhisto=np.ones(self._bins)*1.0e-10
-        self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
+        self.histogram_axis=np.linspace(self._xmin, self._xmax, self._bins)
         self._complete_histogram = True
     
         
@@ -172,8 +172,7 @@ class LaserScanningLogic(GenericLogic):
         
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)':self._wavelength_data}        
-
+        data = {'Time (s), Wavelength (nm)':self._wavelength_data}
         # write the parameters:
         parameters = OrderedDict() 
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
@@ -234,6 +233,8 @@ class LaserScanningLogic(GenericLogic):
         self.data_index = 0
         self.rawhisto=np.zeros(self._bins)
         self.sumhisto=np.ones(self._bins)*1.0e-10
+        self.intern_xmax = -1.0
+        self.intern_xmin = 1.0e10
         
         # start the measuring thread
         self._timer.start(self._logic_acquisition_timing)
@@ -267,6 +268,11 @@ class LaserScanningLogic(GenericLogic):
         self.current_wavelength = 1.0*self._wavemeter_device.get_current_wavelength()
         time_stamp = time.time()-self._acqusition_start_time
                 
+#        print(time_stamp)
+        # TODO: the timing comes in waves, 
+        #       probably due to it beeing handled in the same thread as the histogram
+        #       look into threading
+        
         # only wavelength >200 nm make sense, ignore the rest
         if self.current_wavelength>200:
             self._wavelength_data.append(np.array([time_stamp,self.current_wavelength]))
@@ -303,6 +309,9 @@ class LaserScanningLogic(GenericLogic):
             
             for i in self._wavelength_data[self._data_index:]:
                 self._data_index += 1
+                
+                if  i[1] < self._xmin or i[1] > self._xmax:
+                    continue
                 
                 # calculate the bin the new wavelength needs to go in
                 newbin=np.digitize([i[1]],self.histogram_axis)[0]
