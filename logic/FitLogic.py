@@ -281,15 +281,15 @@ class FitLogic(GenericLogic):
             mod_final,params = self.make_gaussian_model() 
             
             #auxiliary variables
-            stepsize=axis[1]-axis[0]
+            stepsize=abs(axis[1]-axis[0])
             n_steps=len(axis)
             
             #Defining standard parameters
             #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
-            params.add_many(('amplitude',amplitude, True,         100,                    1e7,                    None),
+            params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),                    None),
                            (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
-                           (    'c',      offset,   True,        100,                    1e7,                  None))
+                           (    'c',      offset,   True,        100,                    data.max(),                  None))
 
 
             #redefine values of additional parameters
@@ -302,7 +302,9 @@ class FitLogic(GenericLogic):
                             msgType='message')
                 result=mod_final.fit(data, x=axis,params=params)
                 print(result.message)
-        
+                
+#            print(result.fit_report(show_correl=False))
+           
             return result
 
         def estimate_gaussian(self,x_axis=None,data=None):
