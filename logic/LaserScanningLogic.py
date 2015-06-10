@@ -63,7 +63,7 @@ class HardwarePull(QtCore.QObject):
         if self._parentclass.current_wavelength < self._parentclass.intern_xmin:
             self._parentclass.intern_xmin=self._parentclass.current_wavelength
             
-        if ( not self._parentclass._counter_logic.get_saving_state() ) or self._parentclass._counter_logic.getState() is 'idle':
+        if ( not self._parentclass._counter_logic.get_saving_state() ) or self._parentclass._counter_logic.getState() == 'idle':
             self._parentclass.stop_scanning()
 
 class LaserScanningLogic(GenericLogic):
@@ -271,7 +271,7 @@ class LaserScanningLogic(GenericLogic):
         
         self.run()
         
-        if not self._counter_logic.getState() is 'locked':
+        if not self._counter_logic.getState() == 'locked':
             self._counter_logic.startCount()
         
         if self._counter_logic.get_saving_state():
@@ -301,7 +301,7 @@ class LaserScanningLogic(GenericLogic):
         """ Set a flag to request stopping counting.
         """
         
-        if not self.getState() is 'idle':
+        if not self.getState() == 'idle':
             self._wavemeter_device.stop_acqusition()
             # stop the measurement thread
             self.sig_handle_timer.emit(False)
@@ -358,5 +358,5 @@ class LaserScanningLogic(GenericLogic):
         self.sig_data_updated.emit()
                 
         time.sleep(self._logic_update_timing*1e-3)
-        if self.getState() is 'running':
+        if self.getState() == 'running':
             self.sig_update_histogram_next.emit()
