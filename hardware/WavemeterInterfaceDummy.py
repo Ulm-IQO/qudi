@@ -103,19 +103,19 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getState() == 'idle':
+        if self.getState() is 'idle':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
-                
-        # stop the measurement thread
-        self._timer.stop()
+        else:   
+            # stop the measurement thread
+            self._timer.stop()
+            # set status to idle again
+            self.stop()                 
                 
         # Stop the actual wavemeter measurement
         self.logMsg('stopping Wavemeter', 
                 msgType='warning')       
         
-        # set status to idle again
-        self.stop()
         
         return 0
         
@@ -170,9 +170,11 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         """ The threaded method querying the data from the wavemeter.
         """
         
+        range_step=0.1
+        
         # update as long as the status is busy
         if self.getState() == 'running':
             # get the current wavelength from the wavemeter
-            self._current_wavelenght  += random.uniform(-1, 1)
-            self._current_wavelenght2 += random.uniform(-1, 1)
+            self._current_wavelenght  += random.uniform(-range_step, range_step)
+            self._current_wavelenght2 += random.uniform(-range_step, range_step)
             

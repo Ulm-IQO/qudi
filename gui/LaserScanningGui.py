@@ -58,7 +58,8 @@ class LaserScanningGui(GUIBase):
         self._mw.setCentralWidget(self._cw)
         
         # creating a plot in pyqtgraph and configuring it
-        self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
+        ## giving the plots names allows us to link their axes together
+        self._pw = pg.PlotWidget(name='Counter1')  
         self._plot_item = self._pw.plotItem
         
         ## create a new ViewBox, link the right axis to its coordinate system
@@ -68,6 +69,13 @@ class LaserScanningGui(GUIBase):
         self._plot_item.getAxis('right').linkToView(self._right_axis)
         self._right_axis.setXLink(self._plot_item)
         
+        ## create a new ViewBox, link the right axis to its coordinate system
+        self._top_axis = pg.ViewBox()
+        self._plot_item.showAxis('top')
+        self._plot_item.scene().addItem(self._top_axis)
+        self._plot_item.getAxis('top').linkToView(self._top_axis)
+        self._top_axis.setYLink(self._plot_item)
+        
         # handle resizing of any of the elements
         self._update_plot_views()
         self._plot_item.vb.sigResized.connect(self._update_plot_views)
@@ -75,6 +83,7 @@ class LaserScanningGui(GUIBase):
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('right', 'Number of Points', units='#')
         self._pw.setLabel('bottom', 'Wavelength', units='nm')
+        self._pw.setLabel('top', 'Relative Frequency', units='Hz')
                 
         # defining buttons
         self._start_stop_button = QtGui.QPushButton('Start')
@@ -95,13 +104,13 @@ class LaserScanningGui(GUIBase):
         self._bins_display.editingFinished.connect(self.recalculate_histogram)
         
         self._min_wavelength_label = QtGui.QLabel('Min (nm):')
-        self._min_wavelength_display = QtGui.QSpinBox()
+        self._min_wavelength_display = QtGui.QDoubleSpinBox()
         self._min_wavelength_display.setRange(1,1e6)
         self._min_wavelength_display.setValue(self._scanning_logic.get_min_wavelength())
         self._min_wavelength_display.editingFinished.connect(self.recalculate_histogram)
         
         self._max_wavelength_label = QtGui.QLabel('Max (nm):')
-        self._max_wavelength_display = QtGui.QSpinBox()
+        self._max_wavelength_display = QtGui.QDoubleSpinBox()
         self._max_wavelength_display.setRange(1,1e4)
         self._max_wavelength_display.setValue(self._scanning_logic.get_max_wavelength())
         self._max_wavelength_display.editingFinished.connect(self.recalculate_histogram)
@@ -133,16 +142,17 @@ class LaserScanningGui(GUIBase):
         self._set_auto_range = QtGui.QPushButton('Set Auto Range')
         self._set_auto_range.setFixedWidth(150)
         self._set_auto_range.clicked.connect(self.set_auto_range)
-        self._ghz_x_axis = QtGui.QCheckBox('Display frequency')
-        frequency_tooltip = 'Changes the x axis between frequency or wavelength.\nThe frequency is calculated as shift from the middle of the range.'
-        self._ghz_x_axis.setToolTip(frequency_tooltip)
+#        self._ghz_x_axis = QtGui.QCheckBox('Display frequency')
+#        self._ghz_x_axis.clicked.connect(self.updateData)
+#        frequency_tooltip = 'Changes the x axis between frequency or wavelength.\nThe frequency is calculated as shift from the middle of the range.'
+#        self._ghz_x_axis.setToolTip(frequency_tooltip)
         
         self._hbox_auto_range = QtGui.QHBoxLayout()
         self._hbox_auto_range.addWidget(self._auto_min_label)
         self._hbox_auto_range.addWidget(self._auto_max_label)
         self._hbox_auto_range.addWidget(self._set_auto_range)
         self._hbox_auto_range.addStretch(1)
-        self._hbox_auto_range.addWidget(self._ghz_x_axis)
+#        self._hbox_auto_range.addWidget(self._ghz_x_axis)
         
         # combining the layouts with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
@@ -159,10 +169,13 @@ class LaserScanningGui(GUIBase):
         self._curve1 = self._pw.plot()
         self._curve1.setPen({'color': '0F0', 'width': 2})
         
-        self._curve2 =pg.PlotCurveItem() 
-        self._curve2.setPen({'color': 'F00', 'width': 1})
-        
+        self._curve2 = pg.PlotCurveItem() 
+        self._curve2.setPen({'color': 'F00', 'width': 1})        
         self._right_axis.addItem(self._curve2)
+        
+        self._curve3 = pg.PlotCurveItem() 
+        self._curve3.setPen({'color': '00A', 'width': 0.2})        
+        self._top_axis.addItem(self._curve3)
         
         self._save_PNG = True
         
@@ -178,18 +191,23 @@ class LaserScanningGui(GUIBase):
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
+        
         self._wavelength_label.setText('{0:,.5f} nm'.format(self._scanning_logic.current_wavelength))
         self._auto_min_label.setText('Minimum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmin))
         self._auto_max_label.setText('Maximum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmax))
-        if self._ghz_x_axis.isChecked():
-            self._pw.setLabel('bottom', 'Relative Frequency', units='Hz')
-            x_axis = 3.0e17/(self._scanning_logic.histogram_axis) \
-            - 6.0e17/(self._scanning_logic.get_max_wavelength() + self._scanning_logic.get_min_wavelength())
-        else:
-            self._pw.setLabel('bottom', 'Wavelength', units='nm')
-            x_axis = self._scanning_logic.histogram_axis
+        
+        x_axis = self._scanning_logic.histogram_axis
+        x_axis_hz = 3.0e17/(x_axis) \
+                - 6.0e17/(self._scanning_logic.get_max_wavelength() + self._scanning_logic.get_min_wavelength())
+        
         self._curve1.setData(y=self._scanning_logic.histogram, x=x_axis)
         self._curve2.setData(y=self._scanning_logic.sumhisto, x=x_axis)
+        self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz[::-1])        
+        
+        if self._scanning_logic.getState() is 'running':
+            self._start_stop_button.setText('Stop')
+        else:
+            self._start_stop_button.setText('Start')
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
@@ -232,8 +250,10 @@ class LaserScanningGui(GUIBase):
     def _update_plot_views(self):
         ## view has resized; update auxiliary views to match
         self._right_axis.setGeometry(self._plot_item.vb.sceneBoundingRect())
+        self._top_axis.setGeometry(self._plot_item.vb.sceneBoundingRect())
         
         ## need to re-update linked axes since this was called
         ## incorrectly while views had different shapes.
         ## (probably this should be handled in ViewBox.resizeEvent)
         self._right_axis.linkedViewChanged(self._plot_item.vb, self._right_axis.XAxis)
+        self._top_axis.linkedViewChanged(self._plot_item.vb, self._top_axis.YAxis)

@@ -27,12 +27,52 @@ from collections import OrderedDict
 import numpy as np
 import time
 
+class HardwarePull(QtCore.QObject):
+    
+    def __init__(self, parentclass):
+        super().__init__()
+        
+        self._parentclass = parentclass
+        
+        
+    def handle_timer(self, state_change):
+        if state_change:
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect(self._update_data)
+            self.timer.start(self._parentclass._logic_acquisition_timing)
+        else:
+            if hasattr(self, 'timer'):
+                self.timer.stop()
+        
+    def _update_data(self):
+        """ This method gets the count data from the hardware.
+            It runs repeatedly in the logic module event loop by being connected
+            to sigCountNext and emitting sigCountNext through a queued connection.
+        """
+        
+        self._parentclass.current_wavelength = 1.0*self._parentclass._wavemeter_device.get_current_wavelength()
+        time_stamp = time.time()-self._parentclass._acqusition_start_time
+                        
+        # only wavelength >200 nm make sense, ignore the rest
+        if self._parentclass.current_wavelength>200:
+            self._parentclass._wavelength_data.append(np.array([time_stamp,self._parentclass.current_wavelength]))
+                
+        # check if we have a new min or max and save it if so
+        if self._parentclass.current_wavelength > self._parentclass.intern_xmax:
+            self._parentclass.intern_xmax=self._parentclass.current_wavelength
+        if self._parentclass.current_wavelength < self._parentclass.intern_xmin:
+            self._parentclass.intern_xmin=self._parentclass.current_wavelength
+            
+        if ( not self._parentclass._counter_logic.get_saving_state() ) or self._parentclass._counter_logic.getState() is 'idle':
+            self._parentclass.stop_scanning()
+
 class LaserScanningLogic(GenericLogic):
     """This logic module gathers data from wavemeter and the counter logic.
     """
     
     sig_data_updated = QtCore.Signal()
     sig_update_histogram_next = QtCore.Signal()
+    sig_handle_timer = QtCore.Signal(bool)
 
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
@@ -46,7 +86,7 @@ class LaserScanningLogic(GenericLogic):
           @param dict kwargs: optional parameters
         """
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
         ## declare connectors
@@ -113,8 +153,24 @@ class LaserScanningLogic(GenericLogic):
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
         self.histogram = np.zeros(self.histogram_axis.shape)
-        
+                
         self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
+        
+        self.hardware_thread = QtCore.QThread()
+        self._hardware_pull = HardwarePull(self)
+        self._hardware_pull.moveToThread(self.hardware_thread)
+        self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
+        self.hardware_thread.start()
+        
+    def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+            
+          @param object e: Fysom state change event
+        """
+        self.stop_scanning()
+        self.hardware_thread.quit()        
+        self.sig_handle_timer.disconnect()
+        
         
     def get_max_wavelength(self):
         return self._xmax
@@ -154,7 +210,7 @@ class LaserScanningLogic(GenericLogic):
         
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)':self.histogram}        
+        data = {'Wavelength (nm), Signal (counts/s)':np.array([self.histogram_axis,self.histogram]).transpose()}        
 
         # write the parameters:
         parameters = OrderedDict() 
@@ -213,9 +269,6 @@ class LaserScanningLogic(GenericLogic):
             zero variables, change state and start counting "loop"
         """
         
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self._update_data)
-        
         self.run()
         
         if not self._counter_logic.getState() is 'locked':
@@ -236,8 +289,9 @@ class LaserScanningLogic(GenericLogic):
         self.intern_xmax = -1.0
         self.intern_xmin = 1.0e10
         
+        
         # start the measuring thread
-        self._timer.start(self._logic_acquisition_timing)
+        self.sig_handle_timer.emit(True)
         self._complete_histogram = True
         self.sig_update_histogram_next.emit()
         
@@ -246,46 +300,19 @@ class LaserScanningLogic(GenericLogic):
     def stop_scanning(self):
         """ Set a flag to request stopping counting.
         """
-        # stop the measurement thread
-        self._timer.stop()        
         
-        self._wavemeter_device.stop_acqusition()
+        if not self.getState() is 'idle':
+            self._wavemeter_device.stop_acqusition()
+            # stop the measurement thread
+            self.sig_handle_timer.emit(False)
+            # set status to idle again
+            self.stop()   
         
         if self._counter_logic.get_saving_state():
             self._counter_logic.save_data(save=False)
         
-        # set status to idle again
-        self.stop()
         
         return 0
-
-    def _update_data(self):
-        """ This method gets the count data from the hardware.
-            It runs repeatedly in the logic module event loop by being connected
-            to sigCountNext and emitting sigCountNext through a queued connection.
-        """
-        
-        self.current_wavelength = 1.0*self._wavemeter_device.get_current_wavelength()
-        time_stamp = time.time()-self._acqusition_start_time
-                
-#        print(time_stamp)
-        # TODO: the timing comes in waves, 
-        #       probably due to it beeing handled in the same thread as the histogram
-        #       look into threading
-        
-        # only wavelength >200 nm make sense, ignore the rest
-        if self.current_wavelength>200:
-            self._wavelength_data.append(np.array([time_stamp,self.current_wavelength]))
-                
-        # check if we have a new min or max and save it if so
-        if self.current_wavelength > self.intern_xmax:
-            self.intern_xmax=self.current_wavelength
-        if self.current_wavelength < self.intern_xmin:
-            self.intern_xmin=self.current_wavelength
-        
-#        time.sleep(self._logic_acquisition_timing*1e-3)
-#        if self.getState() is 'running':
-#            self.sig_update_data_next.emit()
         
     def _update_histogram(self):
         if self._complete_histogram:
@@ -329,7 +356,7 @@ class LaserScanningLogic(GenericLogic):
             self.histogram=self.rawhisto/self.sumhisto
             
         self.sig_data_updated.emit()
-        
+                
         time.sleep(self._logic_update_timing*1e-3)
         if self.getState() is 'running':
             self.sig_update_histogram_next.emit()

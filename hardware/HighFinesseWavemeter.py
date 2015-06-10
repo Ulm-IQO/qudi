@@ -80,32 +80,34 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # Initialisation to access external DLL
         #############################################
         try:
-            #imports the spectrometer specific function from dll
-            wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll') 
+            # imports the spectrometer specific function from dll
+            # get the module handle and create a ctypes library object
+            self._libary_handle = ctypes.windll.kernel32.LoadLibraryA('wlmData.dll')
+            self._wavemeterdll = ctypes.WinDLL(None, handle=self._libary_handle)
             
             # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength2 = wavemeterdll.GetWavelength2
+            self._GetWavelength2 = self._wavemeterdll.GetWavelength2
             # return data type of the GetWavelength function of the wavemeter
             self._GetWavelength2.restype = ctypes.c_double
             # parameter data type of the GetWavelength function of the wavemeter
             self._GetWavelength2.argtypes = [ctypes.c_double]
             
             # define the use of the GetWavelength function of the wavemeter
-            self._GetWavelength = wavemeterdll.GetWavelength
+            self._GetWavelength = self._wavemeterdll.GetWavelength
             # return data type of the GetWavelength function of the wavemeter
             self._GetWavelength.restype = ctypes.c_double
             # parameter data type of the GetWavelength function of the wavemeter
             self._GetWavelength.argtypes = [ctypes.c_double]
             
             # define the use of the ConvertUnit function of the wavemeter
-            self._ConvertUnit = wavemeterdll.ConvertUnit
+            self._ConvertUnit = self._wavemeterdll.ConvertUnit
             # return data type of the ConvertUnit function of the wavemeter
             self._ConvertUnit.restype = ctypes.c_double
             # parameter data type of the ConvertUnit function of the wavemeter
             self._ConvertUnit.argtypes = [ctypes.c_double,ctypes.c_long,ctypes.c_long]
             
             # manipulate perdefined operations with simple flags
-            self._Operation= wavemeterdll.Operation
+            self._Operation = self._wavemeterdll.Operation
             # return data type of the Operation function of the wavemeter
             self._ConvertUnit.restype = ctypes.c_long
             # parameter data type of the Operation function of the wavemeter
@@ -117,7 +119,16 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
 
     def deactivation(self, e):
-        pass
+        try:
+            # clean up by removing reference to the ctypes library object
+            del self._wavemeterdll
+            
+            # unload the DLL
+            ctypes.windll.kernel32.FreeLibrary(self._libary_handle)        
+            return 0
+        except:
+            self.logMsg('Could not unload the wlmData.dll of the wavemeter.', 
+                    msgType='error')
                         
     #############################################
     # Methods of the main class
@@ -157,16 +168,15 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         if self.getStatus() == 'idle':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
-                
-        # stop the measurement thread
-        self._timer.stop()
+        else:
+            # stop the measurement thread
+            self._timer.stop()
+            # set status to idle again
+            self.stop()                
                 
         # Stop the actual wavemeter measurement
         self._Operation(self._cCtrlStop) 
-        
-        # set status to idle again
-        self.stop()
-        
+                
         return 0
         
     def get_current_wavelength(self, kind="air"):

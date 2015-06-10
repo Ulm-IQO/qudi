@@ -258,7 +258,7 @@ class CounterLogic(GenericLogic):
         """Prepare to start counting:
             zero variables, change state and start counting "loop"
         """
-        print('starting counter')
+        
         # setting up the counter
         self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
         self._counting_device.set_up_counter()
@@ -271,7 +271,6 @@ class CounterLogic(GenericLogic):
         
         # set a lock, to signify the measurment is running
         self.lock()
-        print ('locked')
         self.sigCountNext.emit()
  
     def stopCount(self):
