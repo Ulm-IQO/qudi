@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1255</width>
-    <height>892</height>
+    <height>918</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -78,6 +78,22 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_9">
           <item>
+           <widget class="QLabel" name="label_6">
+            <property name="maximumSize">
+             <size>
+              <width>30</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="layoutDirection">
+             <enum>Qt::LeftToRight</enum>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;%&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QSpinBox" name="xy_cb_high_centile_InputWidget">
             <property name="maximumSize">
              <size>
@@ -93,19 +109,6 @@
             </property>
             <property name="value">
              <number>100</number>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_6">
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>%</string>
             </property>
            </widget>
           </item>
@@ -130,6 +133,19 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_8">
           <item>
+           <widget class="QLabel" name="label_7">
+            <property name="maximumSize">
+             <size>
+              <width>30</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;%&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QSpinBox" name="xy_cb_low_centile_InputWidget">
             <property name="maximumSize">
              <size>
@@ -142,19 +158,6 @@
             </property>
             <property name="value">
              <number>0</number>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_7">
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>%</string>
             </property>
            </widget>
           </item>
@@ -608,7 +611,7 @@
         </widget>
         <widget class="QWidget" name="tab_3">
          <attribute name="title">
-          <string>Z-Scan</string>
+          <string>Depth-Scan</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="0" column="0">
@@ -1060,6 +1063,31 @@
          </widget>
         </item>
         <item>
+         <widget class="Line" name="line_5">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>10</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <property name="lineWidth">
+           <number>2</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QRadioButton" name="xy_scan_StateWidget">
           <property name="text">
            <string>Scan XY</string>
@@ -1067,6 +1095,23 @@
           <attribute name="buttonGroup">
            <string notr="true">statewidget_buttonGroup</string>
           </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="continue_xy_scan_StateWidget">
+          <property name="text">
+           <string>Continue XY</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">statewidget_buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="Line" name="line_6">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
          </widget>
         </item>
         <item>
@@ -1649,7 +1694,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1785,7 +1830,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <tabstops>

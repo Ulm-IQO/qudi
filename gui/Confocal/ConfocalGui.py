@@ -509,6 +509,7 @@ class ConfocalGui(GUIBase):
         self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
         
         self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
+        self._mw.continue_xy_scan_StateWidget.toggled.connect(self.continue_xy_scan_clicked)
         self._mw.depth_scan_StateWidget.toggled.connect(self.depth_scan_clicked)
         
         self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
@@ -749,6 +750,7 @@ class ConfocalGui(GUIBase):
         self._mw.xy_scan_StateWidget.setEnabled(newstate)
         self._mw.depth_scan_StateWidget.setEnabled(newstate)
         self._mw.refocus_StateWidget.setEnabled(newstate)
+        self._mw.continue_xy_scan_StateWidget.setEnabled(newstate)
 
 
     def _refocus_finished_wrapper(self):
@@ -839,6 +841,19 @@ class ConfocalGui(GUIBase):
         if enabled:
             self._scanning_logic.start_scanning()
             self.disable_scan_buttons()
+      
+    def continue_xy_scan_clicked(self, enabled):
+        """ Manages what happens if the xy scan is continued.
+        
+        @param bool enabled: continue scan if that is possible
+        """        
+        #Firstly stop any scan that might be in progress
+        self._scanning_logic.stop_scanning() 
+             
+        #Then if enabled. start a new scan.
+        if enabled:
+            self._scanning_logic.continue_scanning()
+            self.disable_scan_buttons()      
       
     def depth_scan_clicked(self, enabled):
         """ Manages what happens if the depth scan is started.
