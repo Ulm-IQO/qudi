@@ -64,7 +64,8 @@ class ConfocalLogic(GenericLogic):
         
         self.stopRequested = False
         
-        self.yz_instead_of_xz_scan = False
+        self.yz_instead_of_xz_scan = False        
+        self.TiltCorrection = False
                     
                        
     def activation(self, e):
@@ -122,7 +123,8 @@ class ConfocalLogic(GenericLogic):
         """
         self._scanning_device.reset_hardware()
         return 0
-        
+
+
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.
         
@@ -135,7 +137,8 @@ class ConfocalLogic(GenericLogic):
             return self._scanning_device.activation()
         else:
             return self._scanning_device.reset_hardware()
-        
+
+
     def testing(self):
         """ Debug method. """
         pass
@@ -143,7 +146,8 @@ class ConfocalLogic(GenericLogic):
 #        self.set_position(x = 1., y = 2., z = 3., a = 4.)
 #        self.start_scanning()
 #        self.kill_scanner()
-        
+
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
         
@@ -174,19 +178,19 @@ class ConfocalLogic(GenericLogic):
             
         self._scan_counter = 0
         self._zscan=zscan
-        self.signal_start_scanning.emit()
-        
+        self.signal_start_scanning.emit()        
         return 0
-        
+
+
     def continue_scanning(self):
         """Continue scanning 
         
         @return int: error code (0:OK, -1:error)
         """
-        self.signal_continue_scanning.emit()
-        
+        self.signal_continue_scanning.emit()        
         return 0
-        
+
+
     def stop_scanning(self):
         """Stop the scan
         
@@ -194,10 +198,10 @@ class ConfocalLogic(GenericLogic):
         """
         with self.threadlock:
             if self.getState() == 'locked':
-                self.stopRequested = True
-            
+                self.stopRequested = True            
         return 0
-        
+
+
     def initialize_image(self):
         """Initalization of the image.
         
@@ -215,8 +219,7 @@ class ConfocalLogic(GenericLogic):
         if x2 < x1:
             self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2), 
                     msgType='error')
-            return -1
-         
+            return -1         
             
         if self._zscan:
             #creates an array of evenly spaced numbers over the interval
@@ -286,6 +289,7 @@ class ConfocalLogic(GenericLogic):
         
         return 0
 
+
     def start_scanner(self):
         """Setting up the scanner device and starts the scanning procedure
         
@@ -301,7 +305,8 @@ class ConfocalLogic(GenericLogic):
         self.signal_scan_lines_next.emit()
         
         return 0
-        
+
+
     def continue_scanner(self):
         """Continue the scanning procedure
         
@@ -340,8 +345,7 @@ class ConfocalLogic(GenericLogic):
         @param float a: if defined, changes to postion in a-direction (microns)
         
         @return int: error code (0:OK, -1:error)
-        """
-        
+        """        
         #Changes the respective value
         if x != None:
             self._current_x = x
@@ -356,7 +360,8 @@ class ConfocalLogic(GenericLogic):
         else:
             self.signal_change_position.emit()
             return 0
-            
+
+
     def _change_position(self):
         """ Threaded method to change the hardware position.
         
@@ -365,10 +370,10 @@ class ConfocalLogic(GenericLogic):
         self._scanning_device.scanner_set_position(x = self._current_x, 
                                                    y = self._current_y, 
                                                    z = self._current_z, 
-                                                   a = self._current_a)
-                                                   
+                                                   a = self._current_a)                                                   
         return 0
-    
+
+
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
         
@@ -461,6 +466,7 @@ class ConfocalLogic(GenericLogic):
             self.signal_scan_lines_next.emit()
             raise e
 
+
     def save_xy_data(self):
         """ Save the current confocal xy data to a file.
         
@@ -518,7 +524,8 @@ class ConfocalLogic(GenericLogic):
                   
         self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), 
                     msgType='status', importance=3)        
-        
+
+
     def save_depth_data(self):
         """ Save the current confocal depth data to a file. """
         
@@ -575,3 +582,33 @@ class ConfocalLogic(GenericLogic):
                   
         self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), 
                     msgType='status', importance=3) 
+
+
+    def set_tilt_point1(self):
+        '''Gets the first reference point for tilt correction.
+        '''
+        self.point1 = np.array((self._current_x, self._current_y, self._current_z))
+        
+    def set_tilt_point2(self):
+        '''Gets the second reference point for tilt correction.
+        '''
+        self.point2 = np.array((self._current_x, self._current_y, self._current_z))
+        
+    def set_tilt_point3(self):
+        '''Gets the third reference point for tilt correction.
+        '''
+        self.point3 = np.array((self._current_x, self._current_y, self._current_z))
+
+
+    def calc_tilt_correction(self):
+        '''Calculates the values for the tilt correction.
+        '''
+        pass
+
+
+    def _calc_dz(self, x, y):
+        '''Calculates the change in z for given tilt correction.
+        '''
+        #dz = ...
+        #return dz
+        pass
