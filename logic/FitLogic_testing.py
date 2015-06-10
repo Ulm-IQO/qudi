@@ -250,15 +250,15 @@ class FitLogic():
             mod_final,params = self.make_gaussian_model() 
             
             #auxiliary variables
-            stepsize=axis[1]-axis[0]
+            stepsize=abs(axis[1]-axis[0])
             n_steps=len(axis)
             
             #Defining standard parameters
             #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
-            params.add_many(('amplitude',amplitude, True,         100,                    1e7,                    None),
+            params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),                    None),
                            (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
                            (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
-                           (    'c',      offset,   True,        None,                    None,                  None))
+                           (    'c',      offset,   True,        100,                    data.max(),                  None))
 
 
             #redefine values of additional parameters
@@ -271,7 +271,9 @@ class FitLogic():
                             msgType='message')
                 result=mod_final.fit(data, x=axis,params=params)
                 print(result.message)
-            
+                
+#            print(result.fit_report(show_correl=False))
+           
             return result
 
         def estimate_gaussian(self,x_axis=None,data=None):
@@ -365,7 +367,7 @@ class FitLogic():
                 result=mod.fit(data, x=axis,params=params)
                 self.logMsg('The 2D gaussian fit did not work:'+result.message, \
                                         msgType='message')
-            
+
             return result
             
         @staticmethod
@@ -515,8 +517,8 @@ class FitLogic():
             #lorentzian filter            
             mod,params = self.make_lorentzian_model()
             
-            if len(x_values)<50.:
-                len_x=6
+            if len(x_values)<20.:
+                len_x=5
             if len(x_values)>=100.:
                 len_x=10
             else:
@@ -589,6 +591,7 @@ class FitLogic():
             #set paraameters          
             
             data_smooth,offset=self.find_offset_parameter(x_axis,data)
+
             data_level=data-offset        
             data_min=data_level.min()       
             data_max=data_level.max()
@@ -1288,7 +1291,7 @@ class FitLogic():
             
 #            p.add('center',max=-1)
             
-            self.data_noisy=mod_final.eval(x=self.x, amplitude=100000,center=1,sigma=0.8, c=10000) + 10000*np.random.normal(size=self.x.shape)
+            self.data_noisy=mod_final.eval(x=self.x, amplitude=100000,center=1,sigma=1.2, c=10000) + 8000*abs(np.random.normal(size=self.x.shape))
             result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy,add_parameters=p)
 
             plt.plot(self.x,self.data_noisy)
@@ -1297,7 +1300,7 @@ class FitLogic():
 #            plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r')
             plt.show()
             
-
+            print(result.fit_report(show_correl=False))
         def useful_object_variables(self):
             x = np.linspace(2800, 2900, 101)
                 
@@ -1342,4 +1345,4 @@ class FitLogic():
 #            plt.show()
             
 test=FitLogic()
-test.double_lorentzian_testing()   
+test.oneD_testing()   

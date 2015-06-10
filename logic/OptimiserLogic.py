@@ -131,7 +131,7 @@ class OptimiserLogic(GenericLogic):
         """Starts refocus 
         @param trackpoint
         """
-        print('start refocusing')
+#        print('start refocusing')
         # checking if refocus corresponding to crosshair or corresponding 
         # to trackpoint
         if isinstance(trackpoint, (np.ndarray,)) and trackpoint.size == 3:
