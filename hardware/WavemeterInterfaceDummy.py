@@ -79,7 +79,7 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         """
         
         # first check its status
-        if self.getState() is 'running':
+        if self.getState() == 'running':
             self.logMsg('Wavemeter busy', 
                     msgType='error')
             return -1
@@ -103,7 +103,7 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getState() is 'idle':
+        if self.getState() == 'idle':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
         else:   
