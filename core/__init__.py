@@ -103,6 +103,14 @@ if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd
     pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
     pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
 
+if sys.platform == 'win32':
+    try:
+        import ctypes
+        myappid = 'quantumoptics.quantumdiamond.mainapp' # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except:
+        print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft Windows!')
+
 # rename any orphaned .pyc files -- these are probably leftover from 
 # a module being moved and may interfere with expected operation.
 modDir = os.path.abspath(os.path.split(__file__)[0])
