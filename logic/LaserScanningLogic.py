@@ -28,14 +28,21 @@ import numpy as np
 import time
 
 class HardwarePull(QtCore.QObject):
+    """ Helper class for running the hardware communication in a separate thread. """
     
     def __init__(self, parentclass):
         super().__init__()
         
+        # remember the reference to the parent class to access functions ad settings
         self._parentclass = parentclass
         
         
     def handle_timer(self, state_change):
+        """ Threaded method that can be called by a signal from outside to start the timer.
+        
+        @param bool state: (True) starts timer, (False) stops it.
+        """
+        
         if state_change:
             self.timer = QtCore.QTimer()
             self.timer.timeout.connect(self._update_data)
@@ -71,7 +78,7 @@ class LaserScanningLogic(GenericLogic):
     """
     
     sig_data_updated = QtCore.Signal()
-    sig_update_histogram_next = QtCore.Signal()
+    sig_update_histogram_next = QtCore.Signal(bool)
     sig_handle_timer = QtCore.Signal(bool)
 
     _modclass = 'laserscanninglogic'
@@ -156,10 +163,17 @@ class LaserScanningLogic(GenericLogic):
                 
         self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
         
+        # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
+        
+        # create an object for the hardware communication and let it live on the new thread
         self._hardware_pull = HardwarePull(self)
         self._hardware_pull.moveToThread(self.hardware_thread)
+        
+        # connect the signals in and out of the threaded object
         self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
+        
+        # start the event loop for the hardware
         self.hardware_thread.start()
         
     def deactivation(self, e):
@@ -194,8 +208,105 @@ class LaserScanningLogic(GenericLogic):
         self.rawhisto=np.zeros(self._bins)
         self.sumhisto=np.ones(self._bins)*1.0e-10
         self.histogram_axis=np.linspace(self._xmin, self._xmax, self._bins)
-        self._complete_histogram = True
+        self.sig_update_histogram_next.emit(True)
     
+
+    def start_scanning(self):
+        """ Prepare to start counting:
+            zero variables, change state and start counting "loop"
+        """
+        
+        self.run()
+        
+        if not self._counter_logic.getState() == 'locked':
+            self._counter_logic.startCount()
+        
+        if self._counter_logic.get_saving_state():
+            self._counter_logic.stop_saving()
+            
+        self._counter_logic.start_saving()
+        self._acqusition_start_time = self._counter_logic._saving_start_time
+        self._wavelength_data = []
+        
+        self._wavemeter_device.start_acqusition()
+        
+        self.data_index = 0
+        self.rawhisto=np.zeros(self._bins)
+        self.sumhisto=np.ones(self._bins)*1.0e-10
+        self.intern_xmax = -1.0
+        self.intern_xmin = 1.0e10
+        
+        
+        # start the measuring thread
+        self.sig_handle_timer.emit(True)
+        self._complete_histogram = True
+        self.sig_update_histogram_next.emit(False)
+        
+        return 0
+ 
+    def stop_scanning(self):
+        """ Set a flag to request stopping counting.
+        """
+        
+        if not self.getState() == 'idle':
+            self._wavemeter_device.stop_acqusition()
+            # stop the measurement thread
+            self.sig_handle_timer.emit(False)
+            # set status to idle again
+            self.stop()   
+        
+        if self._counter_logic.get_saving_state():
+            self._counter_logic.save_data(save=False)
+        
+        
+        return 0
+        
+    def _update_histogram(self, complete_histogram):
+        if complete_histogram:
+            count_window = len(self._counter_logic._data_to_save)
+            self._data_index = 0
+            self.logMsg('Recalcutating Laser Scanning Histogram for: {0:d} counts and {1:d} wavelength.'.format(count_window, len(self._wavelength_data)), 
+                    msgType='status')
+        else:
+            count_window = min(100,len(self._counter_logic._data_to_save))
+            
+        if  count_window < 2:
+            time.sleep(self._logic_update_timing*1e-3)
+            self.sig_update_histogram_next.emit(False)
+            return
+                    
+        temp=np.array(self._counter_logic._data_to_save[-count_window:])
+        
+        # only do something, if there is data to work with
+        if len(self._wavelength_data)>0:
+            
+            for i in self._wavelength_data[self._data_index:]:
+                self._data_index += 1
+                
+                if  i[1] < self._xmin or i[1] > self._xmax:
+                    continue
+                
+                # calculate the bin the new wavelength needs to go in
+                newbin=np.digitize([i[1]],self.histogram_axis)[0]
+                # if the bin make no sense, start from the beginning
+                if  newbin > len(self.rawhisto)-1:
+                    continue
+                
+                # sum the counts in rawhisto and count the occurence of the bin in sumhisto
+                self.rawhisto[newbin]+=np.interp(i[0], 
+                                                 xp=temp[:,0], 
+                                                 fp=temp[:,1])
+                self.sumhisto[newbin]+=1.0                
+        
+            # the plot data is the summed counts divided by the occurence of the respective bins
+            self.histogram=self.rawhisto/self.sumhisto
+            
+        self.sig_data_updated.emit()
+                
+        time.sleep(self._logic_update_timing*1e-3)
+        if self.getState() == 'running':
+            self.sig_update_histogram_next.emit(False)
+
         
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -263,100 +374,3 @@ class LaserScanningLogic(GenericLogic):
                     msgType='status', importance=3)
         
         return 0
-
-    def start_scanning(self):
-        """ Prepare to start counting:
-            zero variables, change state and start counting "loop"
-        """
-        
-        self.run()
-        
-        if not self._counter_logic.getState() == 'locked':
-            self._counter_logic.startCount()
-        
-        if self._counter_logic.get_saving_state():
-            self._counter_logic.stop_saving()
-            
-        self._counter_logic.start_saving()
-        self._acqusition_start_time = self._counter_logic._saving_start_time
-        self._wavelength_data = []
-        
-        self._wavemeter_device.start_acqusition()
-        
-        self.data_index = 0
-        self.rawhisto=np.zeros(self._bins)
-        self.sumhisto=np.ones(self._bins)*1.0e-10
-        self.intern_xmax = -1.0
-        self.intern_xmin = 1.0e10
-        
-        
-        # start the measuring thread
-        self.sig_handle_timer.emit(True)
-        self._complete_histogram = True
-        self.sig_update_histogram_next.emit()
-        
-        return 0
- 
-    def stop_scanning(self):
-        """ Set a flag to request stopping counting.
-        """
-        
-        if not self.getState() == 'idle':
-            self._wavemeter_device.stop_acqusition()
-            # stop the measurement thread
-            self.sig_handle_timer.emit(False)
-            # set status to idle again
-            self.stop()   
-        
-        if self._counter_logic.get_saving_state():
-            self._counter_logic.save_data(save=False)
-        
-        
-        return 0
-        
-    def _update_histogram(self):
-        if self._complete_histogram:
-            self._complete_histogram = False
-            count_window = len(self._counter_logic._data_to_save)
-            self._data_index = 0
-            self.logMsg('Recalcutating Laser Scanning Histogram for: {0:d} counts and {1:d} wavelength.'.format(count_window, len(self._wavelength_data)), 
-                    msgType='status')
-        else:
-            count_window = min(100,len(self._counter_logic._data_to_save))
-            
-        if  count_window < 2:
-            time.sleep(self._logic_update_timing*1e-3)
-            self.sig_update_histogram_next.emit()
-            return
-                    
-        temp=np.array(self._counter_logic._data_to_save[-count_window:])
-        
-        # only do something, if there is data to work with
-        if len(self._wavelength_data)>0:
-            
-            for i in self._wavelength_data[self._data_index:]:
-                self._data_index += 1
-                
-                if  i[1] < self._xmin or i[1] > self._xmax:
-                    continue
-                
-                # calculate the bin the new wavelength needs to go in
-                newbin=np.digitize([i[1]],self.histogram_axis)[0]
-                # if the bin make no sense, start from the beginning
-                if  newbin > len(self.rawhisto)-1:
-                    continue
-                
-                # sum the counts in rawhisto and count the occurence of the bin in sumhisto
-                self.rawhisto[newbin]+=np.interp(i[0], 
-                                                 xp=temp[:,0], 
-                                                 fp=temp[:,1])
-                self.sumhisto[newbin]+=1.0                
-        
-            # the plot data is the summed counts divided by the occurence of the respective bins
-            self.histogram=self.rawhisto/self.sumhisto
-            
-        self.sig_data_updated.emit()
-                
-        time.sleep(self._logic_update_timing*1e-3)
-        if self.getState() == 'running':
-            self.sig_update_histogram_next.emit()

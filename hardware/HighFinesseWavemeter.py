@@ -35,16 +35,24 @@ import ctypes   # is a foreign function library for Python. It provides C
 
 
 class HardwarePull(QtCore.QObject):
+    """ Helper class for running the hardware communication in a separate thread. """
     
+    # signal to deliver the wavelength to the parent class
     sig_wavelength = QtCore.Signal(float, float)
     
     def __init__(self, parentclass):
         super().__init__()
         
+        # remember the reference to the parent class to access functions ad settings
         self._parentclass = parentclass
         
         
     def handle_timer(self, state_change):
+        """ Threaded method that can be called by a signal from outside to start the timer.
+        
+        @param bool state: (True) starts timer, (False) stops it.
+        """
+        
         if state_change:
             self.timer = QtCore.QTimer()
             self.timer.timeout.connect(self._measure_thread)
@@ -57,11 +65,13 @@ class HardwarePull(QtCore.QObject):
         """ The threaded method querying the data from the wavemeter.
         """
         
-        # update as long as the status is busy
+        # update as long as the state is busy
         if self._parentclass.getState() == 'running':
             # get the current wavelength from the wavemeter
             temp1=float(self._parentclass._wavemeterdll.GetWavelength(0))
             temp2=float(self._parentclass._wavemeterdll.GetWavelength(0))
+            
+            # send the data to the parent via a signal
             self.sig_wavelength.emit(temp1, temp2)
             
 
@@ -96,8 +106,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         self.threadlock = Mutex()
         
         # the current wavelength read by the wavemeter in nm (vac)
-        self._current_wavelength=700.0
-        self._current_wavelength2=700.0
+        self._current_wavelength=0.0
+        self._current_wavelength2=0.0
         
         # time between two measurement points of the wavemeter in milliseconds
         if 'measurement_timing' in config.keys():
@@ -115,8 +125,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         #############################################
         try:
             # imports the spectrometer specific function from dll
-            # get the module handle and create a ctypes library object
-#            self._libary_handle = ctypes.windll.kernel32.LoadLibraryA('wlmData.dll')
             self._wavemeterdll = ctypes.windll.LoadLibrary('wlmData.dll')
             
         except:
@@ -151,32 +159,44 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         # parameter data type of the Operation function of the wavemeter
         self._wavemeterdll.Operation.argtypes = [ctypes.c_ushort]
             
-                    
+        # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
+        
+        # create an object for the hardware communication and let it live on the new thread
         self._hardware_pull = HardwarePull(self)
         self._hardware_pull.moveToThread(self.hardware_thread)
+        
+        # connect the signals in and out of the threaded object
         self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
         self._hardware_pull.sig_wavelength.connect(self.handle_wavelength)
+        
+        # start the event loop for the hardware
         self.hardware_thread.start()
 
 
     def deactivation(self, e):
+        
+        self.stop_acqusition()
+        self.hardware_thread.quit()        
+        self.sig_handle_timer.disconnect()
+        self._hardware_pull.sig_wavelength.disconnect()
+        
         try:
             # clean up by removing reference to the ctypes library object
-            del self._wavemeterdll
-            
-            # unload the DLL
-#            ctypes.windll.kernel32.FreeLibrary(self._libary_handle)        
+            del self._wavemeterdll 
             return 0
         except:
             self.logMsg('Could not unload the wlmData.dll of the wavemeter.', 
                     msgType='error')
+
                         
     #############################################
     # Methods of the main class
     #############################################
                         
     def handle_wavelength(self, wavelength1, wavelength2):
+        """ Function to save the wavelength, when it comes in with a signal.
+        """
         self._current_wavelength = wavelength1
         self._current_wavelength2 = wavelength2
                         
