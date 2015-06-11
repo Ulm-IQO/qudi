@@ -146,7 +146,7 @@ class Manager(QtCore.QObject):
             
             # Initialize parent class QObject
             QtCore.QObject.__init__(self)
-            atexit.register(self.quit)
+            #atexit.register(self.quit)
 
             # Thread management
             self.tm = ThreadManager()
@@ -973,12 +973,22 @@ class Manager(QtCore.QObject):
         self.logger.print_logMsg('Activation finished.')
 
     def getStatusDir(self):
+        """ Get the directory where the app state is saved, create it if necessary.
+            
+          @return str: path of application status directory
+        """
         appStatusDir = os.path.join(self.configDir, 'app_status')
         if not os.path.isdir(appStatusDir):
             os.makedirs(appStatusDir)
         return appStatusDir
 
     def saveStatusVariables(self, base, module, variables):
+        """ If a module has status variables, save them to a file in the application status directory.
+
+          @param str base: the module category
+          @param str module: the unique module name
+          @param dict variables: a dictionary of status variable names and values
+        """
         if len(variables) > 0:
             try:
                 statusdir = self.getStatusDir()
@@ -989,6 +999,13 @@ class Manager(QtCore.QObject):
                 self.logger.logExc('Failed to save status variables.', msgType='error')
 
     def loadStatusVariables(self, base, module):
+        """ If a status variable file exists for a module, load it into a dictionary.
+            
+          @param str base: the module category
+          @param str module: the unique mduel name
+
+          @return dict: dictionary of satus variable names and values
+        """
         try:
             statusdir = self.getStatusDir()
             classname = self.tree['loaded'][base][module].__class__.__name__
