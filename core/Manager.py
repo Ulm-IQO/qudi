@@ -215,7 +215,7 @@ class Manager(QtCore.QObject):
                     modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     
                     self.configureModule(modObj, 'gui', modName, key, self.tree['start']['gui'][key])
-                    self.tree['loaded']['gui'][key].activate()
+                    self.activateModule('gui', key)
                 except:
                     raise
             # Configuration has changed with activation
@@ -723,7 +723,7 @@ class Manager(QtCore.QObject):
         if key in self.tree['loaded'][base] and 'module' in self.tree['defined'][base][key]:
             try:
                 # state machine: deactivate
-                self.tree['loaded'][base][key].deactivate()
+                self.deactivateModule(base, key)
                 # stop main loop for qt objects
                 if base == 'logic':
                     self.tm.quitThread('mod-' + base + '-' + key)
@@ -750,6 +750,7 @@ class Manager(QtCore.QObject):
         else:
             self.logger.logMsg('Module not loaded or not loadable (missing module declaration in configuration): {0}.{1}'.format(base, key), msgType='error')
 
+    @QtCore.pyqtSlot(str, str)
     def activateModule(self, base, key):
         """Activated the module given in key with the help of base class.
           
@@ -766,10 +767,29 @@ class Manager(QtCore.QObject):
                                msgType='error')
             return
         try:
+            self.tree['loaded'][base][key].setStatusVariables(self.loadStatusVariables(base, key))
             self.tree['loaded'][base][key].activate()
         except:
             self.logger.logExc('{0} module {1}: error during activation:'.format(base, key),
                                msgType='error')
+
+    @QtCore.pyqtSlot(str, str)
+    def deactivateModule(self, base, key):
+        """Activated the module given in key with the help of base class.
+          
+          @param string base: module base package (hardware, logic or gui)  
+          @param string key: module which is going to be activated.
+            
+        """
+        self.logger.logMsg('Deactivating {0}.{1}'.format(base, key), msgType='status')
+        if not self.tree['loaded'][base][key].getState() in ['idle', 'running']:
+            self.logger.logMsg('{0} module {1} not active (idle or running) anymore'.format(base, key), msgType='error')
+            return
+        try:
+            self.tree['loaded'][base][key].deactivate()
+            self.saveStatusVariables(base, key, self.tree['loaded'][base][key].getStatusVariables())
+        except:
+            self.logger.logExc('{0} module {1}: error during deactivation:'.format(base, key), msgType='error')
 
     def getSimpleModuleDependencies(self, base, key):
         """ Based on object id, find which connections to replace.
@@ -882,20 +902,9 @@ class Manager(QtCore.QObject):
                         self.activateModule(mbase, mkey)
                 elif mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     if self.tree['loaded'][mbase][mkey].getState() == 'deactivated':
-                        self.tree['loaded'][mbase][mkey].activate()
+                        self.activateModule(mbase, mkey)
                     elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
                         self.tree['loaded'][mbase][mkey].show()
-
-    @QtCore.pyqtSlot(str, str)
-    def stopModule(self, base, key):
-        """Deactivate Module.
-          @param str base: Module category
-          @param str key: Unique module name
-        """
-        for mbase in ['hardware', 'logic', 'gui']:
-            if key in self.tree['loaded'][mbase] and self.tree['loaded'][mbase][key].getState() in ['idle', 'running']:
-                self.tree['loaded'][mbase][key].deactivate()
-            
 
     @QtCore.pyqtSlot(str, str)
     def restartModuleSimple(self, base, key):
@@ -913,12 +922,12 @@ class Manager(QtCore.QObject):
             destbase, destmod = depmod
             for c in self.tree['loaded'][destbase][destmod].connector['in']:
                 if self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] is self.tree['loaded'][base][key]:
-                    self.tree['loaded'][destbase][destmod].deactivate()
+                    self.deactivateModule(destbase, destmod)
                     self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] = None
 
         self.reloadConfigureModule(base, key)
         self.connectModule(base, key)
-        self.activateModule(base,key)
+        self.activateModule(base, key)
 
         for depmod in deps[key]:
             destbase, destmod = depmod
@@ -963,11 +972,41 @@ class Manager(QtCore.QObject):
 
         self.logger.print_logMsg('Activation finished.')
 
+    def getStatusDir(self):
+        appStatusDir = os.path.join(self.configDir, 'app_status')
+        if not os.path.isdir(appStatusDir):
+            os.makedirs(appStatusDir)
+        return appStatusDir
+
+    def saveStatusVariables(self, base, module, variables):
+        if len(variables) > 0:
+            try:
+                statusdir = self.getStatusDir()
+                classname = self.tree['loaded'][base][module].__class__.__name__
+                filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+                configfile.writeConfigFile(variables, filename)
+            except:
+                self.logger.logExc('Failed to save status variables.', msgType='error')
+
+    def loadStatusVariables(self, base, module):
+        try:
+            statusdir = self.getStatusDir()
+            classname = self.tree['loaded'][base][module].__class__.__name__
+            filename = os.path.join(statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+            if os.path.isfile(filename):
+                variables = configfile.readConfigFile(filename)
+            else:
+                variables = OrderedDict()
+        except:
+            self.logger.logExc('Failed to load status variables.', msgType='error')
+            variables = OrderedDict()
+        return variables
+
     def quit(self):
         """Nicely request that all modules shut down."""
         for mbase in ['hardware', 'logic', 'gui']:
             for module in self.tree['loaded'][mbase]:
-                self.stopModule(mbase, module)
+                self.deactivateModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self)
 
