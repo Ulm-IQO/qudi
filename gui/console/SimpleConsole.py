@@ -24,6 +24,7 @@ import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
 from . import ConsoleWidget
 from . import ConsoleWindowUI
+from . import ConsoleSettingsUI
 
 class SimpleConsole(GUIBase):
     """
@@ -71,21 +72,24 @@ Go, play.
         self._mw = ConsoleMainWindow()
         self._cw = ConsoleWidget.ConsoleWidget(namespace=self.namespace, text=text)
         self._cw.applyStyleSheet(self.stylesheet)
-        self.fontsize = 10
+
+        # font size
         if 'fontsize' in self._statusVariables:
-            self.fontsize = self._statusVariables['fontsize']
-            doc = self._cw.output.document()
-            font = doc.defaultFont()
-            font.setPointSize(self.fontsize)
-            doc.setDefaultFont(font)
-            #fnt = self._cw.input.font()
-            #metric = QtGui.QFontMetrics(fnt)
-            #self._cw.input.setFixedHeight(2*metric.lineSpacing())
-            #fnt.setPointSize(self.fontsize+2)
-            self._cw.input.setStyleSheet('font-size: {0}pt'.format(self.fontsize))
+            self.setFontSize(self._statusVariables['fontsize'])
+        else:
+            self.setFontSize(10)
+        
+        # settings
+        self._sd = ConsoleSettingsDialog()
+        self._sd.accepted.connect(self.applySettings)
+        self._sd.rejected.connect(self.keepSettings)
+        self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.applySettings)
+        self.keepSettings()
+
         self._mw.layout.addWidget(self._cw)
         self._manager.sigShowConsole.connect(self.show)
         self._manager.sigModulesChanged.connect(self.updateModuleList)
+        self._mw.actionSettings.triggered.connect(self._sd.exec_)
         self._mw.show()
 
     def deactivation(self, e):
@@ -94,7 +98,24 @@ Go, play.
           @param object e: Fysom state change notification
         """
         self._cw.close()
-        self._statusVariables['fontsize'] = self.fontsize
+
+    def keepSettings(self):
+        """ Write old values into config dialog.
+        """
+        self._sd.fontSizeBox.setProperty('value', self._statusVariables['fontsize'])
+
+    def applySettings(self):
+        """ Apply values from config dialog to console.
+        """
+        self.setFontSize(self._sd.fontSizeBox.value())
+
+    def setFontSize(self, fontsize):
+        doc = self._cw.output.document()
+        font = doc.defaultFont()
+        font.setPointSize(fontsize)
+        doc.setDefaultFont(font)
+        self._cw.input.setStyleSheet('font-size: {0}pt'.format(fontsize))
+        self._statusVariables['fontsize'] = fontsize
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace, 
@@ -127,4 +148,11 @@ class ConsoleMainWindow(QtGui.QMainWindow, ConsoleWindowUI.Ui_MainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         self.layout = QtGui.QVBoxLayout(self.centralwidget)
+
+        
+class ConsoleSettingsDialog(QtGui.QDialog, ConsoleSettingsUI.Ui_Dialog):
+    """ Create the SettingsDialog window, based on the corresponding *.ui file."""
+    def __init__(self):
+        QtGui.QDialog.__init__(self)
+        self.setupUi(self)
 
