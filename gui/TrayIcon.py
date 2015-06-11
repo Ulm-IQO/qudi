@@ -77,8 +77,7 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
         Adds all the appropriate menus and actions.
         """
         QtGui.QSystemTrayIcon.__init__(self)
-        self.logo=QtGui.QIcon('artwork/qudi_trayicon.png')
-        self.setIcon(self.logo)
+        self.setIcon(QtGui.QApplication.instance().windowIcon())
         self.right_menu = QtGui.QMenu('Quit')
         self.left_menu = QtGui.QMenu('Manager')
         self.managericon = QtGui.QIcon.fromTheme("go-home")

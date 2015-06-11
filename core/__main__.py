@@ -59,6 +59,16 @@ class AppWatchdog(QtCore.QObject):
         for i in range(0, 100):
             x += i
 
+    def setAppIcon(self):
+        iconpath = 'artwork/QuantumDiamond-logo-'
+        self.appIcon = QtGui.QIcon()
+        self.appIcon.addFile('{0}16x16.png'.format(iconpath), QtCore.QSize(16,16))
+        self.appIcon.addFile('{0}24x24.png'.format(iconpath), QtCore.QSize(24,24))
+        self.appIcon.addFile('{0}32x32.png'.format(iconpath), QtCore.QSize(32,32))
+        self.appIcon.addFile('{0}48x48.png'.format(iconpath), QtCore.QSize(48,48))
+        self.appIcon.addFile('{0}256x256.png'.format(iconpath), QtCore.QSize(256,256))
+        QtGui.QApplication.instance().setWindowIcon(self.appIcon)
+
     def quitApplication(self, manager):
         """Clean up threads and windows, quit application.
 
@@ -114,8 +124,9 @@ gc = GarbageCollector(interval=1.0, debug=False)
 # Create Manager. This configures devices and creates the main manager window.
 # All additional arguments in sys.argv, which were not used and executed here
 # are passed to the main device handler, the Manager.
-man = Manager(argv=sys.argv[1:])
 watchdog = AppWatchdog()
+watchdog.setAppIcon()
+man = Manager(argv=sys.argv[1:])
 man.sigManagerQuit.connect(watchdog.quitApplication)
 
 ## for debugging with pdb
