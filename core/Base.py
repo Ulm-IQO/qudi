@@ -102,6 +102,7 @@ class Base(QtCore.QObject, Fysom):
         self._manager = manager
         self._name = name
         self._configuration = configuration
+        self._statusVariables = OrderedDict()
 
     def default_activate(self, e):
         """ The default activation callback gives an error if not overwritten.
@@ -116,29 +117,27 @@ class Base(QtCore.QObject, Fysom):
             @param object e: Fysom state change descriptor
         """
         self.logMsg('Please implement and specify the deactivation method {0}.'.format(self.__class__.__name__), msgType='error')
+
+    # Do not replace these in subclasses
         
-
-    def getStatusVariableList(self):
-        """Return a list of variable names for variables that can be saved and restored.
-
-          @return list(str): variable names for saving
-
-          Please implement this function when subclassing.
-        """
-        self.logMsg('Please implement this function', msgType='warning')
-        return list()
-
     def getStatusVariables(self):
-        """ Return a dict of variable names and their content.
+        """ Return a dict of variable names and their content representing the module state for saving.
 
           @return dict: variable names and contents.
 
-          Please implement this function when subclassing.
         """
-        self.logMsg("Please implement this function.", msgType='warning')
-        return dict()
+        return self._statusVariables
 
-    # Do not replace these in subclasses
+    def setStatusVariables(self, variableDict):
+        """ Give a module a dict of variable names and their content representing the module state.
+
+          @param OrderedDict dict: variable names and contents.
+
+        """
+        if not isinstance(variableDict, (dict, OrderedDict)):
+            self.logMsg('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'.format(self.__class__.__name__), msgType='error')
+            return
+        self._statusVariables = variableDict
 
     def getState(self):
         """Return the state of the state machine implemented in this class.

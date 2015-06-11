@@ -86,7 +86,7 @@ class ManagerGui(GUIBase):
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
-        self.sigStopModule.connect(self._manager.stopModule)
+        self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
         self.updateModuleList()

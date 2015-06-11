@@ -22,9 +22,10 @@ from gui.GUIBase import GUIBase
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
-from . import Console
+from . import ConsoleWidget
+from . import ConsoleWindowUI
 
-class ConsoleGui(GUIBase):
+class SimpleConsole(GUIBase):
     """
     """
     def __init__(self, manager, name, config, **kwargs):
@@ -67,12 +68,25 @@ View the current namespace with dir().
 Go, play.
 """
         self.updateModuleList()
-        self._cw = Console.ConsoleWidget(namespace=self.namespace, text=text)
-        self._cw.setWindowTitle('qudi: Console')
+        self._mw = ConsoleMainWindow()
+        self._cw = ConsoleWidget.ConsoleWidget(namespace=self.namespace, text=text)
         self._cw.applyStyleSheet(self.stylesheet)
+        self.fontsize = 10
+        if 'fontsize' in self._statusVariables:
+            self.fontsize = self._statusVariables['fontsize']
+            doc = self._cw.output.document()
+            font = doc.defaultFont()
+            font.setPointSize(self.fontsize)
+            doc.setDefaultFont(font)
+            #fnt = self._cw.input.font()
+            #metric = QtGui.QFontMetrics(fnt)
+            #self._cw.input.setFixedHeight(2*metric.lineSpacing())
+            #fnt.setPointSize(self.fontsize+2)
+            self._cw.input.setStyleSheet('font-size: {0}pt'.format(self.fontsize))
+        self._mw.layout.addWidget(self._cw)
         self._manager.sigShowConsole.connect(self.show)
         self._manager.sigModulesChanged.connect(self.updateModuleList)
-        self._cw.show()
+        self._mw.show()
 
     def deactivation(self, e):
         """ Close window and remove connections.
@@ -80,6 +94,7 @@ Go, play.
           @param object e: Fysom state change notification
         """
         self._cw.close()
+        self._statusVariables['fontsize'] = self.fontsize
 
     def updateModuleList(self):
         """Remove non-existing modules from namespace, 
@@ -100,6 +115,16 @@ Go, play.
     def show(self):
         """Make sure that the window is visible and at the top.
         """
-        QtGui.QMainWindow.show(self._cw)
-        self._cw.activateWindow()
-        self._cw.raise_()
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
+
+class ConsoleMainWindow(QtGui.QMainWindow, ConsoleWindowUI.Ui_MainWindow):
+    def __init__(self):
+        """ Create the Console window.
+        """
+        QtGui.QMainWindow.__init__(self)
+        self.setupUi(self)
+        self.layout = QtGui.QVBoxLayout(self.centralwidget)
+
