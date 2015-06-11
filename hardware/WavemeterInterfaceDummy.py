@@ -31,14 +31,22 @@ import random
 
 
 class HardwarePull(QtCore.QObject):
+    """ Helper class for running the hardware communication in a separate thread. """
+    
     
     def __init__(self, parentclass):
         super().__init__()
         
+        # remember the reference to the parent class to access functions ad settings
         self._parentclass = parentclass
         
         
     def handle_timer(self, state_change):
+        """ Threaded method that can be called by a signal from outside to start the timer.
+        
+        @param bool state: (True) starts timer, (False) stops it.
+        """
+        
         if state_change:
             self.timer = QtCore.QTimer()
             self.timer.timeout.connect(self._measure_thread)
@@ -56,8 +64,8 @@ class HardwarePull(QtCore.QObject):
         # update as long as the status is busy
         if self._parentclass.getState() == 'running':
             # get the current wavelength from the wavemeter
-            self._parentclass._current_wavelenght  += random.uniform(-range_step, range_step)
-            self._parentclass._current_wavelenght2 += random.uniform(-range_step, range_step)
+            self._parentclass._current_wavelength  += random.uniform(-range_step, range_step)
+            self._parentclass._current_wavelength2 += random.uniform(-range_step, range_step)
             
 
 class WavemeterInterfaceDummy(Base,WavemeterInterface):
@@ -78,8 +86,8 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         self.threadlock = Mutex()
         
         # the current wavelength read by the wavemeter in nm (vac)
-        self._current_wavelenght=700.0
-        self._current_wavelenght2=700.0
+        self._current_wavelength=700.0
+        self._current_wavelength2=700.0
         
         # time between two measurement points of the wavemeter in milliseconds
         if 'measurement_timing' in config.keys():
@@ -93,14 +101,24 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
 
     def activation(self, e):
         
+        # create an indepentent thread for the hardware communication
         self.hardware_thread = QtCore.QThread()
+        
+        # create an object for the hardware communication and let it live on the new thread
         self._hardware_pull = HardwarePull(self)
         self._hardware_pull.moveToThread(self.hardware_thread)
+        
+        # connect the signals in and out of the threaded object
         self.sig_handle_timer.connect(self._hardware_pull.handle_timer)
+        
+        # start the event loop for the hardware
         self.hardware_thread.start()
 
     def deactivation(self, e):
-        pass
+        
+        self.stop_acqusition()
+        self.hardware_thread.quit()        
+        self.sig_handle_timer.disconnect()
                         
     #############################################
     # Methods of the main class
@@ -160,10 +178,10 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         """
         if kind in "air":
             # for air we need the convert the current wavelength. T
-            return float(self._current_wavelenght)
+            return float(self._current_wavelength)
         if kind in "vac":
             # for vacuum just return the current wavelength
-            return float(self._current_wavelenght)
+            return float(self._current_wavelength)
         return -2.0
         
     def get_current_wavelength2(self, kind="air"):
@@ -175,10 +193,10 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         """
         if kind in "air":
             # for air we need the convert the current wavelength. 
-            return float(self._current_wavelenght2)
+            return float(self._current_wavelength2)
         if kind in "vac":
             # for vacuum just return the current wavelength
-            return float(self._current_wavelenght2)
+            return float(self._current_wavelength2)
         return -2.0
             
     def get_timing(self):

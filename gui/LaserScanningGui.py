@@ -53,7 +53,7 @@ class LaserScanningGui(GUIBase):
         # setting up the window
         self._mw = QtGui.QMainWindow()
         self._mw.setWindowTitle('qudi: Laser Scanning')
-        self._mw.setGeometry(1000,30,800,550)
+        self._mw.setGeometry(1000,400,800,600)
         self._cw = QtGui.QWidget()
         self._mw.setCentralWidget(self._cw)
         
@@ -75,6 +75,7 @@ class LaserScanningGui(GUIBase):
         self._plot_item.scene().addItem(self._top_axis)
         self._plot_item.getAxis('top').linkToView(self._top_axis)
         self._top_axis.setYLink(self._plot_item)
+        self._top_axis.invertX(b=True)
         
         # handle resizing of any of the elements
         self._update_plot_views()
@@ -105,12 +106,14 @@ class LaserScanningGui(GUIBase):
         
         self._min_wavelength_label = QtGui.QLabel('Min (nm):')
         self._min_wavelength_display = QtGui.QDoubleSpinBox()
+        self._min_wavelength_display.setDecimals(6)
         self._min_wavelength_display.setRange(1,1e6)
         self._min_wavelength_display.setValue(self._scanning_logic.get_min_wavelength())
         self._min_wavelength_display.editingFinished.connect(self.recalculate_histogram)
         
         self._max_wavelength_label = QtGui.QLabel('Max (nm):')
         self._max_wavelength_display = QtGui.QDoubleSpinBox()
+        self._max_wavelength_display.setDecimals(6)
         self._max_wavelength_display.setRange(1,1e4)
         self._max_wavelength_display.setValue(self._scanning_logic.get_max_wavelength())
         self._max_wavelength_display.editingFinished.connect(self.recalculate_histogram)
@@ -131,7 +134,7 @@ class LaserScanningGui(GUIBase):
         
         # creating the label for the current counts and right alignment
         self._wavelength_label = QtGui.QLabel('xxx')
-        self._wavelength_label.setFont(QtGui.QFont('Arial', 60, QtGui.QFont.Bold))
+        self._wavelength_label.setFont(QtGui.QFont('Arial', 40, QtGui.QFont.Bold))
         self._hbox_counter = QtGui.QHBoxLayout()
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._wavelength_label)
@@ -192,7 +195,7 @@ class LaserScanningGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
         
-        self._wavelength_label.setText('{0:,.5f} nm'.format(self._scanning_logic.current_wavelength))
+        self._wavelength_label.setText('{0:,.6f} nm'.format(self._scanning_logic.current_wavelength))
         self._auto_min_label.setText('Minimum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmin))
         self._auto_max_label.setText('Maximum: {0:3.6f} (nm)   '.format(self._scanning_logic.intern_xmax))
         
@@ -202,7 +205,7 @@ class LaserScanningGui(GUIBase):
         
         self._curve1.setData(y=self._scanning_logic.histogram, x=x_axis)
         self._curve2.setData(y=self._scanning_logic.sumhisto, x=x_axis)
-        self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz[::-1])        
+        self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz)        
         
         if self._scanning_logic.getState() is 'running':
             self._start_stop_button.setText('Stop')
