@@ -370,11 +370,12 @@ class ConfocalLogic(GenericLogic):
         """ Threaded method to change the hardware position.
         
         @return int: error code (0:OK, -1:error)
-        """
+        """            
         self._scanning_device.scanner_set_position(x = self._current_x, 
                                                    y = self._current_y, 
-                                                   z = self._current_z, 
-                                                   a = self._current_a)                                                   
+                                                   z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y), 
+                                                   a = self._current_a)
+        
         return 0
 
 
@@ -618,6 +619,9 @@ class ConfocalLogic(GenericLogic):
     def _calc_dz(self, x, y):
         '''Calculates the change in z for given tilt correction.
         '''
-        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...        
-        dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
-        return dz
+        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...  
+        if not self.TiltCorrection:
+            return 0.
+        else:
+            dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
+            return dz
