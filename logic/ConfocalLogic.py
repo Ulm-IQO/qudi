@@ -64,8 +64,7 @@ class ConfocalLogic(GenericLogic):
         
         self.stopRequested = False
         
-        self.yz_instead_of_xz_scan = False        
-        self.TiltCorrection = False
+        self.yz_instead_of_xz_scan = False
                     
                        
     def activation(self, e):
@@ -101,6 +100,11 @@ class ConfocalLogic(GenericLogic):
         
         # Initialization of internal counter for scanning  
         self._scan_counter=0
+        
+        #tilt correction stuff:            
+        self.TiltCorrection = False
+        self._tiltreference_x = 0.5*(self.x_range[0] + self.x_range[1])
+        self._tiltreference_y = 0.5*(self.y_range[0] + self.y_range[1])
        
         # Sets connections between signals and functions   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
@@ -603,12 +607,17 @@ class ConfocalLogic(GenericLogic):
     def calc_tilt_correction(self):
         '''Calculates the values for the tilt correction.
         '''
-        pass
+        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...
+        a = self.point2 - self.point1
+        b = self.point3 - self.point1
+        n = np.array( ( a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ) )
+        self._tilt_variable_ax = n[0] / n[2]
+        self._tilt_variable_ay = n[1] / n[2]
 
 
     def _calc_dz(self, x, y):
         '''Calculates the change in z for given tilt correction.
         '''
-        #dz = ...
-        #return dz
-        pass
+        # I took this from the old code, maybe we should double-check the formulas, but so far it worked...        
+        dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
+        return dz
