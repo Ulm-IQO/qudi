@@ -105,6 +105,8 @@ class ConfocalLogic(GenericLogic):
         self.TiltCorrection = False
         self._tiltreference_x = 0.5*(self.x_range[0] + self.x_range[1])
         self._tiltreference_y = 0.5*(self.y_range[0] + self.y_range[1])
+        self._tilt_variable_ax = 0.
+        self._tilt_variable_ay = 0.
        
         # Sets connections between signals and functions   
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
@@ -279,7 +281,10 @@ class ConfocalLogic(GenericLogic):
                 self.depth_image[:,:,2] = z_value_matrix.transpose() 
                 # now we are scanning along the y-axis, so we need a new return line along Y:
                 self._return_YL = np.linspace(self._YL[-1], self._YL[0], self.return_slowness)
-                self._return_AL = np.zeros(self._return_YL.shape)               
+                self._return_AL = np.zeros(self._return_YL.shape)
+            # this should do the whole tilt correction for scanning
+            if self.TiltCorrection:
+                self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
             self.sigImageDepthInitialized.emit()
         else:
             self._image_vert_axis = self._Y
@@ -289,7 +294,11 @@ class ConfocalLogic(GenericLogic):
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:,:,1] = y_value_matrix.transpose()
             self.xy_image[:,:,2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
-            self.sigImageXYInitialized.emit()
+            # this should do the whole tilt correction for scanning
+            if self.TiltCorrection:
+                self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
+            self.sigImageXYInitialized.emit()            
+        
         
         return 0
 
