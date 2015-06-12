@@ -584,9 +584,22 @@ class ConfocalGui(GUIBase):
                                [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
                                [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
                                [127,  0,  0,255] ], dtype=np.ubyte)
-        colmap = pg.ColorMap(pos, color_inv)
+                               
+        color_new = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
+                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
+                               ], dtype=np.ubyte)
+                               
+        color_new_inv = np.array([ [255, 26,  0,255], [255,129,  0,255], [254,237,  0,255],
+                               [160,255, 86,255], [ 66,255,149,255], [  0,204,255,255],
+                               [  0, 88,255,255], [  0,  0,241,255], [  0,  0,132,255]
+                               ], dtype=np.ubyte)
+                               
+        pos_2 = np.linspace(0.0, 1.0, num=len(color_new))
+                               
+        colmap = pg.ColorMap(pos_2, color_new)
         
-        self.colmap_norm = pg.ColorMap(pos, color/255)
+        self.colmap_norm = pg.ColorMap(pos, color_new_inv/255)
         
         # get the LookUpTable (LUT), first two params should match the position
         # scale extremes passed to ColorMap(). 
