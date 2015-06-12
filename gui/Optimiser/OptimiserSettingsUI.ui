@@ -177,6 +177,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>xy_refocusrange_InputWidget</tabstop>
+  <tabstop>xy_refocusstepsize_InputWidget</tabstop>
+  <tabstop>z_refocusrange_InputWidget</tabstop>
+  <tabstop>z_refocusstepsize_InputWidget</tabstop>
+  <tabstop>count_freq_InputWidget</tabstop>
+  <tabstop>return_slow_InputWidget</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
