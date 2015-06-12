@@ -243,6 +243,7 @@ class ODMRGui(GUIBase):
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
         self._odmr_logic.stop_ODMR_scan()
+        self._sd.matrix_lines_InputWidget.setReadOnly(False)
 #        self._odmr_logic.kill_ODMR()
 
 
@@ -258,6 +259,7 @@ class ODMRGui(GUIBase):
         #Then if enabled. start a new odmr scan.
         if enabled:
             self._odmr_logic.start_ODMR_scan()
+            self._sd.matrix_lines_InputWidget.setReadOnly(True)
             
     def menue_settings(self):
         ''' This method opens the settings menue
