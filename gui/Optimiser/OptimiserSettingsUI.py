@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'OptimiserSettings.ui'
+# Form implementation generated from reading ui file 'OptimiserSettingsUI.ui'
 #
-# Created: Thu Apr 30 12:52:59 2015
+# Created: Fri Jun 12 16:23:11 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
@@ -91,6 +91,12 @@ class Ui_SettingsDialog(object):
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), SettingsDialog.accept)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("rejected()")), SettingsDialog.reject)
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
+        SettingsDialog.setTabOrder(self.xy_refocusrange_InputWidget, self.xy_refocusstepsize_InputWidget)
+        SettingsDialog.setTabOrder(self.xy_refocusstepsize_InputWidget, self.z_refocusrange_InputWidget)
+        SettingsDialog.setTabOrder(self.z_refocusrange_InputWidget, self.z_refocusstepsize_InputWidget)
+        SettingsDialog.setTabOrder(self.z_refocusstepsize_InputWidget, self.count_freq_InputWidget)
+        SettingsDialog.setTabOrder(self.count_freq_InputWidget, self.return_slow_InputWidget)
+        SettingsDialog.setTabOrder(self.return_slow_InputWidget, self.buttonBox)
 
     def retranslateUi(self, SettingsDialog):
         SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: Optimiser - Settings", None, QtGui.QApplication.UnicodeUTF8))
