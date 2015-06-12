@@ -448,7 +448,7 @@ class PoiManagerLogic(GenericLogic):
         
         self.logMsg('Periodic refocus on {}.'.format(self._current_poi_key), msgType='status')
             
-        self.timer_step = time.time()
+        self.timer_step = 0
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self._periodic_refocus_loop)
