@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Fri Jun 12 16:25:49 2015
+# Created: Fri Jun 12 16:28:20 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -284,7 +284,8 @@ class Ui_PoiManager(object):
         self.horizontalLayout_11.addWidget(self.label_6)
         self.verticalLayout_5.addLayout(self.horizontalLayout_11)
         self.time_till_next_update_Display = QtGui.QProgressBar(self.dockWidgetContents_7)
-        self.time_till_next_update_Display.setProperty("value", 24)
+        self.time_till_next_update_Display.setMaximum(15)
+        self.time_till_next_update_Display.setProperty("value", 15)
         self.time_till_next_update_Display.setObjectName(_fromUtf8("time_till_next_update_Display"))
         self.verticalLayout_5.addWidget(self.time_till_next_update_Display)
         self.horizontalLayout_12 = QtGui.QHBoxLayout()

@@ -583,8 +583,11 @@
      </item>
      <item>
       <widget class="QProgressBar" name="time_till_next_update_Display">
+       <property name="maximum">
+        <number>15</number>
+       </property>
        <property name="value">
-        <number>24</number>
+        <number>15</number>
        </property>
        <property name="format">
         <string>%v s</string>
