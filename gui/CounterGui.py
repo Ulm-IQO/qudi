@@ -41,7 +41,6 @@ class CounterGui(GUIBase):
         """
 
         self._counting_logic = self.connector['in']['counterlogic1']['object']
-#        print("Counting logic is", self._counting_logic)
                 
         # setting up the window
         self._mw = QtGui.QMainWindow()
@@ -51,8 +50,7 @@ class CounterGui(GUIBase):
         self._mw.setCentralWidget(self._cw)
         
         # creating a plot in pyqtgraph and configuring it
-        self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together
-        
+        self._pw = pg.PlotWidget(name='Counter1')  ## giving the plots names allows us to link their axes together        
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='s')
                 
