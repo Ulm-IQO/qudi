@@ -551,7 +551,7 @@ class PoiManagerGui(GUIBase):
         #placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
         
 #        print(self._poi_manager_logic.time_left)
-        self._mw.time_till_next_update_Display.display( self._poi_manager_logic.time_left )
+        self._mw.time_till_next_update_Display.setValue( self._poi_manager_logic.time_left )
 
     def _redraw_sample_shift(self):
         
