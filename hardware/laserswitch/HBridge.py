@@ -1,7 +1,26 @@
 # -*- coding: utf-8 -*-
+"""
+Control custom board with 4 H bridges.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+"""
 
 import visa
 from core.Base import Base
+from core.util.Mutex import Mutex
 from .LaserSwitchInterface import LaserSwitchInterface
 
 class HBridge(Base, LaserSwitchInterface):
@@ -16,6 +35,7 @@ class HBridge(Base, LaserSwitchInterface):
 
         self.connector['out']['counter'] = OrderedDict()
         self.connector['out']['counter']['class'] = 'LaserSwitchInterface'
+        self.lock = Mutex()
 
     def activation(self):
         config = self.getConfiguration()
@@ -40,23 +60,22 @@ class HBridge(Base, LaserSwitchInterface):
     def getSwitchState(self, switchNumber):
         """
         """
-        pos = self.inst.ask('STATUS')
-        ret = list()
-        for i in pos.split():
-            ret.append(int(i))
-        return ret[switchNumber]
+        with self.lock:
+            pos = self.inst.ask('STATUS')
+            ret = list()
+            for i in pos.split():
+                ret.append(int(i))
+            return ret[switchNumber]
 
     def getCalibration(self, switchNumber, state):
         """
         """
-        bstate = state == 'On'
-        return self.switchCalibration[bstate][switchNumber]
+        return 0
 
     def setCalibration(self, switchNumber, state, value):
         """
         """
-        bstate = state == 'On'
-        self.switchCalibration[bstate][switchNumber] = value
+        pass
 
     def switchOn(self, switchNumber):
         """
@@ -89,17 +108,4 @@ class HBridge(Base, LaserSwitchInterface):
                 return True
         else:
             self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
-
-
-    def _get_positions(self):
-        
-    # ========================================================================
-    # Below here we have all functions that do something with the hardware and
-    # do not do any setup or funny stuff.
-    # They should all be decorated with @queued so they can only be called
-    # inside the execution queue.
-    # Do not call other queued functions here or the queue will lock up!!!!!
-    # ========================================================================
-    @queued
-    def getPositions(self):
 
