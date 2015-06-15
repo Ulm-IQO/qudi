@@ -37,7 +37,7 @@ class HBridge(Base, LaserSwitchInterface):
         self.connector['out']['counter']['class'] = 'LaserSwitchInterface'
         self.lock = Mutex()
 
-    def activation(self):
+    def activation(self, e):
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
@@ -49,7 +49,7 @@ class HBridge(Base, LaserSwitchInterface):
                 send_end=True
         )
 
-    def deactivation(self):
+    def deactivation(self, e):
         self.inst.close()
 
     def getNumberOfSwitches(self):
