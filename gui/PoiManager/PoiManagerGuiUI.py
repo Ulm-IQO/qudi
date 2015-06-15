@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Mon Jun 15 21:04:44 2015
+# Created: Tue Jun 16 00:00:17 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -209,7 +209,7 @@ class Ui_PoiManager(object):
         self.horizontalLayout_9.setObjectName(_fromUtf8("horizontalLayout_9"))
         self.roi_cb_high_centile_InputWidget = QtGui.QSpinBox(self.dockWidgetContents)
         self.roi_cb_high_centile_InputWidget.setMaximumSize(QtCore.QSize(16777215, 16777215))
-        self.roi_cb_high_centile_InputWidget.setMinimum(50)
+        self.roi_cb_high_centile_InputWidget.setMinimum(0)
         self.roi_cb_high_centile_InputWidget.setMaximum(100)
         self.roi_cb_high_centile_InputWidget.setProperty("value", 100)
         self.roi_cb_high_centile_InputWidget.setObjectName(_fromUtf8("roi_cb_high_centile_InputWidget"))
@@ -232,7 +232,7 @@ class Ui_PoiManager(object):
         self.horizontalLayout_4.setObjectName(_fromUtf8("horizontalLayout_4"))
         self.roi_cb_low_centile_InputWidget = QtGui.QSpinBox(self.dockWidgetContents)
         self.roi_cb_low_centile_InputWidget.setMaximumSize(QtCore.QSize(16777215, 16777215))
-        self.roi_cb_low_centile_InputWidget.setMaximum(50)
+        self.roi_cb_low_centile_InputWidget.setMaximum(100)
         self.roi_cb_low_centile_InputWidget.setProperty("value", 0)
         self.roi_cb_low_centile_InputWidget.setObjectName(_fromUtf8("roi_cb_low_centile_InputWidget"))
         self.horizontalLayout_4.addWidget(self.roi_cb_low_centile_InputWidget)

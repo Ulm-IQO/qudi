@@ -102,7 +102,7 @@
              </size>
             </property>
             <property name="minimum">
-             <number>50</number>
+             <number>0</number>
             </property>
             <property name="maximum">
              <number>100</number>
@@ -154,7 +154,7 @@
              </size>
             </property>
             <property name="maximum">
-             <number>50</number>
+             <number>100</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -240,7 +240,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -408,7 +408,7 @@
                    </size>
                   </property>
                   <property name="minimum">
-                   <number>50</number>
+                   <number>0</number>
                   </property>
                   <property name="maximum">
                    <number>100</number>
@@ -454,7 +454,7 @@
                    </size>
                   </property>
                   <property name="maximum">
-                   <number>50</number>
+                   <number>100</number>
                   </property>
                   <property name="value">
                    <number>0</number>
@@ -674,7 +674,7 @@
                  </size>
                 </property>
                 <property name="minimum">
-                 <number>50</number>
+                 <number>0</number>
                 </property>
                 <property name="maximum">
                  <number>100</number>
@@ -720,7 +720,7 @@
                  </size>
                 </property>
                 <property name="maximum">
-                 <number>50</number>
+                 <number>100</number>
                 </property>
                 <property name="value">
                  <number>0</number>
@@ -1694,7 +1694,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1830,7 +1830,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header>pyqtgraph.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
