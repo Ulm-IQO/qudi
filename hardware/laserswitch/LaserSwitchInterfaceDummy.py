@@ -21,11 +21,12 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 from core.Base import Base
 from collections import OrderedDict
 from .LaserSwitchInterface import LaserSwitchInterface
+import time
 
 class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
     """ Methods to control slow laser switching devices.
     """
-    _modclass = 'laserswitchinterface'
+    _modclass = 'laserswitchinterfacedummy'
     _modtype = 'hardware'
 
     def __init__(self, manager, name, config, **kwargs):
@@ -70,12 +71,16 @@ class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
         """
         """
         self.switchState[switchNumber] = True
+        time.sleep(self.getSwitchTime(switchNumber))
+        self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
     
     def switchOff(self, switchNumber):
         """
         """
         self.switchState[switchNumber] = False
+        time.sleep(self.getSwitchTime(switchNumber))
+        self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
         return self.switchState[switchNumber]
 
     def getSwitchTime(self, switchNumber):

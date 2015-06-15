@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './gui/Switching/SwitchWidgetUI.ui'
 #
-# Created by: PyQt4 UI code generator 4.11.3
+# Created by: PyQt4 UI code generator 4.11.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -49,11 +49,6 @@ class Ui_SwitchWidget(object):
         self.calOffLabel.setSizePolicy(sizePolicy)
         self.calOffLabel.setObjectName(_fromUtf8("calOffLabel"))
         self.gridLayout.addWidget(self.calOffLabel, 0, 2, 1, 1)
-        self.SwitchButton = QtGui.QPushButton(SwitchWidget)
-        self.SwitchButton.setCheckable(True)
-        self.SwitchButton.setChecked(False)
-        self.SwitchButton.setObjectName(_fromUtf8("SwitchButton"))
-        self.gridLayout.addWidget(self.SwitchButton, 1, 0, 1, 1)
         self.calOnVal = QtGui.QDoubleSpinBox(SwitchWidget)
         self.calOnVal.setObjectName(_fromUtf8("calOnVal"))
         self.gridLayout.addWidget(self.calOnVal, 1, 1, 1, 1)
@@ -66,6 +61,11 @@ class Ui_SwitchWidget(object):
         self.switchTImeLabelLabel = QtGui.QLabel(SwitchWidget)
         self.switchTImeLabelLabel.setObjectName(_fromUtf8("switchTImeLabelLabel"))
         self.gridLayout.addWidget(self.switchTImeLabelLabel, 0, 3, 1, 1)
+        self.SwitchButton = QtGui.QCheckBox(SwitchWidget)
+        self.SwitchButton.setCheckable(True)
+        self.SwitchButton.setChecked(False)
+        self.SwitchButton.setObjectName(_fromUtf8("SwitchButton"))
+        self.gridLayout.addWidget(self.SwitchButton, 1, 0, 1, 1)
 
         self.retranslateUi(SwitchWidget)
         QtCore.QMetaObject.connectSlotsByName(SwitchWidget)
@@ -74,7 +74,7 @@ class Ui_SwitchWidget(object):
         SwitchWidget.setWindowTitle(_translate("SwitchWidget", "Form", None))
         self.calOnLabel.setText(_translate("SwitchWidget", "On Calibration", None))
         self.calOffLabel.setText(_translate("SwitchWidget", "Off Calibration", None))
-        self.SwitchButton.setText(_translate("SwitchWidget", "Switch", None))
         self.switchTimeLabel.setText(_translate("SwitchWidget", "Switching Time", None))
         self.switchTImeLabelLabel.setText(_translate("SwitchWidget", "Switching time", None))
+        self.SwitchButton.setText(_translate("SwitchWidget", "On", None))
 

@@ -19,6 +19,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 import visa
+import time
 from core.Base import Base
 from core.util.Mutex import Mutex
 from .LaserSwitchInterface import LaserSwitchInterface
@@ -104,6 +105,8 @@ class FlipMirror(Base, LaserSwitchInterface):
                 answer = self.inst.ask('SV1')
                 if answer != 'OK1':
                     return False
+                time.sleep(self.getSwitchTime(switchNumber))
+                self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
             except:
                 return False
             return True
@@ -116,6 +119,8 @@ class FlipMirror(Base, LaserSwitchInterface):
                 answer = self.inst.ask('SH1')
                 if answer != 'OK1':
                     return False
+                time.sleep(self.getSwitchTime(switchNumber))
+                self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
             except:
                 return False
             return True
@@ -124,4 +129,4 @@ class FlipMirror(Base, LaserSwitchInterface):
     def getSwitchTime(self, switchNumber):
         """
         """
-        return 3.0
+        return 2.0
