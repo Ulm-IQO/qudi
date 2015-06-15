@@ -15,30 +15,36 @@ class LaserSwitchInterface():
     def getSwitchState(self, switchNumber):
         """
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('LaserSwitchInterface: getSwitchStates')
         return -1
 
     def getCalibration(self, switchNumber, state):
         """
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('LaserSwitchInterface: getCalibration')
         return -1
 
     def setCalibration(self, switchNumber, state, value):
         """
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('LaserSwitchInterface: setCalibration')
         return -1
 
     def switchOn(self):
         """
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('LaserSwitchInterface: switchOn')
         return -1
     
     def switchOff(self):
         """
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('LaserSwitchInterface: switchOff')
+        return -1
+
+    def getSwitchTime(self, switchNumber):
+        """
+        """
+        raise InterfaceImplementationError('LaserSwitchInterface: getSwitchTime')
         return -1
 

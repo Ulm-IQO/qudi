@@ -120,3 +120,8 @@ class FlipMirror(Base, LaserSwitchInterface):
                 return False
             return True
 
+
+    def getSwitchTime(self, switchNumber):
+        """
+        """
+        return 3.0
