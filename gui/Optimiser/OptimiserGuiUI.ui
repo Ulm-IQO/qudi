@@ -134,7 +134,7 @@
     <item row="2" column="0">
      <widget class="QPushButton" name="optimiseButton">
       <property name="text">
-       <string>Optimise focus</string>
+       <string>Optimise position</string>
       </property>
      </widget>
     </item>

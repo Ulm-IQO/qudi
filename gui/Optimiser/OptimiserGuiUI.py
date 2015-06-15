@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './gui/Optimiser/OptimiserGuiUI.ui'
+# Form implementation generated from reading ui file 'OptimiserGuiUI.ui'
 #
-# Created by: PyQt4 UI code generator 4.11.3
+# Created: Mon Jun 15 15:06:56 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -132,7 +133,7 @@ class Ui_MainWindow(object):
         self.optimal_y.setText(_translate("MainWindow", "?", None))
         self.z_label.setText(_translate("MainWindow", "Z:", None))
         self.optimal_z.setText(_translate("MainWindow", "?", None))
-        self.optimiseButton.setText(_translate("MainWindow", "Optimise focus", None))
+        self.optimiseButton.setText(_translate("MainWindow", "Optimise position", None))
         self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
         self.menu_File.setTitle(_translate("MainWindow", "&File", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
