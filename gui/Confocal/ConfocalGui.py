@@ -308,6 +308,18 @@ class ConfocalGui(GUIBase):
 # FIXME: Save in the png or svg images also the colorbar
         
         self._mw = ConfocalMainWindow()
+
+        #####################
+        # Adding view toggle actions to menu
+        #####################
+
+        self._mw.scan_control_dockWidget.toggleViewAction().setShortcut("Ctrl+C")
+        self._mw.menuView.addAction(self._mw.scan_control_dockWidget.toggleViewAction() )
+        self._mw.depth_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+D")
+        self._mw.menuView.addAction(self._mw.depth_scan_dockWidget.toggleViewAction() )
+        self._mw.optimizer_dockWidget.toggleViewAction().setShortcut("Ctrl+O")
+        self._mw.menuView.addAction(self._mw.optimizer_dockWidget.toggleViewAction() )
+
         
         # Get the image for the display from the logic. Transpose the received
         # matrix to get the proper scan. The graphig widget displays vector-
@@ -325,7 +337,6 @@ class ConfocalGui(GUIBase):
         # Load the images for xy and depth in the display:
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
-        self.depth_image_2 = pg.ImageItem(arr02)
 
         #######################################################################
         ###               Configuration of the optimiser tab                ###
@@ -370,14 +381,11 @@ class ConfocalGui(GUIBase):
         # Add the display item to the xy and depth ViewWidget, which was defined 
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
-        self._mw.depth_ViewWidget_2.addItem(self.depth_image)
-        self._mw.depth_ViewWidget.addItem(self.depth_image_2)
+        self._mw.depth_ViewWidget.addItem(self.depth_image)
         
         # Label the axes:
         self._mw.xy_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
         self._mw.xy_ViewWidget.setLabel( 'left', 'Y position', units='µm' )
-        self._mw.depth_ViewWidget_2.setLabel( 'bottom', 'X position', units='µm' )
-        self._mw.depth_ViewWidget_2.setLabel( 'left', 'Z position', units='µm' )
         self._mw.depth_ViewWidget.setLabel( 'bottom', 'X position', units='µm' )
         self._mw.depth_ViewWidget.setLabel( 'left', 'Z position', units='µm' )
     
@@ -413,7 +421,7 @@ class ConfocalGui(GUIBase):
                                [len(arr02)/20, len(arr02)/20], 
                                pen={'color': "F0F", 'width': 1},
                                removable=True )
-        self._mw.depth_ViewWidget_2.addItem(self.roi_depth)
+        self._mw.depth_ViewWidget.addItem(self.roi_depth)
 
         # create horizontal and vertical line as a crosshair in depth image:
         self.hline_depth = CrossLine(pos=self.roi_depth.pos()+self.roi_depth.size()*0.5, 
@@ -430,8 +438,8 @@ class ConfocalGui(GUIBase):
         self.roi_depth.sigRegionChanged.connect(self.update_z_slider)        
         
         # add the configured crosshair to the depth Widget:
-        self._mw.depth_ViewWidget_2.addItem(self.hline_depth)
-        self._mw.depth_ViewWidget_2.addItem(self.vline_depth)
+        self._mw.depth_ViewWidget.addItem(self.hline_depth)
+        self._mw.depth_ViewWidget.addItem(self.vline_depth)
         
         # Setup the Sliders:
         # Calculate the needed Range for the sliders. The image ranges comming 
@@ -519,30 +527,21 @@ class ConfocalGui(GUIBase):
         self._mw.xy_cb_manual_RadioButton.clicked.connect(self.update_xy_cb_range)
         self._mw.xy_cb_centiles_RadioButton.clicked.connect(self.update_xy_cb_range)
 
-        self._mw.xy_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_xy_cb_manual )
-        self._mw.xy_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_xy_cb_manual )
-        self._mw.xy_cb_low_centile_InputWidget.editingFinished.connect( self.shortcut_to_xy_cb_centiles )
-        self._mw.xy_cb_high_centile_InputWidget.editingFinished.connect( self.shortcut_to_xy_cb_centiles )
+        self._mw.xy_cb_min_InputWidget.valueChanged.connect( self.shortcut_to_xy_cb_manual )
+        self._mw.xy_cb_max_InputWidget.valueChanged.connect( self.shortcut_to_xy_cb_manual )
+        self._mw.xy_cb_low_centile_InputWidget.valueChanged.connect( self.shortcut_to_xy_cb_centiles )
+        self._mw.xy_cb_high_centile_InputWidget.valueChanged.connect( self.shortcut_to_xy_cb_centiles )
 
         # Connect the buttons and inputs for the depth colorbars
             #RadioButtons in Main tab
         self._mw.depth_cb_manual_RadioButton.clicked.connect(self.toggle_depth_cb_mode)
         self._mw.depth_cb_centiles_RadioButton.clicked.connect(self.toggle_depth_cb_mode)
 
-            #RadioButtons in Depth-scan tab
-        self._mw.depth_cb_manual_RadioButton_2.clicked.connect(self.toggle_depth_cb_mode_2)
-        self._mw.depth_cb_centiles_RadioButton_2.clicked.connect(self.toggle_depth_cb_mode_2)
-
             #input edits in Main tab
-        self._mw.depth_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_depth_cb_manual )
-        self._mw.depth_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_depth_cb_manual )
-        self._mw.depth_cb_low_centile_InputWidget.editingFinished.connect( self.shortcut_to_depth_cb_centiles )
-        self._mw.depth_cb_high_centile_InputWidget.editingFinished.connect( self.shortcut_to_depth_cb_centiles )
-            #and repeated for the second colorbar in the "depth-scan" tab
-        self._mw.depth_cb_min_InputWidget_2.editingFinished.connect( self.shortcut_to_depth_cb_manual_2 )
-        self._mw.depth_cb_max_InputWidget_2.editingFinished.connect( self.shortcut_to_depth_cb_manual_2 )
-        self._mw.depth_cb_low_centile_InputWidget_2.editingFinished.connect( self.shortcut_to_depth_cb_centiles_2 )
-        self._mw.depth_cb_high_centile_InputWidget_2.editingFinished.connect( self.shortcut_to_depth_cb_centiles_2 )
+        self._mw.depth_cb_min_InputWidget.valueChanged.connect( self.shortcut_to_depth_cb_manual )
+        self._mw.depth_cb_max_InputWidget.valueChanged.connect( self.shortcut_to_depth_cb_manual )
+        self._mw.depth_cb_low_centile_InputWidget.valueChanged.connect( self.shortcut_to_depth_cb_centiles )
+        self._mw.depth_cb_high_centile_InputWidget.valueChanged.connect( self.shortcut_to_depth_cb_centiles )
 
 
         # Connect the emitted signal of an image change from the logic with
@@ -609,7 +608,6 @@ class ConfocalGui(GUIBase):
             
         self.xy_image.setLookupTable(lut)
         self.depth_image.setLookupTable(lut)
-        self.depth_image_2.setLookupTable(lut)
         self.xy_refocus_image.setLookupTable(lut)        
         
         # Create colorbars and add them at the desired place in the GUI. Add
@@ -621,15 +619,14 @@ class ConfocalGui(GUIBase):
                               cb_max = 100)
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
-        #self._mw.xy_cb_ViewWidget.hideAxis('left')
         self._mw.xy_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
         self._mw.xy_cb_ViewWidget.setMouseEnabled(x=False,y=False)
         
-        self._mw.depth_cb_ViewWidget_2.addItem(self.depth_cb)
-        self._mw.depth_cb_ViewWidget_2.hideAxis('bottom')
-        #self._mw.depth_cb_ViewWidget_2.hideAxis('left')
-        self._mw.depth_cb_ViewWidget_2.setLabel( 'left', 'Fluorescence', units='c/s' )
-        self._mw.depth_cb_ViewWidget_2.setMouseEnabled(x=False,y=False)
+        self._mw.depth_cb_ViewWidget.addItem(self.depth_cb)
+        self._mw.depth_cb_ViewWidget.hideAxis('bottom')
+        self._mw.depth_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.depth_cb_ViewWidget.setMouseEnabled(x=False,y=False)
+        
         
         # Now that the ROI for xy and depth is connected to events, update the
         # default position and initialize the position of the crosshair and
@@ -752,7 +749,6 @@ class ConfocalGui(GUIBase):
             cb_max = self._mw.depth_cb_max_InputWidget.value()
 
         self.depth_cb.refresh_colorbar(cb_min,cb_max)
-        self._mw.depth_cb_ViewWidget_2.addItem(self.depth_cb)
 
 
     def disable_scan_buttons(self, newstate=False):
@@ -1084,60 +1080,14 @@ class ConfocalGui(GUIBase):
         self.update_xy_cb_range()
     
     def shortcut_to_depth_cb_manual(self):
-        """When an edit has been made to the manual cb limits,
-        pass the edit over to the Depth-scan tab and change
-        mode to Manual Colorscale.
-        """
-        # Set the other tab to match new values
-        self._mw.depth_cb_min_InputWidget_2.setValue( self._mw.depth_cb_min_InputWidget.value() )
-        self._mw.depth_cb_max_InputWidget_2.setValue( self._mw.depth_cb_max_InputWidget.value() )
         
         # Change cb mode
         self._mw.depth_cb_manual_RadioButton.setChecked(True)
-        self._mw.depth_cb_manual_RadioButton_2.setChecked(True)
         self.update_depth_cb_range()
 
-    def shortcut_to_depth_cb_manual_2(self):
-        """This is the same in reverse.
-        When an edit has been made to the manual cb limits in the Depth-scan tab,
-        pass the edit over to the main tab and change mode to Manual Colorscale.
-        """
-        # Set the other tab to match new values
-        self._mw.depth_cb_min_InputWidget.setValue( self._mw.depth_cb_min_InputWidget_2.value() )
-        self._mw.depth_cb_max_InputWidget.setValue( self._mw.depth_cb_max_InputWidget_2.value() )
-        
-        # Change cb mode
-        self._mw.depth_cb_manual_RadioButton.setChecked(True)
-        self._mw.depth_cb_manual_RadioButton_2.setChecked(True)
-        self.update_depth_cb_range()
-    
-    
     def shortcut_to_depth_cb_centiles(self):
-        """When an edit has been made to the centile cb limits,
-        pass the edit over to the Depth-scan tab and change
-        mode to Centile Colorscale.
-        """
-        # Set the other tab to match new values
-        self._mw.depth_cb_low_centile_InputWidget_2.setValue( self._mw.depth_cb_low_centile_InputWidget.value() )
-        self._mw.depth_cb_high_centile_InputWidget_2.setValue( self._mw.depth_cb_high_centile_InputWidget.value() )
-        
         # Change cb mode
         self._mw.depth_cb_centiles_RadioButton.setChecked(True)
-        self._mw.depth_cb_centiles_RadioButton_2.setChecked(True)
-        self.update_depth_cb_range()
-    
-    def shortcut_to_depth_cb_centiles_2(self):
-        """This is the same in reverse.
-        When an edit has been made to the centile cb limits in the Depth-scan tab,
-        pass the edit over to the Main tab and change mode to Centile Colorscale.
-        """
-        # Set the other tab to match new values
-        self._mw.depth_cb_low_centile_InputWidget.setValue( self._mw.depth_cb_low_centile_InputWidget_2.value() )
-        self._mw.depth_cb_high_centile_InputWidget.setValue( self._mw.depth_cb_high_centile_InputWidget_2.value() )
-        
-        # Change cb mode
-        self._mw.depth_cb_centiles_RadioButton.setChecked(True)
-        self._mw.depth_cb_centiles_RadioButton_2.setChecked(True)
         self.update_depth_cb_range()
     
     def update_xy_cb_range(self):
@@ -1145,27 +1095,8 @@ class ConfocalGui(GUIBase):
         self.refresh_xy_image()
 
     def toggle_depth_cb_mode(self):
-        """ When the depth colorbar mode is changed in the Main tab, 
-        pass these on to the Depth-scan tab
-        """
-        if self._mw.depth_cb_centiles_RadioButton.isChecked():
-            self._mw.depth_cb_centiles_RadioButton_2.setChecked(True)
-        else:
-            self._mw.depth_cb_manual_RadioButton_2.setChecked(True)
 
         self.update_depth_cb_range()
-
-    def toggle_depth_cb_mode_2(self):
-        """ The reverse:
-        pass depth colorbar mode from depth-scan tab to the Main tab. 
-        """
-        if self._mw.depth_cb_centiles_RadioButton_2.isChecked():
-            self._mw.depth_cb_centiles_RadioButton.setChecked(True)
-        else:
-            self._mw.depth_cb_manual_RadioButton.setChecked(True)
-
-        self.update_depth_cb_range()
-
 
 
     def update_depth_cb_range(self):
@@ -1234,7 +1165,6 @@ class ConfocalGui(GUIBase):
 
         # Now update image with new color scale, and update colorbar
         self.depth_image.setImage(image=depth_image_data, levels=(cb_min, cb_max) )
-        self.depth_image_2.setImage(image=depth_image_data, levels=(cb_min, cb_max) )
         self.refresh_depth_colorbar()
 
         # Unlock state widget if scan is finished
@@ -1523,23 +1453,23 @@ class ConfocalGui(GUIBase):
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')        
         filename = filepath + time.strftime('\\%Y-%m-%d_%Hh%Mm%Ss_confocal_depth_image') 
 
-        self._mw.depth_ViewWidget_2.plotItem.removeItem(self.roi_depth)
-        self._mw.depth_ViewWidget_2.plotItem.removeItem(self.hline_depth)
-        self._mw.depth_ViewWidget_2.plotItem.removeItem(self.vline_depth)
+        self._mw.depth_ViewWidget.plotItem.removeItem(self.roi_depth)
+        self._mw.depth_ViewWidget.plotItem.removeItem(self.hline_depth)
+        self._mw.depth_ViewWidget.plotItem.removeItem(self.vline_depth)
 
-        exporter = pg.exporters.SVGExporter(self._mw.depth_ViewWidget_2.plotItem)
+        exporter = pg.exporters.SVGExporter(self._mw.depth_ViewWidget.plotItem)
         exporter.export(filename+'.svg')
         
         if self._sd.savePNG_checkBox.isChecked():
-            exporter = pg.exporters.ImageExporter(self._mw.depth_ViewWidget_2.plotItem)
+            exporter = pg.exporters.ImageExporter(self._mw.depth_ViewWidget.plotItem)
             exporter.export(filename+'.png')
         
         if self._sd.save_purePNG_checkBox.isChecked():
             self.depth_image.save(filename+'_raw.png') 
         
-        self._mw.depth_ViewWidget_2.plotItem.addItem(self.roi_depth)
-        self._mw.depth_ViewWidget_2.plotItem.addItem(self.hline_depth)
-        self._mw.depth_ViewWidget_2.plotItem.addItem(self.vline_depth)
+        self._mw.depth_ViewWidget.plotItem.addItem(self.roi_depth)
+        self._mw.depth_ViewWidget.plotItem.addItem(self.hline_depth)
+        self._mw.depth_ViewWidget.plotItem.addItem(self.vline_depth)
         
         self.save_depth_scan_data()
         
