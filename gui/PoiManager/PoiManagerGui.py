@@ -243,6 +243,30 @@ class PoiManagerGui(GUIBase):
         # GUI element:
         self._mw = PoiManagerMainWindow()
 
+        
+        #####################
+        # Configuring the dock widgets
+        #####################
+
+        # All our gui elements are dockable, and so there should be no "central" widget.
+        self._mw.setCentralWidget(None)
+
+        #self._mw.tabifyDockWidget(self._mw.roi_map_dockWidget, self._mw.sample_shift_dockWidget )
+        #self._mw.setTabPosition (self, Qt.TopDockWidgetArea, QTabWidget.North )
+
+        #####################
+        # Adding view toggle actions to menu
+        #####################
+
+        self._mw.poi_editor_dockWidget.toggleViewAction().setShortcut("Ctrl+E")
+        self._mw.menuView.addAction(self._mw.poi_editor_dockWidget.toggleViewAction() )
+
+        self._mw.poi_tracker_dockWidget.toggleViewAction().setShortcut("Ctrl+T")
+        self._mw.menuView.addAction(self._mw.poi_tracker_dockWidget.toggleViewAction() )
+        self._mw.roi_map_dockWidget.toggleViewAction().setShortcut("Ctrl+M")
+        self._mw.menuView.addAction(self._mw.roi_map_dockWidget.toggleViewAction() )
+        self._mw.sample_shift_dockWidget.toggleViewAction().setShortcut("Ctrl+H")
+        self._mw.menuView.addAction(self._mw.sample_shift_dockWidget.toggleViewAction() )
                 
         #####################
         # Setting up display of ROI map xy image
