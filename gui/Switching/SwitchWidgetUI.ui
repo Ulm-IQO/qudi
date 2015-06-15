@@ -46,19 +46,6 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="SwitchButton">
-     <property name="text">
-      <string>Switch</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="1">
     <widget class="QDoubleSpinBox" name="calOnVal"/>
    </item>
@@ -76,6 +63,19 @@
     <widget class="QLabel" name="switchTImeLabelLabel">
      <property name="text">
       <string>Switching time</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QCheckBox" name="SwitchButton">
+     <property name="text">
+      <string>On</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
      </property>
     </widget>
    </item>

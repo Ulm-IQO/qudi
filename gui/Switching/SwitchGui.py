@@ -54,6 +54,7 @@ class SwitchGui(GUIBase):
         for switch in lsw.switches:
             swidget = SwitchWidget(switch)
             self._mw.layout.addWidget(swidget)
+        self.show()
        
     def show(self):
         """Make sure that the window is visible and at the top.

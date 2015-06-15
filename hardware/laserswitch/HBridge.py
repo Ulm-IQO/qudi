@@ -19,6 +19,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 import visa
+import time
 from core.Base import Base
 from core.util.Mutex import Mutex
 from .LaserSwitchInterface import LaserSwitchInterface
@@ -87,6 +88,8 @@ class HBridge(Base, LaserSwitchInterface):
                     answer = self.inst.ask('P{0}=1'.format(coilnr))
                     if answer != 'P{0}=1'.format(coilnr):
                         return False
+                    time.sleep(self.getSwitchTime(switchNumber))
+                    self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
                 except:
                     return False
                 return True
@@ -103,6 +106,8 @@ class HBridge(Base, LaserSwitchInterface):
                     answer = self.inst.ask('P{0}=0'.format(coilnr))
                     if answer != 'P{0}=0'.format(coilnr):
                         return False
+                    time.sleep(self.getSwitchTime(switchNumber))
+                    self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
                 except:
                     return False
                 return True

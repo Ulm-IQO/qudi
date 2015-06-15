@@ -71,6 +71,7 @@ Go, play.
         self._pywid.kernel_client = self._pywid.kernel_manager.client()
         self._pywid.kernel_client.start_channels()
         self._layout.addWidget(self._pywid)
+        self._mw.show()
        
     def show(self):
         """Make sure that the window is visible and at the top.
