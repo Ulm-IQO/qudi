@@ -109,3 +109,5 @@ class HBridge(Base, LaserSwitchInterface):
         else:
             self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
 
+    def getSwitchTime(self, switchNumber):
+        return 0.5

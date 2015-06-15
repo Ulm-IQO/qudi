@@ -59,14 +59,12 @@ class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
     def getCalibration(self, switchNumber, state):
         """
         """
-        bstate = state == 'On'
-        return self.switchCalibration[bstate][switchNumber]
+        return self.switchCalibration[state][switchNumber]
 
     def setCalibration(self, switchNumber, state, value):
         """
         """
-        bstate = state == 'On'
-        self.switchCalibration[bstate][switchNumber] = value
+        self.switchCalibration[state][switchNumber] = value
 
     def switchOn(self, switchNumber):
         """
@@ -80,3 +78,5 @@ class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
         self.switchState[switchNumber] = False
         return self.switchState[switchNumber]
 
+    def getSwitchTime(self, switchNumber):
+        return 0.5
