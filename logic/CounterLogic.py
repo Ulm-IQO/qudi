@@ -241,7 +241,6 @@ class CounterLogic(GenericLogic):
             parameters = OrderedDict() 
             parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
             parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
-            parameters['Length of counter window (# of events)'] = self._count_length
             parameters['Count frequency (Hz)'] = self._count_frequency
             parameters['Oversampling (Samples)'] = self._counting_samples
             parameters['Smooth Window Length (# of events)'] = self._smooth_window_length       
