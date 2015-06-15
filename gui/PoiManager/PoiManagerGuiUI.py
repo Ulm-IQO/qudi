@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Mon Jun 15 20:56:46 2015
+# Created: Mon Jun 15 21:04:44 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -28,7 +28,7 @@ class Ui_PoiManager(object):
         PoiManager.setObjectName(_fromUtf8("PoiManager"))
         PoiManager.resize(599, 747)
         PoiManager.setTabShape(QtGui.QTabWidget.Triangular)
-        PoiManager.setDockOptions(QtGui.QMainWindow.AllowTabbedDocks|QtGui.QMainWindow.AnimatedDocks|QtGui.QMainWindow.VerticalTabs)
+        PoiManager.setDockOptions(QtGui.QMainWindow.AllowTabbedDocks|QtGui.QMainWindow.AnimatedDocks)
         self.centralwidget = QtGui.QWidget(PoiManager)
         self.centralwidget.setEnabled(True)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
@@ -270,7 +270,7 @@ class Ui_PoiManager(object):
         self.horizontalLayout_10.addLayout(self.verticalLayout)
         self.verticalLayout_2.addLayout(self.horizontalLayout_10)
         self.roi_map_dockWidget.setWidget(self.dockWidgetContents)
-        PoiManager.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.roi_map_dockWidget)
+        PoiManager.addDockWidget(QtCore.Qt.DockWidgetArea(4), self.roi_map_dockWidget)
         self.sample_shift_dockWidget = QtGui.QDockWidget(PoiManager)
         self.sample_shift_dockWidget.setObjectName(_fromUtf8("sample_shift_dockWidget"))
         self.dockWidgetContents_6 = QtGui.QWidget()
@@ -298,7 +298,7 @@ class Ui_PoiManager(object):
         self.sample_shift_ViewWidget.setObjectName(_fromUtf8("sample_shift_ViewWidget"))
         self.verticalLayout_4.addWidget(self.sample_shift_ViewWidget)
         self.sample_shift_dockWidget.setWidget(self.dockWidgetContents_6)
-        PoiManager.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.sample_shift_dockWidget)
+        PoiManager.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.sample_shift_dockWidget)
         self.actionNew_ROI = QtGui.QAction(PoiManager)
         icon = QtGui.QIcon.fromTheme(_fromUtf8("document-new"))
         self.actionNew_ROI.setIcon(icon)
