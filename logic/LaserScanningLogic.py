@@ -332,7 +332,7 @@ class LaserScanningLogic(GenericLogic):
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
         
         self._save_logic.save_data(data, filepath, parameters=parameters, 
-                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   filename=filename, as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
         
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filename = time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss_wavemeter.dat')
@@ -347,7 +347,7 @@ class LaserScanningLogic(GenericLogic):
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
         
         self._save_logic.save_data(data, filepath, parameters=parameters, 
-                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   filename=filename, as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
                   
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filename = time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss_counts.dat')
@@ -367,7 +367,7 @@ class LaserScanningLogic(GenericLogic):
         parameters['Smooth Window Length (# of events)'] = self._counter_logic._smooth_window_length       
         
         self._save_logic.save_data(data, filepath, parameters=parameters, 
-                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   filename=filename, as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
                   
                   
         self.logMsg('Laser Scan saved to:\n{0}'.format(filepath), 
