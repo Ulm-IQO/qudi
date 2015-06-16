@@ -91,6 +91,8 @@ class CounterLogic(GenericLogic):
         self.running = False
         self.stopRequested = False
         self._saving = False
+        self._data_to_save=[]
+        self._saving_start_time=time.time()
         
         self._counting_device = self.connector['in']['counter1']['object']
 #        print("Counting device is", self._counting_device)
@@ -211,13 +213,15 @@ class CounterLogic(GenericLogic):
         """
         return self._saving
         
-    def start_saving(self):
+    def start_saving(self, resume=False):
         """ Starts saving the data in a list.
         
         @return int: error code (0:OK, -1:error)
         """
-        self._data_to_save=[]
-        self._saving_start_time=time.time()
+        
+        if not resume:
+            self._data_to_save=[]
+            self._saving_start_time=time.time()
         self._saving=True
         return 0
     
@@ -298,6 +302,7 @@ class CounterLogic(GenericLogic):
                     # switch the state variable off again
                     self.unlock()
                     self.stopRequested = False
+                    self.sigCounterUpdated.emit()
                     return
         
         try:

@@ -211,30 +211,33 @@ class LaserScanningLogic(GenericLogic):
         self.sig_update_histogram_next.emit(True)
     
 
-    def start_scanning(self):
+    def start_scanning(self, resume=False):
         """ Prepare to start counting:
             zero variables, change state and start counting "loop"
         """
         
         self.run()
         
-        if not self._counter_logic.getState() == 'locked':
+        if self._counter_logic.getState() == 'idle':
             self._counter_logic.startCount()
         
         if self._counter_logic.get_saving_state():
             self._counter_logic.save_data()
             
-        self._counter_logic.start_saving()
-        self._acqusition_start_time = self._counter_logic._saving_start_time
-        self._wavelength_data = []
-        
         self._wavemeter_device.start_acqusition()
         
-        self.data_index = 0
-        self.rawhisto=np.zeros(self._bins)
-        self.sumhisto=np.ones(self._bins)*1.0e-10
-        self.intern_xmax = -1.0
-        self.intern_xmin = 1.0e10
+        self._counter_logic.start_saving(resume=resume)
+        
+        if not resume:
+            self._acqusition_start_time = self._counter_logic._saving_start_time
+            self._wavelength_data = []
+        
+        
+            self.data_index = 0
+            self.rawhisto=np.zeros(self._bins)
+            self.sumhisto=np.ones(self._bins)*1.0e-10
+            self.intern_xmax = -1.0
+            self.intern_xmin = 1.0e10
         
         
         # start the measuring thread
@@ -243,7 +246,7 @@ class LaserScanningLogic(GenericLogic):
         self.sig_update_histogram_next.emit(False)
         
         return 0
- 
+         
     def stop_scanning(self):
         """ Set a flag to request stopping counting.
         """
@@ -300,10 +303,11 @@ class LaserScanningLogic(GenericLogic):
         
             # the plot data is the summed counts divided by the occurence of the respective bins
             self.histogram=self.rawhisto/self.sumhisto
-            
-        self.sig_data_updated.emit()
-                
+                            
         time.sleep(self._logic_update_timing*1e-3)
+        
+        self.sig_data_updated.emit()
+        
         if self.getState() == 'running':
             self.sig_update_histogram_next.emit(False)
 

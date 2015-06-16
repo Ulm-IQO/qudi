@@ -93,6 +93,10 @@ class LaserScanningGui(GUIBase):
         self._save_button = QtGui.QPushButton('Save Histogram')
         self._save_button.setFixedWidth(120)
         self._save_button.clicked.connect(self.save_clicked)
+        self._resume_button = QtGui.QPushButton('Resume')
+        self._resume_button.setFixedWidth(60)
+        self._resume_button.clicked.connect(self.resume_clicked)
+        self._resume_button.setEnabled(False)
         
         # defining the parameters to edit
         bins_tooltip = 'Number of bins to split the wavelength range up into.\nHigh bin number gives noisy but detailed data.'
@@ -131,6 +135,7 @@ class LaserScanningGui(GUIBase):
         self._hbox_layout.addStretch(1)
         self._hbox_layout.addWidget(self._save_button)
         self._hbox_layout.addWidget(self._start_stop_button)
+        self._hbox_layout.addWidget(self._resume_button)
         self._control_widget = QtGui.QWidget()
         self._control_widget.setLayout(self._hbox_layout)
         
@@ -231,20 +236,32 @@ class LaserScanningGui(GUIBase):
         self._curve2.setData(y=self._scanning_logic.sumhisto, x=x_axis)
         self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz)        
         
-        if self._scanning_logic.getState() is 'running':
+        if self._scanning_logic.getState() == 'running':
             self._start_stop_button.setText('Stop')
+            self._resume_button.setEnabled(False)
         else:
             self._start_stop_button.setText('Start')
+            self._resume_button.setEnabled(True)
 
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._scanning_logic.getState() is 'running':
+        if self._scanning_logic.getState() == 'running':
             self._start_stop_button.setText('Start')
             self._scanning_logic.stop_scanning()
+            self._resume_button.setEnabled(True)
         else:
             self._start_stop_button.setText('Stop')
             self._scanning_logic.start_scanning()
+            
+    def resume_clicked(self):
+        """ Handling resume of the scanning without resetting the data.
+        """
+        if self._scanning_logic.getState() == 'idle':
+            self._scanning_logic.start_scanning(resume=True)
+            self._resume_button.setEnabled(False)
+        else:
+            print('Can not scan, since a scan is alredy running')
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
