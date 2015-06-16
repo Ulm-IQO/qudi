@@ -107,13 +107,13 @@ class CounterGui(GUIBase):
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._counts_label)
         self._count_widget = QtGui.QWidget()
-#        self._count_widget.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding);
         self._count_widget.setLayout(self._hbox_counter)
         
         # set up GUI with dock widgets
         self._counts_dock_widget = QtGui.QDockWidget()
         self._counts_dock_widget.setWidget(self._count_widget)
         self._counts_dock_widget.setWindowTitle("Slow Counter Counts")
+        self._counts_dock_widget.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.MinimumExpanding)
         self._counts_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
         self._counts_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
         self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._counts_dock_widget)

@@ -131,13 +131,17 @@ class LaserScanningGui(GUIBase):
         self._hbox_layout.addStretch(1)
         self._hbox_layout.addWidget(self._save_button)
         self._hbox_layout.addWidget(self._start_stop_button)
+        self._control_widget = QtGui.QWidget()
+        self._control_widget.setLayout(self._hbox_layout)
         
         # creating the label for the current counts and right alignment
         self._wavelength_label = QtGui.QLabel('xxx')
         self._wavelength_label.setFont(QtGui.QFont('Arial', 40, QtGui.QFont.Bold))
-        self._hbox_counter = QtGui.QHBoxLayout()
-        self._hbox_counter.addStretch(1)
-        self._hbox_counter.addWidget(self._wavelength_label)
+        self._hbox_wavelength = QtGui.QHBoxLayout()
+        self._hbox_wavelength.addStretch(1)
+        self._hbox_wavelength.addWidget(self._wavelength_label)
+        self._wavelength_widget = QtGui.QWidget()
+        self._wavelength_widget.setLayout(self._hbox_wavelength)
         
         # creating the labels for the auto ranges
         self._auto_min_label = QtGui.QLabel('Minimum: xxx.xxxxxx (nm)   ')
@@ -145,27 +149,47 @@ class LaserScanningGui(GUIBase):
         self._set_auto_range = QtGui.QPushButton('Set Auto Range')
         self._set_auto_range.setFixedWidth(150)
         self._set_auto_range.clicked.connect(self.set_auto_range)
-#        self._ghz_x_axis = QtGui.QCheckBox('Display frequency')
-#        self._ghz_x_axis.clicked.connect(self.updateData)
-#        frequency_tooltip = 'Changes the x axis between frequency or wavelength.\nThe frequency is calculated as shift from the middle of the range.'
-#        self._ghz_x_axis.setToolTip(frequency_tooltip)
         
         self._hbox_auto_range = QtGui.QHBoxLayout()
         self._hbox_auto_range.addWidget(self._auto_min_label)
         self._hbox_auto_range.addWidget(self._auto_max_label)
         self._hbox_auto_range.addWidget(self._set_auto_range)
         self._hbox_auto_range.addStretch(1)
-#        self._hbox_auto_range.addWidget(self._ghz_x_axis)
         
-        # combining the layouts with the plot
+        # combining the auto range with the plot
         self._vbox_layout = QtGui.QVBoxLayout()
-        self._vbox_layout.addLayout(self._hbox_counter)
         self._vbox_layout.addLayout(self._hbox_auto_range)
         self._vbox_layout.addWidget(self._pw)
-        self._vbox_layout.addLayout(self._hbox_layout)
+        self._plot_widget = QtGui.QWidget()
+        self._plot_widget.setLayout(self._vbox_layout)
         
-        # applying all the GUI elements to the window
-        self._cw.setLayout(self._vbox_layout)
+        # set up GUI with dock widgets
+        self._wavelength_dock_widget = QtGui.QDockWidget()
+        self._wavelength_dock_widget.setWidget(self._wavelength_widget)
+        self._wavelength_dock_widget.setWindowTitle("Laserscanning Wavelength")
+#        self._wavelength_dock_widget.setSizePolicy(QtGui.QSizePolicy.Minimum,QtGui.QSizePolicy.MinimumExpanding)
+        self._wavelength_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._wavelength_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._wavelength_dock_widget)
+        
+        self._plot_dock_widget = QtGui.QDockWidget()
+        self._plot_dock_widget.setWidget(self._plot_widget)
+        self._plot_dock_widget.setWindowTitle("Laserscanning Plot")
+        self._plot_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._plot_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._plot_dock_widget)
+        
+        self._control_dock_widget = QtGui.QDockWidget()
+        self._control_dock_widget.setWidget(self._control_widget)
+        self._control_dock_widget.setWindowTitle("Laserscanning Control")
+        self._control_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._control_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._control_dock_widget)
+
+       
+        # showing all the GUI elements to the window
+        self._mw.setDockNestingEnabled(True)
+        self._cw.hide()
         self._mw.show()
         
         ## Create an empty plot curve to be filled later, set its pen
