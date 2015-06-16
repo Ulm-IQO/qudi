@@ -222,7 +222,7 @@ class LaserScanningLogic(GenericLogic):
             self._counter_logic.startCount()
         
         if self._counter_logic.get_saving_state():
-            self._counter_logic.stop_saving()
+            self._counter_logic.save_data()
             
         self._counter_logic.start_saving()
         self._acqusition_start_time = self._counter_logic._saving_start_time

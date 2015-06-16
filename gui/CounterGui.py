@@ -97,6 +97,8 @@ class CounterGui(GUIBase):
         self._hbox_layout.addStretch(1)
         self._hbox_layout.addWidget(self._save_button)
         self._hbox_layout.addWidget(self._start_stop_button)
+        self._control_widget = QtGui.QWidget()
+        self._control_widget.setLayout(self._hbox_layout)
         
         # creating the label for the current counts and right alignment
         self._counts_label = QtGui.QLabel('xxx')
@@ -104,15 +106,36 @@ class CounterGui(GUIBase):
         self._hbox_counter = QtGui.QHBoxLayout()
         self._hbox_counter.addStretch(1)
         self._hbox_counter.addWidget(self._counts_label)
+        self._count_widget = QtGui.QWidget()
+#        self._count_widget.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.MinimumExpanding);
+        self._count_widget.setLayout(self._hbox_counter)
         
-        # combining the layouts with the plot
-        self._vbox_layout = QtGui.QVBoxLayout()
-        self._vbox_layout.addLayout(self._hbox_counter)
-        self._vbox_layout.addWidget(self._pw)
-        self._vbox_layout.addLayout(self._hbox_layout)
+        # set up GUI with dock widgets
+        self._counts_dock_widget = QtGui.QDockWidget()
+        self._counts_dock_widget.setWidget(self._count_widget)
+        self._counts_dock_widget.setWindowTitle("Slow Counter Counts")
+        self._counts_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._counts_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._counts_dock_widget)
         
-        # applying all the GUI elements to the window
-        self._cw.setLayout(self._vbox_layout)
+        self._plot_dock_widget = QtGui.QDockWidget()
+        self._plot_dock_widget.setWidget(self._pw)
+        self._plot_dock_widget.setWindowTitle("Slow Counter Plot")
+        self._plot_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._plot_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._plot_dock_widget)
+        
+        self._control_dock_widget = QtGui.QDockWidget()
+        self._control_dock_widget.setWidget(self._control_widget)
+        self._control_dock_widget.setWindowTitle("Slow Counter Control")
+        self._control_dock_widget.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self._control_dock_widget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
+        self._mw.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self._control_dock_widget)
+
+       
+        # showing all the GUI elements to the window
+        self._mw.setDockNestingEnabled(True)
+        self._cw.hide()
         self._mw.show()
         
         ## Create an empty plot curve to be filled later, set its pen
