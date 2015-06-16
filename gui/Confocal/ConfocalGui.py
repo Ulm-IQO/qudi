@@ -313,7 +313,7 @@ class ConfocalGui(GUIBase):
         # Adding view toggle actions to menu
         #####################
 
-        self._mw.scan_control_dockWidget.toggleViewAction().setShortcut("Ctrl+C")
+        self._mw.scan_control_dockWidget.toggleViewAction().setShortcut("Ctrl+R")
         self._mw.menuView.addAction(self._mw.scan_control_dockWidget.toggleViewAction() )
         self._mw.depth_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+D")
         self._mw.menuView.addAction(self._mw.depth_scan_dockWidget.toggleViewAction() )
@@ -1180,9 +1180,7 @@ class ConfocalGui(GUIBase):
         self.depth_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
         self.depth_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
 #        self.refresh_xy_colorbar()
-        self._mw.x_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_x))
-        self._mw.y_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_y))
-        self._mw.z_refocus_position_ViewWidget_2.setText('{0:.3f}'.format(self._optimiser_logic.refocus_z))
+        self._mw.refocus_position_ViewWidget.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(self._optimiser_logic.refocus_x, self._optimiser_logic.refocus_y, self._optimiser_logic.refocus_z))
         
         
     def adjust_xy_window(self):

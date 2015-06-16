@@ -594,6 +594,11 @@ class PoiManagerGui(GUIBase):
     def _redraw_poi_markers(self):
         
         curkey = self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        
+        cur_poi_pos=self._poi_manager_logic.get_last_point(poikey=curkey)
+
+        self._mw.poi_coords_ViewWidget.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
+
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':

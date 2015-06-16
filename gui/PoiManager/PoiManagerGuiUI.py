@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Tue Jun 16 00:00:17 2015
+# Created: Tue Jun 16 09:44:04 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_PoiManager(object):
     def setupUi(self, PoiManager):
         PoiManager.setObjectName(_fromUtf8("PoiManager"))
-        PoiManager.resize(599, 747)
+        PoiManager.resize(677, 747)
         PoiManager.setTabShape(QtGui.QTabWidget.Triangular)
         PoiManager.setDockOptions(QtGui.QMainWindow.AllowTabbedDocks|QtGui.QMainWindow.AnimatedDocks)
         self.centralwidget = QtGui.QWidget(PoiManager)
@@ -36,7 +36,7 @@ class Ui_PoiManager(object):
         self.verticalLayout_3.setObjectName(_fromUtf8("verticalLayout_3"))
         PoiManager.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(PoiManager)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 599, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 677, 20))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuMenu = QtGui.QMenu(self.menubar)
         self.menuMenu.setObjectName(_fromUtf8("menuMenu"))
@@ -88,6 +88,20 @@ class Ui_PoiManager(object):
         self.delete_poi_Button = QtGui.QPushButton(self.dockWidgetContents_3)
         self.delete_poi_Button.setObjectName(_fromUtf8("delete_poi_Button"))
         self.verticalLayout_6.addWidget(self.delete_poi_Button)
+        self.label_9 = QtGui.QLabel(self.dockWidgetContents_3)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.label_9.setFont(font)
+        self.label_9.setObjectName(_fromUtf8("label_9"))
+        self.verticalLayout_6.addWidget(self.label_9)
+        self.poi_coords_ViewWidget = QtGui.QLineEdit(self.dockWidgetContents_3)
+        self.poi_coords_ViewWidget.setMaximumSize(QtCore.QSize(200, 16777215))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.poi_coords_ViewWidget.setFont(font)
+        self.poi_coords_ViewWidget.setReadOnly(True)
+        self.poi_coords_ViewWidget.setObjectName(_fromUtf8("poi_coords_ViewWidget"))
+        self.verticalLayout_6.addWidget(self.poi_coords_ViewWidget)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout_6.addItem(spacerItem)
         self.poi_editor_dockWidget.setWidget(self.dockWidgetContents_3)
@@ -347,6 +361,7 @@ class Ui_PoiManager(object):
         self.label.setText(_translate("PoiManager", "Select:", None))
         self.label_3.setText(_translate("PoiManager", "Rename:", None))
         self.delete_poi_Button.setText(_translate("PoiManager", "Delete POI", None))
+        self.label_9.setText(_translate("PoiManager", "(x,y,z):", None))
         self.poi_tracker_dockWidget.setWindowTitle(_translate("PoiManager", "POI Tracker", None))
         self.goto_poi_Button.setText(_translate("PoiManager", "Go to POI", None))
         self.update_poi_Button.setText(_translate("PoiManager", "Refind POI", None))
