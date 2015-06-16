@@ -184,7 +184,7 @@ class CounterGui(GUIBase):
             self._count_frequency_display.setEnabled(True)
             self._oversampling_display.setEnabled(True)
             
-        if self._counting_logic.getState() is 'locked':
+        if self._counting_logic.getState() == 'locked':
             self._start_stop_button.setText('Stop')
         else:            
             self._start_stop_button.setText('Start')
