@@ -350,7 +350,7 @@ class PoiManagerGui(GUIBase):
 
         # Label axes
         self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='s' )
-        self._mw.sample_shift_ViewWidget.setLabel( 'left', 'Sample shift', units='µm' )
+        self._mw.sample_shift_ViewWidget.setLabel( 'left', 'Sample shift', units='m' )
 
         
 
@@ -590,12 +590,15 @@ class PoiManagerGui(GUIBase):
         poi_trace=self._poi_manager_logic.get_trace(poikey='sample')
 
         time_shift_data = poi_trace[:,0] - poi_trace[0,0]
-        x_shift_data  = poi_trace[:,1] - poi_trace[0,1] 
-        y_shift_data  = poi_trace[:,2] - poi_trace[0,2] 
-        z_shift_data  = poi_trace[:,3] - poi_trace[0,3] 
+        x_shift_data  = (poi_trace[:,1] - poi_trace[0,1])/1.0e6 
+        y_shift_data  = (poi_trace[:,2] - poi_trace[0,2])/1.0e6
+        z_shift_data  = (poi_trace[:,3] - poi_trace[0,3])/1.0e6
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
+        self.x_legend_plot.setData(time_shift_data, x_shift_data)
+        self.y_legend_plot.setData(time_shift_data, y_shift_data)
+        self.z_legend_plot.setData(time_shift_data, z_shift_data)
         
 
     def _redraw_poi_markers(self):
