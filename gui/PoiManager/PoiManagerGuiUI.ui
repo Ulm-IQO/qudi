@@ -377,6 +377,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="roi_map_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="windowTitle">
     <string>ROI Map</string>
    </property>

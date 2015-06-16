@@ -249,7 +249,8 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # All our gui elements are dockable, and so there should be no "central" widget.
-        self._mw.setCentralWidget(None)
+        self._mw.centralwidget.hide()
+        self._mw.setDockNestingEnabled(True)
 
         #self._mw.tabifyDockWidget(self._mw.roi_map_dockWidget, self._mw.sample_shift_dockWidget )
         #self._mw.setTabPosition (self, Qt.TopDockWidgetArea, QTabWidget.North )

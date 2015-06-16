@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Tue Jun 16 09:44:04 2015
+# Created: Tue Jun 16 10:40:56 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -182,6 +182,11 @@ class Ui_PoiManager(object):
         self.poi_tracker_dockWidget.setWidget(self.dockWidgetContents_7)
         PoiManager.addDockWidget(QtCore.Qt.DockWidgetArea(8), self.poi_tracker_dockWidget)
         self.roi_map_dockWidget = QtGui.QDockWidget(PoiManager)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.roi_map_dockWidget.sizePolicy().hasHeightForWidth())
+        self.roi_map_dockWidget.setSizePolicy(sizePolicy)
         self.roi_map_dockWidget.setObjectName(_fromUtf8("roi_map_dockWidget"))
         self.dockWidgetContents = QtGui.QWidget()
         self.dockWidgetContents.setObjectName(_fromUtf8("dockWidgetContents"))
