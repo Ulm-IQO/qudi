@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Tue Jun 16 10:40:56 2015
+# Created: Tue Jun 16 23:39:16 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -137,6 +137,7 @@ class Ui_PoiManager(object):
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
         self.goto_poi_after_update_checkBox = QtGui.QCheckBox(self.dockWidgetContents_7)
+        self.goto_poi_after_update_checkBox.setChecked(True)
         self.goto_poi_after_update_checkBox.setObjectName(_fromUtf8("goto_poi_after_update_checkBox"))
         self.horizontalLayout_3.addWidget(self.goto_poi_after_update_checkBox)
         spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)

@@ -367,11 +367,10 @@ class PoiManagerGui(GUIBase):
         self._mw.delete_poi_Button.clicked.connect(self.delete_poi)
 
         self._mw.update_poi_Button.clicked.connect(self.update_poi_pos)
+        self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
 
         self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
-
         self._mw.active_poi_Input.currentIndexChanged.connect(self._redraw_poi_markers)
-
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
         
         # Connect the buttons and inputs for the colorbar
@@ -571,6 +570,13 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.optimise_poi(poikey=key)
 
+    def toggle_follow(self):
+        if self._mw.goto_poi_after_update_checkBox.isChecked():
+            self._poi_manager_logic.go_to_crosshair_after_refocus = False
+        else:
+            self._poi_manager_logic.go_to_crosshair_after_refocus = True
+
+
     def _update_timer(self):
         #placeholder=QtGui.QLineEdit()
         #placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
@@ -596,11 +602,6 @@ class PoiManagerGui(GUIBase):
         
         curkey = self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
         
-        cur_poi_pos=self._poi_manager_logic.get_last_point(poikey=curkey)
-
-        self._mw.poi_coords_ViewWidget.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
-
-
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
                 position=self._poi_manager_logic.get_last_point(poikey=key)
@@ -624,6 +625,8 @@ class PoiManagerGui(GUIBase):
                     
                 if key == curkey:
                     self._markers[key].select()
+                    cur_poi_pos=self._poi_manager_logic.get_last_point(poikey=curkey)
+                    self._mw.poi_coords_ViewWidget.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
                 
 
     def make_new_roi(self):

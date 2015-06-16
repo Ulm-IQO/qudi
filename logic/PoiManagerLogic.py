@@ -179,7 +179,7 @@ class PoiManagerLogic(GenericLogic):
         
         self.track_point_list = dict()
         self._current_poi_key = None
-        self.go_to_crosshair_after_refocus = True
+        self.go_to_crosshair_after_refocus = False # default value
         
         # timer and its handling for the periodic refocus
         self.timer = None
@@ -266,7 +266,7 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('X. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
         
@@ -287,7 +287,7 @@ class PoiManagerLogic(GenericLogic):
             self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[poikey].get_last_point())
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('Z. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
                 
@@ -303,7 +303,7 @@ class PoiManagerLogic(GenericLogic):
             x,y,z = self.track_point_list[poikey].get_last_point()
             self._confocal_logic.set_position(x=x, y=y, z=z)
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('F. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
@@ -318,7 +318,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             return self.track_point_list[poikey].get_last_point()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('G. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return [-1.,-1.,-1.]
                 
@@ -333,7 +333,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             return self.track_point_list[poikey].get_name()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('H. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
                 
@@ -359,7 +359,7 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return self.track_point_list[poikey].set_new_position(point=point)
             
-        self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+        self.logMsg('J. The given POI ({}) does not exist.'.format(poikey), 
             msgType='error')
         return -1
             
@@ -376,7 +376,7 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return self.track_point_list[poikey].set_name(name=name)
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('AAAThe given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
@@ -393,7 +393,7 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
             return self.track_point_list[poikey].delete_last_point()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('C. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
@@ -408,7 +408,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             return self.track_point_list[poikey].get_trace()
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('C. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return [-1.,-1.,-1,-1]
             
@@ -425,7 +425,7 @@ class PoiManagerLogic(GenericLogic):
             self._current_poi_key = poikey
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(poikey), 
+            self.logMsg('B. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
             
@@ -515,7 +515,7 @@ class PoiManagerLogic(GenericLogic):
                 self.go_to_poi(poikey = self._current_poi_key)
             return 0
         else:
-            self.logMsg('The given POI ({}) does not exist.'.format(self._current_poi_key), 
+            self.logMsg('W. The given POI ({}) does not exist.'.format(self._current_poi_key), 
                 msgType='error')
             return -1
 
