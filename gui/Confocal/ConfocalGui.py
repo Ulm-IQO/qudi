@@ -308,6 +308,15 @@ class ConfocalGui(GUIBase):
 # FIXME: Save in the png or svg images also the colorbar
         
         self._mw = ConfocalMainWindow()
+        
+        
+        #####################
+        # Configuring the dock widgets
+        #####################
+
+        # All our gui elements are dockable, and so there should be no "central" widget.
+        self._mw.centralwidget.hide()
+        self._mw.setDockNestingEnabled(True)
 
         #####################
         # Adding view toggle actions to menu
@@ -315,6 +324,8 @@ class ConfocalGui(GUIBase):
 
         self._mw.scan_control_dockWidget.toggleViewAction().setShortcut("Ctrl+R")
         self._mw.menuView.addAction(self._mw.scan_control_dockWidget.toggleViewAction() )
+        self._mw.xy_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+E")
+        self._mw.menuView.addAction(self._mw.xy_scan_dockWidget.toggleViewAction() )
         self._mw.depth_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+D")
         self._mw.menuView.addAction(self._mw.depth_scan_dockWidget.toggleViewAction() )
         self._mw.optimizer_dockWidget.toggleViewAction().setShortcut("Ctrl+O")
