@@ -306,8 +306,10 @@ class ODMRLogic(GenericLogic):
             self.fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
                                 + str(np.round(result.params['center'].stderr,3)) + ' [MHz]' + '\n'
                                 + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,3)) + ' [MHz]')
-                                
+                                + str(np.round(result.params['fwhm'].stderr,3)) + ' [MHz]' + '\n'
+                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
+
             
             
         elif self.fit_function =='Double Lorentzian':
@@ -315,9 +317,16 @@ class ODMRLogic(GenericLogic):
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params) 
             self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 " 
-                                +  str(np.round(result.params['lorentz0_center'].stderr,3)) + ' [MHz]'  + '\n' 
+                                +  str(np.round(result.params['lorentz0_center'].stderr,3)) + ' [MHz]' 
+                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + u" \u00B1 " 
+                                +  str(np.round(result.params['lorentz0_fwhm'].stderr,3)) + ' [MHz]'  + '\n' 
                                 + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 " 
-                                +  str(np.round(result.params['lorentz1_center'].stderr,3)) + ' [MHz]' )       
+                                +  str(np.round(result.params['lorentz1_center'].stderr,3)) + ' [MHz]'
+                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + u" \u00B1 " 
+                                +  str(np.round(result.params['lorentz1_fwhm'].stderr,3)) + ' [MHz]' + '\n'
+                                + 'contrast : ' + str(np.round((((result.params['lorentz0_amplitude'].value + result.params['lorentz1_amplitude'].value)/2)/(-1*np.pi*((result.params['lorentz0_sigma'].value + result.params['lorentz1_sigma'])/2)*result.params['c'].value)),3)*100) + '[%]'
+                                )
+
             
 
         elif self.fit_function =='Double Lorentzian with fixed splitting':
