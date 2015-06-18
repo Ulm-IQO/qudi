@@ -54,6 +54,7 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter = 0
         self._clock_frequency = 200
         self.fit_function = 'No Fit'
+        self.fit_result = ([])
         
         self.MW_frequency = 2870.    #in MHz
         self.MW_power = -30.         #in dBm
@@ -302,12 +303,22 @@ class ODMRLogic(GenericLogic):
             result = self._fit_logic.make_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             lorentzian,params=self._fit_logic.make_lorentzian_model()
             self.ODMR_fit_y = lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
+            self.fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['center'].stderr,3)) + ' [MHz]' + '\n'
+                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['fwhm'].stderr,3)) + ' [MHz]')
+                                
             
             
         elif self.fit_function =='Double Lorentzian':
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
-            self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
+            self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params) 
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 " 
+                                +  str(np.round(result.params['lorentz0_center'].stderr,3)) + ' [MHz]'  + '\n' 
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 " 
+                                +  str(np.round(result.params['lorentz1_center'].stderr,3)) + ' [MHz]' )       
+            
 
         elif self.fit_function =='Double Lorentzian with fixed splitting':
             p=Parameters()
