@@ -786,7 +786,7 @@ class Ui_MainWindow(object):
         self.ready_StateWidget.setText(_translate("MainWindow", "Ready", None))
         self.xy_scan_StateWidget.setText(_translate("MainWindow", "Scan XY", None))
         self.continue_xy_scan_StateWidget.setText(_translate("MainWindow", "Continue XY", None))
-        self.depth_scan_StateWidget.setText(_translate("MainWindow", "Scan Z", None))
+        self.depth_scan_StateWidget.setText(_translate("MainWindow", "Depth Scan", None))
         self.refocus_StateWidget.setText(_translate("MainWindow", "Optimise position", None))
         self.label_6.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">%</p></body></html>", None))
         self.label_7.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">%</p></body></html>", None))
