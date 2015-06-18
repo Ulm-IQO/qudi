@@ -27,6 +27,7 @@ from collections import OrderedDict
 from gui.GUIBase import GUIBase
 from gui.ODMR.ODMRGuiUI import Ui_MainWindow
 from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
+from gui.Confocal.ConfocalGui import ColorBar
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -125,17 +126,17 @@ class ODMRGui(GUIBase):
         # Absolute scale relative to the expected data not important. This 
         # should have the same amount of entries (num parameter) as the number
         # of values given in color. 
-        pos = np.linspace(0.0, 1.0, num=10)
-        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
-                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
-                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
-                          [  0,  0,132,255]], dtype=np.ubyte)
-                          
         color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
                                [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
-                               [127,  0,  0,255] ], dtype=np.ubyte)
-                          
+                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
+                               ], dtype=np.ubyte)
+                               
+        color = np.array([ [255, 26,  0,255], [255,129,  0,255], [254,237,  0,255],
+                               [160,255, 86,255], [ 66,255,149,255], [  0,204,255,255],
+                               [  0, 88,255,255], [  0,  0,241,255], [  0,  0,132,255]
+                               ], dtype=np.ubyte)
+                               
+        pos = np.linspace(0.0, 1.0, num=len(color))
         colmap = pg.ColorMap(pos, color_inv)        
         self.colmap_norm = pg.ColorMap(pos, color/255)
         
@@ -144,7 +145,7 @@ class ODMRGui(GUIBase):
         # I believe last one just has to be >= the difference between the min and max level set later
         lut = colmap.getLookupTable(0, 1, 2000)
             
-        self.odmr_matrix_image.setLookupTable(lut)
+        self.odmr_matrix_image.setLookupTable(lut)        
         
         # Set the state button as ready button as default setting.
         self._mw.idle_StateWidget.click()
@@ -159,6 +160,24 @@ class ODMRGui(GUIBase):
         self._mw.fit_methods_ComboWidget.addItem('Double Lorentzian with fixed splitting')
         self._mw.fit_methods_ComboWidget.addItem('N14')
         self._mw.fit_methods_ComboWidget.addItem('N15')
+ 
+
+        #######################################################################
+        ##                Configuration of the Colorbar                      ##
+        #######################################################################
+        
+        self.odmr_cb = ColorBar(self.colmap_norm, 100, 0, 100000)
+        
+        #adding colorbar to ViewWidget
+        self._mw.odmr_cb_ViewWidget.addItem(self.odmr_cb)
+        self._mw.odmr_cb_ViewWidget.hideAxis('bottom')
+        self._mw.odmr_cb_ViewWidget.hideAxis('left')
+        self._mw.odmr_cb_ViewWidget.setLabel('right', 'Fluorescence', units='c/s')
+              
+        # Connect the buttons and inputs for the odmr colorbar
+        self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
+        self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.refresh_matrix)     
+        
         
         #######################################################################
         ##                Configuration of the InputWidgets                  ##
@@ -275,8 +294,54 @@ class ODMRGui(GUIBase):
     def refresh_matrix(self):
         ''' This method refreshes the xy-matrix image
         '''       
-        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
+#        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
+#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+#        self.refresh_odmr_colorbar()
+        
+        
+        odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
+        
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # Otherwise, take user-defined values.
+        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.odmr_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.odmr_cb_high_centile_InputWidget.value() 
+
+            cb_min = np.percentile( odmr_image_data, low_centile ) 
+            cb_max = np.percentile( odmr_image_data, high_centile ) 
+
+        else:
+            cb_min = self._mw.odmr_cb_min_InputWidget.value()
+            cb_max = self._mw.odmr_cb_max_InputWidget.value()
+
+        # Now update image with new color scale, and update colorbar
+        self.odmr_matrix_image.setImage(image=odmr_image_data, levels=(cb_min, cb_max) )
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+        self.refresh_odmr_colorbar()      
+        
+        
+    def refresh_odmr_colorbar(self):
+        ''' This method deletes the old colorbar and replace it with an updated one
+        '''
+#        self._mw.odmr_cb_ViewWidget.clear()
+#        self.odmr_cb = ColorBar(self.colmap_norm, 100, self.odmr_matrix_image.image.min(), self.odmr_matrix_image.image.max())               
+#        self._mw.odmr_cb_ViewWidget.addItem(self.odmr_cb)
+        
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # Otherwise, take user-defined values.
+        if self._mw.odmr_cb_centiles_RadioButton.isChecked():
+            low_centile = self._mw.odmr_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.odmr_cb_high_centile_InputWidget.value() 
+
+            cb_min = np.percentile( self.odmr_matrix_image.image, low_centile ) 
+            cb_max = np.percentile( self.odmr_matrix_image.image, high_centile ) 
+
+        else:
+            cb_min = self._mw.odmr_cb_min_InputWidget.value()
+            cb_max = self._mw.odmr_cb_max_InputWidget.value()
+
+        self.odmr_cb.refresh_colorbar(cb_min,cb_max)    
+        self._mw.odmr_cb_ViewWidget.update() 
      
     def refresh_elapsedtime(self):
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
@@ -293,6 +358,8 @@ class ODMRGui(GUIBase):
     def update_fit(self):
         self._odmr_logic.do_fit(fit_function = self._odmr_logic.current_fit_function)
         self.refresh_plot()
+        self._mw.odmr_fit_results_DisplayWidget.clear()
+        self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
 
                 
     def reject_settings(self):

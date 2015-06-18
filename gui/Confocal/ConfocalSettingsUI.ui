@@ -16,7 +16,7 @@
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="1">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="4" column="0">
+     <item row="5" column="0">
       <widget class="QLabel" name="label_5">
        <property name="font">
         <font>
@@ -28,56 +28,7 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="2">
-      <widget class="QDoubleSpinBox" name="x_padding_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="acceptDrops">
-        <bool>true</bool>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="accelerated">
-        <bool>true</bool>
-       </property>
-       <property name="maximum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.010000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.010000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>y Padding for image display (%)</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
+     <item row="4" column="0">
       <widget class="QLabel" name="label_4">
        <property name="font">
         <font>
@@ -89,7 +40,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
+     <item row="3" column="2">
       <widget class="QCheckBox" name="fixed_aspect_xy_checkBox">
        <property name="enabled">
         <bool>true</bool>
@@ -106,9 +57,6 @@
          <height>16777215</height>
         </size>
        </property>
-       <property name="accessibleDescription">
-        <string/>
-       </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
@@ -121,51 +69,8 @@
        <property name="checked">
         <bool>true</bool>
        </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_6">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>x Padding for image display (%)</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="2">
-      <widget class="QDoubleSpinBox" name="z_padding_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="acceptDrops">
-        <bool>true</bool>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="maximum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.010000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.010000000000000</double>
+       <property name="accessibleDescription" stdset="0">
+        <string/>
        </property>
       </widget>
      </item>
@@ -178,43 +83,6 @@
        </property>
        <property name="text">
         <string>Return slowness :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="2">
-      <widget class="QDoubleSpinBox" name="y_padding_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="acceptDrops">
-        <bool>true</bool>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="accelerated">
-        <bool>true</bool>
-       </property>
-       <property name="maximum">
-        <double>1.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.010000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.010000000000000</double>
        </property>
       </widget>
      </item>
@@ -258,7 +126,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="3" column="0">
       <widget class="QLabel" name="label_3">
        <property name="font">
         <font>
@@ -270,7 +138,7 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="2">
+     <item row="4" column="2">
       <widget class="QCheckBox" name="fixed_aspect_depth_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -295,7 +163,19 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="2">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Clock frequency :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
       <widget class="QDoubleSpinBox" name="slider_stepwidth_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -332,18 +212,6 @@
        </property>
        <property name="value">
         <double>0.001000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0">
-      <widget class="QLabel" name="label_8">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>z Padding for image display (%)</string>
        </property>
       </widget>
      </item>
@@ -384,19 +252,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Clock frequency :</string>
-       </property>
-      </widget>
-     </item>
-     <item row="8" column="0">
+     <item row="6" column="0">
       <widget class="QLabel" name="label_9">
        <property name="font">
         <font>
@@ -408,7 +264,7 @@
        </property>
       </widget>
      </item>
-     <item row="8" column="2">
+     <item row="6" column="2">
       <widget class="QCheckBox" name="savePNG_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -433,7 +289,7 @@
        </property>
       </widget>
      </item>
-     <item row="9" column="2">
+     <item row="7" column="2">
       <widget class="QCheckBox" name="save_purePNG_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -458,7 +314,7 @@
        </property>
       </widget>
      </item>
-     <item row="9" column="0">
+     <item row="7" column="0">
       <widget class="QLabel" name="label_10">
        <property name="font">
         <font>
@@ -467,6 +323,13 @@
        </property>
        <property name="text">
         <string>Save pure Image as png</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0" colspan="3">
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
@@ -504,9 +367,6 @@ This also means that you should not touch qudi while running diqo since this wil
   <tabstop>fixed_aspect_xy_checkBox</tabstop>
   <tabstop>fixed_aspect_depth_checkBox</tabstop>
   <tabstop>slider_stepwidth_InputWidget</tabstop>
-  <tabstop>x_padding_InputWidget</tabstop>
-  <tabstop>y_padding_InputWidget</tabstop>
-  <tabstop>z_padding_InputWidget</tabstop>
   <tabstop>savePNG_checkBox</tabstop>
   <tabstop>save_purePNG_checkBox</tabstop>
   <tabstop>hardware_switch</tabstop>

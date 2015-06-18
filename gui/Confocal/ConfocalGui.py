@@ -735,7 +735,7 @@ class ConfocalGui(GUIBase):
             cb_min = self._mw.xy_cb_min_InputWidget.value()
             cb_max = self._mw.xy_cb_max_InputWidget.value()
 
-        self.xy_cb.refresh_colorbar(cb_min,cb_max)    
+#        self.xy_cb.refresh_colorbar(cb_min,cb_max)    
         self._mw.xy_cb_ViewWidget.update()       
 
     def refresh_depth_colorbar(self):
@@ -791,9 +791,9 @@ class ConfocalGui(GUIBase):
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
         self.slider_stepsize = self._sd.slider_stepwidth_InputWidget.value()
-        self.image_x_padding = self._sd.x_padding_InputWidget.value()
-        self.image_y_padding = self._sd.y_padding_InputWidget.value()
-        self.image_z_padding = self._sd.z_padding_InputWidget.value()
+#        self.image_x_padding = self._sd.x_padding_InputWidget.value()
+#        self.image_y_padding = self._sd.y_padding_InputWidget.value()
+#        self.image_z_padding = self._sd.z_padding_InputWidget.value()
         
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
@@ -801,9 +801,9 @@ class ConfocalGui(GUIBase):
         self._sd.return_slowness_InputWidget.setValue(int(self._scanning_logic.return_slowness))
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
-        self._sd.x_padding_InputWidget.setValue(self.image_x_padding)
-        self._sd.y_padding_InputWidget.setValue(self.image_y_padding)
-        self._sd.z_padding_InputWidget.setValue(self.image_z_padding)
+#        self._sd.x_padding_InputWidget.setValue(self.image_x_padding)
+#        self._sd.y_padding_InputWidget.setValue(self.image_y_padding)
+#        self._sd.z_padding_InputWidget.setValue(self.image_z_padding)
         
         # the smallest stepsize cannot be smaller then the resolution of the 
         # sliders.

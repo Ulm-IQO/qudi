@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1036</width>
-    <height>664</height>
+    <width>1063</width>
+    <height>696</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -18,12 +18,83 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
-    <item row="0" column="0">
+    <item row="0" column="2">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="3" column="2">
-       <widget class="QLabel" name="label_7">
+      <item row="5" column="12">
+       <widget class="QLabel" name="label_10">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Runtime [s] :</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="12" colspan="2">
+       <widget class="QSpinBox" name="odmr_cb_min_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="maximum">
+         <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>100</number>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="12" colspan="2">
+       <widget class="QSpinBox" name="odmr_cb_max_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>999999999</number>
+        </property>
+        <property name="value">
+         <number>100000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="12" rowspan="2" colspan="2">
+       <widget class="PlotWidget" name="odmr_cb_ViewWidget">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="12">
+       <widget class="QLabel" name="label_11">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4" colspan="2">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Elapsed Time [s] :</string>
         </property>
        </widget>
       </item>
@@ -37,17 +108,10 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="4" colspan="2">
-       <widget class="QLabel" name="label_8">
+      <item row="3" column="2">
+       <widget class="QLabel" name="label_7">
         <property name="text">
-         <string>Elapsed Time [s] :</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Step [MHz] :</string>
+         <string>Runtime [s] :</string>
         </property>
        </widget>
       </item>
@@ -58,6 +122,9 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="6">
+       <widget class="QComboBox" name="mode_ComboWidget"/>
+      </item>
       <item row="1" column="6">
        <widget class="QLineEdit" name="stop_freq_InputWidget">
         <property name="maximumSize">
@@ -65,6 +132,13 @@
           <width>75</width>
           <height>16777215</height>
          </size>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Step [MHz] :</string>
         </property>
        </widget>
       </item>
@@ -81,13 +155,27 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="6">
-       <widget class="QComboBox" name="mode_ComboWidget"/>
-      </item>
       <item row="0" column="5">
        <widget class="QLabel" name="label_6">
         <property name="text">
          <string>Mode :</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLineEdit" name="frequency_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>75</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="7">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
        </widget>
       </item>
@@ -105,36 +193,6 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0" colspan="7">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="6">
-       <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
-      </item>
-      <item row="0" column="2">
-       <widget class="QLineEdit" name="frequency_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>75</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4">
-       <widget class="QLineEdit" name="power_InputWidget">
-        <property name="maximumSize">
-         <size>
-          <width>50</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
       <item row="3" column="0">
        <widget class="QRadioButton" name="idle_StateWidget">
         <property name="maximumSize">
@@ -148,6 +206,19 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="4">
+       <widget class="QLineEdit" name="power_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>50</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="6">
+       <widget class="QLCDNumber" name="elapsed_time_DisplayWidget"/>
+      </item>
       <item row="1" column="2">
        <widget class="QLineEdit" name="start_freq_InputWidget">
         <property name="maximumSize">
@@ -155,6 +226,13 @@
           <width>75</width>
           <height>16777215</height>
          </size>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Power [dBm] :</string>
         </property>
        </widget>
       </item>
@@ -171,57 +249,34 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
-       <widget class="QLabel" name="label_2">
+      <item row="0" column="10">
+       <widget class="QPushButton" name="do_fit_PushButton">
         <property name="text">
-         <string>Power [dBm] :</string>
+         <string>Fit</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="7" rowspan="4" colspan="2">
-       <widget class="Line" name="line_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="9">
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeType">
-         <enum>QSizePolicy::Fixed</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
+      <item row="8" column="13">
+       <widget class="QSpinBox" name="odmr_cb_low_centile_InputWidget">
+        <property name="maximumSize">
          <size>
-          <width>20</width>
-          <height>20</height>
+          <width>50</width>
+          <height>16777215</height>
          </size>
         </property>
-       </spacer>
-      </item>
-      <item row="0" column="10" rowspan="4">
-       <widget class="Line" name="line_3">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
+        <property name="maximum">
+         <number>100</number>
         </property>
        </widget>
       </item>
-      <item row="5" column="0" colspan="15">
-       <widget class="PlotWidget" name="odmr_ViewWidget"/>
-      </item>
-      <item row="6" column="0" colspan="15">
-       <widget class="PlotWidget" name="odmr_matrix_ViewWidget"/>
-      </item>
-      <item row="0" column="11">
+      <item row="0" column="8">
        <widget class="QLabel" name="label_9">
         <property name="text">
          <string>Fit Function :</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="12">
+      <item row="0" column="9">
        <widget class="QComboBox" name="fit_methods_ComboWidget">
         <property name="minimumSize">
          <size>
@@ -237,25 +292,81 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="13">
-       <widget class="QPushButton" name="do_fit_PushButton">
-        <property name="text">
-         <string>Fit</string>
+      <item row="5" column="13">
+       <widget class="QSpinBox" name="odmr_cb_high_centile_InputWidget">
+        <property name="maximumSize">
+         <size>
+          <width>50</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>100</number>
         </property>
        </widget>
       </item>
-      <item row="0" column="14">
-       <spacer name="horizontalSpacer">
+      <item row="0" column="7" rowspan="4">
+       <widget class="Line" name="line_2">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Vertical</enum>
         </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
+       </widget>
+      </item>
+      <item row="11" column="12" colspan="2">
+       <widget class="QRadioButton" name="odmr_cb_manual_RadioButton">
+        <property name="text">
+         <string>Manual</string>
         </property>
-       </spacer>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+      <item row="10" column="12" colspan="2">
+       <widget class="QRadioButton" name="odmr_cb_centiles_RadioButton">
+        <property name="text">
+         <string>Centiles</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup</string>
+        </attribute>
+       </widget>
+      </item>
+      <item row="4" column="0" rowspan="3" colspan="12">
+       <widget class="PlotWidget" name="odmr_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" rowspan="5" colspan="12">
+       <widget class="PlotWidget" name="odmr_matrix_ViewWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="9" rowspan="3" colspan="3">
+       <widget class="QTextBrowser" name="odmr_fit_results_DisplayWidget"/>
+      </item>
+      <item row="1" column="8">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Fit Results :</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -266,7 +377,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1036</width>
+     <width>1063</width>
      <height>21</height>
     </rect>
    </property>
@@ -298,6 +409,32 @@
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>frequency_InputWidget</tabstop>
+  <tabstop>power_InputWidget</tabstop>
+  <tabstop>start_freq_InputWidget</tabstop>
+  <tabstop>step_freq_InputWidget</tabstop>
+  <tabstop>stop_freq_InputWidget</tabstop>
+  <tabstop>runtime_InputWidget</tabstop>
+  <tabstop>mode_ComboWidget</tabstop>
+  <tabstop>idle_StateWidget</tabstop>
+  <tabstop>run_StateWidget</tabstop>
+  <tabstop>fit_methods_ComboWidget</tabstop>
+  <tabstop>do_fit_PushButton</tabstop>
+  <tabstop>odmr_fit_results_DisplayWidget</tabstop>
+  <tabstop>odmr_cb_max_InputWidget</tabstop>
+  <tabstop>odmr_cb_high_centile_InputWidget</tabstop>
+  <tabstop>odmr_cb_ViewWidget</tabstop>
+  <tabstop>odmr_cb_low_centile_InputWidget</tabstop>
+  <tabstop>odmr_cb_min_InputWidget</tabstop>
+  <tabstop>odmr_cb_centiles_RadioButton</tabstop>
+  <tabstop>odmr_cb_manual_RadioButton</tabstop>
+  <tabstop>odmr_matrix_ViewWidget</tabstop>
+  <tabstop>odmr_ViewWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
 </ui>
