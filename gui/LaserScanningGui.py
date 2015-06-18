@@ -87,16 +87,17 @@ class LaserScanningGui(GUIBase):
         self._pw.setLabel('top', 'Relative Frequency', units='Hz')
                 
         # defining buttons
-        self._start_stop_button = QtGui.QPushButton('Start')
-        self._start_stop_button.setFixedWidth(50)
-        self._start_stop_button.clicked.connect(self.start_clicked)
+        self._stop_resume_button = QtGui.QPushButton('Stop')
+        self._stop_resume_button.setFixedWidth(70)
+        self._stop_resume_button.clicked.connect(self.stop_resume_clicked)
+        self._stop_resume_button.setEnabled(False)
         self._save_button = QtGui.QPushButton('Save Histogram')
         self._save_button.setFixedWidth(120)
         self._save_button.clicked.connect(self.save_clicked)
-        self._resume_button = QtGui.QPushButton('Resume')
-        self._resume_button.setFixedWidth(60)
-        self._resume_button.clicked.connect(self.resume_clicked)
-        self._resume_button.setEnabled(False)
+        self._start_button = QtGui.QPushButton('Start new')
+        self._start_button.setFixedWidth(100)
+        self._start_button.clicked.connect(self.start_clicked)
+        self._start_button.setEnabled(True)
         
         # defining the parameters to edit
         bins_tooltip = 'Number of bins to split the wavelength range up into.\nHigh bin number gives noisy but detailed data.'
@@ -133,9 +134,10 @@ class LaserScanningGui(GUIBase):
         self._hbox_layout.addWidget(self._max_wavelength_label)
         self._hbox_layout.addWidget(self._max_wavelength_display)
         self._hbox_layout.addStretch(1)
+        self._hbox_layout.addWidget(self._start_button)
+        self._hbox_layout.addStretch(1)
         self._hbox_layout.addWidget(self._save_button)
-        self._hbox_layout.addWidget(self._start_stop_button)
-        self._hbox_layout.addWidget(self._resume_button)
+        self._hbox_layout.addWidget(self._stop_resume_button)
         self._control_widget = QtGui.QWidget()
         self._control_widget.setLayout(self._hbox_layout)
         
@@ -237,29 +239,32 @@ class LaserScanningGui(GUIBase):
         self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz)        
         
         if self._scanning_logic.getState() == 'running':
-            self._start_stop_button.setText('Stop')
-            self._resume_button.setEnabled(False)
+            self._stop_resume_button.setText('Stop')
+            self._start_button.setEnabled(False)
         else:
-            self._start_stop_button.setText('Start')
-            self._resume_button.setEnabled(True)
+            self._stop_resume_button.setText('Resume')
+            self._start_button.setEnabled(True)
 
-    def start_clicked(self):
+    def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
         if self._scanning_logic.getState() == 'running':
-            self._start_stop_button.setText('Start')
+            self._stop_resume_button.setText('Resume')
             self._scanning_logic.stop_scanning()
-            self._resume_button.setEnabled(True)
+            self._stop_resume_button.setEnabled(True)
         else:
-            self._start_stop_button.setText('Stop')
-            self._scanning_logic.start_scanning()
+            self._stop_resume_button.setText('Stop')
+            self._scanning_logic.start_scanning(resume=True)
+            self._start_button.setEnabled(False)
             
-    def resume_clicked(self):
+    def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
         """
         if self._scanning_logic.getState() == 'idle':
-            self._scanning_logic.start_scanning(resume=True)
-            self._resume_button.setEnabled(False)
+            self._scanning_logic.start_scanning()
+
+            # Enable the stop button once a scan starts.
+            self._stop_resume_button.setEnabled(True)
         else:
             print('Can not scan, since a scan is alredy running')
 
