@@ -225,6 +225,13 @@ class ODMRGui(GUIBase):
         self._mw.power_InputWidget.editingFinished.connect(self.change_power)
         self._mw.runtime_InputWidget.editingFinished.connect(self.change_runtime)
         
+        #
+        
+        self._mw.odmr_cb_max_InputWidget.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_min_InputWidget.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_high_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
+        self._mw.odmr_cb_low_centile_InputWidget.valueChanged.connect(self.refresh_matrix)
+        
         #######################################################################
         ##                      Connect signals                              ##
         #######################################################################
@@ -341,7 +348,7 @@ class ODMRGui(GUIBase):
             cb_max = self._mw.odmr_cb_max_InputWidget.value()
 
         self.odmr_cb.refresh_colorbar(cb_min,cb_max)    
-        self._mw.odmr_cb_ViewWidget.update() 
+        self._mw.odmr_cb_ViewWidget.update()
      
     def refresh_elapsedtime(self):
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
