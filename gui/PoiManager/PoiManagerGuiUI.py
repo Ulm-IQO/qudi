@@ -389,7 +389,7 @@ class Ui_PoiManager(object):
         self.roi_cb_manual_RadioButton.setText(_translate("PoiManager", "Manual", None))
         self.sample_shift_dockWidget.setWindowTitle(_translate("PoiManager", "Sample shift", None))
         self.radioButton_2.setText(_translate("PoiManager", "Duration (seconds)", None))
-        self.radioButton.setText(_translate("PoiManager", "Cliock time", None))
+        self.radioButton.setText(_translate("PoiManager", "Clock time", None))
         self.actionNew_ROI.setText(_translate("PoiManager", "New ROI", None))
         self.actionNew_ROI.setToolTip(_translate("PoiManager", "Start a new ROI (such as after moving to a different part of the sample", None))
         self.actionSave_ROI.setText(_translate("PoiManager", "Save ROI", None))
