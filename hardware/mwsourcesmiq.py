@@ -12,11 +12,11 @@ class mwsourcesmiq(Base,MWInterface):
     """
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, 
-                      configuation=config, callback_dict = {})
+       
         self._modclass = 'mwsourcesmiq'
         self._modtype = 'mwsource'
-        
+        c_dict = {'onactivate': self.activation}
+        Base.__init__(self, manager, name, config, c_dict)
         ## declare connectors        
         self.connector['out']['mwsourcesmiq'] = OrderedDict()
         self.connector['out']['mwsourcesmiq']['class'] = 'MWSource' 
@@ -50,7 +50,14 @@ class mwsourcesmiq(Base,MWInterface):
             
         self.logMsg("MWSMIQ initialised and connected to hardware.", 
                     msgType='status')
-
+                    
+    def activation(self,e=None):
+        
+        return 0 
+    
+    def deactivation(self,e=None):
+        
+        return 0
 
     def on(self):
         """ Switches on any preconfigured microwave output. 
@@ -208,6 +215,9 @@ class mwsourcesmiq(Base,MWInterface):
         self._gpib_connetion.write('*WAI')
         self._gpib_connetion.write(':FREQ:MODE LIST')
         
+        return 0
+        
+    def trigger(self,source,pol):
         return 0
         
     

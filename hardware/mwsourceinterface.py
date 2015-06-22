@@ -7,6 +7,12 @@ class MWInterface():
     microwave hardware.
     """
     
+    def activation(self): 
+        return 0
+        
+    def deactivation(self):
+        return 0
+    
     def on(self):
         """ Switches on any preconfigured microwave output. 
         

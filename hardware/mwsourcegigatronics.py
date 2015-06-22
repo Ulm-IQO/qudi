@@ -12,10 +12,12 @@ class mwsourcegigatronics(Base,MWInterface):
     """
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, 
-                      configuation=config, callback_dict = {})
+        
         self._modclass = 'mwsourcegigatronics'
         self._modtype = 'mwsource'
+        
+        c_dict = {'onactivate': self.activation}
+        Base.__init__(self, manager, name, config, c_dict)        
         
         ## declare connectors        
         self.connector['out']['mwsourcegigatronics'] = OrderedDict()
@@ -50,6 +52,14 @@ class mwsourcegigatronics(Base,MWInterface):
             
         self.logMsg("MWgigatronics initialised and connected to hardware.", 
                     msgType='status')
+                    
+    def activation(self,e=None):
+        
+        return 0 
+    
+    def deactivation(self,e=None):
+        
+        return 0    
 
 
     def on(self):
@@ -200,6 +210,9 @@ class mwsourcegigatronics(Base,MWInterface):
         self._gpib_connetion.write(':MODE LIST')
         self._gpib_connetion.write(':OUTP ON')
         
+        return 0
+        
+    def trigger(self,source,pol):
         return 0
         
     
