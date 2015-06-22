@@ -81,7 +81,7 @@ class LogWindow(GUIBase):
             self.stylesheet = stylesheetfile.read()
             stylesheetfile.close()
 
-        self.wid = LogWidget(self.mw, self.stylesheet)
+        self.wid = LogWidget(self.stylesheet)
         self.wid.ui.input = QtGui.QLineEdit()
         self.wid.ui.gridLayout.addWidget(self.wid.ui.input, 2, 0, 1, 3)
         self.wid.ui.dirLabel.setText('Current Storage Directory: None')
