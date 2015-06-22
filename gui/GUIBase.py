@@ -33,3 +33,10 @@ class GUIBase(Base):
     def show(self):
         self.logMsg('Every GUI module needs to reimplement the show() function!', msgType='error')
 
+    def saveWindowPos(self, window):
+        self._statusVariables['pos_x'] = window.pos().x()
+        self._statusVariables['pos_y'] = window.pos().y()
+
+    def restoreWindowPos(self, window):
+        if 'pos_x' in self._statusVariables and 'pos_y' in self._statusVariables:
+            window.move(self._statusVariables['pos_x'],  self._statusVariables['pos_y'])
