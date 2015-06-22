@@ -169,6 +169,7 @@ class ODMRLogic(GenericLogic):
         """Stop the ODMR scan
         @return int: error code (0:OK, -1:error)
         """
+        self.save_ODMR_Data()
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True            
@@ -293,12 +294,6 @@ class ODMRLogic(GenericLogic):
         """
         error_code = self._MW_device.off()
         return error_code
-
-
-    def save_ODMR_Data(self):
-        """ Saves the current ODMR data to a file.
-        """
-        pass
         
         
     def do_fit(self, fit_function = None):
@@ -369,3 +364,28 @@ class ODMRLogic(GenericLogic):
             result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
+
+
+    def save_ODMR_Data(self):
+        """ Saves the current ODMR data to a file.
+        """
+        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
+        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_ODMR_data.dat')
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        freq_data = self.ODMR_plot_x
+        count_data = self.ODMR_plot_y
+        data['frequency values (MHz)'] = freq_data
+        data['count data'] = count_data
+        
+        parameters = OrderedDict()
+        parameters['Microwave Power (dBm)'] = self.MW_power
+        parameters['Runtime (s)'] = self.RunTime
+        
+
+        self._save_logic.save_data(data, filepath, parameters=parameters, 
+                                   filename=filename, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                  
+        self.logMsg('ODMR data saved to:\n{0}'.format(filepath), 
+                    msgType='status', importance=3)
