@@ -12,10 +12,12 @@ class mwsourceanritsu70GHz(Base, MWInterface):
     """
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        Base.__init__(self, manager, name, 
-                      configuation=config, callback_dict = {})
+        
         self._modclass = 'mwsourceanritsu70GHz'
         self._modtype = 'mwsource'
+        
+        c_dict = {'onactivate': self.activation}
+        Base.__init__(self, manager, name, config, c_dict)
         
         ## declare connectors        
         self.connector['out']['mwsourceanritsu70GHz'] = OrderedDict()
@@ -51,6 +53,13 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         self.logMsg("MWanritsu70GHz initialised and connected to hardware.", 
                     msgType='status')
                     
+    def activation(self,e=None):
+        
+        return 0 
+    
+    def deactivation(self,e=None):
+        
+        return 0                       
                     
     def on(self):
         """ Switches on any preconfigured microwave output. 
