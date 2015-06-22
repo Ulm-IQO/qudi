@@ -30,12 +30,18 @@ class ODMRLogic(GenericLogic):
         self.connector['in']['odmrcounter'] = OrderedDict()
         self.connector['in']['odmrcounter']['class'] = 'ODMRCounterInterface'
         self.connector['in']['odmrcounter']['object'] = None
+        
         self.connector['in']['fitlogic'] = OrderedDict()
         self.connector['in']['fitlogic']['class'] = 'FitLogic'
         self.connector['in']['fitlogic']['object'] = None
+        
         self.connector['in']['microwave1'] = OrderedDict()
         self.connector['in']['microwave1']['class'] = 'mwsourceinterface'
         self.connector['in']['microwave1']['object'] = None
+        
+        self.connector['in']['savelogic'] = OrderedDict()
+        self.connector['in']['savelogic']['class'] = 'SaveLogic'
+        self.connector['in']['savelogic']['object'] = None
         
         self.connector['out']['odmrlogic'] = OrderedDict()
         self.connector['out']['odmrlogic']['class'] = 'ODMRLogic'        
@@ -80,6 +86,7 @@ class ODMRLogic(GenericLogic):
         self._MW_device = self.connector['in']['microwave1']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
        
         self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
         
@@ -286,6 +293,12 @@ class ODMRLogic(GenericLogic):
         """
         error_code = self._MW_device.off()
         return error_code
+
+
+    def save_ODMR_Data(self):
+        """ Saves the current ODMR data to a file.
+        """
+        pass
         
         
     def do_fit(self, fit_function = None):
