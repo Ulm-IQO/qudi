@@ -265,7 +265,15 @@ class LogWidget(QtGui.QWidget):
         elif item.parent() == self.ui.filterTree.topLevelItem(1):
             if not item.checkState(0):
                 self.ui.filterTree.topLevelItem(1).setCheckState(0, QtCore.Qt.Unchecked)
-        #self.filtermodel.setTypes(filterTypes)
+
+        typeFilter = []
+        for i in range(self.ui.filterTree.topLevelItem(1).childCount()):
+            child = self.ui.filterTree.topLevelItem(1).child(i)
+            if self.ui.filterTree.topLevelItem(1).checkState(0) or child.checkState(0):
+                text = child.text(0)
+                typeFilter.append(str(text))
+        print(typeFilter)
+        self.filtermodel.setTypes(typeFilter)
         
     def filtersChanged(self):
         """ This function is called to update the filter list when the log filters have been changed.

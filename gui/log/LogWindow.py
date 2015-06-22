@@ -91,6 +91,7 @@ class LogWindow(GUIBase):
         self.errorDialog = ErrorDialog(self)
         self._manager.logger.sigLoggedMessage.connect(self.addMessage)
         self._manager.sigShowLog.connect(self.show)
+        self.restoreWindowPos(self.mw)
         self.mw.show()
 
     def deactivation(self, e):
@@ -98,6 +99,7 @@ class LogWindow(GUIBase):
             
           @param object e: Fysom state change notification
         """
+        self.saveWindowPos(self.mw)
         self.mw.close()
 
     def addMessage(self, entry):
