@@ -24,7 +24,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 from PyQt4 import QtGui, QtCore
-from . import LogWidgetTemplate
+from . import LogWidgetUI
 from pyqtgraph import FeedbackButton
 import pyqtgraph.configfile as configfile
 from core.util.Mutex import Mutex
@@ -33,69 +33,189 @@ from pyqtgraph import FileDialog
 import weakref
 import re
 
+class LogModel(QtCore.QAbstractTableModel):
+
+    def __init__(self):
+        super().__init__()
+        self.header = ['Id', 'Time', 'Type', '!', 'Message']
+        self.fgColor = {
+            'user':     QtGui.QColor('#F1F'),
+            'thread':   QtGui.QColor('#11F'),
+            'status':   QtGui.QColor('#1F1'),
+            'warning':  QtGui.QColor('#F90'),
+            'error':    QtGui.QColor('#F11')
+        }
+        self.entries = list()
+
+    def rowCount(self, parent = QtCore.QModelIndex()):
+        return len(self.entries)
+
+    def columnCount(self, parent = QtCore.QModelIndex()):
+        return len(self.header)
+
+    def data(self, index,  role):
+        if not index.isValid():
+            return None
+        elif role == QtCore.Qt.TextColorRole:
+            return self.fgColor[self.entries[index.row()][2]]
+        elif role == QtCore.Qt.DisplayRole:
+            return self.entries[index.row()][index.column()]
+        else:
+            return None
+
+    def setData(self, index, value, role = QtCore.Qt.EditRole):
+        try:
+            self.entries[index.row()] = value
+        except Exception as e:
+            print(e)
+            return False
+        topleft = self.createIndex(index.row(), 0)
+        bottomright = self.createIndex(index.row(), 4)
+        self.dataChanged.emit(topleft, bottomright)
+        return True
+
+    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+        if section < 0 and section > 3:
+            return None
+        elif role != QtCore.Qt.DisplayRole:
+            return None
+        elif orientation != QtCore.Qt.Horizontal:
+            return None
+        else:
+            return self.header[section]
+
+    def insertRows(self, row, count, parent = QtCore.QModelIndex()):
+        self.beginInsertRows(parent, row, row + count - 1)
+        insertion = list()
+        for i in range(count):
+            insertion.append([None, None, None, None, None])
+        self.entries[row:row] = insertion
+        self.endInsertRows()
+        return True
+        
+    def addRow(self, row, data, parent = QtCore.QModelIndex()):
+        return self.addRows(row, [data], parent)
+
+    def addRows(self, row, data, parent = QtCore.QModelIndex()):
+        count = len(data)
+        self.beginInsertRows(parent, row, row + count - 1)
+        self.entries[row:row] = data
+        self.endInsertRows()
+        topleft = self.createIndex(row, 0)
+        bottomright = self.createIndex(row, 4)
+        self.dataChanged.emit(topleft, bottomright)
+        return True
+
+    def removeRows(self, row, count, parent = QtCore.QModelIndex() ): 
+        self.beginRemoveRows(parent, row, row + count - 1)
+        self.entries[row:row+count] = []
+        self.endRemoveRows()
+        return True
+
+class LogFilter(QtGui.QSortFilterProxyModel):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.minImportance = 5
+        self.showTypes = ['user', 'thread', 'status', 'warning', 'error']
+
+    def filterAcceptsRow(self, sourceRow, sourceParent):
+        indexMessageType = self.sourceModel().index(sourceRow, 2)
+        messageType = self.sourceModel().data(indexMessageType, QtCore.Qt.DisplayRole)
+        indexMessageImportance = self.sourceModel().index(sourceRow, 3)
+        messageImportance = self.sourceModel().data(indexMessageImportance, QtCore.Qt.DisplayRole)
+        if messageImportance is None or messageType is None:
+            return False
+        return int(messageImportance) >= self.minImportance and messageType in self.showTypes
+
+    def lessThan(self, left, right):
+        leftData = self.sourceModel().data(self.sourceModel().index(left.row(), 0), QtCore.Qt.DisplayRole)
+        rightData = self.sourceModel().data(self.sourceModel().index(right.row(), 0), QtCore.Qt.DisplayRole)
+        return leftData < rightData
+
+    def setImportance(self, minImportance):
+        if minImportance >= 0 and minImportance <= 9:
+            self.minImportance = minImportance
+            self.invalidateFilter()
+
+    def setTypes(self, showTypes):
+        self.showTypes = showTypes
+        self.invalidateFilter()
+
+class HTMLDelegate(QtGui.QStyledItemDelegate):
+    """
+    """
+    doc = QtGui.QTextDocument()
+
+    def paint(self, painter, option, index):
+        options = QtGui.QStyleOptionViewItemV4(option)
+        self.initStyleOption(options,index)
+        style = QtGui.QApplication.style() if options.widget is None else options.widget.style()
+        self.doc.setHtml(options.text)
+        options.text = ""
+        style.drawControl(QtGui.QStyle.CE_ItemViewItem, options, painter);
+        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
+        # Highlighting text if item is selected
+        #if (optionV4.state & QStyle::State_Selected)
+            #ctx.palette.setColor(QPalette::Text, optionV4.palette.color(QPalette::Active, QPalette::HighlightedText));
+        textRect = style.subElementRect(QtGui.QStyle.SE_ItemViewItemText, options)
+        painter.save()
+        painter.translate(textRect.topLeft())
+        painter.setClipRect(textRect.translated(-textRect.topLeft()))
+        self.doc.documentLayout().draw(painter, ctx)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        options = QtGui.QStyleOptionViewItemV4(option)
+        self.initStyleOption(options,index)
+        self.doc.setHtml(options.text)
+        self.doc.setTextWidth(options.rect.width())
+        return QtCore.QSize(self.doc.idealWidth(), self.doc.size().height())
+
+    def setStylesheet(self, stylesheet):
+        self.doc.setDefaultStyleSheet(stylesheet)
 
 class LogWidget(QtGui.QWidget):
     """A widget to show log entries and filter them.
     """
-    
     sigDisplayEntry = QtCore.Signal(object) ## for thread-safetyness
     sigAddEntry = QtCore.Signal(object) ## for thread-safetyness
     sigScrollToAnchor = QtCore.Signal(object)  # for internal use.
 
-    pageTemplate = """
-        <html>
-        <head>
-            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-            <script type="text/javascript">
-                function showDiv(id) {
-                    div = document.getElementById(id);
-                    div.style.visibility = "visible";
-                    div.style.height = "auto";
-                }
-            </script>
-        </head>
-        <body>
-        </body>
-        </html> """
-
-    def __init__(self, parent, logStyleSheet):
+    def __init__(self, logStyleSheet):
         """Creates the log widget.
 
         @param object parent: Qt parent object for log widet
         @param str logStyleSheet: stylesheet for log view
 
         """
-        QtGui.QWidget.__init__(self, parent)
-        self.ui = LogWidgetTemplate.Ui_Form()
+        super().__init__()
+        self.ui = LogWidgetUI.Ui_Form()
         self.ui.setupUi(self)
-        #self.ui.input.hide()
-        self.ui.filterTree.topLevelItem(1).setExpanded(True)
-        
-        self.entries = [] ## stores all log entries in memory
-        self.cache = {} ## for storing html strings of entries that have already been processed
-        self.displayedEntries = []
-        self.typeFilters = []
-        self.importanceFilter = 0
-        self.dirFilter = False
-        self.entryArrayBuffer = np.zeros(1000, dtype=[ ### a record array for quick filtering of entries
-            ('index', 'int32'),
-            ('importance', 'int32'),
-            ('msgType', '|S10'),
-            ('directory', '|S100'),
-            ('entryId', 'int32')
-        ])
-        self.entryArray = self.entryArrayBuffer[:0]
 
-        self.stylesheet = logStyleSheet        
-        self.filtersChanged()
-        self.ui.output.document().setDefaultStyleSheet(self.stylesheet)
+        self.logLength = 1000
+        self.stylesheet = logStyleSheet
+
+        self.model = LogModel()
+        self.filtermodel = LogFilter()
+        self.filtermodel.setSourceModel(self.model)
+        self.idg = HTMLDelegate()
+        self.idg.setStylesheet(self.stylesheet)
+        #self.ui.output.setItemDelegate(HTMLDelegate())
+        self.ui.output.setModel(self.filtermodel)
+        self.ui.output.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        self.ui.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+        self.ui.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
+        self.ui.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
+        self.ui.output.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
+        self.ui.output.verticalHeader().hide()
         
+
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
-        self.ui.exportHtmlBtn.clicked.connect(self.exportHtml)
         self.ui.filterTree.itemChanged.connect(self.setCheckStates)
         self.ui.importanceSlider.valueChanged.connect(self.filtersChanged)
-        self.ui.output.anchorClicked.connect(self.linkClicked)
+        #self.ui.output.anchorClicked.connect(self.linkClicked)
         
         self.sigScrollToAnchor.connect(self.scrollToAnchor, QtCore.Qt.QueuedConnection)
         
@@ -107,37 +227,7 @@ class LogWidget(QtGui.QWidget):
 
         f must be able to be read by pyqtgraph configfile.py
         """
-        log = configfile.readConfigFile(f)
-        self.entries = []
-        self.entryArrayBuffer = np.zeros(len(log),dtype=[
-            ('index', 'int32'),
-            ('importance', 'int32'),
-            ('msgType', '|S10'),
-            ('directory', '|S100'),
-            ('entryId', 'int32')
-        ])
-        self.entryArray = self.entryArrayBuffer[:]
-                                   
-        i = 0
-        for k,v in log.items():
-            v['id'] = k[9:]  ## record unique ID to facilitate HTML generation (javascript needs this ID)
-            self.entries.append(v)
-            self.entryArray[i] = np.array(
-                    [(i,
-                    v.get('importance', 5),
-                    v.get('msgType', 'status'),
-                    v.get('currentDir', ''),
-                    v.get('entryId', v['id']))
-                    ],
-                    dtype=[('index', 'int32'),
-                    ('importance', 'int32'),
-                    ('msgType', '|S10'),
-                    ('directory', '|S100'),
-                    ('entryId', 'int32')]
-                )
-            i += 1
-            
-        self.filterEntries() ## puts all entries through current filters and displays the ones that pass
+        pass
         
     def addEntry(self, entry):
         """Add a log entry to the log view.
@@ -150,37 +240,17 @@ class LogWidget(QtGui.QWidget):
         if not isGuiThread:
             self.sigAddEntry.emit(entry)
             return
+        if self.model.rowCount() > self.logLength:
+            self.model.removeRows(0, self.model.rowCount() - self.logLength)
+        logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], entry['message'] ]
+        self.model.addRow(self.model.rowCount(), logEntry)
         
-        self.entries.append(entry)
-        i = len(self.entryArray)
-        
-        entryDir = entry.get('currentDir', None)
-        if entryDir is None:
-            entryDir = ''
-        arr = np.array(
-                [(i,
-                entry['importance'],
-                entry['msgType'],
-                entryDir,
-                entry['id']
-                )],
-                dtype = [
-                    ('index', 'int32'),
-                    ('importance', 'int32'),
-                    ('msgType', '|S10'),
-                    ('directory', '|S100'),
-                    ('entryId', 'int32')
-                ]
-            )
-        
-        ## make more room if needed
-        if len(self.entryArrayBuffer) == len(self.entryArray):
-            newArray = np.empty(len(self.entryArrayBuffer)+1000, self.entryArrayBuffer.dtype)
-            newArray[:len(self.entryArray)] = self.entryArray
-            self.entryArrayBuffer = newArray
-        self.entryArray = self.entryArrayBuffer[:len(self.entryArray)+1]
-        self.entryArray[i] = arr
-        self.checkDisplay(entry) ## displays the entry if it passes the current filters
+    def displayEntry(self, entry):
+        self.ui.output.scrollTo(self.model.index(entry, 0))
+
+    def setLogLength(self, length):
+        if length > 0:
+            self.logLength = length
 
     def setCheckStates(self, item, column):
         """ Set state of the checkbox in the filter list and update log view.
@@ -195,110 +265,19 @@ class LogWidget(QtGui.QWidget):
         elif item.parent() == self.ui.filterTree.topLevelItem(1):
             if not item.checkState(0):
                 self.ui.filterTree.topLevelItem(1).setCheckState(0, QtCore.Qt.Unchecked)
-        self.filtersChanged()
+        #self.filtermodel.setTypes(filterTypes)
         
     def filtersChanged(self):
         """ This function is called to update the filter list when the log filters have been changed.
         """
-        ### Update self.typeFilters, self.importanceFilter, and self.dirFilter to reflect changes.
-        tree = self.ui.filterTree
+        self.filtermodel.setImportance(self.ui.importanceSlider.value())
         
-        self.typeFilters = []
-        for i in range(tree.topLevelItem(1).childCount()):
-            child = tree.topLevelItem(1).child(i)
-            if tree.topLevelItem(1).checkState(0) or child.checkState(0):
-                text = child.text(0)
-                self.typeFilters.append(str(text))
-            
-        self.importanceFilter = self.ui.importanceSlider.value()
-#        self.updateDirFilter()
-        self.filterEntries()
-        
-#    def updateDirFilter(self, dh=None):
-#        if self.ui.filterTree.topLevelItem(0).checkState(0):
-#            if dh==None:
-#                self.dirFilter = self.manager.getDirOfSelectedFile().name()
-#            else:
-#                self.dirFilter = dh.name()
-#        else:
-#            self.dirFilter = False
-        
-    
-        
-    def filterEntries(self):
-        """Clears the log view and runs each entry in self.entries through the filters and displays if it makes it through.
-        """
-        ### make self.entries a record array, then filtering will be much faster (to OR true/false arrays, + them)
-        typeMask = self.entryArray['msgType'] == b''
-        for t in self.typeFilters:
-            typeMask += self.entryArray['msgType'] == t.encode('ascii')
-        mask = (self.entryArray['importance'] > self.importanceFilter) * typeMask
-        #if self.dirFilter != False:
-        #    d = np.ascontiguousarray(self.entryArray['directory'])
-        #    j = len(self.dirFilter)
-        #    i = len(d)
-        #    d = d.view(np.byte).reshape(i, 100)[:, :j]
-        #    d = d.reshape(i*j).view('|S%d' % j)
-        #    mask *= (d == self.dirFilter)
-        self.ui.output.clear()
-        self.ui.output.document().setDefaultStyleSheet(self.stylesheet)
-        indices = list(self.entryArray[mask]['index'])
-        self.displayEntry([self.entries[i] for i in indices])
-                          
-    def checkDisplay(self, entry):
-        """ Check if a log entry should be displayed and display it if this is the case.
-
-          @param dict entry: log entry in dictionary form
-        """
-        ### checks whether entry passes the current filters and displays it if it does.
-        if entry['msgType'] not in self.typeFilters:
-            return
-        elif entry['importance'] < self.importanceFilter:
-            return
-        elif self.dirFilter is not False:
-            if entry['currentDir'][:len(self.dirFilter)] != self.dirFilter:
-                return
-        else:
-            self.displayEntry([entry])
-    
-        
-    def displayEntry(self, entries):
-        """ Display a list of entries in the log view.
-
-          @param list(dict) entries: list of entries in dictionry form to be added to the log view
-        """
-        ## entries should be a list of log entries
-        
-        ## for thread-safetyness:
-        isGuiThread = QtCore.QThread.currentThread() == QtCore.QCoreApplication.instance().thread()
-        if not isGuiThread:
-            self.sigDisplayEntry.emit(entries)
-            return
-        
-        for entry in entries:
-            if id(entry) not in self.cache:
-                self.cache[id(entry)] = self.generateEntryHtml(entry)
-                
-            html = self.cache[id(entry)]
-            sb = self.ui.output.verticalScrollBar()
-            isMax = sb.value() == sb.maximum()
-            self.ui.output.append(html)
-            self.displayedEntries.append(entry)
-            
-            if isMax:
-                ## can't scroll to end until the web frame has processed the html change
-                #frame.setScrollBarValue(QtCore.Qt.Vertical, frame.scrollBarMaximum(QtCore.Qt.Vertical))
-                
-                ## Calling processEvents anywhere inside an error handler is forbidden
-                ## because this can lead to Qt complaining about paint() recursion.
-                self.sigScrollToAnchor.emit(str(entry['id']))  ## queued connection
-            
     def scrollToAnchor(self, anchor):
         """ Scroll the log view so the specified element is visible.
         
           @param object anchor: element that should be visible
         """
-        self.ui.output.scrollToAnchor(anchor)
+        pass
                 
     def generateEntryHtml(self, entry):
         """ Build a HTML string from a log message dictionary.
@@ -323,16 +302,6 @@ class LogWidget(QtGui.QWidget):
         if extra != "":
             #extra = "<div class='logExtra'>" + extra + "</div>"
             extra = "<table class='logExtra'><tr><td>" + extra + "</td></tr></table>"
-        
-        #return """
-        #<div class='entry'>
-            #<div class='%s'>
-                #<span class='timestamp'>%s</span>
-                #<span class='message'>%s</span>
-                #%s
-            #</div>
-        #</div>
-        #""" % (entry['msgType'], entry['timestamp'], msg, extra)
         return """
         <a name="%s"/><table class='entry'><tr><td>
             <table class='%s'><tr><td>
@@ -477,30 +446,4 @@ class LogWidget(QtGui.QWidget):
         """ This function is called when a link in the log view is clicked to expand the text or show documentation.
         """
         url = url.toString()
-        if url[:4] == 'doc:':
-            #self.manager.showDocumentation(url[4:])
-            print("Not implemented")
-        elif url[:4] == 'exc:':
-            cursor = self.ui.output.document().find('Show traceback %s' % url[4:])
-            try:
-                for entry in self.entries:
-                    if int(entry['id']) == int(url[4:]):
-                        tb = entry['tracebackHtml']
-                        break
-            except KeyError:
-                tb = 'Can\'t get the backtrace as there is no tracebackHtml key in the entry dict. Something is royally fucked here.'
-            except IndexError:
-                try:
-                    tb = self.entries[self.entryArray[self.entryArray['entryId']==(int(url[4:]))]['index']]['tracebackHtml']
-                except:
-                    print("requested index %d, but only %d entries exist." % (int(url[4:])-1, len(self.entries)))
-                    raise
-            cursor.insertHtml(tb)
-
-    def clear(self):
-        """ Remove all displayed log entries from the log view.
-        """
-        self.ui.output.clear()
-        self.displayedEntryies = []
-
 
