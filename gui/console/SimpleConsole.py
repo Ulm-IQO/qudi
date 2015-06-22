@@ -90,6 +90,7 @@ Go, play.
         self._manager.sigShowConsole.connect(self.show)
         self._manager.sigModulesChanged.connect(self.updateModuleList)
         self._mw.actionSettings.triggered.connect(self._sd.exec_)
+        self.restoreWindowPos(self._mw)
         self._mw.show()
 
     def deactivation(self, e):
@@ -97,7 +98,8 @@ Go, play.
 
           @param object e: Fysom state change notification
         """
-        self._cw.close()
+        self.saveWindowPos(self._mw)
+        self._mw.close()
 
     def keepSettings(self):
         """ Write old values into config dialog.
