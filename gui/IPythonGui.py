@@ -71,6 +71,7 @@ Go, play.
         self._pywid.kernel_client = self._pywid.kernel_manager.client()
         self._pywid.kernel_client.start_channels()
         self._layout.addWidget(self._pywid)
+        self.restoreWindowPos(self._mw)
         self._mw.show()
        
     def show(self):
@@ -83,4 +84,5 @@ Go, play.
           @param object e: Fysom state change notice
         """
         self._pywid.kernel_client.stop_channels()
+        self.saveWindowPos(self._mw)
         self._mw.close()
