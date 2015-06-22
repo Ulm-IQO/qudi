@@ -97,11 +97,14 @@ pg.setConfigOptions(useWeave=False)
 app = pg.mkQApp()
 
 # Make icons work on non-X11 platforms, set custom theme
-if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
-    themepaths = pg.Qt.QtGui.QIcon.themeSearchPaths()
-    themepaths.append('artwork/icons')
-    pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
-    pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
+#if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
+#
+# To enable the use of custom action icons, for now the above if statement has been
+# removed and the QT theme is being set to our artwork/icons folder for all OSs.
+themepaths = pg.Qt.QtGui.QIcon.themeSearchPaths()
+themepaths.append('artwork/icons')
+pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
+pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
 
 if sys.platform == 'win32':
     try:
