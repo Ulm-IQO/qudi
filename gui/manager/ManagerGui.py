@@ -20,8 +20,8 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
 
 from gui.GUIBase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
-from .ManagerWindowTemplate import Ui_MainWindow
-from .ModuleWidgetTemplate import Ui_ModuleWidget
+from .ManagerWindowUI import Ui_MainWindow
+from .ModuleWidgetUI import Ui_ModuleWidget
 from .aboutdialog import Ui_AboutDialog
 from collections import OrderedDict
 import svn.local
@@ -63,6 +63,7 @@ class ManagerGui(GUIBase):
             This method creates the Manager main window.
         """
         self._mw = ManagerMainWindow()
+        self.restoreWindowPos(self._mw)
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
         self._about.label.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
@@ -111,6 +112,7 @@ class ManagerGui(GUIBase):
         self._mw.actionConsole.triggered.disconnect()
         self._mw.actionAbout_Qt.triggered.disconnect()
         self._mw.actionAbout_QuDi.triggered.disconnect()
+        self.saveWindowPos(self._mw)
 
     def show(self):
         """Show the window and bring it t the top.
