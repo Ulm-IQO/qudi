@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Wed Jun 17 23:08:58 2015
+# Created: Mon Jun 22 14:56:50 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(1255, 918)
+        MainWindow.resize(1255, 939)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -710,7 +710,7 @@ class Ui_MainWindow(object):
         self.actionSave_Depth_Image_Data.setObjectName(_fromUtf8("actionSave_Depth_Image_Data"))
         self.action_zoom = QtGui.QAction(MainWindow)
         self.action_zoom.setCheckable(True)
-        icon = QtGui.QIcon.fromTheme(_fromUtf8("zoom-in"))
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("search"))
         self.action_zoom.setIcon(icon)
         self.action_zoom.setObjectName(_fromUtf8("action_zoom"))
         self.menuFile.addAction(self.actionSave_XY_Scan)
@@ -786,7 +786,7 @@ class Ui_MainWindow(object):
         self.ready_StateWidget.setText(_translate("MainWindow", "Ready", None))
         self.xy_scan_StateWidget.setText(_translate("MainWindow", "Scan XY", None))
         self.continue_xy_scan_StateWidget.setText(_translate("MainWindow", "Continue XY", None))
-        self.depth_scan_StateWidget.setText(_translate("MainWindow", "Depth Scan", None))
+        self.depth_scan_StateWidget.setText(_translate("MainWindow", "Scan Z", None))
         self.refocus_StateWidget.setText(_translate("MainWindow", "Optimise position", None))
         self.label_6.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">%</p></body></html>", None))
         self.label_7.setText(_translate("MainWindow", "<html><head/><body><p align=\"right\">%</p></body></html>", None))

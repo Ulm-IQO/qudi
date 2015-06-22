@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1255</width>
-    <height>918</height>
+    <height>939</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1517,7 +1517,6 @@
      </item>
     </layout>
     <zorder></zorder>
-    <zorder></zorder>
    </widget>
   </widget>
   <action name="actionSave_XY_Scan">
@@ -1605,7 +1604,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="zoom-in">
+    <iconset theme="search">
      <normaloff/>
     </iconset>
    </property>
