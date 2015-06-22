@@ -256,12 +256,12 @@ class ODMRGui(GUIBase):
         # Push Buttons
         self._mw.do_fit_PushButton.clicked.connect(self.update_fit)
         
-         # Show the Main ODMR GUI:
+        # Show the Main ODMR GUI:
         self._mw.show()
+        
 
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """Make window visible and put it above all other windows. """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
@@ -288,19 +288,16 @@ class ODMRGui(GUIBase):
             self._sd.matrix_lines_InputWidget.setReadOnly(True)
             
     def menue_settings(self):
-        ''' This method opens the settings menue
-        '''
+        """ Open the settings menue """
         self._sd.exec_()
 
     def refresh_plot(self):
-        ''' This method refreshes the xy-plot image
-        '''
+        """ Refresh the xy-plot image """
         self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         self.odmr_fit_image.setData(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y)
         
     def refresh_matrix(self):
-        ''' This method refreshes the xy-matrix image
-        '''       
+        """ Refresh the xy-matrix image """       
 #        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
 #        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
 #        self.refresh_odmr_colorbar()
@@ -328,8 +325,7 @@ class ODMRGui(GUIBase):
         
         
     def refresh_odmr_colorbar(self):
-        ''' This method deletes the old colorbar and replace it with an updated one
-        '''
+        """ Delete the old colorbar and replace it with an updated one."""
 #        self._mw.odmr_cb_ViewWidget.clear()
 #        self.odmr_cb = ColorBar(self.colmap_norm, 100, self.odmr_matrix_image.image.min(), self.odmr_matrix_image.image.max())               
 #        self._mw.odmr_cb_ViewWidget.addItem(self.odmr_cb)
@@ -354,8 +350,7 @@ class ODMRGui(GUIBase):
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
      
     def update_settings(self):
-        ''' This method writes the new settings from the gui to the file
-        '''
+        """ Write the new settings from the gui to the file. """
         self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
         self._odmr_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
         
@@ -365,13 +360,23 @@ class ODMRGui(GUIBase):
     def update_fit(self):
         self._odmr_logic.do_fit(fit_function = self._odmr_logic.current_fit_function)
         self.refresh_plot()
+        
+        # check which Fit method is used and remove or add again the 
+        # odmr_fit_image, check also whether a odmr_fit_image already exists.
+        if self._mw.fit_methods_ComboWidget.currentText() == 'No Fit':
+            if self.odmr_fit_image in self._mw.odmr_ViewWidget.listDataItems():
+                self._mw.odmr_ViewWidget.removeItem(self.odmr_fit_image)
+        else:
+            if self.odmr_fit_image not in self._mw.odmr_ViewWidget.listDataItems():
+                self._mw.odmr_ViewWidget.addItem(self.odmr_fit_image)
+                
+        self._mw.odmr_ViewWidget.getViewBox().updateAutoRange()
         self._mw.odmr_fit_results_DisplayWidget.clear()
         self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
 
                 
     def reject_settings(self):
-        ''' This method keeps the old settings and restores the old settings in the gui
-        '''
+        """ Keep the old settings and restores the old settings in the gui. """
         self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
         
     def mw_stop(self, txt):
