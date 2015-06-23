@@ -332,8 +332,8 @@ class ODMRLogic(GenericLogic):
                                 +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]'
                                 + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + u" \u00B1 " 
                                 +  str(np.round(result.params['lorentz1_fwhm'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_01 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_02 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
 
             
