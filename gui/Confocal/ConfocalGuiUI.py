@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Jun 23 21:03:49 2015
+# Created: Tue Jun 23 23:27:55 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -195,6 +195,7 @@ class Ui_MainWindow(object):
         self.optimizer_dockWidget.setWidget(self.dockWidgetContents_2)
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(2), self.optimizer_dockWidget)
         self.scan_control_dockWidget = QtGui.QDockWidget(MainWindow)
+        self.scan_control_dockWidget.setMaximumSize(QtCore.QSize(524287, 140))
         self.scan_control_dockWidget.setObjectName(_fromUtf8("scan_control_dockWidget"))
         self.dockWidgetContents_3 = QtGui.QWidget()
         self.dockWidgetContents_3.setObjectName(_fromUtf8("dockWidgetContents_3"))

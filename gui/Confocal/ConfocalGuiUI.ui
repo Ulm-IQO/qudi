@@ -389,6 +389,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="scan_control_dockWidget">
+   <property name="maximumSize">
+    <size>
+     <width>524287</width>
+     <height>140</height>
+    </size>
+   </property>
    <property name="windowTitle">
     <string>Scan control</string>
    </property>
