@@ -152,20 +152,15 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="poi_coords_ViewWidget">
-       <property name="maximumSize">
-        <size>
-         <width>200</width>
-         <height>16777215</height>
-        </size>
+      <widget class="QLabel" name="poi_coords_label">
+       <property name="toolTip">
+        <string>This text is selectable.  Copy and paste into labnotes.</string>
        </property>
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+       <property name="text">
+        <string>(?, ?, ?)</string>
        </property>
-       <property name="readOnly">
-        <bool>true</bool>
+       <property name="textInteractionFlags">
+        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
        </property>
       </widget>
      </item>

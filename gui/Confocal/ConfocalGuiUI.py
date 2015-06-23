@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Mon Jun 22 14:56:50 2015
+# Created: Tue Jun 23 17:50:44 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -185,17 +185,12 @@ class Ui_MainWindow(object):
         self.label_9.setFont(font)
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.horizontalLayout_13.addWidget(self.label_9)
-        self.refocus_position_ViewWidget = QtGui.QLineEdit(self.dockWidgetContents_2)
-        self.refocus_position_ViewWidget.setMaximumSize(QtCore.QSize(200, 16777215))
-        font = QtGui.QFont()
-        font.setPointSize(10)
-        self.refocus_position_ViewWidget.setFont(font)
-        self.refocus_position_ViewWidget.setReadOnly(True)
-        self.refocus_position_ViewWidget.setObjectName(_fromUtf8("refocus_position_ViewWidget"))
-        self.horizontalLayout_13.addWidget(self.refocus_position_ViewWidget)
+        self.refocus_position_label = QtGui.QLabel(self.dockWidgetContents_2)
+        self.refocus_position_label.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
+        self.refocus_position_label.setObjectName(_fromUtf8("refocus_position_label"))
+        self.horizontalLayout_13.addWidget(self.refocus_position_label)
         spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_13.addItem(spacerItem)
-        self.horizontalLayout_13.setStretch(1, 1)
         self.verticalLayout_3.addLayout(self.horizontalLayout_13)
         self.optimizer_dockWidget.setWidget(self.dockWidgetContents_2)
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(2), self.optimizer_dockWidget)
@@ -764,7 +759,9 @@ class Ui_MainWindow(object):
         self.depth_cb_centiles_RadioButton.setText(_translate("MainWindow", "Centiles", None))
         self.depth_cb_manual_RadioButton.setText(_translate("MainWindow", "Manual", None))
         self.optimizer_dockWidget.setWindowTitle(_translate("MainWindow", "Optimizer", None))
-        self.label_9.setText(_translate("MainWindow", "(x,y,z):", None))
+        self.label_9.setText(_translate("MainWindow", "(x,y,z): ", None))
+        self.refocus_position_label.setToolTip(_translate("MainWindow", "This text is selectable.  Copy and paste into labnotes.", None))
+        self.refocus_position_label.setText(_translate("MainWindow", "(?, ?, ?)", None))
         self.scan_control_dockWidget.setWindowTitle(_translate("MainWindow", "Scan control", None))
         self.label_4.setText(_translate("MainWindow", "Resolution", None))
         self.label_5.setText(_translate("MainWindow", "Scan Range", None))

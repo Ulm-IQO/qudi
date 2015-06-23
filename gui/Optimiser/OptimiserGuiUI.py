@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'OptimiserGuiUI.ui'
 #
-# Created: Mon Jun 15 15:06:56 2015
+# Created: Tue Jun 23 17:50:53 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -69,35 +69,10 @@ class Ui_MainWindow(object):
         self.x_label.setSizePolicy(sizePolicy)
         self.x_label.setObjectName(_fromUtf8("x_label"))
         self.horizontalLayout.addWidget(self.x_label)
-        self.optimal_x = QtGui.QLabel(self.centralwidget)
-        self.optimal_x.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
-        self.optimal_x.setObjectName(_fromUtf8("optimal_x"))
-        self.horizontalLayout.addWidget(self.optimal_x)
-        self.y_label = QtGui.QLabel(self.centralwidget)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.y_label.sizePolicy().hasHeightForWidth())
-        self.y_label.setSizePolicy(sizePolicy)
-        self.y_label.setObjectName(_fromUtf8("y_label"))
-        self.horizontalLayout.addWidget(self.y_label)
-        self.optimal_y = QtGui.QLabel(self.centralwidget)
-        self.optimal_y.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
-        self.optimal_y.setObjectName(_fromUtf8("optimal_y"))
-        self.horizontalLayout.addWidget(self.optimal_y)
-        self.z_label = QtGui.QLabel(self.centralwidget)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.z_label.sizePolicy().hasHeightForWidth())
-        self.z_label.setSizePolicy(sizePolicy)
-        self.z_label.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse)
-        self.z_label.setObjectName(_fromUtf8("z_label"))
-        self.horizontalLayout.addWidget(self.z_label)
-        self.optimal_z = QtGui.QLabel(self.centralwidget)
-        self.optimal_z.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
-        self.optimal_z.setObjectName(_fromUtf8("optimal_z"))
-        self.horizontalLayout.addWidget(self.optimal_z)
+        self.optimal_coordinates = QtGui.QLabel(self.centralwidget)
+        self.optimal_coordinates.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
+        self.optimal_coordinates.setObjectName(_fromUtf8("optimal_coordinates"))
+        self.horizontalLayout.addWidget(self.optimal_coordinates)
         self.gridLayout_2.addLayout(self.horizontalLayout, 1, 0, 1, 1)
         self.optimiseButton = QtGui.QPushButton(self.centralwidget)
         self.optimiseButton.setObjectName(_fromUtf8("optimiseButton"))
@@ -127,12 +102,9 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Optimiser", None))
-        self.x_label.setText(_translate("MainWindow", "X:", None))
-        self.optimal_x.setText(_translate("MainWindow", "?", None))
-        self.y_label.setText(_translate("MainWindow", "Y:", None))
-        self.optimal_y.setText(_translate("MainWindow", "?", None))
-        self.z_label.setText(_translate("MainWindow", "Z:", None))
-        self.optimal_z.setText(_translate("MainWindow", "?", None))
+        self.x_label.setText(_translate("MainWindow", "(x,y,z): ", None))
+        self.optimal_coordinates.setToolTip(_translate("MainWindow", "This text is selectable.  Copy and paste into labnotes.", None))
+        self.optimal_coordinates.setText(_translate("MainWindow", "(?, ?, ?)", None))
         self.optimiseButton.setText(_translate("MainWindow", "Optimise position", None))
         self.menuOptions.setTitle(_translate("MainWindow", "&Options", None))
         self.menu_File.setTitle(_translate("MainWindow", "&File", None))

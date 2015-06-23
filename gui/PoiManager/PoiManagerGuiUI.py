@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Tue Jun 16 23:39:16 2015
+# Created: Tue Jun 23 17:50:33 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -94,14 +94,10 @@ class Ui_PoiManager(object):
         self.label_9.setFont(font)
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.verticalLayout_6.addWidget(self.label_9)
-        self.poi_coords_ViewWidget = QtGui.QLineEdit(self.dockWidgetContents_3)
-        self.poi_coords_ViewWidget.setMaximumSize(QtCore.QSize(200, 16777215))
-        font = QtGui.QFont()
-        font.setPointSize(10)
-        self.poi_coords_ViewWidget.setFont(font)
-        self.poi_coords_ViewWidget.setReadOnly(True)
-        self.poi_coords_ViewWidget.setObjectName(_fromUtf8("poi_coords_ViewWidget"))
-        self.verticalLayout_6.addWidget(self.poi_coords_ViewWidget)
+        self.poi_coords_label = QtGui.QLabel(self.dockWidgetContents_3)
+        self.poi_coords_label.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
+        self.poi_coords_label.setObjectName(_fromUtf8("poi_coords_label"))
+        self.verticalLayout_6.addWidget(self.poi_coords_label)
         spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.verticalLayout_6.addItem(spacerItem)
         self.poi_editor_dockWidget.setWidget(self.dockWidgetContents_3)
@@ -368,6 +364,8 @@ class Ui_PoiManager(object):
         self.label_3.setText(_translate("PoiManager", "Rename:", None))
         self.delete_poi_Button.setText(_translate("PoiManager", "Delete POI", None))
         self.label_9.setText(_translate("PoiManager", "(x,y,z):", None))
+        self.poi_coords_label.setToolTip(_translate("PoiManager", "This text is selectable.  Copy and paste into labnotes.", None))
+        self.poi_coords_label.setText(_translate("PoiManager", "(?, ?, ?)", None))
         self.poi_tracker_dockWidget.setWindowTitle(_translate("PoiManager", "POI Tracker", None))
         self.goto_poi_Button.setText(_translate("PoiManager", "Go to POI", None))
         self.update_poi_Button.setText(_translate("PoiManager", "Refind POI", None))
@@ -389,7 +387,7 @@ class Ui_PoiManager(object):
         self.roi_cb_manual_RadioButton.setText(_translate("PoiManager", "Manual", None))
         self.sample_shift_dockWidget.setWindowTitle(_translate("PoiManager", "Sample shift", None))
         self.radioButton_2.setText(_translate("PoiManager", "Duration (seconds)", None))
-        self.radioButton.setText(_translate("PoiManager", "Clock time", None))
+        self.radioButton.setText(_translate("PoiManager", "Cliock time", None))
         self.actionNew_ROI.setText(_translate("PoiManager", "New ROI", None))
         self.actionNew_ROI.setToolTip(_translate("PoiManager", "Start a new ROI (such as after moving to a different part of the sample", None))
         self.actionSave_ROI.setText(_translate("PoiManager", "Save ROI", None))
