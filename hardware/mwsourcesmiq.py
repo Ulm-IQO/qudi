@@ -200,7 +200,9 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+        #self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+        self._gpib_connetion.write(':FREQ:MODE CW')
+        self._gpib_connetion.write(':FREQ:MODE LIST')
         self._gpib_connetion.write('*WAI')
         return 0
         
