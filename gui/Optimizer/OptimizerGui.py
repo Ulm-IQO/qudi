@@ -11,8 +11,8 @@ import numpy as np
 
 from collections import OrderedDict
 from gui.GUIBase import GUIBase
-from gui.Optimiser.OptimiserGuiUI import Ui_MainWindow
-from gui.Optimiser.OptimiserSettingsUI import Ui_SettingsDialog
+from gui.Optimizer.OptimizerGuiUI import Ui_MainWindow
+from gui.Optimizer.OptimizerSettingsUI import Ui_SettingsDialog
 from gui.Confocal.ConfocalGui import ColorBar
 
 
@@ -35,22 +35,22 @@ class CustomViewBox(pg.ViewBox):
             ev.ignore()
           
             
-class OptimiserMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class OptimizerMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         
-class OptimiserSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+class OptimizerSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
     def __init__(self):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
 
             
-class OptimiserGui(GUIBase):
+class OptimizerGui(GUIBase):
     """
-    This is the GUI Class for Optimiser
+    This is the GUI Class for Optimizer
     """
-    _modclass = 'OptimiserGui'
+    _modclass = 'OptimizerGui'
     _modtype = 'gui'
 
     def __init__(self, manager, name, config, **kwargs):
@@ -63,9 +63,9 @@ class OptimiserGui(GUIBase):
                     c_dict)
         
         ## declare connectors
-        self.connector['in']['optimiserlogic1'] = OrderedDict()
-        self.connector['in']['optimiserlogic1']['class'] = 'OptimiserLogic'
-        self.connector['in']['optimiserlogic1']['object'] = None
+        self.connector['in']['optimizerlogic1'] = OrderedDict()
+        self.connector['in']['optimizerlogic1']['class'] = 'OptimizerLogic'
+        self.connector['in']['optimizerlogic1']['object'] = None
 
 #        self.connector['in']['savelogic'] = OrderedDict()
 #        self.connector['in']['savelogic']['class'] = 'SaveLogic'
@@ -90,35 +90,35 @@ class OptimiserGui(GUIBase):
         
         """
         
-        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
-#        print("Optimiser logic is", self._optimiser_logic)
+        self._optimizer_logic = self.connector['in']['optimizerlogic1']['object']
+#        print("Optimizer logic is", self._optimizer_logic)
         
 #        self._save_logic = self.connector['in']['savelogic']['object']
 #        print("Save logic is", self._save_logic)  
         
-        # Use the inherited class 'Ui_OptimiserGuiTemplate' to create now the 
+        # Use the inherited class 'Ui_OptimizerGuiTemplate' to create now the 
         # GUI element:
-        self._mw = OptimiserMainWindow()
-        self._sw = OptimiserSettingDialog()
+        self._mw = OptimizerMainWindow()
+        self._sw = OptimizerSettingDialog()
         
         # Get the image for the display from the logic:
-        arr01 = self._optimiser_logic.xy_refocus_image[:,:,3].transpose()
-        arr02 = self._optimiser_logic.z_refocus_line
+        arr01 = self._optimizer_logic.xy_refocus_image[:,:,3].transpose()
+        arr02 = self._optimizer_logic.z_refocus_line
 
 
         # Load the image in the display:
         self.xy_refocus_image = pg.ImageItem(arr01)       
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
-                self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
-                self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
-                self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size
+                self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size
             ))               
-        self.xz_refocus_image = pg.ScatterPlotItem(self._optimiser_logic._zimage_Z_values,
+        self.xz_refocus_image = pg.ScatterPlotItem(self._optimizer_logic._zimage_Z_values,
                                                 arr02, 
                                                 symbol='o')
-        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._fit_zimage_Z_values,
-                                                    self._optimiser_logic.z_fit_data, 
+        self.xz_refocus_fit_image = pg.PlotDataItem(self._optimizer_logic._fit_zimage_Z_values,
+                                                    self._optimizer_logic.z_fit_data, 
                                                     pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
         
         # Add the display item to the xy and xz VieWidget defined in
@@ -176,12 +176,12 @@ class OptimiserGui(GUIBase):
         self._mw.xy_refocus_cb_ViewWidget.setLabel('right', 'Fluorescence', units='c/s')
         
         # Connect to default values:
-        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
-        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_XY_step))
-        self._sw.z_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_Z_size))
-        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_Z_step))
-        self._sw.count_freq_InputWidget.setText(str(self._optimiser_logic._clock_frequency))
-        self._sw.return_slow_InputWidget.setText(str(self._optimiser_logic.return_slowness))
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._optimizer_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._optimizer_logic.return_slowness))
         
         # Add to the QLineEdit Widget a Double- and Int Validator to ensure only a 
         # float/Int input.
@@ -195,16 +195,16 @@ class OptimiserGui(GUIBase):
         self._sw.return_slow_InputWidget.setValidator(validator)
         
         # Connect signals
-        self._optimiser_logic.signal_image_updated.connect(self.refresh_image)
-        self._optimiser_logic.signal_refocus_finished.connect(self.enable_button)
-        self._optimiser_logic.signal_refocus_started.connect(self.disable_button)
+        self._optimizer_logic.signal_image_updated.connect(self.refresh_image)
+        self._optimizer_logic.signal_refocus_finished.connect(self.enable_button)
+        self._optimizer_logic.signal_refocus_started.connect(self.disable_button)
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._mw.optimiseButton.clicked.connect(self.refocus_clicked)
         self._sw.accepted.connect(self.update_settings)
         self._sw.rejected.connect(self.reject_settings)
         self._sw.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         
-#        print('Main Optimiser Windows shown:')
+#        print('Main Optimizer Windows shown:')
         self._mw.show()
     
     def show(self):
@@ -217,22 +217,22 @@ class OptimiserGui(GUIBase):
     def update_settings(self):
         ''' This method writes the new settings from the gui to the file
         '''
-        self._optimiser_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
-        self._optimiser_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
-        self._optimiser_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
-        self._optimiser_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
-        self._optimiser_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
-        self._optimiser_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
+        self._optimizer_logic.refocus_XY_size = float(self._sw.xy_refocusrange_InputWidget.text())
+        self._optimizer_logic.refocus_XY_step = float(self._sw.xy_refocusstepsize_InputWidget.text())
+        self._optimizer_logic.refocus_Z_size = float(self._sw.z_refocusrange_InputWidget.text())
+        self._optimizer_logic.refocus_Z_step = float(self._sw.z_refocusstepsize_InputWidget.text())
+        self._optimizer_logic.set_clock_frequency(self._sw.count_freq_InputWidget.text())
+        self._optimizer_logic.return_slowness = float(self._sw.return_slow_InputWidget.text())
                 
     def reject_settings(self):
         ''' This method keeps the old settings and restores the old settings in the gui
         '''
-        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
-        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_XY_step))
-        self._sw.z_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_Z_size))
-        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_Z_step))
-        self._sw.count_freq_InputWidget.setText(str(self._optimiser_logic._clock_frequency))
-        self._sw.return_slow_InputWidget.setText(str(self._optimiser_logic.return_slowness))
+        self._sw.xy_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_XY_size))
+        self._sw.xy_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_XY_step))
+        self._sw.z_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_Z_size))
+        self._sw.z_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_Z_step))
+        self._sw.count_freq_InputWidget.setText(str(self._optimizer_logic._clock_frequency))
+        self._sw.return_slow_InputWidget.setText(str(self._optimizer_logic.return_slowness))
         
     def refresh_xy_colorbar(self):
         ''' This method deletes the old colorbar and replace it with an updated one
@@ -250,24 +250,24 @@ class OptimiserGui(GUIBase):
     def refresh_image(self):
         ''' This method refreshes the xy image, the crosshair and the colorbar
         '''
-        self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setImage(image=self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
-                self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
-                self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
-                self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size
+                self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size
             ))
-        self.vLine.setValue(self._optimiser_logic.refocus_x)
-        self.hLine.setValue(self._optimiser_logic.refocus_y)
-        self.xz_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
-        self.xz_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
+        self.vLine.setValue(self._optimizer_logic.refocus_x)
+        self.hLine.setValue(self._optimizer_logic.refocus_y)
+        self.xz_refocus_image.setData(self._optimizer_logic._zimage_Z_values,self._optimizer_logic.z_refocus_line)
+        self.xz_refocus_fit_image.setData(self._optimizer_logic._fit_zimage_Z_values,self._optimizer_logic.z_fit_data)
         self.refresh_xy_colorbar()
-        self._mw.optimal_coordinates.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimiser_logic.refocus_x, self._optimiser_logic.refocus_y, self._optimiser_logic.refocus_z))
+        self._mw.optimal_coordinates.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimizer_logic.refocus_x, self._optimizer_logic.refocus_y, self._optimizer_logic.refocus_z))
 
     def refocus_clicked(self):
         """ Manages what happens if the optimizer is started.
         """        
-        self._optimiser_logic.start_refocus()
+        self._optimizer_logic.start_refocus()
         self.disable_button()
     
     def disable_button(self):

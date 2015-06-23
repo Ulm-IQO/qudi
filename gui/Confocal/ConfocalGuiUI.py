@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Jun 23 17:50:44 2015
+# Created: Tue Jun 23 21:03:49 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -691,10 +691,10 @@ class Ui_MainWindow(object):
         icon = QtGui.QIcon.fromTheme(_fromUtf8("document-save"))
         self.actionSave_Depth_Scan.setIcon(icon)
         self.actionSave_Depth_Scan.setObjectName(_fromUtf8("actionSave_Depth_Scan"))
-        self.action_optimiser_settings = QtGui.QAction(MainWindow)
+        self.action_optimizer_settings = QtGui.QAction(MainWindow)
         icon = QtGui.QIcon.fromTheme(_fromUtf8("settings"))
-        self.action_optimiser_settings.setIcon(icon)
-        self.action_optimiser_settings.setObjectName(_fromUtf8("action_optimiser_settings"))
+        self.action_optimizer_settings.setIcon(icon)
+        self.action_optimizer_settings.setObjectName(_fromUtf8("action_optimizer_settings"))
         self.actionSave_XY_Image_Data = QtGui.QAction(MainWindow)
         icon = QtGui.QIcon.fromTheme(_fromUtf8("document-save"))
         self.actionSave_XY_Image_Data.setIcon(icon)
@@ -716,7 +716,7 @@ class Ui_MainWindow(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.action_Exit)
         self.menu_Options.addAction(self.action_Settings)
-        self.menu_Options.addAction(self.action_optimiser_settings)
+        self.menu_Options.addAction(self.action_optimizer_settings)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menu_Options.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -794,7 +794,7 @@ class Ui_MainWindow(object):
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
         self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
         self.actionSave_Depth_Scan.setText(_translate("MainWindow", "Save XZ Data", None))
-        self.action_optimiser_settings.setText(_translate("MainWindow", "Optimiser Settings", None))
+        self.action_optimizer_settings.setText(_translate("MainWindow", "Optimizer Settings", None))
         self.actionSave_XY_Image_Data.setText(_translate("MainWindow", "Save XY Image+Data", None))
         self.actionSave_Depth_Image_Data.setText(_translate("MainWindow", "Save XZ Image+Data", None))
         self.action_zoom.setText(_translate("MainWindow", "zoom", None))

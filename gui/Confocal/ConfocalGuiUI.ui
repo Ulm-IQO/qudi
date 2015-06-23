@@ -48,7 +48,7 @@
      <string>&amp;Options</string>
     </property>
     <addaction name="action_Settings"/>
-    <addaction name="action_optimiser_settings"/>
+    <addaction name="action_optimizer_settings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -1564,14 +1564,14 @@
     <string>Save XZ Data</string>
    </property>
   </action>
-  <action name="action_optimiser_settings">
+  <action name="action_optimizer_settings">
    <property name="icon">
     <iconset theme="settings">
      <normaloff/>
     </iconset>
    </property>
    <property name="text">
-    <string>Optimiser Settings</string>
+    <string>Optimizer Settings</string>
    </property>
   </action>
   <action name="actionSave_XY_Image_Data">

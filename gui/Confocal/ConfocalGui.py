@@ -32,7 +32,7 @@ from collections import OrderedDict
 from gui.GUIBase import GUIBase
 from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
 from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
-from gui.Optimiser.OptimiserSettingsUI import Ui_SettingsDialog as Ui_OptimiserSettingsDialog
+from gui.Optimizer.OptimizerSettingsUI import Ui_SettingsDialog as Ui_OptimizerSettingsDialog
 
 
 # ============= HowTo Convert the corresponding *.ui file =====================
@@ -220,7 +220,7 @@ class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
         
-class OptimiserSettingDialog(QtGui.QDialog,Ui_OptimiserSettingsDialog):
+class OptimizerSettingDialog(QtGui.QDialog,Ui_OptimizerSettingsDialog):
     def __init__(self):
         QtGui.QDialog.__init__(self)
         self.setupUi(self)
@@ -246,9 +246,9 @@ class ConfocalGui(GUIBase):
         self.connector['in']['savelogic']['class'] = 'SaveLogic'
         self.connector['in']['savelogic']['object'] = None
         
-        self.connector['in']['optimiserlogic1'] = OrderedDict()
-        self.connector['in']['optimiserlogic1']['class'] = 'OptimiserLogic'
-        self.connector['in']['optimiserlogic1']['object'] = None
+        self.connector['in']['optimizerlogic1'] = OrderedDict()
+        self.connector['in']['optimizerlogic1']['class'] = 'OptimizerLogic'
+        self.connector['in']['optimizerlogic1']['object'] = None
         
         self.connector['in']['savelogic'] = OrderedDict()
         self.connector['in']['savelogic']['class'] = 'SaveLogic'
@@ -278,14 +278,14 @@ class ConfocalGui(GUIBase):
         # Getting an access to all connectors:
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
-        self._optimiser_logic = self.connector['in']['optimiserlogic1']['object']
+        self._optimizer_logic = self.connector['in']['optimizerlogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']        
         
         self._hardware_state = True
         
         self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
-        self.initOptimiserSettingsUI(e) # initialize the optimiser settings GUI
+        self.initOptimizerSettingsUI(e) # initialize the optimizer settings GUI
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -350,19 +350,19 @@ class ConfocalGui(GUIBase):
         self.depth_image = pg.ImageItem(arr02)
 
         #######################################################################
-        ###               Configuration of the optimiser tab                ###
+        ###               Configuration of the optimizer tab                ###
         #######################################################################
         
-        # Load the image for the optimiser tab                                    
-        self.xy_refocus_image = pg.ImageItem(self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size,
-                                                    self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size,
-                                                    self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
-        self.depth_refocus_image = pg.ScatterPlotItem(self._optimiser_logic._zimage_Z_values,
-                                                self._optimiser_logic.z_refocus_line, 
+        # Load the image for the optimizer tab                                    
+        self.xy_refocus_image = pg.ImageItem(self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                                                    self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                                                    self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))               
+        self.depth_refocus_image = pg.ScatterPlotItem(self._optimizer_logic._zimage_Z_values,
+                                                self._optimizer_logic.z_refocus_line, 
                                                 symbol='o')
-        self.depth_refocus_fit_image = pg.PlotDataItem(self._optimiser_logic._fit_zimage_Z_values,
-                                                    self._optimiser_logic.z_fit_data, 
+        self.depth_refocus_fit_image = pg.PlotDataItem(self._optimizer_logic._fit_zimage_Z_values,
+                                                    self._optimizer_logic.z_fit_data, 
                                                     pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
                                                     
         # Add the display item to the xy and depth VieWidget, which was defined in
@@ -559,7 +559,7 @@ class ConfocalGui(GUIBase):
         # a refresh of the GUI picture: 
         self._scanning_logic.signal_xy_image_updated.connect(self.refresh_xy_image)
         self._scanning_logic.signal_depth_image_updated.connect(self.refresh_depth_image)
-        self._optimiser_logic.signal_image_updated.connect(self.refresh_refocus_image)
+        self._optimizer_logic.signal_image_updated.connect(self.refresh_refocus_image)
         self._scanning_logic.sigImageXYInitialized.connect(self.adjust_xy_window)
         self._scanning_logic.sigImageDepthInitialized.connect(self.adjust_depth_window) 
         
@@ -567,13 +567,13 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
         
         # Connect the tracker
-        self._optimiser_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
-        self._optimiser_logic.signal_refocus_started.connect(self.disable_scan_buttons)
+        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
+        self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_buttons)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:        
         self._mw.action_Settings.triggered.connect(self.menue_settings)
-        self._mw.action_optimiser_settings.triggered.connect(self.menue_optimiser_settings)
+        self._mw.action_optimizer_settings.triggered.connect(self.menue_optimizer_settings)
         self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
         self._mw.actionSave_Depth_Scan.triggered.connect(self.save_depth_scan_data) 
         self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image) 
@@ -673,8 +673,8 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI. 
         self.keep_former_settings()
         
-    def initOptimiserSettingsUI(self, e=None):
-        """ Definition, configuration and initialisation of the optimiser settings GUI.
+    def initOptimizerSettingsUI(self, e=None):
+        """ Definition, configuration and initialisation of the optimizer settings GUI.
           
         @param class e: event class from Fysom
 
@@ -685,14 +685,14 @@ class ConfocalGui(GUIBase):
         """
         
         # Create the Settings window
-        self._osd = OptimiserSettingDialog()
+        self._osd = OptimizerSettingDialog()
         # Connect the action of the settings window with the code:
-        self._osd.accepted.connect(self.update_optimiser_settings)
-        self._osd.rejected.connect(self.keep_former_optimiser_settings)
-        self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimiser_settings)
+        self._osd.accepted.connect(self.update_optimizer_settings)
+        self._osd.rejected.connect(self.keep_former_optimizer_settings)
+        self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
         
         # write the configuration to the settings window of the GUI. 
-        self.keep_former_optimiser_settings()
+        self.keep_former_optimizer_settings()
         
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -816,35 +816,35 @@ class ConfocalGui(GUIBase):
             self._mw.y_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
             self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
                         
-    def menue_optimiser_settings(self):
+    def menue_optimizer_settings(self):
         """ This method opens the settings menue. """
         self._osd.exec_()
         
-    def update_optimiser_settings(self):
+    def update_optimizer_settings(self):
         """ Write new settings from the gui to the file. """        
-        self._optimiser_logic.refocus_XY_size = float(self._osd.xy_refocusrange_InputWidget.text())
-        self._optimiser_logic.refocus_XY_step = float(self._osd.xy_refocusstepsize_InputWidget.text())
-        self._optimiser_logic.refocus_Z_size = float(self._osd.z_refocusrange_InputWidget.text())
-        self._optimiser_logic.refocus_Z_step = float(self._osd.z_refocusstepsize_InputWidget.text())
-        self._optimiser_logic.set_clock_frequency(self._osd.count_freq_InputWidget.text())
-        self._optimiser_logic.return_slowness = float(self._osd.return_slow_InputWidget.text())
+        self._optimizer_logic.refocus_XY_size = float(self._osd.xy_refocusrange_InputWidget.text())
+        self._optimizer_logic.refocus_XY_step = float(self._osd.xy_refocusstepsize_InputWidget.text())
+        self._optimizer_logic.refocus_Z_size = float(self._osd.z_refocusrange_InputWidget.text())
+        self._optimizer_logic.refocus_Z_step = float(self._osd.z_refocusstepsize_InputWidget.text())
+        self._optimizer_logic.set_clock_frequency(self._osd.count_freq_InputWidget.text())
+        self._optimizer_logic.return_slowness = float(self._osd.return_slow_InputWidget.text())
         
-    def keep_former_optimiser_settings(self):
+    def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
-        self._osd.xy_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_XY_size))
-        self._osd.xy_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_XY_step))
-        self._osd.z_refocusrange_InputWidget.setText(str(self._optimiser_logic.refocus_Z_size))
-        self._osd.z_refocusstepsize_InputWidget.setText(str(self._optimiser_logic.refocus_Z_step))
-        self._osd.count_freq_InputWidget.setText(str(self._optimiser_logic._clock_frequency))
-        self._osd.return_slow_InputWidget.setText(str(self._optimiser_logic.return_slowness))
+        self._osd.xy_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_XY_size))
+        self._osd.xy_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_XY_step))
+        self._osd.z_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_Z_size))
+        self._osd.z_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_Z_step))
+        self._osd.count_freq_InputWidget.setText(str(self._optimizer_logic._clock_frequency))
+        self._osd.return_slow_InputWidget.setText(str(self._optimizer_logic.return_slowness))
 
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """            
         if self._scanning_logic.getState() == 'locked':
             self._scanning_logic.stop_scanning()
-        if self._optimiser_logic.getState() == 'locked':
-            self._optimiser_logic.stop_refocus()
+        if self._optimizer_logic.getState() == 'locked':
+            self._optimizer_logic.stop_refocus()
             
         self.disable_scan_buttons(newstate=True)
 
@@ -895,7 +895,7 @@ class ConfocalGui(GUIBase):
         """        
         self._scanning_logic.stop_scanning()
         if enabled:
-            self._optimiser_logic.start_refocus()
+            self._optimizer_logic.start_refocus()
             self.disable_scan_buttons()
 
 
@@ -1184,14 +1184,14 @@ class ConfocalGui(GUIBase):
             
     def refresh_refocus_image(self):
         """Refreshes the xy image, the crosshair and the colorbar. """
-        self.xy_refocus_image.setImage(image=self._optimiser_logic.xy_refocus_image[:,:,3].transpose())
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimiser_logic._trackpoint_x - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic._trackpoint_y - 0.5 * self._optimiser_logic.refocus_XY_size , self._optimiser_logic.refocus_XY_size, self._optimiser_logic.refocus_XY_size))               
-        self.vLine.setValue(self._optimiser_logic.refocus_x)
-        self.hLine.setValue(self._optimiser_logic.refocus_y)
-        self.depth_refocus_image.setData(self._optimiser_logic._zimage_Z_values,self._optimiser_logic.z_refocus_line)
-        self.depth_refocus_fit_image.setData(self._optimiser_logic._fit_zimage_Z_values,self._optimiser_logic.z_fit_data)
+        self.xy_refocus_image.setImage(image=self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))               
+        self.vLine.setValue(self._optimizer_logic.refocus_x)
+        self.hLine.setValue(self._optimizer_logic.refocus_y)
+        self.depth_refocus_image.setData(self._optimizer_logic._zimage_Z_values,self._optimizer_logic.z_refocus_line)
+        self.depth_refocus_fit_image.setData(self._optimizer_logic._fit_zimage_Z_values,self._optimizer_logic.z_fit_data)
 #        self.refresh_xy_colorbar()
-        self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimiser_logic.refocus_x, self._optimiser_logic.refocus_y, self._optimiser_logic.refocus_z))
+        self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimizer_logic.refocus_x, self._optimizer_logic.refocus_y, self._optimizer_logic.refocus_z))
         
         
     def adjust_xy_window(self):

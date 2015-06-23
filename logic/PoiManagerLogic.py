@@ -158,9 +158,9 @@ class PoiManagerLogic(GenericLogic):
         self._modtype = 'logic'
 
         ## declare connectors
-        self.connector['in']['optimiser1'] = OrderedDict()
-        self.connector['in']['optimiser1']['class'] = 'OptimiserLogic'
-        self.connector['in']['optimiser1']['object'] = None
+        self.connector['in']['optimizer1'] = OrderedDict()
+        self.connector['in']['optimizer1']['class'] = 'OptimizerLogic'
+        self.connector['in']['optimizer1']['object'] = None
         self.connector['in']['scannerlogic'] = OrderedDict()
         self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
         self.connector['in']['scannerlogic']['object'] = None
@@ -194,8 +194,8 @@ class PoiManagerLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         
-        self._optimiser_logic = self.connector['in']['optimiser1']['object']
-#        print("Optimiser Logic is", self._optimiser_logic)
+        self._optimizer_logic = self.connector['in']['optimizer1']['object']
+#        print("Optimizer Logic is", self._optimizer_logic)
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 #        print("Confocal Logic is", self._confocal_logic)
         
@@ -210,7 +210,7 @@ class PoiManagerLogic(GenericLogic):
         self.track_point_list[sample._key] = sample
         
         # listen for the refocus to finish
-        self._optimiser_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
+        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
                 
         self.testing()
         
@@ -284,7 +284,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             self.track_point_list['crosshair'].set_new_position(point=self._confocal_logic.get_position())
             self._current_poi_key = poikey
-            self._optimiser_logic.start_refocus(trackpoint=self.track_point_list[poikey].get_last_point())
+            self._optimizer_logic.start_refocus(trackpoint=self.track_point_list[poikey].get_last_point())
             return 0
         else:
             self.logMsg('Z. The given POI ({}) does not exist.'.format(poikey), 
@@ -487,11 +487,11 @@ class PoiManagerLogic(GenericLogic):
         
         @return int: error code (0:OK, -1:error)
         """
-        positions = [self._optimiser_logic.refocus_x, 
-                     self._optimiser_logic.refocus_y, 
-                     self._optimiser_logic.refocus_z]
+        positions = [self._optimizer_logic.refocus_x, 
+                     self._optimizer_logic.refocus_y, 
+                     self._optimizer_logic.refocus_z]
                      
-        if self._optimiser_logic.is_crosshair:                
+        if self._optimizer_logic.is_crosshair:                
             self.track_point_list['crosshair'].\
                     set_new_position(point=positions)
             return 0

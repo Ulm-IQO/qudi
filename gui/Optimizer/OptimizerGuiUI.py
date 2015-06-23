@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'OptimiserGuiUI.ui'
+# Form implementation generated from reading ui file 'OptimizerGuiUI.ui'
 #
-# Created: Tue Jun 23 17:50:53 2015
+# Created: Tue Jun 23 20:59:11 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Optimiser", None))
+        MainWindow.setWindowTitle(_translate("MainWindow", "qudi: Optimizer", None))
         self.x_label.setText(_translate("MainWindow", "(x,y,z): ", None))
         self.optimal_coordinates.setToolTip(_translate("MainWindow", "This text is selectable.  Copy and paste into labnotes.", None))
         self.optimal_coordinates.setText(_translate("MainWindow", "(?, ?, ?)", None))
