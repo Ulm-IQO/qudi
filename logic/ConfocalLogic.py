@@ -313,10 +313,20 @@ class ConfocalLogic(GenericLogic):
         if self.initialize_image() < 0:
             self.unlock()
             return -1
-        self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
-        self._scanning_device.set_up_scanner()
-        self.signal_scan_lines_next.emit()
-        
+            
+        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        if returnvalue < 0:
+            self.unlock()
+            self.set_position()
+            return
+                
+        returnvalue = self._scanning_device.set_up_scanner()
+        if returnvalue < 0:
+            self.unlock()
+            self.set_position()
+            return
+            
+        self.signal_scan_lines_next.emit()        
         return 0
 
 

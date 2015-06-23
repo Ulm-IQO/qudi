@@ -263,17 +263,28 @@ class CounterLogic(GenericLogic):
         """
         
         # setting up the counter
-        self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
-        self._counting_device.set_up_counter()
         
+        # set a lock, to signify the measurment is running
+        self.lock()
+        
+        returnvalue = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
+        if returnvalue < 0:
+            self.unlock()
+            self.sigCounterUpdated.emit()
+            return
+            
+        returnvalue = self._counting_device.set_up_counter()
+        if returnvalue < 0:
+            self.unlock()
+            self.sigCounterUpdated.emit()
+            return
+            
         # initialising the data arrays
         self.countdata=np.zeros((self._count_length,))
         self.countdata_smoothed=np.zeros((self._count_length,))
         self.rawdata=np.zeros((self._counting_samples,))
         self._sampling_data=np.empty((self._counting_samples,2))
         
-        # set a lock, to signify the measurment is running
-        self.lock()
         self.sigCountNext.emit()
  
     def stopCount(self):
