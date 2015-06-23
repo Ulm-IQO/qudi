@@ -629,7 +629,7 @@ class PoiManagerGui(GUIBase):
                 if key == curkey:
                     self._markers[key].select()
                     cur_poi_pos=self._poi_manager_logic.get_last_point(poikey=curkey)
-                    self._mw.poi_coords_ViewWidget.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
+                    self._mw.poi_coords_label.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
                 
 
     def make_new_roi(self):
