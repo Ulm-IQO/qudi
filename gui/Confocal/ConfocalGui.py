@@ -1411,7 +1411,7 @@ class ConfocalGui(GUIBase):
         """ Save the image and according to that the data. """
         
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')        
-        filename = filepath + time.strftime('\\%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image') 
+        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image') 
         
         self._mw.xy_ViewWidget.plotItem.removeItem(self.roi_xy)
         self._mw.xy_ViewWidget.plotItem.removeItem(self.hline_xy)
@@ -1460,7 +1460,7 @@ class ConfocalGui(GUIBase):
         """ Save the image and according to that the data. """
         
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')        
-        filename = filepath + time.strftime('\\%Y-%m-%d_%Hh%Mm%Ss_confocal_depth_image') 
+        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_depth_image') 
 
         self._mw.depth_ViewWidget.plotItem.removeItem(self.roi_depth)
         self._mw.depth_ViewWidget.plotItem.removeItem(self.hline_depth)
