@@ -8,7 +8,7 @@ from collections import OrderedDict
 import numpy as np
                
 
-class OptimiserLogic(GenericLogic):
+class OptimizerLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for refocussing on and tracking bright features in the confocal scan.
     """
@@ -36,8 +36,8 @@ class OptimiserLogic(GenericLogic):
         self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
         self.connector['in']['scannerlogic']['object'] = None
         
-        self.connector['out']['optimiserlogic'] = OrderedDict()
-        self.connector['out']['optimiserlogic']['class'] = 'OptimiserLogic'
+        self.connector['out']['optimizerlogic'] = OrderedDict()
+        self.connector['out']['optimizerlogic']['class'] = 'OptimizerLogic'
         
 
         self.logMsg('The following configuration was found.', 

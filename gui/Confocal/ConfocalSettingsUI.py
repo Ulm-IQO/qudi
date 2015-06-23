@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
 #
-# Created: Wed Jun 17 21:06:29 2015
-#      by: PyQt4 UI code generator 4.9.5
+# Created: Tue Jun 23 21:04:12 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,16 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
 
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
@@ -193,19 +202,19 @@ class Ui_SettingsDialog(object):
         SettingsDialog.setTabOrder(self.hardware_switch, self.buttonBox)
 
     def retranslateUi(self, SettingsDialog):
-        SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: Confocal - Settings", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_5.setText(QtGui.QApplication.translate("SettingsDialog", "Slider Stepwidth with Keys :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_4.setText(QtGui.QApplication.translate("SettingsDialog", "Fixed Aspect Ratio Depth Scan :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("SettingsDialog", "Return slowness :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("SettingsDialog", "Fixed Aspect Ratio XY Scan :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("SettingsDialog", "Clock frequency :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_9.setText(QtGui.QApplication.translate("SettingsDialog", "Save ImageScene also as png file", None, QtGui.QApplication.UnicodeUTF8))
-        self.savePNG_checkBox.setToolTip(QtGui.QApplication.translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">If you have pressed the save<br>routine in the Menu Bar,<br>with the svg file a png<br>file will be saved.</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_10.setText(QtGui.QApplication.translate("SettingsDialog", "Save pure Image as png", None, QtGui.QApplication.UnicodeUTF8))
-        self.hardware_switch.setToolTip(QtGui.QApplication.translate("SettingsDialog", "This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.\n"
+        SettingsDialog.setWindowTitle(_translate("SettingsDialog", "qudi: Confocal - Settings", None))
+        self.label_5.setText(_translate("SettingsDialog", "Slider Stepwidth with Keys :", None))
+        self.label_4.setText(_translate("SettingsDialog", "Fixed Aspect Ratio Depth Scan :", None))
+        self.label_2.setText(_translate("SettingsDialog", "Return slowness :", None))
+        self.label_3.setText(_translate("SettingsDialog", "Fixed Aspect Ratio XY Scan :", None))
+        self.label.setText(_translate("SettingsDialog", "Clock frequency :", None))
+        self.label_9.setText(_translate("SettingsDialog", "Save ImageScene also as png file", None))
+        self.savePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">If you have pressed the save<br>routine in the Menu Bar,<br>with the svg file a png<br>file will be saved.</span></p></body></html>", None))
+        self.label_10.setText(_translate("SettingsDialog", "Save pure Image as png", None))
+        self.hardware_switch.setToolTip(_translate("SettingsDialog", "This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.\n"
 "\n"
 "Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).\n"
 "\n"
-"This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.", None, QtGui.QApplication.UnicodeUTF8))
-        self.hardware_switch.setText(QtGui.QApplication.translate("SettingsDialog", "Switch off Hardware", None, QtGui.QApplication.UnicodeUTF8))
+"This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.", None))
+        self.hardware_switch.setText(_translate("SettingsDialog", "Switch off Hardware", None))
 
