@@ -280,6 +280,20 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             my_clock_channel = self._scanner_clock_channel
         else:
             my_clock_channel = self._clock_channel
+            
+            
+            
+            
+            
+        # check whether only one clock pair is available, since some NI cards
+        # only one clock channel pair.
+        if self._scanner_clock_channel == self._clock_channel:
+            if not ((self._clock_daq_task is None) and (self._scanner_clock_daq_task is None)):
+                self.logMsg('Only one clock channel is available!\n'
+                            'Another clock is already running, close this one '
+                            'first in order to use it for your purpose!',
+                            msgType='error')
+                return -1
         
         # Adjust the idle state if neseccary
         if idle:
