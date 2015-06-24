@@ -51,9 +51,15 @@ class SwitchGui(GUIBase):
         """
         self._mw = SwitchWindow()
         lsw =  self.connector['in']['laserswitchlogic']['object']
-        for switch in lsw.switches:
-            swidget = SwitchWidget(switch)
-            self._mw.layout.addWidget(swidget)
+        for hw in lsw.switches:
+            frame = QtGui.QFrame(self._mw.scrollAreaWidgetContents)
+            frame.setFrameStyle(QtGui.QFrame.Panel|QtGui.QFrame.Panel)
+            self._mw.layout.addWidget(frame)
+            layout = QtGui.QVBoxLayout(frame)
+            for switch in hw:
+                swidget = SwitchWidget(switch)
+                layout.addWidget(swidget)
+        self.restoreWindowPos(self._mw)
         self.show()
        
     def show(self):
@@ -65,6 +71,7 @@ class SwitchGui(GUIBase):
         """ Hide window and stop ipython console.
           @param object e: Fysom state change notice
         """
+        self.saveWindowPos(self._mw)
         self._mw.close()
 
 

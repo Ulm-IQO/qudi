@@ -47,12 +47,13 @@ class LaserSwitchLogic(GenericLogic):
     def activation(self, e):
         self.switches = list()
         for connector in self.connector['in']:
+            switchHW = list()
             for i in range(self.connector['in'][connector]['object'].getNumberOfSwitches()):
-                self.switches.append({
+                switchHW.append({
                     'hw': self.connector['in'][connector]['object'],
                     'n': i
                     })
-
+            self.switches.append(switchHW)
 
     def deactivation(self, e):
         pass
