@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>468</width>
-    <height>547</height>
+    <width>466</width>
+    <height>609</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,22 +15,21 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QPushButton" name="loadAllButton">
+      <property name="text">
+       <string>Load all modules</string>
+      </property>
+     </widget>
+    </item>
     <item row="1" column="0">
-     <widget class="QToolBox" name="toolBox">
+     <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="guimod">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>450</width>
-         <height>348</height>
-        </rect>
-       </property>
-       <attribute name="label">
-        <string>GUI modules</string>
+      <widget class="QWidget" name="tabWidgetPage1" native="true">
+       <attribute name="title">
+        <string>GUI</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
         <item row="1" column="0">
@@ -43,8 +42,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>430</width>
-             <height>328</height>
+             <width>436</width>
+             <height>377</height>
             </rect>
            </property>
           </widget>
@@ -52,17 +51,9 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="logicmod">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>98</width>
-         <height>88</height>
-        </rect>
-       </property>
-       <attribute name="label">
-        <string>Logic modules</string>
+      <widget class="QWidget" name="tabWidgetPage2" native="true">
+       <attribute name="title">
+        <string>Logic</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
         <item row="0" column="0">
@@ -75,8 +66,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>98</width>
-             <height>28</height>
+             <width>471</width>
+             <height>377</height>
             </rect>
            </property>
           </widget>
@@ -84,17 +75,9 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="hwmod">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>98</width>
-         <height>88</height>
-        </rect>
-       </property>
-       <attribute name="label">
-        <string>Hardware modules</string>
+      <widget class="QWidget" name="tabWidgetPage3" native="true">
+       <attribute name="title">
+        <string>Hardware</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
         <item row="0" column="0">
@@ -107,8 +90,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>98</width>
-             <height>28</height>
+             <width>471</width>
+             <height>377</height>
             </rect>
            </property>
           </widget>
@@ -116,37 +99,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="config">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>98</width>
-         <height>88</height>
-        </rect>
-       </property>
-       <attribute name="label">
-        <string>Configuraion</string>
-       </attribute>
-       <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
-         <widget class="QTreeWidget" name="treeWidget">
-          <column>
-           <property name="text">
-            <string notr="true">1</string>
-           </property>
-          </column>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QPushButton" name="loadAllButton">
-      <property name="text">
-       <string>Load all modules</string>
-      </property>
      </widget>
     </item>
    </layout>
@@ -156,8 +108,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>468</width>
-     <height>19</height>
+     <width>466</width>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -190,6 +142,27 @@
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="config_display_dockWidget">
+   <property name="windowTitle">
+    <string>Configuration</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTreeWidget" name="treeWidget">
+       <column>
+        <property name="text">
+         <string notr="true">1</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
     <iconset theme="document-open">
