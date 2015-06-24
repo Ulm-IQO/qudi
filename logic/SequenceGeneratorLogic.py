@@ -11,7 +11,7 @@ import time
 class SequenceGeneratorLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse sequence generator.
-    """    
+    """
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
@@ -23,28 +23,28 @@ class SequenceGeneratorLogic(GenericLogic):
 #        self.connector['in']['pulsegenerator'] = OrderedDict()
 #        self.connector['in']['pulsegenerator']['class'] = 'PulseGeneratorInterface'
 #        self.connector['in']['pulsegenerator']['object'] = None
-        
-        self.connector['out']['sequencegenerator'] = OrderedDict()
-        self.connector['out']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'        
 
-        self.logMsg('The following configuration was found.', 
+        self.connector['out']['sequencegenerator'] = OrderedDict()
+        self.connector['out']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'
+
+        self.logMsg('The following configuration was found.',
                     msgType='status')
-                            
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-        
+
 #        self._sequence_names = None
-#        
+#
 #        self._binwidth_ns = 1.
 #        self._number_of_laser_pulses = 100
-#        
+#
 #        self.fluorescence_signal_start_bin = 0
 #        self.fluorescence_signal_width_bins = 200
 #        self.norm_start_bin = 2000
 #        self.norm_width_bins = 200
-#        
+#
         self._pg_frequency_MHz = 950
         self._current_matrix = None
         self._current_sequence = []
@@ -60,19 +60,19 @@ class SequenceGeneratorLogic(GenericLogic):
         self._saved_sequences = {}
         self._saved_matrices = {}
         self._saved_sequence_parameters = {}
-        
+
 #        self.threadlock = Mutex()
-#        
+#
 #        self.stopRequested = False
-                      
-                      
+
+
     def activation(self, e):
         """ Initialisation performed during activation of the module.
-        """        
+        """
 #        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
 #        self._save_logic = self.connector['in']['savelogic']['object']
-      
-    
+
+
     def save_sequence(self, name):
         ''' Saves the current sequence under name "name" into the class variable dictionarys "_saved_*" after encoding it in a proper sequence block list.
         '''
@@ -81,22 +81,22 @@ class SequenceGeneratorLogic(GenericLogic):
         self._saved_matrices[name] = self._current_matrix.copy()
         self._saved_sequence_parameters[name] = self._current_sequence_parameters.copy()
         return
-    
-    
+
+
 #    def encode_matrix_nestedlist(self, matrix, repetitions):
 #        ''' Encodes the current matrix coming from the GUI into a proper pulse sequence with blocks etc and create the tau_vector.
 #        '''
 #        # Create empty sequence
 #        sequence = []
-#        
-#        # First create a nested list "repeat_blocks" of block indices with corresponding repeat flags ([True/False, [1,2,3,...]]), i.e. sort out what part to repeat and what not. 
+#
+#        # First create a nested list "repeat_blocks" of block indices with corresponding repeat flags ([True/False, [1,2,3,...]]), i.e. sort out what part to repeat and what not.
 #        repeat_indices = np.nonzero(matrix[:,10])[0]
 #        temp_index_list = []
 #        repeat_blocks = []
 #        for index in range(matrix.shape[0]):
 #            current_flag = index in repeat_indices
 #            if index == 0:
-#                last_flag = current_flag                
+#                last_flag = current_flag
 #            if (current_flag != last_flag):
 #                repeat_blocks.append([last_flag, temp_index_list])
 #                temp_index_list = [index]
@@ -104,7 +104,7 @@ class SequenceGeneratorLogic(GenericLogic):
 #                temp_index_list.append(index)
 #            last_flag = current_flag
 #        repeat_blocks.append([current_flag, temp_index_list])
-#        
+#
 #        # Run through the matrix according to the indices in "repeat_blocks" and create the sequence.
 #        for rep_flag, indices in repeat_blocks:
 #            # create the first iteration of the current block set
@@ -130,21 +130,27 @@ class SequenceGeneratorLogic(GenericLogic):
 #                for blocknum, channel_list in enumerate(active_channels):
 #                    sequence.append([channel_list, block_length[blocknum]])
 #        return sequence
-        
+
     def encode_matrix(self, matrix, repetitions):
         ''' Encodes the current matrix coming from the GUI into a proper pulse sequence with blocks etc.
         '''
         # Create empty sequence
         sequence = []
-        
-        # First create a nested list "repeat_blocks" of block indices with corresponding repeat flags ([True/False, [1,2,3,...]]), i.e. sort out what part to repeat and what not. 
-        repeat_indices = np.nonzero(matrix[:,10])[0]
+
+        # First create a nested list "repeat_blocks" of block indices with
+        # corresponding repeat flags ([True/False, [1,2,3,...]]), i.e. sort out
+        # what part to repeat and what not.
+
+        repeat_indices = np.nonzero(matrix[:,10])[0]# Return the INDICES of
+                                                    # the elements in
+                                                    # matrix[:,10] that are
+                                                    # non-zero.
         temp_index_list = []
         repeat_blocks = []
         for index in range(matrix.shape[0]):
             current_flag = index in repeat_indices
             if index == 0:
-                last_flag = current_flag                
+                last_flag = current_flag
             if (current_flag != last_flag):
                 repeat_blocks.append([last_flag, temp_index_list])
                 temp_index_list = [index]
@@ -152,8 +158,9 @@ class SequenceGeneratorLogic(GenericLogic):
                 temp_index_list.append(index)
             last_flag = current_flag
         repeat_blocks.append([current_flag, temp_index_list])
-        
-        # Run through the matrix according to the indices in "repeat_blocks" and create the sequence.
+
+        # Run through the matrix according to the indices in "repeat_blocks"
+        # and create the sequence.
         for rep_flag, indices in repeat_blocks:
             # create the first iteration of the current block set
             # get active channel lists for the current block set
@@ -197,15 +204,15 @@ class SequenceGeneratorLogic(GenericLogic):
                         temp_dict['is_laser'] = False
                     sequence.append(temp_dict)
         return sequence
-    
-    
+
+
     def delete_sequence(self, name):
         # remove the sequence "name" from the dictionary of saved sequences
         del self._saved_sequences[name]
         del self._saved_matrices[name]
         del self._saved_sequence_parameters[name]
         return
-     
+
 
     def set_current_sequence(self, name):
         if (name in self._saved_sequences):
@@ -216,12 +223,12 @@ class SequenceGeneratorLogic(GenericLogic):
             self._current_sequence = None
             self._current_matrix = None
             self._current_sequence_parameters = None
-     
-     
+
+
     def update_sequence_parameters(self, matrix, repetitions):
         """ Calulate sequence
-        
-        
+
+
         This method calculates all sequence parameters from a
         given matrix and number of repetitions.
         """
@@ -233,10 +240,10 @@ class SequenceGeneratorLogic(GenericLogic):
             if flag:
                 for i in range(repetitions-1):
                     sequence_length_bins += length + (increment*(i+1))
-                    
+
         # Calculate sequence length in ms
         sequence_length_ms = sequence_length_bins / (self._pg_frequency_MHz * 1000.)
-        
+
         # Calculate number of laser pulses
         number_of_lasers = 0
         # iterate through all row indices with laser channel (chnl 0) set to True (or 1)
@@ -246,7 +253,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 number_of_lasers += repetitions
             else:
                 number_of_lasers += 1
-        
+
         # find the rows with "use_as_tau" enabled.
         tau_rows = np.nonzero(matrix[:,11])[0]
         # Check if just one row is set as tau
@@ -266,11 +273,11 @@ class SequenceGeneratorLogic(GenericLogic):
                     tau_vector[i] = (start_length + (i * tau_increment)) * (1000. / self._pg_frequency_MHz)
             else:
                 tau_vector = np.array([matrix[tau_row_index,8]]) * (1000. / self._pg_frequency_MHz)
-                
+
         # not yet implemented
         laser_length_vector = np.empty(number_of_lasers)
         laser_length_vector.fill(3800)
-        
+
         # update current parameters
         self._current_sequence_parameters['length_bins'] = sequence_length_bins
         self._current_sequence_parameters['length_ms'] = sequence_length_ms
@@ -280,40 +287,40 @@ class SequenceGeneratorLogic(GenericLogic):
         self._current_sequence_parameters['repetitions'] = repetitions
         self._current_matrix = matrix
         return
-       
-    
+
+
     def get_sequence(self, name):
         """ Retrieve the sequence for the corresponding name.
-        
-        This method returns for a sequence with name "name" 
+
+        This method returns for a sequence with name "name"
         in all saved sequences and returns it if found.
         """
         sequence = None
         if (name in self._saved_sequences):
             sequence = self._saved_sequences[name]
         return sequence
-    
-    
+
+
     def get_sequence_parameters(self, name):
         """ Retrieve
-        
+
         This method searches for a sequence with name "name" in all saved sequences and returns the parameters dictionary
         """
         if (name in self._saved_sequence_parameters):
             parameter_dict = self._saved_sequence_parameters[name].copy()
         return parameter_dict
-    
-    
+
+
     def get_sequence_names(self):
         names = list(self._saved_sequences.keys())
         return names
 
-        
+
     def get_binwidth(self):
         binwidth_ns = 1000./self.pg_frequency_MHz
         return binwidth_ns
 
-        
+
 #    def get_number_of_laser_pulses(self, matrix, repetitions):
 #        ''' returns the number of laser pulses in given sequence generator matrix
 #        '''
@@ -326,15 +333,14 @@ class SequenceGeneratorLogic(GenericLogic):
 #            else:
 #                number_of_lasers += 1
 #        return number_of_lasers
-        
-        
+
+
 #    def get_tau_vector(self):
 #        tau_vector = np.array(range(100))
 #        return tau_vector
 
-        
+
 #    def get_laser_length(self):
 #        laser_length = 3800 # 4 us
 #        return laser_length
 
-        

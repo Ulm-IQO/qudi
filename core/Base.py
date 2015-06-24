@@ -49,7 +49,7 @@ class Base(QtCore.QObject, Fysom):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
-          @param object manager: the manager object that 
+          @param object manager: the manager object that
           @param str name: unique name for this object
           @param dict configuration: parameters from the configuration file
           @param dict callbacks: dictionary specifying functions to be run on state machine transitions
@@ -58,7 +58,7 @@ class Base(QtCore.QObject, Fysom):
 
         # Qt signal/slot capabilities
         QtCore.QObject.__init__(self)
-        
+
         default_callbacks = {
             'onactivate': self.default_activate,
             'ondeactivate': self.default_deactivate}
@@ -88,12 +88,12 @@ class Base(QtCore.QObject, Fysom):
         # the abbrivations for the event list are the following:
         #   name:   event name,
         #   src:    source state,
-        #   dst:    destination state        
-        
-        
+        #   dst:    destination state
+
+
         # Initialise state machine:
         Fysom.__init__(self, _baseStateList)
-        
+
         # add connection base
         self.connector = OrderedDict()
         self.connector['in'] = OrderedDict()
@@ -166,11 +166,11 @@ class Base(QtCore.QObject, Fysom):
 
     def logMsg(self, message, **kwargs):
         """Creates a status message method for all child classes.
-        
+
           @param string message: the text of the log message
-        """        
+        """
         self.sigLogMessage.emit(('{0}.{1}: {2}'.format(self._modclass, self._modtype, message), kwargs))
-    
+
     @staticmethod
     def identify():
         """ Return module id.
@@ -178,15 +178,15 @@ class Base(QtCore.QObject, Fysom):
           @return dict: id dictionary with modclass and modtype keys.
         """
         return {moduleclass: _class, moduletype: _modtype}
-        
+
     def get_main_dir(self):
         """Returns the absolut path to the directory of the main software.
-        
+
              @return string: path to the main tree of the software
-        
-        """ 
+
+        """
         mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
         self.logMsg('Filepath of the main tree was called',importance=0)
-        
+
         return mainpath
- #            print("PAth of Managerfile: ", os.path.abspath(__file__)) 
+ #            print("PAth of Managerfile: ", os.path.abspath(__file__))
