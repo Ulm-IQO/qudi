@@ -52,8 +52,9 @@ class SwitchGui(GUIBase):
         self._mw = SwitchWindow()
         lsw =  self.connector['in']['laserswitchlogic']['object']
         for hw in lsw.switches:
-            frame = QtGui.QFrame(self._mw.scrollAreaWidgetContents)
-            frame.setFrameStyle(QtGui.QFrame.Panel|QtGui.QFrame.Panel)
+            frame = QtGui.QGroupBox(hw[0]['hw']._name, self._mw.scrollAreaWidgetContents)
+            frame.setAlignment(QtCore.Qt.AlignLeft)
+            frame.setFlat(False)
             self._mw.layout.addWidget(frame)
             layout = QtGui.QVBoxLayout(frame)
             for switch in hw:
