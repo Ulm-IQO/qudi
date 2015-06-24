@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Tue Jun 23 23:27:55 2015
+# Created: Wed Jun 24 15:55:12 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -709,6 +709,22 @@ class Ui_MainWindow(object):
         icon = QtGui.QIcon.fromTheme(_fromUtf8("search"))
         self.action_zoom.setIcon(icon)
         self.action_zoom.setObjectName(_fromUtf8("action_zoom"))
+        self.actionXY_scan_view = QtGui.QAction(MainWindow)
+        self.actionXY_scan_view.setCheckable(True)
+        self.actionXY_scan_view.setChecked(True)
+        self.actionXY_scan_view.setObjectName(_fromUtf8("actionXY_scan_view"))
+        self.actionDepth_scan_view = QtGui.QAction(MainWindow)
+        self.actionDepth_scan_view.setCheckable(True)
+        self.actionDepth_scan_view.setChecked(True)
+        self.actionDepth_scan_view.setObjectName(_fromUtf8("actionDepth_scan_view"))
+        self.actionScan_control_view = QtGui.QAction(MainWindow)
+        self.actionScan_control_view.setCheckable(True)
+        self.actionScan_control_view.setChecked(True)
+        self.actionScan_control_view.setObjectName(_fromUtf8("actionScan_control_view"))
+        self.actionOptimizer_view = QtGui.QAction(MainWindow)
+        self.actionOptimizer_view.setCheckable(True)
+        self.actionOptimizer_view.setChecked(True)
+        self.actionOptimizer_view.setObjectName(_fromUtf8("actionOptimizer_view"))
         self.menuFile.addAction(self.actionSave_XY_Scan)
         self.menuFile.addAction(self.actionSave_Depth_Scan)
         self.menuFile.addAction(self.actionSave_XY_Image_Data)
@@ -718,6 +734,10 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.action_Exit)
         self.menu_Options.addAction(self.action_Settings)
         self.menu_Options.addAction(self.action_optimizer_settings)
+        self.menuView.addAction(self.actionXY_scan_view)
+        self.menuView.addAction(self.actionDepth_scan_view)
+        self.menuView.addAction(self.actionScan_control_view)
+        self.menuView.addAction(self.actionOptimizer_view)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menu_Options.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -725,6 +745,14 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
+        QtCore.QObject.connect(self.actionXY_scan_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.xy_scan_dockWidget.setVisible)
+        QtCore.QObject.connect(self.xy_scan_dockWidget, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.actionXY_scan_view.setChecked)
+        QtCore.QObject.connect(self.actionDepth_scan_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.depth_scan_dockWidget.setVisible)
+        QtCore.QObject.connect(self.depth_scan_dockWidget, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.actionDepth_scan_view.setChecked)
+        QtCore.QObject.connect(self.actionScan_control_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.scan_control_dockWidget.setVisible)
+        QtCore.QObject.connect(self.scan_control_dockWidget, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.actionScan_control_view.setChecked)
+        QtCore.QObject.connect(self.actionOptimizer_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.optimizer_dockWidget.setVisible)
+        QtCore.QObject.connect(self.optimizer_dockWidget, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.actionOptimizer_view.setChecked)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         MainWindow.setTabOrder(self.xy_res_InputWidget, self.z_res_InputWidget)
         MainWindow.setTabOrder(self.z_res_InputWidget, self.x_min_InputWidget)
@@ -799,5 +827,13 @@ class Ui_MainWindow(object):
         self.actionSave_XY_Image_Data.setText(_translate("MainWindow", "Save XY Image+Data", None))
         self.actionSave_Depth_Image_Data.setText(_translate("MainWindow", "Save XZ Image+Data", None))
         self.action_zoom.setText(_translate("MainWindow", "zoom", None))
+        self.actionXY_scan_view.setText(_translate("MainWindow", "XY scan", None))
+        self.actionXY_scan_view.setShortcut(_translate("MainWindow", "Alt+X", None))
+        self.actionDepth_scan_view.setText(_translate("MainWindow", "Depth scan", None))
+        self.actionDepth_scan_view.setShortcut(_translate("MainWindow", "Alt+D", None))
+        self.actionScan_control_view.setText(_translate("MainWindow", "Scan control", None))
+        self.actionScan_control_view.setShortcut(_translate("MainWindow", "Alt+C", None))
+        self.actionOptimizer_view.setText(_translate("MainWindow", "Optimizer", None))
+        self.actionOptimizer_view.setShortcut(_translate("MainWindow", "Alt+O", None))
 
 from pyqtgraph import PlotWidget
