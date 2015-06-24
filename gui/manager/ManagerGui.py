@@ -92,6 +92,9 @@ class ManagerGui(GUIBase):
         self.sigSaveConfig.connect(self._manager.saveConfig)
         self.updateModuleList()
 
+        self._mw.config_display_dockWidget.hide()
+        self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
+
     def deactivation(self,e):
         """Close window and remove connections.
 
