@@ -383,6 +383,8 @@ class ODMRGui(GUIBase):
         if txt == 'Off':
             self._odmr_logic.MW_off()
         if txt == 'CW':
+            self._odmr_logic.change_frequency()
+            self._odmr_logic.change_power()
             self._odmr_logic.MW_on()
             
 
