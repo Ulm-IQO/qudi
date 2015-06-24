@@ -318,19 +318,6 @@ class ConfocalGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        #####################
-        # Adding view toggle actions to menu
-        #####################
-
-        self._mw.scan_control_dockWidget.toggleViewAction().setShortcut("Ctrl+R")
-        self._mw.menuView.addAction(self._mw.scan_control_dockWidget.toggleViewAction() )
-        self._mw.xy_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+E")
-        self._mw.menuView.addAction(self._mw.xy_scan_dockWidget.toggleViewAction() )
-        self._mw.depth_scan_dockWidget.toggleViewAction().setShortcut("Ctrl+D")
-        self._mw.menuView.addAction(self._mw.depth_scan_dockWidget.toggleViewAction() )
-        self._mw.optimizer_dockWidget.toggleViewAction().setShortcut("Ctrl+O")
-        self._mw.menuView.addAction(self._mw.optimizer_dockWidget.toggleViewAction() )
-
         
         # Get the image for the display from the logic. Transpose the received
         # matrix to get the proper scan. The graphig widget displays vector-

@@ -54,6 +54,10 @@
     <property name="title">
      <string>View</string>
     </property>
+    <addaction name="actionXY_scan_view"/>
+    <addaction name="actionDepth_scan_view"/>
+    <addaction name="actionScan_control_view"/>
+    <addaction name="actionOptimizer_view"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menu_Options"/>
@@ -1613,6 +1617,62 @@
     <string>zoom</string>
    </property>
   </action>
+  <action name="actionXY_scan_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>XY scan</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+X</string>
+   </property>
+  </action>
+  <action name="actionDepth_scan_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Depth scan</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+D</string>
+   </property>
+  </action>
+  <action name="actionScan_control_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Scan control</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+C</string>
+   </property>
+  </action>
+  <action name="actionOptimizer_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Optimizer</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+O</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -1660,6 +1720,134 @@
     <hint type="destinationlabel">
      <x>627</x>
      <y>403</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionXY_scan_view</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>xy_scan_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>269</x>
+     <y>413</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>xy_scan_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionXY_scan_view</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>269</x>
+     <y>413</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionDepth_scan_view</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>depth_scan_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>1006</x>
+     <y>258</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>depth_scan_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionDepth_scan_view</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1006</x>
+     <y>258</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionScan_control_view</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>scan_control_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>627</x>
+     <y>849</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>scan_control_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionScan_control_view</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>627</x>
+     <y>849</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOptimizer_view</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>optimizer_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>1006</x>
+     <y>623</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>optimizer_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionOptimizer_view</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1006</x>
+     <y>623</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>
