@@ -102,6 +102,7 @@ class Manager(QtCore.QObject):
         self.tree['defined']['logic'] = OrderedDict()
         self.tree['loaded']['logic'] = OrderedDict()
 
+        self.hasGui = True
         self.currentDir = None
         self.baseDir = None
         self.disableDevs = []
@@ -118,27 +119,27 @@ class Manager(QtCore.QObject):
             # Command Line parameters
             if argv is not None:
                 try:
-                    opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:nD',
+                    opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:gD',
                     ['config=',
                     'config-name=',
                     'module=',
                     'base-dir=',
                     'storage-dir=',
                     'disable=',
-                    'no-manager',
+                    'no-gui',
                     'disable-all'])
                 except getopt.GetoptError as err:
                     print(str(err))
                     print("""
     Valid options are:
-        -c --config=       Configuration file to load
-        -a --config-name=  Named configuration to load
-        -m --module=       Module name to load
-        -b --base-dir=     Base directory to use
-        -s --storage-dir=  Storage directory to use
-        -n --no-manager    Do not load manager module
-        -d --disable=      Disable the device specified
-        -D --disable-all   Disable all devices
+        -c --config=        Configuration file to load
+        -a --config-name=   Named configuration to load
+        -m --module=        Module name to load
+        -b --base-dir=      Base directory to use
+        -s --storage-dir=   Storage directory to use
+        -g --no-gui         Do not load manager module
+        -d --disable=       Disable the device specified
+        -D --disable-all    Disable all devices
     """)
                     raise
             else:
@@ -160,40 +161,48 @@ class Manager(QtCore.QObject):
             loadModules = []
             setBaseDir = None
             setStorageDir = None
-            loadManager = True
             loadConfigs = []
             for o, a in opts:
                 if o in ['-c', '--config']:
                     configFile = a
-                elif o in ['-a', '--config-name']:
+                elif o in ['-a', '--configname']:
                     loadConfigs.append(a)
                 elif o in ['-m', '--module']:
                     loadModules.append(a)
-                elif o in ['-b', '--baseDir']:
+                elif o in ['-b', '--basedir']:
                     setBaseDir = a
-                elif o in ['-s', '--storageDir']:
+                elif o in ['-s', '--storagedir']:
                     setStorageDir = a
-                elif o in ['-n', '--noManager']:
-                    loadManager = False
+                elif o in ['-g', '--no-gui']:
+                    self.hasGui = False
                 elif o in ['-d', '--disable']:
                     self.disableDevs.append(a)
                 elif o in ['-D', '--disable-all']:
                     self.disableAllDevs = True
                 else:
                     print("Unhandled option", o, a)
-            
+
+             # Gui setup if we have gui
+            if self.hasGui:
+                print('Gui!!')
+                import core.Gui
+                self.gui = core.Gui.Gui()
+                self.gui.makePyQtGraphQApplication()
+                self.gui.setTheme()
+                self.gui.setAppIcon()
+
             # Read in configuration file
             if configFile is None:
                 configFile = self._getConfigFile()
-            
             self.configDir = os.path.dirname(configFile)
             self.readConfig(configFile)
 
+            # Create remote module server
             self.rm = RemoteObjectManager(self.tm, self.logger)
             self.rm.createServer(12345)
 
             self.logger.logMsg('QuDi started.', importance=9)
-            
+
             # Act on options if they were specified..
             try:
                 for name in loadConfigs:
@@ -207,19 +216,20 @@ class Manager(QtCore.QObject):
                 printExc('\n: Error while acting on command line options: '
                          '(but continuing on anyway..)')
             # Load startup things from config here
-            for key in self.tree['start']['gui']:
-                try:
-                    modObj = self.importModule('gui', self.tree['start']['gui'][key]['module'])
-                    pkgName = re.escape(modObj.__package__)
-                    modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                    modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+            if self.hasGui:
+                for key in self.tree['start']['gui']:
+                    try:
+                        modObj = self.importModule('gui', self.tree['start']['gui'][key]['module'])
+                        pkgName = re.escape(modObj.__package__)
+                        modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                        modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                     
-                    self.configureModule(modObj, 'gui', modName, key, self.tree['start']['gui'][key])
-                    self.activateModule('gui', key)
-                except:
-                    raise
-            # Configuration has changed with activation
-            self.sigModulesChanged.emit()
+                        self.configureModule(modObj, 'gui', modName, key, self.tree['start']['gui'][key])
+                        self.activateModule('gui', key)
+                    except:
+                        raise
+                # Configuration has changed with activation
+                self.sigModulesChanged.emit()
         except:
             printExc("Error while configuring Manager:")
         finally:
@@ -317,7 +327,7 @@ class Manager(QtCore.QObject):
                             self.logger.print_logMsg("    --> Ignoring logic {0} -- no module specified".format(m) )
                         
                 # GUI
-                elif key == 'gui':
+                elif key == 'gui' and self.hasGui:
                     for m in cfg['gui']:
                         if 'module' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
@@ -327,7 +337,7 @@ class Manager(QtCore.QObject):
                 # Load on startup
                 elif key == 'startup':
                     for skey in cfg['startup']:
-                        if skey == 'gui':
+                        if skey == 'gui' and self.hasGui:
                             for m in cfg['startup']['gui']:
                                 if 'module' in cfg['startup']['gui'][m]:
                                     self.tree['start']['gui'][m] = cfg['startup']['gui'][m]
@@ -349,12 +359,12 @@ class Manager(QtCore.QObject):
                             self.setBaseDir(cfg['global']['storageDir'])
                             self.tree['global']['stotageDir'] = cfg['global']['storageDir']
                 
-                        elif m == 'useOpenGL':
+                        elif m == 'useOpenGL' and self.hasGui:
                             # use accelerated drawing
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
                             self.tree['global']['useOpenGL'] = cfg['global']['useOpenGL']
 
-                        elif m == 'stylesheet':
+                        elif m == 'stylesheet' and self.hasGui:
                             self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
                             stylesheetpath = os.path.join(self.getMainDir(), 'artwork', 'styles', 'application', cfg['global']['stylesheet'])
                             if not os.path.isfile(stylesheetpath):
@@ -363,12 +373,8 @@ class Manager(QtCore.QObject):
                             stylesheetfile = open(stylesheetpath)
                             stylesheet = stylesheetfile.read()
                             stylesheetfile.close()
-                            QtGui.QApplication.instance().setStyleSheet(stylesheet)
-                            testwidget = QtGui.QWidget()
-                            testwidget.ensurePolished()
-                            bgcolor = testwidget.palette().color(QtGui.QPalette.Normal, testwidget.backgroundRole())
-                            # set manually the background color in hex code according to our color scheme: 
-                            pg.setConfigOption('background', bgcolor)
+                            self.gui.setStyleSheet(stylesheet)
+
                 
                 # Copy in any other configurations.
                 # dicts are extended, all others are overwritten.

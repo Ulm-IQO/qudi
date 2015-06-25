@@ -22,7 +22,7 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-__version__ = '0.0.1'
+__version__ = '0.1'
 
 import os
 import sys
@@ -83,29 +83,14 @@ if set_api:
                'Implement the error handling!')
         pass  # no sip; probably pyside will be imported later..
 
-# Import pyqtgraph, get QApplication instance
+# Import pyqtgraph
 import pyqtgraph as pg
-# Make icons work on non-X11 platforms, import a custom theme
-print('Platform is', sys.platform)
+
+# Do not use scipy.weave to rescale data (FIXME: review why this is here)
 pg.setConfigOptions(useWeave=False)
 
-
-# Every Qt application must have ONE AND ONLY ONE QApplication object. The 
-# command mkQpp makes a QApplication object, which is a class to manage the GUI
-# application's control flow, events and main settings:
-
-app = pg.mkQApp()
-
-# Make icons work on non-X11 platforms, set custom theme
-#if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
-#
-# To enable the use of custom action icons, for now the above if statement has been
-# removed and the QT theme is being set to our artwork/icons folder for all OSs.
-themepaths = pg.Qt.QtGui.QIcon.themeSearchPaths()
-themepaths.append('artwork/icons')
-pg.Qt.QtGui.QIcon.setThemeSearchPaths(themepaths)
-pg.Qt.QtGui.QIcon.setThemeName('qudiTheme')
-
+# Make icons work on non-X11 platforms, import a custom theme
+print('Platform is', sys.platform)
 if sys.platform == 'win32':
     try:
         import ctypes
@@ -116,8 +101,8 @@ if sys.platform == 'win32':
 
 # rename any orphaned .pyc files -- these are probably leftover from 
 # a module being moved and may interfere with expected operation.
-modDir = os.path.abspath(os.path.split(__file__)[0])
-pg.renamePyc(modDir)
+compiledModuleDir = os.path.abspath(os.path.split(__file__)[0])
+pg.renamePyc(compiledModuleDir)
 
 # Install a simple message handler for Qt errors:
 def messageHandler(msgType, msg):
@@ -135,14 +120,13 @@ def messageHandler(msgType, msg):
     except:
         print("Failed to write crash log:")
         traceback.print_exc()
-        
-    
+
     if msgType == pg.Qt.QtCore.QtFatalMsg:
         try:
             print("Fatal error occurred; asking manager to quit.")
-            global man, app
+            global man
             man.quit()
-            app.processEvents()
+            QtCore.QCoreApplication.instance().processEvents()
         except:
             pass
 
