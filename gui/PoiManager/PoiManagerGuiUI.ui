@@ -71,6 +71,7 @@
    <addaction name="separator"/>
    <addaction name="actionEdit_POIs"/>
    <addaction name="actionUpdate_POI_position"/>
+   <addaction name="actionTest"/>
   </widget>
   <widget class="QDockWidget" name="poi_editor_dockWidget">
    <property name="windowTitle">
@@ -790,6 +791,14 @@
     <string>Alt+M</string>
    </property>
   </action>
+  <action name="actionTest">
+   <property name="icon">
+    <iconset theme="formula"/>
+   </property>
+   <property name="text">
+    <string>Test</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -839,8 +848,8 @@
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>353</x>
-     <y>225</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
      <x>353</x>

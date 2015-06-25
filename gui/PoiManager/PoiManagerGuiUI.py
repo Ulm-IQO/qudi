@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
 #
-# Created: Wed Jun 24 15:55:34 2015
+# Created: Wed Jun 24 22:34:03 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -355,6 +355,10 @@ class Ui_PoiManager(object):
         self.actionROI_Map_view.setCheckable(True)
         self.actionROI_Map_view.setChecked(True)
         self.actionROI_Map_view.setObjectName(_fromUtf8("actionROI_Map_view"))
+        self.actionTest = QtGui.QAction(PoiManager)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("formula"))
+        self.actionTest.setIcon(icon)
+        self.actionTest.setObjectName(_fromUtf8("actionTest"))
         self.menuMenu.addAction(self.actionNew_ROI)
         self.menuMenu.addAction(self.actionOpen_ROI)
         self.menuMenu.addAction(self.actionSave_ROI)
@@ -368,6 +372,7 @@ class Ui_PoiManager(object):
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionEdit_POIs)
         self.toolBar.addAction(self.actionUpdate_POI_position)
+        self.toolBar.addAction(self.actionTest)
 
         self.retranslateUi(PoiManager)
         QtCore.QObject.connect(self.actionPOI_Editor_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.poi_editor_dockWidget.setVisible)
@@ -435,5 +440,6 @@ class Ui_PoiManager(object):
         self.actionSample_shfit_view.setShortcut(_translate("PoiManager", "Alt+S", None))
         self.actionROI_Map_view.setText(_translate("PoiManager", "ROI Map", None))
         self.actionROI_Map_view.setShortcut(_translate("PoiManager", "Alt+M", None))
+        self.actionTest.setText(_translate("PoiManager", "Test", None))
 
 from pyqtgraph import PlotWidget

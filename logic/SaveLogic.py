@@ -506,6 +506,9 @@ class SaveLogic(GenericLogic):
             current_dir = current_dir + self.dir_slash + time.strftime("%Y%m%d")
             self.logMsg('Creating directory for today\'s data in \n'+current_dir, 
                                 msgType='status', importance=5)
+
+            # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
+            # Details at http://stackoverflow.com/questions/12468022/python-fileexists-error-when-making-directory
             os.makedirs(current_dir,exist_ok=True)
         
         return current_dir
