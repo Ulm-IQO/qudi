@@ -29,7 +29,7 @@ if __package__ is None:
 else:
     import core
     
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore
 
 from .Manager import Manager
 import numpy as np
@@ -45,6 +45,7 @@ class AppWatchdog(QtCore.QObject):
     def __init__(self):
         super().__init__()
         self.alreadyQuit = False
+        self.hasGui = False
         # Run python code periodically to allow interactive debuggers to interrupt
         # the qt event loop
         self.timer = QtCore.QTimer()
@@ -59,16 +60,6 @@ class AppWatchdog(QtCore.QObject):
         for i in range(0, 100):
             x += i
 
-    def setAppIcon(self):
-        iconpath = 'artwork/QuantumDiamond-logo-'
-        self.appIcon = QtGui.QIcon()
-        self.appIcon.addFile('{0}16x16.png'.format(iconpath), QtCore.QSize(16,16))
-        self.appIcon.addFile('{0}24x24.png'.format(iconpath), QtCore.QSize(24,24))
-        self.appIcon.addFile('{0}32x32.png'.format(iconpath), QtCore.QSize(32,32))
-        self.appIcon.addFile('{0}48x48.png'.format(iconpath), QtCore.QSize(48,48))
-        self.appIcon.addFile('{0}256x256.png'.format(iconpath), QtCore.QSize(256,256))
-        QtGui.QApplication.instance().setWindowIcon(self.appIcon)
-
     def quitApplication(self, manager):
         """Clean up threads and windows, quit application.
 
@@ -79,14 +70,15 @@ class AppWatchdog(QtCore.QObject):
                                     # call this function during quit.
             self.alreadyQuit = True
             self.timer.stop()
-            manager.logger.print_logMsg("Closing windows..", msgType='status')
-            QtGui.QApplication.instance().closeAllWindows()
-            QtGui.QApplication.instance().processEvents()
-            manager.logger.print_logMsg("Stopping threads..", msgType='status')
+            manager.logger.print_logMsg('Closing windows..', msgType='status')
+            if manager.hasGui:
+                manager.gui.closeWindows()
+            QtCore.QCoreApplication.instance().processEvents()
+            manager.logger.print_logMsg('Stopping threads..', msgType='status')
             manager.tm.quitAllThreads()
-            QtGui.QApplication.instance().processEvents()
-            print("\n  QuDi is closed!  Ciao.")
-        QtGui.QApplication.quit()
+            QtCore.QCoreApplication.instance().processEvents()
+            print('\n  QuDi is closed!  Ciao.')
+        QtCore.QCoreApplication.instance().quit()
 
 # Possibility to start the program with additional parameters. In the normal 
 # command line or the console, you can start the program as
@@ -96,19 +88,23 @@ class AppWatchdog(QtCore.QObject):
 # where "--profile" enables the usage of a profiler and "--callgraph" gives the
 # possibility to display the dependencies between the methods/modules.
 
-if "--profile" in sys.argv:
+if '--profile' in sys.argv:
     profile = True
     sys.argv.pop(sys.argv.index('--profile'))   # remove parameter from argv
                                                 # since it is used now.
 else:
     profile = False
-if "--callgraph" in sys.argv:
+if '--callgraph' in sys.argv:
     callgraph = True
     sys.argv.pop(sys.argv.index('--callgraph')) # remove parameter from argv
                                                 # since it is used now.
 else:
     callgraph = False
 
+if '-g' in sys.argv or '--no-gui' in sys.argv:
+    app = QtCore.QCoreApplication(sys.argv)
+else:
+    app = pg.mkQApp()
 
 # Enable stack trace output when a crash is detected
 import faulthandler
@@ -125,7 +121,6 @@ gc = GarbageCollector(interval=1.0, debug=False)
 # All additional arguments in sys.argv, which were not used and executed here
 # are passed to the main device handler, the Manager.
 watchdog = AppWatchdog()
-watchdog.setAppIcon()
 man = Manager(argv=sys.argv[1:])
 man.sigManagerQuit.connect(watchdog.quitApplication)
 
@@ -166,7 +161,7 @@ if interactive:
 else:
     if profile:
         import cProfile
-        cProfile.run('core.app.exec_()', sort='cumulative')  
+        cProfile.run('app.exec_()', sort='cumulative')  
         # pg.exit() causes python to exit before Qt has
         # a chance to clean up.
         # This avoids otherwise irritating exit crashes.
@@ -176,9 +171,9 @@ else:
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
         with PyCallGraph(output=GraphvizOutput()):
-            core.app.exec_()
+            app.exec_()
     else:
-        core.app.exec_()
+        app.exec_()
         # pg.exit() causes python to exit before Qt has a chance to clean up. 
         # This avoids otherwise irritating exit crashes.
         pg.exit()
