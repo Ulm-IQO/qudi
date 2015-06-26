@@ -4,9 +4,87 @@ Created on Thu May 28 12:24:25 2015
 
 @author: quantenoptik
 """
-'input: rawdata from fastconter
-'       is gated?
 
-'output: 2D array with laserpulses in each row start is start of pulse and
-' in entry the hole pulse is captured
-' and sum of pulses with delay to see rising and falling
+
+from logic.GenericLogic import GenericLogic
+from pyqtgraph.Qt import QtCore
+from core.util.Mutex import Mutex
+from collections import OrderedDict
+import numpy as np
+
+class PulseExtractionLogic(GenericLogic):
+    """unstable: Nikolas Tomek
+    This is the Logic class for the extraction of laser pulses.
+    """    
+
+    def __init__(self, manager, name, config, **kwargs):
+        ## declare actions for state transitions
+        state_actions = {'onactivate': self.activation}
+        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+        self._modclass = 'pulseextractionlogic'
+        self._modtype = 'logic'
+
+        ## declare connectors
+        self.connector['in']['fastcounter'] = OrderedDict()
+        self.connector['in']['fastcounter']['class'] = 'FastCounterInterface'
+        self.connector['in']['fastcounter']['object'] = None
+        
+        self.connector['out']['pulseextractionlogic'] = OrderedDict()
+        self.connector['out']['pulseextractionlogic']['class'] = 'PulseExtractionLogic'        
+
+        self.logMsg('The following configuration was found.', 
+                    msgType='status')
+                            
+        # checking for the right configuration
+        for key in config.keys():
+            self.logMsg('{}: {}'.format(key,config[key]), 
+                        msgType='status')
+        
+        self.is_counter_gated = False
+                      
+                      
+    def activation(self, e):
+        """ Initialisation performed during activation of the module.
+        """        
+        self._fast_counter_device = self.connector['in']['fastcounter']['object']
+        self._check_if_counter_gated()
+
+
+    def _gated_extraction(self, count_data):
+        """ This method detects the rising flank in the gated timetrace data and extracts just the laser pulses
+        """
+        # sum up all gated timetraces to ease flank detection
+        timetrace_sum = np.sum(count_data, 0)
+        # compute the gradient of the timetrace sum
+        deriv_trace = np.gradient(timetrace_sum)
+        # get indices of rising and falling flank
+        rising_ind = np.argmax(deriv_trace)
+        falling_ind = np.argmin(deriv_trace)
+        # slice the data array to cut off anything but laser pulses
+        laser_arr = count_data[:, rising_ind:falling_ind+1]
+        return laser_arr
+
+    
+    def _ungated_extraction(self, count_data):
+        ''' This method detects the laser pulses in the ungated timetrace data and extracts them
+        '''
+        laser_arr = count_data
+        return laser_arr
+    
+    
+    def get_data_laserpulses(self):
+        """ This method captures the fast counter data and extracts the laser pulses.
+        """
+        raw_data = self._fast_counter_device.get_data()
+        if self.is_counter_gated:
+            laser_data = self._gated_extraction(raw_data)
+        else:
+            laser_data = self._ungated_extraction(raw_data)
+        return laser_data
+    
+    
+    def _check_if_counter_gated(self):
+        '''Check the fast counter if it is gated or not
+        '''
+        self.is_counter_gated = self._fast_counter_device.is_gated()
+        return

@@ -79,10 +79,23 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
         return -1
       
-    def get_data_laserpulses(self):
-        data = np.random.randint(900, 1101, size=(100,3800))
+    def get_data(self):
+        rising_edge = np.arctan(np.linspace(-10,10))
+        rising_edge = rising_edge - rising_edge.min()
+        falling_edge = np.flipud(rising_edge)
+        low_count = np.full([200], rising_edge.min())
+        high_count = np.full([3000], rising_edge.max())
+        trace = 100000*np.concatenate((low_count, rising_edge, high_count, falling_edge, low_count))
+        trace = np.array(np.rint(trace),int)
+        trace = trace + np.random.randint(0,10000,trace.size)
+        data = np.empty([100,trace.size],int)
+        for i in range(data.shape[0]):
+            data[i] = trace
         time.sleep(1)
         return data
+        
+    def is_gated(self):
+        return True
         
     def get_frequency(self):
         freq = 950.
