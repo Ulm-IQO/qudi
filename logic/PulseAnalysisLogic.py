@@ -28,6 +28,10 @@ class PulseAnalysisLogic(GenericLogic):
         self.connector['in']['fastcounter']['class'] = 'FastCounterInterface'
         self.connector['in']['fastcounter']['object'] = None
         
+        self.connector['in']['pulseextractionlogic'] = OrderedDict()
+        self.connector['in']['pulseextractionlogic']['class'] = 'PulseExtractionLogic'
+        self.connector['in']['pulseextractionlogic']['object'] = None
+        
         self.connector['in']['sequencegenerator'] = OrderedDict()
         self.connector['in']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'
         self.connector['in']['sequencegenerator']['object'] = None
@@ -51,7 +55,7 @@ class PulseAnalysisLogic(GenericLogic):
 #        self._laser_length_bins = 3800
 #        self._number_of_laser_pulses = 100
         
-        self.fluorescence_signal_start_bin = 0
+        self.fluorescence_signal_start_bin = 50
         self.fluorescence_signal_width_bins = 200
         self.norm_start_bin = 2000
         self.norm_width_bins = 200
@@ -59,7 +63,7 @@ class PulseAnalysisLogic(GenericLogic):
         
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
         self.running_sequence_parameters = {}
-        self.running_sequence_parameters['laser_length_vector'] = np.full(100, 3800, int)
+        self.running_sequence_parameters['laser_length_vector'] = np.full(100, 3051, int)
         self.running_sequence_parameters['tau_vector'] = np.array(range(100))
         self.running_sequence_parameters['number_of_lasers'] = 100
         
@@ -72,6 +76,7 @@ class PulseAnalysisLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """        
         self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
+        self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._initialize_signal_plot()
@@ -147,13 +152,14 @@ class PulseAnalysisLogic(GenericLogic):
         signal_start = self.fluorescence_signal_start_bin
         signal_end = self.fluorescence_signal_start_bin + self.fluorescence_signal_width_bins
         
-        new_laser_data = self._fast_counter_device.get_data_laserpulses()   
+        new_laser_data = self._pulse_extraction_logic.get_data_laserpulses()   
         
         for i in range(self.running_sequence_parameters['number_of_lasers']):
             norm_mean[i] = new_laser_data[i][norm_start:norm_end].mean()
             signal_mean[i] = (new_laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
-            self.laser_plot_y += new_laser_data[i]
+        self.laser_plot_y = np.sum(new_laser_data,0)
+        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, new_laser_data.shape[1]+1, dtype=int)
         
         self.signal_signal_plot_updated.emit() 
         self.signal_laser_plot_updated.emit() 
