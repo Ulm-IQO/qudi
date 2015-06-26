@@ -374,7 +374,7 @@ class ConfocalGui(GUIBase):
         
         
         # Set the state button as ready button as default setting.
-        self._mw.ready_StateWidget.click()
+        self._mw.action_stop_scanning.setEnabled(False)
 
         # Add the display item to the xy and depth ViewWidget, which was defined 
         # in the UI file:
@@ -512,13 +512,13 @@ class ConfocalGui(GUIBase):
         
         # Connect the RadioButtons to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
-        self._mw.ready_StateWidget.toggled.connect(self.ready_clicked)
+        self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
         
-        self._mw.xy_scan_StateWidget.toggled.connect(self.xy_scan_clicked)
-        self._mw.continue_xy_scan_StateWidget.toggled.connect(self.continue_xy_scan_clicked)
-        self._mw.depth_scan_StateWidget.toggled.connect(self.depth_scan_clicked)
+        self._mw.action_scan_xy_start.triggered.connect(self.xy_scan_clicked)
+        self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
+        self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
         
-        self._mw.refocus_StateWidget.toggled.connect(self.refocus_clicked)
+        self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
 
         # Connect the buttons and inputs for the xy colorbar
@@ -555,7 +555,7 @@ class ConfocalGui(GUIBase):
         
         # Connect the tracker
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
-        self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_buttons)
+        self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_actions)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:        
@@ -631,7 +631,7 @@ class ConfocalGui(GUIBase):
         # all other components:
         self.adjust_aspect_roi_xy()
         self.adjust_aspect_roi_depth()
-        self._mw.ready_StateWidget.click()
+        self.enable_scan_actions()
         self.update_crosshair_position()
         self.adjust_xy_window()
         self.adjust_depth_window()
@@ -749,23 +749,44 @@ class ConfocalGui(GUIBase):
         self.depth_cb.refresh_colorbar(cb_min,cb_max)
 
 
-    def disable_scan_buttons(self, newstate=False):
-        """ Disables the radio buttons for scanning.
-        
-        @param bool newstate: disabled (False), enabled (True)
+    def disable_scan_actions(self):
+        """ Disables the buttons for scanning.
         """        
-        self._mw.xy_scan_StateWidget.setEnabled(newstate)
-        self._mw.depth_scan_StateWidget.setEnabled(newstate)
-        self._mw.refocus_StateWidget.setEnabled(newstate)
-        self._mw.continue_xy_scan_StateWidget.setEnabled(newstate)
 
+        # Ensable the stop scanning button
+        self._mw.action_stop_scanning.setEnabled(True)
+
+        # Disable the start scan buttons
+        self._mw.action_scan_xy_start.setEnabled(False)
+        self._mw.action_scan_depth_start.setEnabled(False)
+
+        self._mw.action_scan_xy_resume.setEnabled(False)
+        self._mw.action_scan_depth_resume.setEnabled(False)
+
+        self._mw.action_optimize_position.setEnabled(False)
+
+    def enable_scan_actions(self):
+        """ Reset the scan action buttons to the default active
+        state when the system is idle.
+        """
+
+        # Disable the stop scanning button
+        self._mw.action_stop_scanning.setEnabled(False)
+
+        # Enable the scan buttons
+        self._mw.action_scan_xy_start.setEnabled(True)
+        self._mw.action_scan_depth_start.setEnabled(True)
+
+        self._mw.action_optimize_position.setEnabled(True)
+
+        # Enable the resume scan buttons if scans were unfinished
+        # TODO: this needs to be implemented properly.  
+        # For now they will just be enabled by default
+        self._mw.action_scan_xy_resume.setEnabled(True)
+        self._mw.action_scan_depth_resume.setEnabled(True)
 
     def _refocus_finished_wrapper(self):
-        if not self._mw.ready_StateWidget.isChecked():
-            self._mw.ready_StateWidget.click()
-            return
-        else:
-            self.disable_scan_buttons(newstate=True)
+        self.enable_scan_actions()
             
     def menue_settings(self):
         """ This method opens the settings menue. """
@@ -833,57 +854,52 @@ class ConfocalGui(GUIBase):
         if self._optimizer_logic.getState() == 'locked':
             self._optimizer_logic.stop_refocus()
             
-        self.disable_scan_buttons(newstate=True)
+        self.enable_scan_actions()
 
             
-    def xy_scan_clicked(self, enabled):
+    def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started.
         
         @param bool enabled: start scan if that is possible
         """        
         #Firstly stop any scan that might be in progress
-        self._scanning_logic.stop_scanning() 
+        #self._scanning_logic.stop_scanning() 
              
-        #Then if enabled. start a new scan.
-        if enabled:
-            self._scanning_logic.start_scanning()
-            self.disable_scan_buttons()
+        self._scanning_logic.start_scanning()
+        self.disable_scan_actions()
       
-    def continue_xy_scan_clicked(self, enabled):
+    def continue_xy_scan_clicked(self):
         """ Manages what happens if the xy scan is continued.
         
         @param bool enabled: continue scan if that is possible
         """        
         #Firstly stop any scan that might be in progress
-        self._scanning_logic.stop_scanning() 
+        #self._scanning_logic.stop_scanning() 
              
-        #Then if enabled. start a new scan.
-        if enabled:
-            self._scanning_logic.continue_scanning()
-            self.disable_scan_buttons()      
+        self._scanning_logic.continue_scanning()
+        self.disable_scan_actions()      
       
-    def depth_scan_clicked(self, enabled):
+    def depth_scan_clicked(self):
         """ Manages what happens if the depth scan is started.
         
         @param bool enabled: start scan if that is possible
         """
         #Firstly stop any scan that might be in progress
-        self._scanning_logic.stop_scanning()
+        #self._scanning_logic.stop_scanning()
 
-        if enabled:
-            self._scanning_logic.start_scanning(zscan = True)
-            self.disable_scan_buttons()
+        self._scanning_logic.start_scanning(zscan = True)
+        self.disable_scan_actions()
             
 
-    def refocus_clicked(self, enabled):
+    def refocus_clicked(self):
         """ Manages what happens if the optimizer is started.
         
         @param bool enabled: start optimizer if that is possible
         """        
-        self._scanning_logic.stop_scanning()
-        if enabled:
-            self._optimizer_logic.start_refocus()
-            self.disable_scan_buttons()
+        print('testing refocus clicked')
+        self._scanning_logic.stop_scanning()#CHECK: is this necessary?
+        self._optimizer_logic.start_refocus()
+        self.disable_scan_actions()
 
 
     def update_roi_xy_change_x(self,x_pos):
@@ -1134,7 +1150,7 @@ class ConfocalGui(GUIBase):
 
         # Unlock state widget if scan is finished
         if self._scanning_logic.getState() != 'locked':
-            self._mw.ready_StateWidget.click()
+            self.enable_scan_actions()
 
     def refresh_depth_image(self):
         """ Update the current Depth image from the logic. 
@@ -1167,7 +1183,7 @@ class ConfocalGui(GUIBase):
 
         # Unlock state widget if scan is finished
         if self._scanning_logic.getState() != 'locked':
-            self._mw.ready_StateWidget.click()
+            self.enable_scan_actions()
             
     def refresh_refocus_image(self):
         """Refreshes the xy image, the crosshair and the colorbar. """
