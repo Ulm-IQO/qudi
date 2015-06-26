@@ -101,9 +101,12 @@ class Manager(QtCore.QObject):
         self.tree['start']['logic'] = OrderedDict()
         self.tree['defined']['logic'] = OrderedDict()
         self.tree['loaded']['logic'] = OrderedDict()
+        
+        self.tree['global'] = OrderedDict()
 
         self.hasGui = True
         self.currentDir = None
+        self.remoteServer = True
         self.baseDir = None
         self.disableDevs = []
         self.disableAllDevs = False
@@ -147,15 +150,11 @@ class Manager(QtCore.QObject):
             
             # Initialize parent class QObject
             QtCore.QObject.__init__(self)
-            #atexit.register(self.quit)
 
             # Thread management
             self.tm = ThreadManager()
             self.tm.sigLogMessage.connect(self.logger.queuedLogMsg)
             self.logger.logMsg('Main thread is {0}'.format(threading.get_ident()), msgType='thread')
-            #mthread = self.tm.newThread('manager')
-            #self.moveToThread(mthread)
-            #mthread.start()
             
             # Handle command line options
             loadModules = []
@@ -184,7 +183,6 @@ class Manager(QtCore.QObject):
 
              # Gui setup if we have gui
             if self.hasGui:
-                print('Gui!!')
                 import core.Gui
                 self.gui = core.Gui.Gui()
                 self.gui.makePyQtGraphQApplication()
@@ -196,10 +194,18 @@ class Manager(QtCore.QObject):
                 configFile = self._getConfigFile()
             self.configDir = os.path.dirname(configFile)
             self.readConfig(configFile)
-
+            
             # Create remote module server
-            self.rm = RemoteObjectManager(self.tm, self.logger)
-            self.rm.createServer(12345)
+            try:
+                if 'remoteport' in self.tree['global']:
+                    remotePort = self.tree['global']['remoteport']
+                else:
+                    remotePort = 12345
+                self.rm = RemoteObjectManager(self.tm, self.logger)
+                self.rm.createServer(remotePort)
+            except:
+                self.remoteServer = False
+                printExc('Remote server could not be started.')
 
             self.logger.logMsg('QuDi started.', importance=9)
 
@@ -352,7 +358,6 @@ class Manager(QtCore.QObject):
 
                 # global config
                 elif key == 'global':
-                    self.tree['global'] = OrderedDict()
                     for m in cfg['global']:
                         if m == 'storageDir':
                             self.logger.print_logMsg("=== Setting base directory: {0} ===".format(m) + cfg['global']['storageDir'])
@@ -686,6 +691,9 @@ class Manager(QtCore.QObject):
         """
         if 'module' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
+                if not self.remoteServer:
+                    self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
+                    return
                 if not isinstance(self.tree['defined'][base][key]['remote'], str):
                     self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
                     return
@@ -712,6 +720,9 @@ class Manager(QtCore.QObject):
                         self.tree['loaded'][base][key].moveToThread(modthread)
                         modthread.start()
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
+                        if not self.remoteServer:
+                            self.logger.logMsg('Remote module sharing does not work as server startup failed earlier, check your log.', msgType='error')
+                            return
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
@@ -730,7 +741,7 @@ class Manager(QtCore.QObject):
             try:
                 # state machine: deactivate
                 self.deactivateModule(base, key)
-                # stop main loop for qt objects
+                # stop main loop thread for qt objects
                 if base == 'logic':
                     self.tm.quitThread('mod-' + base + '-' + key)
             except:
@@ -765,7 +776,7 @@ class Manager(QtCore.QObject):
             
         """
         if self.tree['loaded'][base][key].getState() != 'deactivated' and (
-                ( base in self.tree['defined'] and key in self.tree['defined'][base]  and 'remote' in self.tree['defined'][base][key])
+                ( base in self.tree['defined'] and key in self.tree['defined'][base]  and 'remote' in self.tree['defined'][base][key] and self.remoteServer)
                 or (base in self.tree['start'] and  key in self.tree['start'][base])) :
             return
         if self.tree['loaded'][base][key].getState() != 'deactivated':
