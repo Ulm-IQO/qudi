@@ -41,6 +41,7 @@ class PulseExtractionLogic(GenericLogic):
                         msgType='status')
         
         self.is_counter_gated = False
+        self.num_of_lasers = 100
                       
                       
     def activation(self, e):
@@ -58,8 +59,8 @@ class PulseExtractionLogic(GenericLogic):
         # compute the gradient of the timetrace sum
         deriv_trace = np.gradient(timetrace_sum)
         # get indices of rising and falling flank
-        rising_ind = np.argmax(deriv_trace)
-        falling_ind = np.argmin(deriv_trace)
+        rising_ind = deriv_trace.argmax()
+        falling_ind = deriv_trace.argmin()
         # slice the data array to cut off anything but laser pulses
         laser_arr = count_data[:, rising_ind:falling_ind+1]
         return laser_arr
@@ -68,7 +69,21 @@ class PulseExtractionLogic(GenericLogic):
     def _ungated_extraction(self, count_data):
         ''' This method detects the laser pulses in the ungated timetrace data and extracts them
         '''
-        laser_arr = count_data
+        deriv_trace = np.gradient(count_data)
+        rising_ind = np.empty([self.num_of_lasers],int)
+        falling_ind = np.empty([self.num_of_lasers],int)
+        for i in range(self.num_of_lasers):
+            rising_ind[i] = deriv_trace.argmax()
+            falling_ind[i] = deriv_trace.argmin()
+            del_ind = np.array(range(rising_ind[i]-20,rising_ind[i]+21),int)
+            del_ind = np.append(del_ind, range(falling_ind[i]-20,falling_ind[i]+21))
+            deriv_trace[del_ind] = 0
+        rising_ind.sort()
+        falling_ind.sort()
+        laser_length = np.max(falling_ind-rising_ind)
+        laser_arr = np.empty([self.num_of_lasers,laser_length],int)
+        for i in range(self.num_of_lasers):
+            laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
         return laser_arr
     
     
