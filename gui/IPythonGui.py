@@ -53,9 +53,9 @@ class IPythonGui(GUIBase):
         """Create all UI objects and show the window.
           @param object e: Fysom state change notice
         """
-        ipythonlogic = self.connector['in']['ipythonlogic']['object'] 
+        ipythonlogic = self.connector['in']['ipythonlogic']['object']
         banner = """
-This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'. 
+This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'.
 Configuration is in 'config', the manager is 'manager' and all loaded modules are in this namespace with their configured name.
 View the current namespace with dir().
 Go, play.
@@ -72,13 +72,15 @@ Go, play.
         self._pywid.kernel_client.start_channels()
         self._layout.addWidget(self._pywid)
         self.restoreWindowPos(self._mw)
+        # the linux style theme which is basically the monokai theme
+        self._pywid.set_default_style(colors='linux')
         self._mw.show()
-       
+
     def show(self):
         """Make sure that the window is visible and at the top.
         """
         self._mw.show()
- 
+
     def deactivation(self, e=None):
         """ Hide window and stop ipython console.
           @param object e: Fysom state change notice

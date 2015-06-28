@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
 #
-# Created: Fri Jun 26 13:15:59 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Sun Jun 28 01:16:52 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
