@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ConfocalGuiUI.ui'
+# Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Sun Jun 28 01:16:52 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Sun Jun 28 21:56:28 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -633,10 +633,10 @@ class Ui_MainWindow(object):
         icon = QtGui.QIcon.fromTheme(_fromUtf8("settings"))
         self.action_Settings.setIcon(icon)
         self.action_Settings.setObjectName(_fromUtf8("action_Settings"))
-        self.action_Exit = QtGui.QAction(MainWindow)
-        icon = QtGui.QIcon.fromTheme(_fromUtf8("application-exit"))
-        self.action_Exit.setIcon(icon)
-        self.action_Exit.setObjectName(_fromUtf8("action_Exit"))
+        self.actionClose = QtGui.QAction(MainWindow)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("window-close"))
+        self.actionClose.setIcon(icon)
+        self.actionClose.setObjectName(_fromUtf8("actionClose"))
         self.actionSave_Depth_Scan = QtGui.QAction(MainWindow)
         icon = QtGui.QIcon.fromTheme(_fromUtf8("document-save"))
         self.actionSave_Depth_Scan.setIcon(icon)
@@ -704,7 +704,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actionSave_Depth_Image_Data)
         self.menuFile.addAction(self.actionSave_configuration)
         self.menuFile.addSeparator()
-        self.menuFile.addAction(self.action_Exit)
+        self.menuFile.addAction(self.actionClose)
         self.menu_Options.addAction(self.action_Settings)
         self.menu_Options.addAction(self.action_optimizer_settings)
         self.menu_Options.addAction(self.action_scan_xy_start)
@@ -725,7 +725,7 @@ class Ui_MainWindow(object):
         self.toolBar_2.addAction(self.action_optimize_position)
 
         self.retranslateUi(MainWindow)
-        QtCore.QObject.connect(self.action_Exit, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
+        QtCore.QObject.connect(self.actionClose, QtCore.SIGNAL(_fromUtf8("triggered()")), MainWindow.close)
         QtCore.QObject.connect(self.actionXY_scan_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.xy_scan_dockWidget.setVisible)
         QtCore.QObject.connect(self.xy_scan_dockWidget, QtCore.SIGNAL(_fromUtf8("visibilityChanged(bool)")), self.actionXY_scan_view.setChecked)
         QtCore.QObject.connect(self.actionDepth_scan_view, QtCore.SIGNAL(_fromUtf8("triggered(bool)")), self.depth_scan_dockWidget.setVisible)
@@ -790,7 +790,9 @@ class Ui_MainWindow(object):
         self.actionSave_XY_Scan.setText(_translate("MainWindow", "Save XY Data", None))
         self.actionSave_configuration.setText(_translate("MainWindow", "Save &configuration", None))
         self.action_Settings.setText(_translate("MainWindow", "&Settings", None))
-        self.action_Exit.setText(_translate("MainWindow", "&Exit", None))
+        self.actionClose.setText(_translate("MainWindow", "Close", None))
+        self.actionClose.setToolTip(_translate("MainWindow", "Close confocal", None))
+        self.actionClose.setShortcut(_translate("MainWindow", "Ctrl+W", None))
         self.actionSave_Depth_Scan.setText(_translate("MainWindow", "Save XZ Data", None))
         self.action_optimizer_settings.setText(_translate("MainWindow", "Optimizer Settings", None))
         self.actionSave_XY_Image_Data.setText(_translate("MainWindow", "Save XY Image+Data", None))

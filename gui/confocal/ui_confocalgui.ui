@@ -41,7 +41,7 @@
     <addaction name="actionSave_Depth_Image_Data"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="separator"/>
-    <addaction name="action_Exit"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
@@ -1447,14 +1447,20 @@
     <string>&amp;Settings</string>
    </property>
   </action>
-  <action name="action_Exit">
+  <action name="actionClose">
    <property name="icon">
-    <iconset theme="application-exit">
+    <iconset theme="window-close">
      <normaloff/>
     </iconset>
    </property>
    <property name="text">
-    <string>&amp;Exit</string>
+    <string>Close</string>
+   </property>
+   <property name="toolTip">
+    <string>Close confocal</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
    </property>
   </action>
   <action name="actionSave_Depth_Scan">
@@ -1671,7 +1677,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>action_Exit</sender>
+   <sender>actionClose</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>close()</slot>
@@ -1815,8 +1821,4 @@
    </hints>
   </connection>
  </connections>
- <buttongroups>
-  <buttongroup name="xy_cb_buttonGroup"/>
-  <buttongroup name="statewidget_buttonGroup"/>
- </buttongroups>
 </ui>
