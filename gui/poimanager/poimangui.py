@@ -23,9 +23,9 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
-from gui.PoiManager.PoiManagerGuiUI import Ui_PoiManager
-from gui.Confocal.ConfocalGui import ColorBar
+from gui.guibase import GUIBase
+from gui.poimanager.ui_poimangui import Ui_PoiManager
+from gui.confocal.confocalgui import ColorBar
 
 
 

@@ -36,7 +36,7 @@ from .LogWidget import LogWidget
 from pyqtgraph import FeedbackButton
 import pyqtgraph.configfile as configfile
 from core.util.Mutex import Mutex
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 import numpy as np
 from pyqtgraph import FileDialog
 import weakref

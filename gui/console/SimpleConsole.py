@@ -18,7 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 import os
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Test gui (test)
 
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 from collections import OrderedDict
 import numpy as np

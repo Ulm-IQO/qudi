@@ -19,7 +19,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 # Test gui (test)
 
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 
 class TestGui(GUIBase):

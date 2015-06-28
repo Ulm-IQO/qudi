@@ -20,10 +20,10 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 import os
 import numpy as np
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
-from .SwitchWindowUI import Ui_MainWindow
-from .SwitchWidgetUI import Ui_SwitchWidget
+from .ui_switchgui import Ui_MainWindow
+from .ui_switch_widget import Ui_SwitchWidget
 
 class SwitchGui(GUIBase):
     """
