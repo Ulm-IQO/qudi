@@ -20,7 +20,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 import os
 import numpy as np
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
 
 from IPython.qt.console.rich_ipython_widget import RichIPythonWidget

@@ -29,23 +29,23 @@ import copy
 import time
 
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
-from gui.Confocal.ConfocalGuiUI import Ui_MainWindow
-from gui.Confocal.ConfocalSettingsUI import Ui_SettingsDialog
-from gui.Optimizer.OptimizerSettingsUI import Ui_SettingsDialog as Ui_OptimizerSettingsDialog
+from gui.guibase import GUIBase
+from gui.confocal.ui_confocalgui import Ui_MainWindow
+from gui.confocal.ui_cf_settings import Ui_SettingsDialog
+from gui.optimizer.ui_optim_settings import Ui_SettingsDialog as Ui_OptimizerSettingsDialog
 
 
 # ============= HowTo Convert the corresponding *.ui file =====================
-# To convert the *.ui file to a raw ConfocalGuiUI.py file use the python script
+# To convert the *.ui file to a raw ui_confocalgui.py file use the python script
 # in the Anaconda directory, which you can find in:
 #
 # "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
 #
 # Then use that script like
 #
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ConfocalGuiUI.ui > ConfocalGuiUI.py
+# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ui_confocalgui.ui > ui_confocalgui.py
 #
-# to convert to ConfocalGuiUI.py. (This should be run in the python interpreter)
+# to convert to ui_confocalgui.py. (This should be run in the python interpreter)
 # =============================================================================
 
 

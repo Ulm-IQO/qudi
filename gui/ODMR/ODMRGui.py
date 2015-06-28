@@ -24,10 +24,10 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from gui.ODMR.ODMRGuiUI import Ui_MainWindow
 from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
-from gui.Confocal.ConfocalGui import ColorBar
+from gui.confocal.confocalgui import ColorBar
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:

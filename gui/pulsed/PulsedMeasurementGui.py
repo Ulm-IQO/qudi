@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
+from gui.guibase import GUIBase
 from gui.pulsed.PulsedMeasurementGuiUI import Ui_MainWindow
 
 # To convert the *.ui file to a raw PulsedMeasurementsGuiUI.py file use the python script

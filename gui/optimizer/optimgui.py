@@ -10,10 +10,10 @@ import pyqtgraph as pg
 import numpy as np
 
 from collections import OrderedDict
-from gui.GUIBase import GUIBase
-from gui.Optimizer.OptimizerGuiUI import Ui_MainWindow
-from gui.Optimizer.OptimizerSettingsUI import Ui_SettingsDialog
-from gui.Confocal.ConfocalGui import ColorBar
+from gui.guibase import GUIBase
+from gui.optimizer.ui_optimgui import Ui_MainWindow
+from gui.optimizer.ui_optim_settings import Ui_SettingsDialog
+from gui.confocal.confocalgui import ColorBar
 
 
 class CustomViewBox(pg.ViewBox):
