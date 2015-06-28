@@ -225,12 +225,21 @@ class Manager(QtCore.QObject):
             if self.hasGui:
                 for key in self.tree['start']['gui']:
                     try:
-                        modObj = self.importModule('gui', self.tree['start']['gui'][key]['module'])
-                        pkgName = re.escape(modObj.__package__)
-                        modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                        modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                        # class_name is the last part of the config entry
+                        class_name = re.split('\.', self.tree['start']['gui'][key]['module'])[-1]
+                        # module_name is the whole line without this last part (and with the trailing dot removed also)
+                        module_name = re.sub('.'+class_name+'$', '', self.tree['start']['gui'][key]['module'])
+
+                        #debug
+                        print(self.tree['start']['gui'][key]['module'])
+                        print(class_name, module_name)
+
+                        modObj = self.importModule('gui', module_name)
+                        #pkgName = re.escape(modObj.__package__)
+                        #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                        #modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
+                        self.configureModule(modObj, 'gui', class_name, key, self.tree['start']['gui'][key])
                     
-                        self.configureModule(modObj, 'gui', modName, key, self.tree['start']['gui'][key])
                         self.activateModule('gui', key)
                     except:
                         raise
@@ -533,6 +542,7 @@ class Manager(QtCore.QObject):
             configuration = {}
 
         # get class from module by name
+        print( moduleObject, className)
         modclass = getattr(moduleObject, className)
         
         #FIXME: Check if the class we just obtained has the right inheritance
@@ -710,10 +720,18 @@ class Manager(QtCore.QObject):
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
             else:
                 try:
-                    modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
-                    pkgName = re.escape(modObj.__package__)
-                    modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                    self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
+                    # class_name is the last part of the config entry
+                    class_name = re.split('\.', self.tree['defined'][base][key]['module'])[-1]
+                    # module_name is the whole line without this last part (and with the trailing dot removed also)
+                    module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module'])
+                    #debug
+                    print(self.tree['defined'][base][key]['module'])
+                    print(class_name, module_name, '\n')
+
+                    modObj = self.importModule(base, module_name)
+                    #pkgName = re.escape(modObj.__package__)
+                    #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                    self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                     ## start main loop for qt objects
                     if base == 'logic':
                         modthread = self.tm.newThread('mod-' + base + '-' + key)
@@ -750,12 +768,20 @@ class Manager(QtCore.QObject):
             try:
                 with self.lock:
                     self.tree['loaded'][base].pop(key, None)
-                modObj = self.importModule(base, self.tree['defined'][base][key]['module'])
+                # class_name is the last part of the config entry
+                class_name = re.split('\.', self.tree['defined'][base][key]['module'])[-1]
+                # module_name is the whole line without this last part (and with the trailing dot removed also)
+                module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module'])
+                #debug
+                print(self.tree['defined'][base][key]['module'])
+                print(class_name, module_name, '\n')
+
+                modObj = self.importModule(base, module_name)
                 # des Pudels Kern
                 importlib.reload(modObj)
-                pkgName = re.escape(modObj.__package__)
-                modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                self.configureModule(modObj, base, modName, key, self.tree['defined'][base][key])
+                #pkgName = re.escape(modObj.__package__)
+                #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
+                self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                 # start main loop for qt objects
                 if base == 'logic':
                     modthread = self.tm.newThread('mod-' + base + '-' + key)
