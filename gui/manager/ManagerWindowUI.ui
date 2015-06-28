@@ -27,7 +27,7 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="tabWidgetPage1" native="true">
+      <widget class="QWidget" name="tabWidgetPage1">
        <attribute name="title">
         <string>GUI</string>
        </attribute>
@@ -43,7 +43,7 @@
              <x>0</x>
              <y>0</y>
              <width>436</width>
-             <height>377</height>
+             <height>261</height>
             </rect>
            </property>
           </widget>
@@ -51,7 +51,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tabWidgetPage2" native="true">
+      <widget class="QWidget" name="tabWidgetPage2">
        <attribute name="title">
         <string>Logic</string>
        </attribute>
@@ -66,8 +66,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>471</width>
-             <height>377</height>
+             <width>436</width>
+             <height>261</height>
             </rect>
            </property>
           </widget>
@@ -75,7 +75,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tabWidgetPage3" native="true">
+      <widget class="QWidget" name="tabWidgetPage3">
        <attribute name="title">
         <string>Hardware</string>
        </attribute>
@@ -90,8 +90,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>471</width>
-             <height>377</height>
+             <width>436</width>
+             <height>261</height>
             </rect>
            </property>
           </widget>
@@ -210,7 +210,13 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Quit</string>
+    <string>Quit Qudi</string>
+   </property>
+   <property name="toolTip">
+    <string>Quit Qudi suite</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
    </property>
   </action>
   <action name="actionLog">

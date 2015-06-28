@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ManagerWindowUI.ui'
 #
-# Created: Wed Jun 24 11:45:50 2015
+# Created: Sun Jun 28 21:56:14 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -44,7 +44,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName(_fromUtf8("scrollArea"))
         self.guiscroll = QtGui.QWidget()
-        self.guiscroll.setGeometry(QtCore.QRect(0, 0, 436, 377))
+        self.guiscroll.setGeometry(QtCore.QRect(0, 0, 436, 261))
         self.guiscroll.setObjectName(_fromUtf8("guiscroll"))
         self.scrollArea.setWidget(self.guiscroll)
         self.gridLayout1.addWidget(self.scrollArea, 1, 0, 1, 1)
@@ -57,7 +57,7 @@ class Ui_MainWindow(object):
         self.scrollArea1.setWidgetResizable(True)
         self.scrollArea1.setObjectName(_fromUtf8("scrollArea1"))
         self.logicscroll = QtGui.QWidget()
-        self.logicscroll.setGeometry(QtCore.QRect(0, 0, 471, 377))
+        self.logicscroll.setGeometry(QtCore.QRect(0, 0, 436, 261))
         self.logicscroll.setObjectName(_fromUtf8("logicscroll"))
         self.scrollArea1.setWidget(self.logicscroll)
         self.gridLayout2.addWidget(self.scrollArea1, 0, 0, 1, 1)
@@ -70,7 +70,7 @@ class Ui_MainWindow(object):
         self.scrollArea2.setWidgetResizable(True)
         self.scrollArea2.setObjectName(_fromUtf8("scrollArea2"))
         self.hwscroll = QtGui.QWidget()
-        self.hwscroll.setGeometry(QtCore.QRect(0, 0, 471, 377))
+        self.hwscroll.setGeometry(QtCore.QRect(0, 0, 436, 261))
         self.hwscroll.setObjectName(_fromUtf8("hwscroll"))
         self.scrollArea2.setWidget(self.hwscroll)
         self.gridLayout3.addWidget(self.scrollArea2, 0, 0, 1, 1)
@@ -170,7 +170,9 @@ class Ui_MainWindow(object):
         self.actionSave_configuration.setText(_translate("MainWindow", "Save configuration", None))
         self.action_Load_all_modules.setText(_translate("MainWindow", " Load all modules", None))
         self.actionStart_all_modules.setText(_translate("MainWindow", "Start all modules", None))
-        self.actionQuit.setText(_translate("MainWindow", "Quit", None))
+        self.actionQuit.setText(_translate("MainWindow", "Quit Qudi", None))
+        self.actionQuit.setToolTip(_translate("MainWindow", "Quit Qudi suite", None))
+        self.actionQuit.setShortcut(_translate("MainWindow", "Ctrl+Q", None))
         self.actionLog.setText(_translate("MainWindow", "Log", None))
         self.actionConsole.setText(_translate("MainWindow", "Console", None))
         self.actionAbout_QuDi.setText(_translate("MainWindow", "About QuDi", None))
