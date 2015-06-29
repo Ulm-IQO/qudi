@@ -55,10 +55,10 @@ class PulseAnalysisLogic(GenericLogic):
 #        self._laser_length_bins = 3800
 #        self._number_of_laser_pulses = 100
         
-        self.fluorescence_signal_start_bin = 50
-        self.fluorescence_signal_width_bins = 200
+        self.fluorescence_signal_start_bin = 20
+        self.fluorescence_signal_width_bins = 500
         self.norm_start_bin = 2000
-        self.norm_width_bins = 200
+        self.norm_width_bins = 500
 #        self._tau_vector_ns = np.array(range(100))
         
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
