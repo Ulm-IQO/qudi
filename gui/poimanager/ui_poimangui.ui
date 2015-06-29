@@ -644,7 +644,7 @@
        <item>
         <widget class="QRadioButton" name="radioButton">
          <property name="text">
-          <string>Cliock time</string>
+          <string>Clock time</string>
          </property>
         </widget>
        </item>
@@ -793,7 +793,9 @@
   </action>
   <action name="actionTest">
    <property name="icon">
-    <iconset theme="formula"/>
+    <iconset theme="formula">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Test</string>

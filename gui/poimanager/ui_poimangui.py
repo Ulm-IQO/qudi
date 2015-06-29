@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'PoiManagerGuiUI.ui'
+# Form implementation generated from reading ui file 'ui_poimangui.ui'
 #
-# Created: Wed Jun 24 22:34:03 2015
+# Created: Mon Jun 29 11:11:58 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -420,7 +420,7 @@ class Ui_PoiManager(object):
         self.roi_cb_manual_RadioButton.setText(_translate("PoiManager", "Manual", None))
         self.sample_shift_dockWidget.setWindowTitle(_translate("PoiManager", "Sample shift", None))
         self.radioButton_2.setText(_translate("PoiManager", "Duration (seconds)", None))
-        self.radioButton.setText(_translate("PoiManager", "Cliock time", None))
+        self.radioButton.setText(_translate("PoiManager", "Clock time", None))
         self.actionNew_ROI.setText(_translate("PoiManager", "New ROI", None))
         self.actionNew_ROI.setToolTip(_translate("PoiManager", "Start a new ROI (such as after moving to a different part of the sample", None))
         self.actionSave_ROI.setText(_translate("PoiManager", "Save ROI", None))
