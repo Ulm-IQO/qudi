@@ -87,6 +87,7 @@ class PulseExtractionLogic(GenericLogic):
         return laser_arr
     
     
+    
     def get_data_laserpulses(self):
         """ This method captures the fast counter data and extracts the laser pulses.
         """
