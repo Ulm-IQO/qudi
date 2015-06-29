@@ -125,14 +125,12 @@ class ColorBar(pg.GraphicsObject):
         # paint colorbar
         p.drawPicture(0, 0, self.pic)
 
-
     def boundingRect(self):
         """ Overwrite the paint method from GraphicsObject.
 
         Get the position, width and hight of the displayed object.
         """
         return pg.QtCore.QRectF(self.pic.boundingRect())
-
 
 class CustomViewBox(pg.ViewBox):
     """ Predefine the view region and set what interaction are allowed.
