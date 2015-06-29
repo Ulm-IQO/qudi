@@ -18,7 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
-from logic.GenericLogic import GenericLogic
+from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore

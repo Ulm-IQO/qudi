@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # unstable: Nikolas Tomek
 
-from logic.GenericLogic import GenericLogic
+from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
