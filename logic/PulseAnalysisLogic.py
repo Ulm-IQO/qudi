@@ -3,7 +3,7 @@
 
 from logic.GenericLogic import GenericLogic
 from pyqtgraph.Qt import QtCore
-from core.util.Mutex import Mutex
+from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time

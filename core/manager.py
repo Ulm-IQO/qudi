@@ -39,7 +39,7 @@ import pyqtgraph.reload as reload
 import pyqtgraph.configfile as configfile
 
 from .util import ptime
-from .util.Mutex import Mutex   # Mutex provides access serialization between threads
+from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from collections import OrderedDict
 import pyqtgraph as pg
 from .logger import Logger, LOG, printExc
@@ -230,14 +230,7 @@ class Manager(QtCore.QObject):
                         # module_name is the whole line without this last part (and with the trailing dot removed also)
                         module_name = re.sub('.'+class_name+'$', '', self.tree['start']['gui'][key]['module.Class'])
 
-                        #debug
-                        print(self.tree['start']['gui'][key]['module.Class'])
-                        print(class_name, module_name)
-
                         modObj = self.importModule('gui', module_name)
-                        #pkgName = re.escape(modObj.__package__)
-                        #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
-                        #modName = modObj.__name__.replace(modObj.__package__, '').replace('.', '')
                         self.configureModule(modObj, 'gui', class_name, key, self.tree['start']['gui'][key])
                     
                         self.activateModule('gui', key)
@@ -724,13 +717,8 @@ class Manager(QtCore.QObject):
                     class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                     # module_name is the whole line without this last part (and with the trailing dot removed also)
                     module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module.Class'])
-                    #debug
-                    print(self.tree['defined'][base][key]['module.Class'])
-                    print(class_name, module_name, '\n')
 
                     modObj = self.importModule(base, module_name)
-                    #pkgName = re.escape(modObj.__package__)
-                    #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
                     self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                     ## start main loop for qt objects
                     if base == 'logic':
@@ -772,15 +760,10 @@ class Manager(QtCore.QObject):
                 class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                 # module_name is the whole line without this last part (and with the trailing dot removed also)
                 module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module.Class'])
-                #debug
-                print(self.tree['defined'][base][key]['module.Class'])
-                print(class_name, module_name, '\n')
 
                 modObj = self.importModule(base, module_name)
                 # des Pudels Kern
                 importlib.reload(modObj)
-                #pkgName = re.escape(modObj.__package__)
-                #modName = re.sub('^{0}\.'.format(pkgName), '', modObj.__name__)
                 self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                 # start main loop for qt objects
                 if base == 'logic':

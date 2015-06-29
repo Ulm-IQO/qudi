@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.Base import Base
+from core.base import Base
 from hardware.MagnetStageInterface import MagnetStageInterface
 from collections import OrderedDict
 

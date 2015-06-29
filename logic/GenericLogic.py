@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.Base import Base
+from core.base import Base
 
 class GenericLogic(Base):
     """A generic logic interface class.

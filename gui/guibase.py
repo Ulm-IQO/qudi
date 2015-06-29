@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
-from core.Base import Base
+from core.base import Base
 
 class GUIBase(Base):
     """This is the GUI base class. It provides functions that every GUI module should have.

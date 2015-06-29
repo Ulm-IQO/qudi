@@ -7,7 +7,7 @@
 #####################################################
 
 
-from core.util.CustomExceptions import InterfaceImplementationError
+from core.util.customexceptions import InterfaceImplementationError
 
 class FastCounterInterface():
     """ UNSTABLE: Alex Stark 

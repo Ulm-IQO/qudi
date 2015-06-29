@@ -4,7 +4,7 @@
 import ctypes
 import numpy as np
 from collections import OrderedDict
-from core.Base import Base
+from core.base import Base
 from hardware.SlowCounterInterface import SlowCounterInterface
 import time
 # =============================================================================

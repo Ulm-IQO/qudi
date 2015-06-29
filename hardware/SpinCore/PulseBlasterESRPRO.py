@@ -6,8 +6,8 @@ import platform
 import os
 import numpy as np
 from collections import OrderedDict
-from core.Base import Base
-from core.util.Mutex import Mutex
+from core.base import Base
+from core.util.mutex import Mutex
 
 class PulseBlasterESRPRO(Base):
     """ UNSTABLE: ALEX
