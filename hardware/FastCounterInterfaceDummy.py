@@ -2,6 +2,7 @@ from core.Base import Base
 from hardware.fastcounterinterface import FastCounterInterface
 from collections import OrderedDict
 import time
+from scipy import signal
 
 import numpy as np
 
@@ -85,17 +86,24 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         falling_edge = np.flipud(rising_edge)
         low_count = np.full([200], rising_edge.min())
         high_count = np.full([3000], rising_edge.max())
-        trace = 100000*np.concatenate((low_count, rising_edge, high_count, falling_edge, low_count))
-        trace = np.array(np.rint(trace),int)
-        trace = trace + np.random.randint(0,10000,trace.size)
-        data = np.empty([100,trace.size],int)
-        for i in range(data.shape[0]):
-            data[i] = trace
+        
+        data = np.array([], int)
+        for i in range(100):
+            gauss=signal.gaussian(500,120)/(1+np.random.random()*3)
+            gauss=np.append(gauss, np.zeros([2500]))
+            trace = 100000*np.concatenate((low_count, rising_edge, high_count+gauss, falling_edge, low_count))
+            trace = np.array(np.rint(trace),int)
+            trace = trace + np.random.randint(0,10000,trace.size)
+            data = np.append(data, trace)
+#        data = np.empty([100,trace.size],int)
+#        for i in range(data.shape[0]):
+#            data[i] = trace
         time.sleep(1)
         return data
         
     def is_gated(self):
-        return True
+#        return True
+        return False
         
     def get_frequency(self):
         freq = 950.
