@@ -20,7 +20,7 @@ Copyright (C) 2015 Alexander Stark
 Copyright (C) 2015 Jan M. Binder
 """
 
-from logic.GenericLogic import GenericLogic
+from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict

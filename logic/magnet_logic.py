@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from logic.GenericLogic import GenericLogic
+from logic.generic_logic import GenericLogic
 from collections import OrderedDict
 import threading
 import numpy as np
