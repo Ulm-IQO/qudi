@@ -344,28 +344,28 @@ class PoiManagerGui(GUIBase):
         # Connect signals
         #####################        
 
-        self._mw.get_confocal_image_Button.clicked.connect(self.get_confocal_image)
-        self._mw.set_poi_Button.clicked.connect(self.set_new_poi)
-        self._mw.goto_poi_Button.clicked.connect(self.goto_poi)
+        self._mw.get_confocal_image_PushButton.clicked.connect(self.get_confocal_image)
+        self._mw.set_poi_PushButton.clicked.connect(self.set_new_poi)
+        self._mw.goto_poi_PushButton.clicked.connect(self.goto_poi)
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
-        self._mw.manual_update_poi_Button.clicked.connect(self.manual_update_poi)
-        self._mw.poi_name_Input.returnPressed.connect(self.change_poi_name)
-        self._mw.delete_poi_Button.clicked.connect(self.delete_poi)
+        self._mw.manual_update_poi_PushButton.clicked.connect(self.manual_update_poi)
+        self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
+        self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
 
-        self._mw.update_poi_Button.clicked.connect(self.update_poi_pos)
+        self._mw.refind_poi_PushButton.clicked.connect(self.update_poi_pos)
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
 
-        self._mw.periodic_update_Button.stateChanged.connect(self.toggle_periodic_update)
-        self._mw.active_poi_Input.currentIndexChanged.connect(self._redraw_poi_markers)
+        self._mw.periodic_update_CheckBox.stateChanged.connect(self.toggle_periodic_update)
+        self._mw.active_poi_ComboBox.currentIndexChanged.connect(self._redraw_poi_markers)
         self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
         
         # Connect the buttons and inputs for the colorbar
         self._mw.roi_cb_centiles_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_manual_RadioButton.toggled.connect( self.refresh_roi_colorscale )
-        self._mw.roi_cb_min_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
-        self._mw.roi_cb_max_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_manual )
-        self._mw.roi_cb_low_centile_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
-        self._mw.roi_cb_high_centile_InputWidget.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
+        self._mw.roi_cb_min_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_max_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_low_centile_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
+        self._mw.roi_cb_high_centile_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
 
         self._markers = dict()
         
@@ -425,8 +425,8 @@ class PoiManagerGui(GUIBase):
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.roi_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.roi_cb_high_centile_InputWidget.value() 
+            low_centile = self._mw.roi_cb_low_centile_SpinBox.value()
+            high_centile = self._mw.roi_cb_high_centile_SpinBox.value() 
 
             cb_min = np.percentile( self.roi_map_data, low_centile ) 
             cb_max = np.percentile( self.roi_map_data, high_centile ) 
@@ -434,8 +434,8 @@ class PoiManagerGui(GUIBase):
             self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max) )
 
         else:
-            cb_min = self._mw.roi_cb_min_InputWidget.value()
-            cb_max = self._mw.roi_cb_max_InputWidget.value()
+            cb_min = self._mw.roi_cb_min_SpinBox.value()
+            cb_max = self._mw.roi_cb_max_SpinBox.value()
 
             self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max) )
             
@@ -456,7 +456,7 @@ class PoiManagerGui(GUIBase):
         self.population_poi_list()
 
         # Set the newly added poi as the selected poi to manage.
-        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
+        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
         
         self._redraw_sample_shift()
         self._redraw_poi_markers()
@@ -465,14 +465,14 @@ class PoiManagerGui(GUIBase):
         ''' This method deletes the last track position of a chosen poi
         '''
         
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
         self._poi_manager_logic.delete_last_point(poikey=key)
 
 
     def delete_poi(self):
         '''This method deletes a poi from the list of managed points
         '''
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
         
         self._markers[key].delete_from_viewwidget()        
         del self._markers[key]
@@ -485,27 +485,27 @@ class PoiManagerGui(GUIBase):
         """ Manually adds a point to the trace of a given poi without refocussing.
         """
         
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
         self._poi_manager_logic.set_new_position(poikey=key)
         
     def toggle_periodic_update(self):
         if self._poi_manager_logic.timer ==  None:
-            key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
-            period = self._mw.update_period_Input.value()
+            key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
+            period = self._mw.track_period_SpinBox.value()
 
             self._poi_manager_logic.start_periodic_refocus(duration=period, poikey = key)
-           # self._mw.periodic_update_Button.setChecked(True)
+           # self._mw.periodic_update_CheckBox.setChecked(True)
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
-           # self._mw.periodic_update_Button.setChecked(False)
+           # self._mw.periodic_update_CheckBox.setChecked(False)
 
     def goto_poi(self, key):
         ''' Go to the last known position of poi <key>
         '''
         
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
         self._poi_manager_logic.go_to_poi(poikey=key)
 
@@ -515,20 +515,20 @@ class PoiManagerGui(GUIBase):
     def population_poi_list(self):
         ''' Populate the dropdown box for selecting a poi
         '''
-        self._mw.active_poi_Input.clear()
-        self._mw.active_poi_Input.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+        self._mw.active_poi_ComboBox.clear()
+        self._mw.active_poi_ComboBox.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
-                self._mw.active_poi_Input.addItem(self._poi_manager_logic.get_name(poikey=key), key)
+                self._mw.active_poi_ComboBox.addItem(self._poi_manager_logic.get_name(poikey=key), key)
 
 
     def change_poi_name(self):
         '''Change the name of a poi
         '''
 
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
-        newname=self._mw.poi_name_Input.text()
+        newname=self._mw.poi_name_LineEdit.text()
 
 
         self._poi_manager_logic.set_name(poikey=key, name=newname)
@@ -536,23 +536,23 @@ class PoiManagerGui(GUIBase):
         self.population_poi_list()
 
         # Keep the renamed POI as the selected POI to manage.
-        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(key))
+        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
 
         # After POI name is changed, empty name field
-        self._mw.poi_name_Input.setText('')
+        self._mw.poi_name_LineEdit.setText('')
 
     def select_poi_from_marker(self, poikey = None):
         '''Process the selection of a POI from click on POImark
         '''
         
-        self._mw.active_poi_Input.setCurrentIndex(self._mw.active_poi_Input.findData(poikey))
+        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(poikey))
         print("hello")
         self._redraw_sample_shift()
         
 
     def update_poi_pos(self):
 
-        key=self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
         self._poi_manager_logic.optimise_poi(poikey=key)
 
@@ -568,7 +568,7 @@ class PoiManagerGui(GUIBase):
         #placeholder.setText('{0:.1f}'.format(self._poi_manager_logic.time_left))
         
 #        print(self._poi_manager_logic.time_left)
-        self._mw.time_till_next_update_Display.setValue( self._poi_manager_logic.time_left )
+        self._mw.time_till_next_update_ProgressBar.setValue( self._poi_manager_logic.time_left )
 
     def _redraw_sample_shift(self):
         
@@ -589,7 +589,7 @@ class PoiManagerGui(GUIBase):
 
     def _redraw_poi_markers(self):
         
-        curkey = self._mw.active_poi_Input.itemData(self._mw.active_poi_Input.currentIndex())
+        curkey = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
         
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':

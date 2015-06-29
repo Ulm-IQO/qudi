@@ -83,7 +83,7 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_6">
      <item>
-      <widget class="QPushButton" name="set_poi_Button">
+      <widget class="QPushButton" name="set_poi_PushButton">
        <property name="toolTip">
         <string>Set current cursor position as a new trackpoint in the ROI map</string>
        </property>
@@ -102,7 +102,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="active_poi_Input">
+        <widget class="QComboBox" name="active_poi_ComboBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -126,7 +126,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="poi_name_Input">
+        <widget class="QLineEdit" name="poi_name_LineEdit">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -138,7 +138,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="delete_poi_Button">
+      <widget class="QPushButton" name="delete_poi_PushButton">
        <property name="text">
         <string>Delete POI</string>
        </property>
@@ -200,7 +200,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_7">
        <item>
-        <widget class="QPushButton" name="goto_poi_Button">
+        <widget class="QPushButton" name="goto_poi_PushButton">
          <property name="text">
           <string>Go to POI</string>
          </property>
@@ -224,7 +224,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
-        <widget class="QPushButton" name="update_poi_Button">
+        <widget class="QPushButton" name="refind_poi_PushButton">
          <property name="text">
           <string>Refind POI</string>
          </property>
@@ -240,7 +240,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QComboBox" name="update_method_Input">
+      <widget class="QComboBox" name="refind_method_ComboBox">
        <item>
         <property name="text">
          <string>position optimisation</string>
@@ -305,14 +305,14 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_11">
        <item>
-        <widget class="QCheckBox" name="periodic_update_Button">
+        <widget class="QCheckBox" name="periodic_update_CheckBox">
          <property name="text">
           <string>Refind every</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="update_period_Input">
+        <widget class="QSpinBox" name="track_period_SpinBox">
          <property name="minimum">
           <number>5</number>
          </property>
@@ -337,7 +337,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QProgressBar" name="time_till_next_update_Display">
+      <widget class="QProgressBar" name="time_till_next_update_ProgressBar">
        <property name="maximum">
         <number>15</number>
        </property>
@@ -352,7 +352,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_12">
        <item>
-        <widget class="QPushButton" name="manual_update_poi_Button">
+        <widget class="QPushButton" name="manual_update_poi_PushButton">
          <property name="toolTip">
           <string>This is for telling QuDi a totally new position for a known trackpoint.  For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
          </property>
@@ -395,7 +395,7 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
-      <widget class="QPushButton" name="get_confocal_image_Button">
+      <widget class="QPushButton" name="get_confocal_image_PushButton">
        <property name="text">
         <string>Get Confocal image</string>
        </property>
@@ -416,7 +416,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0">
          <item>
-          <widget class="QSpinBox" name="roi_cb_max_InputWidget">
+          <widget class="QSpinBox" name="roi_cb_max_SpinBox">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -471,7 +471,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="roi_cb_high_centile_InputWidget">
+            <widget class="QSpinBox" name="roi_cb_high_centile_SpinBox">
              <property name="maximumSize">
               <size>
                <width>16777215</width>
@@ -523,7 +523,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="roi_cb_low_centile_InputWidget">
+            <widget class="QSpinBox" name="roi_cb_low_centile_SpinBox">
              <property name="maximumSize">
               <size>
                <width>16777215</width>
@@ -541,7 +541,7 @@
           </layout>
          </item>
          <item>
-          <widget class="QSpinBox" name="roi_cb_min_InputWidget">
+          <widget class="QSpinBox" name="roi_cb_min_SpinBox">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -632,7 +632,7 @@
         </spacer>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton_2">
+        <widget class="QRadioButton" name="dispay_shift_vs_duration_RadioButton">
          <property name="text">
           <string>Duration (seconds)</string>
          </property>
@@ -642,7 +642,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="radioButton">
+        <widget class="QRadioButton" name="dispay_shift_vs_clocktime_RadioButton">
          <property name="text">
           <string>Clock time</string>
          </property>
