@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.SlowCounterInterface import SlowCounterInterface
+from hardware.slow_counter_interface import SlowCounterInterface
 from collections import OrderedDict
 import random
 import time

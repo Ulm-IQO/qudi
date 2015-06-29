@@ -2,9 +2,9 @@
 # unstable: Kay Jahnke
 
 from core.base import Base
-from hardware.SlowCounterInterface import SlowCounterInterface
-from hardware.ConfocalScannerInterface import ConfocalScannerInterface
-from hardware.ODMRCounterInterface import ODMRCounterInterface
+from hardware.slow_counter_interface import SlowCounterInterface
+from hardware.confocal_scanner_interface import ConfocalScannerInterface
+from hardware.odmr_counter_interface import ODMRCounterInterface
 from collections import OrderedDict
 
 import PyDAQmx as daq

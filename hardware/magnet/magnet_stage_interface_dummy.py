@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.MagnetStageInterface import MagnetStageInterface
+from hardware.magnet_stage_interface import MagnetStageInterface
 from collections import OrderedDict
 
 class MagnetStageDummy(Base,MagnetStageInterface):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.PulserInterface import PulserInterface
+from hardware.pulser_interface import PulserInterface
 from collections import OrderedDict
 import time
 from core.util.customexceptions import InterfaceImplementationError

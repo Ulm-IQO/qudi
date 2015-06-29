@@ -2,7 +2,7 @@
 # unstable: Jochen Scheuer
 
 from core.base import Base
-from hardware.MagnetStageInterface import MagnetStageInterface
+from hardware.magnet_stage_interface import MagnetStageInterface
 from collections import OrderedDict
 
 from visa import instrument
