@@ -22,9 +22,9 @@ from gui.guibase import GUIBase
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
-from . import ConsoleWidget
-from . import ConsoleWindowUI
-from . import ConsoleSettingsUI
+from . import consolewidget
+from . import ui_console_window
+from . import ui_console_settings
 
 class SimpleConsole(GUIBase):
     """
@@ -70,7 +70,7 @@ Go, play.
 """
         self.updateModuleList()
         self._mw = ConsoleMainWindow()
-        self._cw = ConsoleWidget.ConsoleWidget(namespace=self.namespace, text=text)
+        self._cw = consolewidget.ConsoleWidget(namespace=self.namespace, text=text)
         self._cw.applyStyleSheet(self.stylesheet)
 
         # font size
@@ -143,7 +143,7 @@ Go, play.
         self._mw.raise_()
 
 
-class ConsoleMainWindow(QtGui.QMainWindow, ConsoleWindowUI.Ui_MainWindow):
+class ConsoleMainWindow(QtGui.QMainWindow, ui_console_window.Ui_MainWindow):
     def __init__(self):
         """ Create the Console window.
         """
@@ -152,7 +152,7 @@ class ConsoleMainWindow(QtGui.QMainWindow, ConsoleWindowUI.Ui_MainWindow):
         self.layout = QtGui.QVBoxLayout(self.centralwidget)
 
         
-class ConsoleSettingsDialog(QtGui.QDialog, ConsoleSettingsUI.Ui_Dialog):
+class ConsoleSettingsDialog(QtGui.QDialog, ui_console_settings.Ui_Dialog):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
     def __init__(self):
         QtGui.QDialog.__init__(self)

@@ -117,4 +117,4 @@ class Ui_Form(object):
         self.exceptionInfoLabel.setText(_translate("Form", "Exception Info", None))
         self.clearExceptionBtn.setText(_translate("Form", "Clear Exception", None))
 
-from .CmdInput import CmdInput
+from .cmdinput import CmdInput
