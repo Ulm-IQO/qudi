@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>947</width>
+    <width>1215</width>
     <height>771</height>
    </rect>
   </property>
@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -271,7 +271,7 @@ Phase (°)</string>
                </widget>
               </item>
               <item row="2" column="1">
-               <widget class="QPushButton" name="del_row_repeat_PushButton">
+               <widget class="QPushButton" name="del_repeat_row_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -290,7 +290,7 @@ Phase (°)</string>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QPushButton" name="add_row_repeat_PushButton">
+               <widget class="QPushButton" name="add_repeat_row_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -345,7 +345,7 @@ Phase (°)</string>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QPushButton" name="add_row_init_PushButton">
+               <widget class="QPushButton" name="add_init_row_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -533,7 +533,7 @@ Phase (°)</string>
                </spacer>
               </item>
               <item row="3" column="1">
-               <widget class="QPushButton" name="delete_row_init_PushButton">
+               <widget class="QPushButton" name="del_init_row_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -808,7 +808,7 @@ Phase (°)</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>899</width>
+                 <width>1167</width>
                  <height>662</height>
                 </rect>
                </property>
@@ -841,7 +841,7 @@ Phase (°)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>947</width>
+     <width>1215</width>
      <height>21</height>
     </rect>
    </property>
