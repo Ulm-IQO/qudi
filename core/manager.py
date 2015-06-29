@@ -42,10 +42,10 @@ from .util import ptime
 from .util.Mutex import Mutex   # Mutex provides access serialization between threads
 from collections import OrderedDict
 import pyqtgraph as pg
-from .Logger import Logger, LOG, printExc
-from .ThreadManager import ThreadManager
-from .Remote import RemoteObjectManager
-from .Base import Base
+from .logger import Logger, LOG, printExc
+from .threadmanager import ThreadManager
+from .remote import RemoteObjectManager
+from .base import Base
 
 class Manager(QtCore.QObject):
     """The Manager object is responsible for:
@@ -183,8 +183,8 @@ class Manager(QtCore.QObject):
 
              # Gui setup if we have gui
             if self.hasGui:
-                import core.Gui
-                self.gui = core.Gui.Gui()
+                import core.gui
+                self.gui = core.gui.Gui()
                 self.gui.makePyQtGraphQApplication()
                 self.gui.setTheme()
                 self.gui.setAppIcon()
@@ -226,12 +226,12 @@ class Manager(QtCore.QObject):
                 for key in self.tree['start']['gui']:
                     try:
                         # class_name is the last part of the config entry
-                        class_name = re.split('\.', self.tree['start']['gui'][key]['module'])[-1]
+                        class_name = re.split('\.', self.tree['start']['gui'][key]['module.Class'])[-1]
                         # module_name is the whole line without this last part (and with the trailing dot removed also)
-                        module_name = re.sub('.'+class_name+'$', '', self.tree['start']['gui'][key]['module'])
+                        module_name = re.sub('.'+class_name+'$', '', self.tree['start']['gui'][key]['module.Class'])
 
                         #debug
-                        print(self.tree['start']['gui'][key]['module'])
+                        print(self.tree['start']['gui'][key]['module.Class'])
                         print(class_name, module_name)
 
                         modObj = self.importModule('gui', module_name)
@@ -328,7 +328,7 @@ class Manager(QtCore.QObject):
                         if self.disableAllDevs or m in self.disableDevs:
                             self.logger.print_logMsg("    --> Ignoring device {0} -- disabled by request".format(m) )
                             continue
-                        if 'module' in cfg['hardware'][m]:
+                        if 'module.Class' in cfg['hardware'][m]:
                             self.tree['defined']['hardware'][m] = cfg['hardware'][m]
                         else: 
                             self.logger.print_logMsg("    --> Ignoring device {0} -- no module specified".format(m))
@@ -336,7 +336,7 @@ class Manager(QtCore.QObject):
                 # logic
                 elif key == 'logic':
                     for m in cfg['logic']:
-                        if 'module' in cfg['logic'][m]:
+                        if 'module.Class' in cfg['logic'][m]:
                             self.tree['defined']['logic'][m] = cfg['logic'][m]
                         else:
                             self.logger.print_logMsg("    --> Ignoring logic {0} -- no module specified".format(m) )
@@ -344,7 +344,7 @@ class Manager(QtCore.QObject):
                 # GUI
                 elif key == 'gui' and self.hasGui:
                     for m in cfg['gui']:
-                        if 'module' in cfg['gui'][m]:
+                        if 'module.Class' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
                         else:
                             self.logger.print_logMsg("    --> Ignoring GUI {0} -- no module specified".format(m) )
@@ -354,13 +354,13 @@ class Manager(QtCore.QObject):
                     for skey in cfg['startup']:
                         if skey == 'gui' and self.hasGui:
                             for m in cfg['startup']['gui']:
-                                if 'module' in cfg['startup']['gui'][m]:
+                                if 'module.Class' in cfg['startup']['gui'][m]:
                                     self.tree['start']['gui'][m] = cfg['startup']['gui'][m]
                                 else:
                                     self.logger.print_logMsg("    --> Ignoring startup logic {0} -- no module specified".format(m) )
                         elif skey == 'logic':
                             for m in cfg['startup']['logic']:
-                                if 'module' in cfg['startup']['logic'][m]:
+                                if 'module.Class' in cfg['startup']['logic'][m]:
                                     self.tree['start']['logic'][m] = cfg['startup']['logic'][m]
                                 else:
                                     self.logger.print_logMsg("    --> Ignoring startup GUI {0} -- no module specified".format(m) )
@@ -575,7 +575,7 @@ class Manager(QtCore.QObject):
         thismodule = self.tree['defined'][base][mkey]
         if mkey not in self.tree['loaded'][base]:
             self.logger.logMsg('Loading of {0} module {1} as {2} was not  '
-                               'successful, not connecting it.'.format(base, thismodule['module'], mkey),
+                               'successful, not connecting it.'.format(base, thismodule['module.Class'], mkey),
                                msgType='error')
             return
         if 'connect' not in thismodule:
@@ -583,17 +583,17 @@ class Manager(QtCore.QObject):
         if 'in' not in  self.tree['loaded'][base][mkey].connector:
             self.logger.logMsg('{0} module {1} loaded as {2} is supposed to '
                                'get connected but it does not declare any IN '
-                               'connectors.'.format(base, thismodule['module'], mkey),
+                               'connectors.'.format(base, thismodule['module.Class'], mkey),
                                msgType='error')
             return
-        if 'module' not in thismodule:
+        if 'module.Class' not in thismodule:
             self.logger.logMsg('{0} module {1} ({2}) connection configuration '
-                               'is broken: no module defined.'.format(base, mkey, thismodule['module'] ),
+                               'is broken: no module defined.'.format(base, mkey, thismodule['module.Class'] ),
                                msgType='error')
             return
         if not isinstance(thismodule['connect'], OrderedDict):
             self.logger.logMsg('{0} module {1} ({2}) connection configuration '
-                               'is broken: connect is not a dict.'.format(base, mkey, thismodule['module'] ),
+                               'is broken: connect is not a dict.'.format(base, mkey, thismodule['module.Class'] ),
                                msgType='error')
             return
 
@@ -603,7 +603,7 @@ class Manager(QtCore.QObject):
             if c not in connectorIn:
                 self.logger.logMsg('IN connector {0} of {1} module {2} loaded '
                                    'as {3} is supposed to get connected but '
-                                   'is not declared in the module.'.format(c, base, thismodule['module'], mkey),
+                                   'is not declared in the module.'.format(c, base, thismodule['module.Class'], mkey),
                                    msgType='error')
                 continue
             if not isinstance(connectorIn[c], OrderedDict):
@@ -622,18 +622,18 @@ class Manager(QtCore.QObject):
                                    msgType='error')
                 continue
             if connectorIn[c]['object'] is not None:
-                self.logger.logMsg('IN connector {0} of {1} module {2} loaded as {3} is already connected.'.format(c, base, thismodule['module'], mkey), msgType='warning')
+                self.logger.logMsg('IN connector {0} of {1} module {2} loaded as {3} is already connected.'.format(c, base, thismodule['module.Class'], mkey), msgType='warning')
                 continue
             if not isinstance(connections[c], str):
                 self.logger.logMsg('{0} module {1} ({2}) connection '
                                    'configuration is broken, value for key '
-                                   '{3 }is not a string.'.format(base, mkey, thismodule['module'], c ),
+                                   '{3 }is not a string.'.format(base, mkey, thismodule['module.Class'], c ),
                                    msgType='error')
                 continue
             if '.' not in connections[c]:
                 self.logger.logMsg('{0} module {1} ({2}) connection '
                                    'configuration is broken, value {3} for '
-                                   'key {4} does not contain a dot.'.format(base, mkey, thismodule['module'], connections[c], c ),
+                                   'key {4} does not contain a dot.'.format(base, mkey, thismodule['module.Class'], connections[c], c ),
                                    msgType='error')
                 continue
             destmod = connections[c].split('.')[0]
@@ -642,7 +642,7 @@ class Manager(QtCore.QObject):
             if destmod in self.tree['loaded']['hardware'] and destmod in self.tree['loaded']['logic']:
                 self.logger.logMsg('Unique name {0} is in both hardware and '
                                    'logic module list. Connection is not well '
-                                   'defined, cannot connect {1} ({2}) to  it.'.format(destmod, mkey, thismodule['module']),
+                                   'defined, cannot connect {1} ({2}) to  it.'.format(destmod, mkey, thismodule['module.Class']),
                                    msgType='error')
                 continue
                 
@@ -654,7 +654,7 @@ class Manager(QtCore.QObject):
             else:
                 self.logger.logMsg('Unique name {0} is neither in hardware or '
                                    'logic module list. Cannot connect {1} ({2}) '
-                                   'to it.'.format(connections[c], mkey, thismodule['module']),
+                                   'to it.'.format(connections[c], mkey, thismodule['module.Class']),
                                    msgType='error')
                 continue
 
@@ -662,7 +662,7 @@ class Manager(QtCore.QObject):
                 self.logger.logMsg('Module {0} loaded as {1} is supposed to '
                                    'get connected to module loaded as {2} but '
                                    'that does not declare any OUT '
-                                   'connectors.'.format(thismodule['module'], mkey, destmod),
+                                   'connectors.'.format(thismodule['module.Class'], mkey, destmod),
                                    msgType='error')
                 continue
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
@@ -699,7 +699,7 @@ class Manager(QtCore.QObject):
           @param string key: module which is going to be loaded
           
         """
-        if 'module' in self.tree['defined'][base][key]:
+        if 'module.Class' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
                 if not self.remoteServer:
                     self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
@@ -721,11 +721,11 @@ class Manager(QtCore.QObject):
             else:
                 try:
                     # class_name is the last part of the config entry
-                    class_name = re.split('\.', self.tree['defined'][base][key]['module'])[-1]
+                    class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                     # module_name is the whole line without this last part (and with the trailing dot removed also)
-                    module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module'])
+                    module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module.Class'])
                     #debug
-                    print(self.tree['defined'][base][key]['module'])
+                    print(self.tree['defined'][base][key]['module.Class'])
                     print(class_name, module_name, '\n')
 
                     modObj = self.importModule(base, module_name)
@@ -755,7 +755,7 @@ class Manager(QtCore.QObject):
           @param string key: module which is going to be loaded
           
         """
-        if key in self.tree['loaded'][base] and 'module' in self.tree['defined'][base][key]:
+        if key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
             try:
                 # state machine: deactivate
                 self.deactivateModule(base, key)
@@ -769,11 +769,11 @@ class Manager(QtCore.QObject):
                 with self.lock:
                     self.tree['loaded'][base].pop(key, None)
                 # class_name is the last part of the config entry
-                class_name = re.split('\.', self.tree['defined'][base][key]['module'])[-1]
+                class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                 # module_name is the whole line without this last part (and with the trailing dot removed also)
-                module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module'])
+                module_name = re.sub('.'+class_name+'$', '', self.tree['defined'][base][key]['module.Class'])
                 #debug
-                print(self.tree['defined'][base][key]['module'])
+                print(self.tree['defined'][base][key]['module.Class'])
                 print(class_name, module_name, '\n')
 
                 modObj = self.importModule(base, module_name)
