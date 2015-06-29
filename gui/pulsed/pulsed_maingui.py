@@ -13,6 +13,7 @@ import numpy as np
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.pulsed.ui_pulsed_maingui import Ui_MainWindow
+from core.util.mutex import Mutex
 
 # To convert the *.ui file to a raw PulsedMeasurementsGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -64,6 +65,9 @@ class PulsedMeasurementGui(GUIBase):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
+
+        #locking for thread safety
+        self.threadlock = Mutex()
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the pulsed measurement GUI.
@@ -167,7 +171,7 @@ class PulsedMeasurementGui(GUIBase):
         self.num_d_ch = count_dch
         return count_dch
 
-    def update_digital_ch(self, num_d_ch):
+    def _use_digital_ch(self, num_d_ch):
         """
 
         @param int num_d_ch:
@@ -178,6 +182,9 @@ class PulsedMeasurementGui(GUIBase):
         subsequentially. It should also be ensured that the number of channels
         are not falling below 2 (that number is more or less arbitrary).
         """
+
+        #self.lock()
+        #self._count_digital_channels()
 
         if (self.num_a_ch == 1) and (num_d_ch != 2):
             self.logMsg('For one analog channel the number of digital '
@@ -193,28 +200,69 @@ class PulsedMeasurementGui(GUIBase):
                         msgType='warning')
             num_d_ch = 4
 
-        if (self.num_a_ch ==1) and (num_d_ch < 2):
-            return
+        if self.num_d_ch < num_d_ch:
+            position_list = []
 
-        if num_d_ch == self.num_d_ch:
-            # then there is no need to create channels
-            return
+            if self.num_a_ch == 0:
+                for channel in range(self.num_d_ch, num_d_ch):
+                    position_list.append(channel)
 
-        if self.num_a_ch == 0:
-            channelpos = num_d_ch
+            if self.num_a_ch == 1:
+                for channel in range(self.num_d_ch, num_d_ch):
+                    position_list.append(channel+len(self.analog_channel_parameter))
+
+            if self.num_a_ch == 2:
+                for channel in range(self.num_d_ch, num_d_ch):
+                    if channel < 2:
+                        position_list.append(len(self.analog_channel_parameter) + channel)
+                    else:
+                        position_list.append(len(self.analog_channel_parameter)*2 + channel)
+
+            for appended_channel, channel_pos in enumerate(position_list):
+
+                self._mw.init_block_TableWidget.insertColumn(channel_pos)
+                self._mw.init_block_TableWidget.setHorizontalHeaderItem(channel_pos, QtGui.QTableWidgetItem())
+                self._mw.init_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self.num_d_ch+appended_channel) )
+                self._mw.init_block_TableWidget.setColumnWidth(channel_pos, 40)
+
+            self.num_d_ch = self.num_d_ch + len(position_list)
+
+        elif self.num_d_ch > num_d_ch:
+            position_list = []
+            #if self.num_a_ch == 0:
+
+            for column in range(self.num_d_ch, num_d_ch-1, -1):
+                position_list.append(column)
 
 
-        if num_d_ch > self.num_d_ch:
-            # that means create digital channels.
-            self._mw.init_block_TableWidget.insertColumn(channelpos-1)
-            self._mw.init_block_TableWidget.setHorizontalHeaderItem(channelpos, QtGui.QTableWidgetItem())
-            self._mw.init_block_TableWidget.horizontalHeaderItem(channelpos).setText('DCh{0}'.format(self.num_d_ch+1) )
-            self._mw.init_block_TableWidget.setColumnWidth(channelpos, 30)
-        else:
-            self._mw.init_block_TableWidget.removeColumn(channelpos)
+            for channel_pos in position_list:
+                aimed_ch = 'DCh{0}'.format(channel_pos)
+
+                for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
+                    if aimed_ch in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
+                        self._mw.init_block_TableWidget.removeColumn(column)
+                        break
+#
+            self.num_d_ch = num_d_ch
+#        if num_d_ch == self.num_d_ch:
+#            # then there is no need to create channels
+#            return
+#
+#        if self.num_a_ch == 0:
+#            channelpos = num_d_ch
+#        if num_d_ch > self.num_d_ch:
+#            # that means create digital channels.
+#            self._mw.init_block_Tab
+#
+#leWidget.insertColumn(channelpos-1)
+#            self._mw.init_block_TableWidget.setHorizontalHeaderItem(channelpos, QtGui.QTableWidgetItem())
+#            self._mw.init_block_TableWidget.horizontalHeaderItem(channelpos).setText('DCh{0}'.format(self.num_d_ch+1) )
+#            self._mw.init_block_TableWidget.setColumnWidth(channelpos, 30)
+#        else:
+#            self._mw.init_block_TableWidget.removeColumn(channelpos)
 
 
-
+        #self.unlock()
 
 
 
@@ -239,6 +287,8 @@ class PulsedMeasurementGui(GUIBase):
                              0, 1 and 2, where 0 specifies no channels.
         """
 
+        #self.lock()
+
         if not ((type(num_a_ch) is int) and (0 <= num_a_ch) and (num_a_ch <= 2)):
             self.logMsg('The number for the analog channels was expected to '
                         'be either 0, 1 or 2, but a number of {0} was '
@@ -257,10 +307,12 @@ class PulsedMeasurementGui(GUIBase):
             for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                 if 'ACh1' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                    self._mw.init_block_TableWidget.removeColumn(column)
-
+            self.num_a_ch = 1
+            self._use_digital_ch(2)
         elif (num_a_ch > 0) and (self.num_a_ch < 2):
             # repeat the channel creating for the number of channels:
             column_pos = 0
+
             for channel in range(self.num_a_ch, num_a_ch):
 
                 column_pos = (len(self.analog_channel_parameter) + 2)*channel # for two digital marker channels of the AWG
@@ -273,7 +325,9 @@ class PulsedMeasurementGui(GUIBase):
 
 
                 self.num_a_ch = channel+1 # tell how many analog channel has been created
+                self._use_digital_ch(2)
 
+        #self.unlock()
 
 
     def idle_clicked(self):
