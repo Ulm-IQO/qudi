@@ -32,7 +32,7 @@ if __name__ == "__main__":
     sys.path = [os.path.join(d,'lib','util')] + sys.path + [d]
 
 from PyQt4 import QtGui, QtCore
-from .LogWidget import LogWidget
+from .logwidget import LogWidget
 from pyqtgraph import FeedbackButton
 import pyqtgraph.configfile as configfile
 from core.util.mutex import Mutex

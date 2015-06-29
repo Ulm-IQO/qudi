@@ -25,7 +25,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 from pyqtgraph.Qt import QtCore, QtGui
 import sys, re, os, time, traceback, subprocess
 import pyqtgraph as pg
-from . import ConsoleWidgetUI
+from . import ui_console_widget
     
 import pyqtgraph.exceptionHandling as exceptionHandling
 import pickle
@@ -70,7 +70,7 @@ class ConsoleWidget(QtGui.QWidget):
         self.multiline = None
         self.inCmd = False
         
-        self.ui = ConsoleWidgetUI.Ui_Form()
+        self.ui = ui_console_widget.Ui_Form()
         self.ui.setupUi(self)
         self.output = self.ui.output
         self.input = self.ui.input

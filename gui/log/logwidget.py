@@ -24,7 +24,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 from PyQt4 import QtGui, QtCore
-from . import LogWidgetUI
+from . import ui_logwidget
 from pyqtgraph import FeedbackButton
 import pyqtgraph.configfile as configfile
 from core.util.mutex import Mutex

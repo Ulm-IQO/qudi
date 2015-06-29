@@ -25,8 +25,8 @@ import numpy as np
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.ODMR.ODMRGuiUI import Ui_MainWindow
-from gui.ODMR.ODMRSettingsUI import Ui_SettingsDialog
+from gui.odmr.ui_odmrgui import Ui_MainWindow
+from gui.odmr.ui_odmr_settings import Ui_SettingsDialog
 from gui.confocal.confocalgui import ColorBar
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script

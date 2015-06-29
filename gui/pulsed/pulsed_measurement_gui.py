@@ -6,7 +6,7 @@ import time
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.pulsed.PulsedMeasurementGuiUI import Ui_MainWindow
+from gui.pulsed.ui_pulsed_measurement_gui import Ui_MainWindow
 
 # To convert the *.ui file to a raw PulsedMeasurementsGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:

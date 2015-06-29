@@ -20,8 +20,8 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
 
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui
-from .ManagerWindowUI import Ui_MainWindow
-from .ModuleWidgetUI import Ui_ModuleWidget
+from .ui_manager_window import Ui_MainWindow
+from .ui_module_widget import Ui_ModuleWidget
 from .aboutdialog import Ui_AboutDialog
 from collections import OrderedDict
 import svn.local
