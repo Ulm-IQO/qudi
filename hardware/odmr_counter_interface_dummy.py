@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.ODMRCounterInterface import ODMRCounterInterface
+from hardware.odmr_counter_interface import ODMRCounterInterface
 from collections import OrderedDict
 import random
 import time

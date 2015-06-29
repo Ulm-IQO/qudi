@@ -20,7 +20,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from core.base import Base
 from collections import OrderedDict
-from .LaserSwitchInterface import LaserSwitchInterface
+from .laser_switch_interface import LaserSwitchInterface
 import time
 
 class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):

@@ -21,7 +21,7 @@ Copyright (C) 2015 Kay D. Jahnke  kay.jahnke@alumni.uni-ulm.de
 """
 
 from core.base import Base
-from hardware.WavemeterInterface import WavemeterInterface
+from hardware.wavemeter_interface import WavemeterInterface
 from collections import OrderedDict
 from core.util.mutex import Mutex
 

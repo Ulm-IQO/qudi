@@ -5,7 +5,7 @@ import ctypes
 import numpy as np
 from collections import OrderedDict
 from core.base import Base
-from hardware.SlowCounterInterface import SlowCounterInterface
+from hardware.slow_counter_interface import SlowCounterInterface
 import time
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
