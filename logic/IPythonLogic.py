@@ -19,7 +19,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from logic.GenericLogic import GenericLogic
-from core.util.Mutex import Mutex
+from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg

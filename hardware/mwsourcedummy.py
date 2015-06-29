@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.Base import Base
+from core.base import Base
 from hardware.mwsourceinterface import MWInterface
 import random
 from collections import OrderedDict

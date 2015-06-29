@@ -5,7 +5,7 @@
 #   HARDWARE CLASS CURRENTLY NOT WORKING - ALEX S.  #
 #                                                   #
 #####################################################
-from core.Base import Base
+from core.base import Base
 from hardware.fastcounterinterface import FastCounterInterface
 
 import ctypes 

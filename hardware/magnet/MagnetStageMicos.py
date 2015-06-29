@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # unstable: Jochen Scheuer
 
-from core.Base import Base
+from core.base import Base
 from hardware.MagnetStageInterface import MagnetStageInterface
 from collections import OrderedDict
 

@@ -35,7 +35,7 @@ from PyQt4 import QtGui, QtCore
 from .LogWidget import LogWidget
 from pyqtgraph import FeedbackButton
 import pyqtgraph.configfile as configfile
-from core.util.Mutex import Mutex
+from core.util.mutex import Mutex
 from gui.guibase import GUIBase
 import numpy as np
 from pyqtgraph import FileDialog

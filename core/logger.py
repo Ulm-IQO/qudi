@@ -29,7 +29,7 @@ import sys, os
 import pyqtgraph.debug as pgdebug
 import pyqtgraph.configfile as configfile
 from pyqtgraph.Qt import QtCore
-from .util.Mutex import Mutex
+from .util.mutex import Mutex
 import numpy as np
 import weakref
 import re

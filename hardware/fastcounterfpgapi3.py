@@ -3,8 +3,8 @@ from hardware.fastcounterinterface import FastCounterInterface
 import numpy as np
 from collections import OrderedDict
 import TimeTagger as tt
-from core.Base import Base
-from core.util.Mutex import Mutex
+from core.base import Base
+from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 
 class fastcounterfpgapi3(Base, FastCounterInterface):

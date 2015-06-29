@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.util.CustomExceptions import InterfaceImplementationError
+from core.util.customexceptions import InterfaceImplementationError
 
 class WavemeterInterface():
     """This is the Interface class to define the controls for the simple 

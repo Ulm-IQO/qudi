@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.Base import Base
+from core.base import Base
 from hardware.ConfocalScannerInterface import ConfocalScannerInterface
 from collections import OrderedDict
 import time

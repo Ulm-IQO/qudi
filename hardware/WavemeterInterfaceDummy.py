@@ -20,10 +20,10 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Kay D. Jahnke  kay.jahnke@alumni.uni-ulm.de
 """
 
-from core.Base import Base
+from core.base import Base
 from hardware.WavemeterInterface import WavemeterInterface
 from collections import OrderedDict
-from core.util.Mutex import Mutex
+from core.util.mutex import Mutex
 
 from pyqtgraph.Qt import QtGui, QtCore
 

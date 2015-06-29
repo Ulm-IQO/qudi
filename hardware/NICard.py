@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # unstable: Kay Jahnke
 
-from core.Base import Base
+from core.base import Base
 from hardware.SlowCounterInterface import SlowCounterInterface
 from hardware.ConfocalScannerInterface import ConfocalScannerInterface
 from hardware.ODMRCounterInterface import ODMRCounterInterface

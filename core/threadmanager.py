@@ -20,7 +20,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from pyqtgraph.Qt import QtCore
 from collections import OrderedDict
-from .util.Mutex import Mutex
+from .util.mutex import Mutex
 
 class ThreadManager(QtCore.QObject):
     """ This class keeps track of all the QThreads that are needed somewhere.

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from core.Base import Base
+from core.base import Base
 from hardware.PulserInterface import PulserInterface
 from collections import OrderedDict
 import time
-from core.util.CustomExceptions import InterfaceImplementationError
+from core.util.customexceptions import InterfaceImplementationError
 
 
 class PulserInterfaceDummy(Base, PulserInterface):

@@ -1,4 +1,4 @@
-from core.Base import Base
+from core.base import Base
 from hardware.fastcounterinterface import FastCounterInterface
 from collections import OrderedDict
 import time

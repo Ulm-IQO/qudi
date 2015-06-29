@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from core.util.CustomExceptions import InterfaceImplementationError
+from core.util.customexceptions import InterfaceImplementationError
 
 
 class ODMRCounterInterface():

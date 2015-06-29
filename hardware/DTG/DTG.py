@@ -4,8 +4,8 @@
 import struct
 import visa
 from collections import OrderedDict
-from core.Base import Base
-from core.util.Mutex import Mutex
+from core.base import Base
+from core.util.mutex import Mutex
 
 #the next import is only needed for the FastWrite method
 #import DTG_IO 

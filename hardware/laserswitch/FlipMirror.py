@@ -20,8 +20,8 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 import visa
 import time
-from core.Base import Base
-from core.util.Mutex import Mutex
+from core.base import Base
+from core.util.mutex import Mutex
 from .LaserSwitchInterface import LaserSwitchInterface
 
 class FlipMirror(Base, LaserSwitchInterface):
