@@ -134,7 +134,7 @@ class SaveLogic(GenericLogic):
                                      filename was specified, the savelogic will
                                      create a name which looks like
 
-                                         YYYY-MM-DD_<filelabel>_HHh-MMm-SSs.dat
+                                         YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
 
                                     The timestamp will be created at runtime if
                                     no user defined timestamp was passed.
