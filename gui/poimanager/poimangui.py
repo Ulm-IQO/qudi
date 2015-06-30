@@ -362,10 +362,10 @@ class PoiManagerGui(GUIBase):
         # Connect the buttons and inputs for the colorbar
         self._mw.roi_cb_centiles_RadioButton.toggled.connect( self.refresh_roi_colorscale )
         self._mw.roi_cb_manual_RadioButton.toggled.connect( self.refresh_roi_colorscale )
-        self._mw.roi_cb_min_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_manual )
-        self._mw.roi_cb_max_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_manual )
-        self._mw.roi_cb_low_centile_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
-        self._mw.roi_cb_high_centile_SpinBox.editingFinished.connect( self.shortcut_to_roi_cb_centiles )
+        self._mw.roi_cb_min_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_max_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_manual )
+        self._mw.roi_cb_low_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
+        self._mw.roi_cb_high_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
 
         self._markers = dict()
         
