@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ConfocalSettingsUI.ui'
+# Form implementation generated from reading ui file 'ui_cf_settings.ui'
 #
-# Created: Tue Jun 23 21:04:12 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Tue Jun 30 14:55:06 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -51,11 +51,11 @@ class Ui_SettingsDialog(object):
         sizePolicy.setHeightForWidth(self.fixed_aspect_xy_checkBox.sizePolicy().hasHeightForWidth())
         self.fixed_aspect_xy_checkBox.setSizePolicy(sizePolicy)
         self.fixed_aspect_xy_checkBox.setMaximumSize(QtCore.QSize(50, 16777215))
+        self.fixed_aspect_xy_checkBox.setAccessibleDescription(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.fixed_aspect_xy_checkBox.setAutoFillBackground(False)
         self.fixed_aspect_xy_checkBox.setText(_fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setChecked(True)
-        self.fixed_aspect_xy_checkBox.setProperty("accessibleDescription", _fromUtf8(""))
         self.fixed_aspect_xy_checkBox.setObjectName(_fromUtf8("fixed_aspect_xy_checkBox"))
         self.gridLayout.addWidget(self.fixed_aspect_xy_checkBox, 3, 2, 1, 1)
         self.label_2 = QtGui.QLabel(SettingsDialog)
@@ -203,18 +203,27 @@ class Ui_SettingsDialog(object):
 
     def retranslateUi(self, SettingsDialog):
         SettingsDialog.setWindowTitle(_translate("SettingsDialog", "qudi: Confocal - Settings", None))
+        self.label_5.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>Change the stepsize of a slider if you are using the keyboard to move the slider position.</p></body></html>", None))
         self.label_5.setText(_translate("SettingsDialog", "Slider Stepwidth with Keys :", None))
+        self.label_4.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. </p></body></html>", None))
         self.label_4.setText(_translate("SettingsDialog", "Fixed Aspect Ratio Depth Scan :", None))
-        self.label_2.setText(_translate("SettingsDialog", "Return slowness :", None))
+        self.fixed_aspect_xy_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. </span></p></body></html>", None))
+        self.label_2.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is basically the \'scan\' resolution when the scanner moves backwards to prepare to scan again a line.</p><p>How many points are scanned in one line is depending on the resolution. Since the scanner is permanently counting during the scan, only the clock frequency determined the speed, how fast a line is scanned by a given resolution. If the scanner has to move back, it uses the same scan line method but just in the reverse. How many points are approached in the backwards movement depends on the \'return slowness\'. If you scan with 100 point resolution and set return slowness to 25, than the return movement will be 4 times faster.</p><p>BE CAREFULL NOT TO USE A SMALL NUMBER, SINCE THE SCANNER MIGHT CRASH AGAINST THE BOARDER BECAUSE IT IS MOVING BACK TOO FAST!</p></body></html>", None))
+        self.label_2.setText(_translate("SettingsDialog", "Return slowness (points):", None))
+        self.clock_frequency_InputWidget.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is the inverse time how long the scanner stays at the desired position during the scan and counts.</p></body></html>", None))
+        self.label_3.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. </p></body></html>", None))
         self.label_3.setText(_translate("SettingsDialog", "Fixed Aspect Ratio XY Scan :", None))
-        self.label.setText(_translate("SettingsDialog", "Clock frequency :", None))
+        self.fixed_aspect_depth_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. </span></p></body></html>", None))
+        self.label.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is the inverse time how long the scanner stays at the desired position during the scan and counts.</p></body></html>", None))
+        self.label.setText(_translate("SettingsDialog", "Clock frequency (Hz):", None))
+        self.slider_stepwidth_InputWidget.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">Change the stepsize of a slider if you are using the keyboard to move the slider position.</span></p></body></html>", None))
+        self.return_slowness_InputWidget.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is basically the \'scan\' resolution when the scanner moves backwards to prepare to scan again a line.</p></body></html>", None))
+        self.label_9.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).</p></body></html>", None))
         self.label_9.setText(_translate("SettingsDialog", "Save ImageScene also as png file", None))
-        self.savePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">If you have pressed the save<br>routine in the Menu Bar,<br>with the svg file a png<br>file will be saved.</span></p></body></html>", None))
+        self.savePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).</span></p></body></html>", None))
+        self.save_purePNG_checkBox.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.</span></p></body></html>", None))
+        self.label_10.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.</p></body></html>", None))
         self.label_10.setText(_translate("SettingsDialog", "Save pure Image as png", None))
-        self.hardware_switch.setToolTip(_translate("SettingsDialog", "This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.\n"
-"\n"
-"Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).\n"
-"\n"
-"This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.", None))
+        self.hardware_switch.setToolTip(_translate("SettingsDialog", "<html><head/><body><p><span style=\" font-size:10pt;\">This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.</span></p><p><span style=\" font-size:10pt;\">Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).</span></p><p><span style=\" font-size:10pt;\">This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.</span></p></body></html>", None))
         self.hardware_switch.setText(_translate("SettingsDialog", "Switch off Hardware", None))
 

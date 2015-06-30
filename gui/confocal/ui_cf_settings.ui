@@ -23,6 +23,9 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Slider Stepwidth with Keys :</string>
        </property>
@@ -34,6 +37,9 @@
         <font>
          <pointsize>10</pointsize>
         </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Fixed Aspect Ratio Depth Scan :</string>
@@ -57,6 +63,12 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="accessibleDescription">
+        <string/>
+       </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
@@ -69,9 +81,6 @@
        <property name="checked">
         <bool>true</bool>
        </property>
-       <property name="accessibleDescription" stdset="0">
-        <string/>
-       </property>
       </widget>
      </item>
      <item row="1" column="0">
@@ -81,8 +90,11 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is basically the 'scan' resolution when the scanner moves backwards to prepare to scan again a line.&lt;/p&gt;&lt;p&gt;How many points are scanned in one line is depending on the resolution. Since the scanner is permanently counting during the scan, only the clock frequency determined the speed, how fast a line is scanned by a given resolution. If the scanner has to move back, it uses the same scan line method but just in the reverse. How many points are approached in the backwards movement depends on the 'return slowness'. If you scan with 100 point resolution and set return slowness to 25, than the return movement will be 4 times faster.&lt;/p&gt;&lt;p&gt;BE CAREFULL NOT TO USE A SMALL NUMBER, SINCE THE SCANNER MIGHT CRASH AGAINST THE BOARDER BECAUSE IT IS MOVING BACK TOO FAST!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Return slowness :</string>
+        <string>Return slowness (points):</string>
        </property>
       </widget>
      </item>
@@ -105,6 +117,9 @@
        </property>
        <property name="acceptDrops">
         <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is the inverse time how long the scanner stays at the desired position during the scan and counts.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="wrapping">
         <bool>false</bool>
@@ -133,6 +148,9 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Fixed Aspect Ratio XY Scan :</string>
        </property>
@@ -152,6 +170,9 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
@@ -170,8 +191,11 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is the inverse time how long the scanner stays at the desired position during the scan and counts.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Clock frequency :</string>
+        <string>Clock frequency (Hz):</string>
        </property>
       </widget>
      </item>
@@ -194,6 +218,9 @@
        </property>
        <property name="acceptDrops">
         <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -235,6 +262,9 @@
        <property name="acceptDrops">
         <bool>true</bool>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is basically the 'scan' resolution when the scanner moves backwards to prepare to scan again a line.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
@@ -259,6 +289,9 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Save ImageScene also as png file</string>
        </property>
@@ -279,7 +312,7 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;If you have pressed the save&lt;br&gt;routine in the Menu Bar,&lt;br&gt;with the svg file a png&lt;br&gt;file will be saved.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
@@ -303,6 +336,9 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
@@ -320,6 +356,9 @@
         <font>
          <pointsize>10</pointsize>
         </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Save pure Image as png</string>
@@ -348,11 +387,7 @@
    <item row="1" column="1">
     <widget class="QPushButton" name="hardware_switch">
      <property name="toolTip">
-      <string>This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.
-
-Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).
-
-This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Switch off Hardware</string>
