@@ -65,6 +65,8 @@ class ConfocalLogic(GenericLogic):
         self.stopRequested = False
 
         self.yz_instead_of_xz_scan = False
+        
+        self.permanent_scan = False
 
 
     def activation(self, e):
@@ -481,7 +483,10 @@ class ConfocalLogic(GenericLogic):
             self._scan_counter += 1
             # stop scanning when last line scan was performed
             if self._scan_counter >= np.size(self._image_vert_axis):
-                self.stop_scanning()
+                if not self.permanent_scan:
+                    self.stop_scanning()
+                else:
+                    self._scan_counter = 0                    
             self.signal_scan_lines_next.emit()
 
         except Exception as e:
