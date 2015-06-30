@@ -778,7 +778,7 @@ class ConfocalGui(GUIBase):
         self._mw.action_optimize_position.setEnabled(True)
 
         # Enable the resume scan buttons if scans were unfinished
-        # TODO: this needs to be implemented properly.  
+        # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
         self._mw.action_scan_xy_resume.setEnabled(True)
         self._mw.action_scan_depth_resume.setEnabled(True)
@@ -861,8 +861,8 @@ class ConfocalGui(GUIBase):
         @param bool enabled: start scan if that is possible
         """
         #Firstly stop any scan that might be in progress
-        #self._scanning_logic.stop_scanning() 
-             
+        #self._scanning_logic.stop_scanning()
+
         self._scanning_logic.start_scanning()
         self.disable_scan_actions()
 
@@ -872,11 +872,11 @@ class ConfocalGui(GUIBase):
         @param bool enabled: continue scan if that is possible
         """
         #Firstly stop any scan that might be in progress
-        #self._scanning_logic.stop_scanning() 
-             
+        #self._scanning_logic.stop_scanning()
+
         self._scanning_logic.continue_scanning()
-        self.disable_scan_actions()      
-      
+        self.disable_scan_actions()
+
     def depth_scan_clicked(self):
         """ Manages what happens if the depth scan is started.
 
@@ -1408,10 +1408,15 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.save_xy_data()
 
     def save_xy_scan_image(self):
-        """ Save the image and according to that the data. """
+        """ Save the image and according to that the data.
+
+        Here only the path to the module is taken from the save logic, but the
+        picture save algorithm is situated here in confocal, since it is a very
+        specific task to save the used PlotObject.
+        """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image')
+        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_xy_image_from')
 
         self._mw.xy_ViewWidget.plotItem.removeItem(self.roi_xy)
         self._mw.xy_ViewWidget.plotItem.removeItem(self.hline_xy)
@@ -1457,10 +1462,15 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.save_depth_data()
 
     def save_depth_scan_image(self):
-        """ Save the image and according to that the data. """
+        """ Save the image and according to that the data.
+
+        Here only the path to the module is taken from the save logic, but the
+        picture save algorithm is situated here in confocal, since it is a very
+        specific task to save the used PlotObject.
+        """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_depth_image')
+        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y-%m-%d_%Hh%Mm%Ss_confocal_depth_image_from')
 
         self._mw.depth_ViewWidget.plotItem.removeItem(self.roi_depth)
         self._mw.depth_ViewWidget.plotItem.removeItem(self.hline_depth)
