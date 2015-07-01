@@ -54,24 +54,21 @@
    <addaction name="menuMenu"/>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="roi_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
    <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonIconOnly</enum>
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
    </property>
    <attribute name="toolBarArea">
-    <enum>LeftToolBarArea</enum>
+    <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
    <addaction name="actionNew_ROI"/>
    <addaction name="separator"/>
-   <addaction name="actionEdit_POIs"/>
-   <addaction name="actionUpdate_POI_position"/>
-   <addaction name="actionTest"/>
   </widget>
   <widget class="QDockWidget" name="poi_editor_dockWidget">
    <property name="windowTitle">
@@ -663,6 +660,23 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="poi_ToolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="new_poi_Action"/>
+   <addaction name="refind_poi_Action"/>
+   <addaction name="track_poi_Action"/>
+  </widget>
   <action name="actionNew_ROI">
    <property name="icon">
     <iconset theme="document-new">
@@ -700,29 +714,6 @@
    </property>
    <property name="toolTip">
     <string>Load a saved ROI</string>
-   </property>
-  </action>
-  <action name="actionEdit_POIs">
-   <property name="icon">
-    <iconset theme="document-properties">
-     <normaloff/>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Edit POIs</string>
-   </property>
-   <property name="toolTip">
-    <string>Rename, select, delete POIs</string>
-   </property>
-  </action>
-  <action name="actionUpdate_POI_position">
-   <property name="icon">
-    <iconset theme="edit-find">
-     <normaloff/>
-    </iconset>
-   </property>
-   <property name="text">
-    <string>Update POI position</string>
    </property>
   </action>
   <action name="actionNew_POI">
@@ -791,14 +782,40 @@
     <string>Alt+M</string>
    </property>
   </action>
-  <action name="actionTest">
+  <action name="refind_poi_Action">
    <property name="icon">
-    <iconset theme="formula">
-     <normaloff/>
-    </iconset>
+    <iconset theme="optimize_position_poi">
+     <normaloff>../confocal</normaloff>../confocal</iconset>
    </property>
    <property name="text">
-    <string>Test</string>
+    <string>Refind POI</string>
+   </property>
+   <property name="toolTip">
+    <string>Refind the POI using the strategy selected in the POI control dock</string>
+   </property>
+  </action>
+  <action name="track_poi_Action">
+   <property name="icon">
+    <iconset theme="periodic_refind_poi">
+     <normaloff>../confocal</normaloff>../confocal</iconset>
+   </property>
+   <property name="text">
+    <string>Track POI</string>
+   </property>
+   <property name="toolTip">
+    <string>Track the POI by periodically refinding its position</string>
+   </property>
+  </action>
+  <action name="new_poi_Action">
+   <property name="icon">
+    <iconset theme="poi-add-new">
+     <normaloff>../confocal</normaloff>../confocal</iconset>
+   </property>
+   <property name="text">
+    <string>New POI</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a new POI at the current crosshair position</string>
    </property>
   </action>
  </widget>
