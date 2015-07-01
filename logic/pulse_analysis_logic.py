@@ -158,7 +158,7 @@ class PulseAnalysisLogic(GenericLogic):
             norm_mean[i] = new_laser_data[i][norm_start:norm_end].mean()
             signal_mean[i] = (new_laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
-        self.laser_plot_y = np.sum(new_laser_data,0)
+        self.laser_plot_y = new_laser_data[0] #np.sum(new_laser_data,0)
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, new_laser_data.shape[1]+1, dtype=int)
         
         self.signal_signal_plot_updated.emit() 
