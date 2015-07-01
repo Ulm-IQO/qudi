@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Wed Jul  1 11:24:46 2015
+# Created: Wed Jul  1 11:43:04 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -615,7 +615,7 @@ class Ui_MainWindow(object):
         self.xy_scan_dockWidget.setWidget(self.dockWidgetContents_4)
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.xy_scan_dockWidget)
         self.toolBar = QtGui.QToolBar(MainWindow)
-        self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
         self.toolBar.setObjectName(_fromUtf8("toolBar"))
         MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
         self.toolBar_2 = QtGui.QToolBar(MainWindow)
