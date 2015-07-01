@@ -276,6 +276,12 @@ class ConfocalGui(GUIBase):
         self.slider_small_step = 10         # initial value in nanometer
         self.slider_big_step = 100          # initial value in nanometer
 
+        # the 4 possible orientations, where the first entry of the array
+        # tells you the actual position. The number tells you how often a 90
+        # degree trun is applied.
+        self.xy_image_orientation = np.array([0,1,2,-1],int)
+        self.depth_image_orientation = np.array([0,1,2,-1],int)
+
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
 
@@ -582,6 +588,12 @@ class ConfocalGui(GUIBase):
         self._mw.actionSave_Depth_Scan.triggered.connect(self.save_depth_scan_data)
         self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image)
         self._mw.actionSave_Depth_Image_Data.triggered.connect(self.save_depth_scan_image)
+
+        # Connect the image rotation buttons with the GUI:
+        self._mw.xy_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_xy_image_anticlockwise)
+        self._mw.xy_rotate_clockwise_PushButton.clicked.connect(self.rotate_xy_image_clockwise)
+        self._mw.depth_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_depth_image_anticlockwise)
+        self._mw.depth_rotate_clockwise_PushButton.clicked.connect(self.rotate_depth_image_clockwise)
 
         # create a color map that goes from dark red to dark blue:
         color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
@@ -1225,7 +1237,45 @@ class ConfocalGui(GUIBase):
         self.refresh_depth_colorbar()
         self.refresh_depth_image()
 
+    def rotate_xy_image_clockwise(self):
+        """Rotate the xy image clockwise.
 
+        Actually you just roll the orienation array and that changes the
+        leading number of it and that will cause another rotation in the
+        refresh_xy_image method.
+        """
+        self.xy_image_orientation = np.roll(self.xy_image_orientation,1)
+        self.refresh_xy_image()
+
+    def rotate_xy_image_anticlockwise(self):
+        """Rotate the xy image anti-clockwise.
+
+        Actually you just roll the orienation array and that changes the
+        leading number of it and that will cause another rotation in the
+        refresh_xy_image method.
+        """
+        self.xy_image_orientation = np.roll(self.xy_image_orientation,-1)
+        self.refresh_xy_image()
+
+    def rotate_depth_image_clockwise(self):
+        """Rotate the depth image clockwise.
+
+        Actually you just roll the orienation array and that changes the
+        leading number of it and that will cause another rotation in the
+        refresh_depth_image method.
+        """
+        self.depth_image_orientation = np.roll(self.depth_image_orientation,1)
+        self.refresh_depth_image()
+
+    def rotate_depth_image_anticlockwise(self):
+        """Rotate the depth image anti-clockwise.
+
+        Actually you just roll the orienation array and that changes the
+        leading number of it and that will cause another rotation in the
+        refresh_depth_image method.
+        """
+        self.depth_image_orientation = np.roll(self.depth_image_orientation,-1)
+        self.refresh_depth_image()
 
     def refresh_xy_image(self):
         """ Update the current XY image from the logic.
@@ -1237,7 +1287,8 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().updateAutoRange()
         self.adjust_aspect_roi_xy()
 
-        xy_image_data = self._scanning_logic.xy_image[:,:,3].transpose()
+
+        xy_image_data = np.rot90(self._scanning_logic.xy_image[:,:,3].transpose(), self.xy_image_orientation[0])
 
         cb_range = self.get_xy_cb_range()
 
@@ -1259,8 +1310,7 @@ class ConfocalGui(GUIBase):
         self.depth_image.getViewBox().enableAutoRange()
         self.adjust_aspect_roi_depth()
 
-        depth_image_data = self._scanning_logic.depth_image[:,:,3].transpose()
-
+        depth_image_data = np.rot90(self._scanning_logic.depth_image[:,:,3].transpose(), self.depth_image_orientation[0])
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
