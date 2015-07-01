@@ -923,22 +923,23 @@ class ConfocalGui(GUIBase):
 
     def update_optimizer_settings(self):
         """ Write new settings from the gui to the file. """
-        self._optimizer_logic.refocus_XY_size = float(self._osd.xy_refocusrange_InputWidget.text())
-        self._optimizer_logic.refocus_XY_step = float(self._osd.xy_refocusstepsize_InputWidget.text())
-        self._optimizer_logic.refocus_Z_size = float(self._osd.z_refocusrange_InputWidget.text())
-        self._optimizer_logic.refocus_Z_step = float(self._osd.z_refocusstepsize_InputWidget.text())
-        self._optimizer_logic.set_clock_frequency(self._osd.count_freq_InputWidget.text())
-        self._optimizer_logic.return_slowness = float(self._osd.return_slow_InputWidget.text())
+
+        self._optimizer_logic.refocus_XY_size = self._osd.xy_refocusrange_DoubleSpinBox.value()
+        self._optimizer_logic.refocus_XY_step = self._osd.xy_refocusstepsize_DoubleSpinBox.value()
+        self._optimizer_logic.refocus_Z_size = self._osd.z_refocusrange_DoubleSpinBox.value()
+        self._optimizer_logic.refocus_Z_step = self._osd.z_refocusstepsize_DoubleSpinBox.value()
+        self._optimizer_logic.set_clock_frequency(self._osd.count_freq_SpinBox.value())
+        self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
 
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
-        self._osd.xy_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_XY_size))
-        self._osd.xy_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_XY_step))
-        self._osd.z_refocusrange_InputWidget.setText(str(self._optimizer_logic.refocus_Z_size))
-        self._osd.z_refocusstepsize_InputWidget.setText(str(self._optimizer_logic.refocus_Z_step))
-        self._osd.count_freq_InputWidget.setText(str(self._optimizer_logic._clock_frequency))
-        self._osd.return_slow_InputWidget.setText(str(self._optimizer_logic.return_slowness))
 
+        self._osd.xy_refocusrange_DoubleSpinBox.setValue(self._optimizer_logic.refocus_XY_size)
+        self._osd.xy_refocusstepsize_DoubleSpinBox.setValue(self._optimizer_logic.refocus_XY_step)
+        self._osd.z_refocusrange_DoubleSpinBox.setValue(self._optimizer_logic.refocus_Z_size)
+        self._osd.z_refocusstepsize_DoubleSpinBox.setValue(self._optimizer_logic.refocus_Z_step)
+        self._osd.count_freq_SpinBox.setValue(self._optimizer_logic._clock_frequency)
+        self._osd.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """

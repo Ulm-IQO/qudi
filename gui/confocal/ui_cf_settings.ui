@@ -14,7 +14,27 @@
    <string>qudi: Confocal - Settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="1">
+   <item row="3" column="1">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="hardware_switch">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Switch off Hardware</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
     <layout class="QGridLayout" name="gridLayout">
      <item row="5" column="0">
       <widget class="QLabel" name="label_5">
@@ -377,26 +397,6 @@
       </widget>
      </item>
     </layout>
-   </item>
-   <item row="2" column="1">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QPushButton" name="hardware_switch">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Switch off Hardware</string>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>
