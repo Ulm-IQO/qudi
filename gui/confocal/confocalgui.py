@@ -699,6 +699,56 @@ class ConfocalGui(GUIBase):
         roi_y_view = z_pos - self.roi_depth.size()[1]*0.5
         self.roi_depth.setPos([roi_x_view , roi_y_view])
 
+    def get_xy_cb_range(self):
+        """ Determines the cb_min and cb_max values for the xy scan image
+        """
+        # Exclude any zeros (which are typically due to unfinished scan)
+        xy_image_nonzero = self.xy_image.image[ np.nonzero(self.xy_image.image) ]
+
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # It only makes sense to do this if there is some nonzero data, and from PEP 8:
+        # "For sequences, (strings, lists, tuples), use the fact that empty sequences are false."
+        if self._mw.xy_cb_centiles_RadioButton.isChecked() and xy_image_nonzero.any():
+            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
+
+            cb_min = np.percentile( xy_image_nonzero, low_centile )
+            cb_max = np.percentile( xy_image_nonzero, high_centile )
+
+        # Otherwise, take user-defined values.
+        else:
+            cb_min = self._mw.xy_cb_min_InputWidget.value()
+            cb_max = self._mw.xy_cb_max_InputWidget.value()
+
+        cb_range = [cb_min, cb_max]
+
+        return cb_range
+        
+    def get_depth_cb_range(self):
+        """ Determines the cb_min and cb_max values for the xy scan image
+        """
+        # Exclude any zeros (which are typically due to unfinished scan)
+        depth_image_nonzero = self.depth_image.image[ np.nonzero(self.depth_image.image) ]
+
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # It only makes sense to do this if there is some nonzero data, and from PEP 8:
+        # "For sequences, (strings, lists, tuples), use the fact that empty sequences are false."
+        if self._mw.depth_cb_centiles_RadioButton.isChecked() and depth_image_nonzero.any():
+            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
+            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
+
+            cb_min = np.percentile( depth_image_nonzero, low_centile )
+            cb_max = np.percentile( depth_image_nonzero, high_centile )
+
+        # Otherwise, take user-defined values.
+        else:
+            cb_min = self._mw.depth_cb_min_InputWidget.value()
+            cb_max = self._mw.depth_cb_max_InputWidget.value()
+
+        cb_range = [cb_min, cb_max]
+
+        return cb_range
+        
 
     def refresh_xy_colorbar(self):
         """ Adjust the xy colorbar.
@@ -707,21 +757,10 @@ class ConfocalGui(GUIBase):
         and higherst value in the image or predefined ranges. Note that you can
         invert the colorbar if the lower border is bigger then the higher one.
         """
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.xy_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
+        cb_range = self.get_xy_cb_range()
+        
 
-            cb_min = np.percentile( self.xy_image.image, low_centile )
-            cb_max = np.percentile( self.xy_image.image, high_centile )
-
-        else:
-            cb_min = self._mw.xy_cb_min_InputWidget.value()
-            cb_max = self._mw.xy_cb_max_InputWidget.value()
-
-#        self.xy_cb.refresh_colorbar(cb_min,cb_max)
-        self._mw.xy_cb_ViewWidget.update()
+        self.xy_cb.refresh_colorbar(cb_range[0],cb_range[1])
 
     def refresh_depth_colorbar(self):
         """ Adjust the depth colorbar.
@@ -730,21 +769,9 @@ class ConfocalGui(GUIBase):
         and higherst value in the image or predefined ranges. Note that you can
         invert the colorbar if the lower border is bigger then the higher one.
         """
-
-        # If "Auto" is checked, adjust colour scaling to fit all data.
-        # Otherwise, take user-defined values.
-        if self._mw.depth_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile( self.depth_image.image, low_centile )
-            cb_max = np.percentile( self.depth_image.image, high_centile )
-
-        else:
-            cb_min = self._mw.depth_cb_min_InputWidget.value()
-            cb_max = self._mw.depth_cb_max_InputWidget.value()
-
-        self.depth_cb.refresh_colorbar(cb_min,cb_max)
+        cb_range = self.get_depth_cb_range()
+        
+        self.depth_cb.refresh_colorbar(cb_range[0],cb_range[1])
 
 
     def disable_scan_actions(self):
@@ -1128,21 +1155,10 @@ class ConfocalGui(GUIBase):
 
         xy_image_data = self._scanning_logic.xy_image[:,:,3].transpose()
 
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.xy_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile( xy_image_data, low_centile )
-            cb_max = np.percentile( xy_image_data, high_centile )
-
-        else:
-            cb_min = self._mw.xy_cb_min_InputWidget.value()
-            cb_max = self._mw.xy_cb_max_InputWidget.value()
-
+        cb_range = self.get_xy_cb_range()
+        
         # Now update image with new color scale, and update colorbar
-        self.xy_image.setImage(image=xy_image_data, levels=(cb_min, cb_max) )
+        self.xy_image.setImage(image=xy_image_data, levels=(cb_range[0], cb_range[1]) )
         self.refresh_xy_colorbar()
 
         # Unlock state widget if scan is finished
@@ -1161,21 +1177,10 @@ class ConfocalGui(GUIBase):
 
         depth_image_data = self._scanning_logic.depth_image[:,:,3].transpose()
 
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # Otherwise, take user-defined values.
-        if self._mw.depth_cb_centiles_RadioButton.isChecked():
-            low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
-            high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
-
-            cb_min = np.percentile( depth_image_data, low_centile )
-            cb_max = np.percentile( depth_image_data, high_centile )
-
-        else:
-            cb_min = self._mw.depth_cb_min_InputWidget.value()
-            cb_max = self._mw.depth_cb_max_InputWidget.value()
+        cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
-        self.depth_image.setImage(image=depth_image_data, levels=(cb_min, cb_max) )
+        self.depth_image.setImage(image=depth_image_data, levels=(cb_range[0], cb_range[1]) )
         self.refresh_depth_colorbar()
 
         # Unlock state widget if scan is finished
@@ -1184,13 +1189,32 @@ class ConfocalGui(GUIBase):
 
     def refresh_refocus_image(self):
         """Refreshes the xy image, the crosshair and the colorbar. """
-        self.xy_refocus_image.setImage(image=self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
+        ##########
+        # Updating the xy optimizer image with color scaling based only on nonzero data
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:,:,3].transpose()
+        
+        colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
+        colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
+
+        self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max) )
+        
+        ##########
+        # TODO: does this need to be reset every time this refresh function is called?  
+        # Is there a better way?
         self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
+
+        ##########
+        # Crosshair in optimizer
         self.vLine.setValue(self._optimizer_logic.refocus_x)
         self.hLine.setValue(self._optimizer_logic.refocus_y)
+
+        ##########
+        # The depth optimization
         self.depth_refocus_image.setData(self._optimizer_logic._zimage_Z_values,self._optimizer_logic.z_refocus_line)
         self.depth_refocus_fit_image.setData(self._optimizer_logic._fit_zimage_Z_values,self._optimizer_logic.z_fit_data)
-#        self.refresh_xy_colorbar()
+
+        ##########
+        # Set the optimized position label
         self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimizer_logic.refocus_x, self._optimizer_logic.refocus_y, self._optimizer_logic.refocus_z))
 
 
