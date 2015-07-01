@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -263,6 +263,48 @@
           <bool>false</bool>
          </property>
         </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_14">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="depth_rotate_anticlockwise_PushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset theme="arrow-rotate-anticlockwise-icon"/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="depth_rotate_clockwise_PushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset theme="arrow-rotate-clockwise-icon"/>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
@@ -1190,7 +1232,7 @@
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0">
+        <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0,0">
          <item>
           <widget class="QSpinBox" name="xy_cb_max_InputWidget">
            <property name="sizePolicy">
@@ -1378,6 +1420,42 @@
             <bool>false</bool>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="QPushButton" name="xy_rotate_anticlockwise_PushButton">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="icon">
+              <iconset theme="arrow-rotate-anticlockwise-icon"/>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="xy_rotate_clockwise_PushButton">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="icon">
+              <iconset theme="arrow-rotate-clockwise-icon"/>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
