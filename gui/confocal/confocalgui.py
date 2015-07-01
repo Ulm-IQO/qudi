@@ -207,9 +207,16 @@ class CrossLine(pg.InfiniteLine):
 
 class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
+
+    sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
+
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
+
+    def keyPressEvent(self, event):
+        """Pass the keyboard press event from the main window further. """
+        self.sigPressKeyBoard.emit(event)
 
 class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
@@ -261,10 +268,13 @@ class ConfocalGui(GUIBase):
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
         self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
-        self.slider_stepsize = config['slider_stepsize']
+#        self.slider_stepsize = config['slider_stepsize']
         self.image_x_padding = config['image_x_padding']
         self.image_y_padding = config['image_y_padding']
         self.image_z_padding = config['image_z_padding']
+
+        self.slider_small_step = 10         # initial value in nanometer
+        self.slider_big_step = 100          # initial value in nanometer
 
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
@@ -632,6 +642,7 @@ class ConfocalGui(GUIBase):
         self._mw.depth_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
         self._mw.depth_cb_ViewWidget.setMouseEnabled(x=False,y=False)
 
+        self._mw.sigPressKeyBoard.connect(self.keyPressEvent)
 
         # Now that the ROI for xy and depth is connected to events, update the
         # default position and initialize the position of the crosshair and
@@ -695,6 +706,46 @@ class ConfocalGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+
+    def keyPressEvent(self, event):
+        """ Handles the passed keyboard events from the main window.
+
+        @param PyQt4.QtCore.QEvent event:
+        """
+        modifiers = QtGui.QApplication.keyboardModifiers()
+
+        x_pos, y_pos, z_pos = self._scanning_logic.get_position()   # in micro
+#        x_pos = round(x_pos,4)
+#        y_pos = round(y_pos,4)
+#        z_pos = round(z_pos,4)
+
+        if modifiers == QtCore.Qt.ControlModifier:
+            if event.key() == QtCore.Qt.Key_Right:
+                self.update_x_slider(float(round(x_pos+self.slider_big_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Left:
+                self.update_x_slider(float(round(x_pos-self.slider_big_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Up:
+                self.update_y_slider(float(round(y_pos+self.slider_big_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Down:
+                self.update_y_slider(float(round(y_pos-self.slider_big_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_PageUp:
+                self.update_z_slider(float(round(z_pos+self.slider_big_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_PageDown:
+                self.update_z_slider(float(round(z_pos-self.slider_big_step*0.001,4)))
+        else:
+            if event.key() == QtCore.Qt.Key_Right:
+                self.update_x_slider(float(round(x_pos+self.slider_small_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Left:
+                self.update_x_slider(float(round(x_pos-self.slider_small_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Up:
+                self.update_y_slider(float(round(y_pos+self.slider_small_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_Down:
+                self.update_y_slider(float(round(y_pos-self.slider_small_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_PageUp:
+                self.update_z_slider(float(round(z_pos+self.slider_small_step*0.001,4)))
+            elif event.key() == QtCore.Qt.Key_PageDown:
+                self.update_z_slider(float(round(z_pos-self.slider_small_step*0.001,4)))
+
     def update_crosshair_position(self):
         """ Update the GUI position of the crosshair from the logic. """
 
@@ -732,7 +783,7 @@ class ConfocalGui(GUIBase):
         cb_range = [cb_min, cb_max]
 
         return cb_range
-        
+
     def get_depth_cb_range(self):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
@@ -757,7 +808,7 @@ class ConfocalGui(GUIBase):
         cb_range = [cb_min, cb_max]
 
         return cb_range
-        
+
 
     def refresh_xy_colorbar(self):
         """ Adjust the xy colorbar.
@@ -767,7 +818,7 @@ class ConfocalGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
         cb_range = self.get_xy_cb_range()
-        
+
 
         self.xy_cb.refresh_colorbar(cb_range[0],cb_range[1])
 
@@ -779,7 +830,7 @@ class ConfocalGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
         cb_range = self.get_depth_cb_range()
-        
+
         self.depth_cb.refresh_colorbar(cb_range[0],cb_range[1])
 
 
@@ -836,10 +887,12 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.return_slowness = self._sd.return_slowness_InputWidget.value()
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
-        self.slider_stepsize = self._sd.slider_stepwidth_InputWidget.value()
+        self.slider_small_step = self._sd.slider_small_step_SpinBox.value()
+        self.slider_big_step = self._sd.slider_big_step_SpinBox.value()
 #        self.image_x_padding = self._sd.x_padding_InputWidget.value()
 #        self.image_y_padding = self._sd.y_padding_InputWidget.value()
 #        self.image_z_padding = self._sd.z_padding_InputWidget.value()
+#        self.slider_stepsize = self._sd.slider_stepwidth_InputWidget.value()
 
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
@@ -847,20 +900,22 @@ class ConfocalGui(GUIBase):
         self._sd.return_slowness_InputWidget.setValue(int(self._scanning_logic.return_slowness))
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
+        self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
+        self._sd.slider_big_step_SpinBox.setValue(int(self.slider_big_step))
 #        self._sd.x_padding_InputWidget.setValue(self.image_x_padding)
 #        self._sd.y_padding_InputWidget.setValue(self.image_y_padding)
 #        self._sd.z_padding_InputWidget.setValue(self.image_z_padding)
 
         # the smallest stepsize cannot be smaller then the resolution of the
         # sliders.
-        if self.slider_stepsize < self.slider_res:
-            self._mw.x_SliderWidget.setSingleStep = 1
-            self._mw.y_SliderWidget.setSingleStep = 1
-            self._mw.x_SliderWidget.setSingleStep = 1
-        else:
-            self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
-            self._mw.y_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
-            self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
+#        if self.slider_stepsize < self.slider_res:
+#            self._mw.x_SliderWidget.setSingleStep = 1
+#            self._mw.y_SliderWidget.setSingleStep = 1
+#            self._mw.x_SliderWidget.setSingleStep = 1
+#        else:
+#            self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
+#            self._mw.y_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
+#            self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
 
     def menue_optimizer_settings(self):
         """ This method opens the settings menue. """
@@ -1078,7 +1133,9 @@ class ConfocalGui(GUIBase):
                            is passed if the ROI is changed.
         """
         if roi is None:
-            self._mw.x_SliderWidget.setValue( int(self._mw.x_current_InputWidget.value()/self.slider_res)   )
+            self._mw.x_SliderWidget.setValue( int((self._mw.x_current_InputWidget.value() - self._scanning_logic.x_range[0])/self.slider_res)   )
+        elif type(roi) is float:
+            self._mw.x_SliderWidget.setValue( (roi- self._scanning_logic.x_range[0])/self.slider_res)
         else:
             self._mw.x_SliderWidget.setValue( int( (roi.pos()[0]+ 0.5*roi.size()[0]- self._scanning_logic.x_range[0])/self.slider_res) )
 
@@ -1089,7 +1146,9 @@ class ConfocalGui(GUIBase):
                            is passed if the ROI is changed.
         """
         if roi is None:
-            self._mw.y_SliderWidget.setValue( int(self._mw.y_current_InputWidget.value()/self.slider_res)    )
+            self._mw.y_SliderWidget.setValue( int((self._mw.y_current_InputWidget.value() - self._scanning_logic.y_range[0])/self.slider_res)    )
+        elif type(roi) is float:
+            self._mw.y_SliderWidget.setValue( (roi- self._scanning_logic.y_range[0])/self.slider_res)
         else:
             self._mw.y_SliderWidget.setValue( int( (roi.pos()[1]+ 0.5*roi.size()[1]- self._scanning_logic.y_range[0])/self.slider_res) )
 
@@ -1101,6 +1160,8 @@ class ConfocalGui(GUIBase):
         """
         if roi is None:
             self._mw.z_SliderWidget.setValue( int(( self._mw.z_current_InputWidget.value() - self._scanning_logic.z_range[0])/self.slider_res ))
+        elif type(roi) is float:
+            self._mw.z_SliderWidget.setValue( (roi- self._scanning_logic.z_range[0])/self.slider_res)
         else:
             self._mw.z_SliderWidget.setValue(int( ( roi.pos()[1] + 0.5*roi.size()[1]  - self._scanning_logic.z_range[0] )/self.slider_res) )
 
@@ -1178,7 +1239,7 @@ class ConfocalGui(GUIBase):
         xy_image_data = self._scanning_logic.xy_image[:,:,3].transpose()
 
         cb_range = self.get_xy_cb_range()
-        
+
         # Now update image with new color scale, and update colorbar
         self.xy_image.setImage(image=xy_image_data, levels=(cb_range[0], cb_range[1]) )
         self.refresh_xy_colorbar()
@@ -1214,14 +1275,14 @@ class ConfocalGui(GUIBase):
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
         xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:,:,3].transpose()
-        
+
         colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
         colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
 
         self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max) )
-        
+
         ##########
-        # TODO: does this need to be reset every time this refresh function is called?  
+        # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
         self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
 
@@ -1564,7 +1625,7 @@ class ConfocalGui(GUIBase):
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.depth_scan_dockWidget.setFloating(False)
         self._mw.optimizer_dockWidget.setFloating(False)
-        
+
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.xy_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)

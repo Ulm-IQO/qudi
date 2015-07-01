@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Wed Jul  1 11:43:04 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Wed Jul  1 11:42:52 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
