@@ -53,26 +53,36 @@ class LogModel(QtCore.QAbstractTableModel):
     def columnCount(self, parent = QtCore.QModelIndex()):
         return len(self.header)
 
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+
     def data(self, index,  role):
         if not index.isValid():
             return None
         elif role == QtCore.Qt.TextColorRole:
-            return self.fgColor[self.entries[index.row()][2]]
+            try:
+                return self.fgColor[self.entries[index.row()][2]]
+            except KeyError:
+                print('fgcolor', self.entries[index.row()][2])
+                return QtGui.QColor('#FFF')
         elif role == QtCore.Qt.DisplayRole:
+            return self.entries[index.row()][index.column()]
+        elif role == QtCore.Qt.EditRole:
             return self.entries[index.row()][index.column()]
         else:
             return None
 
     def setData(self, index, value, role = QtCore.Qt.EditRole):
-        try:
-            self.entries[index.row()] = value
-        except Exception as e:
-            print(e)
-            return False
-        topleft = self.createIndex(index.row(), 0)
-        bottomright = self.createIndex(index.row(), 4)
-        self.dataChanged.emit(topleft, bottomright)
-        return True
+        if role == QtCore.Qt.EditRole:
+            try:
+                self.entries[index.row()][index.column()] = value
+            except Exception as e:
+                print(e)
+                return False
+            topleft = self.createIndex(index.row(), 0)
+            bottomright = self.createIndex(index.row(), 4)
+            self.dataChanged.emit(topleft, bottomright)
+            return True
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         if section < 0 and section > 3:
@@ -207,8 +217,9 @@ class LogWidget(QtGui.QWidget):
         self.ui.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
         self.ui.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
         self.ui.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
-        self.ui.output.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
-        self.ui.output.verticalHeader().hide()
+        #self.ui.output.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
+        #self.ui.output.verticalHeader().hide()
+        self.ui.output.verticalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
         
 
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
@@ -242,7 +253,13 @@ class LogWidget(QtGui.QWidget):
             return
         if self.model.rowCount() > self.logLength:
             self.model.removeRows(0, self.model.rowCount() - self.logLength)
-        logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], entry['message'] ]
+        text = entry['message']
+        if entry.get('exception', None) is not None:
+            if 'reasons' in entry['exception']:
+                text += '\n' + entry['exception']['reasons']
+            for line in entry['exception']['traceback']:
+                text += '\n' + str(line) 
+        logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], text ]
         self.model.addRow(self.model.rowCount(), logEntry)
         
     def displayEntry(self, entry):

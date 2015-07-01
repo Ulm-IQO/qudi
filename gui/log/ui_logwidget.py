@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './gui/log/LogWidgetUI.ui'
+# Form implementation generated from reading ui file './gui/log/ui_logwidget.ui'
 #
 # Created by: PyQt4 UI code generator 4.11.4
 #
@@ -53,10 +53,16 @@ class Ui_Form(object):
         self.dirLabel.setObjectName(_fromUtf8("dirLabel"))
         self.gridLayout.addWidget(self.dirLabel, 0, 0, 1, 2)
         self.output = QtGui.QTableView(self.widget)
+        self.output.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked)
         self.output.setAlternatingRowColors(True)
+        self.output.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.output.setTextElideMode(QtCore.Qt.ElideNone)
         self.output.setHorizontalScrollMode(QtGui.QAbstractItemView.ScrollPerItem)
         self.output.setGridStyle(QtCore.Qt.NoPen)
         self.output.setObjectName(_fromUtf8("output"))
+        self.output.horizontalHeader().setCascadingSectionResizes(True)
+        self.output.horizontalHeader().setStretchLastSection(True)
+        self.output.verticalHeader().setVisible(False)
         self.gridLayout.addWidget(self.output, 1, 0, 1, 1)
         self.widget1 = QtGui.QWidget(self.splitter)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
