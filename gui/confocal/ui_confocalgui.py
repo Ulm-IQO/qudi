@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Wed Jul  1 10:26:04 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created: Wed Jul  1 11:22:55 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setObjectName(_fromUtf8("gridLayout_8"))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1255, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1255, 20))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -706,6 +706,8 @@ class Ui_MainWindow(object):
         icon = QtGui.QIcon.fromTheme(_fromUtf8("premanent_scan_depth"))
         self.action_loop_scan_depth.setIcon(icon)
         self.action_loop_scan_depth.setObjectName(_fromUtf8("action_loop_scan_depth"))
+        self.restore_default_view_Action = QtGui.QAction(MainWindow)
+        self.restore_default_view_Action.setObjectName(_fromUtf8("restore_default_view_Action"))
         self.menuFile.addAction(self.actionSave_XY_Scan)
         self.menuFile.addAction(self.actionSave_Depth_Scan)
         self.menuFile.addAction(self.actionSave_XY_Image_Data)
@@ -720,6 +722,8 @@ class Ui_MainWindow(object):
         self.menuView.addAction(self.actionDepth_scan_view)
         self.menuView.addAction(self.actionScan_control_view)
         self.menuView.addAction(self.actionOptimizer_view)
+        self.menuView.addSeparator()
+        self.menuView.addAction(self.restore_default_view_Action)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menu_Options.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -832,5 +836,7 @@ class Ui_MainWindow(object):
         self.action_loop_scan_xy.setToolTip(_translate("MainWindow", "Start a permanent XY Scan", None))
         self.action_loop_scan_depth.setText(_translate("MainWindow", "Loop Scan Depth", None))
         self.action_loop_scan_depth.setToolTip(_translate("MainWindow", "Start a permanent depth scan", None))
+        self.restore_default_view_Action.setText(_translate("MainWindow", "Restore default", None))
+        self.restore_default_view_Action.setToolTip(_translate("MainWindow", "Restore default arrangement of dock widgets ", None))
 
 from pyqtgraph import PlotWidget

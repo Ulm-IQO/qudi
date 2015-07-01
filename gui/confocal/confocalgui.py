@@ -507,7 +507,10 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         self.depth_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_depth)
 
-        # Connect the RadioButtons to the events if they are clicked. Connect
+        ##########
+        # Actions
+
+        # Connect the scan actions to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
         self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
 
@@ -519,6 +522,10 @@ class ConfocalGui(GUIBase):
         self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
+
+        # Connect the default view action
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+
 
 
         # Connect the buttons and inputs for the xy colorbar
@@ -1541,3 +1548,26 @@ class ConfocalGui(GUIBase):
 #            self._hardware_state=True
 #            self._sd.hardware_switch.setText('Switch off Hardware')
 #            self._scanning_logic.switch_hardware(to_on=True)
+
+
+    def restore_default_view(self):
+        """ Restore the arrangement of DockWidgets to the default
+        """
+        # Show any hiden dock widgets
+        self._mw.xy_scan_dockWidget.show()
+        self._mw.scan_control_dockWidget.show()
+        self._mw.depth_scan_dockWidget.show()
+        self._mw.optimizer_dockWidget.show()
+
+        # re-dock any floating dock widgets
+        self._mw.xy_scan_dockWidget.setFloating(False)
+        self._mw.scan_control_dockWidget.setFloating(False)
+        self._mw.depth_scan_dockWidget.setFloating(False)
+        self._mw.optimizer_dockWidget.setFloating(False)
+        
+
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.xy_scan_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.depth_scan_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.optimizer_dockWidget)
+
