@@ -11,6 +11,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+from scipy import ndimage
 
 class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek
@@ -42,6 +43,7 @@ class PulseExtractionLogic(GenericLogic):
         
         self.is_counter_gated = False
         self.num_of_lasers = 100
+        self.conv_std_dev = 20
                       
                       
     def activation(self, e):
@@ -57,36 +59,40 @@ class PulseExtractionLogic(GenericLogic):
         # sum up all gated timetraces to ease flank detection
         timetrace_sum = np.sum(count_data, 0)
         # compute the gradient of the timetrace sum
-        deriv_trace = np.gradient(timetrace_sum)
+        conv_deriv, conv = self.convolve_derive(timetrace_sum, self.conv_std_dev)
         # get indices of rising and falling flank
-        rising_ind = deriv_trace.argmax()
-        falling_ind = deriv_trace.argmin()
+        rising_ind = conv_deriv.argmax()
+        falling_ind = conv_deriv.argmin()
         # slice the data array to cut off anything but laser pulses
-        laser_arr = count_data[:, rising_ind:falling_ind+1]
+        laser_arr = count_data[:, rising_ind:falling_ind]
         return laser_arr
 
     
     def _ungated_extraction(self, count_data):
         ''' This method detects the laser pulses in the ungated timetrace data and extracts them
         '''
-        deriv_trace = np.gradient(count_data)
+        conv_deriv = self.convolve_derive(count_data, self.conv_std_dev)
         rising_ind = np.empty([self.num_of_lasers],int)
         falling_ind = np.empty([self.num_of_lasers],int)
         for i in range(self.num_of_lasers):
-            rising_ind[i] = deriv_trace.argmax()
-            falling_ind[i] = deriv_trace.argmin()
-            del_ind = np.array(range(rising_ind[i]-20,rising_ind[i]+21),int)
-            del_ind = np.append(del_ind, range(falling_ind[i]-20,falling_ind[i]+21))
-            deriv_trace[del_ind] = 0
+            rising_ind[i] = np.argmax(conv_deriv)
+            conv_deriv[rising_ind[i]-100:rising_ind[i]+100] = 0#np.zeros([200])
+            falling_ind[i] = np.argmin(conv_deriv)
+            conv_deriv[falling_ind[i]-100:falling_ind[i]+100] = 0#np.zeros([200])
         rising_ind.sort()
         falling_ind.sort()
         laser_length = np.max(falling_ind-rising_ind)
-        laser_arr = np.empty([self.num_of_lasers,laser_length],int)
+        laser_arr = np.zeros([self.num_of_lasers,laser_length],int)
         for i in range(self.num_of_lasers):
             laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
         return laser_arr
+        
     
-    
+    def convolve_derive(self, timetrace, std_dev):    
+        conv = ndimage.filters.gaussian_filter1d(timetrace, std_dev)
+        conv_deriv = np.gradient(conv)
+        return conv_deriv
+
     
     def get_data_laserpulses(self):
         """ This method captures the fast counter data and extracts the laser pulses.
