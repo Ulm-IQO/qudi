@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1399,9 +1399,11 @@
    </attribute>
    <addaction name="action_scan_xy_start"/>
    <addaction name="action_scan_xy_resume"/>
+   <addaction name="action_loop_scan_xy"/>
    <addaction name="action_stop_scanning"/>
    <addaction name="action_scan_depth_start"/>
    <addaction name="action_scan_depth_resume"/>
+   <addaction name="action_loop_scan_depth"/>
    <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="toolBar_2">
@@ -1648,6 +1650,30 @@
    </property>
    <property name="toolTip">
     <string>Stop scanning XY or depth and return to &quot;ready&quot; state</string>
+   </property>
+  </action>
+  <action name="action_loop_scan_xy">
+   <property name="icon">
+    <iconset theme="premanent_scan_xy">
+     <normaloff/>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Loop Scan XY</string>
+   </property>
+   <property name="toolTip">
+    <string>Start a permanent XY Scan</string>
+   </property>
+  </action>
+  <action name="action_loop_scan_depth">
+   <property name="icon">
+    <iconset theme="premanent_scan_depth"/>
+   </property>
+   <property name="text">
+    <string>Loop Scan Depth</string>
+   </property>
+   <property name="toolTip">
+    <string>Start a permanent depth scan</string>
    </property>
   </action>
  </widget>

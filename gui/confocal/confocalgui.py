@@ -211,7 +211,6 @@ class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
 
-
 class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
     def __init__(self):
@@ -516,6 +515,9 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
         self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
 
+        self._mw.action_loop_scan_xy.triggered.connect(self.xy_loop_scan_clicked)
+        self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
+
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
 
@@ -783,9 +785,11 @@ class ConfocalGui(GUIBase):
 
         # Disable the start scan buttons
         self._mw.action_scan_xy_start.setEnabled(False)
+        self._mw.action_loop_scan_xy.setEnabled(False)
         self._mw.action_scan_depth_start.setEnabled(False)
 
         self._mw.action_scan_xy_resume.setEnabled(False)
+        self._mw.action_loop_scan_depth.setEnabled(False)
         self._mw.action_scan_depth_resume.setEnabled(False)
 
         self._mw.action_optimize_position.setEnabled(False)
@@ -809,6 +813,8 @@ class ConfocalGui(GUIBase):
         # For now they will just be enabled by default
         self._mw.action_scan_xy_resume.setEnabled(True)
         self._mw.action_scan_depth_resume.setEnabled(True)
+        self._mw.action_loop_scan_xy.setEnabled(True)
+        self._mw.action_loop_scan_depth.setEnabled(True)
 
     def _refocus_finished_wrapper(self):
         self.enable_scan_actions()
@@ -875,6 +881,7 @@ class ConfocalGui(GUIBase):
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
         if self._scanning_logic.getState() == 'locked':
+            self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
         if self._optimizer_logic.getState() == 'locked':
             self._optimizer_logic.stop_refocus()
@@ -883,15 +890,23 @@ class ConfocalGui(GUIBase):
 
 
     def xy_scan_clicked(self):
-        """ Manages what happens if the xy scan is started.
-
-        @param bool enabled: start scan if that is possible
-        """
+        """ Manages what happens if the xy scan is started. """
         #Firstly stop any scan that might be in progress
         #self._scanning_logic.stop_scanning()
 
         self._scanning_logic.start_scanning()
         self.disable_scan_actions()
+
+    def xy_loop_scan_clicked(self):
+        """ Perform a permanent xy scan."""
+
+        self._scanning_logic.permanent_scan = True
+        self.xy_scan_clicked()
+
+    def depth_loop_scan_clicked(self):
+        """Perform a permanent depth scan. """
+        self._scanning_logic.permanent_scan = True
+        self.depth_scan_clicked()
 
     def continue_xy_scan_clicked(self):
         """ Manages what happens if the xy scan is continued.
