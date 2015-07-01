@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Sun Jun 28 21:56:28 2015
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Wed Jul  1 10:26:04 2015
+#      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setObjectName(_fromUtf8("gridLayout_8"))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1255, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1255, 21))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
@@ -698,6 +698,14 @@ class Ui_MainWindow(object):
         icon = QtGui.QIcon.fromTheme(_fromUtf8("stop_scan"))
         self.action_stop_scanning.setIcon(icon)
         self.action_stop_scanning.setObjectName(_fromUtf8("action_stop_scanning"))
+        self.action_loop_scan_xy = QtGui.QAction(MainWindow)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("premanent_scan_xy"))
+        self.action_loop_scan_xy.setIcon(icon)
+        self.action_loop_scan_xy.setObjectName(_fromUtf8("action_loop_scan_xy"))
+        self.action_loop_scan_depth = QtGui.QAction(MainWindow)
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("premanent_scan_depth"))
+        self.action_loop_scan_depth.setIcon(icon)
+        self.action_loop_scan_depth.setObjectName(_fromUtf8("action_loop_scan_depth"))
         self.menuFile.addAction(self.actionSave_XY_Scan)
         self.menuFile.addAction(self.actionSave_Depth_Scan)
         self.menuFile.addAction(self.actionSave_XY_Image_Data)
@@ -717,9 +725,11 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuView.menuAction())
         self.toolBar.addAction(self.action_scan_xy_start)
         self.toolBar.addAction(self.action_scan_xy_resume)
+        self.toolBar.addAction(self.action_loop_scan_xy)
         self.toolBar.addAction(self.action_stop_scanning)
         self.toolBar.addAction(self.action_scan_depth_start)
         self.toolBar.addAction(self.action_scan_depth_resume)
+        self.toolBar.addAction(self.action_loop_scan_depth)
         self.toolBar.addAction(self.action_optimize_position)
         self.toolBar_2.addAction(self.action_zoom)
         self.toolBar_2.addAction(self.action_optimize_position)
@@ -818,5 +828,9 @@ class Ui_MainWindow(object):
         self.action_optimize_position.setToolTip(_translate("MainWindow", "Optimize position of crosshair", None))
         self.action_stop_scanning.setText(_translate("MainWindow", "Stop scan", None))
         self.action_stop_scanning.setToolTip(_translate("MainWindow", "Stop scanning XY or depth and return to \"ready\" state", None))
+        self.action_loop_scan_xy.setText(_translate("MainWindow", "Loop Scan XY", None))
+        self.action_loop_scan_xy.setToolTip(_translate("MainWindow", "Start a permanent XY Scan", None))
+        self.action_loop_scan_depth.setText(_translate("MainWindow", "Loop Scan Depth", None))
+        self.action_loop_scan_depth.setToolTip(_translate("MainWindow", "Start a permanent depth scan", None))
 
 from pyqtgraph import PlotWidget
