@@ -24,10 +24,10 @@
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;br/&gt;The keyboard configuration is the following:&lt;br/&gt;ArrowLeft = Move -x&lt;br/&gt;ArrowRight = Move +x&lt;br/&gt;ArrowUp = Move +y&lt;br/&gt;ArrowDown = Move -y&lt;br/&gt;PageUp = Move +z&lt;br/&gt;PageDown = Move -z&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Slider Stepwidth with Keys :</string>
+        <string>Slider small step with Keys (nm):</string>
        </property>
       </widget>
      </item>
@@ -199,49 +199,6 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="2">
-      <widget class="QDoubleSpinBox" name="slider_stepwidth_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="acceptDrops">
-        <bool>true</bool>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::UpDownArrows</enum>
-       </property>
-       <property name="accelerated">
-        <bool>true</bool>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.001000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.001000000000000</double>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="2">
       <widget class="QSpinBox" name="return_slowness_InputWidget">
        <property name="sizePolicy">
@@ -282,7 +239,7 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="0">
+     <item row="7" column="0">
       <widget class="QLabel" name="label_9">
        <property name="font">
         <font>
@@ -297,7 +254,7 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="2">
+     <item row="7" column="2">
       <widget class="QCheckBox" name="savePNG_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -322,7 +279,7 @@
        </property>
       </widget>
      </item>
-     <item row="7" column="2">
+     <item row="8" column="2">
       <widget class="QCheckBox" name="save_purePNG_checkBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -350,7 +307,7 @@
        </property>
       </widget>
      </item>
-     <item row="7" column="0">
+     <item row="8" column="0">
       <widget class="QLabel" name="label_10">
        <property name="font">
         <font>
@@ -369,6 +326,53 @@
       <widget class="Line" name="line">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
+      <widget class="QSpinBox" name="slider_small_step_SpinBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="maximum">
+        <number>10000</number>
+       </property>
+       <property name="singleStep">
+        <number>10</number>
+       </property>
+       <property name="value">
+        <number>10</number>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;br/&gt;The keyboard configuration is the following:&lt;br/&gt;Ctrl + ArrowLeft = Move -x&lt;br/&gt;Ctrl + ArrowRight = Move +x&lt;br/&gt;Ctrl + ArrowUp = Move +y&lt;br/&gt;Ctrl + ArrowDown = Move -y&lt;br/&gt;Ctrl + PageUp = Move +z&lt;br/&gt;Ctrl + PageDown = Move -z&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Slider big step with Keys (nm):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QSpinBox" name="slider_big_step_SpinBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="maximum">
+        <number>10000</number>
+       </property>
+       <property name="singleStep">
+        <number>10</number>
+       </property>
+       <property name="value">
+        <number>100</number>
        </property>
       </widget>
      </item>
@@ -401,7 +405,6 @@
   <tabstop>return_slowness_InputWidget</tabstop>
   <tabstop>fixed_aspect_xy_checkBox</tabstop>
   <tabstop>fixed_aspect_depth_checkBox</tabstop>
-  <tabstop>slider_stepwidth_InputWidget</tabstop>
   <tabstop>savePNG_checkBox</tabstop>
   <tabstop>save_purePNG_checkBox</tabstop>
   <tabstop>hardware_switch</tabstop>
