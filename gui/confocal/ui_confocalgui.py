@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_confocalgui.ui'
 #
-# Created: Wed Jul  1 11:22:55 2015
+# Created: Wed Jul  1 11:24:46 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -699,11 +699,11 @@ class Ui_MainWindow(object):
         self.action_stop_scanning.setIcon(icon)
         self.action_stop_scanning.setObjectName(_fromUtf8("action_stop_scanning"))
         self.action_loop_scan_xy = QtGui.QAction(MainWindow)
-        icon = QtGui.QIcon.fromTheme(_fromUtf8("premanent_scan_xy"))
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("permanent_scan_xy"))
         self.action_loop_scan_xy.setIcon(icon)
         self.action_loop_scan_xy.setObjectName(_fromUtf8("action_loop_scan_xy"))
         self.action_loop_scan_depth = QtGui.QAction(MainWindow)
-        icon = QtGui.QIcon.fromTheme(_fromUtf8("premanent_scan_depth"))
+        icon = QtGui.QIcon.fromTheme(_fromUtf8("permanent_scan_depth"))
         self.action_loop_scan_depth.setIcon(icon)
         self.action_loop_scan_depth.setObjectName(_fromUtf8("action_loop_scan_depth"))
         self.restore_default_view_Action = QtGui.QAction(MainWindow)
