@@ -1656,7 +1656,7 @@
   </action>
   <action name="action_loop_scan_xy">
    <property name="icon">
-    <iconset theme="premanent_scan_xy">
+    <iconset theme="permanent_scan_xy">
      <normaloff/>
     </iconset>
    </property>
@@ -1669,7 +1669,7 @@
   </action>
   <action name="action_loop_scan_depth">
    <property name="icon">
-    <iconset theme="premanent_scan_depth">
+    <iconset theme="permanent_scan_depth">
      <normaloff/>
     </iconset>
    </property>
