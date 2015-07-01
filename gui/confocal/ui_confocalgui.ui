@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -59,6 +59,8 @@
     <addaction name="actionDepth_scan_view"/>
     <addaction name="actionScan_control_view"/>
     <addaction name="actionOptimizer_view"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menu_Options"/>
@@ -1667,13 +1669,23 @@
   </action>
   <action name="action_loop_scan_depth">
    <property name="icon">
-    <iconset theme="premanent_scan_depth"/>
+    <iconset theme="premanent_scan_depth">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Loop Scan Depth</string>
    </property>
    <property name="toolTip">
     <string>Start a permanent depth scan</string>
+   </property>
+  </action>
+  <action name="restore_default_view_Action">
+   <property name="text">
+    <string>Restore default</string>
+   </property>
+   <property name="toolTip">
+    <string>Restore default arrangement of dock widgets </string>
    </property>
   </action>
  </widget>
