@@ -41,9 +41,11 @@ class PulseExtractionLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
+        self.sequence_parameters = {}
+        self.sequence_parameters['number_of_lasers'] = 100
+        
         self.is_counter_gated = False
-        self.num_of_lasers = 100
-        self.conv_std_dev = 20
+        self.conv_std_dev = 5
                       
                       
     def activation(self, e):
@@ -72,18 +74,39 @@ class PulseExtractionLogic(GenericLogic):
         ''' This method detects the laser pulses in the ungated timetrace data and extracts them
         '''
         conv_deriv = self.convolve_derive(count_data, self.conv_std_dev)
-        rising_ind = np.empty([self.num_of_lasers],int)
-        falling_ind = np.empty([self.num_of_lasers],int)
-        for i in range(self.num_of_lasers):
+        rising_ind = np.empty([self.sequence_parameters['number_of_lasers']],int)
+        falling_ind = np.empty([self.sequence_parameters['number_of_lasers']],int)
+        
+        for i in range(self.sequence_parameters['number_of_lasers']):
             rising_ind[i] = np.argmax(conv_deriv)
-            conv_deriv[rising_ind[i]-100:rising_ind[i]+100] = 0#np.zeros([200])
+            if rising_ind[i] < 2*self.conv_std_dev:
+                del_ind_start = 0
+            else:
+                del_ind_start = rising_ind[i] - 2*self.conv_std_dev
+            if (conv_deriv.size - rising_ind[i]) < 2*self.conv_std_dev:
+                del_ind_stop = conv_deriv.size-1
+            else:
+                del_ind_stop = rising_ind[i] + 2*self.conv_std_dev
+            conv_deriv[del_ind_start:del_ind_stop] = 0
+            
             falling_ind[i] = np.argmin(conv_deriv)
-            conv_deriv[falling_ind[i]-100:falling_ind[i]+100] = 0#np.zeros([200])
+            if falling_ind[i] < 2*self.conv_std_dev:
+                del_ind_start = 0
+            else:
+                del_ind_start = falling_ind[i] - 2*self.conv_std_dev
+            if (conv_deriv.size - falling_ind[i]) < 2*self.conv_std_dev:
+                del_ind_stop = conv_deriv.size-1
+            else:
+                del_ind_stop = falling_ind[i] + 2*self.conv_std_dev
+            conv_deriv[del_ind_start:del_ind_stop] = 0
+            
         rising_ind.sort()
         falling_ind.sort()
         laser_length = np.max(falling_ind-rising_ind)
-        laser_arr = np.zeros([self.num_of_lasers,laser_length],int)
-        for i in range(self.num_of_lasers):
+        np.savetxt('risedata.txt', rising_ind)
+        np.savetxt('falldata.txt', falling_ind)
+        laser_arr = np.zeros([self.sequence_parameters['number_of_lasers'],laser_length],int)
+        for i in range(self.sequence_parameters['number_of_lasers']):
             laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
         return laser_arr
         
