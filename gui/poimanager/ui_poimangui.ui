@@ -631,7 +631,7 @@
        <item>
         <widget class="QRadioButton" name="dispay_shift_vs_duration_RadioButton">
          <property name="text">
-          <string>Duration (seconds)</string>
+          <string>Duration</string>
          </property>
          <property name="checked">
           <bool>true</bool>

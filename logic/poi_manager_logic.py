@@ -432,7 +432,7 @@ class PoiManagerLogic(GenericLogic):
     def start_periodic_refocus(self, duration=None, poikey = None):
         """ Starts the perodic refocussing of the poi.
         
-        @param float duration: (optional) the time between periodic refocussion
+        @param float duration: (optional) the time between periodic optimization
         @param string poikey: (optional) the key of the current poi to be set and refocussed on.
         
         @return int: error code (0:OK, -1:error)
@@ -454,6 +454,19 @@ class PoiManagerLogic(GenericLogic):
         self.timer.timeout.connect(self._periodic_refocus_loop)
         self.timer.start(300)
         return 0
+
+    def change_periodic_optimize_duration(self, duration=None):
+        """ Change the duration of the periodic optimize timer during active
+        periodic refocussing.
+
+        @param float duration: (optional) the time between periodic optimization.
+        """
+        if duration != None:
+            self.timer_duration=duration
+        else:
+            self.logMsg('No timer duration given, using {} s.'.format(self.timer_duration), 
+                msgType='warning')
+
         
     def _periodic_refocus_loop(self):
         """ This is the looped function that does the actual periodic refocus.
