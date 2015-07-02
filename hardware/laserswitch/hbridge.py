@@ -55,11 +55,17 @@ class HBridge(Base, LaserSwitchInterface):
 
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
+
+          @return int: number of switches
         """
         return 4
 
     def getSwitchState(self, switchNumber):
-        """
+        """ Gives state of switch.
+
+          @param int switchNumber: number of switch
+
+          @return bool: True if on, False if off, None on error
         """
         with self.lock:
             pos = self.inst.ask('STATUS')
@@ -69,17 +75,36 @@ class HBridge(Base, LaserSwitchInterface):
             return ret[switchNumber]
 
     def getCalibration(self, switchNumber, state):
-        """
+        """ Get calibration parameter for switch.
+
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+
+          @return str: calibration parameter fir switch and state.
+
+        In this case, the calibration parameter is the time for which current is
+        applied to the coil/motor for switching.
+
         """
         return 0
 
     def setCalibration(self, switchNumber, state, value):
-        """
+        """ Set calibration parameter for switch.
+
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+          @param int value: calibration parameter to be set.
+
+          @return bool: True if success, False on error
         """
         pass
 
     def switchOn(self, switchNumber):
-        """
+        """ Extend coil or move motor.
+
+          @param int switchNumber: number of switch to be switched
+
+          @return bool: True if suceeds, False otherwise
         """
         coilnr = int(switchNumber) + 1
         if int(coilnr) > 0 and int(coilnr) < 5:
@@ -97,7 +122,11 @@ class HBridge(Base, LaserSwitchInterface):
             self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
     
     def switchOff(self, switchNumber):
-        """
+        """ Retract coil ore move motor.
+
+          @param int switchNumber: number of switch to be switched
+
+          @return bool: True if suceeds, False otherwise
         """
         coilnr = int(switchNumber) + 1
         if int(coilnr) > 0 and int(coilnr) < 5:
@@ -115,4 +144,13 @@ class HBridge(Base, LaserSwitchInterface):
             self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
 
     def getSwitchTime(self, switchNumber):
+        """ Give switching time for switch.
+
+          @param int switchNumber: number of switch
+
+          @return float: time needed for switch state change
+
+          Coils typically switch faster than 0.5s, but safety first!
+        """
         return 0.5
+

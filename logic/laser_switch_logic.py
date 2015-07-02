@@ -30,21 +30,32 @@ class LaserSwitchLogic(GenericLogic):
     _modtype = 'logic'
         
     def __init__(self, manager, name, config, **kwargs):
+        """ Create logic object
+          
+          @param object manager: reference to module Manager
+          @param str name: unique module name
+          @param dict config: configuration in a dict
+          @param dict kwargs: additional parameters as a dict
+        """
         ## declare actions for state transitions
         state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
-        ## declare connectors
+        # one 'out connector' for all switches
         self.connector['out']['laserswitchlogic'] = OrderedDict()
         self.connector['out']['laserswitchlogic']['class'] = 'laserswitchlogic'
 
+        # dynamic number of 'in' connectors depending on config
         if 'connect' in config:
             for connector in config['connect']:
                 self.connector['in'][connector] = OrderedDict()
                 self.connector['in'][connector]['class'] = 'LaserSwitchInterface'
                 self.connector['in'][connector]['object'] = None
         
-
     def activation(self, e):
+        """ Prepare logic module for work.
+
+          @param object e: Fysom state change notification
+        """
         self.switches = list()
         for connector in self.connector['in']:
             switchHW = list()
@@ -56,4 +67,9 @@ class LaserSwitchLogic(GenericLogic):
             self.switches.append(switchHW)
 
     def deactivation(self, e):
-        pass
+        """ Deactivate modeule.
+
+          @param object e: Fysom state change notification
+        """
+        self.switches = list()
+

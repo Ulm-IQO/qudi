@@ -32,6 +32,13 @@ class FlipMirror(Base, LaserSwitchInterface):
     _modtype = 'hardware'
 
     def __init__(self, manager, name, config, **kwargs):
+        """ Creae flip mirror control module 
+
+          @param object manager: reference to module manager
+          @param str name: unique module name
+          @param dict config; configuration parameters in a dict
+          @param dict kwargs: aditional parameters in a dict
+        """
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
 
@@ -40,6 +47,10 @@ class FlipMirror(Base, LaserSwitchInterface):
         self.lock = Mutex()
 
     def activation(self, e):
+        """ Prepare module, connect to hardware.
+
+          @param e: Fysom stae change notification.
+        """
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
@@ -52,15 +63,25 @@ class FlipMirror(Base, LaserSwitchInterface):
         )
 
     def deactivation(self, e):
+        """ Disconnect from hardware on deactivation.
+
+          @param e: Fysom stae change notification.
+        """
         self.inst.close()
 
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
+
+          @return int: number of swiches on this hardware
         """
         return 1
 
     def getSwitchState(self, switchNumber):
-        """
+        """ Gives state of switch.
+
+          @param int switchNumber: number of switch
+
+          @return bool: True if vertical, False if horizontal, None on error
         """
         with self.lock:
             pos = self.inst.ask('GP1')
@@ -72,7 +93,16 @@ class FlipMirror(Base, LaserSwitchInterface):
                 return None
 
     def getCalibration(self, switchNumber, state):
-        """
+        """ Get calibration parameter for switch.
+
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+
+          @return str: calibration parameter fir switch and state.
+
+        In this case, the calibration parameter is a integer number that says where the
+        horizontal and vertical position of the flip mirror is in the 16 bit PWM range of the motor driver.
+        The number is returned as a string, not as an int, and needs to be converted.
         """
         with self.lock:
             try:
@@ -86,7 +116,13 @@ class FlipMirror(Base, LaserSwitchInterface):
             return result
 
     def setCalibration(self, switchNumber, state, value):
-        """
+        """ Set calibration parameter for switch.
+
+          @param int switchNumber: number of switch for which to get calibration parameter
+          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+          @param int value: calibration parameter to be set.
+
+          @return bool: True if success, False on error
         """
         with self.lock:
             try:
@@ -98,7 +134,11 @@ class FlipMirror(Base, LaserSwitchInterface):
             return True
 
     def switchOn(self, switchNumber):
-        """
+        """ Turn the flip mirror to vertical position.
+
+          @param int switchNumber: number of switch to be switched
+
+          @return bool: True if suceeds, False otherwise
         """
         with self.lock:
             try:
@@ -112,7 +152,11 @@ class FlipMirror(Base, LaserSwitchInterface):
             return True
     
     def switchOff(self, switchNumber):
-        """
+        """ Turn the flip mirror to horizontal position.
+
+          @param int switchNumber: number of switch to be switched
+
+          @return bool: True if suceeds, False otherwise
         """
         with self.lock:
             try:
@@ -127,6 +171,10 @@ class FlipMirror(Base, LaserSwitchInterface):
 
 
     def getSwitchTime(self, switchNumber):
-        """
+        """ Give switching time for switch.
+
+          @param int switchNumber: number of switch
+
+          @return float: time needed for switch state change
         """
         return 2.0

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 """
 This file contains the QuDi log widget class.
 
@@ -34,8 +33,11 @@ import weakref
 import re
 
 class LogModel(QtCore.QAbstractTableModel):
-
+    """ This is a Qt model that represents the log for dislpay in a QTableView.
+    """
     def __init__(self):
+        """ Set up the model.
+        """
         super().__init__()
         self.header = ['Id', 'Time', 'Type', '!', 'Message']
         self.fgColor = {
@@ -48,15 +50,36 @@ class LogModel(QtCore.QAbstractTableModel):
         self.entries = list()
 
     def rowCount(self, parent = QtCore.QModelIndex()):
+        """ Gives th number of log entries  stored in the model.
+
+          @return int: number of log entries stored
+        """
         return len(self.entries)
 
     def columnCount(self, parent = QtCore.QModelIndex()):
+        """ Gives the number of columns each log entry has.
+
+          @return int: number of log entry columns
+        """
         return len(self.header)
 
     def flags(self, index):
+        """ Determines what can be done with log entry cells in the table view.
+
+          @param QModelIndex index: cell fo which the flags are requested
+
+          @return Qt.ItemFlags: actins allowed fotr this cell
+        """
         return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
 
     def data(self, index,  role):
+        """ Get data from model for a given cell. Data can have a role that affects display.
+
+          @param QModelIndex index: cell for which data is requested
+          @param ItemDataRole role: role for which data is requested
+
+          @return QVariant: data for given cell and role
+        """
         if not index.isValid():
             return None
         elif role == QtCore.Qt.TextColorRole:
@@ -73,6 +96,14 @@ class LogModel(QtCore.QAbstractTableModel):
             return None
 
     def setData(self, index, value, role = QtCore.Qt.EditRole):
+        """ Set data in model for a given cell. Data can have a role that affects display.
+
+          @param QModelIndex index: cell for which data is requested
+          @param QVariant value: data tht is set in the cell
+          @param ItemDataRole role: role for which data is requested
+
+          @return bool: True if setting data succeeded, False otherwise
+        """
         if role == QtCore.Qt.EditRole:
             try:
                 self.entries[index.row()][index.column()] = value
@@ -85,6 +116,14 @@ class LogModel(QtCore.QAbstractTableModel):
             return True
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+        """ Data for the table view headers.
+        
+          @param int section: number of the column to get header data for
+          @param Qt.Orientation: orientation of header (horizontal or vertical)
+          @param ItemDataRole: role for which to get data
+
+          @return QVariant: header data for given column and role
+          """
         if section < 0 and section > 3:
             return None
         elif role != QtCore.Qt.DisplayRole:
@@ -95,7 +134,15 @@ class LogModel(QtCore.QAbstractTableModel):
             return self.header[section]
 
     def insertRows(self, row, count, parent = QtCore.QModelIndex()):
-        self.beginInsertRows(parent, row, row + count - 1)
+        """ Insert empty rows (log entries) into the model.
+
+          @param int row: before which row to insert new rows
+          @param int count: how many rows to insert
+          @param QModelIndex parent: patent model index
+
+          @return bool: True if insertion succeeded, False otherwise
+        """
+        iself.beginInsertRows(parent, row, row + count - 1)
         insertion = list()
         for i in range(count):
             insertion.append([None, None, None, None, None])
@@ -104,9 +151,23 @@ class LogModel(QtCore.QAbstractTableModel):
         return True
         
     def addRow(self, row, data, parent = QtCore.QModelIndex()):
+        """ Add a single log entry to model.
+          @param int row: row before which to insert log entry
+          @param list data: log entry in list format (5 elements)
+          @param QModelIndex parent: parent model index
+          
+          @return bool: True if adding entry succeede, False otherwise
+        """
         return self.addRows(row, [data], parent)
 
     def addRows(self, row, data, parent = QtCore.QModelIndex()):
+        """ Add a log entries to model.
+          @param int row: row before which to insert log entry
+          @param list data: log entries in list format (list of lists of 5 elements)
+          @param QModelIndex parent: parent model index
+          
+          @return bool: True if adding entry succeede, False otherwise
+        """
         count = len(data)
         self.beginInsertRows(parent, row, row + count - 1)
         self.entries[row:row] = data
@@ -117,19 +178,40 @@ class LogModel(QtCore.QAbstractTableModel):
         return True
 
     def removeRows(self, row, count, parent = QtCore.QModelIndex() ): 
+        """ Remove rows (log entries) from model.
+
+          @param int row: from which row on to remove rows
+          @param int count: how many rows to remove
+          @param QModelIndex parent: parent model index
+
+          @return bool: True if removal succeeded, False otherwise
+        """
         self.beginRemoveRows(parent, row, row + count - 1)
         self.entries[row:row+count] = []
         self.endRemoveRows()
         return True
 
-class LogFilter(QtGui.QSortFilterProxyModel):
 
+class LogFilter(QtGui.QSortFilterProxyModel):
+    """ A subclass of QProxyFilterModel that determines which log entries contained in the log model are shown in the view.
+    """
     def __init__(self, parent=None):
+        """ Create the LogFilter.
+
+          @param QObject parent: parent object of filter
+        """
         super().__init__(parent)
         self.minImportance = 5
         self.showTypes = ['user', 'thread', 'status', 'warning', 'error']
 
     def filterAcceptsRow(self, sourceRow, sourceParent):
+        """ Determine wheter row (log entry) hould be shown.
+
+          @param QModelIndex sourceRow: the row in the source model that we need to judege
+          @param QModelIndex sourceParent: parent model index
+
+          @return bool: True if row (log entry) should be shown, False otherwise
+        """
         indexMessageType = self.sourceModel().index(sourceRow, 2)
         messageType = self.sourceModel().data(indexMessageType, QtCore.Qt.DisplayRole)
         indexMessageImportance = self.sourceModel().index(sourceRow, 3)
@@ -139,51 +221,34 @@ class LogFilter(QtGui.QSortFilterProxyModel):
         return int(messageImportance) >= self.minImportance and messageType in self.showTypes
 
     def lessThan(self, left, right):
+        """ Comparison function for sorting rows (log entries)
+
+          @param QModelIndex left: index pointing to the first cell for comparison
+          @param QModelIndex right: index pointing to the second cell for comparison
+
+          @return bool: result of comparison left data < right data
+        """
         leftData = self.sourceModel().data(self.sourceModel().index(left.row(), 0), QtCore.Qt.DisplayRole)
         rightData = self.sourceModel().data(self.sourceModel().index(right.row(), 0), QtCore.Qt.DisplayRole)
         return leftData < rightData
 
     def setImportance(self, minImportance):
+        """ Set the minimum importance value for which messages are shown by the filter.
+        
+          @param int minImportance: a whole number between 0 and 9 giving thi minimal importnce from which a message is shown
+        """
         if minImportance >= 0 and minImportance <= 9:
             self.minImportance = minImportance
             self.invalidateFilter()
 
     def setTypes(self, showTypes):
+        """ Set which types of messages are shown through the filter.
+          
+          @param list(str) showTypes: list of all message types that should e shown
+        """
         self.showTypes = showTypes
         self.invalidateFilter()
 
-class HTMLDelegate(QtGui.QStyledItemDelegate):
-    """
-    """
-    doc = QtGui.QTextDocument()
-
-    def paint(self, painter, option, index):
-        options = QtGui.QStyleOptionViewItemV4(option)
-        self.initStyleOption(options,index)
-        style = QtGui.QApplication.style() if options.widget is None else options.widget.style()
-        self.doc.setHtml(options.text)
-        options.text = ""
-        style.drawControl(QtGui.QStyle.CE_ItemViewItem, options, painter);
-        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-        # Highlighting text if item is selected
-        #if (optionV4.state & QStyle::State_Selected)
-            #ctx.palette.setColor(QPalette::Text, optionV4.palette.color(QPalette::Active, QPalette::HighlightedText));
-        textRect = style.subElementRect(QtGui.QStyle.SE_ItemViewItemText, options)
-        painter.save()
-        painter.translate(textRect.topLeft())
-        painter.setClipRect(textRect.translated(-textRect.topLeft()))
-        self.doc.documentLayout().draw(painter, ctx)
-        painter.restore()
-
-    def sizeHint(self, option, index):
-        options = QtGui.QStyleOptionViewItemV4(option)
-        self.initStyleOption(options,index)
-        self.doc.setHtml(options.text)
-        self.doc.setTextWidth(options.rect.width())
-        return QtCore.QSize(self.doc.idealWidth(), self.doc.size().height())
-
-    def setStylesheet(self, stylesheet):
-        self.doc.setDefaultStyleSheet(stylesheet)
 
 class LogWidget(QtGui.QWidget):
     """A widget to show log entries and filter them.
@@ -206,6 +271,7 @@ class LogWidget(QtGui.QWidget):
         self.logLength = 1000
         self.stylesheet = logStyleSheet
 
+        # Set up data model and visibility filter
         self.model = LogModel()
         self.filtermodel = LogFilter()
         self.filtermodel.setSourceModel(self.model)
@@ -213,22 +279,19 @@ class LogWidget(QtGui.QWidget):
         self.idg.setStylesheet(self.stylesheet)
         #self.ui.output.setItemDelegate(HTMLDelegate())
         self.ui.output.setModel(self.filtermodel)
+
+        # set up able view properties
         self.ui.output.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
         self.ui.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
         self.ui.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
         self.ui.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
-        #self.ui.output.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
-        #self.ui.output.verticalHeader().hide()
         self.ui.output.verticalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
         
-
+        # connect signals
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
         self.ui.filterTree.itemChanged.connect(self.setCheckStates)
         self.ui.importanceSlider.valueChanged.connect(self.filtersChanged)
-        #self.ui.output.anchorClicked.connect(self.linkClicked)
-        
-        self.sigScrollToAnchor.connect(self.scrollToAnchor, QtCore.Qt.QueuedConnection)
         
         
     def loadFile(self, f):
@@ -263,9 +326,17 @@ class LogWidget(QtGui.QWidget):
         self.model.addRow(self.model.rowCount(), logEntry)
         
     def displayEntry(self, entry):
+        """ Scroll to entry in QTableView.
+
+          @param int entry: entry to scroll the view to
+        """
         self.ui.output.scrollTo(self.model.index(entry, 0))
 
     def setLogLength(self, length):
+        """ Set how many log entries will be stored by the model before discarding old entries when new entries are added.
+
+          @param int length: maximum number of log entries to be stored in model
+        """
         if length > 0:
             self.logLength = length
 
@@ -297,178 +368,3 @@ class LogWidget(QtGui.QWidget):
         """
         self.filtermodel.setImportance(self.ui.importanceSlider.value())
         
-    def scrollToAnchor(self, anchor):
-        """ Scroll the log view so the specified element is visible.
-        
-          @param object anchor: element that should be visible
-        """
-        pass
-                
-    def generateEntryHtml(self, entry):
-        """ Build a HTML string from a log message dictionary.
-
-          @param dict entry: log entry in dictionary form
-
-          @return str: HTML string containing the formatted log message from the dictionary
-        """
-        msg = self.cleanText(entry['message'])
-        
-        reasons = ""
-        docs = ""
-        exc = ""
-        if 'reasons' in entry:
-            reasons = self.formatReasonStrForHTML(entry['reasons'])
-        if 'docs' in entry:
-            docs = self.formatDocsStrForHTML(entry['docs'])
-        if entry.get('exception', None) is not None:
-            exc = self.formatExceptionForHTML(entry, entryId=entry['id'])
-            
-        extra = reasons + docs + exc
-        if extra != "":
-            #extra = "<div class='logExtra'>" + extra + "</div>"
-            extra = "<table class='logExtra'><tr><td>" + extra + "</td></tr></table>"
-        return """
-        <a name="%s"/><table class='entry'><tr><td>
-            <table class='%s'><tr><td>
-                <span class='timestamp'>%s</span>
-                <span class='message'>%s</span>
-                %s
-            </td></tr></table>
-        </td></tr></table>
-        """ % (str(entry['id']), entry['msgType'], entry['timestamp'], msg, extra)
-        
-    @staticmethod
-    def cleanText(text):
-        """ Escape special characters for HTML.
-
-          @param str text: string with special characters to be escaped
-
-          @return str: string where special characters have been replaced by theit HTML sequences
-
-          FIXME: there is probably a pre-defined metod for this, use it!
-        """
-        text = re.sub(r'&', '&amp;', text)
-        text = re.sub(r'>','&gt;', text)
-        text = re.sub(r'<', '&lt;', text)
-        text = re.sub(r'\n', '<br/>\n', text)
-        return text
-    
-    def formatExceptionForHTML(self, entry, exception=None, count=1, entryId=None):
-        """ Format exception with backtrsce in HTML.
-          @param dict entrs: log entry in dictionary form
-          @param Exception exception: Python exception object
-          @param int count: recursion counter for recursive backtrace parsing
-          @param int entryId: ID number of the log entry that this exception belongs to
-
-          @return (str, str, str): HTML formatted exception and backtrace
-
-          Here, exception is a dict that holds the message, reasons, docs, traceback and oldExceptions (which are also dicts, with the same entries)
-          the count and tracebacks keywords are for calling recursively
-        """
-        if exception is None:
-            exception = entry['exception']
-            
-        indent = 10
-        
-        text = self.cleanText(exception['message'])
-        text = re.sub(r'^HelpfulException: ', '', text)
-        messages = [text]
-        
-        if 'reasons' in exception:
-            reasons = self.formatReasonsStrForHTML(exception['reasons'])
-            text += reasons
-        if 'docs' in exception:
-            docs = self.formatDocsStrForHTML(exception['docs'])
-            text += docs
-        
-        traceback = [self.formatTracebackForHTML(exception['traceback'], count)]
-        text = [text]
-        
-        if 'oldExc' in exception:
-            exc, tb, msgs = self.formatExceptionForHTML(entry, exception['oldExc'], count=count+1)
-            text.extend(exc)
-            messages.extend(msgs)
-            traceback.extend(tb)
-        if count == 1:
-            exc = "<div class=\"exception\"><ol>" + "\n".join(["<li>%s</li>" % ex for ex in text]) + "</ol></div>"
-            tbStr = "\n".join(["<li><b>%s</b><br/><span class='traceback'>%s</span></li>" % (messages[i], tb) for i,tb in enumerate(traceback)])
-            entry['tracebackHtml'] = tbStr
-            return exc + '<a href="exc:%s">Show traceback %s</a>'%(str(entryId), str(entryId))
-        else:
-            return text, traceback, messages
-        
-        
-    def formatTracebackForHTML(self, tb, number):
-        """ Convert a traceback object to HTML for display.
-
-          @param list tb: traceback as a list of strings
-          @param number: FIXME: unused?
-
-          @return str: HTML string containing the traceback
-        """
-        try:
-            tb = [line for line in tb if not line.startswith("Traceback (most recent call last)")]
-        except:
-            print("\n"+str(tb)+"\n")
-            raise
-        return re.sub(" ", "&nbsp;", ("").join(map(self.cleanText, tb)))[:-1]
-        
-    def formatReasonsStrForHTML(self, reasons):
-        """ Format an exception reason list as HTML.
-        
-          @param list(str) reasons: exception reasosn list
-
-          @return str: HTML formatted string with reasons
-        """
-        reasonStr = "<table class='reasons'><tr><td>Possible reasons include:\n<ul>\n"
-        for r in reasons:
-            r = self.cleanText(r)
-            reasonStr += "<li>" + r + "</li>\n"
-        reasonStr += "</ul></td></tr></table>\n"
-        return reasonStr
-    
-    def formatDocsStrForHTML(self, docs):
-        """ Format a doc string list as links in HTML.
-
-          @param docs: list of documentation urls
-
-          @return str: documenation strings as links in HTML  format
-        """ 
-        #indent = 6
-        docStr = "<div class='docRefs'>Relevant documentation:\n<ul>\n"
-        for d in docs:
-            d = self.cleanText(d)
-            docStr += "<li><a href=\"doc:%s\">%s</a></li>\n" % (d, d)
-        docStr += "</ul></div>\n"
-        return docStr
-    
-    def exportHtml(self, fileName=False):
-        """ Export visible log entries to a file as HTML.
-
-          @param str fileName: name of file to save HTML in
-
-          If no fileName is given, this opens a file dialog and asks for a location to save.
-        """
-        if fileName is False:
-            self.fileDialog = FileDialog(self, "Save HTML as...", "htmltemp.log")
-            self.fileDialog.setAcceptMode(QtGui.QFileDialog.AcceptSave)
-            self.fileDialog.show()
-            self.fileDialog.fileSelected.connect(self.exportHtml)
-            return
-        if fileName[-5:] != '.html':
-            fileName += '.html'
-        doc = self.pageTemplate
-        for e in self.displayedEntries:
-            doc += self.cache[id(e)]
-        for e in self.displayedEntries:
-            if 'tracebackHtml' in e:
-                doc = re.sub(r'<a href="exc:%s">(<[^>]+>)*Show traceback %s(<[^>]+>)*</a>'%(str(e['id']), str(e['id'])), e['tracebackHtml'], doc)
-        f = open(fileName, 'w')
-        f.write(doc)
-        f.close()
-        
-    def linkClicked(self, url):
-        """ This function is called when a link in the log view is clicked to expand the text or show documentation.
-        """
-        url = url.toString()
-
