@@ -26,12 +26,13 @@ from .ui_switchgui import Ui_MainWindow
 from .ui_switch_widget import Ui_SwitchWidget
 
 class SwitchGui(GUIBase):
-    """
+    """ A grephical interface to mofe switches by hand and change their calibration.
     """
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     def __init__(self, manager, name, config, **kwargs):
-        """Switch logic window.
+        """ Create the switch control GUI.
+
           @param object manager: Manager object that this module was loaded from
           @param str name: Unique module name
           @param dict config: Module configuration
@@ -47,6 +48,7 @@ class SwitchGui(GUIBase):
 
     def initUI(self, e=None):
         """Create all UI objects and show the window.
+
           @param object e: Fysom state change notice
         """
         self._mw = SwitchWindow()
@@ -77,20 +79,22 @@ class SwitchGui(GUIBase):
 
 
 class SwitchWindow(QtGui.QMainWindow, Ui_MainWindow):
-    """
+    """ Helper class for window loaded from UI file.
     """
     def __init__(self):
-        """
+        """ Create the switch GUI window.
         """
         QtGui.QMainWindow.__init__(self)
         self.setupUi(self)
         self.layout = QtGui.QVBoxLayout(self.scrollArea)
 
 class SwitchWidget(QtGui.QWidget, Ui_SwitchWidget):
-    """
+    """ A widget that shows all data associated to a switch.
     """
     def __init__(self, switch):
-        """
+        """ Create a switch widget.
+
+          @param dict switch: dict that contains reference to hardware  module as 'hw' and switch number as 'n'.
         """
         QtGui.QWidget.__init__(self)
         self.setupUi(self)
@@ -102,11 +106,15 @@ class SwitchWidget(QtGui.QWidget, Ui_SwitchWidget):
         self.SwitchButton.clicked.connect(self.toggleSwitch)
 
     def toggleSwitch(self):
+        """ Invert the state of the switch associated with this widget.
+        """
         if self.SwitchButton.isChecked():
             self.switch['hw'].switchOn(self.switch['n'])
         else:
             self.switch['hw'].switchOff(self.switch['n'])
 
     def switchStateUpdated(self):
+        """ Get state of switch from hardware module and adjust checkbox to correct value.
+        """
         self.SwitchButton.setChecked(self.switch['hw'].getSwitchState(self.switch['n']))
 
