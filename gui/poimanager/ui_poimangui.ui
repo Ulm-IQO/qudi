@@ -629,7 +629,7 @@
         </spacer>
        </item>
        <item>
-        <widget class="QRadioButton" name="dispay_shift_vs_duration_RadioButton">
+        <widget class="QRadioButton" name="display_shift_vs_duration_RadioButton">
          <property name="text">
           <string>Duration</string>
          </property>
@@ -639,7 +639,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QRadioButton" name="dispay_shift_vs_clocktime_RadioButton">
+        <widget class="QRadioButton" name="display_shift_vs_clocktime_RadioButton">
          <property name="text">
           <string>Clock time</string>
          </property>
