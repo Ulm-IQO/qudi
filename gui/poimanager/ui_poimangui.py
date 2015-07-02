@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_poimangui.ui'
 #
-# Created: Thu Jul  2 09:30:21 2015
+# Created: Thu Jul  2 22:00:20 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -297,13 +297,13 @@ class Ui_PoiManager(object):
         self.horizontalLayout_6.setObjectName(_fromUtf8("horizontalLayout_6"))
         spacerItem5 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_6.addItem(spacerItem5)
-        self.dispay_shift_vs_duration_RadioButton = QtGui.QRadioButton(self.dockWidgetContents_6)
-        self.dispay_shift_vs_duration_RadioButton.setChecked(True)
-        self.dispay_shift_vs_duration_RadioButton.setObjectName(_fromUtf8("dispay_shift_vs_duration_RadioButton"))
-        self.horizontalLayout_6.addWidget(self.dispay_shift_vs_duration_RadioButton)
-        self.dispay_shift_vs_clocktime_RadioButton = QtGui.QRadioButton(self.dockWidgetContents_6)
-        self.dispay_shift_vs_clocktime_RadioButton.setObjectName(_fromUtf8("dispay_shift_vs_clocktime_RadioButton"))
-        self.horizontalLayout_6.addWidget(self.dispay_shift_vs_clocktime_RadioButton)
+        self.display_shift_vs_duration_RadioButton = QtGui.QRadioButton(self.dockWidgetContents_6)
+        self.display_shift_vs_duration_RadioButton.setChecked(True)
+        self.display_shift_vs_duration_RadioButton.setObjectName(_fromUtf8("display_shift_vs_duration_RadioButton"))
+        self.horizontalLayout_6.addWidget(self.display_shift_vs_duration_RadioButton)
+        self.display_shift_vs_clocktime_RadioButton = QtGui.QRadioButton(self.dockWidgetContents_6)
+        self.display_shift_vs_clocktime_RadioButton.setObjectName(_fromUtf8("display_shift_vs_clocktime_RadioButton"))
+        self.horizontalLayout_6.addWidget(self.display_shift_vs_clocktime_RadioButton)
         self.verticalLayout_4.addLayout(self.horizontalLayout_6)
         self.sample_shift_ViewWidget = PlotWidget(self.dockWidgetContents_6)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
@@ -423,8 +423,8 @@ class Ui_PoiManager(object):
         self.roi_cb_centiles_RadioButton.setText(_translate("PoiManager", "Centiles", None))
         self.roi_cb_manual_RadioButton.setText(_translate("PoiManager", "Manual", None))
         self.sample_shift_dockWidget.setWindowTitle(_translate("PoiManager", "Sample shift", None))
-        self.dispay_shift_vs_duration_RadioButton.setText(_translate("PoiManager", "Duration", None))
-        self.dispay_shift_vs_clocktime_RadioButton.setText(_translate("PoiManager", "Clock time", None))
+        self.display_shift_vs_duration_RadioButton.setText(_translate("PoiManager", "Duration", None))
+        self.display_shift_vs_clocktime_RadioButton.setText(_translate("PoiManager", "Clock time", None))
         self.poi_ToolBar.setWindowTitle(_translate("PoiManager", "toolBar", None))
         self.actionNew_ROI.setText(_translate("PoiManager", "New ROI", None))
         self.actionNew_ROI.setToolTip(_translate("PoiManager", "Start a new ROI (such as after moving to a different part of the sample", None))

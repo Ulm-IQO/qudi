@@ -21,6 +21,7 @@ Copyright (C) 2015 Lachlan J. Rogers  lachlan.rogers@uni-ulm.de
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 import numpy as np
+import time
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
@@ -367,8 +368,8 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_low_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
         self._mw.roi_cb_high_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
 
-        self._mw.dispay_shift_vs_duration_RadioButton.toggled.connect( self._redraw_sample_shift)
-        self._mw.dispay_shift_vs_clocktime_RadioButton.toggled.connect( self._redraw_sample_shift)
+        self._mw.display_shift_vs_duration_RadioButton.toggled.connect( self._redraw_sample_shift)
+        self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect( self._redraw_sample_shift)
 
         self._markers = dict()
         
@@ -380,7 +381,10 @@ class PoiManagerGui(GUIBase):
 
         # Connect track period
         self._mw.track_period_SpinBox.valueChanged.connect( self.change_track_period )
- 
+
+        # Redraw the sample_shift axes if the range changes
+        self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect( self._redraw_sample_shift )
+
 #        print('Main POI Manager Window shown:')
         self._mw.show()
 
@@ -593,30 +597,77 @@ class PoiManagerGui(GUIBase):
             self._poi_manager_logic.change_periodic_optimize_duration( duration=new_track_period )
 
 
+    def _redraw_clocktime_ticks(self):
+        """If duration is displayed, reset ticks to default.
+        Otherwise, create and update custom date/time ticks to the new axis range.
+        """
+        myAxisItem = self._mw.sample_shift_ViewWidget.plotItem.axes['bottom']['item'] 
+        
+        # if duration display, reset to default ticks
+        if self._mw.display_shift_vs_duration_RadioButton.isChecked():
+            myAxisItem.setTicks( None )
+        
+        # otherwise, convert tick strings to clock format
+        else: 
+            
+            ## determine size of the sample shift bottom axis item in pixels
+            bounds = myAxisItem.mapRectFromParent(myAxisItem.geometry())
+            span = (bounds.topLeft(), bounds.topRight())
+            lengthInPixels = (span[1] - span[0]).manhattanLength() 
+    
+            if lengthInPixels == 0:
+                return
+    
+            default_ticks = myAxisItem.tickValues(myAxisItem.range[0], myAxisItem.range[1], lengthInPixels)
+    
+            newticks = [] 
+            for i, tick_level in enumerate(default_ticks): 
+                newticks_this_level = []
+                ticks = tick_level[1] 
+                for ii, tick in enumerate(ticks): 
+                    # For major ticks, include date
+                    if i == 0:
+                        string = time.strftime( "%H:%M (%d.%m.)", time.gmtime(tick*3600) ) 
+                        # (the axis is plotted in hours to get naturally better placed ticks.)
+
+                    # for middle and minor ticks, just display clock time
+                    else:
+                        string = time.strftime( "%H:%M", time.gmtime(tick*3600) ) 
+
+                    newticks_this_level.append( (tick, string) )
+                newticks.append( newticks_this_level )
+
+            myAxisItem.setTicks( newticks )
 
     def _redraw_sample_shift(self):
         
         # Get trace data and calculate shifts in x,y,z
         poi_trace=self._poi_manager_logic.get_trace(poikey='sample')
 
-        if self._mw.dispay_shift_vs_duration_RadioButton.isChecked():
+        # If duration display is checked, subtract initial time and convert to mins or hours as appropriate
+        if self._mw.display_shift_vs_duration_RadioButton.isChecked():
             time_shift_data = (poi_trace[:,0] - poi_trace[0,0])
 
             if np.max(time_shift_data) < 300:
-                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='s' )
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time elapsed', units='s' )
             elif np.max(time_shift_data) < 7200:
                 time_shift_data = time_shift_data / 60.0
-                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='min' )
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time elapsed', units='min' )
             else:
                 time_shift_data = time_shift_data / 3600.0
-                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='hr' )
-
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time elapsed', units='hr' )
+        
+        # Otherwise, take the actual time but divide by 3600 so that tickmarks automatically fall on whole hours
         else: 
-            time_shift_data = poi_trace[:,0]
+            time_shift_data = poi_trace[:,0] / 3600.0
+            self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='')
 
+        # Subtract initial position to get shifts
         x_shift_data  = (poi_trace[:,1] - poi_trace[0,1])/1.0e6 
         y_shift_data  = (poi_trace[:,2] - poi_trace[0,2])/1.0e6
         z_shift_data  = (poi_trace[:,3] - poi_trace[0,3])/1.0e6
+
+        # Plot data
         self.x_shift_plot.setData(time_shift_data, x_shift_data)
         self.y_shift_plot.setData(time_shift_data, y_shift_data)
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
@@ -624,6 +675,7 @@ class PoiManagerGui(GUIBase):
         self.y_legend_plot.setData(time_shift_data, y_shift_data)
         self.z_legend_plot.setData(time_shift_data, z_shift_data)
         
+        self._redraw_clocktime_ticks()
 
     def _redraw_poi_markers(self):
         
