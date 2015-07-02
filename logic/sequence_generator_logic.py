@@ -274,9 +274,11 @@ class SequenceGeneratorLogic(GenericLogic):
             else:
                 tau_vector = np.array([matrix[tau_row_index,8]]) * (1000. / self._pg_frequency_MHz)
 
-        # not yet implemented
+        # use the longest laser pulse as laser_length
+        laser_indices = np.nonzero(matrix[:,0])[0]
+        max_laser_length = np.max(matrix[laser_indices, 8])
         laser_length_vector = np.empty(number_of_lasers)
-        laser_length_vector.fill(3800)
+        laser_length_vector.fill(max_laser_length)
 
         # update current parameters
         self._current_sequence_parameters['length_bins'] = sequence_length_bins
