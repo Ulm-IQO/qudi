@@ -367,6 +367,9 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_low_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
         self._mw.roi_cb_high_centile_SpinBox.valueChanged.connect( self.shortcut_to_roi_cb_centiles )
 
+        self._mw.dispay_shift_vs_duration_RadioButton.toggled.connect( self._redraw_sample_shift)
+        self._mw.dispay_shift_vs_clocktime_RadioButton.toggled.connect( self._redraw_sample_shift)
+
         self._markers = dict()
         
         #Signal at end of refocus
@@ -374,6 +377,9 @@ class PoiManagerGui(GUIBase):
         self._poi_manager_logic.signal_timer_updated.connect(self._update_timer, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_poi_updated.connect(self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_poi_updated.connect(self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
+
+        # Connect track period
+        self._mw.track_period_SpinBox.valueChanged.connect( self.change_track_period )
  
 #        print('Main POI Manager Window shown:')
         self._mw.show()
@@ -570,12 +576,44 @@ class PoiManagerGui(GUIBase):
 #        print(self._poi_manager_logic.time_left)
         self._mw.time_till_next_update_ProgressBar.setValue( self._poi_manager_logic.time_left )
 
+    def change_track_period(self):
+        """Change the progress bar and update the timer duration.
+        """
+
+        new_track_period = self._mw.track_period_SpinBox.value()
+
+        # Set the new maximum for the progress bar
+        self._mw.time_till_next_update_ProgressBar.setMaximum( new_track_period )
+
+        # If the tracker is not active, then set the value of the progress bar to the new maximum
+        if not self._mw.periodic_update_CheckBox.isChecked():
+            self._mw.time_till_next_update_ProgressBar.setValue( new_track_period )
+        # Otherwise (if the tracker is active), send the new track period to the tracking logic.
+        else:
+            self._poi_manager_logic.change_periodic_optimize_duration( duration=new_track_period )
+
+
+
     def _redraw_sample_shift(self):
         
         # Get trace data and calculate shifts in x,y,z
         poi_trace=self._poi_manager_logic.get_trace(poikey='sample')
 
-        time_shift_data = poi_trace[:,0] - poi_trace[0,0]
+        if self._mw.dispay_shift_vs_duration_RadioButton.isChecked():
+            time_shift_data = (poi_trace[:,0] - poi_trace[0,0])
+
+            if np.max(time_shift_data) < 300:
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='s' )
+            elif np.max(time_shift_data) < 7200:
+                time_shift_data = time_shift_data / 60.0
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='min' )
+            else:
+                time_shift_data = time_shift_data / 3600.0
+                self._mw.sample_shift_ViewWidget.setLabel( 'bottom', 'Time', units='hr' )
+
+        else: 
+            time_shift_data = poi_trace[:,0]
+
         x_shift_data  = (poi_trace[:,1] - poi_trace[0,1])/1.0e6 
         y_shift_data  = (poi_trace[:,2] - poi_trace[0,2])/1.0e6
         z_shift_data  = (poi_trace[:,3] - poi_trace[0,3])/1.0e6
