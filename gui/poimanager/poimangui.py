@@ -627,12 +627,12 @@ class PoiManagerGui(GUIBase):
                 for ii, tick in enumerate(ticks): 
                     # For major ticks, include date
                     if i == 0:
-                        string = time.strftime( "%H:%M (%d.%m.)", time.gmtime(tick*3600) ) 
+                        string = time.strftime( "%H:%M (%d.%m.)", time.localtime(tick*3600) ) 
                         # (the axis is plotted in hours to get naturally better placed ticks.)
 
                     # for middle and minor ticks, just display clock time
                     else:
-                        string = time.strftime( "%H:%M", time.gmtime(tick*3600) ) 
+                        string = time.strftime( "%H:%M", time.localtime(tick*3600) ) 
 
                     newticks_this_level.append( (tick, string) )
                 newticks.append( newticks_this_level )
