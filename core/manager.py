@@ -57,7 +57,6 @@ class Manager(QtCore.QObject):
       @signal sigConfigChanged: the configuration has changed, please reread your configuration
       @signal sigModulesChanged: the available modules have changed
       @signal sigModuleHasQuit: the module whose name is passed is now deactivated
-      @signal sigBaseDirChanged: the base directiory has changed
       @signal sigAbortAll: abort all running things as quicly as possible
       @signal sigManagerQuit: the manager is quitting
       @signal sigManagerShow: show whatever part of the GUI is important
@@ -69,7 +68,6 @@ class Manager(QtCore.QObject):
     sigConfigChanged = QtCore.Signal()
     sigModulesChanged = QtCore.Signal() 
     sigModuleHasQuit = QtCore.Signal(object)
-    sigBaseDirChanged = QtCore.Signal()
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object)
@@ -108,8 +106,6 @@ class Manager(QtCore.QObject):
         self.currentDir = None
         self.remoteServer = True
         self.baseDir = None
-        self.disableDevs = []
-        self.disableAllDevs = False
         self.alreadyQuit = False
 
         try:
@@ -122,27 +118,19 @@ class Manager(QtCore.QObject):
             # Command Line parameters
             if argv is not None:
                 try:
-                    opts, args = getopt.getopt(argv, 'c:a:m:b:s:d:gD',
-                    ['config=',
-                    'config-name=',
-                    'module=',
-                    'base-dir=',
-                    'storage-dir=',
-                    'disable=',
-                    'no-gui',
-                    'disable-all'])
+                    opts, args = getopt.getopt(argv, 'c:s:g',
+                                    ['config=',
+                                    'storagedir=',
+                                    'no-gui'
+                                    ]
+                                )
                 except getopt.GetoptError as err:
                     print(str(err))
                     print("""
     Valid options are:
         -c --config=        Configuration file to load
-        -a --config-name=   Named configuration to load
-        -m --module=        Module name to load
-        -b --base-dir=      Base directory to use
-        -s --storage-dir=   Storage directory to use
+        -s --storagedir=   Storage directory to use
         -g --no-gui         Do not load manager module
-        -d --disable=       Disable the device specified
-        -D --disable-all    Disable all devices
     """)
                     raise
             else:
@@ -158,26 +146,15 @@ class Manager(QtCore.QObject):
             
             # Handle command line options
             loadModules = []
-            setBaseDir = None
             setStorageDir = None
             loadConfigs = []
             for o, a in opts:
                 if o in ['-c', '--config']:
                     configFile = a
-                elif o in ['-a', '--configname']:
-                    loadConfigs.append(a)
-                elif o in ['-m', '--module']:
-                    loadModules.append(a)
-                elif o in ['-b', '--basedir']:
-                    setBaseDir = a
                 elif o in ['-s', '--storagedir']:
                     setStorageDir = a
                 elif o in ['-g', '--no-gui']:
                     self.hasGui = False
-                elif o in ['-d', '--disable']:
-                    self.disableDevs.append(a)
-                elif o in ['-D', '--disable-all']:
-                    self.disableAllDevs = True
                 else:
                     print("Unhandled option", o, a)
 
@@ -244,6 +221,7 @@ class Manager(QtCore.QObject):
             if len(self.tree['loaded']['logic']) == 0 and len(self.tree['loaded']['gui']) == 0 :
                 self.logger.logMsg('No modules loaded during startup. Not '
                                    'is happening.', importance=9)
+
     def getMainDir(self):
         """Returns the absolut path to the directory of the main software.
         
@@ -257,16 +235,15 @@ class Manager(QtCore.QObject):
           
           @return sting: path to configuration file
         """
-        from . import CONFIGPATH
-        for path in CONFIGPATH:
-            cf = os.path.join(path, 'custom.cfg')
-            if os.path.isfile(cf):
-                return cf
-            cf = os.path.join(path, 'default.cfg')
-            if os.path.isfile(cf):
-                return cf
-        raise Exception("Could not find config file in: {0}".format(CONFIGPATH) )
-    
+        path = self.getMainDir()
+        cf = os.path.join(path, 'config', 'example', 'custom.cfg')
+        if os.path.isfile(cf):
+            return cf
+        cf = os.path.join(path, 'config', 'example', 'default.cfg')
+        if os.path.isfile(cf):
+            return cf
+        raise Exception('Could not find config file {0} in: {1}'.format(filename, os.path.join(path, 'config')))
+ 
     def _appDataDir(self):
         """Get the system specific application data directory.
 
@@ -318,9 +295,6 @@ class Manager(QtCore.QObject):
                 # hardware
                 if key == 'hardware':
                     for m in cfg['hardware']:
-                        if self.disableAllDevs or m in self.disableDevs:
-                            self.logger.print_logMsg("    --> Ignoring device {0} -- disabled by request".format(m) )
-                            continue
                         if 'module.Class' in cfg['hardware'][m]:
                             self.tree['defined']['hardware'][m] = cfg['hardware'][m]
                         else: 
@@ -361,12 +335,7 @@ class Manager(QtCore.QObject):
                 # global config
                 elif key == 'global':
                     for m in cfg['global']:
-                        if m == 'storageDir':
-                            self.logger.print_logMsg("=== Setting base directory: {0} ===".format(m) + cfg['global']['storageDir'])
-                            self.setBaseDir(cfg['global']['storageDir'])
-                            self.tree['global']['stotageDir'] = cfg['global']['storageDir']
-                
-                        elif m == 'useOpenGL' and self.hasGui:
+                        if m == 'useOpenGL' and self.hasGui:
                             # use accelerated drawing
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
                             self.tree['global']['useOpenGL'] = cfg['global']['useOpenGL']
@@ -463,22 +432,6 @@ class Manager(QtCore.QObject):
         newconfig = self.readConfigFile(filename)
         # FIXME: Does nothing right now
         self.logger.logMsg('Loaded configuration from {0}'.format(filename), msgType='status')
-
-    def setBaseDir(self, path):
-        """Set base directory for data
-
-          @param string path: base directory path
-        """
-        oldBaseDir = self.baseDir
-        dirName = os.path.dirName(path)
-        
-        if not os.path.exists(dirName):
-            os.makedirs(dirName)
-            
-        self.baseDir = dirName
-        if(oldBaseDir != dirName):
-            # emit a signal to the created Qt signal slot:
-            self.sigBaseDirChanged.emit()
 
     ##################
     # Module loading #
