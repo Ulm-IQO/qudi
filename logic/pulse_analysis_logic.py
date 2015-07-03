@@ -59,7 +59,6 @@ class PulseAnalysisLogic(GenericLogic):
         self.fluorescence_signal_width_bins = 200
         self.norm_start_bin = 500
         self.norm_width_bins = 200
-#        self._tau_vector_ns = np.array(range(100))
         
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
         self.running_sequence_parameters = {}
@@ -93,9 +92,6 @@ class PulseAnalysisLogic(GenericLogic):
         print(self.running_sequence_parameters['tau_vector'])
         print(self.running_sequence_parameters['number_of_lasers'])
         return
-#        self._number_of_laser_pulses = self._sequence_generator_logic._current_sequence_parameters['number_of_lasers']
-#        self._tau_vector_ns = self._sequence_generator_logic._current_sequence_parameters['tau_vector']
-#        self._laser_length_bins = self._sequence_generator_logic._current_sequence_parameters['laser_length_vector'][0]
 
     
     def update_fast_counter_status(self):
@@ -160,10 +156,10 @@ class PulseAnalysisLogic(GenericLogic):
             norm_mean[i] = new_laser_data[i][norm_start:norm_end].mean()
             signal_mean[i] = (new_laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
-        self.laser_plot_y = np.sum(new_laser_data,0)#new_laser_data[self.display_pulse_no] #np.sum(new_laser_data,0)
+        self.laser_plot_y = np.sum(new_laser_data,0)#new_laser_data[self.display_pulse_no]
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, new_laser_data.shape[1]+1)
-        if self.stopRequested:
-            np.savetxt('laserdata.txt', new_laser_data)
+#        if self.stopRequested:
+#            np.savetxt('laserdata.txt', new_laser_data)
         self.signal_signal_plot_updated.emit() 
         self.signal_laser_plot_updated.emit() 
         self.signal_analysis_next.emit()
