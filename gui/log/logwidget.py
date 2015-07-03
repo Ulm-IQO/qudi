@@ -275,9 +275,6 @@ class LogWidget(QtGui.QWidget):
         self.model = LogModel()
         self.filtermodel = LogFilter()
         self.filtermodel.setSourceModel(self.model)
-        self.idg = HTMLDelegate()
-        self.idg.setStylesheet(self.stylesheet)
-        #self.ui.output.setItemDelegate(HTMLDelegate())
         self.ui.output.setModel(self.filtermodel)
 
         # set up able view properties
