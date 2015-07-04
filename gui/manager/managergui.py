@@ -90,6 +90,8 @@ class ManagerGui(GUIBase):
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
+        self.checkTimer = QtCore.QTimer()
+        self.checkTimer.start(1000)
         self.updateModuleList()
 
         self._mw.config_display_dockWidget.hide()
@@ -100,12 +102,13 @@ class ManagerGui(GUIBase):
 
           @param object eFysom state change notification
         """
+        self.checkTimer.stop()
+        self.checkTimer.timeout.disconnect()
         self.sigStartModule.disconnect()
         self.sigReloadModule.disconnect()
         self.sigStopModule.disconnect()
         self.sigLoadConfig.disconnect()
         self.sigSaveConfig.disconnect()
-        self._mw.show()
         self._mw.loadAllButton.clicked.disconnect()
         self._mw.actionQuit.triggered.disconnect()
         self._mw.actionLoad_configuration.triggered.disconnect()
@@ -116,6 +119,7 @@ class ManagerGui(GUIBase):
         self._mw.actionAbout_Qt.triggered.disconnect()
         self._mw.actionAbout_QuDi.triggered.disconnect()
         self.saveWindowPos(self._mw)
+        self._mw.close()
 
     def show(self):
         """Show the window and bring it t the top.
@@ -149,11 +153,12 @@ class ManagerGui(GUIBase):
           @param str base: module category to fill
         """
         for module in self._manager.tree['defined'][base]:
-            widget = ModuleListItem(base, module)
+            widget = ModuleListItem(self._manager, base, module)
             self.modlist.append(widget)
             layout.addWidget(widget)
             widget.sigActivateThis.connect(self.sigStartModule)
             widget.sigReloadThis.connect(self.sigReloadModule)
+            self.checkTimer.timeout.connect(widget.checkModuleState)
 
     def fillTreeItem(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
@@ -261,7 +266,7 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
     sigReloadThis = QtCore.Signal(str, str)
     sigStopThis = QtCore.Signal(str, str)
 
-    def __init__(self, basename, modulename):
+    def __init__(self, manager, basename, modulename):
         """ Create a module widget.
 
           @param str basename: module category
@@ -269,6 +274,7 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
         """
         super().__init__()
         self.setupUi(self)
+        self.manager = manager
         self.name = modulename
         self.base = basename
         self.loadButton.setText('Load {0}'.format(self.name))
@@ -292,4 +298,17 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
         """ Send stop singal for module.
         """
         self.sigStopThis.emit(self.base , self.name)
+
+    def checkModuleState(self):
+        state = ''
+        try:
+            if self.base in self.manager.tree['loaded'] and self.name in self.manager.tree['loaded'][self.base]:
+                state = self.manager.tree['loaded'][self.base][self.name].getState()
+            else:
+                state = 'not loaded'
+        except:
+            self.manager.logger.logExc('Exception while querying module state.')
+            state = 'exception, cannot get state'
+        
+        self.statusLabel.setText(state)
 
