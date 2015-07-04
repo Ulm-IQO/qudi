@@ -453,6 +453,7 @@ class Manager(QtCore.QObject):
         
         # load the python module
         mod = importlib.__import__('{0}.{1}'.format(baseName, module), fromlist=['*'])
+        # print('refcnt:', sys.getrefcount(mod))
         return mod
  
     def configureModule(self, moduleObject, baseName, className, instanceName, 
