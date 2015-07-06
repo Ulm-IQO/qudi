@@ -13,7 +13,7 @@ from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.optimizer.ui_optimgui import Ui_MainWindow
 from gui.optimizer.ui_optim_settings import Ui_SettingsDialog
-from gui.confocal.confocalgui import ColorBar
+from gui.guiutils import ColorBar
 
 
 class CustomViewBox(pg.ViewBox):
