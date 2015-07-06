@@ -26,7 +26,7 @@ import time
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.poimanager.ui_poimangui import Ui_PoiManager
-from gui.confocal.confocalgui import ColorBar
+from gui.guiutils import ColorBar
 
 
 
