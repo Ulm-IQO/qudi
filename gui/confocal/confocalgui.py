@@ -450,6 +450,7 @@ class ConfocalGui(GUIBase):
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+        self._mw.optimizer_only_view_Action.triggered.connect(self.small_optimizer_view)
 
 
 
@@ -1559,3 +1560,20 @@ class ConfocalGui(GUIBase):
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.depth_scan_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.optimizer_dockWidget)
 
+        # Resize window to default size
+        self._mw.resize(1255, 939)
+
+    def small_optimizer_view(self):
+        """ Rearrange the DockWidgets to produce a small optimizer interface
+        """
+        # Hide the other dock widgets
+        self._mw.xy_scan_dockWidget.hide()
+        self._mw.scan_control_dockWidget.hide()
+        self._mw.depth_scan_dockWidget.hide()
+
+        # Show the optimizer dock widget, and re-dock
+        self._mw.optimizer_dockWidget.show()
+        self._mw.optimizer_dockWidget.setFloating(False)
+
+        # Resize the window to small dimensions
+        self._mw.resize(1000, 360)
