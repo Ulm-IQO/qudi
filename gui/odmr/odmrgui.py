@@ -27,7 +27,7 @@ from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.odmr.ui_odmrgui import Ui_MainWindow
 from gui.odmr.ui_odmr_settings import Ui_SettingsDialog
-from gui.confocal.confocalgui import ColorBar
+from gui.guiutils import ColorScale, ColorBar
 
 # To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
 # in the Anaconda directory, which you can find in:
@@ -121,31 +121,10 @@ class ODMRGui(GUIBase):
         self._mw.odmr_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         
         
-        # create a color map that goes from dark red to dark blue:
-
-        # Absolute scale relative to the expected data not important. This 
-        # should have the same amount of entries (num parameter) as the number
-        # of values given in color. 
-        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
-                               ], dtype=np.ubyte)
-                               
-        color = np.array([ [255, 26,  0,255], [255,129,  0,255], [254,237,  0,255],
-                               [160,255, 86,255], [ 66,255,149,255], [  0,204,255,255],
-                               [  0, 88,255,255], [  0,  0,241,255], [  0,  0,132,255]
-                               ], dtype=np.ubyte)
-                               
-        pos = np.linspace(0.0, 1.0, num=len(color))
-        colmap = pg.ColorMap(pos, color_inv)        
-        self.colmap_norm = pg.ColorMap(pos, color/255)
-        
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap(). 
-        # I believe last one just has to be >= the difference between the min and max level set later
-        lut = colmap.getLookupTable(0, 1, 2000)
+        # Get the colorscales at set LUT
+        my_colors = ColorScale()
             
-        self.odmr_matrix_image.setLookupTable(lut)        
+        self.odmr_matrix_image.setLookupTable(my_colors.lut)        
         
         # Set the state button as ready button as default setting.
         self._mw.idle_StateWidget.click()
@@ -166,7 +145,7 @@ class ODMRGui(GUIBase):
         ##                Configuration of the Colorbar                      ##
         #######################################################################
         
-        self.odmr_cb = ColorBar(self.colmap_norm, 100, 0, 100000)
+        self.odmr_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
         
         #adding colorbar to ViewWidget
         self._mw.odmr_cb_ViewWidget.addItem(self.odmr_cb)
@@ -325,11 +304,8 @@ class ODMRGui(GUIBase):
         
         
     def refresh_odmr_colorbar(self):
-        """ Delete the old colorbar and replace it with an updated one."""
-#        self._mw.odmr_cb_ViewWidget.clear()
-#        self.odmr_cb = ColorBar(self.colmap_norm, 100, self.odmr_matrix_image.image.min(), self.odmr_matrix_image.image.max())               
-#        self._mw.odmr_cb_ViewWidget.addItem(self.odmr_cb)
-        
+        """ Update the colorbar to a new scaling."""
+
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.odmr_cb_centiles_RadioButton.isChecked():
