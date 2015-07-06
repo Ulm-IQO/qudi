@@ -13,7 +13,7 @@ from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.optimizer.ui_optimgui import Ui_MainWindow
 from gui.optimizer.ui_optim_settings import Ui_SettingsDialog
-from gui.guiutils import ColorBar
+from gui.guiutils import ColorScale, ColorBar
 
 
 class CustomViewBox(pg.ViewBox):
@@ -141,34 +141,14 @@ class OptimizerGui(GUIBase):
         self._mw.xy_refocus_ViewWidget.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget.addItem(self.hLine, ignoreBounds=True)
 
-        # create a color map that goes from dark red to dark blue:
 
-        # Absolute scale relative to the expected data not important. This
-        # should have the same amount of entries (num parameter) as the number
-        # of values given in color.
-        pos = np.linspace(0.0, 1.0, num=10)
-        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
-                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
-                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
-                          [  0,  0,132,255]], dtype=np.ubyte)
+        # Get the colorscales and set LUT
+        my_colors = ColorScale()
 
-        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
-                               [127,  0,  0,255] ], dtype=np.ubyte)
-
-        colmap = pg.ColorMap(pos, color_inv)
-        self.colmap_norm = pg.ColorMap(pos, color/255)
-
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap().
-        # I believe last one just has to be >= the difference between the min and max level set later
-        lut = colmap.getLookupTable(0, 1, 2000)
-
-        self.xy_refocus_image.setLookupTable(lut)
+        self.xy_refocus_image.setLookupTable(my_colors.lut)
 
         # Add color bar:
-        self.xy_cb = ColorBar(self.colmap_norm, 100, 0, 100000)
+        self.xy_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
 
         self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_refocus_cb_ViewWidget.hideAxis('bottom')
@@ -219,11 +199,15 @@ class OptimizerGui(GUIBase):
         self._sw.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
 
     def refresh_xy_colorbar(self):
-        """ Deletes the old colorbar and replace it with an updated one. """
+        """ Adjust the colorbar to a new color scaling 
+        
+        This calls the refresh method from ColorBar.
+        
+        """
 
-        self._mw.xy_refocus_cb_ViewWidget.clear()
-        self.xy_cb = ColorBar(self.colmap_norm, 100, self.xy_refocus_image.image.min(), self.xy_refocus_image.image.max())
-        self._mw.xy_refocus_cb_ViewWidget.addItem(self.xy_cb)
+
+        self.xy_cb.refresh_colorbar( self.xy_refocus_image.image.min(), self.xy_refocus_image.image.max())
+        self._mw.xy_refocus_cb_ViewWidget.update()
 
     def menue_settings(self):
         """ This method opens the settings menue."""
