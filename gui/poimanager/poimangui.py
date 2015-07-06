@@ -26,7 +26,7 @@ import time
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.poimanager.ui_poimangui import Ui_PoiManager
-from gui.guiutils import ColorBar
+from gui.guiutils import ColorScale, ColorBar
 
 
 
@@ -275,34 +275,14 @@ class PoiManagerGui(GUIBase):
         # Set to fixed 1.0 aspect ratio, since the metaphor is a "map" of the sample
         self._mw.roi_map_ViewWidget.setAspectLocked( lock=True, ratio=1.0 )
         
-        # create a color map that goes from dark red to dark blue:
 
-        # Absolute scale relative to the expected data not important. This 
-        # should have the same amount of entries (num parameter) as the number
-        # of values given in color. 
-        pos = np.linspace(0.0, 1.0, num=10)
-        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
-                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
-                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
-                          [  0,  0,132,255]], dtype=np.ubyte)
-                      
-        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
-                               [127,  0,  0,255] ], dtype=np.ubyte)
-        colmap = pg.ColorMap(pos, color_inv)
-        
-        self.colmap_norm = pg.ColorMap(pos, color/255)
+        # Get the colorscales and set LUT
+        my_colors = ColorScale()
 
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap(). 
-        # I believe last one just has to be >= the difference between the min and max level set later
-        lut = colmap.getLookupTable(0, 1, 2000)
-
-        self.roi_map_image.setLookupTable(lut)
+        self.roi_map_image.setLookupTable(my_colors.lut)
 
         # Add color bar:
-        self.roi_cb = ColorBar( self.colmap_norm, 100, 0, 100000 )
+        self.roi_cb = ColorBar( my_colors.cmap_normed, 100, 0, 100000 )
 
         self._mw.roi_cb_ViewWidget.addItem( self.roi_cb )
         self._mw.roi_cb_ViewWidget.hideAxis('bottom')

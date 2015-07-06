@@ -30,7 +30,7 @@ import time
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.guiutils import ColorBar
+from gui.guiutils import ColorScale, ColorBar
 from gui.confocal.ui_confocalgui import Ui_MainWindow
 from gui.confocal.ui_cf_settings import Ui_SettingsDialog
 from gui.optimizer.ui_optim_settings import Ui_SettingsDialog as Ui_OptimizerSettingsDialog
@@ -515,54 +515,21 @@ class ConfocalGui(GUIBase):
         self._mw.depth_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_depth_image_anticlockwise)
         self._mw.depth_rotate_clockwise_PushButton.clicked.connect(self.rotate_depth_image_clockwise)
 
-        # create a color map that goes from dark red to dark blue:
-        color = np.array([[127,  0,  0,255], [255, 26,  0,255], [255,129,  0,255],
-                          [254,237,  0,255], [160,255, 86,255], [ 66,255,149,255],
-                          [  0,204,255,255], [  0, 88,255,255], [  0,  0,241,255],
-                          [  0,  0,132,255]], dtype=np.ubyte)
 
-        # Absolute scale relative to the expected data not important. This
-        # should have the same amount of entries (num parameter) as the number
-        # of values given in color.
-        pos = np.linspace(0.0, 1.0, num=len(color))
-
-        color_inv = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255],
-                               [127,  0,  0,255] ], dtype=np.ubyte)
-
-        color_new = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                               [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                               [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
-                               ], dtype=np.ubyte)
-
-        color_new_inv = np.array([ [255, 26,  0,255], [255,129,  0,255], [254,237,  0,255],
-                               [160,255, 86,255], [ 66,255,149,255], [  0,204,255,255],
-                               [  0, 88,255,255], [  0,  0,241,255], [  0,  0,132,255]
-                               ], dtype=np.ubyte)
-
-        pos_2 = np.linspace(0.0, 1.0, num=len(color_new))
-
-        colmap = pg.ColorMap(pos_2, color_new)
-
-        self.colmap_norm = pg.ColorMap(pos, color_new_inv/255)
-
-        # get the LookUpTable (LUT), first two params should match the position
-        # scale extremes passed to ColorMap().
-        # Return an RGB(A) lookup table (ndarray). Insert starting and stopping
-        # value and the number of points in the returned lookup table:
-        lut = colmap.getLookupTable(0, 1, 2000)
-
-        self.xy_image.setLookupTable(lut)
-        self.depth_image.setLookupTable(lut)
-        self.xy_refocus_image.setLookupTable(lut)
+        ######
+        # Get the colorscale and set the LUTs
+        self.my_colors = ColorScale()
+        
+        self.xy_image.setLookupTable(self.my_colors.lut)
+        self.depth_image.setLookupTable(self.my_colors.lut)
+        self.xy_refocus_image.setLookupTable(self.my_colors.lut)
 
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
 
-        self.xy_cb = ColorBar(self.colmap_norm, width=100, cb_min = 0,
+        self.xy_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min = 0,
                               cb_max = 100)
-        self.depth_cb = ColorBar(self.colmap_norm, width=100, cb_min = 0,
+        self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min = 0,
                               cb_max = 100)
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
