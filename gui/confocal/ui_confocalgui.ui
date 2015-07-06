@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -61,6 +61,8 @@
     <addaction name="actionOptimizer_view"/>
     <addaction name="separator"/>
     <addaction name="restore_default_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="optimizer_only_view_Action"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menu_Options"/>
@@ -281,7 +283,9 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset theme="arrow-rotate-anticlockwise-icon"/>
+            <iconset theme="arrow-rotate-anticlockwise-icon">
+             <normaloff/>
+            </iconset>
            </property>
           </widget>
          </item>
@@ -297,7 +301,9 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset theme="arrow-rotate-clockwise-icon"/>
+            <iconset theme="arrow-rotate-clockwise-icon">
+             <normaloff/>
+            </iconset>
            </property>
            <property name="checkable">
             <bool>false</bool>
@@ -1435,7 +1441,9 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset theme="arrow-rotate-anticlockwise-icon"/>
+              <iconset theme="arrow-rotate-anticlockwise-icon">
+               <normaloff/>
+              </iconset>
              </property>
             </widget>
            </item>
@@ -1451,7 +1459,9 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset theme="arrow-rotate-clockwise-icon"/>
+              <iconset theme="arrow-rotate-clockwise-icon">
+               <normaloff/>
+              </iconset>
              </property>
             </widget>
            </item>
@@ -1764,6 +1774,14 @@
    </property>
    <property name="toolTip">
     <string>Restore default arrangement of dock widgets </string>
+   </property>
+  </action>
+  <action name="optimizer_only_view_Action">
+   <property name="text">
+    <string>Optimizer-only</string>
+   </property>
+   <property name="toolTip">
+    <string>Rearrange window as a small optimizer interface.</string>
    </property>
   </action>
  </widget>
