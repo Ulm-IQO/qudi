@@ -44,6 +44,8 @@ class Base(QtCore.QObject, Fysom):
     sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'
     _modtype = 'base'
+    _in = dict()
+    _out = dict()
 
     def __init__(self, manager, name, configuration = {}, callbacks = {}, **kwargs):
         """ Initialise Base class object and set up its state machine.
@@ -97,7 +99,15 @@ class Base(QtCore.QObject, Fysom):
         # add connection base
         self.connector = OrderedDict()
         self.connector['in'] = OrderedDict()
+        for con in self._in:
+            self.connector['in'][con] = OrderedDict()
+            self.connector['in'][con]['class'] = self._in[con]
+            self.connector['in'][con]['object'] = None
+
         self.connector['out'] = OrderedDict()
+        for con in self._out:
+            self.connector['out'][con] = OrderedDict()
+            self.connector['out'][con]['class'] = self._out[con]
 
         self._manager = manager
         self._name = name

@@ -10,19 +10,16 @@ class mwsourcegigatronics(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'mwsourcegigatronics'
+    _modtype = 'hardware'
+
+    ## declare connectors
+    _out = {'mwsourcegigatronics': 'MWInterface'}
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        
-        self._modclass = 'mwsourcegigatronics'
-        self._modtype = 'mwsource'
-        
         c_dict = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, c_dict)        
         
-        ## declare connectors        
-        self.connector['out']['mwsourcegigatronics'] = OrderedDict()
-        self.connector['out']['mwsourcegigatronics']['class'] = 'MWSource' 
-                      
         # checking for the right configuration
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']

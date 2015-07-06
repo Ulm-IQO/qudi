@@ -12,20 +12,16 @@ class SequenceGeneratorLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse sequence generator.
     """
+    _modclass = 'sequencegeneratorlogic'
+    _modtype = 'logic'
+
+    ## declare connectors
+    _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'sequencegeneratorlogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-#        self.connector['in']['pulsegenerator'] = OrderedDict()
-#        self.connector['in']['pulsegenerator']['class'] = 'PulseGeneratorInterface'
-#        self.connector['in']['pulsegenerator']['object'] = None
-
-        self.connector['out']['sequencegenerator'] = OrderedDict()
-        self.connector['out']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'
 
         self.logMsg('The following configuration was found.',
                     msgType='status')

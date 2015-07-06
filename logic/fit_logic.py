@@ -29,24 +29,17 @@ class FitLogic(GenericLogic):
         executes the fit.
         
         """
+        _modclass = 'fitlogic'
+        _modtype = 'logic'
+        ## declare connectors
+        _out = {'fitlogic': 'FitLogic'}
         
         def __init__(self, manager, name, config, **kwargs):
             ## declare actions for state transitions
             state_actions = {'onactivate':self.activation,'ondeactivate':self.deactivation}
             GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-            self._modclass = 'fitlogic'
-            self._modtype = 'logic'
-    
-            ## declare connectors
-            
-            self.connector['out']['fitlogic'] = OrderedDict()
-            self.connector['out']['fitlogic']['class'] = 'FitLogic'
-            
             #locking for thread safety
             self.lock = Mutex()
-    
-            self.logMsg('The following configuration was found.', 
-                        msgType='status')
 
         def activation(self,e):
             pass

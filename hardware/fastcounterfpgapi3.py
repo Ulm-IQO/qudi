@@ -8,6 +8,11 @@ from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 
 class fastcounterfpgapi3(Base, FastCounterInterface):
+    _modclass = 'fastcounterfpgapi3'
+    _modtype = 'hardware'
+
+    ## declare connectors
+    _out = {'counter': 'FastCounterInterface'}
     
     signal_get_data_next = QtCore.Signal()
     
@@ -15,12 +20,6 @@ class fastcounterfpgapi3(Base, FastCounterInterface):
         
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
-        self._modclass = 'fastcounterfpgapi3'
-        self._modtype = 'mwsource'
-        
-        ## declare connectors        
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'FastCounterInterface'
         
         if 'fpgacounter_serial' in config.keys():
             self._fpgacounter_serial=config['fpgacounter_serial']

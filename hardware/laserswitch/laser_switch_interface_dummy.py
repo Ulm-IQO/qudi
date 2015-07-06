@@ -29,12 +29,12 @@ class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
     _modclass = 'laserswitchinterfacedummy'
     _modtype = 'hardware'
 
+    # connectors
+    _out = {'switch': 'LaserSwitchInterface'}
+
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
-
-        self.connector['out']['switch'] = OrderedDict()
-        self.connector['out']['switch']['class'] = 'LaserSwitchInterface'
 
         self.switchState = [False, False, False]
         self.switchCalibration = dict()

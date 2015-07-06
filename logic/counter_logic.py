@@ -39,6 +39,12 @@ class CounterLogic(GenericLogic):
     _modclass = 'counterlogic'
     _modtype = 'logic'
 
+    ## declare connectors
+    _in = { 'counter1': 'SlowCounterInterface',
+            'savelogic': 'SaveLogic'
+            }
+    _out = {'counterlogic': 'CounterLogic'}
+
     def __init__(self, manager, name, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
@@ -50,18 +56,6 @@ class CounterLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         super().__init__(manager, name, config, state_actions, **kwargs)
-
-        ## declare connectors
-        self.connector['in']['counter1'] = OrderedDict()
-        self.connector['in']['counter1']['class'] = 'SlowCounterInterface'
-        self.connector['in']['counter1']['object'] = None
-
-        self.connector['out']['counterlogic'] = OrderedDict()
-        self.connector['out']['counterlogic']['class'] = 'CounterLogic'
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
 
         #locking for thread safety
         self.threadlock = Mutex()

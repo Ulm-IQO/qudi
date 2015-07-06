@@ -11,19 +11,16 @@ class mwsourcedummy(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'mwsourcedummy'
+    _modtype = 'mwsource'
     
+    ## declare connectors
+    _out = {'mwsourcedummy': 'MWInterface'}
+
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'mwsourcedummy'
-        self._modtype = 'mwsource'
-        
-        
-        ## declare connectors        
-        self.connector['out']['mwsourcedummy'] = OrderedDict()
-        self.connector['out']['mwsourcedummy']['class'] = 'MWSource'        
-        
         
         self.logMsg("The following configuration was found.", 
                     msgType='status')

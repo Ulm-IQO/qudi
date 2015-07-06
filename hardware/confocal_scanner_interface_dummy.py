@@ -11,20 +11,17 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'confocalscannerinterface'
+    _modtype = 'hardware'
+    # connectors
+    _in = {'fitlogic': 'FitLogic'}
+    _out = {'confocalscanner': 'ConfocalScannerInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'confocalscannerinterface'
-        self._modtype = 'hardware'
 
-        self.connector['out']['confocalscanner'] = OrderedDict()
-        self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
-        self.connector['in']['fitlogic'] = OrderedDict()
-        self.connector['in']['fitlogic']['class'] = 'FitLogic'
-        self.connector['in']['fitlogic']['object'] = None
-        
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                     

@@ -9,6 +9,13 @@ class MagnetStageDummy(Base,MagnetStageInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'magnetinterface'
+    _modtype = 'hardware'
+
+    # connectors
+    _out = {'magnet': 'MagnetStageInterface'}
+
+    # FIXME: Class variables, really??!!!!
     x = 0.
     y = 0.
     z = 0.
@@ -20,11 +27,6 @@ class MagnetStageDummy(Base,MagnetStageInterface):
     
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuation=config)
-        self._modclass = 'magnetinterface'
-        self._modtype = 'hardware'
-
-        self.connector['out']['magnet'] = OrderedDict()
-        self.connector['out']['magnet']['class'] = 'magnetinterface'
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

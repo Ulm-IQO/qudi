@@ -21,19 +21,16 @@ class SaveLogic(GenericLogic):
     UNSTABLE: Alexander Stark
     A general class which saves all kind of data in a general sense.
     """
+    _modclass = 'savelogic'
+    _modtype = 'logic'
+    
+    ## declare connectors
+    _out = {'savelogic': 'SaveLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
-
         state_actions = {'onactivate': self.activation,
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'savelogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-
-        self.connector['out']['savelogic'] = OrderedDict()
-        self.connector['out']['savelogic']['class'] = 'SaveLogic'
 
         #locking for thread safety
         self.lock = Mutex()

@@ -11,19 +11,17 @@ import numpy as np
 class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
     """This is the Dummy hardware class that simulates the controls for a simple ODMR.
     """
+    _modclass = 'odmrcounterinterface'
+    _modtype = 'hardware'
+
+    # connectors
+    _in = {'fitlogic': 'FitLogic'}
+    _out = {'odmrcounter': 'ODMRCounterInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'odmrcounterinterface'
-        self._modtype = 'hardware'
 
-        self.connector['out']['odmrcounter'] = OrderedDict()
-        self.connector['out']['odmrcounter']['class'] = 'ODMRCounterInterfaceDummy'
-        self.connector['in']['fitlogic'] = OrderedDict()
-        self.connector['in']['fitlogic']['class'] = 'FitLogic'
-        self.connector['in']['fitlogic']['object'] = None
-        
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                     

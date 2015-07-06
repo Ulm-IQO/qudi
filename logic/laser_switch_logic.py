@@ -28,6 +28,7 @@ class LaserSwitchLogic(GenericLogic):
     """
     _modclass = 'laserswitch'
     _modtype = 'logic'
+    _out = {'laserswitchlogic': 'LaserSwitchLogic'}
         
     def __init__(self, manager, name, config, **kwargs):
         """ Create logic object
@@ -40,9 +41,6 @@ class LaserSwitchLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
-        # one 'out connector' for all switches
-        self.connector['out']['laserswitchlogic'] = OrderedDict()
-        self.connector['out']['laserswitchlogic']['class'] = 'laserswitchlogic'
 
         # dynamic number of 'in' connectors depending on config
         if 'connect' in config:

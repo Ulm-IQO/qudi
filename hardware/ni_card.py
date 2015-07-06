@@ -13,29 +13,22 @@ import re
 
 class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInterface):
     """unstable: Kay Jahnke
-	This is the Interface class to define the controls for the simple 
-    microwave hardware.
+	A National Instruments device that can count and control microvave generators.
     """
-    #FIXME: microwave hardware?
-        
+    _modtype = 'NICard'
+    _modclass = 'hardware'
+
+    # connectors
+    _out = {'counter': 'SlowCounterInterface',
+            'confocalscanner': 'ConfocalScannerInterface',
+            'odmrcounter': 'ODMRCounterInterface'
+            }
     
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
         c_dict = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, c_dict)
-        self._modclass = 'nicard'
-        self._modtype = 'slowcounterinterface'
         
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
-        
-        self.connector['out']['confocalscanner'] = OrderedDict()
-        self.connector['out']['confocalscanner']['class'] = 'ConfocalScannerInterface'
-        
-        self.connector['out']['odmrcounter'] = OrderedDict()
-        self.connector['out']['odmrcounter']['class'] = 'ODMRCounterInterfaceDummy'
-        
-
         #FIXME: What are the variables doing (i.e. RWTimeout)?            
         self._max_counts = 3e7  # used as a default for expected maximum counts
         #FIXME: Read-Write timeout

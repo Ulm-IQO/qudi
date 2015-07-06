@@ -10,19 +10,16 @@ class mwsourceanritsu70GHz(Base, MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'mwsourceanritsu70GHz'
+    _modtype = 'hardware'
+
+    ## declare connectors 
+    _out = {'mwsourceanritsu70GHz': 'MWInterface'}
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        
-        self._modclass = 'mwsourceanritsu70GHz'
-        self._modtype = 'mwsource'
-        
         c_dict = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, c_dict)
-        
-        ## declare connectors        
-        self.connector['out']['mwsourceanritsu70GHz'] = OrderedDict()
-        self.connector['out']['mwsourceanritsu70GHz']['class'] = 'MWSource' 
-                      
+ 
         # checking for the right configuration
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']

@@ -156,27 +156,16 @@ class ConfocalGui(GUIBase):
     _modclass = 'ConfocalGui'
     _modtype = 'gui'
 
+    ## declare connectors
+    _in = { 'confocallogic1': 'ConfocalLogic',
+            'savelogic': 'SaveLogic',
+            'optimizerlogic1': 'OptimizerLogic'
+            }
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
         super().__init__(manager, name, config, c_dict)
-
-        ## declare connectors
-        self.connector['in']['confocallogic1'] = OrderedDict()
-        self.connector['in']['confocallogic1']['class'] = 'ConfocalLogic'
-        self.connector['in']['confocallogic1']['object'] = None
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
-
-        self.connector['in']['optimizerlogic1'] = OrderedDict()
-        self.connector['in']['optimizerlogic1']['class'] = 'OptimizerLogic'
-        self.connector['in']['optimizerlogic1']['object'] = None
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.',
                     msgType='status')

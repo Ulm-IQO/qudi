@@ -56,6 +56,9 @@ class ODMRGui(GUIBase):
     """
     _modclass = 'ODMRGui'
     _modtype = 'gui'
+    ## declare connectors
+    _in = {'odmrlogic1': 'ODMRLogic', 
+           'savelogic': 'SaveLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -65,14 +68,6 @@ class ODMRGui(GUIBase):
                     name,
                     config,
                     c_dict)
-        
-        ## declare connectors
-        self.connector['in']['odmrlogic1'] = OrderedDict()
-        self.connector['in']['odmrlogic1']['class'] = 'ODMRLogic'
-        self.connector['in']['odmrlogic1']['object'] = None
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

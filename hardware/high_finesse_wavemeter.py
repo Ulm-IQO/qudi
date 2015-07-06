@@ -77,6 +77,11 @@ class HardwarePull(QtCore.QObject):
 
 
 class HighFinesseWavemeter(Base,WavemeterInterface):
+    _modclass = 'HighFinesseWavemeter'
+    _modtype = 'hardware'
+
+    ## declare connectors
+    _out = {'highhinessewavemeter': 'WavemeterInterface'}
     
     sig_handle_timer = QtCore.Signal(bool)
     
@@ -95,12 +100,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict, **kwargs)
-        self._modclass = 'HighFinesseWavemeter'
-        self._modtype = 'wavemeter'
-        
-        ## declare connectors        
-        self.connector['out']['highhinessewavemeter'] = OrderedDict()
-        self.connector['out']['highhinessewavemeter']['class'] = 'HighFinesseWavemeter' 
         
         #locking for thread safety
         self.threadlock = Mutex()
@@ -175,8 +174,8 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
 
     def deactivation(self, e):
-        
-        self.stop_acqusition()
+        if self.getState() != 'idle' and self.getState() != 'deactivated':
+            self.stop_acqusition()
         self.hardware_thread.quit()        
         self.sig_handle_timer.disconnect()
         self._hardware_pull.sig_wavelength.disconnect()

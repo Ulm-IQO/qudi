@@ -11,31 +11,24 @@ import time
 
 
 class LaserScanningGui(GUIBase):
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
     _modclass = 'countergui'
     _modtype = 'gui'
+
+    ## declare connectors
+    _in = { 'laserscanninglogic1': 'LaserScanningLogic',
+            'savelogic': 'SaveLogic'
+            }
+
+    sigStartCounter = QtCore.Signal()
+    sigStopCounter = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
-        ## declare connectors
-        self.connector['in']['laserscanninglogic1'] = OrderedDict()
-        self.connector['in']['laserscanninglogic1']['class'] = 'LaserScanningLogic'
-        self.connector['in']['laserscanninglogic1']['object'] = None
-        
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
+        super().__init__(manager, name, config, c_dict)
 
-        self.logMsg('The following configuration was found.', 
-                    msgType='status')
-                            
+        self.logMsg('The following configuration was found.', msgType='status')
+
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 

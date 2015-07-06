@@ -30,6 +30,9 @@ class SwitchGui(GUIBase):
     """
     _modclass = 'SwitchGui'
     _modtype = 'gui'
+    ## declare connectors
+    _in = {'laserswitchlogic': 'LaserSwitchLogic'}
+
     def __init__(self, manager, name, config, **kwargs):
         """ Create the switch control GUI.
 
@@ -40,11 +43,6 @@ class SwitchGui(GUIBase):
         """
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
-
-        ## declare connectors
-        self.connector['in']['laserswitchlogic'] = OrderedDict()
-        self.connector['in']['laserswitchlogic']['class'] = 'LaserSwitchLogic'
-        self.connector['in']['laserswitchlogic']['object'] = None
 
     def initUI(self, e=None):
         """Create all UI objects and show the window.
