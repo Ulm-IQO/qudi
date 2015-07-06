@@ -9,17 +9,16 @@ import ok
 import struct
 
 class fastcounterfpgaqo(Base, FastCounterInterface):
+    _modclass = 'fastcounterfpgaqo'
+    _modtype = 'hardware'
     
+    ## declare connectors
+    _out = {'counter': 'FastCounterInterface'}
+
     def __init__(self, manager, name, config = {}, **kwargs):
         
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
-        self._modclass = 'fastcounterfpgaqo'
-        self._modtype = 'hardware'
-        
-        ## declare connectors        
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'FastCounterInterface'
         
         if 'fpgacounter_serial' in config.keys():
             self._fpga_serial=config['fpgacounter_serial']

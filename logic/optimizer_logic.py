@@ -12,6 +12,16 @@ class OptimizerLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for refocussing on and tracking bright features in the confocal scan.
     """
+    _modclass = 'trackerlogic'
+    _modtype = 'logic'
+
+    ## declare connectors
+    _in = { 'confocalscanner1': 'ConfocalScannerInterface',
+            'fitlogic': 'FitLogic',
+            'scannerlogic': 'ConfocalLogic'
+            }
+    _out = {'optimizerlogic': 'OptimizerLogic'}
+
     signal_scan_xy_line_next = QtCore.Signal()
     signal_image_updated = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal()
@@ -22,23 +32,6 @@ class OptimizerLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'trackerlogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-        self.connector['in']['confocalscanner1'] = OrderedDict()
-        self.connector['in']['confocalscanner1']['class'] = 'ConfocalScannerInterface'
-        self.connector['in']['confocalscanner1']['object'] = None
-        self.connector['in']['fitlogic'] = OrderedDict()
-        self.connector['in']['fitlogic']['class'] = 'FitLogic'
-        self.connector['in']['fitlogic']['object'] = None
-        self.connector['in']['scannerlogic'] = OrderedDict()
-        self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
-        self.connector['in']['scannerlogic']['object'] = None
-        
-        self.connector['out']['optimizerlogic'] = OrderedDict()
-        self.connector['out']['optimizerlogic']['class'] = 'OptimizerLogic'
-        
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

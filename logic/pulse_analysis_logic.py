@@ -12,6 +12,17 @@ class PulseAnalysisLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the analysis of laser pulses.
     """    
+    _modclass = 'pulseanalysislogic'
+    _modtype = 'logic'
+
+    ## declare connectors
+    _in = { 'fastcounter': 'FastCounterInterface',
+            'pulseextractionlogic': 'PulseExtractionLogic',
+            'sequencegenerator': 'SequenceGeneratorLogic',
+            'pulsegenerator': 'PulserInterfaceDummy'
+            }
+    _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
+
     signal_analysis_next = QtCore.Signal()
     signal_laser_plot_updated = QtCore.Signal()
     signal_signal_plot_updated = QtCore.Signal()
@@ -20,28 +31,6 @@ class PulseAnalysisLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'pulseanalysislogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-        self.connector['in']['fastcounter'] = OrderedDict()
-        self.connector['in']['fastcounter']['class'] = 'FastCounterInterface'
-        self.connector['in']['fastcounter']['object'] = None
-        
-        self.connector['in']['pulseextractionlogic'] = OrderedDict()
-        self.connector['in']['pulseextractionlogic']['class'] = 'PulseExtractionLogic'
-        self.connector['in']['pulseextractionlogic']['object'] = None
-        
-        self.connector['in']['sequencegenerator'] = OrderedDict()
-        self.connector['in']['sequencegenerator']['class'] = 'SequenceGeneratorLogic'
-        self.connector['in']['sequencegenerator']['object'] = None
-        
-        self.connector['in']['pulsegenerator'] = OrderedDict()
-        self.connector['in']['pulsegenerator']['class'] = 'PulserInterfaceDummy'
-        self.connector['in']['pulsegenerator']['object'] = None
-        
-        self.connector['out']['pulseanalysislogic'] = OrderedDict()
-        self.connector['out']['pulseanalysislogic']['class'] = 'PulseAnalysisLogic'        
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

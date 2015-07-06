@@ -72,21 +72,18 @@ class PicoHarp300(Base, SlowCounterInterface):
     This class is written according to the Programming Library Version 3.0
     STABLE AND TESTED VERSION: Alex S.
     """
+    _modclass = 'PicoHarp300'
+    _modtype = 'hardware'
+
+    # declare connectors
+    _out = {'picocounter': 'PicoHarp300',
+            'counter': 'SlowCounterInterface'
+            }
 
     def __init__(self,manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation,
                   'ondeactivate' : self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
-
-        self._modclass = 'PicoHarp300'
-        self._modtype = 'hardware'
-
-        # declare connectors
-        self.connector['out']['picocounter'] = OrderedDict()
-        self.connector['out']['picocounter']['class'] = 'PicoHarp300'
-
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
 
         if 'deviceID' in config.keys():
             self._deviceID = config['deviceID']

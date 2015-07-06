@@ -27,10 +27,14 @@ from IPython.qt.console.rich_ipython_widget import RichIPythonWidget
 #from IPython.lib.kernel import connect_qtconsole
 
 class IPythonGui(GUIBase):
-    """
+    """ A window showing an IPython console.
     """
     _modclass = 'IPythonGui'
     _modtype = 'gui'
+
+    # connectors
+    _in = {'ipythonlogic': 'IPythonLogic'}
+
     def __init__(self, manager, name, config, **kwargs):
         """Create the console gui object.
           @param object manager: Manager object that this module was loaded from
@@ -40,14 +44,6 @@ class IPythonGui(GUIBase):
         """
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
-
-        ## declare connectors
-        self.connector['in']['ipythonlogic'] = OrderedDict()
-        self.connector['in']['ipythonlogic']['class'] = 'IPythonLogic'
-        self.connector['in']['ipythonlogic']['object'] = None
-
-       # self.consoles = list()
-        #self.clients = list()
 
     def initUI(self, e=None):
         """Create all UI objects and show the window.

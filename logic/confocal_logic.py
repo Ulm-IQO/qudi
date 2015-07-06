@@ -12,7 +12,16 @@ class ConfocalLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for confocal scanning.
     """
+    _modclass = 'confocallogic'
+    _modtype = 'logic'
 
+    # declare connectors
+    _in = { 'confocalscanner1': 'ConfocalScannerInterface',
+            'savelogic': 'SaveLogic'
+            }
+    _out = {'scannerlogic': 'ConfocalLogic'}
+
+    # signals
     signal_start_scanning = QtCore.Signal()
     signal_continue_scanning = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
@@ -29,28 +38,13 @@ class ConfocalLogic(GenericLogic):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'confocallogic'
-        self._modtype = 'logic'
-
-        # declare connectors
-        self.connector['in']['confocalscanner1'] = OrderedDict()
-        self.connector['in']['confocalscanner1']['class'] = 'ConfocalScannerInterface'
-        self.connector['in']['confocalscanner1']['object'] = None
-
-        self.connector['out']['scannerlogic'] = OrderedDict()
-        self.connector['out']['scannerlogic']['class'] = 'ConfocalLogic'
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line

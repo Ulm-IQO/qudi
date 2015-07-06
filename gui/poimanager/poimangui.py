@@ -190,29 +190,16 @@ class PoiManagerGui(GUIBase):
     _modclass = 'PoiManagerGui'
     _modtype = 'gui'
 
+    ## declare connectors
+    _in = { 'poimanagerlogic1': 'PoiManagerLogic',
+            'confocallogic1': 'ConfocalLogic'
+            }
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
+        super().__init__(manager, name, config, c_dict)
         
-        
-        ## declare connectors
-        self.connector['in']['poimanagerlogic1'] = OrderedDict()
-        self.connector['in']['poimanagerlogic1']['class'] = 'PoiManagerLogic'
-        self.connector['in']['poimanagerlogic1']['object'] = None
-
-        self.connector['in']['confocallogic1'] = OrderedDict()
-        self.connector['in']['confocallogic1']['class'] = 'ConfocalLogic'
-        self.connector['in']['confocallogic1']['object'] = None
-
-#        self.connector['in']['savelogic'] = OrderedDict()
-#        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-#        self.connector['in']['savelogic']['object'] = None
-
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                             

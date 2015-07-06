@@ -109,16 +109,14 @@ class FastComtecP7887(Base,FastCounterInterface):
     
     Hardware Class for the FastComtec Card communicating via the p7887 server.
     """
+    _modclass = 'fastcomtecp7887'
+    _modtype = 'hardware'
+
+    # connectors
+    _out = {'counter': 'FastCounterInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuation=config)
-        self._modclass = 'fastcomtecp7887'
-        self._modtype = 'hardware'
-
-
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'FastCounterInterface'
-
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

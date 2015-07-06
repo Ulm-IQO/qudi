@@ -17,15 +17,15 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'fastcounterinterface'
+    _modtype = 'hardware'
+    # connectors
+    _out = {'fastcounter': 'FastCounterInterface'}
+
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'fastcounterinterface'
-        self._modtype = 'hardware'
 
-        self.connector['out']['fastcounter'] = OrderedDict()
-        self.connector['out']['fastcounter']['class'] = 'FastCounterInterfaceDummy'
-        
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                     

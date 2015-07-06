@@ -14,17 +14,15 @@ class MWSourceSMR20(Base,MWInterface):
     
     http://cdn.rohde-schwarz.com/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smr_1/smr_20-40.pdf    
     """
-    
+    _modclass = 'MWSourceSMR20'
+    _modtype = 'hardware'
+    ## declare connectors       
+    _out = {'MWSourceSMR20': 'MWSourceSMR20'}
+
     def __init__(self, manager, name, config = {}, **kwargs):
         Base.__init__(self, manager, name, 
                       configuation=config, callback_dict = {})
-        self._modclass = 'MWSourceSMR20'
-        self._modtype = 'hardware'
         
-        ## declare connectors        
-        self.connector['out']['MWSourceSMR20'] = OrderedDict()
-        self.connector['out']['MWSourceSMR20']['class'] = 'MWSourceSMR20' 
-                      
         # checking for the right configuration
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']

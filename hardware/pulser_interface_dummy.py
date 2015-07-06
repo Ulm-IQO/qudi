@@ -16,17 +16,15 @@ class PulserInterfaceDummy(Base, PulserInterface):
     are also connected to the mwsourceinterface (to give the AWG the possibility
     to act like a microwave source).
     """
+    _modclass = 'PulserInterface'
+    _modtype = 'hardware'
+    # connectors
+    _out = {'pulsegenerator': 'PulserInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate'   : self.activation,
                          'ondeactivate' : self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-        
-        self._modclass = 'PulserInterface'
-        self._modtype = 'hardware'
-
-        self.connector['out']['pulsegenerator'] = OrderedDict()
-        self.connector['out']['pulsegenerator']['class'] = 'PulserInterfaceDummy'
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

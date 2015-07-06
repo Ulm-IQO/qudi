@@ -29,27 +29,15 @@ class PulsedMeasurementGui(GUIBase):
     _modclass = 'PulsedMeasurementGui'
     _modtype = 'gui'
 
+    ## declare connectors
+    _in = { 'pulseanalysislogic': 'PulseAnalysisLogic',
+            'sequencegeneratorlogic': 'SequenceGeneratorLogic'
+            }
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
-
-        ## declare connectors
-        self.connector['in']['pulseanalysislogic'] = OrderedDict()
-        self.connector['in']['pulseanalysislogic']['class'] = 'PulseAnalysisLogic'
-        self.connector['in']['pulseanalysislogic']['object'] = None
-
-        self.connector['in']['sequencegeneratorlogic'] = OrderedDict()
-        self.connector['in']['sequencegeneratorlogic']['class'] = 'SequenceGeneratorLogic'
-        self.connector['in']['sequencegeneratorlogic']['object'] = None
-
-#        self.connector['in']['savelogic'] = OrderedDict()
-#        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-#        self.connector['in']['savelogic']['object'] = None
+        super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')

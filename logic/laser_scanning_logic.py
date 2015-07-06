@@ -85,6 +85,13 @@ class LaserScanningLogic(GenericLogic):
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
 
+    ## declare connectors
+    _in = { 'wavemeter1': 'WavemeterInterface',
+            'savelogic': 'SaveLogic',
+            'counterlogic': 'CounterLogic'
+            }
+    _out = {'laserscanninglogic': 'LaserScanningLogic'}
+
     def __init__(self, manager, name, config, **kwargs):
         """ Create LaserScanningLogic object with connectors.
 
@@ -96,22 +103,6 @@ class LaserScanningLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
-
-        ## declare connectors
-        self.connector['in']['wavemeter1'] = OrderedDict()
-        self.connector['in']['wavemeter1']['class'] = 'WavemeterInterface'
-        self.connector['in']['wavemeter1']['object'] = None
-
-        self.connector['out']['laserscanninglogic'] = OrderedDict()
-        self.connector['out']['laserscanninglogic']['class'] = 'LaserScanningLogic'
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
-
-        self.connector['in']['counterlogic'] = OrderedDict()
-        self.connector['in']['counterlogic']['class'] = 'CounterLogic'
-        self.connector['in']['counterlogic']['object'] = None
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -182,7 +173,8 @@ class LaserScanningLogic(GenericLogic):
 
           @param object e: Fysom state change event
         """
-        self.stop_scanning()
+        if self.getState() != 'idle' and self.getState() != 'deactivated':
+            self.stop_scanning()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
 

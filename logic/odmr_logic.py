@@ -13,6 +13,16 @@ class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for ODMR.
     """
+    _modclass = 'odmrlogic'
+    _modtype = 'logic'
+    ## declare connectors
+    _in = {'odmrcounter': 'ODMRCounterInterface',
+            'fitlogic': 'FitLogic',
+            'microwave1': 'mwsourceinterface',
+            'savelogic': 'SaveLogic'
+            }
+    _out = {'odmrlogic': 'ODMRLogic'}
+
     signal_next_line = QtCore.Signal()
     signal_ODMR_plot_updated = QtCore.Signal()
     signal_ODMR_matrix_updated = QtCore.Signal()
@@ -23,28 +33,6 @@ class ODMRLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'odmrlogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-        self.connector['in']['odmrcounter'] = OrderedDict()
-        self.connector['in']['odmrcounter']['class'] = 'ODMRCounterInterface'
-        self.connector['in']['odmrcounter']['object'] = None
-
-        self.connector['in']['fitlogic'] = OrderedDict()
-        self.connector['in']['fitlogic']['class'] = 'FitLogic'
-        self.connector['in']['fitlogic']['object'] = None
-
-        self.connector['in']['microwave1'] = OrderedDict()
-        self.connector['in']['microwave1']['class'] = 'mwsourceinterface'
-        self.connector['in']['microwave1']['object'] = None
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
-
-        self.connector['out']['odmrlogic'] = OrderedDict()
-        self.connector['out']['odmrlogic']['class'] = 'ODMRLogic'
 
         self.logMsg('The following configuration was found.',
                     msgType='status')

@@ -9,10 +9,16 @@ import pyqtgraph as pg
 
 
 class CounterGui(GUIBase):
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
+    """ FIXME: Please document
+    """
     _modclass = 'countergui'
     _modtype = 'gui'
+
+    ## declare connectors
+    _in = {'counterlogic1': 'CounterLogic'}
+
+    sigStartCounter = QtCore.Signal()
+    sigStopCounter = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -22,10 +28,6 @@ class CounterGui(GUIBase):
                     name,
                     config,
                     c_dict)
-        ## declare connectors
-        self.connector['in']['counterlogic1'] = OrderedDict()
-        self.connector['in']['counterlogic1']['class'] = 'CounterLogic'
-        self.connector['in']['counterlogic1']['object'] = None
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

@@ -12,15 +12,14 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
-    
+    _modclass = 'slowcounterinterface'
+    _modtype = 'hardware'
+    # connectors
+    _out = {'counter': 'SlowCounterInterface'}
+
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
-        self._modclass = 'slowcounterinterface'
-        self._modtype = 'hardware'
-
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'SlowCounterInterface'
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

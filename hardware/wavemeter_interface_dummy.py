@@ -69,18 +69,17 @@ class HardwarePull(QtCore.QObject):
             
 
 class WavemeterInterfaceDummy(Base,WavemeterInterface):
+    _modclass = 'HighFinesseWavemeter'
+    _modtype = 'hardware'
+
+    ## declare connectors
+    _out = {'highhinessewavemeter': 'WavemeterInterface'}
         
     sig_handle_timer = QtCore.Signal(bool)
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict, **kwargs)
-        self._modclass = 'HighFinesseWavemeter'
-        self._modtype = 'wavemeter'
-        
-        ## declare connectors        
-        self.connector['out']['highhinessewavemeter'] = OrderedDict()
-        self.connector['out']['highhinessewavemeter']['class'] = 'HighFinesseWavemeter' 
         
         #locking for thread safety
         self.threadlock = Mutex()
@@ -153,7 +152,7 @@ class WavemeterInterfaceDummy(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getState() == 'idle':
+        if self.getState() == 'idle' or self.getState() == 'deactivated':
             self.logMsg('Wavemeter was already stopped, stopping it anyway!', 
                     msgType='warning')
         else:   

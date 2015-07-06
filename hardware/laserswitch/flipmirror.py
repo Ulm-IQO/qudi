@@ -30,6 +30,7 @@ class FlipMirror(Base, LaserSwitchInterface):
     """
     _modclass = 'laserswitchinterface'
     _modtype = 'hardware'
+    _out = {'switch':'LaserSwitchInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         """ Creae flip mirror control module 
@@ -41,9 +42,6 @@ class FlipMirror(Base, LaserSwitchInterface):
         """
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
-
-        self.connector['out']['counter'] = OrderedDict()
-        self.connector['out']['counter']['class'] = 'LaserSwitchInterface'
         self.lock = Mutex()
 
     def activation(self, e):

@@ -50,6 +50,8 @@ class IPythonLogic(GenericLogic):
     """
     _modclass = 'ipythonlogic'
     _modtype = 'logic'
+    ## declare connectors    
+    _out = {'ipythonlogic': 'IPythonLogic'}
         
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -57,9 +59,6 @@ class IPythonLogic(GenericLogic):
             'ondeactivate': self.deactivation
             }
         super().__init__(manager, name, config, state_actions, **kwargs)
-        ## declare connectors    
-        self.connector['out']['ipythonlogic'] = OrderedDict()
-        self.connector['out']['ipythonlogic']['class'] = 'IPythonLogic'
         #locking for thread safety
         self.lock = Mutex()
         self.modules = set()

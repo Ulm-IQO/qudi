@@ -11,7 +11,12 @@ import time
 class MagnetStageMicos(Base,MagnetStageInterface):
     """unstable: Jochen Scheuer. This is the hardware class to define the controls for the Micos stage of PI.
     """
+    _modclass = 'magnetinterface'
+    _modtype = 'hardware'
+    # connectors
+    _out = {'magnet': 'MagnetStageInterface'}
 
+# FIXME: really class variables???!
 # 	Creating class variables to store the current value of the position.
     x_store=-1
     y_store=-1
@@ -55,12 +60,7 @@ class MagnetStageMicos(Base,MagnetStageInterface):
 
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuation=config)
-        self._modclass = 'magnetinterface'
-        self._modtype = 'hardware'
 
-        self.connector['out']['magnet'] = OrderedDict()
-        self.connector['out']['magnet']['class'] = 'magnetinterface'
-        
         self.logMsg('The following configuration was found.', 
                     msgType='status')
                     

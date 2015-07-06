@@ -36,27 +36,16 @@ class PulsedMeasurementGui(GUIBase):
     _modclass = 'PulsedMeasurementGui'
     _modtype = 'gui'
 
+    ## declare connectors
+    _in = { 'pulseanalysislogic': 'PulseAnalysisLogic',
+            'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+            'savelogic': 'SaveLogic'
+            }
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
-
-        ## declare connectors
-        self.connector['in']['pulseanalysislogic'] = OrderedDict()
-        self.connector['in']['pulseanalysislogic']['class'] = 'PulseAnalysisLogic'
-        self.connector['in']['pulseanalysislogic']['object'] = None
-
-        self.connector['in']['sequencegeneratorlogic'] = OrderedDict()
-        self.connector['in']['sequencegeneratorlogic']['class'] = 'SequenceGeneratorLogic'
-        self.connector['in']['sequencegeneratorlogic']['object'] = None
-
-        self.connector['in']['savelogic'] = OrderedDict()
-        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-        self.connector['in']['savelogic']['object'] = None
-
-        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
@@ -78,6 +67,9 @@ class PulsedMeasurementGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
+        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
+        self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
 
         self._mw = PulsedMeasurementMainWindow()
 

@@ -17,21 +17,16 @@ class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the extraction of laser pulses.
     """    
+    _modclass = 'pulseextractionlogic'
+    _modtype = 'logic'
+    ## declare connectors
+    _in = {'fastcounter': 'FastCounterInterface'}
+    _out ={'pulseextractionlogic': 'PulseExtractionLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'pulseextractionlogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-        self.connector['in']['fastcounter'] = OrderedDict()
-        self.connector['in']['fastcounter']['class'] = 'FastCounterInterface'
-        self.connector['in']['fastcounter']['object'] = None
-        
-        self.connector['out']['pulseextractionlogic'] = OrderedDict()
-        self.connector['out']['pulseextractionlogic']['class'] = 'PulseExtractionLogic'        
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

@@ -52,6 +52,8 @@ class OptimizerGui(GUIBase):
     """
     _modclass = 'OptimizerGui'
     _modtype = 'gui'
+    ## declare connectors
+    _in = {'optimizerlogic1': 'OptimizerLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -61,15 +63,6 @@ class OptimizerGui(GUIBase):
                     name,
                     config,
                     c_dict)
-
-        ## declare connectors
-        self.connector['in']['optimizerlogic1'] = OrderedDict()
-        self.connector['in']['optimizerlogic1']['class'] = 'OptimizerLogic'
-        self.connector['in']['optimizerlogic1']['object'] = None
-
-#        self.connector['in']['savelogic'] = OrderedDict()
-#        self.connector['in']['savelogic']['class'] = 'SaveLogic'
-#        self.connector['in']['savelogic']['object'] = None
 
         self.logMsg('The following configuration was found.',
                     msgType='status')

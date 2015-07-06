@@ -36,6 +36,11 @@ class PulseBlasterESRPRO(Base):
             float                   32 bit floating point number
             double                  64 bit floating point number
     """
+    _modclass = 'PulseBlasterESRPRO'
+    _modtype = 'hardware'
+
+    # declare connectors
+    _out = {'PulseBlasterESRPRO': 'PulseBlasterESRPRO'}
 
     def __init__(self,manager, name, config = {}, **kwargs):
 
@@ -43,13 +48,6 @@ class PulseBlasterESRPRO(Base):
                          'ondeactivate' : self.deactivation}
 
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
-
-        self._modclass = 'PulseBlasterESRPRO'
-        self._modtype = 'hardware'
-
-        # declare connectors
-        self.connector['out']['PulseBlasterESRPRO'] = OrderedDict()
-        self.connector['out']['PulseBlasterESRPRO']['class'] = 'PulseBlasterESRPRO'
 
         #locking for thread safety
         self.threadlock = Mutex()

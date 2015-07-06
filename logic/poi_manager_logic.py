@@ -144,6 +144,14 @@ class PoiManagerLogic(GenericLogic):
     """unstable: Kay Jahnke
     This is the Logic class for tracking bright features in the confocal scan.
     """
+    _modclass = 'poimanagerlogic'
+    _modtype = 'logic'
+
+    ## declare connectors
+    _in = { 'optimizer1': 'OptimizerLogic',
+            'scannerlogic': 'ConfocalLogic',
+            }
+    _out = {'poimanagerlogic': 'PoiManagerLogic'}
 
     signal_refocus_finished = QtCore.Signal()
     signal_timer_updated = QtCore.Signal()
@@ -154,20 +162,6 @@ class PoiManagerLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
-        self._modclass = 'poimanagerlogic'
-        self._modtype = 'logic'
-
-        ## declare connectors
-        self.connector['in']['optimizer1'] = OrderedDict()
-        self.connector['in']['optimizer1']['class'] = 'OptimizerLogic'
-        self.connector['in']['optimizer1']['object'] = None
-        self.connector['in']['scannerlogic'] = OrderedDict()
-        self.connector['in']['scannerlogic']['class'] = 'ConfocalLogic'
-        self.connector['in']['scannerlogic']['object'] = None
-        
-        self.connector['out']['poimanagerlogic'] = OrderedDict()
-        self.connector['out']['poimanagerlogic']['class'] = 'PoiManagerLogic'
-        
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')
