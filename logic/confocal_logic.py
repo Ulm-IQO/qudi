@@ -499,7 +499,11 @@ class ConfocalLogic(GenericLogic):
 
         # data for the pure image:
         image_data = OrderedDict()
-        image_data['Confocal XY scan image data. Signal in counts/s:'] = self.xy_image[:,:,3]
+        image_data['Confocal pure XY scan image data without axis.\n'
+                   '# The upper left entry represents the signal at the upper '
+                   'left pixel position.\n'
+                   '# A pixel-line in the image corresponds to a row in '
+                   'of entries where the Signal is in counts/s:'] = self.xy_image[:,:,3]
 
         # write the parameters:
         parameters = OrderedDict()
@@ -556,7 +560,11 @@ class ConfocalLogic(GenericLogic):
 
         # data for the pure image:
         image_data = OrderedDict()
-        image_data['Confocal Depth scan image data. Signal in counts/s:'] = self.depth_image[:,:,3]
+        image_data['Confocal pure depth scan image data without axis.\n'
+                   '# The upper left entry represents the signal at the upper '
+                   'left pixel position.\n'
+                   '# A pixel-line in the image corresponds to a row in '
+                   'of entries where the Signal is in counts/s:'] = self.depth_image[:,:,3]
 
         # write the parameters:
         parameters = OrderedDict()
