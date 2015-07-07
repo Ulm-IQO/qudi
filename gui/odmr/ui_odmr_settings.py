@@ -14,6 +14,14 @@ try:
 except AttributeError:
     _fromUtf8 = lambda s: s
 
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
+        
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName(_fromUtf8("SettingsDialog"))
@@ -57,5 +65,7 @@ class Ui_SettingsDialog(object):
     def retranslateUi(self, SettingsDialog):
         SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: ODMR - Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("SettingsDialog", "Matrix Lines :", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>This is the number of lines plotted in the Matrix Plot (lower plot).</p></body></html>", None))
         self.label_2.setText(QtGui.QApplication.translate("SettingsDialog", "clock frequency :", None, QtGui.QApplication.UnicodeUTF8))
-
+        self.label_2.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is the inverse time how long the scanner stays at the desired frequency and counts.</p></body></html>", None))
+        
