@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui_slow_counter.ui'
 #
-# Created: Tue Jul  7 11:25:00 2015
+# Created: Tue Jul  7 11:55:06 2015
 #      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -48,6 +48,8 @@ class Ui_MainWindow(object):
         self.count_value_Label = QtGui.QLabel(self.dockWidgetContents)
         font = QtGui.QFont()
         font.setPointSize(60)
+        font.setBold(True)
+        font.setWeight(75)
         self.count_value_Label.setFont(font)
         self.count_value_Label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.count_value_Label.setObjectName(_fromUtf8("count_value_Label"))
@@ -58,6 +60,7 @@ class Ui_MainWindow(object):
         self.counter_trace_DockWidget.setWidget(self.dockWidgetContents)
         MainWindow.addDockWidget(QtCore.Qt.DockWidgetArea(4), self.counter_trace_DockWidget)
         self.slow_counter_control_DockWidget = QtGui.QDockWidget(MainWindow)
+        self.slow_counter_control_DockWidget.setMaximumSize(QtCore.QSize(524287, 58))
         self.slow_counter_control_DockWidget.setObjectName(_fromUtf8("slow_counter_control_DockWidget"))
         self.dockWidgetContents_2 = QtGui.QWidget()
         self.dockWidgetContents_2.setObjectName(_fromUtf8("dockWidgetContents_2"))
@@ -131,7 +134,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "Slow Counter", None))
         self.menuView.setTitle(_translate("MainWindow", "View", None))
         self.counter_trace_DockWidget.setWindowTitle(_translate("MainWindow", "Slow counter", None))
-        self.count_value_Label.setText(_translate("MainWindow", "TextLabel", None))
+        self.count_value_Label.setText(_translate("MainWindow", "0", None))
         self.slow_counter_control_DockWidget.setWindowTitle(_translate("MainWindow", "Slow counter control", None))
         self.label.setText(_translate("MainWindow", "Count length (#):", None))
         self.label_2.setText(_translate("MainWindow", "Count frequency (Hz):", None))

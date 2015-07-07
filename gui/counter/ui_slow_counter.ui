@@ -47,10 +47,12 @@
        <property name="font">
         <font>
          <pointsize>60</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>TextLabel</string>
+        <string>0</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -64,6 +66,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="slow_counter_control_DockWidget">
+   <property name="maximumSize">
+    <size>
+     <width>524287</width>
+     <height>58</height>
+    </size>
+   </property>
    <property name="windowTitle">
     <string>Slow counter control</string>
    </property>
