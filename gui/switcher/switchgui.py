@@ -21,9 +21,10 @@ import os
 import numpy as np
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui
-from .ui_switchgui import Ui_MainWindow
-from .ui_switch_widget import Ui_SwitchWidget
+from pyqtgraph.Qt import QtCore, QtGui, uic
+
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
+
 
 class SwitchGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
@@ -49,7 +50,7 @@ class SwitchGui(GUIBase):
 
           @param object e: Fysom state change notice
         """
-        self._mw = SwitchWindow()
+        self._mw = SwitchMainWindow()
         lsw =  self.connector['in']['laserswitchlogic']['object']
         for hw in lsw.switches:
             frame = QtGui.QGroupBox(hw[0]['hw']._name, self._mw.scrollAreaWidgetContents)
@@ -76,17 +77,25 @@ class SwitchGui(GUIBase):
         self._mw.close()
 
 
-class SwitchWindow(QtGui.QMainWindow, Ui_MainWindow):
+class SwitchMainWindow(QtGui.QMainWindow):
     """ Helper class for window loaded from UI file.
     """
     def __init__(self):
         """ Create the switch GUI window.
         """
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_switchgui.ui')
+
+        # Load it
+        super(SwitchMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
+        
+        # FIXME: what does this do?
         self.layout = QtGui.QVBoxLayout(self.scrollArea)
 
-class SwitchWidget(QtGui.QWidget, Ui_SwitchWidget):
+class SwitchWidget(QtGui.QWidget):
     """ A widget that shows all data associated to a switch.
     """
     def __init__(self, switch):
@@ -94,8 +103,17 @@ class SwitchWidget(QtGui.QWidget, Ui_SwitchWidget):
 
           @param dict switch: dict that contains reference to hardware  module as 'hw' and switch number as 'n'.
         """
-        QtGui.QWidget.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_switch_widget.ui')
+
+        # Load it
+        super(SwitchWidget, self).__init__()
+        uic.loadUi(ui_file, self)
+        #self.show()
+
+
+        # FIXME: the following bits need comments
         self.switch = switch
         self.SwitchButton.setChecked( self.switch['hw'].getSwitchState(self.switch['n']) )
         self.calOffVal.setValue( self.switch['hw'].getCalibration(self.switch['n'], 'Off') )

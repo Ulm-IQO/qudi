@@ -19,35 +19,39 @@ Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
 """
 
 #from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import numpy as np
+import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.odmr.ui_odmrgui import Ui_MainWindow
-from gui.odmr.ui_odmr_settings import Ui_SettingsDialog
 from gui.guiutils import ColorScale, ColorBar
 
-# To convert the *.ui file to a raw ODMRGuiUI.py file use the python script
-# in the Anaconda directory, which you can find in:
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
-#
-# Then use that script like
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py"ODMRGuiUI.ui > ODMRGuiUI.py
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 
-class ODMRMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class ODMRMainWindow(QtGui.QMainWindow):
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_odmrgui.ui')
+
+        # Load it
+        super(ODMRMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
         
-class ODMRSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+class ODMRSettingDialog(QtGui.QDialog):
     def __init__(self):
-        QtGui.QDialog.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_odmr_settings.ui')
+
+        # Load it
+        super(ODMRSettingDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
 
             
 class ODMRGui(GUIBase):

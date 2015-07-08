@@ -18,16 +18,17 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Lachlan J. Rogers  lachlan.rogers@uni-ulm.de
 """
 
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import numpy as np
 import time
+import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.poimanager.ui_poimangui import Ui_PoiManager
 from gui.guiutils import ColorScale, ColorBar
 
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 
 class PoiMark(pg.CircleROI):
@@ -178,10 +179,17 @@ class CustomViewBox(pg.ViewBox):
         else:
             ev.ignore()
   
-class PoiManagerMainWindow(QtGui.QMainWindow,Ui_PoiManager):
+class PoiManagerMainWindow(QtGui.QMainWindow):
+    
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_poimangui.ui')
+
+        # Load it
+        super(PoiManagerMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
                     
 class PoiManagerGui(GUIBase):
     """

@@ -21,35 +21,19 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 #from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import numpy as np
 import copy
 import time
+import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
-from gui.confocal.ui_confocalgui import Ui_MainWindow
-from gui.confocal.ui_cf_settings import Ui_SettingsDialog
-from gui.optimizer.ui_optim_settings import Ui_SettingsDialog as Ui_OptimizerSettingsDialog
 
-
-# ============= HowTo Convert the corresponding *.ui file =====================
-# To convert the *.ui file to a raw ui_confocalgui.py file use the python script
-# in the Anaconda directory, which you can find in:
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
-#
-# Then use that script like
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py" ui_confocalgui.ui > ui_confocalgui.py
-#
-# to convert to ui_confocalgui.py. (This should be run in the python interpreter)
-# =============================================================================
-
-
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 
 class CustomViewBox(pg.ViewBox):
@@ -125,29 +109,47 @@ class CrossLine(pg.InfiniteLine):
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
 
 
-class ConfocalMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+class ConfocalMainWindow(QtGui.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
 
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_confocalgui.ui')
+
+        # Load it
+        super(ConfocalMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
 
     def keyPressEvent(self, event):
         """Pass the keyboard press event from the main window further. """
         self.sigPressKeyBoard.emit(event)
 
-class ConfocalSettingDialog(QtGui.QDialog,Ui_SettingsDialog):
+class ConfocalSettingDialog(QtGui.QDialog):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
-    def __init__(self):
-        QtGui.QDialog.__init__(self)
-        self.setupUi(self)
 
-class OptimizerSettingDialog(QtGui.QDialog,Ui_OptimizerSettingsDialog):
     def __init__(self):
-        QtGui.QDialog.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_cf_settings.ui')
+
+        # Load it
+        super(ConfocalSettingDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
+class OptimizerSettingDialog(QtGui.QDialog):
+
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_optim_settings.ui')
+
+        # Load it
+        super(OptimizerSettingDialog, self).__init__()
+        uic.loadUi(ui_file, self)
 
 
 class ConfocalGui(GUIBase):
