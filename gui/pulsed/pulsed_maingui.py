@@ -6,28 +6,28 @@ Created on Mon Jun 29 17:06:00 2015
 """
 
 #from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import numpy as np
+import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.pulsed.ui_pulsed_maingui import Ui_MainWindow
 from core.util.mutex import Mutex
 
-# To convert the *.ui file to a raw PulsedMeasurementsGuiUI.py file use the python script
-# in the Anaconda directory, which you can find in:
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py".
-#
-# Then use that script like
-#
-# "<Installation-dir of Anacona>\Anaconda3\Lib\site-packages\PyQt4\uic\pyuic.py PulsedMeasurementsGuiUI.ui > PulsedMeasurementsGuiUI.py
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
+
 
 class PulsedMeasurementMainWindow(QtGui.QMainWindow,Ui_MainWindow):
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_pulsed_maingui.ui')
+
+        # Load it
+        super(PulsedMeasurementMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
 
 class PulsedMeasurementGui(GUIBase):
     """

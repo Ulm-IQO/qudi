@@ -2,20 +2,26 @@
 # Test gui (test)
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
+import os
 
-from gui.counter.ui_slow_counter import Ui_MainWindow
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
-
-class CounterMainWindow(QtGui.QMainWindow, Ui_MainWindow):
-    """ Create the Main Window based on the *.py output from the *.ui file. """
+class CounterMainWindow(QtGui.QMainWindow):
+    """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_slow_counter.ui')
+
+        # Load it
+        super(CounterMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
 
 
 class CounterGui(GUIBase):

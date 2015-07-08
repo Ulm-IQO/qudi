@@ -19,13 +19,13 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
 """
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui
-from .ui_manager_window import Ui_MainWindow
-from .ui_module_widget import Ui_ModuleWidget
-from .aboutdialog import Ui_AboutDialog
+from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
 import svn.local
 import os
+
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
+
 
 class ManagerGui(GUIBase):
     """This class provides a GUI to the QuDi manager.
@@ -233,28 +233,42 @@ class ManagerGui(GUIBase):
             self.sigSaveConfig.emit(filename)
 
 
-class ManagerMainWindow(QtGui.QMainWindow, Ui_MainWindow):
+class ManagerMainWindow(QtGui.QMainWindow):
     """ This class represents the Manager Window.
     """
     def __init__(self):
         """ Create the Manager Window.
         """
-        QtGui.QMainWindow.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_manager_window.ui')
+
+        # Load it
+        super(ManagerMainWindow, self).__init__()
+        uic.loadUi(ui_file, self)
+        self.show()
+
+        # Set up the layout
+        # FIXME: can this be done in the ui file with Designer?
         self.guilayout = QtGui.QVBoxLayout(self.guiscroll)
         self.logiclayout = QtGui.QVBoxLayout(self.logicscroll)
         self.hwlayout = QtGui.QVBoxLayout(self.hwscroll)
 
-class AboutDialog(QtGui.QDialog, Ui_AboutDialog):
+class AboutDialog(QtGui.QDialog):
     """ This class represents the QuDi About dialog.
     """
     def __init__(self):
         """ Create QuDi About Dialog.
         """
-        QtGui.QDialog.__init__(self)
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'aboutdialog.ui')
 
-class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
+        # Load it
+        super(AboutDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
+class ModuleListItem(QtGui.QFrame):
     """ This class represents a module widget in the QuDi module list.
 
       @signal str str sigActivateThis: gives signal with base and name of module to be loaded
@@ -272,8 +286,15 @@ class ModuleListItem(QtGui.QFrame, Ui_ModuleWidget):
           @param str basename: module category
           @param str modulename: unique module name
         """
-        super().__init__()
-        self.setupUi(self)
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_module_widget.ui')
+
+        # Load it
+        super(ModuleListItem, self).__init__()
+        uic.loadUi(ui_file, self)
+
+        # FIXME: comments
         self.manager = manager
         self.name = modulename
         self.base = basename
