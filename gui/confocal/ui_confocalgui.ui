@@ -55,10 +55,19 @@
     <property name="title">
      <string>View</string>
     </property>
+    <widget class="QMenu" name="menuToolbars">
+     <property name="title">
+      <string>Toolbars</string>
+     </property>
+     <addaction name="actionCofocal_Toolbar"/>
+     <addaction name="actionUtil_Toolbar"/>
+    </widget>
     <addaction name="actionXY_scan_view"/>
     <addaction name="actionDepth_scan_view"/>
     <addaction name="actionScan_control_view"/>
     <addaction name="actionOptimizer_view"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
     <addaction name="separator"/>
     <addaction name="restore_default_view_Action"/>
     <addaction name="separator"/>
@@ -1789,6 +1798,28 @@
     <string>Switch between x- and y- depth scan</string>
    </property>
   </action>
+  <action name="actionCofocal_Toolbar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Cofocal Toolbar</string>
+   </property>
+  </action>
+  <action name="actionUtil_Toolbar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Util Toolbar</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -1956,6 +1987,38 @@
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCofocal_Toolbar</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>toolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>368</x>
+     <y>46</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionUtil_Toolbar</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>toolBar_2</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>996</x>
+     <y>46</y>
     </hint>
    </hints>
   </connection>
