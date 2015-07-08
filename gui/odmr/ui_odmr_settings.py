@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ODMRSettingsUI.ui'
+# Form implementation generated from reading ui file 'ui_odmr_settings.ui'
 #
-# Created: Tue May 12 17:07:12 2015
-#      by: PyQt4 UI code generator 4.9.5
+# Created: Wed Jul  8 09:55:29 2015
+#      by: PyQt4 UI code generator 4.11.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -12,7 +12,8 @@ from PyQt4 import QtCore, QtGui
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
-    _fromUtf8 = lambda s: s
+    def _fromUtf8(s):
+        return s
 
 try:
     _encoding = QtGui.QApplication.UnicodeUTF8
@@ -21,7 +22,7 @@ try:
 except AttributeError:
     def _translate(context, text, disambig):
         return QtGui.QApplication.translate(context, text, disambig)
-        
+
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName(_fromUtf8("SettingsDialog"))
@@ -63,9 +64,11 @@ class Ui_SettingsDialog(object):
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
 
     def retranslateUi(self, SettingsDialog):
-        SettingsDialog.setWindowTitle(QtGui.QApplication.translate("SettingsDialog", "qudi: ODMR - Settings", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("SettingsDialog", "Matrix Lines :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>This is the number of lines plotted in the Matrix Plot (lower plot).</p></body></html>", None))
-        self.label_2.setText(QtGui.QApplication.translate("SettingsDialog", "clock frequency :", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setToolTip(_translate("SettingsDialog", "<html><head/><body><p>That is the inverse time how long the scanner stays at the desired frequency and counts.</p></body></html>", None))
-        
+        SettingsDialog.setWindowTitle(_translate("SettingsDialog", "qudi: ODMR - Settings", None))
+        self.label.setToolTip(_translate("SettingsDialog", "This is the number of lines plotted in the Matrix Plot (lower plot).", None))
+        self.label.setText(_translate("SettingsDialog", "Matrix Lines :", None))
+        self.matrix_lines_InputWidget.setToolTip(_translate("SettingsDialog", "This is the number of lines plotted in the Matrix Plot (lower plot).", None))
+        self.label_2.setToolTip(_translate("SettingsDialog", "That is the inverse time how long the scanner stays at the desired frequency and counts.", None))
+        self.label_2.setText(_translate("SettingsDialog", "clock frequency :", None))
+        self.clock_frequency_InputWidget.setToolTip(_translate("SettingsDialog", "That is the inverse time how long the scanner stays at the desired frequency and counts.", None))
+
