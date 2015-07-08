@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1255</width>
-    <height>939</height>
+    <height>948</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1255</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -283,9 +283,8 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset theme="arrow-rotate-anticlockwise-icon">
-             <normaloff/>
-            </iconset>
+            <iconset>
+             <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</iconset>
            </property>
           </widget>
          </item>
@@ -301,9 +300,8 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset theme="arrow-rotate-clockwise-icon">
-             <normaloff/>
-            </iconset>
+            <iconset>
+             <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</iconset>
            </property>
            <property name="checkable">
             <bool>false</bool>
@@ -1441,9 +1439,8 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset theme="arrow-rotate-anticlockwise-icon">
-               <normaloff/>
-              </iconset>
+              <iconset>
+               <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</iconset>
              </property>
             </widget>
            </item>
@@ -1459,9 +1456,8 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset theme="arrow-rotate-clockwise-icon">
-               <normaloff/>
-              </iconset>
+              <iconset>
+               <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</iconset>
              </property>
             </widget>
            </item>
@@ -1492,6 +1488,7 @@
    <addaction name="action_loop_scan_xy"/>
    <addaction name="action_stop_scanning"/>
    <addaction name="action_scan_depth_start"/>
+   <addaction name="actionRotated_depth_scan"/>
    <addaction name="action_scan_depth_resume"/>
    <addaction name="action_loop_scan_depth"/>
    <addaction name="action_optimize_position"/>
@@ -1600,9 +1597,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="zoom-select">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/search.png</normaloff>../../artwork/icons/qudiTheme/22x22/search.png</iconset>
    </property>
    <property name="text">
     <string>zoom</string>
@@ -1666,9 +1662,8 @@
   </action>
   <action name="action_scan_xy_start">
    <property name="icon">
-    <iconset theme="scan_xy_start">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</iconset>
    </property>
    <property name="text">
     <string>Scan XY</string>
@@ -1679,9 +1674,8 @@
   </action>
   <action name="action_scan_xy_resume">
    <property name="icon">
-    <iconset theme="scan_xy_resume">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
    </property>
    <property name="text">
     <string>Resume XY scan</string>
@@ -1692,9 +1686,8 @@
   </action>
   <action name="action_scan_depth_start">
    <property name="icon">
-    <iconset theme="scan_depth_start">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_start.png</iconset>
    </property>
    <property name="text">
     <string>Scan depth</string>
@@ -1705,9 +1698,8 @@
   </action>
   <action name="action_scan_depth_resume">
    <property name="icon">
-    <iconset theme="scan_depth_resume">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_resume.png</iconset>
    </property>
    <property name="text">
     <string>Resume depth scan</string>
@@ -1718,9 +1710,8 @@
   </action>
   <action name="action_optimize_position">
    <property name="icon">
-    <iconset theme="optimize_position">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</iconset>
    </property>
    <property name="text">
     <string>Optimize position</string>
@@ -1731,9 +1722,8 @@
   </action>
   <action name="action_stop_scanning">
    <property name="icon">
-    <iconset theme="stop_scan">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop_scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop_scan.png</iconset>
    </property>
    <property name="text">
     <string>Stop scan</string>
@@ -1744,9 +1734,8 @@
   </action>
   <action name="action_loop_scan_xy">
    <property name="icon">
-    <iconset theme="permanent_scan_xy">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_xy.png</normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_xy.png</iconset>
    </property>
    <property name="text">
     <string>Loop Scan XY</string>
@@ -1757,9 +1746,8 @@
   </action>
   <action name="action_loop_scan_depth">
    <property name="icon">
-    <iconset theme="permanent_scan_depth">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_depth.png</normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_depth.png</iconset>
    </property>
    <property name="text">
     <string>Loop Scan Depth</string>
@@ -1782,6 +1770,23 @@
    </property>
    <property name="toolTip">
     <string>Rearrange window as a small optimizer interface.</string>
+   </property>
+  </action>
+  <action name="actionRotated_depth_scan">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/32x32/x_depth.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/32x32/y_depth.png</normalon>
+     <selectedon>../../artwork/icons/qudiTheme/32x32/y_depth.png</selectedon>../../artwork/icons/qudiTheme/32x32/x_depth.png</iconset>
+   </property>
+   <property name="text">
+    <string>depth direction</string>
+   </property>
+   <property name="toolTip">
+    <string>Switch between x- and y- depth scan</string>
    </property>
   </action>
  </widget>
