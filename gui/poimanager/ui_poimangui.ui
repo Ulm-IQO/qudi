@@ -679,9 +679,8 @@
   </widget>
   <action name="actionNew_ROI">
    <property name="icon">
-    <iconset theme="document-new">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</iconset>
    </property>
    <property name="text">
     <string>New ROI</string>
@@ -714,16 +713,6 @@
    </property>
    <property name="toolTip">
     <string>Load a saved ROI</string>
-   </property>
-  </action>
-  <action name="actionNew_POI">
-   <property name="text">
-    <string>New POI</string>
-   </property>
-  </action>
-  <action name="actionColorbar">
-   <property name="text">
-    <string>Colorbar</string>
    </property>
   </action>
   <action name="actionPOI_Editor_view">
@@ -784,8 +773,8 @@
   </action>
   <action name="refind_poi_Action">
    <property name="icon">
-    <iconset theme="optimize_position_poi">
-     <normaloff>../confocal</normaloff>../confocal</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position_poi.png</iconset>
    </property>
    <property name="text">
     <string>Refind POI</string>
@@ -796,8 +785,8 @@
   </action>
   <action name="track_poi_Action">
    <property name="icon">
-    <iconset theme="periodic_refind_poi">
-     <normaloff>../confocal</normaloff>../confocal</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</iconset>
    </property>
    <property name="text">
     <string>Track POI</string>
@@ -808,8 +797,8 @@
   </action>
   <action name="new_poi_Action">
    <property name="icon">
-    <iconset theme="poi-add-new">
-     <normaloff>../confocal</normaloff>../confocal</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-add-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-add-new.png</iconset>
    </property>
    <property name="text">
     <string>New POI</string>

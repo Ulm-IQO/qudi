@@ -180,8 +180,8 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="start_counter">
-     <normaloff> </normaloff> </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</iconset>
    </property>
    <property name="text">
     <string>Start counter</string>
@@ -195,8 +195,8 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="record_counter">
-     <normaloff> </normaloff> </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</iconset>
    </property>
    <property name="text">
     <string>Record counts</string>
