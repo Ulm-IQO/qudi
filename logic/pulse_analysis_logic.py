@@ -44,21 +44,26 @@ class PulseAnalysisLogic(GenericLogic):
 #        self._laser_length_bins = 3800
 #        self._number_of_laser_pulses = 100
         
-        self.fluorescence_signal_start_bin = 10
-        self.fluorescence_signal_width_bins = 200
+        # set windows for signal and normalization of the laser pulses
+        self.signal_start_bin = 5
+        self.signal_width_bins = 200
         self.norm_start_bin = 500
         self.norm_width_bins = 200
-        
+        # dictionary containing the fast counter status parameters
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
+        # dictionary containing the parameters of the currently running sequence
         self.running_sequence_parameters = {}
         self.running_sequence_parameters['laser_length_vector'] = np.full(100, 3051, int)
         self.running_sequence_parameters['tau_vector'] = np.array(range(101))
         self.running_sequence_parameters['number_of_lasers'] = 101
-        
+        # index of the laser pulse to be displayed in the GUI (starting from 0).
+        # A value of -1 corresponds to the sum of all laser pulses
+        self.display_pulse_no = -1
+
+        # threading
         self.threadlock = Mutex()
-        
         self.stopRequested = False
-        self.display_pulse_no = 25
+        
                       
                       
     def activation(self, e):
@@ -75,11 +80,10 @@ class PulseAnalysisLogic(GenericLogic):
 
     def update_sequence_parameters(self, name):
         """Gets the sequence parameters of sequence "name" from the sequence generator module
+          @param str name: name of the sequence to be updated
         """
-        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name)
-        self._pulse_extraction_logic.sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name)
-        print(self.running_sequence_parameters['tau_vector'])
-        print(self.running_sequence_parameters['number_of_lasers'])
+        # get the sequence parameters from the sequence generator logic
+        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name).copy()
         return
 
     
@@ -91,26 +95,23 @@ class PulseAnalysisLogic(GenericLogic):
     
     
     def start_pulsed_measurement(self):
-        '''Calculate the fluorescence contrast and create plots.
+        '''Start the analysis thread.
         '''  
         # initialize plots
         self._initialize_signal_plot()
         self._initialize_laser_plot()
-        
-        # start pulse generator
-        self.pulse_generator_on()
-        
         # start fast counter
         self.fast_counter_on()
-        
+        # start pulse generator
+        self.pulse_generator_on()
         # start analysis loop and set lock to indicate a running measurement
         self.lock()
         self.signal_analysis_next.emit()
         
         
     def stop_pulsed_measurement(self):
-        """Stop the measurement
-        @return int: error code (0:OK, -1:error)
+        """ Stop the measurement
+          @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
             if self.getState() == 'locked':
@@ -131,24 +132,31 @@ class PulseAnalysisLogic(GenericLogic):
                 self.signal_laser_plot_updated.emit() 
                 return
         
+        # Initialize the 
         norm_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
         signal_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
-        
+        # set start and stop indices for the analysis
         norm_start = self.norm_start_bin
         norm_end = self.norm_start_bin + self.norm_width_bins
-        signal_start = self.fluorescence_signal_start_bin
-        signal_end = self.fluorescence_signal_start_bin + self.fluorescence_signal_width_bins
-        
-        new_laser_data = self._pulse_extraction_logic.get_data_laserpulses()
-        
+        signal_start = self.signal_start_bin
+        signal_end = self.signal_start_bin + self.signal_width_bins
+        # acquire data from the pulse extraction logic 
+        laser_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
+        # loop over all laser pulses and analyze them
         for i in range(self.running_sequence_parameters['number_of_lasers']):
-            norm_mean[i] = new_laser_data[i][norm_start:norm_end].mean()
-            signal_mean[i] = (new_laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
+            # calculate the mean of the data in the normalization window
+            norm_mean[i] = laser_data[i][norm_start:norm_end].mean()
+            # calculate the mean of the data in the signal window
+            signal_mean[i] = (laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
+            # update the signal plot y-data
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
-        self.laser_plot_y = np.sum(new_laser_data,0)#new_laser_data[self.display_pulse_no]
-        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, new_laser_data.shape[1]+1)
-#        if self.stopRequested:
-#            np.savetxt('laserdata.txt', new_laser_data)
+        # update the laser plot data to be displayed
+        if self.display_pulse_no >= 0:
+            self.laser_plot_y = laser_data[self.display_pulse_no]
+        else:
+            self.laser_plot_y = np.sum(laser_data,0)
+        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, laser_data.shape[1]+1)
+        # emit signals
         self.signal_signal_plot_updated.emit() 
         self.signal_laser_plot_updated.emit() 
         self.signal_analysis_next.emit()
