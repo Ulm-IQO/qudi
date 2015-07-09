@@ -444,6 +444,7 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_xy_start.triggered.connect(self.xy_scan_clicked)
         self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
         self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
+        self._mw.action_scan_depth_resume.triggered.connect(self.continue_depth_scan_clicked)
         self._mw.actionRotated_depth_scan.triggered.connect(self.rotate_depth_scan_clicked)
 
         self._mw.action_loop_scan_xy.triggered.connect(self.xy_loop_scan_clicked)
@@ -873,8 +874,20 @@ class ConfocalGui(GUIBase):
         #Firstly stop any scan that might be in progress
         #self._scanning_logic.stop_scanning()
 
-        self._scanning_logic.continue_scanning()
+        self._scanning_logic.continue_scanning(zscan = False)
         self.disable_scan_actions()
+        
+    def continue_depth_scan_clicked(self):
+        """ Manages what happens if the xy scan is continued.
+
+        @param bool enabled: continue scan if that is possible
+        """
+        #Firstly stop any scan that might be in progress
+        #self._scanning_logic.stop_scanning()
+
+        self._scanning_logic.continue_scanning(zscan = True)
+        self.disable_scan_actions()
+        
 
     def depth_scan_clicked(self):
         """ Manages what happens if the depth scan is started.
