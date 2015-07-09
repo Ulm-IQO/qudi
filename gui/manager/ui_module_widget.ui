@@ -36,9 +36,8 @@
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset theme="view-refresh">
-       <normaloff/>
-      </iconset>
+      <iconset>
+       <normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>
      </property>
     </widget>
    </item>
@@ -48,9 +47,8 @@
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset theme="application-exit">
-       <normaloff/>
-      </iconset>
+      <iconset>
+       <normaloff>../../artwork/icons/qudiTheme/22x22/application-exit.png</normaloff>../../artwork/icons/qudiTheme/22x22/application-exit.png</iconset>
      </property>
     </widget>
    </item>
