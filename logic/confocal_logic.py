@@ -52,6 +52,10 @@ class ConfocalLogic(GenericLogic):
         self.return_slowness = 50
 
         self._zscan = False
+        
+        self._depth_line_pos = 0
+        
+        self._xy_line_pos = 0
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -184,11 +188,16 @@ class ConfocalLogic(GenericLogic):
         return 0
 
 
-    def continue_scanning(self):
+    def continue_scanning(self,zscan):
         """Continue scanning
 
         @return int: error code (0:OK, -1:error)
         """
+        self._zscan = zscan
+        if zscan:
+            self._scan_counter = self._depth_line_pos
+        else:
+            self._scan_counter = self._xy_line_pos
         self.signal_continue_scanning.emit()
         return 0
 
@@ -416,6 +425,10 @@ class ConfocalLogic(GenericLogic):
                 self.signal_xy_image_updated.emit()
                 self.signal_depth_image_updated.emit()
                 self.set_position()
+                if self._zscan :
+                    self._depth_line_pos = self._scan_counter
+                else:
+                    self._xy_line_pos = self._scan_counter
                 return
 
         if self._zscan:
