@@ -109,7 +109,7 @@ class ODMRGui(GUIBase):
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y,
-                                                    pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+                                                    pen=QtGui.QPen(QtGui.QColor(255,255,255,255)))
         
         
         # Add the display item to the xy and xz VieWidget, which was defined in
@@ -118,6 +118,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_ViewWidget.addItem(self.odmr_fit_image)
         self._mw.odmr_matrix_ViewWidget.addItem(self.odmr_matrix_image)
         self._mw.odmr_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        
         
         
         # Get the colorscales at set LUT
@@ -237,6 +238,8 @@ class ODMRGui(GUIBase):
         # Show the Main ODMR GUI:
         self._mw.show()
         
+        
+        
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -272,7 +275,11 @@ class ODMRGui(GUIBase):
     def refresh_plot(self):
         """ Refresh the xy-plot image """
         self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
-        self.odmr_fit_image.setData(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y)
+        if not self._mw.fit_methods_ComboWidget.currentText() == 'No Fit':
+            self.odmr_fit_image.setData(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y,pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+        else:
+            if self.odmr_fit_image in self._mw.odmr_ViewWidget.listDataItems():
+                self._mw.odmr_ViewWidget.removeItem(self.odmr_fit_image)
         
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """       
@@ -348,6 +355,8 @@ class ODMRGui(GUIBase):
         self._mw.odmr_ViewWidget.getViewBox().updateAutoRange()
         self._mw.odmr_fit_results_DisplayWidget.clear()
         self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
+        
+        
 
                 
     def reject_settings(self):
