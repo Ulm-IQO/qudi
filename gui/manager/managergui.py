@@ -249,7 +249,7 @@ class ManagerMainWindow(QtGui.QMainWindow):
         self.show()
 
         # Set up the layout
-        # FIXME: can this be done in the ui file with Designer?
+        # this really cannot be done in Qt designer, you cannot set a layout on an empty widget
         self.guilayout = QtGui.QVBoxLayout(self.guiscroll)
         self.logiclayout = QtGui.QVBoxLayout(self.logicscroll)
         self.hwlayout = QtGui.QVBoxLayout(self.hwscroll)
