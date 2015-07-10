@@ -166,7 +166,7 @@ class ConfocalGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.',
@@ -192,6 +192,17 @@ class ConfocalGui(GUIBase):
         # degree trun is applied.
         self.xy_image_orientation = np.array([0,1,2,-1],int)
         self.depth_image_orientation = np.array([0,1,2,-1],int)
+        
+    def deactivation(self, e):
+        """ Reverse steps of activation
+
+        @param e: error code
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._mw.close()
+        return 0
+        
 
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
@@ -210,6 +221,8 @@ class ConfocalGui(GUIBase):
         self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimizerSettingsUI(e) # initialize the optimizer settings GUI
+        
+    
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -434,8 +447,9 @@ class ConfocalGui(GUIBase):
         self.xy_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_xy)
         self.depth_image.getViewBox().sigRangeChanged.connect(self.adjust_aspect_roi_depth)
 
-        ##########
-        # Actions
+        #######################################################################
+        ####                           Actions                             ####
+        #######################################################################
 
         # Connect the scan actions to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
@@ -548,6 +562,7 @@ class ConfocalGui(GUIBase):
         self.adjust_depth_window()
 
         self.show()
+        
 
     def initSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the settings GUI.
@@ -638,6 +653,7 @@ class ConfocalGui(GUIBase):
                 self.update_z_slider(float(round(z_pos+self.slider_small_step*0.001,4)))
             elif event.key() == QtCore.Qt.Key_PageDown:
                 self.update_z_slider(float(round(z_pos-self.slider_small_step*0.001,4)))
+                
 
     def update_crosshair_position(self):
         """ Update the GUI position of the crosshair from the logic. """
@@ -745,6 +761,13 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_depth_resume.setEnabled(False)
 
         self._mw.action_optimize_position.setEnabled(False)
+        
+        self._mw.x_min_InputWidget.setEnabled(False)
+        self._mw.x_max_InputWidget.setEnabled(False)
+        self._mw.y_min_InputWidget.setEnabled(False)
+        self._mw.y_max_InputWidget.setEnabled(False)
+        self._mw.z_min_InputWidget.setEnabled(False)
+        self._mw.z_max_InputWidget.setEnabled(False)
 
     def enable_scan_actions(self):
         """ Reset the scan action buttons to the default active
@@ -760,6 +783,13 @@ class ConfocalGui(GUIBase):
         self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
+        
+        self._mw.x_min_InputWidget.setEnabled(True)
+        self._mw.x_max_InputWidget.setEnabled(True)
+        self._mw.y_min_InputWidget.setEnabled(True)
+        self._mw.y_max_InputWidget.setEnabled(True)
+        self._mw.z_min_InputWidget.setEnabled(True)
+        self._mw.z_max_InputWidget.setEnabled(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
