@@ -66,7 +66,7 @@ class ODMRGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
         super().__init__(
                     manager,
                     name,
@@ -79,7 +79,17 @@ class ODMRGui(GUIBase):
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
-                        msgType='status')  
+                        msgType='status')
+                        
+    def deactivation(self, e):
+        """ Reverse steps of activation
+
+        @param e: error code
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._mw.close()
+        return 0
                         
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
