@@ -193,6 +193,8 @@ class ConfocalGui(GUIBase):
         self.xy_image_orientation = np.array([0,1,2,-1],int)
         self.depth_image_orientation = np.array([0,1,2,-1],int)
         
+        
+        
     def deactivation(self, e):
         """ Reverse steps of activation
 
@@ -432,7 +434,7 @@ class ConfocalGui(GUIBase):
         self._mw.y_current_InputWidget.editingFinished.connect(self.update_y_slider)
         self._mw.z_current_InputWidget.editingFinished.connect(self.update_z_slider)
 
-        self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution)
+        self._mw.xy_res_InputWidget.editingFinished.connect(self.change_xy_resolution, type=QtCore.Qt.QueuedConnection)
         self._mw.z_res_InputWidget.editingFinished.connect(self.change_z_resolution)
 
         self._mw.x_min_InputWidget.editingFinished.connect(self.change_x_image_range)
@@ -455,7 +457,7 @@ class ConfocalGui(GUIBase):
         # also the adjustment of the displayed windows.
         self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
 
-        self._mw.action_scan_xy_start.triggered.connect(self.xy_scan_clicked)
+        self._mw.action_scan_xy_start.triggered.connect(self.xy_scan_clicked, type=QtCore.Qt.QueuedConnection)
         self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
         self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
         self._mw.action_scan_depth_resume.triggered.connect(self.continue_depth_scan_clicked)
@@ -465,6 +467,8 @@ class ConfocalGui(GUIBase):
         self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
+        
+        self._mw.action_zoom.triggered.connect(self.zoomed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -768,6 +772,9 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setEnabled(False)
         self._mw.z_min_InputWidget.setEnabled(False)
         self._mw.z_max_InputWidget.setEnabled(False)
+        
+        self._mw.xy_res_InputWidget.setEnabled(False)
+        self._mw.z_res_InputWidget.setEnabled(False)
 
     def enable_scan_actions(self):
         """ Reset the scan action buttons to the default active
@@ -790,6 +797,9 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setEnabled(True)
         self._mw.z_min_InputWidget.setEnabled(True)
         self._mw.z_max_InputWidget.setEnabled(True)
+        
+        self._mw.xy_res_InputWidget.setEnabled(True)
+        self._mw.z_res_InputWidget.setEnabled(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
@@ -1629,3 +1639,4 @@ class ConfocalGui(GUIBase):
 
         # Resize the window to small dimensions
         self._mw.resize(1000, 360)
+        
