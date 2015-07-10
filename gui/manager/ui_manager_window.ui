@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>466</width>
-    <height>609</height>
+    <width>1020</width>
+    <height>681</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,8 +42,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>436</width>
-             <height>261</height>
+             <width>472</width>
+             <height>316</height>
             </rect>
            </property>
           </widget>
@@ -66,8 +66,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>436</width>
-             <height>261</height>
+             <width>472</width>
+             <height>316</height>
             </rect>
            </property>
           </widget>
@@ -90,8 +90,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>436</width>
-             <height>261</height>
+             <width>472</width>
+             <height>316</height>
             </rect>
            </property>
           </widget>
@@ -108,8 +108,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>466</width>
-     <height>20</height>
+     <width>1020</width>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -162,6 +162,18 @@
      </item>
     </layout>
    </widget>
+  </widget>
+  <widget class="QDockWidget" name="consoleDockWidget">
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="RichIPythonWidget" name="consolewidget"/>
+  </widget>
+  <widget class="QDockWidget" name="logDockWidget">
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="LogWidget" name="logwidget"/>
   </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
@@ -260,6 +272,20 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LogWidget</class>
+   <extends>QWidget</extends>
+   <header>gui.manager.logwidget</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>RichIPythonWidget</class>
+   <extends>QWidget</extends>
+   <header>IPython.qt.console.rich_ipython_widget</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

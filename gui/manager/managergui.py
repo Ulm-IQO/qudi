@@ -20,8 +20,12 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
 
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
+from IPython.qt.inprocess import QtInProcessKernelManager
 from collections import OrderedDict
 import svn.local
+import threading
+import pyqtgraph as pg
+import numpy as np
 import os
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
@@ -54,6 +58,7 @@ class ManagerGui(GUIBase):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
         self.modlist = list()
+        self.modules = set()
 
     def activation(self, e=None):
         """ Activation method called on change to active state.
@@ -81,27 +86,39 @@ class ManagerGui(GUIBase):
         self._mw.actionConsole.triggered.connect(lambda: self._manager.sigShowConsole.emit())
         self._mw.actionAbout_Qt.triggered.connect(QtGui.QApplication.aboutQt)
         self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
-        self._mw.show()
+
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
+        self._manager.logger.sigLoggedMessage.connect(self._mw.logwidget.addEntry)
+        
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
+
+        # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
         self.updateModuleList()
 
+        # IPython console
+        self.startIPython()
+        self.updateIPythonModuleList()
+        self.startIPythonWidget()
+
         self._mw.config_display_dockWidget.hide()
         self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
+        self._mw.show()
 
     def deactivation(self,e):
         """Close window and remove connections.
 
           @param object eFysom state change notification
         """
+        self.stopIPythonWidget()
+        self.stopIPython()
         self.checkTimer.stop()
         self.checkTimer.timeout.disconnect()
         self.sigStartModule.disconnect()
@@ -132,6 +149,61 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about QuDi.
         """
         self._about.show()
+
+    def startIPython(self):
+        self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
+        self.kernel_manager = QtInProcessKernelManager()
+        self.kernel_manager.start_kernel()
+        self.kernel = self.kernel_manager.kernel
+        self.namespace = self.kernel.shell.user_ns
+        self.namespace.update({
+            'pg': pg,
+            'np': np,
+            'config': self._manager.tree['defined'],
+            'manager': self._manager
+            })
+        self.updateModuleList()
+        self.kernel.gui = 'qt4'
+        self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
+        self.logMsg('IPython kernel alive {0}'.format(self.kernel_manager.is_alive()))
+        self._manager.sigModulesChanged.connect(self.updateModuleList)
+
+    def startIPythonWidget(self):
+        banner = """
+This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'.
+Configuration is in 'config', the manager is 'manager' and all loaded modules are in this namespace with their configured name.
+View the current namespace with dir().
+Go, play.
+"""
+        self._mw.consolewidget.banner = banner
+        self._mw.consolewidget.kernel_manager = self.kernel_manager
+        self._mw.consolewidget.kernel_client = self._mw.consolewidget.kernel_manager.client()
+        self._mw.consolewidget.kernel_client.start_channels()
+        # the linux style theme which is basically the monokai theme
+        self._mw.consolewidget.set_default_style(colors='linux')
+
+    def stopIPython(self):
+        self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
+        self.kernel_manager.shutdown_kernel()
+
+    def stopIPythonWidget(self):
+        self._mw.consolewidget.kernel_client.stop_channels()
+
+    def updateIPythonModuleList(self):
+        """Remove non-existing modules from namespace, 
+            add new modules to namespace, update reloaded modules
+        """
+        currentModules = set()
+        newNamespace = dict()
+        for base in ['hardware', 'logic', 'gui']:
+            for module in self._manager.tree['loaded'][base]:
+                currentModules.add(module)
+                newNamespace[module] = self._manager.tree['loaded'][base][module]
+        discard = self.modules - currentModules
+        self.namespace.update(newNamespace)
+        for module in discard:
+            self.namespace.pop(module, None)
+        self.modules = currentModules
 
     def updateConfigWidgets(self):
         """ Clear and refill the tree widget showing the configuration.
