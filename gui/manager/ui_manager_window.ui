@@ -31,7 +31,7 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabWidgetPage1">
        <attribute name="title">
@@ -72,8 +72,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>887</width>
-             <height>289</height>
+             <width>96</width>
+             <height>26</height>
             </rect>
            </property>
           </widget>
@@ -96,7 +96,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>539</width>
+             <width>887</width>
              <height>289</height>
             </rect>
            </property>
