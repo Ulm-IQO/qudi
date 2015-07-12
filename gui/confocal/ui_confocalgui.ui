@@ -443,7 +443,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>Scan control</string>
+    <string>Scan parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -1649,7 +1649,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Scan control</string>
+    <string>Scan parameters</string>
    </property>
    <property name="shortcut">
     <string>Alt+C</string>
