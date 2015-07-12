@@ -314,7 +314,9 @@ class ConfocalGui(GUIBase):
 
         # Set the state button as ready button as default setting.
         self._mw.action_stop_scanning.setEnabled(False)
-
+        self._mw.action_scan_xy_resume.setEnabled(False)
+        self._mw.action_scan_depth_resume.setEnabled(False)
+        
         # Add the display item to the xy and depth ViewWidget, which was defined
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
