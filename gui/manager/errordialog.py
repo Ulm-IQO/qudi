@@ -23,6 +23,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 from pyqtgraph.Qt import QtGui, QtCore
+import re
 
 class ErrorDialog(QtGui.QDialog):
     """This class provides a popup window for notification with the option to

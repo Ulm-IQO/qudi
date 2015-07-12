@@ -72,8 +72,6 @@ class Manager(QtCore.QObject):
     sigAbortAll = QtCore.Signal()
     sigManagerQuit = QtCore.Signal(object)
     sigShowManager = QtCore.Signal()
-    sigShowLog = QtCore.Signal()
-    sigShowConsole = QtCore.Signal()
     
     def __init__(self, configFile=None, argv=None):
         """Constructor for QuDi main management class
