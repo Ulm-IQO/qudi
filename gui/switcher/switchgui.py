@@ -23,9 +23,6 @@ from collections import OrderedDict
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
-
-
 class SwitchGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
     """
@@ -52,6 +49,7 @@ class SwitchGui(GUIBase):
         """
         self._mw = SwitchMainWindow()
         lsw =  self.connector['in']['laserswitchlogic']['object']
+        # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
             frame = QtGui.QGroupBox(hw[0]['hw']._name, self._mw.scrollAreaWidgetContents)
             frame.setAlignment(QtCore.Qt.AlignLeft)
@@ -61,6 +59,7 @@ class SwitchGui(GUIBase):
             for switch in hw:
                 swidget = SwitchWidget(switch)
                 layout.addWidget(swidget)
+
         self.restoreWindowPos(self._mw)
         self.show()
        
@@ -88,11 +87,11 @@ class SwitchMainWindow(QtGui.QMainWindow):
         ui_file = os.path.join(this_dir, 'ui_switchgui.ui')
 
         # Load it
-        super(SwitchMainWindow, self).__init__()
+        super().__init__()
         uic.loadUi(ui_file, self)
         self.show()
         
-        # FIXME: what does this do?
+        # Add layout that we want to fill
         self.layout = QtGui.QVBoxLayout(self.scrollArea)
 
 class SwitchWidget(QtGui.QWidget):
@@ -108,17 +107,16 @@ class SwitchWidget(QtGui.QWidget):
         ui_file = os.path.join(this_dir, 'ui_switch_widget.ui')
 
         # Load it
-        super(SwitchWidget, self).__init__()
+        super().__init__()
         uic.loadUi(ui_file, self)
-        #self.show()
 
-
-        # FIXME: the following bits need comments
+        # get switch states from the logic and put them in the GUI elements
         self.switch = switch
         self.SwitchButton.setChecked( self.switch['hw'].getSwitchState(self.switch['n']) )
         self.calOffVal.setValue( self.switch['hw'].getCalibration(self.switch['n'], 'Off') )
         self.calOnVal.setValue(self.switch['hw'].getCalibration(self.switch['n'], 'On'))
         self.switchTimeLabel.setText('{0}s'.format(self.switch['hw'].getSwitchTime(self.switch['n'])))
+        # connect button
         self.SwitchButton.clicked.connect(self.toggleSwitch)
 
     def toggleSwitch(self):
