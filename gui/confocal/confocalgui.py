@@ -810,17 +810,18 @@ class ConfocalGui(GUIBase):
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
         
-        if self._scanning_logic._scan_counter == 0:
-          
-          
-          self._mw.action_scan_xy_resume.setEnabled(False)
+        if self._scanning_logic._zscan_continuable == True:          
+          self._mw.action_scan_depth_resume.setEnabled(True)
+                  
+        else:          
           self._mw.action_scan_depth_resume.setEnabled(False)
           
-        
-        else:
           
+        if self._scanning_logic._xyscan_continuable == True:                    
           self._mw.action_scan_xy_resume.setEnabled(True)
-          self._mw.action_scan_depth_resume.setEnabled(True)
+                 
+        else:          
+          self._mw.action_scan_xy_resume.setEnabled(False)  
         
 
     def _refocus_finished_wrapper(self):

@@ -100,6 +100,10 @@ class ConfocalLogic(GenericLogic):
 
         # Initialization of internal counter for scanning
         self._scan_counter=0
+        
+        # Variable to check if a scan is continuable
+        self._xyscan_continuable=False
+        self._zscan_continuable=False
 
         #tilt correction stuff:
         self.TiltCorrection = False
@@ -184,7 +188,14 @@ class ConfocalLogic(GenericLogic):
 
         self._scan_counter = 0
         self._zscan=zscan
+        if self._zscan:
+            self._zscan_continuable=True
+            
+        else:
+            self._xyscan_continuable=True
+            
         self.signal_start_scanning.emit()
+        
         return 0
 
 
@@ -203,14 +214,19 @@ class ConfocalLogic(GenericLogic):
 
 
     def stop_scanning(self):
-        """Stop the scan
-
+        """Stops the scan
+        
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
+                                
         return 0
+        
+   
+        
+        
 
 
     def initialize_image(self):
@@ -427,8 +443,10 @@ class ConfocalLogic(GenericLogic):
                 self.set_position()
                 if self._zscan :
                     self._depth_line_pos = self._scan_counter
+                    
                 else:
                     self._xy_line_pos = self._scan_counter
+                    
                 return
 
         if self._zscan:
@@ -488,13 +506,20 @@ class ConfocalLogic(GenericLogic):
             #self.sigImageNext.emit()
         # call this again from event loop
             self._scan_counter += 1
-            # stop scanning when last line scan was performed
+            # stop scanning when last line scan was performed and makes scan not continuable
+            
             if self._scan_counter >= np.size(self._image_vert_axis):
                 if not self.permanent_scan:
                     self.stop_scanning()
-                    self._scan_counter = 0
+                    if self._zscan:
+                        self._zscan_continuable=False
+                    else:
+                        self._xyscan_continuable=False
+                    
+                    
                 else:
-                    self._scan_counter = 0                    
+                    self._scan_counter = 0  
+            
             self.signal_scan_lines_next.emit()
 
         except Exception as e:
