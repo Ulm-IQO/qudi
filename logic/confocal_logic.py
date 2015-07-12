@@ -492,6 +492,7 @@ class ConfocalLogic(GenericLogic):
             if self._scan_counter >= np.size(self._image_vert_axis):
                 if not self.permanent_scan:
                     self.stop_scanning()
+                    self._scan_counter = 0
                 else:
                     self._scan_counter = 0                    
             self.signal_scan_lines_next.emit()

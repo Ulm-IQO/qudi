@@ -802,14 +802,26 @@ class ConfocalGui(GUIBase):
         
         self._mw.xy_res_InputWidget.setEnabled(True)
         self._mw.z_res_InputWidget.setEnabled(True)
+        
+        self._mw.action_loop_scan_xy.setEnabled(True)
+        self._mw.action_loop_scan_depth.setEnabled(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
-        self._mw.action_scan_xy_resume.setEnabled(True)
-        self._mw.action_scan_depth_resume.setEnabled(True)
-        self._mw.action_loop_scan_xy.setEnabled(True)
-        self._mw.action_loop_scan_depth.setEnabled(True)
+        
+        if self._scanning_logic._scan_counter == 0:
+          
+          
+          self._mw.action_scan_xy_resume.setEnabled(False)
+          self._mw.action_scan_depth_resume.setEnabled(False)
+          
+        
+        else:
+          
+          self._mw.action_scan_xy_resume.setEnabled(True)
+          self._mw.action_scan_depth_resume.setEnabled(True)
+        
 
     def _refocus_finished_wrapper(self):
         self.enable_scan_actions()
