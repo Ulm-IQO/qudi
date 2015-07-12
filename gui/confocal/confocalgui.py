@@ -470,7 +470,7 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
         
-        self._mw.action_zoom.triggered.connect(self.zoomed)
+        #self._mw.action_zoom.triggered.connect(self.zoomed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
