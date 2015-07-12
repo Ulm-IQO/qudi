@@ -22,15 +22,14 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from PyQt4 import QtGui, QtCore
-from gui.log import ui_logwidget
-from pyqtgraph import FeedbackButton
+from pyqtgraph.Qt import QtGui, QtCore, uic
+from pyqtgraph import FileDialog
 import pyqtgraph.configfile as configfile
 from core.util.mutex import Mutex
 import numpy as np
-from pyqtgraph import FileDialog
 import weakref
 import re
+import os
 
 class LogModel(QtCore.QAbstractTableModel):
     """ This is a Qt model that represents the log for dislpay in a QTableView.
@@ -264,8 +263,11 @@ class LogWidget(QtGui.QWidget):
 
         """
         super().__init__()
-        self.ui = ui_logwidget.Ui_Form()
-        self.ui.setupUi(self)
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_logwidget.ui')
+
+        # Load it
+        uic.loadUi(ui_file, self)
 
         self.logLength = 1000
 
@@ -273,20 +275,20 @@ class LogWidget(QtGui.QWidget):
         self.model = LogModel()
         self.filtermodel = LogFilter()
         self.filtermodel.setSourceModel(self.model)
-        self.ui.output.setModel(self.filtermodel)
+        self.output.setModel(self.filtermodel)
 
         # set up able view properties
-        self.ui.output.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-        self.ui.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
-        self.ui.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
-        self.ui.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
-        self.ui.output.verticalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+        self.output.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        self.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+        self.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
+        self.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
+        self.output.verticalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
         
         # connect signals
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
-        self.ui.filterTree.itemChanged.connect(self.setCheckStates)
-        self.ui.importanceSlider.valueChanged.connect(self.filtersChanged)
+        self.filterTree.itemChanged.connect(self.setCheckStates)
+        self.importanceSlider.valueChanged.connect(self.filtersChanged)
         
     def setStylesheet(self, logStyleSheet):
         """
@@ -330,7 +332,7 @@ class LogWidget(QtGui.QWidget):
 
           @param int entry: entry to scroll the view to
         """
-        self.ui.output.scrollTo(self.model.index(entry, 0))
+        self.output.scrollTo(self.model.index(entry, 0))
 
     def setLogLength(self, length):
         """ Set how many log entries will be stored by the model before discarding old entries when new entries are added.
@@ -346,25 +348,25 @@ class LogWidget(QtGui.QWidget):
           @param int item: Item number
           @param int column: Column number
         """
-        if item == self.ui.filterTree.topLevelItem(1):
+        if item == self.filterTree.topLevelItem(1):
             if item.checkState(0):
                 for i in range(item.childCount()):
                     item.child(i).setCheckState(0, QtCore.Qt.Checked)
-        elif item.parent() == self.ui.filterTree.topLevelItem(1):
+        elif item.parent() == self.filterTree.topLevelItem(1):
             if not item.checkState(0):
-                self.ui.filterTree.topLevelItem(1).setCheckState(0, QtCore.Qt.Unchecked)
+                self.filterTree.topLevelItem(1).setCheckState(0, QtCore.Qt.Unchecked)
 
         typeFilter = []
-        for i in range(self.ui.filterTree.topLevelItem(1).childCount()):
-            child = self.ui.filterTree.topLevelItem(1).child(i)
-            if self.ui.filterTree.topLevelItem(1).checkState(0) or child.checkState(0):
+        for i in range(self.filterTree.topLevelItem(1).childCount()):
+            child = self.filterTree.topLevelItem(1).child(i)
+            if self.filterTree.topLevelItem(1).checkState(0) or child.checkState(0):
                 text = child.text(0)
                 typeFilter.append(str(text))
-        print(typeFilter)
+        #print(typeFilter)
         self.filtermodel.setTypes(typeFilter)
         
     def filtersChanged(self):
         """ This function is called to update the filter list when the log filters have been changed.
         """
-        self.filtermodel.setImportance(self.ui.importanceSlider.value())
+        self.filtermodel.setImportance(self.importanceSlider.value())
         

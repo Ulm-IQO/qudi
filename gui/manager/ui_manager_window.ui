@@ -96,8 +96,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>887</width>
-             <height>289</height>
+             <width>96</width>
+             <height>26</height>
             </rect>
            </property>
           </widget>
@@ -124,6 +124,7 @@
     </property>
     <addaction name="actionLoad_configuration"/>
     <addaction name="actionSave_configuration"/>
+    <addaction name="actionExport_log_as_HTML"/>
     <addaction name="separator"/>
     <addaction name="action_Load_all_modules"/>
     <addaction name="separator"/>
@@ -310,6 +311,14 @@
   <action name="actionReset_to_default_layout">
    <property name="text">
     <string>&amp;Reset to default layout</string>
+   </property>
+  </action>
+  <action name="actionExport_log_as_HTML">
+   <property name="icon">
+    <iconset theme="document-save-as"/>
+   </property>
+   <property name="text">
+    <string>Export log as HTML</string>
    </property>
   </action>
  </widget>

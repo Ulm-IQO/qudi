@@ -230,8 +230,9 @@ Go, play.
             widget = ModuleListItem(self._manager, base, module)
             self.modlist.append(widget)
             layout.addWidget(widget)
-            widget.sigActivateThis.connect(self.sigStartModule)
+            widget.sigLoadThis.connect(self.sigStartModule)
             widget.sigReloadThis.connect(self.sigReloadModule)
+            widget.sigDeactivateThis.connect(self.sigStopModule)
             self.checkTimer.timeout.connect(widget.checkModuleState)
 
     def fillTreeItem(self, item, value):
@@ -336,23 +337,23 @@ class AboutDialog(QtGui.QDialog):
         """
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'aboutdialog.ui')
+        ui_file = os.path.join(this_dir, 'ui_about.ui')
 
         # Load it
-        super(AboutDialog, self).__init__()
+        super().__init__()
         uic.loadUi(ui_file, self)
 
 class ModuleListItem(QtGui.QFrame):
     """ This class represents a module widget in the QuDi module list.
 
-      @signal str str sigActivateThis: gives signal with base and name of module to be loaded
+      @signal str str sigLoadThis: gives signal with base and name of module to be loaded
       @signal str str sigReloadThis: gives signal with base and name of module to be reloaded
       @signal str str sigStopThis: gives signal with base and name of module to be deactivated
     """
 
-    sigActivateThis = QtCore.Signal(str, str)
+    sigLoadThis = QtCore.Signal(str, str)
     sigReloadThis = QtCore.Signal(str, str)
-    sigStopThis = QtCore.Signal(str, str)
+    sigDeactivateThis = QtCore.Signal(str, str)
 
     def __init__(self, manager, basename, modulename):
         """ Create a module widget.
@@ -365,7 +366,7 @@ class ModuleListItem(QtGui.QFrame):
         ui_file = os.path.join(this_dir, 'ui_module_widget.ui')
 
         # Load it
-        super(ModuleListItem, self).__init__()
+        super().__init__()
         uic.loadUi(ui_file, self)
 
         # FIXME: comments
@@ -373,28 +374,30 @@ class ModuleListItem(QtGui.QFrame):
         self.name = modulename
         self.base = basename
         self.loadButton.setText('Load {0}'.format(self.name))
-        self.loadButton.clicked.connect(self.activateButtonClicked)
-        self.reloadButton.clicked.connect(self.reactivateButtonClicked)
-        self.unloadButton.clicked.connect(self.stopButtonClicked)
+        self.loadButton.clicked.connect(self.loadButtonClicked)
+        self.reloadButton.clicked.connect(self.reloadButtonClicked)
+        self.deactivateButton.clicked.connect(self.deactivateButtonClicked)
 
-    def activateButtonClicked(self):
-        """Send activation singal for module.
+    def loadButtonClicked(self):
+        """Send signal to load and activate this module.
         """
-        self.sigActivateThis.emit(self.base, self.name)
+        self.sigLoadThis.emit(self.base, self.name)
         if self.base == 'gui':
             self.loadButton.setText('Show {0}'.format(self.name))
 
-    def reactivateButtonClicked(self):
-        """ Send reload signal for module.
+    def reloadButtonClicked(self):
+        """ Send signal to reload this module.
         """
         self.sigReloadThis.emit(self.base, self.name)
 
-    def stopButtonClicked(self):
-        """ Send stop singal for module.
+    def deactivateButtonClicked(self):
+        """ Send signal to deactivate this module.
         """
-        self.sigStopThis.emit(self.base , self.name)
+        self.sigDeactivateThis.emit(self.base , self.name)
 
     def checkModuleState(self):
+        """ Get the state of this module and display it in the statusLabel
+        """
         state = ''
         try:
             if self.base in self.manager.tree['loaded'] and self.name in self.manager.tree['loaded'][self.base]:
