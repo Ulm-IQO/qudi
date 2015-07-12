@@ -24,8 +24,14 @@
     </item>
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tabWidgetPage1">
        <attribute name="title">
@@ -42,8 +48,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>472</width>
-             <height>316</height>
+             <width>887</width>
+             <height>289</height>
             </rect>
            </property>
           </widget>
@@ -66,8 +72,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>472</width>
-             <height>316</height>
+             <width>887</width>
+             <height>289</height>
             </rect>
            </property>
           </widget>
@@ -90,8 +96,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>472</width>
-             <height>316</height>
+             <width>539</width>
+             <height>289</height>
             </rect>
            </property>
           </widget>
@@ -109,12 +115,12 @@
      <x>0</x>
      <y>0</y>
      <width>1020</width>
-     <height>19</height>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
     <property name="title">
-     <string>Menu</string>
+     <string>&amp;Menu</string>
     </property>
     <addaction name="actionLoad_configuration"/>
     <addaction name="actionSave_configuration"/>
@@ -123,28 +129,33 @@
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
-   <widget class="QMenu" name="menuUtilities">
-    <property name="title">
-     <string>Utilities</string>
-    </property>
-    <addaction name="actionLog"/>
-    <addaction name="actionConsole"/>
-   </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
-     <string>About</string>
+     <string>Abou&amp;t</string>
     </property>
     <addaction name="actionAbout_QuDi"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="actionConfiguration"/>
+    <addaction name="actionConsole"/>
+    <addaction name="actionLog"/>
+    <addaction name="actionReset_to_default_layout"/>
+   </widget>
    <addaction name="menuMenu"/>
-   <addaction name="menuUtilities"/>
+   <addaction name="menuView"/>
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="config_display_dockWidget">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
-    <string>Configuration</string>
+    <string>&amp;Configuration</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -153,6 +164,12 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QTreeWidget" name="treeWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <column>
         <property name="text">
          <string notr="true">1</string>
@@ -164,12 +181,18 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="consoleDockWidget">
+   <property name="windowTitle">
+    <string>Co&amp;nsole</string>
+   </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
    <widget class="RichIPythonWidget" name="consolewidget"/>
   </widget>
   <widget class="QDockWidget" name="logDockWidget">
+   <property name="windowTitle">
+    <string>&amp;Log</string>
+   </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
@@ -182,7 +205,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Load configuration</string>
+    <string>&amp;Load configuration</string>
    </property>
   </action>
   <action name="actionSave_configuration">
@@ -192,7 +215,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Save configuration</string>
+    <string>&amp;Save configuration</string>
    </property>
   </action>
   <action name="action_Load_all_modules">
@@ -202,7 +225,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string> Load all modules</string>
+    <string> Load &amp;all modules</string>
    </property>
   </action>
   <action name="actionStart_all_modules">
@@ -222,7 +245,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Quit Qudi</string>
+    <string>&amp;Quit Qudi</string>
    </property>
    <property name="toolTip">
     <string>Quit Qudi suite</string>
@@ -232,23 +255,30 @@
    </property>
   </action>
   <action name="actionLog">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
-    <iconset theme="dialog-warning">
+    <iconset>
      <normaloff/>
     </iconset>
    </property>
    <property name="text">
-    <string>Log</string>
+    <string>&amp;Log</string>
    </property>
   </action>
   <action name="actionConsole">
-   <property name="icon">
-    <iconset theme="utilities-terminal">
-     <normaloff/>
-    </iconset>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
    </property>
    <property name="text">
-    <string>Console</string>
+    <string>&amp;Console</string>
    </property>
   </action>
   <action name="actionAbout_QuDi">
@@ -258,17 +288,28 @@
     </iconset>
    </property>
    <property name="text">
-    <string>About QuDi</string>
+    <string>&amp;About QuDi</string>
    </property>
   </action>
   <action name="actionAbout_Qt">
    <property name="text">
-    <string>About Qt</string>
+    <string>About &amp;Qt</string>
    </property>
   </action>
-  <action name="actionAbout_Qt">
+  <action name="actionConfiguration">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
    <property name="text">
-    <string>About Qt</string>
+    <string>C&amp;onfiguration</string>
+   </property>
+  </action>
+  <action name="actionReset_to_default_layout">
+   <property name="text">
+    <string>&amp;Reset to default layout</string>
    </property>
   </action>
  </widget>
@@ -287,5 +328,54 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionConsole</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>consoleDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>971</x>
+     <y>224</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionConfiguration</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>config_display_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>376</x>
+     <y>539</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLog</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>logDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>886</x>
+     <y>539</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

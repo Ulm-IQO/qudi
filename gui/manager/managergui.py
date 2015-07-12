@@ -22,6 +22,7 @@ from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from IPython.qt.inprocess import QtInProcessKernelManager
 from collections import OrderedDict
+from .errordialog import ErrorDialog
 import svn.local
 import threading
 import pyqtgraph as pg
@@ -69,6 +70,7 @@ class ManagerGui(GUIBase):
         """
         self._mw = ManagerMainWindow()
         self.restoreWindowPos(self._mw)
+        self.errorDialog = ErrorDialog(self)
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
         self._about.label.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
@@ -82,34 +84,31 @@ class ManagerGui(GUIBase):
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
-        self._mw.actionLog.triggered.connect(lambda: self._manager.sigShowLog.emit())
-        self._mw.actionConsole.triggered.connect(lambda: self._manager.sigShowConsole.emit())
         self._mw.actionAbout_Qt.triggered.connect(QtGui.QApplication.aboutQt)
         self._mw.actionAbout_QuDi.triggered.connect(self.showAboutQuDi)
 
         self._manager.sigShowManager.connect(self.show)
         self._manager.sigConfigChanged.connect(self.updateConfigWidgets)
         self._manager.sigModulesChanged.connect(self.updateConfigWidgets)
-        self._manager.logger.sigLoggedMessage.connect(self._mw.logwidget.addEntry)
-        
+        # Log widget
+        self._manager.logger.sigLoggedMessage.connect(self.handleLogEntry)
+        # Module widgets
         self.sigStartModule.connect(self._manager.startModule)
         self.sigReloadModule.connect(self._manager.restartModuleSimple)
         self.sigStopModule.connect(self._manager.deactivateModule)
         self.sigLoadConfig.connect(self._manager.loadConfig)
         self.sigSaveConfig.connect(self._manager.saveConfig)
-
         # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
         self.updateModuleList()
-
         # IPython console
         self.startIPython()
         self.updateIPythonModuleList()
         self.startIPythonWidget()
 
         self._mw.config_display_dockWidget.hide()
-        self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
+        #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
     def deactivation(self,e):
@@ -131,8 +130,6 @@ class ManagerGui(GUIBase):
         self._mw.actionLoad_configuration.triggered.disconnect()
         self._mw.actionSave_configuration.triggered.disconnect()
         self._mw.action_Load_all_modules.triggered.disconnect()
-        self._mw.actionLog.triggered.disconnect()
-        self._mw.actionConsole.triggered.disconnect()
         self._mw.actionAbout_Qt.triggered.disconnect()
         self._mw.actionAbout_QuDi.triggered.disconnect()
         self.saveWindowPos(self._mw)
@@ -149,6 +146,11 @@ class ManagerGui(GUIBase):
         """Show a dialog with details about QuDi.
         """
         self._about.show()
+
+    def handleLogEntry(self, entry):
+        self._mw.logwidget.addEntry(entry)
+        if entry['msgType'] == 'error':
+            self.errorDialog.show(entry)
 
     def startIPython(self):
         self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
