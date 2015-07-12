@@ -148,11 +148,18 @@ class ManagerGui(GUIBase):
         self._about.show()
 
     def handleLogEntry(self, entry):
+        """ Forward log entry to log widget and show an error popup if it is an error message.
+            
+            @param dict entry: Log entry
+        """
         self._mw.logwidget.addEntry(entry)
         if entry['msgType'] == 'error':
             self.errorDialog.show(entry)
 
     def startIPython(self):
+        """ Create an IPython kernel manager and kernel.
+            Add modules to its namespace.
+        """
         self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
@@ -171,6 +178,8 @@ class ManagerGui(GUIBase):
         self._manager.sigModulesChanged.connect(self.updateModuleList)
 
     def startIPythonWidget(self):
+        """ Create an IPython console widget and connect it to an IPython kernel.
+        """
         banner = """
 This is an interactive IPython console. The numpy and pyqtgraph modules have already been imported as 'np' and 'pg'.
 Configuration is in 'config', the manager is 'manager' and all loaded modules are in this namespace with their configured name.
@@ -185,10 +194,14 @@ Go, play.
         self._mw.consolewidget.set_default_style(colors='linux')
 
     def stopIPython(self):
+        """ Stop the IPython kernel.
+        """
         self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
+        """ Disconnect the IPython widget from the kernel.
+        """
         self._mw.consolewidget.kernel_client.stop_channels()
 
     def updateIPythonModuleList(self):
@@ -270,6 +283,8 @@ Go, play.
             item.addChild(child)
 
     def getSoftwareVersion(self):
+        """ Try to determine the software version in case the program is in a SVN repository.
+        """
         try:
             repo = svn.local.LocalClient('.')
             info = repo.info()
@@ -288,6 +303,8 @@ Go, play.
         self.fillTreeItem(widget.invisibleRootItem(), value)
 
     def getLoadFile(self):
+        """ Ask the user for a file where the configuration should be loaded from
+        """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
         filename = QtGui.QFileDialog.getOpenFileName(
                 self._mw,
@@ -298,6 +315,8 @@ Go, play.
             self.sigLoadConfig.emit(filename)
 
     def getSaveFile(self):
+        """ Ask the user for a file where the configuration should be saved to.
+        """
         defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
         filename = QtGui.QFileDialog.getSaveFileName(
                 self._mw,
@@ -369,17 +388,18 @@ class ModuleListItem(QtGui.QFrame):
         super().__init__()
         uic.loadUi(ui_file, self)
 
-        # FIXME: comments
         self.manager = manager
         self.name = modulename
         self.base = basename
+
         self.loadButton.setText('Load {0}'.format(self.name))
+        # connect buttons
         self.loadButton.clicked.connect(self.loadButtonClicked)
         self.reloadButton.clicked.connect(self.reloadButtonClicked)
         self.deactivateButton.clicked.connect(self.deactivateButtonClicked)
 
     def loadButtonClicked(self):
-        """Send signal to load and activate this module.
+        """ Send signal to load and activate this module.
         """
         self.sigLoadThis.emit(self.base, self.name)
         if self.base == 'gui':
