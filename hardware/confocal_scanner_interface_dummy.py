@@ -240,8 +240,8 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self.logMsg('ConfocalScannerInterfaceDummy>scanner_set_pos: [{0:f},{1:f},{2:f},{3:f}]'.format(x,y,z,a), 
-                    msgType='warning')
+#        self.logMsg('ConfocalScannerInterfaceDummy>scanner_set_pos: [{0:f},{1:f},{2:f},{3:f}]'.format(x,y,z,a), 
+#                    msgType='warning')
                     
         if self.getState() == 'locked':
             self.logMsg('A Scanner is already running, close this one first.', \
@@ -262,8 +262,8 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
 
         self._line_length = length
         
-        self.logMsg('ConfocalScannerInterfaceDummy>set_up_line', 
-                    msgType='warning')
+#        self.logMsg('ConfocalScannerInterfaceDummy>set_up_line', 
+#                    msgType='warning')
         
         return 0
         
@@ -311,8 +311,8 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         time.sleep(self._line_length*1./self._clock_frequency)            
         time.sleep(self._line_length*1./self._clock_frequency)
         
-        self.logMsg('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length), 
-                    msgType='warning')
+#        self.logMsg('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length), 
+#                    msgType='warning')
                     
         self.unlock()
         

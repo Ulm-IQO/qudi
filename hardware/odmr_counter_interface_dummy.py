@@ -102,9 +102,9 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
         
 
         self._odmr_length = length
-        
-        self.logMsg('ODMRCounterInterfaceDummy>set_odmr_length', 
-                    msgType='warning')
+#        
+#        self.logMsg('ODMRCounterInterfaceDummy>set_odmr_length', 
+#                    msgType='warning')
         
         return 0
         
@@ -146,8 +146,8 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
             
         time.sleep(self._odmr_length*1./self._clock_frequency)
         
-        self.logMsg('ODMRCounterInterfaceDummy>count_odmr: length {0:d}.'.format(self._odmr_length), 
-                    msgType='warning')
+#        self.logMsg('ODMRCounterInterfaceDummy>count_odmr: length {0:d}.'.format(self._odmr_length), 
+#                    msgType='warning')
                     
         self.unlock()
         
