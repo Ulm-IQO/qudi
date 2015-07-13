@@ -326,7 +326,8 @@ class LogWidget(QtGui.QWidget):
                 text += '\n' + str(line) 
         logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], text ]
         self.model.addRow(self.model.rowCount(), logEntry)
-        
+        self.output.scrollToBottom()
+
     def displayEntry(self, entry):
         """ Scroll to entry in QTableView.
 
