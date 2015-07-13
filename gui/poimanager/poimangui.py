@@ -591,10 +591,12 @@ class PoiManagerGui(GUIBase):
             lengthInPixels = (span[1] - span[0]).manhattanLength() 
     
             if lengthInPixels == 0:
-                return
+                return -1
+            if myAxisItem.range[0] < 0:
+                return -1
     
             default_ticks = myAxisItem.tickValues(myAxisItem.range[0], myAxisItem.range[1], lengthInPixels)
-    
+            
             newticks = [] 
             for i, tick_level in enumerate(default_ticks): 
                 newticks_this_level = []
@@ -613,6 +615,7 @@ class PoiManagerGui(GUIBase):
                 newticks.append( newticks_this_level )
 
             myAxisItem.setTicks( newticks )
+            return 0
 
     def _redraw_sample_shift(self):
         
