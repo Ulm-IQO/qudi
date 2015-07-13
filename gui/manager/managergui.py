@@ -101,7 +101,7 @@ class ManagerGui(GUIBase):
         # Module state display
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
-        self.updateModuleList()
+        self.updateGUIModuleList()
         # IPython console
         self.startIPython()
         self.updateIPythonModuleList()
@@ -171,11 +171,11 @@ class ManagerGui(GUIBase):
             'config': self._manager.tree['defined'],
             'manager': self._manager
             })
-        self.updateModuleList()
+        self.updateIPythonModuleList()
         self.kernel.gui = 'qt4'
         self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
         self.logMsg('IPython kernel alive {0}'.format(self.kernel_manager.is_alive()))
-        self._manager.sigModulesChanged.connect(self.updateModuleList)
+        self._manager.sigModulesChanged.connect(self.updateIPythonModuleList)
 
     def startIPythonWidget(self):
         """ Create an IPython console widget and connect it to an IPython kernel.
@@ -225,7 +225,7 @@ Go, play.
         """
         self.fillTreeWidget(self._mw.treeWidget, self._manager.tree)
     
-    def updateModuleList(self):
+    def updateGUIModuleList(self):
         """ Clear and refill the module list widget
         """
         #self.clearModuleList(self)
