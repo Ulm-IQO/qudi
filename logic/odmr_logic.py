@@ -12,6 +12,7 @@ import time
 class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for ODMR.
+    known issue: after running odmr device stay in cw mode, despide gui displaying off (Matze)
     """
     _modclass = 'odmrlogic'
     _modtype = 'logic'
