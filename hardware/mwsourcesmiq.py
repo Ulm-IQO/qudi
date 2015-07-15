@@ -205,6 +205,7 @@ class Mwsourcesmiq(Base,MWInterface):
         """
         
         #self._gpib_connection.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+        #due an unknown reason the old call above produces timeouts
         self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write(':FREQ:MODE LIST')
         self._gpib_connection.write('*WAI')
