@@ -162,8 +162,9 @@ class mwsourcesmiq(Base,MWInterface):
         """
         error = 0
         
-        if self.set_cw(freq[0],power) != 0:
-            error = -1
+
+#        if self.set_cw(freq[0],power) != 0:
+#            error = -1
             
         self._gpib_connetion.write('*WAI')
         self._gpib_connetion.write(':LIST:DEL:ALL')
@@ -172,13 +173,19 @@ class mwsourcesmiq(Base,MWInterface):
         FreqString = ''
         
         for f in freq[:-1]:
-            FreqString += ' %f,' % f
-        FreqString += ' %f' % freq[-1]
-      
+            FreqString += ' {:f},'.format(f)
+        FreqString += ' {:f}'.format(freq[-1])
+        print(':LIST:FREQ' + FreqString)
+        self.test = ':LIST:FREQ' + FreqString
+
         self._gpib_connetion.write(':LIST:FREQ' + FreqString)
         self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(':LIST:POW'  +  (' %f,' % power * len(freq))[:-1])
+      #  print(':LIST:POW'  +  (' %f,' % power * len(freq))[:-1])
+       # self._gpib_connetion.write(':LIST:POW'  +  (' {:f},'.format( power * len(freq))[:-1]))
+        self.test2 = ':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1]))))
        
+        self._gpib_connetion.write(':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1])))))
+        
         self._gpib_connetion.write('*WAI')
         self._gpib_connetion.write(':TRIG1:LIST:SOUR EXT')
         self._gpib_connetion.write(':TRIG1:SLOP NEG')
@@ -198,10 +205,10 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        #self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
-        self._gpib_connetion.write(':FREQ:MODE CW')
-        self._gpib_connetion.write(':FREQ:MODE LIST')
-        self._gpib_connetion.write('*WAI')
+#        #self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+#        self._gpib_connetion.write(':FREQ:MODE CW')
+#        self._gpib_connetion.write(':FREQ:MODE LIST')
+#        self._gpib_connetion.write('*WAI')
         return 0
         
     def list_on(self):
