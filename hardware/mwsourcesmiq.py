@@ -6,7 +6,7 @@ import visa
 import numpy as np
 from collections import OrderedDict
 
-class mwsourcesmiq(Base,MWInterface):
+class Mwsourcesmiq(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
@@ -16,7 +16,7 @@ class mwsourcesmiq(Base,MWInterface):
     _out = {'mwsourcesmiq': 'MWInterface'}
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation}
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
                       
         # checking for the right configuration
@@ -35,10 +35,13 @@ class mwsourcesmiq(Base,MWInterface):
             configration. I will set it to 10 seconds.", 
                         msgType='error')
         
+
+                    
+    def activation(self,e=None):
         # trying to load the visa connection to the module
         rm = visa.ResourceManager()
         try: 
-            self._gpib_connetion = rm.open_resource(self._gpib_address, 
+            self._gpib_connection = rm.open_resource(self._gpib_address, 
                                               timeout=self._gpib_timeout)
         except:
             self.logMsg("This is MWSMIQ: could not connect to the GPIB \
@@ -48,14 +51,10 @@ class mwsourcesmiq(Base,MWInterface):
             
         self.logMsg("MWSMIQ initialised and connected to hardware.", 
                     msgType='status')
-                    
-    def activation(self,e=None):
-        
-        return 0 
     
     def deactivation(self,e=None):
-        
-        return 0
+        self._gpib_connection.close()
+
 
     def on(self):
         """ Switches on any preconfigured microwave output. 
@@ -63,8 +62,8 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """ 
         
-        self._gpib_connetion.write(':OUTP ON')
-        self._gpib_connetion.write('*WAI')
+        self._gpib_connection.write(':OUTP ON')
+        self._gpib_connection.write('*WAI')
         
         return 0
 
@@ -75,10 +74,10 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        if self._gpib_connetion.ask(':FREQ:MODE?') == 'LIST':
-            self._gpib_connetion.write(':FREQ:MODE CW')
-        self._gpib_connetion.write(':OUTP OFF')
-        self._gpib_connetion.write('*WAI')
+        if self._gpib_connection.ask(':FREQ:MODE?') == 'LIST':
+            self._gpib_connection.write(':FREQ:MODE CW')
+        self._gpib_connection.write(':OUTP OFF')
+        self._gpib_connection.write('*WAI')
         
         return 0
 
@@ -89,7 +88,7 @@ class mwsourcesmiq(Base,MWInterface):
         @return float: the power set at the device
         """
         
-        return float(self._gpib_connetion.ask(':POW?'))
+        return float(self._gpib_connection.ask(':POW?'))
 
 
     def set_power(self, power = None):
@@ -101,7 +100,7 @@ class mwsourcesmiq(Base,MWInterface):
         """
         
         if power != None:
-            self._gpib_connetion.write(':POW {:f}'.format(power))
+            self._gpib_connection.write(':POW {:f}'.format(power))
             return 0
         else:
             return -1
@@ -113,7 +112,7 @@ class mwsourcesmiq(Base,MWInterface):
         @return float: the power set at the device
         """
         
-        return float(self._gpib_connetion.ask(':FREQ?'))
+        return float(self._gpib_connection.ask(':FREQ?'))
 
 
     def set_frequency(self, frequency = None):
@@ -124,7 +123,7 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         if frequency != None:
-            self._gpib_connetion.write(':FREQ {:e}'.format(frequency))
+            self._gpib_connection.write(':FREQ {:e}'.format(frequency))
             return 0
         else:
             return -1
@@ -139,7 +138,7 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         error = 0
-        self._gpib_connetion.write(':FREQ:MODE CW')
+        self._gpib_connection.write(':FREQ:MODE CW')
         
         if f != None:
             error = self.set_frequency(f)
@@ -166,10 +165,10 @@ class mwsourcesmiq(Base,MWInterface):
 #        if self.set_cw(freq[0],power) != 0:
 #            error = -1
             
-        self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(':LIST:DEL:ALL')
-        self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(":LIST:SEL 'ODMR'")
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':LIST:DEL:ALL')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(":LIST:SEL 'ODMR'")
         FreqString = ''
         
         for f in freq[:-1]:
@@ -178,21 +177,21 @@ class mwsourcesmiq(Base,MWInterface):
         print(':LIST:FREQ' + FreqString)
         self.test = ':LIST:FREQ' + FreqString
 
-        self._gpib_connetion.write(':LIST:FREQ' + FreqString)
-        self._gpib_connetion.write('*WAI')
+        self._gpib_connection.write(':LIST:FREQ' + FreqString)
+        self._gpib_connection.write('*WAI')
       #  print(':LIST:POW'  +  (' %f,' % power * len(freq))[:-1])
-       # self._gpib_connetion.write(':LIST:POW'  +  (' {:f},'.format( power * len(freq))[:-1]))
+       # self._gpib_connection.write(':LIST:POW'  +  (' {:f},'.format( power * len(freq))[:-1]))
         self.test2 = ':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1]))))
        
-        self._gpib_connetion.write(':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1])))))
+        self._gpib_connection.write(':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1])))))
         
-        self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(':TRIG1:LIST:SOUR EXT')
-        self._gpib_connetion.write(':TRIG1:SLOP NEG')
-        self._gpib_connetion.write(':LIST:MODE STEP')
-        self._gpib_connetion.write('*WAI')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
+        self._gpib_connection.write(':TRIG1:SLOP NEG')
+        self._gpib_connection.write(':LIST:MODE STEP')
+        self._gpib_connection.write('*WAI')
         
-        N = int(np.round(float(self._gpib_connetion.ask(':LIST:FREQ:POIN?'))))
+        N = int(np.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
         
         if N != len(freq):
             error = -1
@@ -205,10 +204,10 @@ class mwsourcesmiq(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-#        #self._gpib_connetion.write(':FREQ:MODE CW; :FREQ:MODE LIST')
-#        self._gpib_connetion.write(':FREQ:MODE CW')
-#        self._gpib_connetion.write(':FREQ:MODE LIST')
-#        self._gpib_connetion.write('*WAI')
+        #self._gpib_connection.write(':FREQ:MODE CW; :FREQ:MODE LIST')
+        self._gpib_connection.write(':FREQ:MODE CW')
+        self._gpib_connection.write(':FREQ:MODE LIST')
+        self._gpib_connection.write('*WAI')
         return 0
         
     def list_on(self):
@@ -216,11 +215,11 @@ class mwsourcesmiq(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connetion.write(':OUTP ON')
-        self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(':LIST:LEAR')
-        self._gpib_connetion.write('*WAI')
-        self._gpib_connetion.write(':FREQ:MODE LIST')
+        self._gpib_connection.write(':OUTP ON')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':LIST:LEAR')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':FREQ:MODE LIST')
         
         return 0
         
