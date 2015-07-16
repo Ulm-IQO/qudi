@@ -34,6 +34,7 @@ from pyqtgraph.Qt import QtCore
 from .manager import Manager
 import numpy as np
 import pyqtgraph as pg
+import core.util.helpers as helpers
 import sys
 
 
@@ -46,6 +47,7 @@ class AppWatchdog(QtCore.QObject):
         super().__init__()
         self.alreadyQuit = False
         self.hasGui = False
+        self.exitcode = 0
         # Run python code periodically to allow interactive debuggers to interrupt
         # the qt event loop
         self.timer = QtCore.QTimer()
@@ -60,12 +62,14 @@ class AppWatchdog(QtCore.QObject):
         for i in range(0, 100):
             x += i
 
-    def quitApplication(self, manager):
+    def quitApplication(self, manager, restart = False):
         """Clean up threads and windows, quit application.
 
           @param object manager: manager belonging to this application
 
         """
+        if restart:
+            self.exitcode = 42
         if not self.alreadyQuit:    # Need this because multiple triggers can 
                                     # call this function during quit.
             self.alreadyQuit = True
@@ -162,10 +166,10 @@ else:
     if profile:
         import cProfile
         cProfile.run('app.exec_()', sort='cumulative')  
-        # pg.exit() causes python to exit before Qt has
+        # helpers.exit() causes python to exit before Qt has
         # a chance to clean up.
         # This avoids otherwise irritating exit crashes.
-        pg.exit()
+        helpers.exit(watchdog.exitcode)
 
     elif callgraph:
         from pycallgraph import PyCallGraph
@@ -174,7 +178,7 @@ else:
             app.exec_()
     else:
         app.exec_()
-        # pg.exit() causes python to exit before Qt has a chance to clean up. 
+        # helpers.exit() causes python to exit before Qt has a chance to clean up. 
         # This avoids otherwise irritating exit crashes.
-        pg.exit()
+        helpers.exit(watchdog.exitcode)
 

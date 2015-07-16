@@ -70,7 +70,7 @@ class Manager(QtCore.QObject):
     sigModuleHasQuit = QtCore.Signal(object)
     sigLogDirChanged = QtCore.Signal(object)
     sigAbortAll = QtCore.Signal()
-    sigManagerQuit = QtCore.Signal(object)
+    sigManagerQuit = QtCore.Signal(object, bool)
     sigShowManager = QtCore.Signal()
     
     def __init__(self, configFile=None, argv=None):
@@ -130,7 +130,7 @@ class Manager(QtCore.QObject):
         -s --storagedir=   Storage directory to use
         -g --no-gui         Do not load manager module
     """)
-                    raise
+                opts = []
             else:
                 opts = []
             
@@ -234,6 +234,19 @@ class Manager(QtCore.QObject):
           @return sting: path to configuration file
         """
         path = self.getMainDir()
+        loadConfigFile = os.path.join(path, 'config', 'load.cfg')
+        if os.path.isfile(loadConfigFile):
+            print('Load config file is {0}'.format(loadConfigFile))
+            try:
+                confDict = configfile.readConfigFile(loadConfigFile)
+                if 'configfile' in confDict and isinstance(confDict['configfile'], str):
+                    configFile = os.path.join(path, 'config', confDict['configfile'])
+                    if os.path.isfile(configFile):
+                        return configFile
+                    if os.path.isfile(confDict['configfile']):
+                        return confDict['configfile']
+            except Exception as e:
+                print(e)
         cf = os.path.join(path, 'config', 'example', 'custom.cfg')
         if os.path.isfile(cf):
             return cf
@@ -422,14 +435,22 @@ class Manager(QtCore.QObject):
         self.writeConfigFile(saveconfig, filename)
         self.logger.logMsg('Saved configuration to {0}'.format(filename), msgType='status')
 
-    def loadConfig(self, filename):
+    def loadConfig(self, filename, restart=False):
         """ Load configuration from file.
 
           @param str filename: path of file to be loaded
         """
-        newconfig = self.readConfigFile(filename)
-        # FIXME: Does nothing right now
-        self.logger.logMsg('Loaded configuration from {0}'.format(filename), msgType='status')
+        maindir = self.getMainDir()
+        configdir = os.path.join(maindir, 'config')
+        loadFile = os.path.join(configdir, 'load.cfg')
+        if filename.startswith(configdir):
+            filename = re.sub('^'+re.escape('/'), '', re.sub('^'+re.escape(configdir), '', filename))
+        loadData = {'configfile': filename}
+        configfile.writeConfigFile(loadData, loadFile)
+        self.logger.logMsg('Set loaded configuration to {0}'.format(filename), msgType='status')
+        if restart:
+            self.logger.logMsg('Restarting QuDi after configuration reload.', msgType='status')
+            self.restart()
 
     ##################
     # Module loading #
@@ -1003,7 +1024,15 @@ class Manager(QtCore.QObject):
             for module in self.tree['loaded'][mbase]:
                 self.deactivateModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
-        self.sigManagerQuit.emit(self)
+        self.sigManagerQuit.emit(self, False)
+
+    def restart(self):
+        """Nicely request that all modules shut down for application restart."""
+        for mbase in ['hardware', 'logic', 'gui']:
+            for module in self.tree['loaded'][mbase]:
+                self.deactivateModule(mbase, module)
+                QtCore.QCoreApplication.processEvents()
+        self.sigManagerQuit.emit(self, True)
 
     # Staticmethods are used to group functions which have some logical 
     # connection with a class but they They behave like plain functions except 
