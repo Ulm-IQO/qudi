@@ -38,7 +38,7 @@ class CounterGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(
                     manager,
                     name,
@@ -109,8 +109,6 @@ class CounterGui(GUIBase):
         self.sigStartCounter.connect(self._counting_logic.startCount)
         self.sigStopCounter.connect(self._counting_logic.stopCount)
 
-
-
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
         
     def show(self):
@@ -119,6 +117,10 @@ class CounterGui(GUIBase):
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def deactivation(self, e):
+        # FIXME: !
+        self._mw.close()
 
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
