@@ -46,7 +46,7 @@ class ManagerGui(GUIBase):
     sigStartModule = QtCore.Signal(str, str)
     sigReloadModule = QtCore.Signal(str, str)
     sigStopModule = QtCore.Signal(str, str)
-    sigLoadConfig = QtCore.Signal(str)
+    sigLoadConfig = QtCore.Signal(str, bool)
     sigSaveConfig = QtCore.Signal(str)
 
     def __init__(self, manager, name, config, **kwargs):
@@ -312,7 +312,15 @@ Go, play.
                 defaultconfigpath , 
                 'Configuration files (*.cfg)')
         if filename != '':
-            self.sigLoadConfig.emit(filename)
+            reply = QtGui.QMessageBox.question(
+                        self._mw,
+                        'Restart',
+                        'Do you want to restart to use the configuration?',
+                        QtGui.QMessageBox.Yes,
+                        QtGui.QMessageBox.No
+                    )
+            restart = (reply == QtGui.QMessageBox.Yes)
+            self.sigLoadConfig.emit(filename, restart)
 
     def getSaveFile(self):
         """ Ask the user for a file where the configuration should be saved to.

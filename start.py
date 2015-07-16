@@ -2,12 +2,37 @@
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 """
-Neurophysiology acquisition and analysis for Python
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-Copyright 2013 Luke Campagnola, University of North Carolina at Chapel Hill
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-http://www.acq4.org
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
-import runpy
-runpy.run_module("core", run_name="__main__");
+import subprocess
+import sys
+import os
+
+myenv = os.environ.copy()
+argv = [sys.executable, '-m', 'core'] + sys.argv[1:]
+
+while True:
+    retval = subprocess.call(argv, close_fds=False, env=myenv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=False)
+    if retval == 0:
+        break
+    elif retval == 42:
+        print('Restarting...')
+        continue
+    else:
+        print('Unexpected return value {0}. Exiting.'.format(retval))
+        sys.exit(retval)
+
