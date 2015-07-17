@@ -142,12 +142,78 @@
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>150</height>
+                  <height>190</height>
                  </size>
                 </property>
                </spacer>
               </item>
-              <item row="0" column="0" rowspan="5">
+              <item row="7" column="1">
+               <widget class="QPushButton" name="clear_repeat_table_PushButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Clear</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QPushButton" name="del_repeat_row_last_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Del.
+last</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QPushButton" name="add_repeat_row_selected_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Add
+sel.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="1">
+               <spacer name="verticalSpacer_2">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>200</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="0" column="0" rowspan="9">
                <widget class="QTableWidget" name="repeat_block_TableWidget">
                 <property name="frameShadow">
                  <enum>QFrame::Sunken</enum>
@@ -257,27 +323,8 @@ Phase (°)</string>
                 </column>
                </widget>
               </item>
-              <item row="3" column="1">
-               <widget class="QPushButton" name="clear_repeat_table_PushButton">
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Clear</string>
-                </property>
-               </widget>
-              </item>
               <item row="2" column="1">
-               <widget class="QPushButton" name="del_repeat_row_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
+               <widget class="QPushButton" name="del_repeat_row_selected_PushButton">
                 <property name="maximumSize">
                  <size>
                   <width>40</width>
@@ -285,38 +332,47 @@ Phase (°)</string>
                  </size>
                 </property>
                 <property name="text">
-                 <string>Del.</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QPushButton" name="add_repeat_row_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Add</string>
+                 <string>Del
+sel.</string>
                 </property>
                </widget>
               </item>
               <item row="4" column="1">
-               <spacer name="verticalSpacer_2">
+               <widget class="QPushButton" name="add_repeat_row_last_PushButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Add
+last</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <spacer name="verticalSpacer_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>300</height>
+                  <height>200</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="1">
+               <spacer name="verticalSpacer_8">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>180</height>
                  </size>
                 </property>
                </spacer>
@@ -325,8 +381,21 @@ Phase (°)</string>
             </item>
             <item row="1" column="0" colspan="4">
              <layout class="QGridLayout" name="gridLayout_11">
-              <item row="4" column="1">
-               <widget class="QPushButton" name="clear_init_table_PushButton">
+              <item row="0" column="1">
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>190</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="1">
+               <widget class="QPushButton" name="del_init_row_last_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -340,12 +409,13 @@ Phase (°)</string>
                  </size>
                 </property>
                 <property name="text">
-                 <string>Clear</string>
+                 <string>Del.
+last</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QPushButton" name="add_init_row_PushButton">
+               <widget class="QPushButton" name="add_init_row_selected_PushButton">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -374,24 +444,71 @@ Phase (°)</string>
                  <string/>
                 </property>
                 <property name="text">
-                 <string>Add</string>
+                 <string>Add
+sel.</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <spacer name="verticalSpacer">
+              <item row="2" column="1">
+               <widget class="QPushButton" name="del_init_row_selected_PushButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Del.
+sel.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <spacer name="verticalSpacer_7">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>150</height>
+                  <height>200</height>
                  </size>
                 </property>
                </spacer>
               </item>
-              <item row="0" column="0" rowspan="6">
+              <item row="8" column="1">
+               <widget class="QPushButton" name="clear_init_table_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Clear</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>200</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="0" column="0" rowspan="11">
                <widget class="QTableWidget" name="init_block_TableWidget">
                 <property name="enabled">
                  <bool>true</bool>
@@ -519,27 +636,21 @@ Phase (°)</string>
                 </column>
                </widget>
               </item>
-              <item row="5" column="1">
-               <spacer name="verticalSpacer_7">
+              <item row="7" column="1">
+               <spacer name="verticalSpacer_6">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>300</height>
+                  <height>180</height>
                  </size>
                 </property>
                </spacer>
               </item>
-              <item row="3" column="1">
-               <widget class="QPushButton" name="del_init_row_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
+              <item row="4" column="1" rowspan="2">
+               <widget class="QPushButton" name="add_init_row_last_PushButton">
                 <property name="maximumSize">
                  <size>
                   <width>40</width>
@@ -547,7 +658,8 @@ Phase (°)</string>
                  </size>
                 </property>
                 <property name="text">
-                 <string>Del.</string>
+                 <string>Add
+last</string>
                 </property>
                </widget>
               </item>
@@ -855,7 +967,7 @@ Phase (°)</string>
      <string>Settings</string>
     </property>
     <addaction name="actionSettings_Sequence"/>
-    <addaction name="actionSettings_Block_Generation"/>
+    <addaction name="action_Settings_Block_Generation"/>
     <addaction name="actionSettings_Sequence_Editor"/>
    </widget>
    <addaction name="menuFile"/>
@@ -867,7 +979,7 @@ Phase (°)</string>
     <string>Settings: Analysis</string>
    </property>
   </action>
-  <action name="actionSettings_Block_Generation">
+  <action name="action_Settings_Block_Generation">
    <property name="text">
     <string>Settings: Block Generation</string>
    </property>
