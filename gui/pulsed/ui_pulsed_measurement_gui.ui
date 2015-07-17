@@ -21,7 +21,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="measurement_tab">
        <attribute name="title">
@@ -63,6 +63,19 @@
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
+         <item row="1" column="3">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
          <item row="3" column="0" colspan="2" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_12">
            <property name="text">
@@ -90,6 +103,13 @@
            </property>
           </widget>
          </item>
+         <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>Fast counter binning [ns] :</string>
+           </property>
+          </widget>
+         </item>
          <item row="2" column="0" colspan="2" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_11">
            <property name="text">
@@ -114,439 +134,81 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
-          <widget class="QLabel" name="label_10">
+         <item row="0" column="4">
+          <widget class="QLabel" name="label_9">
            <property name="text">
-            <string>Fast counter binning [ns] :</string>
+            <string>Number of laser pulses:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="5">
+          <widget class="QLineEdit" name="numlaser_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
            </property>
           </widget>
          </item>
          <item row="1" column="5">
-          <widget class="QComboBox" name="sequence_name_comboBox">
-           <property name="minimumSize">
+          <widget class="QLineEdit" name="taustart_InputWidget">
+           <property name="maximumSize">
             <size>
-             <width>300</width>
-             <height>0</height>
+             <width>75</width>
+             <height>16777215</height>
             </size>
            </property>
           </widget>
          </item>
-         <item row="1" column="4" alignment="Qt::AlignRight">
-          <widget class="QLabel" name="label_9">
+         <item row="1" column="4">
+          <widget class="QLabel" name="label_13">
            <property name="text">
-            <string>Pulse sequence to run :</string>
+            <string>Tau start:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
-         <item row="1" column="3">
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+         <item row="2" column="4">
+          <widget class="QLabel" name="label_14">
+           <property name="text">
+            <string>Tau increment:</string>
            </property>
-           <property name="sizeHint" stdset="0">
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="5">
+          <widget class="QLineEdit" name="tauincrement_InputWidget">
+           <property name="maximumSize">
             <size>
-             <width>40</width>
-             <height>20</height>
+             <width>75</width>
+             <height>16777215</height>
             </size>
            </property>
-          </spacer>
+          </widget>
+         </item>
+         <item row="3" column="4">
+          <widget class="QLabel" name="label_15">
+           <property name="text">
+            <string>Laser to show:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="5">
+          <widget class="QSpinBox" name="lasertoshow_spinBox"/>
          </item>
         </layout>
        </widget>
-      </widget>
-      <widget class="QWidget" name="sequence_tab">
-       <attribute name="title">
-        <string>block generation</string>
-       </attribute>
-       <widget class="QTableWidget" name="sequence_tableWidget">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>140</y>
-          <width>931</width>
-          <height>611</height>
-         </rect>
-        </property>
-        <property name="alternatingRowColors">
-         <bool>false</bool>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-        <attribute name="horizontalHeaderCascadingSectionResizes">
-         <bool>false</bool>
-        </attribute>
-        <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>70</number>
-        </attribute>
-        <attribute name="horizontalHeaderStretchLastSection">
-         <bool>false</bool>
-        </attribute>
-        <column>
-         <property name="text">
-          <string>Ch 0</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 1</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 2</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 3</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 4</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 5</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 6</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Ch 7</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Length [bins]</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Increment [bins]</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Repeat?</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Use as tau?</string>
-         </property>
-        </column>
-       </widget>
-       <widget class="QPushButton" name="addrow_pushButton">
-        <property name="geometry">
-         <rect>
-          <x>100</x>
-          <y>90</y>
-          <width>31</width>
-          <height>31</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>+</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="deleterow_pushButton">
-        <property name="geometry">
-         <rect>
-          <x>140</x>
-          <y>90</y>
-          <width>31</width>
-          <height>31</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>-</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="save_sequence_pushButton">
-        <property name="geometry">
-         <rect>
-          <x>270</x>
-          <y>60</y>
-          <width>111</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Save sequence</string>
-        </property>
-       </widget>
-       <widget class="QLineEdit" name="sequence_name_lineEdit">
-        <property name="geometry">
-         <rect>
-          <x>100</x>
-          <y>60</y>
-          <width>161</width>
-          <height>21</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>60</y>
-          <width>81</width>
-          <height>20</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence name :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QComboBox" name="sequence_list_comboBox">
-        <property name="geometry">
-         <rect>
-          <x>100</x>
-          <y>20</y>
-          <width>161</width>
-          <height>22</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_2">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>20</y>
-          <width>81</width>
-          <height>20</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequences :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_3">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>90</y>
-          <width>81</width>
-          <height>31</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Add/Delete row :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLCDNumber" name="length_s_lcdNumber">
-        <property name="geometry">
-         <rect>
-          <x>590</x>
-          <y>70</y>
-          <width>101</width>
-          <height>23</height>
-         </rect>
-        </property>
-        <property name="autoFillBackground">
-         <bool>false</bool>
-        </property>
-        <property name="smallDecimalPoint">
-         <bool>false</bool>
-        </property>
-        <property name="digitCount">
-         <number>5</number>
-        </property>
-        <property name="value" stdset="0">
-         <double>0.000000000000000</double>
-        </property>
-       </widget>
-       <widget class="Line" name="line">
-        <property name="geometry">
-         <rect>
-          <x>380</x>
-          <y>10</y>
-          <width>20</width>
-          <height>121</height>
-         </rect>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_4">
-        <property name="geometry">
-         <rect>
-          <x>460</x>
-          <y>40</y>
-          <width>121</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence length [bins] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_5">
-        <property name="geometry">
-         <rect>
-          <x>460</x>
-          <y>70</y>
-          <width>121</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence length [ms] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_6">
-        <property name="geometry">
-         <rect>
-          <x>410</x>
-          <y>10</y>
-          <width>171</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Pulse generator frequency [MHz] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLCDNumber" name="length_bins_lcdNumber">
-        <property name="geometry">
-         <rect>
-          <x>590</x>
-          <y>40</y>
-          <width>101</width>
-          <height>23</height>
-         </rect>
-        </property>
-        <property name="numDigits">
-         <number>10</number>
-        </property>
-        <property name="intValue" stdset="0">
-         <number>0</number>
-        </property>
-       </widget>
-       <widget class="QLineEdit" name="pg_frequency_lineEdit">
-        <property name="geometry">
-         <rect>
-          <x>590</x>
-          <y>10</y>
-          <width>101</width>
-          <height>21</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_7">
-        <property name="geometry">
-         <rect>
-          <x>460</x>
-          <y>100</y>
-          <width>121</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Sequence size [MB] :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLCDNumber" name="size_MB_lcdNumber">
-        <property name="geometry">
-         <rect>
-          <x>590</x>
-          <y>100</y>
-          <width>101</width>
-          <height>23</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="clear_list_pushButton">
-        <property name="geometry">
-         <rect>
-          <x>180</x>
-          <y>100</y>
-          <width>81</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Clear list</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="delete_sequence_pushButton">
-        <property name="geometry">
-         <rect>
-          <x>270</x>
-          <y>20</y>
-          <width>111</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Delete sequence</string>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_8">
-        <property name="geometry">
-         <rect>
-          <x>710</x>
-          <y>10</y>
-          <width>121</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Number of laser pulses :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLCDNumber" name="laser_number_lcdNumber">
-        <property name="geometry">
-         <rect>
-          <x>840</x>
-          <y>10</y>
-          <width>101</width>
-          <height>23</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_13">
-        <property name="geometry">
-         <rect>
-          <x>710</x>
-          <y>760</y>
-          <width>121</width>
-          <height>21</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;Number of repetitions :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-       <widget class="QLineEdit" name="repetitions_lineEdit">
-        <property name="geometry">
-         <rect>
-          <x>840</x>
-          <y>760</y>
-          <width>101</width>
-          <height>21</height>
-         </rect>
-        </property>
-       </widget>
-      </widget>
-      <widget class="QWidget" name="tab">
-       <attribute name="title">
-        <string>sequence editor</string>
-       </attribute>
       </widget>
      </widget>
     </item>
@@ -565,10 +227,29 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <addaction name="actionSave_Data"/>
+    <addaction name="actionSave_raw_timetrace"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
    </widget>
    <addaction name="menu_File"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSave_Data">
+   <property name="text">
+    <string>Save Data</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionSave_raw_timetrace">
+   <property name="text">
+    <string>Save raw timetrace</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
