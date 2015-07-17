@@ -19,7 +19,8 @@ class PulseAnalysisLogic(GenericLogic):
     _in = { 'fastcounter': 'FastCounterInterface',
             'pulseextractionlogic': 'PulseExtractionLogic',
             'sequencegenerator': 'SequenceGeneratorLogic',
-            'pulsegenerator': 'PulserInterfaceDummy'
+            'pulsegenerator': 'PulserInterfaceDummy',
+            'fitlogic': 'FitLogic'
             }
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
@@ -47,19 +48,20 @@ class PulseAnalysisLogic(GenericLogic):
         # set windows for signal and normalization of the laser pulses
         self.signal_start_bin = 5
         self.signal_width_bins = 200
-        self.norm_start_bin = 500
+        self.norm_start_bin = 2000
         self.norm_width_bins = 200
         # dictionary containing the fast counter status parameters
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
         # dictionary containing the parameters of the currently running sequence
         self.running_sequence_parameters = {}
-        self.running_sequence_parameters['laser_length_vector'] = np.full(100, 3051, int)
         self.running_sequence_parameters['tau_vector'] = np.array(range(101))
         self.running_sequence_parameters['number_of_lasers'] = 101
-        # index of the laser pulse to be displayed in the GUI (starting from 0).
-        # A value of -1 corresponds to the sum of all laser pulses
+        # index of the laser pulse to be displayed in the GUI (starting from 1).
+        # A value of 0 corresponds to the sum of all laser pulses
         self.display_pulse_no = 0
-
+        
+        self.fit_result = ([])
+        
         # threading
         self.threadlock = Mutex()
         self.stopRequested = False
@@ -72,6 +74,7 @@ class PulseAnalysisLogic(GenericLogic):
 #        self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
         self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
+        self._fit_logic = self.connector['in']['fitlogic']['object']
 #        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -85,7 +88,12 @@ class PulseAnalysisLogic(GenericLogic):
 #        # get the sequence parameters from the sequence generator logic
 #        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name).copy()
 #        return
-
+    def deactivation(self, e):
+        with self.threadlock:
+            if self.getState() != 'idle' and self.getState() != 'deactivated':
+                self.stopRequested = True   
+        self.signal_analysis_next.disconnect()
+    
     
     def update_fast_counter_status(self):
         ''' This method captures the fast counter status and updates the corresponding class variable
@@ -161,7 +169,11 @@ class PulseAnalysisLogic(GenericLogic):
         self.signal_laser_plot_updated.emit() 
         self.signal_analysis_next.emit()
         
-        
+     
+    def do_fit(self):
+        return
+     
+    
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
@@ -172,8 +184,8 @@ class PulseAnalysisLogic(GenericLogic):
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, self.running_sequence_parameters['laser_length_vector'][0]+1, dtype=int)
-        self.laser_plot_y = np.zeros(self.running_sequence_parameters['laser_length_vector'][0], dtype=int)
+        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, 3001, dtype=int)
+        self.laser_plot_y = np.zeros(3000, dtype=int)
 
     
 #    def get_tau_list(self):

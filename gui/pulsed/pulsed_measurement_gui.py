@@ -68,12 +68,21 @@ class PulsedMeasurementGui(GUIBase):
         # Get the image from the logic
         self.signal_image = pg.PlotDataItem(self._pulse_analysis_logic.signal_plot_x, self._pulse_analysis_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulse_analysis_logic.laser_plot_x, self._pulse_analysis_logic.laser_plot_y)
+        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
+        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
 
 
         # Add the display item to the xy VieWidget, which was defined in
         # the UI file.
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
+        self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
         # Set the state button as ready button as default setting.
@@ -96,6 +105,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.numlaser_InputWidget.setValidator(validator2)
         self._mw.taustart_InputWidget.setValidator(validator)
         self._mw.tauincrement_InputWidget.setValidator(validator)
+        self._mw.signal_start_InputWidget.setValidator(validator2)
+        self._mw.signal_length_InputWidget.setValidator(validator2)
+        self._mw.reference_start_InputWidget.setValidator(validator2)
+        self._mw.reference_length_InputWidget.setValidator(validator2)
 #
 #        # Fill in default values:
         self._mw.frequency_InputWidget.setText(str(2870.))
@@ -107,6 +120,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertoshow_spinBox.setPrefix("#")
         self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
         self._mw.lasertoshow_spinBox.setValue(0)
+        self._mw.signal_start_InputWidget.setText(str(5))
+        self._mw.signal_length_InputWidget.setText(str(200))
+        self._mw.reference_start_InputWidget.setText(str(2000))
+        self._mw.reference_length_InputWidget.setText(str(200))
 
         #######################################################################
         ##                      Connect signals                              ##
@@ -124,6 +141,13 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
         self._mw.taustart_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.tauincrement_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        
+        self.seq_parameters_changed()
+        self.analysis_parameters_changed()
         
         # Show the Main GUI:
         self._mw.show()
@@ -196,6 +220,22 @@ class PulsedMeasurementGui(GUIBase):
         self._pulse_analysis_logic.running_sequence_parameters['tau_vector'] = tau_vector
         self._pulse_analysis_logic.running_sequence_parameters['number_of_lasers'] = laser_num
         self._pulse_analysis_logic.display_pulse_no = laser_show
+        return
+     
+     
+    def analysis_parameters_changed(self):
+        sig_start = int(self._mw.signal_start_InputWidget.text())
+        sig_length = int(self._mw.signal_length_InputWidget.text())
+        ref_start = int(self._mw.reference_start_InputWidget.text())
+        ref_length = int(self._mw.reference_length_InputWidget.text())
+        self.signal_start_bin = sig_start
+        self.signal_width_bins = sig_length
+        self.norm_start_bin = ref_start
+        self.norm_width_bins = ref_length
+        self.sig_start_line.setValue(sig_start)
+        self.sig_end_line.setValue(sig_start+sig_length)
+        self.ref_start_line.setValue(ref_start)
+        self.ref_end_line.setValue(ref_start+ref_length)
         return
         
         

@@ -63,19 +63,6 @@
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
-         <item row="1" column="3">
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
          <item row="3" column="0" colspan="2" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_12">
            <property name="text">
@@ -96,19 +83,18 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QRadioButton" name="run_radioButton">
+         <item row="3" column="7">
+          <widget class="QLabel" name="label_15">
            <property name="text">
-            <string>Run</string>
+            <string>Laser to show:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
-         <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
-          <widget class="QLabel" name="label_10">
-           <property name="text">
-            <string>Fast counter binning [ns] :</string>
-           </property>
-          </widget>
+         <item row="3" column="8">
+          <widget class="QSpinBox" name="lasertoshow_spinBox"/>
          </item>
          <item row="2" column="0" colspan="2" alignment="Qt::AlignRight">
           <widget class="QLabel" name="label_11">
@@ -117,10 +103,10 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
-          <widget class="QRadioButton" name="idle_radioButton">
+         <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
+          <widget class="QLabel" name="label_10">
            <property name="text">
-            <string>Idle</string>
+            <string>Fast counter binning [ns] :</string>
            </property>
           </widget>
          </item>
@@ -134,27 +120,21 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="4">
-          <widget class="QLabel" name="label_9">
+         <item row="0" column="1">
+          <widget class="QRadioButton" name="run_radioButton">
            <property name="text">
-            <string>Number of laser pulses:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            <string>Run</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="5">
-          <widget class="QLineEdit" name="numlaser_InputWidget">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
+         <item row="0" column="0">
+          <widget class="QRadioButton" name="idle_radioButton">
+           <property name="text">
+            <string>Idle</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="5">
+         <item row="1" column="8">
           <widget class="QLineEdit" name="taustart_InputWidget">
            <property name="maximumSize">
             <size>
@@ -164,17 +144,17 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="4">
-          <widget class="QLabel" name="label_13">
+         <item row="0" column="7">
+          <widget class="QLabel" name="label_9">
            <property name="text">
-            <string>Tau start:</string>
+            <string>Number of laser pulses:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
-         <item row="2" column="4">
+         <item row="2" column="7">
           <widget class="QLabel" name="label_14">
            <property name="text">
             <string>Tau increment:</string>
@@ -184,7 +164,17 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="5">
+         <item row="1" column="7">
+          <widget class="QLabel" name="label_13">
+           <property name="text">
+            <string>Tau start:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="8">
           <widget class="QLineEdit" name="tauincrement_InputWidget">
            <property name="maximumSize">
             <size>
@@ -194,18 +184,121 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="4">
-          <widget class="QLabel" name="label_15">
+         <item row="0" column="8">
+          <widget class="QLineEdit" name="numlaser_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="4">
+          <widget class="QLabel" name="label_18">
            <property name="text">
-            <string>Laser to show:</string>
+            <string>Start [bin]</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QLabel" name="label_17">
+           <property name="text">
+            <string>Length [bin]</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="3">
+          <widget class="QLabel" name="label_16">
+           <property name="text">
+            <string>Reference (green):</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
           </widget>
          </item>
+         <item row="2" column="3">
+          <widget class="QLabel" name="label_19">
+           <property name="text">
+            <string>Signal (red):</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="6">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="3">
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="2" column="4">
+          <widget class="QLineEdit" name="signal_start_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="5">
+          <widget class="QLineEdit" name="signal_length_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="4">
+          <widget class="QLineEdit" name="reference_start_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
          <item row="3" column="5">
-          <widget class="QSpinBox" name="lasertoshow_spinBox"/>
+          <widget class="QLineEdit" name="reference_length_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
