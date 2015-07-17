@@ -7,18 +7,57 @@ Created on Mon Jun 29 17:06:00 2015
 
 #from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui, uic
-import pyqtgraph as pg
 import numpy as np
 import os
-
 from collections import OrderedDict
+
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
+class ComboBoxDelegate(QtGui.QItemDelegate):
 
-class PulsedMeasurementMainWindow(QtGui.QMainWindow,Ui_MainWindow):
+    def __init__(self, owner):
+        QtGui.QItemDelegate.__init__(self, owner)
+#		self.itemslist = itemslist
+
+    def paint(self, painter, option, index):
+		# Get Item Data
+#		value = index.data(QtCore.Qt.DisplayRole).toInt()[0]
+		# fill style options with item data
+        style = QtGui.QApplication.style()
+        opt = QtGui.QStyleOptionComboBox()
+##		opt.currentText = str(self.itemslist[value])
+        opt.rect = option.rect
+#
+#		# draw item data as ComboBox
+        style.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt, painter)
+
+
+    def createEditor(self, parent, option, index):
+         # create the ProgressBar as our editor.
+        editor = QtGui.QComboBox(parent)
+
+        editor.addItems(['a','b','c'])
+        editor.setCurrentIndex(0)
+        editor.installEventFilter(self)
+        return editor
+
+    def setEditorData(self, editor, index):
+        value = index.data(QtCore.Qt.DisplayRole)
+        print(index)
+        editor.setCurrentIndex(value)
+
+    def setModelData(self,editor,model,index):
+        value = editor.currentIndex()
+        model.setData(index, QtCore.QVariant(value))
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
+
+
+class PulsedMeasurementMainWindow(QtGui.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -28,6 +67,16 @@ class PulsedMeasurementMainWindow(QtGui.QMainWindow,Ui_MainWindow):
         super(PulsedMeasurementMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
+
+class BlockSettingDialog(QtGui.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_block_gen.ui')
+
+        # Load it
+        super(BlockSettingDialog, self).__init__()
+        uic.loadUi(ui_file, self)
 
 class PulsedMeasurementGui(GUIBase):
     """
@@ -44,7 +93,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.',
@@ -58,7 +107,7 @@ class PulsedMeasurementGui(GUIBase):
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def initUI(self, e=None):
+    def activation(self, e=None):
         """ Definition, configuration and initialisation of the pulsed measurement GUI.
 
           @param class e: event class from Fysom
@@ -71,26 +120,63 @@ class PulsedMeasurementGui(GUIBase):
         self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-        self._mw = PulsedMeasurementMainWindow()
+        self._activted_main_ui(e)
+        self._activated_block_settings_ui(e)
+
+        self.count_analog_channels()
+        self.count_digital_channels()
+
+        # set up the types of the columns and create a pattern based on
+        # the desired settings:
+
+        #FIXME: Make the analog channel parameter chooseable in the settings.
 
 
-        self._mw.add_init_row_PushButton.clicked.connect(self.add_init_row)
-        self._mw.del_init_row_PushButton.clicked.connect(self.del_init_row)
-        self._mw.clear_init_table_PushButton.clicked.connect(self.clear_init_table)
+        # the attributes are assigned to function an the desired argument one
+        # wants to pass to these functions.
+        self._param_a_ch = OrderedDict()
+        self._param_a_ch['Function'] = [self._create_combobox, '()']
+        self._param_a_ch['Freq (GHz)'] = [self._create_doublespinbox, '(min_val=0)']
+        self._param_a_ch['Ampl. (V)'] = [self._create_doublespinbox, '(min_val=0,max_val=1.5)']
+        self._param_a_ch['Phase(°)'] = [self._create_doublespinbox, '()']
 
-        self._mw.add_repeat_row_PushButton.clicked.connect(self.add_repeat_row)
-        self._mw.del_repeat_row_PushButton.clicked.connect(self.del_repeat_row)
-        self._mw.clear_repeat_table_PushButton.clicked.connect(self.clear_repeat_table)
+        self._param_d_ch = OrderedDict()
+        self._param_d_ch['CheckBox'] = [self._create_checkbox,'()']
+
+        self._param_block = OrderedDict()
+        self._param_block['Length (ns)'] = [self._create_doublespinbox, '(min_val=0)']
+        self._param_block['Inc. (ns)'] = [self._create_doublespinbox,'(min_val=0)']
+        self._param_block['Repeat?'] = [self._create_checkbox,'()']
+        self._param_block['Use as tau?'] = [self._create_checkbox,'()']
 
 
-        self._count_analog_channels()
-        self._count_digital_channels()
-        self.analog_channel_parameter = ['Function', 'Freq (GHz)',
-                                         'Ampl. (V)', 'Phase(°)']
-        self.block_parameter = ['Length (ns)', 'Inc. (ns)', 'Repeat?',
-                                'Use as tau?']
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(0,ComboBoxDelegate(self))
+        #self.row_pattern =
 
-        self._mw.show()
+    def _create_doublespinbox(self, min_val=None, max_val=None, num_digits=None):
+        dspinbox = QtGui.QDoubleSpinBox()
+        dspinbox.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        dspinbox.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
+        if min_val is None:
+            min_val = -100000
+        if max_val is None:
+            max_val = 100000
+        if num_digits is None:
+            num_digits = 3
+        dspinbox.setMinimum(min_val)
+        dspinbox.setMaximum(max_val)
+        dspinbox.setDecimals(num_digits)
+        return dspinbox
+
+    def _create_checkbox(self):
+        #http://stackoverflow.com/questions/17748546/pyqt-column-of-checkboxes-in-a-qtableview
+        checkbox = QtGui.QCheckBox()
+        checkbox.setLayoutDirection(QtCore.Qt.RightToLeft)
+        return checkbox
+
+    def _create_combobox(self):
+        combobox = QtGui.QComboBox()
+        return combobox
 
 
     def deactivation(self, e):
@@ -101,33 +187,134 @@ class PulsedMeasurementGui(GUIBase):
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
-        self._mw.add_init_row_PushButton.clicked.disconnect()
-        self._mw.del_init_row_PushButton.clicked.disconnect()
+
+        self._deactivat_main_ui(e)
+        self._deactivate_block_ui(e)
+
+
+    def _activted_main_ui(self, e):
+        """ Initialize, connect and configure the main UI. """
+
+        self._mw = PulsedMeasurementMainWindow()
+
+        self._mw.add_init_row_selected_PushButton.clicked.connect(self.add_init_row_before_selected)
+        self._mw.del_init_row_selected_PushButton.clicked.connect(self.del_init_row_selected)
+        self._mw.add_init_row_last_PushButton.clicked.connect(self.add_init_row_after_last)
+        self._mw.del_init_row_last_PushButton.clicked.connect(self.del_init_row_last)
+        self._mw.clear_init_table_PushButton.clicked.connect(self.clear_init_table)
+
+
+        self._mw.add_repeat_row_selected_PushButton.clicked.connect(self.add_repeat_row_before_selected)
+        self._mw.del_repeat_row_selected_PushButton.clicked.connect(self.del_repeat_row_selected)
+        self._mw.add_repeat_row_last_PushButton.clicked.connect(self.add_repeat_row_after_last)
+        self._mw.del_repeat_row_last_PushButton.clicked.connect(self.del_repeat_row_last)
+        self._mw.clear_repeat_table_PushButton.clicked.connect(self.clear_repeat_table)
+
+        # connect the menue to the actions:
+        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
+        self.show()
+
+
+    def _deactivat_main_ui(self, e):
+        """ Disconnects the main ui and deactivates the window. """
+
+        self._mw.add_init_row_selected_PushButton.clicked.disconnect()
+        self._mw.del_init_row_selected_PushButton.clicked.disconnect()
+        self._mw.add_init_row_last_PushButton.clicked.disconnect()
+        self._mw.del_init_row_last_PushButton.clicked.disconnect()
         self._mw.clear_init_table_PushButton.clicked.disconnect()
 
-        self._mw.add_repeat_row_PushButton.clicked.disconnect()
-        self._mw.del_repeat_row_PushButton.clicked.disconnect()
+        self._mw.add_repeat_row_selected_PushButton.clicked.disconnect()
+        self._mw.del_repeat_row_selected_PushButton.clicked.disconnect()
+        self._mw.add_repeat_row_last_PushButton.clicked.disconnect()
+        self._mw.del_repeat_row_last_PushButton.clicked.disconnect()
         self._mw.clear_repeat_table_PushButton.clicked.disconnect()
 
         self._mw.close()
 
+    def _activated_block_settings_ui(self, e):
+        """ Initialize, connect and configure the block settings UI. """
+
+        self._bs = BlockSettingDialog() # initialize the block settings
+        self._bs.accepted.connect(self.update_block_settings)
+        self._bs.rejected.connect(self.keep_former_block_settings)
+        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
+
+    def _deactivate_block_ui(self, e):
+        """ Deactivate the Block settings """
+        self._bs.accepted.disconnect()
+        self._bs.rejected.disconnect()
+        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
+
+        self._bs.close()
 
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """Make main window visible and put it above all other windows. """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
 
+    def show_block_settings(self):
+        """ Opens the block settings menue. """
+        self._bs.exec_()
 
-    def add_init_row(self):
+    def update_block_settings(self):
+        """ Write new block settings from the gui to the file. """
+
+        self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
+        self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
+
+    def keep_former_block_settings(self):
+        """ Keep the old block settings and restores them in the gui. """
+
+        self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
+        self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
+
+
+
+
+
+
+    def add_init_row_before_selected(self):
         """
+        """
+        selected_row = self._mw.init_block_TableWidget.currentRow()
+
+        self._mw.init_block_TableWidget.insertRow(selected_row)
+
+
+
+    def add_n_rows(self, row_pos, ):
+        pass
+
+
+
+    def add_init_row_after_last(self):
         """
 
-    def del_init_row(self):
+        """
+        pass
+
+
+    def del_init_row_selected(self):
         """
         """
-        self.update_sequence_parameters()
+        # get the row number of the selected item(s). That will return the
+        # lowest selected row
+        row_to_remove = self._mw.init_block_TableWidget.currentRow()
+        self._mw.init_block_TableWidget.removeRow(row_to_remove)
+        #self.update_sequence_parameters()
+        pass
+
+    def del_init_row_last(self):
+        """
+        """
+        number_of_rows = self._mw.init_block_TableWidget.rowCount()
+        # remember, the row index is started to count from 0 and not from 1,
+        # therefore one has to reduce the value by 1:
+        self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
+        #self.update_sequence_parameters()
+        pass
 
     def clear_init_table(self):
         """
@@ -136,14 +323,38 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.init_block_TableWidget.setRowCount(1)
         self._mw.init_block_TableWidget.clearContents()
 
-    def add_repeat_row(self):
+
+
+    def add_repeat_row_after_last(self):
+        """
+        """
+        pass
+
+    def add_repeat_row_before_selected(self):
         """
         """
 
-    def del_repeat_row(self):
+        pass
+
+
+    def del_repeat_row_selected(self):
         """
         """
-        self.update_sequence_parameters()
+
+        row_to_remove = self._mw.repeat_block_TableWidget.currentRow()
+        self._mw.repeat_block_TableWidget.removeRow(row_to_remove)
+        #self.update_sequence_parameters()
+        pass
+
+    def del_repeat_row_last(self):
+        """
+        """
+        number_of_rows = self._mw.repeat_block_TableWidget.rowCount()
+        # remember, the row index is started to count from 0 and not from 1,
+        # therefore one has to reduce the value by 1:
+        self._mw.repeat_block_TableWidget.removeRow(number_of_rows-1)
+        #self.update_sequence_parameters()
+        pass
 
     def clear_repeat_table(self):
         """
@@ -152,15 +363,23 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.repeat_block_TableWidget.setRowCount(1)
         self._mw.repeat_block_TableWidget.clearContents()
 
-    def _count_digital_channels(self):
-        """
+    def count_digital_channels(self):
+        """ Get the number of currently displayed digital channels.
+
+        @return int: number of digital channels
+
+        The number of digital channal are counted and return and additionally
+        the internal counter variable _num_d_ch is updated. The counting
+        procedure is based on the init_block_TableWidget since it is assumed
+        that all operation on the init_block_TableWidget is also applied on
+        repeat_block_TableWidget.
         """
         count_dch = 0
         for column in range(self._mw.init_block_TableWidget.columnCount()):
             if 'DCh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                 count_dch = count_dch + 1
 
-        self.num_d_ch = count_dch
+        self._num_d_ch = count_dch
         return count_dch
 
     def _use_digital_ch(self, num_d_ch):
@@ -175,55 +394,77 @@ class PulsedMeasurementGui(GUIBase):
         are not falling below 2 (that number is more or less arbitrary).
         """
 
-        #self.lock()
-        #self._count_digital_channels()
 
-        if (self.num_a_ch == 1) and (num_d_ch != 2):
+        if (self._num_a_ch == 1) and (num_d_ch != 2):
             self.logMsg('For one analog channel the number of digital '
                         'channels must be set to 2!\nTherefore the number of '
                         'digital channels is set to 2 in the following.',
                         msgType='warning')
             num_d_ch = 2
 
-        if (self.num_a_ch == 2) and (num_d_ch != 4):
+        if (self._num_a_ch == 2) and (num_d_ch != 4):
             self.logMsg('For two analog channels the number of digital '
                         'channels must be set to 4!\nTherefore the number of '
                         'digital channels is set to 4 in the following.',
                         msgType='warning')
             num_d_ch = 4
 
-        if self.num_d_ch < num_d_ch:
-            position_list = []
+        # if more digital channels are needed then are currently used, create
+        # as much as digital channels are desired.
+        if self._num_d_ch < num_d_ch:
+            position_list = []  # use a position list, which is essentially
+                                # needed not to be confused with the analog
+                                # channels. In this it is specified on which
+                                # positions the channels are created.
 
-            if self.num_a_ch == 0:
-                for channel in range(self.num_d_ch, num_d_ch):
+            if self._num_a_ch == 0:
+                for channel in range(self._num_d_ch, num_d_ch):
                     position_list.append(channel)
 
-            if self.num_a_ch == 1:
-                for channel in range(self.num_d_ch, num_d_ch):
-                    position_list.append(channel+len(self.analog_channel_parameter))
+            if self._num_a_ch == 1:
+                for channel in range(self._num_d_ch, num_d_ch):
+                    position_list.append(channel+len(self._param_a_ch))
 
-            if self.num_a_ch == 2:
-                for channel in range(self.num_d_ch, num_d_ch):
+            if self._num_a_ch == 2:
+                for channel in range(self._num_d_ch, num_d_ch):
                     if channel < 2:
-                        position_list.append(len(self.analog_channel_parameter) + channel)
+                        position_list.append(len(self._param_a_ch) + channel)
                     else:
-                        position_list.append(len(self.analog_channel_parameter)*2 + channel)
+                        position_list.append(len(self._param_a_ch)*2 + channel)
 
             for appended_channel, channel_pos in enumerate(position_list):
 
+                # create the channels for the initial block
                 self._mw.init_block_TableWidget.insertColumn(channel_pos)
                 self._mw.init_block_TableWidget.setHorizontalHeaderItem(channel_pos, QtGui.QTableWidgetItem())
-                self._mw.init_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self.num_d_ch+appended_channel) )
+                self._mw.init_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self._num_d_ch+appended_channel) )
                 self._mw.init_block_TableWidget.setColumnWidth(channel_pos, 40)
 
-            self.num_d_ch = self.num_d_ch + len(position_list)
+                # add the new properties to the whole column
+                for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+                    cellobject = eval('self.'+self._param_d_ch['CheckBox'][0].__name__ + self._param_d_ch['CheckBox'][1] )
+                    self._mw.init_block_TableWidget.setCellWidget(row_num, channel_pos, cellobject)
 
-        elif self.num_d_ch > num_d_ch:
+                # create the channels for the repeated block
+                self._mw.repeat_block_TableWidget.insertColumn(channel_pos)
+                self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(channel_pos, QtGui.QTableWidgetItem())
+                self._mw.repeat_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self._num_d_ch+appended_channel) )
+                self._mw.repeat_block_TableWidget.setColumnWidth(channel_pos, 40)
+
+                # add the new properties to the whole column
+                for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+                    cellobject = eval('self.'+self._param_d_ch['CheckBox'][0].__name__ + self._param_d_ch['CheckBox'][1] )
+                    self._mw.repeat_block_TableWidget.setCellWidget(row_num, channel_pos, cellobject)
+
+            self._num_d_ch = self._num_d_ch + len(position_list)
+
+        # if less digital channels are needed then are currently displayed,
+        # then remove the unneeded ones.
+        elif self._num_d_ch > num_d_ch:
             position_list = []
-            #if self.num_a_ch == 0:
+            #if self._num_a_ch == 0:
 
-            for column in range(self.num_d_ch, num_d_ch-1, -1):
+            for column in range(self._num_d_ch, num_d_ch-1, -1):
                 position_list.append(column)
 
 
@@ -234,32 +475,24 @@ class PulsedMeasurementGui(GUIBase):
                     if aimed_ch in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                         self._mw.init_block_TableWidget.removeColumn(column)
                         break
-#
-            self.num_d_ch = num_d_ch
-#        if num_d_ch == self.num_d_ch:
-#            # then there is no need to create channels
-#            return
-#
-#        if self.num_a_ch == 0:
-#            channelpos = num_d_ch
-#        if num_d_ch > self.num_d_ch:
-#            # that means create digital channels.
-#            self._mw.init_block_Tab
-#
-#leWidget.insertColumn(channelpos-1)
-#            self._mw.init_block_TableWidget.setHorizontalHeaderItem(channelpos, QtGui.QTableWidgetItem())
-#            self._mw.init_block_TableWidget.horizontalHeaderItem(channelpos).setText('DCh{0}'.format(self.num_d_ch+1) )
-#            self._mw.init_block_TableWidget.setColumnWidth(channelpos, 30)
-#        else:
-#            self._mw.init_block_TableWidget.removeColumn(channelpos)
 
+                for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
+                    if aimed_ch in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
+                        self._mw.repeat_block_TableWidget.removeColumn(column)
+                        break
 
-        #self.unlock()
+            self._num_d_ch = num_d_ch
 
+    def count_analog_channels(self):
+        """ Get the number of currently displayed analog channels.
 
+        @return int: number of analog channels
 
-    def _count_analog_channels(self):
-        """
+        The number of analog channal are counted and return and additionally
+        the internal counter variable _num_a_ch is updated. The counting
+        procedure is based on the init_block_TableWidget since it is assumed
+        that all operation on the init_block_TableWidget is also applied on
+        repeat_block_TableWidget.
         """
         ana1 = 0
         ana2 = 0
@@ -269,8 +502,8 @@ class PulsedMeasurementGui(GUIBase):
             if 'ACh1' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                 ana2 = 1
 
-        self.num_a_ch = ana1 + ana2     # count the found channels together
-        return self.num_a_ch
+        self._num_a_ch = ana1 + ana2     # count the found channels together
+        return self._num_a_ch
 
     def _use_analog_channel(self, num_a_ch):
         """
@@ -279,47 +512,80 @@ class PulsedMeasurementGui(GUIBase):
                              0, 1 and 2, where 0 specifies no channels.
         """
 
-        #self.lock()
 
         if not ((type(num_a_ch) is int) and (0 <= num_a_ch) and (num_a_ch <= 2)):
             self.logMsg('The number for the analog channels was expected to '
                         'be either 0, 1 or 2, but a number of {0} was '
                         'passed.'.format(num_a_ch), msgType='warning')
 
+        # If no analog channels are needed, remove all if they are available:
         if num_a_ch == 0:
             # count backwards and remove from the back the analog parameters:
+            # go through the initial block of the table widget first:
             for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                 if 'ACh0' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                    self._mw.init_block_TableWidget.removeColumn(column)
                 if 'ACh1' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                    self._mw.init_block_TableWidget.removeColumn(column)
-            self.num_a_ch = 0
 
-        elif (num_a_ch == 1) and (self.num_a_ch == 2):
+            # apply now the same for the repeated block:
+            for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
+                if 'ACh0' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
+                   self._mw.repeat_block_TableWidget.removeColumn(column)
+                if 'ACh1' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
+                   self._mw.repeat_block_TableWidget.removeColumn(column)
+
+            self._num_a_ch = 0
+
+        # if two analog channels are already created and one is desired, then
+        # remove the second one.
+        elif (num_a_ch == 1) and (self._num_a_ch == 2):
+
             for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                 if 'ACh1' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
                    self._mw.init_block_TableWidget.removeColumn(column)
-            self.num_a_ch = 1
+
+            for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
+                if 'ACh1' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
+                   self._mw.repeat_block_TableWidget.removeColumn(column)
+
+            self._num_a_ch = 1
             self._use_digital_ch(2)
-        elif (num_a_ch > 0) and (self.num_a_ch < 2):
+
+        # if less then 2 analog channels are visible but one or two analog
+        # channels are desired, then insert them in the table:
+        elif (num_a_ch > 0) and (self._num_a_ch < 2):
             # repeat the channel creating for the number of channels:
             column_pos = 0
 
-            for channel in range(self.num_a_ch, num_a_ch):
+            for channel in range(self._num_a_ch, num_a_ch):
 
-                column_pos = (len(self.analog_channel_parameter) + 2)*channel # for two digital marker channels of the AWG
-                # append each parameter like specified in the analog_channel_parameter list:
-                for column, parameter in enumerate(self.analog_channel_parameter):
+                column_pos = (len(self._param_a_ch) + 2)*channel # for two digital marker channels of the AWG
+                # append each parameter like specified in the _param_a_ch list:
+                for column, parameter in enumerate(self._param_a_ch):
                     self._mw.init_block_TableWidget.insertColumn(column_pos+column)
                     self._mw.init_block_TableWidget.setHorizontalHeaderItem(column_pos+column, QtGui.QTableWidgetItem())
                     self._mw.init_block_TableWidget.horizontalHeaderItem(column_pos+column).setText('ACh{0}\n'.format(channel) + parameter)
                     self._mw.init_block_TableWidget.setColumnWidth(column_pos+column, 70)
 
+                    # add the new properties to the whole column
+                    for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+                        cellobject = eval('self.'+self._param_a_ch[parameter][0].__name__ + self._param_a_ch[parameter][1] )
+                        self._mw.init_block_TableWidget.setCellWidget(row_num, column_pos+column, cellobject)
 
-                self.num_a_ch = channel+1 # tell how many analog channel has been created
+                    self._mw.repeat_block_TableWidget.insertColumn(column_pos+column)
+                    self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column_pos+column, QtGui.QTableWidgetItem())
+                    self._mw.repeat_block_TableWidget.horizontalHeaderItem(column_pos+column).setText('ACh{0}\n'.format(channel) + parameter)
+                    self._mw.repeat_block_TableWidget.setColumnWidth(column_pos+column, 70)
+
+                    # add the new properties to the whole column
+                    for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+                        cellobject = eval('self.'+self._param_a_ch[parameter][0].__name__ + self._param_a_ch[parameter][1] )
+                        self._mw.repeat_block_TableWidget.setCellWidget(row_num, column_pos+column, cellobject)
+
+                self._num_a_ch = channel+1 # tell how many analog channel has been created
                 self._use_digital_ch(2)
 
-        #self.unlock()
 
 
     def idle_clicked(self):
@@ -338,6 +604,11 @@ class PulsedMeasurementGui(GUIBase):
         #Then if enabled. start a new odmr scan.
         if enabled:
             self._pulse_analysis_logic.start_pulsed_measurement()
+
+
+
+
+
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
         '''
