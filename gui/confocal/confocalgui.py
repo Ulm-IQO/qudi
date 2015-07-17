@@ -275,6 +275,9 @@ class ConfocalGui(GUIBase):
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
 
+
+
+
         #######################################################################
         ###               Configuration of the optimizer tab                ###
         #######################################################################
@@ -528,6 +531,19 @@ class ConfocalGui(GUIBase):
         self._mw.xy_rotate_clockwise_PushButton.clicked.connect(self.rotate_xy_image_clockwise)
         self._mw.depth_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_depth_image_anticlockwise)
         self._mw.depth_rotate_clockwise_PushButton.clicked.connect(self.rotate_depth_image_clockwise)
+
+        # Connect the zoom button
+        self._mw.action_zoom.toggled.connect(self.zoomed_clicked)
+
+
+        ###############################################################################################################
+        ##########                                     TEST AREA                                              #########
+        ###############################################################################################################
+
+
+        ###############################################################################################################
+        ###############################################################################################################
+
 
 
         ######
@@ -1655,3 +1671,10 @@ class ConfocalGui(GUIBase):
         # Resize the window to small dimensions
         self._mw.resize(1000, 360)
         
+    def zoomed_clicked(self,e):
+        if e :
+            self._mw.xy_ViewWidget.setDragMode(2)
+            self._mw.depth_ViewWidget.setDragMode(2)
+        else:
+            self._mw.xy_ViewWidget.setDragMode(0)
+            self._mw.depth_ViewWidget.setDragMode(0)
