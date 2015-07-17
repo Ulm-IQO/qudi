@@ -58,7 +58,7 @@ class PulseAnalysisLogic(GenericLogic):
         self.running_sequence_parameters['number_of_lasers'] = 101
         # index of the laser pulse to be displayed in the GUI (starting from 0).
         # A value of -1 corresponds to the sum of all laser pulses
-        self.display_pulse_no = -1
+        self.display_pulse_no = 0
 
         # threading
         self.threadlock = Mutex()
@@ -69,22 +69,22 @@ class PulseAnalysisLogic(GenericLogic):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """        
-        self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
+#        self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
         self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
-        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
+#        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self.signal_analysis_next.connect(self._analyze_data, QtCore.Qt.QueuedConnection)
 
 
-    def update_sequence_parameters(self, name):
-        """Gets the sequence parameters of sequence "name" from the sequence generator module
-          @param str name: name of the sequence to be updated
-        """
-        # get the sequence parameters from the sequence generator logic
-        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name).copy()
-        return
+#    def update_sequence_parameters(self, name):
+#        """Gets the sequence parameters of sequence "name" from the sequence generator module
+#          @param str name: name of the sequence to be updated
+#        """
+#        # get the sequence parameters from the sequence generator logic
+#        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name).copy()
+#        return
 
     
     def update_fast_counter_status(self):
@@ -151,8 +151,8 @@ class PulseAnalysisLogic(GenericLogic):
             # update the signal plot y-data
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
         # update the laser plot data to be displayed
-        if self.display_pulse_no >= 0:
-            self.laser_plot_y = laser_data[self.display_pulse_no]
+        if self.display_pulse_no > 0:
+            self.laser_plot_y = laser_data[self.display_pulse_no-1]
         else:
             self.laser_plot_y = np.sum(laser_data,0)
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, laser_data.shape[1]+1)

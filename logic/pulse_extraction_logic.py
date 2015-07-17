@@ -108,10 +108,14 @@ class PulseExtractionLogic(GenericLogic):
         # find the maximum laser length to use as size for the laser array
         laser_length = np.max(falling_ind-rising_ind)
         # initialize the empty output array
-        laser_arr = np.empty([num_of_lasers, laser_length],int)
+        laser_arr = np.zeros([num_of_lasers, laser_length],int)
         # slice the detected laser pulses of the timetrace and save them in the output array
         for i in range(num_of_lasers):
-            laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
+            if (rising_ind[i]+laser_length > count_data.size):
+                lenarr = count_data[rising_ind[i]:].size
+                laser_arr[i, 0:lenarr] = count_data[rising_ind[i]:]
+            else:
+                laser_arr[i] = count_data[rising_ind[i]:rising_ind[i]+laser_length]
         return laser_arr
         
     

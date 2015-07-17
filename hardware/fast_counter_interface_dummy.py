@@ -77,13 +77,8 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         
         raise InterfaceImplementationError('FastCounterInterface>is_trace_extractable')
         return -1
-   
-    def get_data_trace(self):
-        
-        raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
-        return -1
       
-    def get_data(self):
+    def get_data_trace(self):
         ''' params '''
 #        num_of_lasers = 100
 #        polarized_count = 200
