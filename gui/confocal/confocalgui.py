@@ -192,6 +192,7 @@ class ConfocalGui(GUIBase):
         # degree trun is applied.
         self.xy_image_orientation = np.array([0,1,2,-1],int)
         self.depth_image_orientation = np.array([0,1,2,-1],int)
+
         
         
         
@@ -540,6 +541,22 @@ class ConfocalGui(GUIBase):
         ##########                                     TEST AREA                                              #########
         ###############################################################################################################
 
+        # self.rubber = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle)
+        # self.origin = QtCore.QPoint()
+        #
+        # def mouseClickEvent(self, ev):
+        #     if ev.button() == QtCore.QtLeftButton:
+        #         self.rubber.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
+        #         self.rubber.show()
+        #
+        # def mouseMoveEvent(self, ev):
+        #     if not self.origin.isNull():
+        #         self.rubber.setGeometry(QtCore.QRect(self.origin, ev.pos()).normalized())
+        #
+        # def mouseReleaseEvent(self, event):
+        #     if event.button() == QtCore.Qt.LeftButton:
+        #         print(self.rubber.geometry())
+        #         self.rubber.hide()
 
         ###############################################################################################################
         ###############################################################################################################
@@ -675,6 +692,7 @@ class ConfocalGui(GUIBase):
                 self.update_z_slider(float(round(z_pos+self.slider_small_step*0.001,4)))
             elif event.key() == QtCore.Qt.Key_PageDown:
                 self.update_z_slider(float(round(z_pos-self.slider_small_step*0.001,4)))
+
                 
 
     def update_crosshair_position(self):
