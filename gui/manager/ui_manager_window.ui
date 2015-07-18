@@ -141,13 +141,20 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionConfiguration"/>
-    <addaction name="actionConsole"/>
-    <addaction name="actionLog"/>
+    <addaction name="actionConfigurationView"/>
+    <addaction name="actionConsoleView"/>
+    <addaction name="actionLogView"/>
     <addaction name="actionReset_to_default_layout"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="actionConsoleSettings"/>
    </widget>
    <addaction name="menuMenu"/>
    <addaction name="menuView"/>
+   <addaction name="menuSettings"/>
    <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -255,7 +262,7 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="actionLog">
+  <action name="actionLogView">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -271,7 +278,7 @@
     <string>&amp;Log</string>
    </property>
   </action>
-  <action name="actionConsole">
+  <action name="actionConsoleView">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -280,6 +287,9 @@
    </property>
    <property name="text">
     <string>&amp;Console</string>
+   </property>
+   <property name="toolTip">
+    <string>Console settings</string>
    </property>
   </action>
   <action name="actionAbout_QuDi">
@@ -297,7 +307,7 @@
     <string>About &amp;Qt</string>
    </property>
   </action>
-  <action name="actionConfiguration">
+  <action name="actionConfigurationView">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -315,10 +325,17 @@
   </action>
   <action name="actionExport_log_as_HTML">
    <property name="icon">
-    <iconset theme="document-save-as"/>
+    <iconset theme="document-save-as">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
-    <string>Export log as HTML</string>
+    <string>&amp;Export log as HTML</string>
+   </property>
+  </action>
+  <action name="actionConsoleSettings">
+   <property name="text">
+    <string>&amp;Console</string>
    </property>
   </action>
  </widget>
@@ -339,7 +356,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>actionConsole</sender>
+   <sender>actionConsoleView</sender>
    <signal>toggled(bool)</signal>
    <receiver>consoleDockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -355,7 +372,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionConfiguration</sender>
+   <sender>actionConfigurationView</sender>
    <signal>toggled(bool)</signal>
    <receiver>config_display_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -371,7 +388,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionLog</sender>
+   <sender>actionLogView</sender>
    <signal>toggled(bool)</signal>
    <receiver>logDockWidget</receiver>
    <slot>setVisible(bool)</slot>
