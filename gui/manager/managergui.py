@@ -187,6 +187,17 @@ View the current namespace with dir().
 Go, play.
 """
         self._mw.consolewidget.banner = banner
+        # font size
+        if 'console_font_size' in self._statusVariables:
+            self.consoleSetFontSize(self._statusVariables['console_font_size'])
+        # settings
+        self._csd = ConsoleSettingsDialog()
+        self._csd.accepted.connect(self.consoleApplySettings)
+        self._csd.rejected.connect(self.consoleKeepSettings)
+        self._csd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.consoleApplySettings)
+        self._mw.actionConsoleSettings.triggered.connect(self._csd.exec_)
+        self.consoleKeepSettings()
+        
         self._mw.consolewidget.kernel_manager = self.kernel_manager
         self._mw.consolewidget.kernel_client = self._mw.consolewidget.kernel_manager.client()
         self._mw.consolewidget.kernel_client.start_channels()
@@ -219,6 +230,24 @@ Go, play.
         for module in discard:
             self.namespace.pop(module, None)
         self.modules = currentModules
+
+    def consoleKeepSettings(self):
+        """ Write old values into config dialog.
+        """
+        if 'console_font_size' in self._statusVariables:
+            self._csd.fontSizeBox.setProperty('value', self._statusVariables['console_font_size'])
+        else:
+            self._csd.fontSizeBox.setProperty('value', 10)
+
+    def consoleApplySettings(self):
+        """ Apply values from config dialog to console.
+        """
+        self.consoleSetFontSize(self._csd.fontSizeBox.value())
+
+    def consoleSetFontSize(self, fontsize):
+        self._mw.consolewidget.font_size = fontsize
+        self._statusVariables['console_font_size'] = fontsize
+        self._mw.consolewidget.reset_font()
 
     def updateConfigWidgets(self):
         """ Clear and refill the tree widget showing the configuration.
@@ -365,6 +394,17 @@ class AboutDialog(QtGui.QDialog):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_about.ui')
+
+        # Load it
+        super().__init__()
+        uic.loadUi(ui_file, self)
+
+class ConsoleSettingsDialog(QtGui.QDialog):
+    """ Create the SettingsDialog window, based on the corresponding *.ui file."""
+    def __init__(self):
+         # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_console_settings.ui')
 
         # Load it
         super().__init__()
