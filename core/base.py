@@ -40,7 +40,7 @@ class Base(QtCore.QObject, Fysom):
     * Reload module data (from saved variables)
     """
 
-    sigStateChanged = QtCore.Signal(str, object)  #(module name, state change)
+    sigStateChanged = QtCore.Signal(object)  #(module name, state change)
     sigLogMessage = QtCore.Signal(object)
     _modclass = 'base'
     _modtype = 'base'
@@ -67,6 +67,10 @@ class Base(QtCore.QObject, Fysom):
         default_callbacks.update(callbacks)
 
         # State machine definition
+        # the abbrivations for the event list are the following:
+        #   name:   event name,
+        #   src:    source state,
+        #   dst:    destination state
         _baseStateList = {
             'initial': 'deactivated',
             'events': [
@@ -87,11 +91,6 @@ class Base(QtCore.QObject, Fysom):
             ],
             'callbacks': default_callbacks
         }
-        # the abbrivations for the event list are the following:
-        #   name:   event name,
-        #   src:    source state,
-        #   dst:    destination state
-
 
         # Initialise state machine:
         Fysom.__init__(self, _baseStateList)
@@ -113,6 +112,7 @@ class Base(QtCore.QObject, Fysom):
         self._name = name
         self._configuration = configuration
         self._statusVariables = OrderedDict()
+        # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
     def default_activate(self, e):
         """ The default activation callback gives an error if not overwritten.
@@ -129,7 +129,13 @@ class Base(QtCore.QObject, Fysom):
         self.logMsg('Please implement and specify the deactivation method {0}.'.format(self.__class__.__name__), msgType='error')
 
     # Do not replace these in subclasses
+    def onchangestate(self, e):
+        """ Fysom callback for state transition.
         
+          @param object e: Fysom state transition description
+        """
+        self.sigStateChanged.emit(e)
+
     def getStatusVariables(self):
         """ Return a dict of variable names and their content representing the module state for saving.
 
