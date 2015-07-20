@@ -10,37 +10,46 @@ import visa
 
 
 
-class MagnetStagePI(Base,MagnetStageInterface):
+class MagnetStagePI(Base, MagnetStageInterface):
     """unstable: Christoph Müller
     This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
     
-    def __init__(self):
-        _serial_connection_xyz = instrument('COM1', baud_rate=9600, timeout=1)            #magnet xyz-stage
-        _serial_connection_rot = instrument("COM6", baud_rate=9600, timeout=5)            #magnet rot-stage   TIMEOUT shorter?
-        _serial_connection_xyz.term_chars = '\n'
-        _serial_connection_rot.term_chars = '\n'
-        
+    def __init__(self, manager, name, config, **kwargs):
+        cb_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        Base.__init__(self, manager, name, config, cb_dict)
+
         #axis definition:
-        _x_axis = '1'
-        _y_axis = '3'
-        _z_axis = '2'
+        self._x_axis = '1'
+        slef._y_axis = '3'
+        self._z_axis = '2'
         
         #ranges of axis:
-        _min_x = -100. * 10000.
-        _max_x = 100. * 10000.
-        _min_y = -100. * 10000.
-        _max_y = 100. * 10000.
-        _min_z = -100. * 10000.
-        _max_z = 100. * 10000.
+        self._min_x = -100. * 10000.
+        self._max_x = 100. * 10000.
+        self._min_y = -100. * 10000.
+        self._max_y = 100. * 10000.
+        self._min_z = -100. * 10000.
+        self._max_z = 100. * 10000.
         
         #Translationfactor
-        MicroStepSize = 0.000234375
+        self.MicroStepSize = 0.000234375
         
         #!!!!NOTE:  vielleicht sollte überall .ask anstatt .write genommen werden, das die stage glaube ich immer was zurückgibt....
+   
+    def activation(self, e):
+        self.rm = visa.ResourceManager()
+        self._serial_connection_xyz = self.rm.open_resource('COM1', baud_rate=9600, timeout=1)            #magnet xyz-stage
+        self._serial_connection_rot = self.rm.open_resource("COM6", baud_rate=9600, timeout=5)            #magnet rot-stage   TIMEOUT shorter?
+        self._serial_connection_xyz.term_chars = '\n'
+        self._serial_connection_rot.term_chars = '\n'
     
-    
+    def deactivation(self, e):
+        self._serial_connection_xyz.close()
+        self._serial_connection_rot.close()
+        self.rm.close()
+
     def step(self, x = None, y = None, z = None, phi = None):
         """Moves stage in given direction (relative movement)
         
