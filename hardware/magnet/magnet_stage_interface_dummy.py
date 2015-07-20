@@ -5,28 +5,18 @@ from hardware.magnet_stage_interface import MagnetStageInterface
 from collections import OrderedDict
 
 class MagnetStageDummy(Base,MagnetStageInterface):
-    #FIXME: Is this an interface class?
-    """This is the Interface class to define the controls for the simple 
-    microwave hardware.
+    """This is the dummy class for the magent stage interface.
     """
-    _modclass = 'magnetinterface'
+    _modclass = 'MagnetStageInterface'
     _modtype = 'hardware'
 
     # connectors
     _out = {'magnet': 'MagnetStageInterface'}
 
-    # FIXME: Class variables, really??!!!!
-    x = 0.
-    y = 0.
-    z = 0.
-    phi = 0.
-    vel_x = 0.
-    vel_y = 0.
-    vel_z = 0.
-    vel_phi = 0.
-    
+   
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        cb = {'onactivate': self.cativation, 'ondeactivate': self.deactivation}
+        Base.__init__(self, manager, name, config, cb)
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')
@@ -38,7 +28,20 @@ class MagnetStageDummy(Base,MagnetStageInterface):
 
 #       TODO: here there should be checks if configuration is set and sensible
             
-    def step_x(self, step = 0.):
+    def activation(self, e):
+        x = 0.0
+        y = 0.0
+        z = 0.0
+        phi = 0.0
+        vel_x = 0.0
+        vel_y = 0.0
+        vel_z = 0.0
+        vel_phi = 0.0
+ 
+    def deactivation(self, e):
+        pass
+
+    def step_x(self, step = 0.0):
         """Moves stage in x-direction
         
         @param float step: amount of realtive movement
@@ -48,8 +51,7 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         self.x += step
         return 0
     
-    
-    def step_y(self, step = 0.):
+    def step_y(self, step = 0.0):
         """Moves stage in y-direction
         
         @param float step: amount of realtive movement
@@ -59,8 +61,7 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         self.y += step
         return 0
     
-    
-    def step_z(self, step = 0.):
+    def step_z(self, step = 0.0):
         """Moves stage in z-direction
         
         @param float step: amount of realtive movement
@@ -69,9 +70,8 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         """
         self.z += step
         return 0
-        
     
-    def step_phi(self, step = 0.):
+    def step_phi(self, step = 0.0):
         """Turns stage around angle phi
         
         @param float step: amount of realtive movement
@@ -81,7 +81,6 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         self.phi += step
         return 0         
     
-
     def abort(self):
         """Stops movement of the stage
         
@@ -90,7 +89,6 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         print('stage stopped')
         return 0 
         
-    
     def get_pos(self):
         """Gets current position of the stage arms
         
@@ -100,7 +98,6 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         @return float phi: current phi stage position
         """
         return self.x, self.y, self.z, self.phi
-        
      
     def get_status(self):
         """Get the status of the position
@@ -108,9 +105,8 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         @return int status: status of the stage      
         """
         return 0
-        
     
-    def move(self, x = 0., y = 0., z = 0., phi = 0.):
+    def move(self, x = 0.0, y = 0.0, z = 0.0, phi = 0.0):
         """Moves stage to absolute position
         
         @param float x: move to absolute position in x-direction
@@ -126,16 +122,14 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         self.phi = phi
         return 0
         
-        
     def calibrate_x(self):
         """Calibrates the x-direction of the stage. 
         For this it moves to the point zero in x.
         
         @return int: error code (0:OK, -1:error)
         """
-        self.x = 0.
+        self.x = 0.0
         return 0
-            
     
     def calibrate_y(self):
         """Calibrates the y-direction of the stage. 
@@ -143,9 +137,8 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        self.y = 0.
+        self.y = 0.0
         return 0
-            
     
     def calibrate_z(self):
         """Calibrates the z-direction of the stage. 
@@ -153,9 +146,8 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        self.z = 0.
+        self.z = 0.0
         return 0
-    
             
     def calibrate_phi(self):
         """Calibrates the phi-direction of the stage. 
@@ -163,9 +155,8 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        self.phi = 0.
+        self.phi = 0.0
         return 0
-    
     
     def get_velocity(self, dimension = 'x'):
         """ Gets the velocity of the given dimension
@@ -184,8 +175,7 @@ class MagnetStageDummy(Base,MagnetStageInterface):
             vel = self.vel_phi
         return vel
         
-        
-    def set_velocity(self, dimension = 'x', vel = 0.):
+    def set_velocity(self, dimension = 'x', vel = 0.0):
         """Write new value for velocity in chosen dimension
         
         @param str dimension: name of chosen dimension
@@ -202,6 +192,4 @@ class MagnetStageDummy(Base,MagnetStageInterface):
         elif dimension == 'phi':
             self.vel_phi = vel
         return 0 
-    
-    
-    
+
