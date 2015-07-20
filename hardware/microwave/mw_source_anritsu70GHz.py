@@ -22,6 +22,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
                    
     def activation(self,e=None):
         # checking for the right configuration
+        config = self.getConfiguration()
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:

@@ -21,7 +21,8 @@ class mwsourcegigatronics(Base, MWInterface):
         Base.__init__(self, manager, name, config, c_dict)
         
     def activation(self,e=None):
-         # checking for the right configuration
+        # checking for the right configuration
+        config = self.getConfiguration()
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
