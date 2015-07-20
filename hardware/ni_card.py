@@ -197,6 +197,19 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # Analoque output is always needed and it does not interfere with the 
         # rest, so start it always and leave it running
         self._start_analoque_output()
+
+    def deactivation(self, e=None):
+        """ Shut down the NI card.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happened.
+        """
+        self.reset_hardware()
         
     def reset_hardware(self):
         """ Resets the NI hardware, so the connection is lost and other programs can access it.
@@ -206,13 +219,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
         if match:
             device = match.group('device')
-            self.logMsg('NI Device "{}" will be reset.'.format(device),
-                        msgType='warning')
+            self.logMsg('NI Device "{}" will be reset.'.format(device), msgType='warning')
             daq.DAQmxResetDevice(device)
             return 0
         else:
-            self.logMsg('Did not find device name in {}.'.format(self._clock_channel),
-                        msgType='error')
+            self.logMsg('Did not find device name in {}.'.format(self._clock_channel),vmsgType='error')
             return -1
         
         
