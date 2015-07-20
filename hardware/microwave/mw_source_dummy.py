@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.mwsourceinterface import MWInterface
+from hardware.microwave.mwsourceinterface import MWInterface
 import random
 from collections import OrderedDict
 
@@ -11,7 +11,7 @@ class mwsourcedummy(Base,MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
-    _modclass = 'mwsourcedummy'
+    _modclass = 'MWInterface'
     _modtype = 'mwsource'
     
     ## declare connectors
@@ -22,34 +22,27 @@ class mwsourcedummy(Base,MWInterface):
         state_actions = {'onactivate': self.activation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
         
-        self.logMsg("The following configuration was found.", 
-                    msgType='status')
+        self.logMsg("The following configuration was found.", msgType='status')
         
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg("{}: {}".format(key,config[key]), 
-                        msgType='status')
+            self.logMsg("{}: {}".format(key,config[key]), msgType='status')
         
         # trying to load the visa connection
         try: 
             import visa
         except:
-            self.logMsg("No visa connection installed. Please install pyvisa.", 
-                        msgType='error')
+            self.logMsg("No visa connection installed. Please install pyvisa.", msgType='error')
 
-            
     def activation(self, e):
         pass
             
-        
     def on(self):
         """ Switches on any preconfigured microwave output. 
         
         @return int: error code (0:OK, -1:error)
         """ 
-        
         self.logMsg("mwsourcedummy>on", msgType='warning')
-        
         return 0
     
     def off(self):
@@ -57,9 +50,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        
         self.logMsg("mwsourcedummy>off", msgType='warning')
-        
         return 0
     
     def get_power(self):
@@ -67,9 +58,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return float: the power set at the device
         """
-        
         self.logMsg("mwsourcedummy>get_power", msgType='warning')
-                    
         return random.uniform(-10, 10)
         
     def set_power(self,power=None):
@@ -79,10 +68,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        
-        self.logMsg("mwsourcedummy>set_power, power: {0:f}".format(power), 
-                    msgType='warning')
-                    
+        self.logMsg("mwsourcedummy>set_power, power: {0:f}".format(power), msgType='warning')
         return 0
         
         
@@ -91,9 +77,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return float: the power set at the device
         """
-        
         self.logMsg("mwsourcedummy>get_frequency", msgType='warning')
-                    
         return random.uniform(0, 1e6)
         
     def set_frequency(self,frequency=None):
@@ -103,10 +87,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        
-        self.logMsg("mwsourcedummy>set_frequency, frequency: {0:f}".format(frequency), 
-                    msgType='warning')
-                    
+        self.logMsg("mwsourcedummy>set_frequency, frequency: {0:f}".format(frequency), msgType='warning')
         return 0
 
     def set_cw(self,f=None, power=None):
@@ -117,10 +98,7 @@ class mwsourcedummy(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-        
-        self.logMsg("mwsourcedummy>set_cw, frequency: {0:f}".format(power), 
-                    msgType='warning')
-                    
+        self.logMsg("mwsourcedummy>set_cw, frequency: {0:f}".format(power), msgType='warning')
         return 0
         
     def set_list(self,freq=None, power=None):
@@ -130,11 +108,9 @@ class mwsourcedummy(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        
         #FIXME: the following line raises an error
         #self.logMsg("mwsourcedummy>set_list, frequency: {0:f}".format(freq), 
         #            msgType='warning')
-                    
         return 0
         
     def reset_listpos(self):#
@@ -142,9 +118,7 @@ class mwsourcedummy(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        
         self.logMsg("mwsourcedummy>reset_listpos", msgType='warning')
-        
         return 0
         
     def list_on(self):
@@ -152,13 +126,11 @@ class mwsourcedummy(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        
         self.logMsg("mwsourcedummy>list_on", msgType='warning')
-        
         return 0
         
         
     def trigger(self,source,pol):
         pass
         
-        
+

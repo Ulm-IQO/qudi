@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.mwsourceinterface import MWInterface
+from hardware.microwave.mwsourceinterface import MWInterface
 import visa
 import numpy as np
 from collections import OrderedDict
@@ -10,53 +10,43 @@ class mwsourceanritsu70GHz(Base, MWInterface):
     """This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
-    _modclass = 'mwsourceanritsu70GHz'
+    _modclass = 'MWInterface'
     _modtype = 'hardware'
 
     ## declare connectors 
     _out = {'mwsourceanritsu70GHz': 'MWInterface'}
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        c_dict = {'onactivate': self.activation}
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
- 
+                   
+    def activation(self,e=None):
         # checking for the right configuration
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg("This is MWanritsu70GHz: did not find >>gpib_address<< in \
-            configration.", 
-                        msgType='error')
+            self.logMsg("This is MWanritsu70GHz: did not find >>gpib_address<< in configration.", msgType='error')
         
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg("This is MWanritsu70GHz: did not find >>gpib_timeout<< in \
-            configration. I will set it to 10 seconds.", 
-                        msgType='error')
+            self.logMsg("This is MWanritsu70GHz: did not find >>gpib_timeout<< in configration. I will set it to 10 seconds.", msgType='error')
         
         # trying to load the visa connection to the module
-        rm = visa.ResourceManager()
+        self.rm = visa.ResourceManager()
         try: 
-            self._gpib_connetion = rm.open_resource(self._gpib_address, 
-                                              timeout=self._gpib_timeout)
+            self._gpib_connection = self.rm.open_resource(self._gpib_address, timeout=self._gpib_timeout)
         except:
-            self.logMsg("This is MWanritsu70GHz: could not connect to the GPIB \
-            address >>{}<<.".format(self._gpib_address), 
-                        msgType='error')
+            self.logMsg("This is MWanritsu70GHz: could not connect to the GPIB address >>{}<<.".format(self._gpib_address), msgType='error')
             raise
             
-        self.logMsg("MWanritsu70GHz initialised and connected to hardware.", 
-                    msgType='status')
-                    
-    def activation(self,e=None):
-        
-        return 0 
+        self.logMsg("MWanritsu70GHz initialised and connected to hardware.", msgType='status')
     
     def deactivation(self,e=None):
+        self._gpib_connection.close()
+        self.rm.close()
         
-        return 0                       
                     
     def on(self):
         """ Switches on any preconfigured microwave output. 
@@ -64,7 +54,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         @return int: error code (0:OK, -1:error)
         """ 
         
-        self._gpib_connetion.write('RF1')
+        self._gpib_connection.write('RF1')
         
         return 0
 
@@ -75,7 +65,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._gpib_connetion.write('RF0')
+        self._gpib_connection.write('RF0')
         
         return 0
 
@@ -86,7 +76,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         @return float: the power set at the device
         """
         
-        return float(self._gpib_connetion.ask('OL0'))
+        return float(self._gpib_connection.ask('OL0'))
 
 
     def set_power(self, power=None):
@@ -98,7 +88,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         """
         
         if power != None:
-            self._gpib_connetion.write('RF0 L0 {:f} DM RF1'.format(power))
+            self._gpib_connection.write('RF0 L0 {:f} DM RF1'.format(power))
             return 0
         else:
             return -1
@@ -110,7 +100,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         @return float: the power set at the device
         """
         
-        return float(self._gpib_connetion.ask('OF0'))
+        return float(self._gpib_connection.ask('OF0'))
 
 
     def set_frequency(self, frequency=None):
@@ -122,7 +112,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         """
         
         if frequency != None:
-            self._gpib_connetion.write('RF0 F0 {:f} HZ RF1'.format(frequency))
+            self._gpib_connection.write('RF0 F0 {:f} HZ RF1'.format(frequency))
             return 0
         else: return -1
 
@@ -169,7 +159,7 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         while len(stop) < 4:
             stop = '0' + stop
             
-        self._gpib_connetion.write('RF0 LST ELN0 ELI0000 LF ' + f + ' LP ' + p + 'LIB0000 LIE{:s}'.format(stop) + 'RF1')
+        self._gpib_connection.write('RF0 LST ELN0 ELI0000 LF ' + f + ' LP ' + p + 'LIB0000 LIE{:s}'.format(stop) + 'RF1')
         
         return error
 
@@ -180,8 +170,8 @@ class mwsourceanritsu70GHz(Base, MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._gpib_connetion.write('ELI0')
-        self._gpib_connetion.write('*WAI')
+        self._gpib_connection.write('ELI0')
+        self._gpib_connection.write('*WAI')
         
         return 0
 
@@ -197,6 +187,6 @@ class mwsourceanritsu70GHz(Base, MWInterface):
 
     def trigger(self, source, pol):
         
-        self._gpib_connetion.write(':TRIG:SOUR '+source)
-        self._gpib_connetion.write(':TRIG:SLOP '+pol)
-        self._gpib_connetion.write('*WAI')
+        self._gpib_connection.write(':TRIG:SOUR '+source)
+        self._gpib_connection.write(':TRIG:SLOP '+pol)
+        self._gpib_connection.write('*WAI')
