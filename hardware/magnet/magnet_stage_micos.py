@@ -53,8 +53,6 @@ class MagnetStageMicos(Base, MagnetStageInterface):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
     def activation(self, e):
-        # FIXME: really class variables???!
-        #     Creating class variables to store the current value of the position.
         self.x_store=-1
         self.y_store=-1
         self.z_store=-1
