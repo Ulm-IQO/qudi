@@ -40,7 +40,7 @@ class MWSourceSMR20(Base,MWInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try: 
-            self._gpib_connection = rm.open_resource(self._gpib_address, timeout=self._gpib_timeout)
+            self._gpib_connection = self.rm.open_resource(self._gpib_address, timeout=self._gpib_timeout)
             self.logMsg('MWSourceSMR20: initialised and connected to hardware.', msgType='status')
         except:
             self.logMsg('MWSourceSMR20: could not connect to the GPIB address >>{0}<<.'.format(self._gpib_address), msgType='error')
