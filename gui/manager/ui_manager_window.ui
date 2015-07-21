@@ -72,8 +72,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>96</width>
-             <height>26</height>
+             <width>887</width>
+             <height>289</height>
             </rect>
            </property>
           </widget>
@@ -96,8 +96,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>96</width>
-             <height>26</height>
+             <width>887</width>
+             <height>289</height>
             </rect>
            </property>
           </widget>
@@ -132,7 +132,7 @@
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
-     <string>Abou&amp;t</string>
+     <string>Abo&amp;ut</string>
     </property>
     <addaction name="actionAbout_QuDi"/>
     <addaction name="actionAbout_Qt"/>
@@ -144,6 +144,8 @@
     <addaction name="actionConfigurationView"/>
     <addaction name="actionConsoleView"/>
     <addaction name="actionLogView"/>
+    <addaction name="actionRemoteView"/>
+    <addaction name="actionThreadsView"/>
     <addaction name="actionReset_to_default_layout"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
@@ -205,6 +207,24 @@
     <number>8</number>
    </attribute>
    <widget class="LogWidget" name="logwidget"/>
+  </widget>
+  <widget class="QDockWidget" name="remoteDockWidget">
+   <property name="windowTitle">
+    <string>Remote</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="RemoteWidget" name="remoteWidget"/>
+  </widget>
+  <widget class="QDockWidget" name="threadDockWidget">
+   <property name="windowTitle">
+    <string>&amp;Threads</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="ThreadWidget" name="threadWidget"/>
   </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
@@ -338,6 +358,22 @@
     <string>&amp;Console</string>
    </property>
   </action>
+  <action name="actionThreadsView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Threads</string>
+   </property>
+  </action>
+  <action name="actionRemoteView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>R&amp;emote</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -350,6 +386,18 @@
    <class>RichIPythonWidget</class>
    <extends>QWidget</extends>
    <header>IPython.qt.console.rich_ipython_widget</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>RemoteWidget</class>
+   <extends>QWidget</extends>
+   <header>gui.manager.remotewidget</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ThreadWidget</class>
+   <extends>QWidget</extends>
+   <header>gui.manager.threadwidget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -399,6 +447,38 @@
     </hint>
     <hint type="destinationlabel">
      <x>886</x>
+     <y>539</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionThreadsView</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>threadDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>932</x>
+     <y>539</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionRemoteView</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>remoteDockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>757</x>
      <y>539</y>
     </hint>
    </hints>
