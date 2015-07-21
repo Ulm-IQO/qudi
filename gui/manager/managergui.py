@@ -108,6 +108,8 @@ class ManagerGui(GUIBase):
         self.startIPythonWidget()
 
         self._mw.config_display_dockWidget.hide()
+        self._mw.remoteDockWidget.hide()
+        self._mw.threadDockWidget.hide()
         #self._mw.menuUtilities.addAction(self._mw.config_display_dockWidget.toggleViewAction() )
         self._mw.show()
 
