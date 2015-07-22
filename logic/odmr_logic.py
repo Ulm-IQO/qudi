@@ -343,16 +343,44 @@ class ODMRLogic(GenericLogic):
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]'
+                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_fwhm'].stderr,2)) + ' [MHz]'  + '\n'
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]'
+                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_fwhm'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
 
         elif self.fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz2_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
 
         elif self.fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
 
 
     def save_ODMR_Data(self):
