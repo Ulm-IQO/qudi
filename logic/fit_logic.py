@@ -7,6 +7,7 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
+from lmfit import Parameters
 from scipy.signal import gaussian
 from scipy.ndimage import filters
  
