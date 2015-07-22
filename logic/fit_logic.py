@@ -866,6 +866,11 @@ class FitLogic(GenericLogic):
             lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
             lorentz1_amplitude=-1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
 
+            if lorentz1_center < lorentz0_center :
+                lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma = \
+                    lorentz1_amplitude,lorentz0_amplitude, lorentz1_center,lorentz0_center, lorentz1_sigma,lorentz0_sigma
+
+
             return error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset
 
         def make_double_lorentzian_fit(self,axis=None,data=None,add_parameters=None):
