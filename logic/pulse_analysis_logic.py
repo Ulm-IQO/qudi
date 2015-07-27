@@ -7,6 +7,7 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 import time
+import datetime
 
 class PulseAnalysisLogic(GenericLogic):
     """unstable: Nikolas Tomek
@@ -20,7 +21,8 @@ class PulseAnalysisLogic(GenericLogic):
             'pulseextractionlogic': 'PulseExtractionLogic',
             'sequencegenerator': 'SequenceGeneratorLogic',
             'pulsegenerator': 'PulserInterfaceDummy',
-            'fitlogic': 'FitLogic'
+            'fitlogic': 'FitLogic',
+            'savelogic': 'SaveLogic'
             }
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
@@ -52,6 +54,7 @@ class PulseAnalysisLogic(GenericLogic):
         self.norm_width_bins = 200
         # dictionary containing the fast counter status parameters
         self.fast_counter_status = {'binwidth_ns': 1000./950.}
+        self._binsize = 1000./950.
         # dictionary containing the parameters of the currently running sequence
         self.running_sequence_parameters = {}
         self.running_sequence_parameters['tau_vector'] = np.array(range(101))
@@ -75,6 +78,7 @@ class PulseAnalysisLogic(GenericLogic):
         self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
 #        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -149,21 +153,21 @@ class PulseAnalysisLogic(GenericLogic):
         signal_start = self.signal_start_bin
         signal_end = self.signal_start_bin + self.signal_width_bins
         # acquire data from the pulse extraction logic 
-        laser_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
+        self.laser_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
         # loop over all laser pulses and analyze them
         for i in range(self.running_sequence_parameters['number_of_lasers']):
             # calculate the mean of the data in the normalization window
-            norm_mean[i] = laser_data[i][norm_start:norm_end].mean()
+            norm_mean[i] = self.laser_data[i][norm_start:norm_end].mean()
             # calculate the mean of the data in the signal window
-            signal_mean[i] = (laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
+            signal_mean[i] = (self.laser_data[i][signal_start:signal_end] - norm_mean[i]).mean()
             # update the signal plot y-data
             self.signal_plot_y[i] = 1. + (signal_mean[i]/norm_mean[i])
         # update the laser plot data to be displayed
         if self.display_pulse_no > 0:
-            self.laser_plot_y = laser_data[self.display_pulse_no-1]
+            self.laser_plot_y = self.laser_data[self.display_pulse_no-1]
         else:
-            self.laser_plot_y = np.sum(laser_data,0)
-        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, laser_data.shape[1]+1)
+            self.laser_plot_y = np.sum(self.laser_data,0)
+        self.laser_plot_x = self._binsize * np.arange(1, self.laser_data.shape[1]+1)
         # emit signals
         self.signal_signal_plot_updated.emit() 
         self.signal_laser_plot_updated.emit() 
@@ -187,7 +191,47 @@ class PulseAnalysisLogic(GenericLogic):
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, 3001, dtype=int)
         self.laser_plot_y = np.zeros(3000, dtype=int)
 
-    
+
+    def _save_data(self):
+        
+        filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
+        filelabel = 'laser_pulses'
+        timestamp = datetime.datetime.now()
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Time (ns), Signal (counts)':np.array([self.laser_plot_x, self.laser_data]).transpose()}
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Bin size (ns)'] = self._binsize
+        parameters['laser length (ns)'] = self._binsize * self.laser_plot_x.size
+
+        self._save_logic.save_data(data, filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp,
+                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+        
+        filelabel = 'pulsed_measurement'
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Tau (ns), Signal (normalized)':np.array([self.signal_plot_x, self.signal_plot_y]).transpose()}
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Bin size (ns)'] = self._binsize
+        parameters['Number of laser pulses'] = self.running_sequence_parameters['number_of_lasers']
+        parameters['Signal start (bin)'] = self.signal_start_bin
+        parameters['Signal width (bins)'] = self.signal_width_bins
+        parameters['Normalization start (bin)'] = self.norm_start_bin
+        parameters['Normalization width (bins)'] = self.norm_width_bins
+
+
+        self._save_logic.save_data(data, filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp,
+                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+        
+        
 #    def get_tau_list(self):
 #        """Get the list containing all tau values in ns for the current measurement.
 #        
