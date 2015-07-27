@@ -33,37 +33,8 @@ from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
-
-
-class CustomViewBox(pg.ViewBox):
-    """ Predefine the view region and set what interaction are allowed.
-
-        Test to create a custom ViewBox and add that to the plot items in order
-        to enable a zoom box with the right mouse click, while holding the
-        Control Key. Right now it is not working with that GUI configuration.
-        It has to be figured out how to include the ViewBox.
-
-    """
-    def __init__(self, *args, **kwds):
-        pg.ViewBox.__init__(self, *args, **kwds)
-        self.setMouseMode(self.RectMode)
-
-
-    ## reimplement right-click to zoom out
-    def mouseClickEvent(self, ev):
-        if ev.button() == QtCore.Qt.RightButton:
-            #self.autoRange()
-            self.setXRange(0,5)
-            self.setYRange(0,10)
-
-
-    def mouseDragEvent(self, ev,axis=0):
-        if (ev.button() == QtCore.Qt.LeftButton) and (ev.modifiers() & QtCore.Qt.ControlModifier):
-            pg.ViewBox.mouseDragEvent(self, ev,axis)
-        else:
-            ev.ignore()
-
+# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by
+# uic.loadUI in the QtGui classes below.
 
 class CrossROI(pg.ROI):
     """ Create a Region of interest, which is a zoomable rectangular.
@@ -122,11 +93,13 @@ class ConfocalMainWindow(QtGui.QMainWindow):
         # Load it
         super(ConfocalMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
+
         self.show()
 
     def keyPressEvent(self, event):
         """Pass the keyboard press event from the main window further. """
         self.sigPressKeyBoard.emit(event)
+
 
 class ConfocalSettingDialog(QtGui.QDialog):
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
@@ -193,9 +166,9 @@ class ConfocalGui(GUIBase):
         self.xy_image_orientation = np.array([0,1,2,-1],int)
         self.depth_image_orientation = np.array([0,1,2,-1],int)
 
-        
-        
-        
+
+
+
     def deactivation(self, e):
         """ Reverse steps of activation
 
@@ -205,7 +178,7 @@ class ConfocalGui(GUIBase):
         """
         self._mw.close()
         return 0
-        
+
 
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
@@ -224,8 +197,8 @@ class ConfocalGui(GUIBase):
         self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
         self.initOptimizerSettingsUI(e) # initialize the optimizer settings GUI
-        
-    
+
+
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -249,10 +222,9 @@ class ConfocalGui(GUIBase):
 
         self._mw = ConfocalMainWindow()
 
-
-        #####################
-        # Configuring the dock widgets
-        #####################
+        #######################################################################
+        ###               Configuring the dock widgets                      ###
+        #######################################################################
 
         # All our gui elements are dockable, and so there should be no "central" widget.
         self._mw.centralwidget.hide()
@@ -320,7 +292,7 @@ class ConfocalGui(GUIBase):
         self._mw.action_stop_scanning.setEnabled(False)
         self._mw.action_scan_xy_resume.setEnabled(False)
         self._mw.action_scan_depth_resume.setEnabled(False)
-        
+
         # Add the display item to the xy and depth ViewWidget, which was defined
         # in the UI file:
         self._mw.xy_ViewWidget.addItem(self.xy_image)
@@ -418,6 +390,20 @@ class ConfocalGui(GUIBase):
         self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
 
+        # set the maximal ranges for the imagerange from the logic:
+        self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0],
+                                            self._scanning_logic.x_range[1])
+        self._mw.x_max_InputWidget.setRange(self._scanning_logic.x_range[0],
+                                            self._scanning_logic.x_range[1])
+        self._mw.y_min_InputWidget.setRange(self._scanning_logic.y_range[0],
+                                            self._scanning_logic.y_range[1])
+        self._mw.y_max_InputWidget.setRange(self._scanning_logic.y_range[0],
+                                            self._scanning_logic.y_range[1])
+        self._mw.z_min_InputWidget.setRange(self._scanning_logic.z_range[0],
+                                            self._scanning_logic.z_range[1])
+        self._mw.z_max_InputWidget.setRange(self._scanning_logic.z_range[0],
+                                            self._scanning_logic.z_range[1])
+
         # Connect the change of the slider with the adjustment of the ROI:
         self._mw.x_SliderWidget.valueChanged.connect(self.update_roi_xy_change_x)
         self._mw.y_SliderWidget.valueChanged.connect(self.update_roi_xy_change_y)
@@ -473,8 +459,6 @@ class ConfocalGui(GUIBase):
         self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
-        
-        #self._mw.action_zoom.triggered.connect(self.zoomed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -533,40 +517,31 @@ class ConfocalGui(GUIBase):
         self._mw.depth_rotate_anticlockwise_PushButton.clicked.connect(self.rotate_depth_image_anticlockwise)
         self._mw.depth_rotate_clockwise_PushButton.clicked.connect(self.rotate_depth_image_clockwise)
 
-        # Connect the zoom button
+
+
+        # Configure and connect the zoom actions with the desired buttons and
+        # functions if
         self._mw.action_zoom.toggled.connect(self.zoomed_clicked)
+        self._mw.xy_ViewWidget.sigMouseClick.connect(self.xy_scan_start_zoom_point)
+        self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
 
-
-        ###############################################################################################################
-        ##########                                     TEST AREA                                              #########
-        ###############################################################################################################
-
-        # self.rubber = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle)
-        # self.origin = QtCore.QPoint()
-        #
-        # def mouseClickEvent(self, ev):
-        #     if ev.button() == QtCore.QtLeftButton:
-        #         self.rubber.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
-        #         self.rubber.show()
-        #
-        # def mouseMoveEvent(self, ev):
-        #     if not self.origin.isNull():
-        #         self.rubber.setGeometry(QtCore.QRect(self.origin, ev.pos()).normalized())
-        #
-        # def mouseReleaseEvent(self, event):
-        #     if event.button() == QtCore.Qt.LeftButton:
-        #         print(self.rubber.geometry())
-        #         self.rubber.hide()
-
-        ###############################################################################################################
-        ###############################################################################################################
+        self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
+        self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
 
 
 
-        ######
+        # Check whenever a state of the ViewBox was changed inside of a
+        # PlotWidget, which creates a xy_ViewWidget or a depth_Viewwidget:
+        self._mw.xy_ViewWidget.getViewBox().sigRangeChanged.connect(self.reset_xy_imagerange)
+
+
+
+        #######################################################################
+        ####           Connect the colorbar and their actions              ####
+        #######################################################################
         # Get the colorscale and set the LUTs
         self.my_colors = ColorScale()
-        
+
         self.xy_image.setLookupTable(self.my_colors.lut)
         self.depth_image.setLookupTable(self.my_colors.lut)
         self.xy_refocus_image.setLookupTable(self.my_colors.lut)
@@ -601,7 +576,6 @@ class ConfocalGui(GUIBase):
         self.adjust_depth_window()
 
         self.show()
-        
 
     def initSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the settings GUI.
@@ -662,9 +636,6 @@ class ConfocalGui(GUIBase):
         modifiers = QtGui.QApplication.keyboardModifiers()
 
         x_pos, y_pos, z_pos = self._scanning_logic.get_position()   # in micro
-#        x_pos = round(x_pos,4)
-#        y_pos = round(y_pos,4)
-#        z_pos = round(z_pos,4)
 
         if modifiers == QtCore.Qt.ControlModifier:
             if event.key() == QtCore.Qt.Key_Right:
@@ -679,6 +650,8 @@ class ConfocalGui(GUIBase):
                 self.update_z_slider(float(round(z_pos+self.slider_big_step*0.001,4)))
             elif event.key() == QtCore.Qt.Key_PageDown:
                 self.update_z_slider(float(round(z_pos-self.slider_big_step*0.001,4)))
+            else:
+                event.ignore()
         else:
             if event.key() == QtCore.Qt.Key_Right:
                 self.update_x_slider(float(round(x_pos+self.slider_small_step*0.001,4)))
@@ -692,8 +665,9 @@ class ConfocalGui(GUIBase):
                 self.update_z_slider(float(round(z_pos+self.slider_small_step*0.001,4)))
             elif event.key() == QtCore.Qt.Key_PageDown:
                 self.update_z_slider(float(round(z_pos-self.slider_small_step*0.001,4)))
+            else:
+                event.ignore()
 
-                
 
     def update_crosshair_position(self):
         """ Update the GUI position of the crosshair from the logic. """
@@ -801,16 +775,22 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_depth_resume.setEnabled(False)
 
         self._mw.action_optimize_position.setEnabled(False)
-        
+
         self._mw.x_min_InputWidget.setEnabled(False)
         self._mw.x_max_InputWidget.setEnabled(False)
         self._mw.y_min_InputWidget.setEnabled(False)
         self._mw.y_max_InputWidget.setEnabled(False)
         self._mw.z_min_InputWidget.setEnabled(False)
         self._mw.z_max_InputWidget.setEnabled(False)
-        
+
         self._mw.xy_res_InputWidget.setEnabled(False)
         self._mw.z_res_InputWidget.setEnabled(False)
+
+        # Set the zoom button if it was pressed to unpressed and disable it
+        self._mw.action_zoom.setChecked(False)
+        self._mw.action_zoom.setEnabled(False)
+
+
 
     def enable_scan_actions(self):
         """ Reset the scan action buttons to the default active
@@ -826,37 +806,39 @@ class ConfocalGui(GUIBase):
         self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
-        
+
         self._mw.x_min_InputWidget.setEnabled(True)
         self._mw.x_max_InputWidget.setEnabled(True)
         self._mw.y_min_InputWidget.setEnabled(True)
         self._mw.y_max_InputWidget.setEnabled(True)
         self._mw.z_min_InputWidget.setEnabled(True)
         self._mw.z_max_InputWidget.setEnabled(True)
-        
+
         self._mw.xy_res_InputWidget.setEnabled(True)
         self._mw.z_res_InputWidget.setEnabled(True)
-        
+
         self._mw.action_loop_scan_xy.setEnabled(True)
         self._mw.action_loop_scan_depth.setEnabled(True)
+
+        self._mw.action_zoom.setEnabled(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
-        
-        if self._scanning_logic._zscan_continuable == True:          
+
+        if self._scanning_logic._zscan_continuable == True:
           self._mw.action_scan_depth_resume.setEnabled(True)
-                  
-        else:          
+
+        else:
           self._mw.action_scan_depth_resume.setEnabled(False)
-          
-          
-        if self._scanning_logic._xyscan_continuable == True:                    
+
+
+        if self._scanning_logic._xyscan_continuable == True:
           self._mw.action_scan_xy_resume.setEnabled(True)
-                 
-        else:          
-          self._mw.action_scan_xy_resume.setEnabled(False)  
-        
+
+        else:
+          self._mw.action_scan_xy_resume.setEnabled(False)
+
 
     def _refocus_finished_wrapper(self):
         self.enable_scan_actions()
@@ -965,7 +947,7 @@ class ConfocalGui(GUIBase):
 
         self._scanning_logic.continue_scanning(zscan = False)
         self.disable_scan_actions()
-        
+
     def continue_depth_scan_clicked(self):
         """ Manages what happens if the xy scan is continued.
 
@@ -976,7 +958,7 @@ class ConfocalGui(GUIBase):
 
         self._scanning_logic.continue_scanning(zscan = True)
         self.disable_scan_actions()
-        
+
 
     def depth_scan_clicked(self):
         """ Manages what happens if the depth scan is started.
@@ -988,9 +970,9 @@ class ConfocalGui(GUIBase):
 
         self._scanning_logic.start_scanning(zscan = True)
         self.disable_scan_actions()
-        
+
     def rotate_depth_scan_clicked(self):
-        
+
         self._scanning_logic.yz_instead_of_xz_scan = not self._scanning_logic.yz_instead_of_xz_scan
 
     def refocus_clicked(self):
@@ -998,7 +980,7 @@ class ConfocalGui(GUIBase):
 
         @param bool enabled: start optimizer if that is possible
         """
-        print('testing refocus clicked')
+
         self._scanning_logic.stop_scanning()#CHECK: is this necessary?
         self._optimizer_logic.start_refocus()
         self.disable_scan_actions()
@@ -1177,8 +1159,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.z_resolution = self._mw.z_res_InputWidget.value()
 
     def change_x_image_range(self):
-        """ Adjust the image range for x in the logic.
-        """
+        """ Adjust the image range for x in the logic. """
         self._scanning_logic.image_x_range = [self._mw.x_min_InputWidget.value(),
                                               self._mw.x_max_InputWidget.value()]
 
@@ -1274,7 +1255,6 @@ class ConfocalGui(GUIBase):
 
         self.xy_image.getViewBox().updateAutoRange()
         self.adjust_aspect_roi_xy()
-
 
         xy_image_data = np.rot90(self._scanning_logic.xy_image[:,:,3].transpose(), self.xy_image_orientation[0])
 
@@ -1688,11 +1668,230 @@ class ConfocalGui(GUIBase):
 
         # Resize the window to small dimensions
         self._mw.resize(1000, 360)
-        
-    def zoomed_clicked(self,e):
-        if e :
-            self._mw.xy_ViewWidget.setDragMode(2)
-            self._mw.depth_ViewWidget.setDragMode(2)
+
+    ###########################################################################
+    ####        Methods for the zoom functionality of confocal GUI         ####
+    ###########################################################################
+
+#FIXME: These methods can be combined to one, because the procedure for the xy
+#       and the depth scan is the same. A nice way has to be figured our here.
+#FIXME: For the depth scan both possibilities have to be implemented, either
+#       for a xz of a yz scan. The image ranges have to be adjusted properly.
+
+    def zoomed_clicked(self, is_checked):
+        """ Activates the zoom mode in the xy and depth Windows.
+
+        @param bool is_checked: pass the state of the zoom button if checked
+                                or not.
+
+        Depending on the state of the zoom button the DragMode in the
+        ViewWidgets are changed.  There are 3 possible modes and each of them
+        corresponds to a int value:
+            - 0: NoDrag
+            - 1: ScrollHandDrag
+            - 2: RubberBandDrag
+
+        Pyqtgraph implements every action for the NoDrag mode. That means the
+        other two modes are not used at the moment. Therefore we are using the
+        RubberBandDrag mode to simulate a zooming procedure. The selection
+        window in the RubberBandDrag is only used to show the user which region
+        will be selected. But the zooming idea is based on catched
+        mousePressEvent and mouseReleaseEvent, which will be used if the
+        RubberBandDrag mode is activated.
+
+        For more information see the qt doc:
+        http://doc.qt.io/qt-4.8/qgraphicsview.html#DragMode-enum
+        """
+
+        # You could also set the DragMode by its integer number, but in terms
+        # of readability it is better to use the direct attributes from the
+        # ViewWidgets and pass them to setDragMode.
+        if is_checked:
+            self._mw.xy_ViewWidget.setDragMode(self._mw.xy_ViewWidget.RubberBandDrag)
+            self._mw.depth_ViewWidget.setDragMode(self._mw.xy_ViewWidget.RubberBandDrag)
         else:
-            self._mw.xy_ViewWidget.setDragMode(0)
-            self._mw.depth_ViewWidget.setDragMode(0)
+            self._mw.xy_ViewWidget.setDragMode(self._mw.xy_ViewWidget.NoDrag)
+            self._mw.depth_ViewWidget.setDragMode(self._mw.xy_ViewWidget.NoDrag)
+
+
+    def xy_scan_start_zoom_point(self, event):
+        """ Get the mouse coordinates if the mouse button was pressed.
+
+        @param QMouseEvent event: Mouse Event object which contains all the
+                                  information at the time the event was emitted
+        """
+
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and
+                (event.button() == QtCore.Qt.LeftButton)):
+            event.ignore()
+            return
+
+        pos = self.xy_image.getViewBox().mapSceneToView(event.posF())
+
+        # store the initial mouse position in a class variable
+        self._current_xy_zoom_start = [pos.x(),pos.y()]
+        event.accept()
+
+    def xy_scan_end_zoom_point(self, event):
+        """ Get the mouse coordinates if the mouse button was released.
+
+        @param QEvent event:
+        """
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and
+                (event.button() == QtCore.Qt.LeftButton)):
+            event.ignore()
+            return
+
+        # get the ViewBox which is also responsible for the xy_image
+        viewbox = self.xy_image.getViewBox()
+
+        # Map the mouse position in the whole ViewWidget to the coordinate
+        # system of the ViewBox, which also includes the 2D graph:
+        pos = viewbox.mapSceneToView(event.posF())
+        endpos =  [pos.x(), pos.y()]
+        initpos = self._current_xy_zoom_start
+
+        # get the right corners from the zoom window:
+        if initpos[0]>endpos[0]:
+            xMin = endpos[0]
+            xMax = initpos[0]
+        else:
+            xMin = initpos[0]
+            xMax = endpos[0]
+
+        if initpos[1]>endpos[1]:
+            yMin = endpos[1]
+            yMax = initpos[1]
+        else:
+            yMin = initpos[1]
+            yMax = endpos[1]
+
+        # set the values to the InputWidgets and update them
+        self._mw.x_min_InputWidget.setValue(xMin)
+        self._mw.x_max_InputWidget.setValue(xMax)
+        self.change_x_image_range()
+
+        self._mw.y_min_InputWidget.setValue(yMin)
+        self._mw.y_max_InputWidget.setValue(yMax)
+        self.change_y_image_range()
+
+        # Finally change the visible area of the ViewBox:
+        viewbox.setRange(xRange = (xMin, xMax), yRange = (yMin, yMax))
+        event.accept()
+
+    def reset_xy_imagerange(self, viewbox):
+        """ Reset the imagerange if autorange was pressed.
+
+        Take the image range values directly from the scanned image and set
+        them as the current image ranges. This method is only applied if the
+        zoom button is pressed.
+        """
+        if (viewbox.state['autoRange'][0] == True) and (self._mw.action_zoom.isChecked()):
+            # extract the range directly from the image:
+            xMin = self._scanning_logic.xy_image[0,0,0]
+            yMin = self._scanning_logic.xy_image[0,0,1]
+            xMax = self._scanning_logic.xy_image[-1,-1,0]
+            yMax = self._scanning_logic.xy_image[-1,-1,1]
+
+            self._mw.x_min_InputWidget.setValue(xMin)
+            self._mw.x_max_InputWidget.setValue(xMax)
+            self.change_x_image_range()
+
+            self._mw.y_min_InputWidget.setValue(yMin)
+            self._mw.y_max_InputWidget.setValue(yMax)
+            self.change_y_image_range()
+
+    def depth_scan_start_zoom_point(self, event):
+        """ Get the mouse coordinates if the mouse button was pressed.
+
+        @param QMouseEvent event: Mouse Event object which contains all the
+                                  information at the time the event was emitted
+        """
+
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and
+                (event.button() == QtCore.Qt.LeftButton)):
+            event.ignore()
+            return
+
+        pos = self.depth_image.getViewBox().mapSceneToView(event.posF())
+
+        # store the initial mouse position in a class variable
+        self._current_depth_zoom_start = [pos.x(),pos.y()]
+        event.accept()
+
+    def depth_scan_end_zoom_point(self, event):
+        """ Get the mouse coordinates if the mouse button was released.
+
+        @param QEvent event:
+        """
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and
+                (event.button() == QtCore.Qt.LeftButton)):
+            event.ignore()
+            return
+
+        # get the ViewBox which is also responsible for the depth_image
+        viewbox = self.depth_image.getViewBox()
+
+        # Map the mouse position in the whole ViewWidget to the coordinate
+        # system of the ViewBox, which also includes the 2D graph:
+        pos = viewbox.mapSceneToView(event.posF())
+        endpos =  [pos.x(), pos.y()]
+        initpos = self._current_depth_zoom_start
+
+        # get the right corners from the zoom window:
+        if initpos[0]>endpos[0]:
+            xMin = endpos[0]
+            xMax = initpos[0]
+        else:
+            xMin = initpos[0]
+            xMax = endpos[0]
+
+        if initpos[1]>endpos[1]:
+            zMin = endpos[1]
+            zMax = initpos[1]
+        else:
+            zMin = initpos[1]
+            zMax = endpos[1]
+
+        # set the values to the InputWidgets and update them
+        self._mw.x_min_InputWidget.setValue(xMin)
+        self._mw.x_max_InputWidget.setValue(xMax)
+        self.change_x_image_range()
+
+        self._mw.z_min_InputWidget.setValue(zMin)
+        self._mw.z_max_InputWidget.setValue(zMax)
+        self.change_z_image_range()
+
+        # Finally change the visible area of the ViewBox:
+        viewbox.setRange(xRange = (xMin, xMax), yRange = (zMin, zMax))
+        event.accept()
+
+    def reset_depth_imagerange(self, viewbox):
+        """ Reset the imagerange if autorange was pressed.
+
+        Take the image range values directly from the scanned image and set
+        them as the current image ranges. This method is only applied if the
+        zoom button is pressed.
+        """
+        if (viewbox.state['autoRange'][0] == True) and (self._mw.action_zoom.isChecked()):
+            # extract the range directly from the image:
+            xMin = self._scanning_logic.depth_image[0,0,0]
+            zMin = self._scanning_logic.depth_image[0,0,2]
+            xMax = self._scanning_logic.depth_image[-1,-1,0]
+            zMax = self._scanning_logic.depth_image[-1,-1,2]
+
+            self._mw.x_min_InputWidget.setValue(xMin)
+            self._mw.x_max_InputWidget.setValue(xMax)
+            self.change_x_image_range()
+
+            self._mw.z_min_InputWidget.setValue(zMin)
+            self._mw.z_max_InputWidget.setValue(zMax)
+            self.change_z_image_range()
