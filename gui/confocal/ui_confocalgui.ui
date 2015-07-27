@@ -88,7 +88,7 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
-      <widget class="PlotWidget" name="depth_ViewWidget">
+      <widget class="PlotWidgetModified" name="depth_ViewWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>1</horstretch>
@@ -1235,7 +1235,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
        <item>
-        <widget class="PlotWidget" name="xy_ViewWidget">
+        <widget class="PlotWidgetModified" name="xy_ViewWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -1826,6 +1826,11 @@
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph.h</header>
+  </customwidget>
+  <customwidget>
+   <class>PlotWidgetModified</class>
+   <extends>QGraphicsView</extends>
+   <header>gui.confocal.plotwidget_modified.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
