@@ -238,6 +238,9 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line.setValue(ref_start+ref_length)
         return
         
+
+    def save_clicked(self):
+                
         
     def test(self):
         print('called test function!')
