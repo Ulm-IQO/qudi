@@ -22,7 +22,8 @@ from pyqtgraph.Qt import QtCore
 from collections import OrderedDict
 from .util.mutex import Mutex
 
-class ThreadManager(QtCore.QObject):
+
+class ThreadManager(QtCore.QAbstractTableModel):
     """ This class keeps track of all the QThreads that are needed somewhere.
     """
     sigLogMessage = QtCore.Signal(object)
@@ -31,6 +32,7 @@ class ThreadManager(QtCore.QObject):
         super().__init__()
         self._threads = OrderedDict()
         self.lock = Mutex()
+        self.headers = ['Name', 'Thread']
 
     def newThread(self, name):
         """ Create a new thread with a name, return its object
@@ -42,8 +44,11 @@ class ThreadManager(QtCore.QObject):
         with self.lock:
             if 'name' in self._threads:
                 return None
+            row = len(self._threads)
+            self.beginInsertRows(QtCore.QModelIndex(), row, row)
             self._threads[name] = ThreadItem(name)
             self._threads[name].sigThreadHasQuit.connect(self.cleanupThread)
+            self.endInsertRows()
         return self._threads[name].thread
 
     def cleanupThread(self, name):
@@ -54,7 +59,10 @@ class ThreadManager(QtCore.QObject):
         self.threadLog('Cleaning up thread {0}.'.format(name))
         if 'name' in self._threads and not self._threads[name].thread.isRunning():
             with self.lock:
+                row = self.getItemNumberByKey(name)
+                self.beginRemoveRows(QtCore.QModelIndex(), row, row)
                 self._threads.pop(name)
+                self.endRemoveRows()
 
     def quitThread(self, name):
         """Stop event loop of QThread.
@@ -74,6 +82,28 @@ class ThreadManager(QtCore.QObject):
         for name in self._threads:
             self._threads[name].thread.quit()
 
+    def getItemByNumber(self, n):
+        i = 0
+        length = len(self._threads)
+        if n < 0 or n >= length:
+            raise IndexError
+        it = iter(self._threads)
+        key = next(it)
+        while(i<n):
+            key = next(it)
+            i += 1
+        return key, self._threads[key]
+
+    def getItemNumberByKey(self, key):
+        i = 0
+        it = iter(self._threads)
+        newkey = next(it)
+        while(key != newkey):
+            newkey = next(it)
+            i += 1
+        return i
+
+
     def threadLog(self, msg, **kwargs):
         """Log a message with message type thread and importance 3.
 
@@ -84,6 +114,67 @@ class ThreadManager(QtCore.QObject):
         kwargs['msgType'] = 'thread'
         self.sigLogMessage.emit((msg, kwargs))
 
+    def rowCount(self, parent = QtCore.QModelIndex()):
+        """ Gives the number of threads registered.
+
+          @return int: number of threads
+        """
+        return len(self._threads)
+
+    def columnCount(self, parent = QtCore.QModelIndex()):
+        """ Gives the number of data fields of a thread.
+
+          @return int: number of thread data fields
+        """
+        return 2
+
+    def flags(self, index):
+        """ Determines what can be done with entry cells in the table view.
+
+          @param QModelIndex index: cell fo which the flags are requested
+
+          @return Qt.ItemFlags: actins allowed fotr this cell
+        """
+        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable
+
+    def data(self, index,  role):
+        """ Get data from model for a given cell. Data can have a role that affects display.
+
+          @param QModelIndex index: cell for which data is requested
+          @param ItemDataRole role: role for which data is requested
+
+          @return QVariant: data for given cell and role
+        """
+        if not index.isValid():
+            return None
+        elif role == QtCore.Qt.DisplayRole:
+            item = self.getItemByNumber(index.row())
+            if index.column() == 0:
+               return item[1].name
+            elif index.column() == 1:
+                return item[1].thread
+            else:
+                return None
+        else:
+            return None
+
+    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+        """ Data for the table view headers.
+        
+          @param int section: number of the column to get header data for
+          @param Qt.Orientation: orientation of header (horizontal or vertical)
+          @param ItemDataRole: role for which to get data
+
+          @return QVariant: header data for given column and role
+        """
+        if section < 0 and section > 1:
+            return None
+        elif role != QtCore.Qt.DisplayRole:
+            return None
+        elif orientation != QtCore.Qt.Horizontal:
+            return None
+        else:
+            return self.header[section]
 
 class ThreadItem(QtCore.QObject):
     """ This class represents a QThread.
