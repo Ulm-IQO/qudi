@@ -19,7 +19,6 @@ class PulseAnalysisLogic(GenericLogic):
     ## declare connectors
     _in = { 'fastcounter': 'FastCounterInterface',
             'pulseextractionlogic': 'PulseExtractionLogic',
-            'sequencegenerator': 'SequenceGeneratorLogic',
             'pulsegenerator': 'PulserInterfaceDummy',
             'fitlogic': 'FitLogic',
             'savelogic': 'SaveLogic'
@@ -32,7 +31,7 @@ class PulseAnalysisLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
@@ -50,15 +49,14 @@ class PulseAnalysisLogic(GenericLogic):
         # set windows for signal and normalization of the laser pulses
         self.signal_start_bin = 5
         self.signal_width_bins = 200
-        self.norm_start_bin = 2000
+        self.norm_start_bin = 500
         self.norm_width_bins = 200
         # dictionary containing the fast counter status parameters
-        self.fast_counter_status = {'binwidth_ns': 1000./950.}
-        self._binsize = 1000./950.
+        self.fast_counter_status = {}
         # dictionary containing the parameters of the currently running sequence
         self.running_sequence_parameters = {}
-        self.running_sequence_parameters['tau_vector'] = np.array(range(101))
-        self.running_sequence_parameters['number_of_lasers'] = 101
+        self.running_sequence_parameters['tau_vector'] = np.array(range(50))
+        self.running_sequence_parameters['number_of_lasers'] = 50
         # index of the laser pulse to be displayed in the GUI (starting from 1).
         # A value of 0 corresponds to the sum of all laser pulses
         self.display_pulse_no = 0
@@ -74,24 +72,17 @@ class PulseAnalysisLogic(GenericLogic):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """        
-#        self._sequence_generator_logic = self.connector['in']['sequencegenerator']['object']
         self._pulse_extraction_logic = self.connector['in']['pulseextractionlogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
-#        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
+        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
+        self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self.signal_analysis_next.connect(self._analyze_data, QtCore.Qt.QueuedConnection)
 
 
-#    def update_sequence_parameters(self, name):
-#        """Gets the sequence parameters of sequence "name" from the sequence generator module
-#          @param str name: name of the sequence to be updated
-#        """
-#        # get the sequence parameters from the sequence generator logic
-#        self.running_sequence_parameters = self._sequence_generator_logic.get_sequence_parameters(name).copy()
-#        return
     def deactivation(self, e):
         with self.threadlock:
             if self.getState() != 'idle' and self.getState() != 'deactivated':
@@ -109,6 +100,7 @@ class PulseAnalysisLogic(GenericLogic):
     def start_pulsed_measurement(self):
         '''Start the analysis thread.
         '''  
+        self.update_fast_counter_status()
         # initialize plots
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -167,7 +159,7 @@ class PulseAnalysisLogic(GenericLogic):
             self.laser_plot_y = self.laser_data[self.display_pulse_no-1]
         else:
             self.laser_plot_y = np.sum(self.laser_data,0)
-        self.laser_plot_x = self._binsize * np.arange(1, self.laser_data.shape[1]+1)
+        self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, self.laser_data.shape[1]+1)
         # emit signals
         self.signal_signal_plot_updated.emit() 
         self.signal_laser_plot_updated.emit() 
@@ -199,13 +191,16 @@ class PulseAnalysisLogic(GenericLogic):
         timestamp = datetime.datetime.now()
         
         # prepare the data in a dict or in an OrderedDict:
+        temp_arr = np.empty([self.laser_data.shape[1], self.laser_data.shape[0]+1])
+        temp_arr[:,1:] = self.laser_data.transpose()
+        temp_arr[:,0] = self.laser_plot_x
         data = OrderedDict()
-        data = {'Time (ns), Signal (counts)':np.array([self.laser_plot_x, self.laser_data]).transpose()}
+        data = {'Time (ns), Signal (counts)': temp_arr}
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self._binsize
-        parameters['laser length (ns)'] = self._binsize * self.laser_plot_x.size
+        parameters['Bin size (ns)'] = self.fast_counter_status['binwidth_ns']
+        parameters['laser length (ns)'] = self.fast_counter_status['binwidth_ns'] * self.laser_plot_x.size
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
@@ -219,7 +214,7 @@ class PulseAnalysisLogic(GenericLogic):
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Bin size (ns)'] = self._binsize
+        parameters['Bin size (ns)'] = self.fast_counter_status['binwidth_ns']
         parameters['Number of laser pulses'] = self.running_sequence_parameters['number_of_lasers']
         parameters['Signal start (bin)'] = self.signal_start_bin
         parameters['Signal width (bins)'] = self.signal_width_bins

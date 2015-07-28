@@ -321,7 +321,6 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionSave_Data"/>
-    <addaction name="actionSave_raw_timetrace"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
