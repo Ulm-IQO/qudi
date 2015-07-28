@@ -137,7 +137,7 @@ class ODMRGui(GUIBase):
         self.odmr_matrix_image.setLookupTable(my_colors.lut)        
         
         # Set the state button as ready button as default setting.
-        self._mw.idle_StateWidget.click()
+        # self._mw.idle_StateWidget.click()
         
         # Configuration of the comboWidget
         self._mw.mode_ComboWidget.addItem('Off')
@@ -226,8 +226,9 @@ class ODMRGui(GUIBase):
         #######################################################################
        
         # Connect the RadioButtons and connect to the events if they are clicked:
-        self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
-        self._mw.run_StateWidget.toggled.connect(self.run_clicked)
+        # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
+        # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
+        self._mw.action_run_stop.toggled.connect(self.run_stop)
                 
         self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
         self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
@@ -238,7 +239,8 @@ class ODMRGui(GUIBase):
         self._sd.rejected.connect(self.reject_settings)
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)        
         # Connect stop odmr
-        self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
+        # self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
+        self._odmr_logic.signal_ODMR_finished.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboWidget.activated[str].connect(self.mw_stop)
         self._mw.fit_methods_ComboWidget.activated[str].connect(self.update_fit_variable)
@@ -257,27 +259,41 @@ class ODMRGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def idle_clicked(self):
-        """ Stopp the scan if the state has switched to idle. """
-        self._odmr_logic.stop_ODMR_scan()
-        self._sd.matrix_lines_InputWidget.setReadOnly(False)
-#        self._odmr_logic.kill_ODMR()
+#     def idle_clicked(self):
+#         """ Stopp the scan if the state has switched to idle. """
+#         self._odmr_logic.stop_ODMR_scan()
+#         self._sd.matrix_lines_InputWidget.setReadOnly(False)
+# #        self._odmr_logic.kill_ODMR()
+#
+#
+#     def run_clicked(self, enabled):
+#         """ Manages what happens if odmr scan is started.
+#
+#         @param bool enabled: start scan if that is possible
+#         """
+#
+#         #Firstly stop any scan that might be in progress
+#         self._odmr_logic.stop_ODMR_scan()
+# #        self._odmr_logic.kill_ODMR()
+#         #Then if enabled. start a new odmr scan.
+#         if enabled:
+#             self._odmr_logic.start_ODMR_scan()
+#             self._sd.matrix_lines_InputWidget.setReadOnly(True)
 
-
-    def run_clicked(self, enabled):
-        """ Manages what happens if odmr scan is started.
-        
-        @param bool enabled: start scan if that is possible
-        """
-        
-        #Firstly stop any scan that might be in progress
-        self._odmr_logic.stop_ODMR_scan()
-#        self._odmr_logic.kill_ODMR()
-        #Then if enabled. start a new odmr scan.
-        if enabled:
+    def run_stop(self, is_checked):
+        """ Manages what happens if odmr scan is started/stopped """
+        if is_checked:
+            self._odmr_logic.stop_ODMR_scan()
             self._odmr_logic.start_ODMR_scan()
             self._sd.matrix_lines_InputWidget.setReadOnly(True)
-            
+        else:
+            self._odmr_logic.stop_ODMR_scan()
+            self._sd.matrix_lines_InputWidget.setReadOnly(False)
+
+    def odmr_stopped(self):
+        """ Switch the run/stop button to stop after receiving an odmr_stoped signal """
+        self._mw.action_run_stop.setChecked(False)
+
     def menue_settings(self):
         """ Open the settings menue """
         self._sd.exec_()
@@ -406,6 +422,6 @@ class ODMRGui(GUIBase):
     def change_runtime(self):
         self._odmr_logic.RunTime = float(self._mw.runtime_InputWidget.text())
 
-        
-        
+
+
 
