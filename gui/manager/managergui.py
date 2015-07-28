@@ -102,10 +102,12 @@ class ManagerGui(GUIBase):
         self.checkTimer = QtCore.QTimer()
         self.checkTimer.start(1000)
         self.updateGUIModuleList()
-        # IPython console
+        # IPython console widget
         self.startIPython()
         self.updateIPythonModuleList()
         self.startIPythonWidget()
+        # thread widget
+        self._mw.threadWidget.threadListView.setModel(self._manager.tm)
 
         self._mw.config_display_dockWidget.hide()
         self._mw.remoteDockWidget.hide()
