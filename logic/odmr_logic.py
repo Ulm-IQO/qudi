@@ -178,7 +178,7 @@ class ODMRLogic(GenericLogic):
         """Stop the ODMR scan
         @return int: error code (0:OK, -1:error)
         """
-        self.save_ODMR_Data()
+        # self.save_ODMR_Data()
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True

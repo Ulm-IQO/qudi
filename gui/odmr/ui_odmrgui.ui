@@ -478,6 +478,9 @@
    <property name="text">
     <string>&amp;Save</string>
    </property>
+   <property name="toolTip">
+    <string>Save odmr data</string>
+   </property>
   </action>
   <action name="action_Exit">
    <property name="text">

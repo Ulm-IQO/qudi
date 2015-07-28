@@ -229,6 +229,7 @@ class ODMRGui(GUIBase):
         # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
         # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
+        self._mw.action_Save.triggered.connect(self._odmr_logic.save_ODMR_Data)
                 
         self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
         self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
