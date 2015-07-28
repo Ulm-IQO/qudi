@@ -38,7 +38,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.',
@@ -113,16 +113,16 @@ class PulsedMeasurementGui(GUIBase):
 #        # Fill in default values:
         self._mw.frequency_InputWidget.setText(str(2870.))
         self._mw.power_InputWidget.setText(str(-30.))
-        self._mw.numlaser_InputWidget.setText(str(100))
+        self._mw.numlaser_InputWidget.setText(str(50))
         self._mw.taustart_InputWidget.setText(str(1))
         self._mw.tauincrement_InputWidget.setText(str(1))
-        self._mw.lasertoshow_spinBox.setRange(0, 100)
+        self._mw.lasertoshow_spinBox.setRange(0, 50)
         self._mw.lasertoshow_spinBox.setPrefix("#")
         self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
         self._mw.lasertoshow_spinBox.setValue(0)
         self._mw.signal_start_InputWidget.setText(str(5))
         self._mw.signal_length_InputWidget.setText(str(200))
-        self._mw.reference_start_InputWidget.setText(str(2000))
+        self._mw.reference_start_InputWidget.setText(str(500))
         self._mw.reference_length_InputWidget.setText(str(200))
 
         #######################################################################
@@ -148,6 +148,8 @@ class PulsedMeasurementGui(GUIBase):
         
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
+        
+        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
         
         # Show the Main GUI:
         self._mw.show()
@@ -236,11 +238,16 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.setValue(sig_start+sig_length)
         self.ref_start_line.setValue(ref_start)
         self.ref_end_line.setValue(ref_start+ref_length)
+        self._pulse_analysis_logic.signal_start_bin = sig_start
+        self._pulse_analysis_logic.signal_width_bins = sig_length
+        self._pulse_analysis_logic.norm_start_bin = ref_start
+        self._pulse_analysis_logic.norm_width_bins = ref_length
         return
         
 
     def save_clicked(self):
-                
+        self._pulse_analysis_logic._save_data()
+        return
         
     def test(self):
         print('called test function!')

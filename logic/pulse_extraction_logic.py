@@ -25,7 +25,7 @@ class PulseExtractionLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
@@ -45,6 +45,11 @@ class PulseExtractionLogic(GenericLogic):
         """        
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._check_if_counter_gated()
+        
+    def deactivation(self, e):
+        """ 
+        """        
+        return
 
 
     def _gated_extraction(self, count_data):
