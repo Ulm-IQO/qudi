@@ -1607,7 +1607,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/search.png</normaloff>../../artwork/icons/qudiTheme/22x22/search.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/search.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/32x32/search_active.png</normalon>../../artwork/icons/qudiTheme/22x22/search.png</iconset>
    </property>
    <property name="text">
     <string>zoom</string>
