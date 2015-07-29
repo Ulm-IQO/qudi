@@ -19,7 +19,7 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
     _out = {'odmrcounter': 'ODMRCounterInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
@@ -40,14 +40,14 @@ class ODMRCounterInterfaceDummy(Base,ODMRCounterInterface):
         self._scanner_counter_daq_task = None
         self._odmr_length = None
         
-        
-        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
         print('here you go')
         self._fit_logic = self.connector['in']['fitlogic']['object']
-    
+
+    def deactivation(self, e):
+        self.logMsg('ODMR counter is shutting down.')
     
     def set_up_odmr_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 

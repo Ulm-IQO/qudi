@@ -20,7 +20,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.',
@@ -68,6 +68,10 @@ class SequenceGeneratorLogic(GenericLogic):
 #        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
 #        self._save_logic = self.connector['in']['savelogic']['object']
 
+    def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+        """
+        return
 
     def save_sequence(self, name):
         ''' Saves the current sequence under name "name" into the class variable dictionarys "_saved_*" after encoding it in a proper sequence block list.

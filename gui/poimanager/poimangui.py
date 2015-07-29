@@ -205,7 +205,7 @@ class PoiManagerGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
         
         self.logMsg('The following configuration was found.', 
@@ -362,6 +362,9 @@ class PoiManagerGui(GUIBase):
 
 #        print('Main POI Manager Window shown:')
         self._mw.show()
+
+    def deactivation(self, e):
+        self._mw.close()
 
     def show(self):
         """Make window visible and put it above all other windows.
