@@ -28,6 +28,7 @@ from collections import OrderedDict
 import numpy as np
 from lmfit import Parameters
 import time
+import datetime
 
 class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
@@ -408,6 +409,7 @@ class ODMRLogic(GenericLogic):
         """
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filelabel = 'ODMR_data'
+        timestamp = datetime.datetime.now()
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -422,7 +424,7 @@ class ODMRLogic(GenericLogic):
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   filelabel=filelabel, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
 
         self.logMsg('ODMR data saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
