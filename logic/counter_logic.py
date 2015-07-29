@@ -54,7 +54,7 @@ class CounterLogic(GenericLogic):
           @param dict kwargs: optional parameters
         """
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
         #locking for thread safety
@@ -97,7 +97,13 @@ class CounterLogic(GenericLogic):
         #QSignals
         self.sigCountNext.connect(self.countLoopBody, QtCore.Qt.QueuedConnection)
 
+    def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
 
+          @param object e: Fysom state change event
+        """
+        return
+ 
     def set_counting_samples(self, samples = 1):
         """ Sets the length of the counted bins.
 

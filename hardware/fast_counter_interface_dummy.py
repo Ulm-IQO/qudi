@@ -23,7 +23,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
     _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
@@ -41,7 +41,12 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         """ Initialisation performed during activation of the module.
         """
         return
-    
+
+    def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+        """
+        return
+
     def configure(self):
         """Configures the Fast Counter."""
         

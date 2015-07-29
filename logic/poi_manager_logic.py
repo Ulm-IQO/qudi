@@ -160,7 +160,7 @@ class PoiManagerLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation}
+        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
@@ -219,18 +219,18 @@ class PoiManagerLogic(GenericLogic):
         
         The initial position is taken from the current crosshair.
         """
-        
         if len( self.track_point_list ) == 2:
             self.track_point_list['sample']._creation_time = time.time()
             self.track_point_list['sample'].delete_last_point()
             self.track_point_list['sample'].set_new_position(point=[0,0,0] )
-        
 
         new_track_point=PoI(point=self._confocal_logic.get_position())
         self.track_point_list[new_track_point.get_key()] = new_track_point
-
         
         return new_track_point.get_key()
+
+    def deactivation(self, e):
+        return
         
     def get_all_pois(self):
         """ Returns a list of the names of all existing trankpoints.
