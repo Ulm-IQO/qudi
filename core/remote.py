@@ -22,6 +22,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 from pyqtgraph.Qt import QtCore
 from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
+from .util.models import DictTableModel, ListTableModel
 import rpyc
 import socket
 
@@ -38,8 +39,10 @@ class RemoteObjectManager(QtCore.QObject):
         self.tm = threadManager
         self.logger = logger
         #self.logger.logMsg('Nameserver is: {0}'.format(self.nameserver._pyroUri), msgType='status')
-        self.remoteModules = list()
-        self.sharedModules = dict()
+        self.remoteModules = ListTableModel()
+        self.remoteModules.headers[0] = 'Remote Modules'
+        self.sharedModules = DictTableModel()
+        self.sharedModules.headers[0] = 'Shared Modules'
 
     def makeRemoteService(self):
         """ A function that returns a class containing a module list hat can be manipulated from the host.
@@ -68,9 +71,10 @@ class RemoteObjectManager(QtCore.QObject):
 
                   @return object: reference to the module
                 """
-                if name in self.modules:
-                    return self.modules[name]
+                if name in self.modules.storage:
+                    return self.modules.storage[name]
                 else:
+                    self.logMsg('Client requested a module that is not shared.', msgType='error')
                     return None
 
         return RemoteModuleService
@@ -106,9 +110,9 @@ class RemoteObjectManager(QtCore.QObject):
           @param str name: unique name that is used to access the module
           @param object obj: a reference to the module
         """
-        if name in self.sharedModules:
+        if name in self.sharedModules.storage:
             self.logger.logMsg('Module {0} already shared.'.format(name), msgType='warning')
-        self.sharedModules[name] = obj
+        self.sharedModules.add(name, obj)
         self.logger.logMsg('Shared module {0}.'.format(name), msgType='status')
 
     def unshareModule(self, name):
@@ -116,9 +120,9 @@ class RemoteObjectManager(QtCore.QObject):
             
           @param str name: unique name of the module that should not be accessible any more
         """
-        if name in self.sharedModules:
+        if name in self.sharedModules.storage:
             self.logger.logMsg('Module {0} was not shared.'.format(name), msgType='error')
-        self.sharedModules.popKey(name, None)
+        self.sharedModules.pop(name)
 
     def getRemoteModuleUrl(self, url):
         """ Get a remote module via its URL.

@@ -65,8 +65,11 @@
          <property name="textElideMode">
           <enum>Qt::ElideNone</enum>
          </property>
+         <property name="verticalScrollMode">
+          <enum>QAbstractItemView::ScrollPerPixel</enum>
+         </property>
          <property name="horizontalScrollMode">
-          <enum>QAbstractItemView::ScrollPerItem</enum>
+          <enum>QAbstractItemView::ScrollPerPixel</enum>
          </property>
          <property name="gridStyle">
           <enum>Qt::NoPen</enum>
