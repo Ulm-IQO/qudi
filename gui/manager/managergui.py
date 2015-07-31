@@ -108,6 +108,9 @@ class ManagerGui(GUIBase):
         self.startIPythonWidget()
         # thread widget
         self._mw.threadWidget.threadListView.setModel(self._manager.tm)
+        # remote widget
+        self._mw.remoteWidget.hostLabel.setText('URL:')
+        self._mw.remoteWidget.portLabel.setText('rpyc://{0}:{1}/'.format(self._manager.rm.hostname, self._manager.rm.server.port))
 
         self._mw.config_display_dockWidget.hide()
         self._mw.remoteDockWidget.hide()
