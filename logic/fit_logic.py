@@ -1143,7 +1143,7 @@ class FitLogic(GenericLogic):
             if len(data) > omega/stepsize * 2.5:
                 pos01 = int((1-shift/(np.pi**2)) * omega/(2*stepsize))
                 pos02 = pos01 + int(omega/stepsize)
-                print(pos01,pos02,data[pos01],data[pos02])
+                # print(pos01,pos02,data[pos01],data[pos02])
                 decay = np.log(data[pos02]/data[pos01])/omega
                 # decay = - np.log(0.2)/x_axis[-1]
             else:
@@ -1191,9 +1191,9 @@ class FitLogic(GenericLogic):
             if add_parameters != None:
                 params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)
             try:
-                result = minimize(fcn2min, params, args=(axis, data))
+                result = minimize(self.fcn2min, params, args=(axis, data))
             except:
-                result = minimize(fcn2min, params, args=(axis, data))
+                result = minimize(self.fcn2min, params, args=(axis, data))
                 self.logMsg('The sine fit did not work. Error message:'+result.message, \
                             msgType='message')
 
