@@ -460,6 +460,10 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
+        # Connect tiltcorrection stuff
+        self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
+        self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
+
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
         self._mw.optimizer_only_view_Action.triggered.connect(self.small_optimizer_view)
@@ -1173,6 +1177,24 @@ class ConfocalGui(GUIBase):
         """ Adjust the image range for z in the logic. """
         self._scanning_logic.image_z_range = [self._mw.z_min_InputWidget.value(),
                                               self._mw.z_max_InputWidget.value()]
+
+    def use_tiltcorrection_clicked(self,e):
+        self._scanning_logic.TiltCorrection = e
+
+    def calculate_tiltcorrection_clicked(self):
+        self._scanning_logic.calc_tilt_correction()
+
+    def set_tiltpoint_01_clicked(self):
+        self._scanning_logic.set_tilt_point1()
+        self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
+        self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
+        self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
+
+    def set_tiltpoint_02_clicked(self):
+        self._scanning_logic.set_tilt_point2()
+
+    def set_tiltpoint_03_clicked(self):
+        self._scanning_logic.set_tilt_point3()
 
     def shortcut_to_xy_cb_manual(self):
         self._mw.xy_cb_manual_RadioButton.setChecked(True)
