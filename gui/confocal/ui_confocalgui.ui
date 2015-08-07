@@ -49,7 +49,6 @@
     </property>
     <addaction name="action_Settings"/>
     <addaction name="action_optimizer_settings"/>
-    <addaction name="action_scan_xy_start"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -81,9 +80,9 @@
     <addaction name="action_Tiltcorrection"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menu_Options"/>
-   <addaction name="menuView"/>
    <addaction name="menu_Tools"/>
+   <addaction name="menuView"/>
+   <addaction name="menu_Options"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="depth_scan_dockWidget">
