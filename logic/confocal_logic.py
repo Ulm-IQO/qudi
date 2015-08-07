@@ -305,7 +305,7 @@ class ConfocalLogic(GenericLogic):
                 self._return_AL = np.zeros(self._return_YL.shape)
             # this should do the whole tilt correction for scanning
             if self.TiltCorrection:
-                self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
+                self.depth_image[:,:,2] += self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
             self.sigImageDepthInitialized.emit()
         else:
             self._image_vert_axis = self._Y

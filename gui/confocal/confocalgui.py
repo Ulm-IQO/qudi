@@ -248,6 +248,9 @@ class ConfocalGui(GUIBase):
         self.xy_image = pg.ImageItem(arr01)
         self.depth_image = pg.ImageItem(arr02)
 
+        # Hide Tiltcorrection window
+        self._mw.tilt_correction_dockWidget.hide()
+
 
 
 
@@ -463,6 +466,10 @@ class ConfocalGui(GUIBase):
         # Connect tiltcorrection stuff
         self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
         self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)
+        self._mw.tilt_set_02_pushButton.clicked.connect(self.set_tiltpoint_02_clicked)
+        self._mw.tilt_set_03_pushButton.clicked.connect(self.set_tiltpoint_03_clicked)
+        self._mw.calc_tilt_pushButton.clicked.connect(self.calculate_tiltcorrection_clicked)
+
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -1192,9 +1199,15 @@ class ConfocalGui(GUIBase):
 
     def set_tiltpoint_02_clicked(self):
         self._scanning_logic.set_tilt_point2()
+        self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
+        self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
+        self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
 
     def set_tiltpoint_03_clicked(self):
         self._scanning_logic.set_tilt_point3()
+        self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
+        self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
+        self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
     def shortcut_to_xy_cb_manual(self):
         self._mw.xy_cb_manual_RadioButton.setChecked(True)
