@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1255</width>
+    <width>1348</width>
     <height>981</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1255</width>
+     <width>1348</width>
      <height>21</height>
     </rect>
    </property>
@@ -1550,7 +1550,7 @@
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout">
        <item row="4" column="0" colspan="2">
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="calc_tilt_pushButton">
          <property name="text">
           <string>Calc. Tilit</string>
          </property>
