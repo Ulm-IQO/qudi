@@ -5,8 +5,8 @@ Created on Mon Jun 29 17:06:00 2015
 @author: astark
 """
 
-#from PyQt4 import QtCore, QtGui
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from PyQt4 import QtGui, QtCore, uic
+
 import numpy as np
 import os
 from collections import OrderedDict
@@ -18,21 +18,21 @@ from core.util.mutex import Mutex
 
 class ComboBoxDelegate(QtGui.QItemDelegate):
 
-    def __init__(self, owner):
-        QtGui.QItemDelegate.__init__(self, owner)
+    def __init__(self, parent):
+        QtGui.QItemDelegate.__init__(self, parent)
 #		self.itemslist = itemslist
 
-    def paint(self, painter, option, index):
-		# Get Item Data
-#		value = index.data(QtCore.Qt.DisplayRole).toInt()[0]
-		# fill style options with item data
-        style = QtGui.QApplication.style()
-        opt = QtGui.QStyleOptionComboBox()
-##		opt.currentText = str(self.itemslist[value])
-        opt.rect = option.rect
-#
-#		# draw item data as ComboBox
-        style.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt, painter)
+#    def paint(self, painter, option, index):
+#		# Get Item Data
+##		value = index.data(QtCore.Qt.DisplayRole).toInt()[0]
+#		# fill style options with item data
+#        style = QtGui.QApplication.style()
+#        opt = QtGui.QStyleOptionComboBox()
+###		opt.currentText = str(self.itemslist[value])
+#        opt.rect = option.rect
+##
+##		# draw item data as ComboBox
+#        style.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt, painter)
 
 
     def createEditor(self, parent, option, index):
@@ -44,18 +44,202 @@ class ComboBoxDelegate(QtGui.QItemDelegate):
         editor.installEventFilter(self)
         return editor
 
-    def setEditorData(self, editor, index):
-        value = index.data(QtCore.Qt.DisplayRole)
-        print(index)
-        editor.setCurrentIndex(value)
+#    def setEditorData(self, editor, index):
+#        value = index.data(QtCore.Qt.DisplayRole)
+#        num = self.items.index(value)
+#        editor.setCurrentIndex(num)
 
-    def setModelData(self,editor,model,index):
+    def setEditorData(self, editor, index):
+        editor.blockSignals(True)
+        editor.setCurrentIndex(editor.currentIndex())
+        editor.blockSignals(False)
+
+    def setModelData(self, editor, model, index):
         value = editor.currentIndex()
-        model.setData(index, QtCore.QVariant(value))
+        model.setData(index, editor.itemText(value))
+#        model.setData(index, QtCore.Qt.DisplayRole, QtCore.QVariant(value))
 
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
 
+
+
+class SpinBoxDelegate(QtGui.QItemDelegate):
+    """
+    qt help for spinboxes:
+    http://doc.qt.io/qt-4.8/qt-itemviews-spinboxdelegate-example.html
+
+    python help for spinboxes:
+    http://stackoverflow.com/questions/28017395/how-to-use-delegate-to-control-qtableviews-rows-height
+    """
+    def __init__(self, parent):
+        """
+        Since the delegate is a subclass of QItemDelegate, the data it
+        retrieves from the model is displayed in a default style, and we do not
+        need to provide a custom paintEvent().
+        """
+        QtGui.QItemDelegate.__init__(self, parent)
+
+    def createEditor(self, parent, option, index):
+        """
+        The createEditor() function returns an editor widget, in this case a
+        spin box that restricts values from the model to integers from 0 to 100
+        inclusive.
+        """
+        editor = QtGui.QSpinBox(parent)
+        editor.setMinimum(0)
+        editor.setMaximum(10000000)
+        editor.installEventFilter(self)
+        editor.setValue(100)
+        # self.setModelData(editor, QtCore.QAbstractTableModel,QtCore.QModelIndex)
+        # QtCore.QAbstractTableModel
+        # QtCore.QModelIndex
+        return editor
+
+    def setEditorData(self, spinBox, index):
+        """
+        The setEditorData() function reads data from the model, converts it to
+        an integer value, and writes it to the editor widget.
+        """
+
+        # value, ok = index.model().data(index, QtCore.Qt.EditRole)
+        value = index.model().data(index)
+        if value is not int:
+            value = 0
+        spinBox.setValue(value)
+
+
+    def setModelData(self, spinBox, model, index):
+        """
+        The setModelData() function reads the contents of the spin box, and
+        writes it to the model.
+        """
+        # spinBox = spinBox.currentIndex()
+        spinBox.interpretText()
+        value = spinBox.value()
+        self.value = value
+
+        model.setData(index, value, QtCore.Qt.EditRole)
+#        model.setData(index, QtCore.QVariant(value))
+
+    def updateEditorGeometry(self, editor, option, index):
+        """
+        The updateEditorGeometry() function updates the editor widget's
+        geometry using the information supplied in the style option. This is
+        the minimum that the delegate must do in this case.
+        """
+        editor.setGeometry(option.rect)
+
+    def sizeHint(self, option, index):
+        print('sizeHint', index.row(), index.column())
+        return QtCore.QSize(64,64)
+
+    def paint(self, painter, option, index):
+        if (option.state & QtGui.QStyle.State_MouseOver):
+            painter.fillRect(option.rect, QtCore.Qt.red);
+        QtGui.QItemDelegate.paint(self, painter, option, index)
+
+
+
+class ComboDelegate(QtGui.QItemDelegate):
+    editorItems=['Combo_Zero', 'Combo_One','Combo_Two']
+    height = 25
+    width = 200
+    def createEditor(self, parent, option, index):
+        editor = QtGui.QListWidget(parent)
+        # editor.addItems(self.editorItems)
+        # editor.setEditable(True)
+        editor.currentItemChanged.connect(self.currentItemChanged)
+        return editor
+
+    def setEditorData(self,editor,index):
+        z = 0
+        for item in self.editorItems:
+            ai = QtGui.QListWidgetItem(item)
+            editor.addItem(ai)
+            if item == index.data():
+                editor.setCurrentItem(editor.item(z))
+            z += 1
+        editor.setGeometry(0,index.row()*self.height,self.width,self.height*len(self.editorItems))
+
+    def setModelData(self, editor, model, index):
+        editorIndex=editor.currentIndex()
+        text=editor.currentItem().text()
+        model.setData(index, text)
+        # print '\t\t\t ...setModelData() 1', text
+
+    @QtCore.pyqtSlot()
+    def currentItemChanged(self):
+        self.commitData.emit(self.sender())
+
+class CheckBoxDelegate(QtGui.QItemDelegate):
+    """
+    A delegate that places a fully functioning QCheckBox in every
+    cell of the column to which it's applied
+    """
+
+    def __init__(self, parent):
+        """
+        Since the delegate is a subclass of QItemDelegate, the data it
+        retrieves from the model is displayed in a default style, and we do not
+        need to provide a custom paintEvent().
+        """
+        QtGui.QItemDelegate.__init__(self, parent)
+
+    def createEditor(self, parent, option, index):
+        """
+        The createEditor() function returns an editor widget, in this case a
+        spin box that restricts values from the model to integers from 0 to 100
+        inclusive.
+        """
+        editor = QtGui.QCheckBox(parent)
+        editor.setCheckState(QtCore.Qt.Unchecked)
+
+        editor.installEventFilter(self)
+
+        # self.setModelData(editor, QtCore.QAbstractTableModel,QtCore.QModelIndex)
+        # QtCore.QAbstractTableModel
+        # QtCore.QModelIndex
+        return editor
+
+    def setEditorData(self, editor, index):
+        value = index.model().data(index, QtCore.Qt.CheckStateRole)
+        if value == 0:
+            checkState = QtCore.Qt.Unchecked
+        else:
+            checkState = QtCore.Qt.Checked
+        editor.setCheckState(checkState)
+
+
+    def setModelData(self, editor, model, index):
+        """
+        The setModelData() function reads the contents of the spin box, and
+        writes it to the model.
+        """
+        # checkBox = checkBox.currentIndex()
+        # checkBox.interpretText()
+        # value = checkBox.isChecked()
+        # self.value = value
+        value = editor.checkState()
+        model.setData(index, value, QtCore.Qt.CheckStateRole)
+#        model.setData(index, QtCore.QVariant(value))
+
+    def updateEditorGeometry(self, editor, option, index):
+        """
+        The updateEditorGeometry() function updates the editor widget's
+        geometry using the information supplied in the style option. This is
+        the minimum that the delegate must do in this case.
+        """
+        editor.setGeometry(option.rect)
+
+    def sizeHint(self, option, index):
+        print('sizeHint', index.row(), index.column())
+        return QtCore.QSize(64,64)
+
+    def paint(self, painter, option, index):
+        if (option.state & QtGui.QStyle.State_MouseOver):
+            painter.fillRect(option.rect, QtCore.Qt.red);
+        QtGui.QItemDelegate.paint(self, painter, option, index)
 
 class PulsedMeasurementMainWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -149,9 +333,34 @@ class PulsedMeasurementGui(GUIBase):
         self._param_block['Repeat?'] = [self._create_checkbox,'()']
         self._param_block['Use as tau?'] = [self._create_checkbox,'()']
 
+        # This method should be executed when the tablewidget is subclassed in
+        # an extra file:
+#        model = QtGui.QStandardItemModel(4, 2)
+#        self._mw.init_block_TableWidget.setModel(model)
 
-        self._mw.init_block_TableWidget.setItemDelegateForColumn(0,ComboBoxDelegate(self))
-        #self.row_pattern =
+        # emit a trigger event when for all mouse click and keyboard click events:
+        # compare the C++ references:
+        self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+
+        # replace also the combobox through a QListWidget have a look on:
+        # http://stackoverflow.com/questions/28037126/how-to-use-qcombobox-as-delegate-with-qtableview
+
+
+        # Modified by me
+        self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover);
+
+
+        comboDelegate = ComboBoxDelegate(self._mw.init_block_TableWidget)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(0, comboDelegate)
+
+        spinDelegate = SpinBoxDelegate(self._mw.init_block_TableWidget)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(1,spinDelegate)
+
+        comboDelegate2= ComboDelegate(self._mw.init_block_TableWidget)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(2,comboDelegate2)
+
+        checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(3,checkDelegate)
 
     def _create_doublespinbox(self, min_val=None, max_val=None, num_digits=None):
         dspinbox = QtGui.QDoubleSpinBox()
