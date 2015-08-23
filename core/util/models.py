@@ -121,6 +121,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
             self.beginInsertRows(QtCore.QModelIndex(), row, row)
             self.storage[key] = data
             self.endInsertRows()
+            return key
 
     def pop(self, key):
         with self.lock:

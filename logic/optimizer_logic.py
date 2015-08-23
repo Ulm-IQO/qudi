@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # unstable: Kay Jahnke
 
-from logic.generic_logic import GenericLogic
+from logic.generic_logic import GenericLogic, InterruptableTask
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -58,6 +58,8 @@ class OptimizerLogic(GenericLogic):
         
         self.stopRequested = False
         self.is_crosshair = True
+
+        self.refocusTask = InterruptableTask('optimize', self.start_refocus)
                        
     def activation(self, e):
         """ Initialisation performed during activation of the module.
