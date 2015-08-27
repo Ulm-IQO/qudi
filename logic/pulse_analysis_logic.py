@@ -21,7 +21,8 @@ class PulseAnalysisLogic(GenericLogic):
             'pulseextractionlogic': 'PulseExtractionLogic',
             'pulsegenerator': 'PulserInterfaceDummy',
             'fitlogic': 'FitLogic',
-            'savelogic': 'SaveLogic'
+            'savelogic': 'SaveLogic',
+            'mykrowave': 'mykrowave'
             }
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
@@ -41,11 +42,10 @@ class PulseAnalysisLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
-        
-#        self._binwidth_ns = 1.
-#        self._laser_length_bins = 3800
-#        self._number_of_laser_pulses = 100
-        
+
+        # mykrowave parameters
+        self.mykrowave_power = -30.
+        self.mykrowave_freq = 2870.
         # set windows for signal and normalization of the laser pulses
         self.signal_start_bin = 5
         self.signal_width_bins = 200
@@ -77,6 +77,7 @@ class PulseAnalysisLogic(GenericLogic):
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
         self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
+        self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
         self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -104,6 +105,8 @@ class PulseAnalysisLogic(GenericLogic):
         # initialize plots
         self._initialize_signal_plot()
         self._initialize_laser_plot()
+        # start mykrowave generator
+        self.mykrowave_on()
         # start fast counter
         self.fast_counter_on()
         # start pulse generator
@@ -129,6 +132,7 @@ class PulseAnalysisLogic(GenericLogic):
         if self.stopRequested:
             with self.threadlock:
                 self.fast_counter_off()
+                self.mykrowave_off()
                 self.pulse_generator_off()
                 self.stopRequested = False
                 self.unlock()
@@ -145,7 +149,7 @@ class PulseAnalysisLogic(GenericLogic):
         signal_start = self.signal_start_bin
         signal_end = self.signal_start_bin + self.signal_width_bins
         # acquire data from the pulse extraction logic 
-        self.laser_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
+        self.laser_data, self.raw_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
         # loop over all laser pulses and analyze them
         for i in range(self.running_sequence_parameters['number_of_lasers']):
             # calculate the mean of the data in the normalization window
@@ -185,7 +189,9 @@ class PulseAnalysisLogic(GenericLogic):
 
 
     def _save_data(self):
-        
+        #####################################################################
+        ####                Save extracted laser pulses                  ####         
+        #####################################################################
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
         filelabel = 'laser_pulses'
         timestamp = datetime.datetime.now()
@@ -206,6 +212,9 @@ class PulseAnalysisLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
         
+        #####################################################################
+        ####                Save measurement data                        ####         
+        #####################################################################
         filelabel = 'pulsed_measurement'
         
         # prepare the data in a dict or in an OrderedDict:
@@ -226,6 +235,29 @@ class PulseAnalysisLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
         
+        #####################################################################
+        ####                Save raw data timetrace                      ####         
+        #####################################################################
+        filelabel = 'raw_timetrace'
+        
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        data = {'Signal (counts)': self.raw_data.transpose()}
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Is counter gated?'] = self.fast_counter_status['is_gated']
+        parameters['Bin size (ns)'] = self.fast_counter_status['binwidth_ns']
+        parameters['Number of laser pulses'] = self.running_sequence_parameters['number_of_lasers']
+        parameters['laser length (ns)'] = self.fast_counter_status['binwidth_ns'] * self.laser_plot_x.size
+        parameters['Tau start'] = self.running_sequence_parameters['tau_vector'][0]
+        parameters['Tau increment'] = self.running_sequence_parameters['tau_vector'][1] - self.running_sequence_parameters['tau_vector'][0]
+
+
+        self._save_logic.save_data(data, filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp,
+                                   as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
+        return
         
 #    def get_tau_list(self):
 #        """Get the list containing all tau values in ns for the current measurement.
@@ -291,7 +323,14 @@ class PulseAnalysisLogic(GenericLogic):
         error_code = self._fast_counter_device.stop_measure()
         return error_code
         
+    def mykrowave_on(self):
+        self._mycrowave_source_device.set_cw(f=self.mykrowave_freq, power=self.mykrowave_power)
+        self._mycrowave_source_device.on()
+        return
         
+    def mykrowave_off(self):
+        self._mycrowave_source_device.off()
+        return
 #    def do_fit(self, fit_function = None):
 #        '''Performs the chosen fit on the measured data.
 #        

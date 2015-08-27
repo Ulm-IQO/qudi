@@ -141,7 +141,8 @@ class PulseExtractionLogic(GenericLogic):
     def get_data_laserpulses(self, num_of_lasers):
         """ This method captures the fast counter data and extracts the laser pulses.
           @param int num_of_lasers: The total number of laser pulses inside the pulse sequence
-          @return 2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin) 
+          @return 2D numpy.ndarray: The extracted laser pulses of the timetrace (dimensions 0: laser number, 1: time bin)
+          @return 1D/2D numpy.ndarray: The raw timetrace from the fast counter
         """
         # poll data from the fast countin device
         raw_data = self._fast_counter_device.get_data_trace()
@@ -150,8 +151,8 @@ class PulseExtractionLogic(GenericLogic):
             laser_data = self._gated_extraction(raw_data)
         else:
             laser_data = self._ungated_extraction(raw_data, num_of_lasers)
-        return laser_data
-    
+        return laser_data, raw_data
+        
     
     def _check_if_counter_gated(self):
         '''Check the fast counter if it is gated or not
