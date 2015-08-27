@@ -57,7 +57,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
         status = {'binwidth_ns': 1000./950.}
-#        status = {'binwidth_ns': 4}
+        status['is_gated'] = self.gated
         time.sleep(0.2)
         return status
     

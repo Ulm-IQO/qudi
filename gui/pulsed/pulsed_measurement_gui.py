@@ -33,7 +33,8 @@ class PulsedMeasurementGui(GUIBase):
 
     ## declare connectors
     _in = { 'pulseanalysislogic': 'PulseAnalysisLogic',
-            'sequencegeneratorlogic': 'SequenceGeneratorLogic'
+            'sequencegeneratorlogic': 'SequenceGeneratorLogic',
+            'mykrowave': 'mykrowave'
             }
 
     def __init__(self, manager, name, config, **kwargs):
@@ -183,6 +184,8 @@ class PulsedMeasurementGui(GUIBase):
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
         self._pulse_analysis_logic.stop_pulsed_measurement()
+        self._mw.frequency_InputWidget.setEnabled(True)
+        self._mw.power_InputWidget.setEnabled(True)
 
 
     def run_clicked(self, enabled):
@@ -195,6 +198,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulse_analysis_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
         if enabled:
+            self._mw.frequency_InputWidget.setEnabled(False)
+            self._mw.power_InputWidget.setEnabled(False)
             self._pulse_analysis_logic.start_pulsed_measurement()
 
 
@@ -213,6 +218,8 @@ class PulsedMeasurementGui(GUIBase):
         laser_num = int(self._mw.numlaser_InputWidget.text())
         tau_start = int(self._mw.taustart_InputWidget.text())
         tau_incr = int(self._mw.tauincrement_InputWidget.text())
+        mw_frequency = float(self._mw.frequency_InputWidget.text())
+        mw_power = float(self._mw.power_InputWidget.text())
         self._mw.lasertoshow_spinBox.setRange(0, laser_num)
         laser_show = self._mw.lasertoshow_spinBox.value()
         if (laser_show > laser_num):
@@ -222,6 +229,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulse_analysis_logic.running_sequence_parameters['tau_vector'] = tau_vector
         self._pulse_analysis_logic.running_sequence_parameters['number_of_lasers'] = laser_num
         self._pulse_analysis_logic.display_pulse_no = laser_show
+        self._pulse_analysis_logic.mykrowave_freq = mw_frequency
+        self._pulse_analysis_logic.mykrowave_power = mw_power
         return
      
      
