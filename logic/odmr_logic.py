@@ -162,6 +162,7 @@ class ODMRLogic(GenericLogic):
 
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
+        self.ODMR_raw_data = list() #list used to store the raw data, is saved in seperate file for post prossesing
 #        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
 
         self.start_ODMR()
@@ -221,7 +222,7 @@ class ODMRLogic(GenericLogic):
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
-
+        self.ODMR_raw_data.append(new_counts) # adds the ne odmr line to the overall list
         self._odmrscan_counter += 1
 
         self.ElapsedTime = time.time() - self._StartTime
@@ -409,14 +410,26 @@ class ODMRLogic(GenericLogic):
         """
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filelabel = 'ODMR_data'
+        filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
+        filelabel2 = 'ODMR_data_matrix'
+        filepath3 = self._save_logic.get_path_for_module(module_name='ODMR')
+        filelabel3 = 'ODMR_data_raw'
         timestamp = datetime.datetime.now()
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
+        data2=OrderedDict()
+        data3=OrderedDict()
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
+        matrix_data=self.ODMR_plot_xy # the data in the matix plot
+        raw_data=self.ODMR_raw_data # list cotaining ALL messured data
+        #freq_data2=  # placeholder if you want to include freq, info in rawdata 
         data['frequency values (MHz)'] = freq_data
         data['count data'] = count_data
+        #data['frequency values (MHz)'] = freq_data
+        data2['count data'] = matrix_data #saves the raw data used in the matrix NOT all only the size of the matrix
+        data3['count data'] = raw_data #saves the raw data, ALL so keep an eye on performance 
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.MW_power
@@ -425,6 +438,12 @@ class ODMRLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+                                   
+        self._save_logic.save_data(data2, filepath2, parameters=parameters,
+                                   filelabel=filelabel2, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+
+        self._save_logic.save_data(data3, filepath3, parameters=parameters,
+                                   filelabel=filelabel3, timestamp=timestamp, as_text=True)
 
         self.logMsg('ODMR data saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
