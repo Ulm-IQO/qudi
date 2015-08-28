@@ -83,7 +83,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="7">
+         <item row="3" column="11">
           <widget class="QLabel" name="label_15">
            <property name="text">
             <string>Laser to show:</string>
@@ -93,7 +93,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="8">
+         <item row="3" column="12">
           <widget class="QSpinBox" name="lasertoshow_spinBox"/>
          </item>
          <item row="2" column="0" colspan="2" alignment="Qt::AlignRight">
@@ -134,7 +134,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="8">
+         <item row="1" column="12">
           <widget class="QLineEdit" name="taustart_InputWidget">
            <property name="maximumSize">
             <size>
@@ -144,7 +144,7 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="7">
+         <item row="0" column="11">
           <widget class="QLabel" name="label_9">
            <property name="text">
             <string>Number of laser pulses:</string>
@@ -154,7 +154,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="7">
+         <item row="2" column="11">
           <widget class="QLabel" name="label_14">
            <property name="text">
             <string>Tau increment:</string>
@@ -164,7 +164,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="7">
+         <item row="1" column="11">
           <widget class="QLabel" name="label_13">
            <property name="text">
             <string>Tau start:</string>
@@ -174,7 +174,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="8">
+         <item row="2" column="12">
           <widget class="QLineEdit" name="tauincrement_InputWidget">
            <property name="maximumSize">
             <size>
@@ -184,7 +184,7 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="8">
+         <item row="0" column="12">
           <widget class="QLineEdit" name="numlaser_InputWidget">
            <property name="maximumSize">
             <size>
@@ -194,7 +194,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="4">
+         <item row="1" column="8">
           <widget class="QLabel" name="label_18">
            <property name="text">
             <string>Start [bin]</string>
@@ -204,7 +204,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="5">
+         <item row="1" column="9">
           <widget class="QLabel" name="label_17">
            <property name="text">
             <string>Length [bin]</string>
@@ -214,7 +214,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="3">
+         <item row="3" column="7">
           <widget class="QLabel" name="label_16">
            <property name="text">
             <string>Reference (green):</string>
@@ -224,7 +224,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="3">
+         <item row="2" column="7">
           <widget class="QLabel" name="label_19">
            <property name="text">
             <string>Signal (red):</string>
@@ -234,7 +234,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="6">
+         <item row="1" column="10">
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -247,7 +247,73 @@
            </property>
           </spacer>
          </item>
-         <item row="1" column="3">
+         <item row="2" column="8">
+          <widget class="QLineEdit" name="signal_start_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="9">
+          <widget class="QLineEdit" name="signal_length_InputWidget">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="8">
+          <widget class="QLineEdit" name="reference_start_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="9">
+          <widget class="QLineEdit" name="reference_length_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="5">
+          <widget class="QLabel" name="elapsed_time_label">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>00:00:00:00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="4">
+          <widget class="QLabel" name="label_20">
+           <property name="text">
+            <string>Elapsed time:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="3">
           <spacer name="horizontalSpacer_2">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -260,43 +326,43 @@
            </property>
           </spacer>
          </item>
+         <item row="3" column="6">
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="4">
+          <widget class="QLabel" name="label_21">
+           <property name="text">
+            <string>Analysis period (s):</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QLineEdit" name="analysis_period_InputWidget">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
          <item row="2" column="4">
-          <widget class="QLineEdit" name="signal_start_InputWidget">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="5">
-          <widget class="QLineEdit" name="signal_length_InputWidget">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="4">
-          <widget class="QLineEdit" name="reference_start_InputWidget">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="5">
-          <widget class="QLineEdit" name="reference_length_InputWidget">
-           <property name="maximumSize">
-            <size>
-             <width>75</width>
-             <height>16777215</height>
-            </size>
+          <widget class="QPushButton" name="pull_data_pushButton">
+           <property name="text">
+            <string>Pull data</string>
            </property>
           </widget>
          </item>

@@ -127,7 +127,6 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
 #        data = np.loadtxt('141222_Rabi_old_NV_-11.04dbm_01.asc')
 #        data = np.loadtxt('20150701_binning4.asc')
         data = np.loadtxt('20150701_binning4_1e6reps_really_nice.asc')
-        data=data[0:59401]
         time.sleep(0.5)
         return data
         
