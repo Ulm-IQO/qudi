@@ -103,6 +103,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.frequency_InputWidget.setValidator(validator)
         self._mw.power_InputWidget.setValidator(validator)
+        self._mw.analysis_period_InputWidget.setValidator(validator)
         self._mw.numlaser_InputWidget.setValidator(validator2)
         self._mw.taustart_InputWidget.setValidator(validator)
         self._mw.tauincrement_InputWidget.setValidator(validator)
@@ -125,6 +126,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_length_InputWidget.setText(str(200))
         self._mw.reference_start_InputWidget.setText(str(500))
         self._mw.reference_length_InputWidget.setText(str(200))
+        self._mw.elapsed_time_label.setText('00:00:00:00')
+        self._mw.analysis_period_InputWidget.setText(str(5))
 
         #######################################################################
         ##                      Connect signals                              ##
@@ -133,9 +136,13 @@ class PulsedMeasurementGui(GUIBase):
         # Connect the RadioButtons and connect to the events if they are clicked:
         self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
         self._mw.run_radioButton.toggled.connect(self.run_clicked)
+        
+        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
+        self._mw.pull_data_pushButton.setEnabled(False)
 
         self._pulse_analysis_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulse_analysis_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
+        self._pulse_analysis_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         
         # Connect InputWidgets to events
         self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
@@ -146,6 +153,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
@@ -186,6 +194,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulse_analysis_logic.stop_pulsed_measurement()
         self._mw.frequency_InputWidget.setEnabled(True)
         self._mw.power_InputWidget.setEnabled(True)
+        self._mw.binning_comboBox.setEnabled(True)
+        self._mw.pull_data_pushButton.setEnabled(False)
 
 
     def run_clicked(self, enabled):
@@ -200,8 +210,13 @@ class PulsedMeasurementGui(GUIBase):
         if enabled:
             self._mw.frequency_InputWidget.setEnabled(False)
             self._mw.power_InputWidget.setEnabled(False)
+            self._mw.binning_comboBox.setEnabled(False)
+            self._mw.pull_data_pushButton.setEnabled(True)
             self._pulse_analysis_logic.start_pulsed_measurement()
 
+    def pull_data_clicked(self):
+        self._pulse_analysis_logic.manually_pull_data()
+        
 
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
@@ -213,6 +228,10 @@ class PulsedMeasurementGui(GUIBase):
         '''
         self.signal_image.setData(self._pulse_analysis_logic.signal_plot_x, self._pulse_analysis_logic.signal_plot_y)
         
+    def refresh_elapsed_time(self):
+        ''' This method refreshes the elapsed time of the measurement
+        '''
+        self._mw.elapsed_time_label.setText(self._pulse_analysis_logic.elapsed_time_str)
     
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
@@ -239,6 +258,7 @@ class PulsedMeasurementGui(GUIBase):
         sig_length = int(self._mw.signal_length_InputWidget.text())
         ref_start = int(self._mw.reference_start_InputWidget.text())
         ref_length = int(self._mw.reference_length_InputWidget.text())
+        timer_interval = float(self._mw.analysis_period_InputWidget.text())
         self.signal_start_bin = sig_start
         self.signal_width_bins = sig_length
         self.norm_start_bin = ref_start
@@ -251,6 +271,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pulse_analysis_logic.signal_width_bins = sig_length
         self._pulse_analysis_logic.norm_start_bin = ref_start
         self._pulse_analysis_logic.norm_width_bins = ref_length
+        self._pulse_analysis_logic.change_timer_interval(timer_interval)
         return
         
 

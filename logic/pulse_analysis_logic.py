@@ -26,7 +26,7 @@ class PulseAnalysisLogic(GenericLogic):
             }
     _out = {'pulseanalysislogic': 'PulseAnalysisLogic'}
 
-    signal_analysis_next = QtCore.Signal()
+    signal_time_updated = QtCore.Signal()
     signal_laser_plot_updated = QtCore.Signal()
     signal_signal_plot_updated = QtCore.Signal()
 
@@ -63,6 +63,13 @@ class PulseAnalysisLogic(GenericLogic):
         
         self.fit_result = ([])
         
+        # timer for data analysis
+        self.timer = None
+        self.timer_interval = 5 # in seconds
+        self.start_time = 0
+        self.elapsed_time = 0
+        self.elapsed_time_str = '00:00:00:00'
+        
         # threading
         self.threadlock = Mutex()
         self.stopRequested = False
@@ -81,14 +88,12 @@ class PulseAnalysisLogic(GenericLogic):
         self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
-        self.signal_analysis_next.connect(self._analyze_data, QtCore.Qt.QueuedConnection)
 
 
     def deactivation(self, e):
         with self.threadlock:
             if self.getState() != 'idle' and self.getState() != 'deactivated':
-                self.stopRequested = True   
-        self.signal_analysis_next.disconnect()
+                self.stop_pulsed_measurement()   
     
     
     def update_fast_counter_status(self):
@@ -101,45 +106,82 @@ class PulseAnalysisLogic(GenericLogic):
     def start_pulsed_measurement(self):
         '''Start the analysis thread.
         '''  
-        self.update_fast_counter_status()
-        # initialize plots
-        self._initialize_signal_plot()
-        self._initialize_laser_plot()
-        # start mykrowave generator
-        self.mykrowave_on()
-        # start fast counter
-        self.fast_counter_on()
-        # start pulse generator
-        self.pulse_generator_on()
-        # start analysis loop and set lock to indicate a running measurement
-        self.lock()
-        self.signal_analysis_next.emit()
+        with self.threadlock:
+            if self.getState() == 'idle':
+                self.update_fast_counter_status()
+                # initialize plots
+                self._initialize_signal_plot()
+                self._initialize_laser_plot()
+                # start mykrowave generator
+                self.mykrowave_on()
+                # start fast counter
+                self.fast_counter_on()
+                # start pulse generator
+                self.pulse_generator_on()
+                # set timer
+                self.timer = QtCore.QTimer()
+                self.timer.setSingleShot(False)
+                self.timer.setInterval(int(1000. * self.timer_interval))
+                self.timer.timeout.connect(self._analysis_loop)
+                # start analysis loop and set lock to indicate a running measurement
+                self.lock()
+                self.start_time = time.time()
+                self.timer.start()
+                #self.signal_analysis_next.emit()
         
         
+    def _analysis_loop(self):
+        '''Acquires laser pulses from fast counter, calculates fluorescence signal and creates plots.
+        '''
+        with self.threadlock:
+            # acquire data from the pulse extraction logic 
+            self.laser_data, self.raw_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
+            # analyze pulses
+            self._analyze_data()
+            # recalculate time
+            self.elapsed_time = time.time() - self.start_time
+            self.elapsed_time_str = ''
+            self.elapsed_time_str += str(int(self.elapsed_time)//86400).zfill(2) + ':' # days
+            self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
+            self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
+            self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
+            # emit signals
+            self.signal_signal_plot_updated.emit() 
+            self.signal_laser_plot_updated.emit() 
+            self.signal_time_updated.emit()
+            
+            
+    def change_timer_interval(self, interval):
+        with self.threadlock:
+            self.timer_interval = interval
+            if self.timer != None:
+                self.timer.setInterval(int(1000. * self.timer_interval))
+        return
+    
+
+    def manually_pull_data(self):
+        if self.getState() == 'locked':
+            self._analysis_loop()
+
+    
     def stop_pulsed_measurement(self):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
             if self.getState() == 'locked':
-                self.stopRequested = True            
-        return 0        
-    
-    
-    def _analyze_data(self):
-        '''Acquires laser pulses from fast counter, calculates fluorescence signal and creates plots.
-        '''        
-        if self.stopRequested:
-            with self.threadlock:
+                self.timer.stop()
+                self.timer.timeout.disconnect()
+                self.timer = None
                 self.fast_counter_off()
                 self.mykrowave_off()
                 self.pulse_generator_off()
-                self.stopRequested = False
-                self.unlock()
                 self.signal_signal_plot_updated.emit() 
-                self.signal_laser_plot_updated.emit() 
-                return
-        
+                self.signal_laser_plot_updated.emit()
+                self.unlock()
+        return 0        
+    
+    def _analyze_data(self):
         # Initialize the 
         norm_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
         signal_mean = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
@@ -148,8 +190,6 @@ class PulseAnalysisLogic(GenericLogic):
         norm_end = self.norm_start_bin + self.norm_width_bins
         signal_start = self.signal_start_bin
         signal_end = self.signal_start_bin + self.signal_width_bins
-        # acquire data from the pulse extraction logic 
-        self.laser_data, self.raw_data = self._pulse_extraction_logic.get_data_laserpulses(self.running_sequence_parameters['number_of_lasers'])
         # loop over all laser pulses and analyze them
         for i in range(self.running_sequence_parameters['number_of_lasers']):
             # calculate the mean of the data in the normalization window
@@ -164,10 +204,7 @@ class PulseAnalysisLogic(GenericLogic):
         else:
             self.laser_plot_y = np.sum(self.laser_data,0)
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, self.laser_data.shape[1]+1)
-        # emit signals
-        self.signal_signal_plot_updated.emit() 
-        self.signal_laser_plot_updated.emit() 
-        self.signal_analysis_next.emit()
+        return
         
      
     def do_fit(self):
