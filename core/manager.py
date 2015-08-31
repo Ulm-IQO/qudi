@@ -106,6 +106,7 @@ class Manager(QtCore.QObject):
         self.baseDir = None
         self.alreadyQuit = False
 
+        opts = []
         try:
             # Logging
             global LOG
@@ -116,10 +117,13 @@ class Manager(QtCore.QObject):
             # Command Line parameters
             if argv is not None:
                 try:
-                    opts, args = getopt.getopt(argv, 'c:s:g',
-                                    ['config=',
-                                    'storagedir=',
-                                    'no-gui'
+                    opts, args = getopt.getopt(
+                                    argv,
+                                    'c:s:g',
+                                    [
+                                        'config=',
+                                        'storagedir=',
+                                        'no-gui'
                                     ]
                                 )
                 except getopt.GetoptError as err:
@@ -130,9 +134,6 @@ class Manager(QtCore.QObject):
         -s --storagedir=   Storage directory to use
         -g --no-gui         Do not load manager module
     """)
-                opts = []
-            else:
-                opts = []
             
             # Initialize parent class QObject
             QtCore.QObject.__init__(self)
@@ -146,6 +147,7 @@ class Manager(QtCore.QObject):
             loadModules = []
             setStorageDir = None
             loadConfigs = []
+
             for o, a in opts:
                 if o in ['-c', '--config']:
                     configFile = a
