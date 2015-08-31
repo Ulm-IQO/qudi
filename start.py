@@ -27,13 +27,21 @@ myenv = os.environ.copy()
 argv = [sys.executable, '-m', 'core'] + sys.argv[1:]
 
 while True:
-    retval = subprocess.call(argv, close_fds=False, env=myenv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=False)
-    if retval == 0:
+    process = subprocess.Popen(argv, close_fds=False, env=myenv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=False)
+    try:
+        retval = process.wait()
+        if retval == 0:
+            break
+        elif retval == 42:
+            print('Restarting...')
+            continue
+        else:
+            print('Unexpected return value {0}. Exiting.'.format(retval))
+            sys.exit(retval)
+    except KeyboardInterrupt:
+        print('Keyboard Interrupt, quitting!')
         break
-    elif retval == 42:
-        print('Restarting...')
-        continue
-    else:
-        print('Unexpected return value {0}. Exiting.'.format(retval))
-        sys.exit(retval)
-
+    except:
+        process.kill()
+        process.wait()
+        raise
