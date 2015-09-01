@@ -170,12 +170,30 @@ else:
         # a chance to clean up.
         # This avoids otherwise irritating exit crashes.
         helpers.exit(watchdog.exitcode)
-
     elif callgraph:
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
+    elif not man.hasGui:
+        from IPython.qt.inprocess import QtInProcessKernelManager
+        from IPython.terminal.interactiveshell import TerminalInteractiveShell
+        import numpy as np
+        m = QtInProcessKernelManager()
+        m.start_kernel()
+        namespace = m.kernel.shell.user_ns
+        namespace.update({
+            'pg': pg,
+            'np': np,
+            'config': man.tree['defined'],
+            'manager': man
+            })
+        client = m.client()
+        client.start_channels()
+        shell = TerminalInteractiveShell(manager=m, client=client)
+        # shell.mainloop()
+        app.exec_()
+        helpers.exit(watchdog.exitcode)
     else:
         app.exec_()
         # helpers.exit() causes python to exit before Qt has a chance to clean up. 
