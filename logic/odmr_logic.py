@@ -88,6 +88,8 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
 
         self.stopRequested = False
+        
+        self.safeRawData = int(0) #flag for saving raw data
 
 
     def activation(self, e):
@@ -163,17 +165,20 @@ class ODMRLogic(GenericLogic):
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
         
-        '''
-        All that is necesarry fo saving of raw data
-        '''        
+        if self.safeRawData == 1:
+            '''
+            All that is necesarry fo saving of raw data
+            '''        
+            self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list    
+            self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line 
+            self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
         
-        self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list    
-        self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line 
-        self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
-        
-        self.ODMR_raw_data = np.full((self._MW_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
-#        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
-
+            self.ODMR_raw_data = np.full((self._MW_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
+            self.logMsg('Raw data saving...',msgType='status', importance=5)
+            
+        else:
+            self.logMsg('Raw data NOT saved',msgType='status', importance=5)
+            
         self.start_ODMR()
 
         self._MW_device.set_list(self._MW_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
@@ -232,8 +237,8 @@ class ODMRLogic(GenericLogic):
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
         
-        
-        self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
+        if self.safeRawData == 1:
+            self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
         
         
         self._odmrscan_counter += 1
@@ -435,14 +440,11 @@ class ODMRLogic(GenericLogic):
         data3=OrderedDict()
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
-        matrix_data=self.ODMR_plot_xy # the data in the matix plot
-        raw_data=self.ODMR_raw_data # list cotaining ALL messured data
-        #freq_data2=  # placeholder if you want to include freq, info in rawdata 
+        matrix_data=self.ODMR_plot_xy # the data in the matix plot 
         data['frequency values (MHz)'] = freq_data
         data['count data'] = count_data
         #data['frequency values (MHz)'] = freq_data
         data2['count data'] = matrix_data #saves the raw data used in the matrix NOT all only the size of the matrix
-        data3['count data'] = raw_data #saves the raw data, ALL so keep an eye on performance 
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.MW_power
@@ -450,16 +452,22 @@ class ODMRLogic(GenericLogic):
         parameters['Star Frequency (MHz)'] = self.MW_start
         parameters['Stop Frequency (MHz)'] = self.MW_stop
         parameters['Step size (MHz)'] = self.MW_step
-
-
+        
+        if self.safeRawData == 1:        
+            raw_data=self.ODMR_raw_data # array cotaining ALL messured data
+            data3['count data'] = raw_data #saves the raw data, ALL of it so keep an eye on performance 
+            self._save_logic.save_data(data3, filepath3, parameters=parameters,
+                                   filelabel=filelabel3, timestamp=timestamp, as_text=True)
+            self.logMsg('Raw data succesfully saved',msgType='status', importance=7)
+            
+        else:
+            self.logMsg('Raw data is NOT saved',msgType='status', importance=7)
+               
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
                                    
         self._save_logic.save_data(data2, filepath2, parameters=parameters,
                                    filelabel=filelabel2, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
-
-        self._save_logic.save_data(data3, filepath3, parameters=parameters,
-                                   filelabel=filelabel3, timestamp=timestamp, as_text=True)
 
         self.logMsg('ODMR data saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
