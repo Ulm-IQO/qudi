@@ -162,7 +162,16 @@ class ODMRLogic(GenericLogic):
 
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
-        self.ODMR_raw_data = list() #list used to store the raw data, is saved in seperate file for post prossesing
+        
+        '''
+        All that is necesarry fo saving of raw data
+        '''        
+        
+        self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list    
+        self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line 
+        self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
+        
+        self.ODMR_raw_data = np.full((self._MW_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
 #        self._ODMR_counter.set_odmr_length(len(self._MW_frequency_list))
 
         self.start_ODMR()
@@ -222,7 +231,11 @@ class ODMRLogic(GenericLogic):
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
-        self.ODMR_raw_data.append(new_counts) # adds the ne odmr line to the overall list
+        
+        
+        self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
+        
+        
         self._odmrscan_counter += 1
 
         self.ElapsedTime = time.time() - self._StartTime
@@ -434,6 +447,9 @@ class ODMRLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.MW_power
         parameters['Runtime (s)'] = self.RunTime
+        parameters['Star Frequency (MHz)'] = self.MW_start
+        parameters['Stop Frequency (MHz)'] = self.MW_stop
+        parameters['Step size (MHz)'] = self.MW_step
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
