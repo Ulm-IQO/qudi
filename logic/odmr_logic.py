@@ -64,6 +64,24 @@ class ODMRLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
+        #number of lines in the matrix plot
+        self.NumberofLines = 50
+
+        self.threadlock = Mutex()
+
+        self.stopRequested = False
+        
+
+
+    def activation(self, e):
+        """ Initialisation performed during activation of the module.
+        """
+        self._MW_device = self.connector['in']['microwave1']['object']
+        self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._ODMR_counter = self.connector['in']['odmrcounter']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
+
+        # default parameers for NV ODMR
         self.MW_trigger_source = 'EXT'
         self.MW_trigger_pol = 'POS'
 
@@ -82,23 +100,29 @@ class ODMRLogic(GenericLogic):
         self.ElapsedTime = 0
         self.current_fit_function = 'No Fit'
 
-        #number of lines in the matrix plot
-        self.NumberofLines = 50
+        self.safeRawData = False #flag for saving raw data
 
-        self.threadlock = Mutex()
-
-        self.stopRequested = False
-        
-        self.safeRawData = int(0) #flag for saving raw data
-
-
-    def activation(self, e):
-        """ Initialisation performed during activation of the module.
-        """
-        self._MW_device = self.connector['in']['microwave1']['object']
-        self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._ODMR_counter = self.connector['in']['odmrcounter']['object']
-        self._save_logic = self.connector['in']['savelogic']['object']
+        # load parameters stored in app state store
+        if 'MW_trigger_source' in self._statusVariables:
+            self.MW_trigger_source = self._statusVariables['MW_trigger_source']
+        if 'MW_trigger_pol' in self._statusVariables:
+            self.MW_trigger_pol = self._statusVariables['MW_trigger_pol']
+        if 'clock_frequency' in self._statusVariables:
+            self._clock_frequency = self._statusVariables['clock_frequency']
+        if 'MW_frequency' in self._statusVariables:
+            self.MW_frequency = self._statusVariables['MW_frequency']
+        if 'MW_power' in self._statusVariables:
+            self.MW_power = self._statusVariables['MW_power']
+        if 'MW_start' in self._statusVariables:
+            self.MW_start = self._statusVariables['MW_start']
+        if 'MW_stop' in self._statusVariables:
+            self.MW_stop = self._statusVariables['MW_stop']
+        if 'MW_step' in self._statusVariables:
+            self.MW_step = self._statusVariables['MW_step']
+        if 'RunTime' in self._statusVariables:
+            self.RunTime = self._statusVariables['RunTime']
+        if 'safeRawData' in self._statusVariables:
+            self.safeRawData = self._statusVariables['safeRawData']
 
         self.signal_next_line.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
@@ -118,8 +142,17 @@ class ODMRLogic(GenericLogic):
     def deactivation(self, e):
         '''Tasks that are required to be performed during deactivation of the module.
         '''
-        #deconnecting from the MW-source
-        pass
+        # save parameters stored in app state store
+        self._statusVariables['MW_trigger_source'] = self.MW_trigger_source
+        self._statusVariables['MW_trigger_pol'] = self.MW_trigger_pol
+        self._statusVariables['clock_frequency'] = self._clock_frequency
+        self._statusVariables['MW_frequency'] = self.MW_frequency
+        self._statusVariables['MW_power'] = self.MW_power
+        self._statusVariables['MW_start'] = self.MW_start
+        self._statusVariables['MW_stop'] = self.MW_stop
+        self._statusVariables['MW_step'] = self.MW_step
+        self._statusVariables['RunTime'] = self.RunTime
+        self._statusVariables['safeRawData'] = self.safeRawData
 
 
     def set_clock_frequency(self, clock_frequency):
@@ -165,7 +198,7 @@ class ODMRLogic(GenericLogic):
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
         
-        if self.safeRawData == 1:
+        if self.safeRawData:
             '''
             All that is necesarry fo saving of raw data
             '''        
@@ -237,7 +270,7 @@ class ODMRLogic(GenericLogic):
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
         
-        if self.safeRawData == 1:
+        if self.safeRawData:
             self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
         
         
@@ -453,7 +486,7 @@ class ODMRLogic(GenericLogic):
         parameters['Stop Frequency (MHz)'] = self.MW_stop
         parameters['Step size (MHz)'] = self.MW_step
         
-        if self.safeRawData == 1:        
+        if self.safeRawData:        
             raw_data=self.ODMR_raw_data # array cotaining ALL messured data
             data3['count data'] = raw_data #saves the raw data, ALL of it so keep an eye on performance 
             self._save_logic.save_data(data3, filepath3, parameters=parameters,
