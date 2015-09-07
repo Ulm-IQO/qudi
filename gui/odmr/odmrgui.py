@@ -239,6 +239,7 @@ class ODMRGui(GUIBase):
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.reject_settings)
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)        
+        self.reject_settings()
         # Connect stop odmr
         # self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
         self._odmr_logic.signal_ODMR_finished.connect(self.odmr_stopped)
@@ -362,6 +363,7 @@ class ODMRGui(GUIBase):
         """ Write the new settings from the gui to the file. """
         self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
         self._odmr_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
+        self._odmr_logic.safeRawData = self._sd.save_raw_data_box.isChecked()
         
     def update_fit_variable(self, txt):
         self._odmr_logic.current_fit_function = txt
@@ -383,12 +385,11 @@ class ODMRGui(GUIBase):
         self._mw.odmr_fit_results_DisplayWidget.clear()
         self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
         
-        
-
-                
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
         self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
+        self._sd.save_raw_data_box.setChecked(self._odmr_logic.safeRawData)
         
     def mw_stop(self, txt):
         if txt == 'Off':
