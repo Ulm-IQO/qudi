@@ -153,6 +153,13 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['MW_step'] = self.MW_step
         self._statusVariables['RunTime'] = self.RunTime
         self._statusVariables['safeRawData'] = self.safeRawData
+        #self._statusVariables['ODMR_plot_x'] = self.ODMR_plot_x
+        #self._statusVariables['ODMR_plot_y'] = self.ODMR_plot_y
+        #self._statusVariables['ODMR_plot_xy'] = self.ODMR_plot_xy
+        #self._statusVariables['ODMR_fit_x'] = self.ODMR_fit_x
+        #self._statusVariables['ODMR_fit_y'] = self.ODMR_fit_y
+        #self._statusVariables['current_fit_function'] = self.current_fit_function
+        #self._statusVariables['fit_results'] = self.fit_results
 
 
     def set_clock_frequency(self, clock_frequency):
