@@ -19,13 +19,15 @@ class FunctionImplementationError(Exception):
 class SaveLogic(GenericLogic):
     """
     UNSTABLE: Alexander Stark
-    A general class which saves all kind of data in a general sense.
+    A general class which saves all kinds of data in a general sense.
     """
     _modclass = 'savelogic'
     _modtype = 'logic'
     
     ## declare connectors
     _out = {'savelogic': 'SaveLogic'}
+
+    active_poi = None
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
@@ -213,6 +215,14 @@ class SaveLogic(GenericLogic):
             module_name =  mod.__name__.split('.')[-1]  # that will extract the
                                                         # name of the class.
 
+            # get the POI name if one is active
+            if self.active_poi is not None:
+                poi_name = '_' + self.active_poi.get_name()
+                #TODO: this poi_name needs to be parsed to replace spaces with underscores.
+
+            else:
+                poi_name = ''
+
             # check whether the given directory path does exist. If not, the
             # file will be saved anyway in the unspecified directory.
 
@@ -229,15 +239,15 @@ class SaveLogic(GenericLogic):
                 if timestamp is not None:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = timestamp.strftime('%Y-%m-%d_%Hh%Mm%Ss_'+module_name+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+module_name+'.dat')
                     else:
-                        filename = timestamp.strftime('%Y-%m-%d_%Hh%Mm%Ss_'+filelabel+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+filelabel+'.dat')
                 else:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_'+module_name+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+module_name+'.dat')
                     else:
-                        filename = time.strftime('%Y-%m-%d_%Hh%Mm%Ss_'+filelabel+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+filelabel+'.dat')
 
             # open the file
             textfile = open(filepath+self.dir_slash+filename,'w')

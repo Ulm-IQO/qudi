@@ -150,6 +150,7 @@ class PoiManagerLogic(GenericLogic):
     ## declare connectors
     _in = { 'optimizer1': 'OptimizerLogic',
             'scannerlogic': 'ConfocalLogic',
+            'savelogic': 'SaveLogic',
             }
     _out = {'poimanagerlogic': 'PoiManagerLogic'}
 
@@ -192,6 +193,8 @@ class PoiManagerLogic(GenericLogic):
 #        print("Optimizer Logic is", self._optimizer_logic)
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 #        print("Confocal Logic is", self._confocal_logic)
+        self._save_logic = self.connector['in']['savelogic']['object']
+
         
         # initally add crosshair to the pois
         crosshair=PoI(point=[0,0,0], name='crosshair')
@@ -226,6 +229,9 @@ class PoiManagerLogic(GenericLogic):
 
         new_track_point=PoI(point=self._confocal_logic.get_position())
         self.track_point_list[new_track_point.get_key()] = new_track_point
+
+        # Since a new POI has been created, it becomes the active POI to send to save logic for naming in any saved filenames.
+        self._save_logic.active_poi = new_track_point
         
         return new_track_point.get_key()
 
@@ -300,6 +306,9 @@ class PoiManagerLogic(GenericLogic):
             self.logMsg('F. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
+
+        # This is now the active POI to send to save logic for naming in any saved filenames.
+        self._save_logic.active_poi = self.track_point_list[poikey]
             
     def get_last_point(self, poikey = None):
         """ Gets the most recent coordinates of the given poi.
