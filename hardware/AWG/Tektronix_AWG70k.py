@@ -7,7 +7,7 @@ Created on Fri Aug 21 12:31:16 2015
 
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
-from StringIO import StringIO
+from io import StringIO
 import time
 from collections import OrderedDict
 from core.base import Base
@@ -49,12 +49,12 @@ class AWG(Base):
         """
         # connect ethernet socket and FTP        
         self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.connect(self.ip_address, self.port)
+        self.soc.connect((self.ip_address, self.port))
         self.ftp = FTP(self.ip_address)
         self.ftp.login()
         self.ftp.cwd('/waves') # hardcoded default folder
         
-        self.input_buffer = int(2 ** 11)
+        self.input_buffer = int(2 * 1024)
         
         self.connected = True
         
@@ -63,7 +63,7 @@ class AWG(Base):
         '''Tasks that are required to be performed during deactivation of the module.
         '''        
         # Closes the connection to the AWG via ftp and the socket
-        self.soc.send('\n')
+        self.tell('\n')
         self.soc.close()
         self.ftp.close()
 
@@ -87,6 +87,7 @@ class AWG(Base):
         """Send a command string to the AWG."""
         if not command.endswith('\n'): # I always forget the line feed.
             command += '\n'
+        command = bytes(command, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
         self.soc.send(command)
         return
         
@@ -98,11 +99,14 @@ class AWG(Base):
         """
         if not question.endswith('\n'): # I always forget the line feed.
             question += '\n'
+        question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
         self.soc.send(question)    
         time.sleep(1)                   # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
-        message = message.replace('\r\n','')      # cut away the characters\r and \n.
+        message = message.decode('UTF-8') # decode bytes into a python str
+        message = message.replace('\n','')      # cut away the characters\r and \n.
+        message = message.replace('\r','')
         return message
     
     def run(self):
