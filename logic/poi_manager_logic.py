@@ -184,6 +184,9 @@ class PoiManagerLogic(GenericLogic):
                                 
         #locking for thread safety
         self.threadlock = Mutex()
+
+        # A POI is active if the scanner is at that POI
+        self.active_poi = None
                                
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -208,6 +211,9 @@ class PoiManagerLogic(GenericLogic):
         
         # listen for the refocus to finish
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
+
+        # listen for the deactivation of a POI caused by moving to a different position
+        self._confocal_logic.signal_deactivate_poi.connect(self._deactivate_poi)
                 
         self.testing()
         
@@ -230,8 +236,9 @@ class PoiManagerLogic(GenericLogic):
         new_track_point=PoI(point=self._confocal_logic.get_position())
         self.track_point_list[new_track_point.get_key()] = new_track_point
 
-        # Since a new POI has been created, it becomes the active POI to send to save logic for naming in any saved filenames.
-        self._save_logic.active_poi = new_track_point
+        # Since POI was created at current scanner position, it automatically becomes the active POI.
+
+        self.set_active_poi( poi = new_track_point)
         
         return new_track_point.get_key()
 
@@ -301,14 +308,14 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             self._current_poi_key = poikey
             x,y,z = self.track_point_list[poikey].get_last_point()
-            self._confocal_logic.set_position(x=x, y=y, z=z)
+            self._confocal_logic.set_position(x=x, y=y, z=z, deactivate_poi = False)
         else:
             self.logMsg('F. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
             return -1
 
         # This is now the active POI to send to save logic for naming in any saved filenames.
-        self._save_logic.active_poi = self.track_point_list[poikey]
+        self.set_active_poi(poi = self.track_point_list[poikey])
             
     def get_last_point(self, poikey = None):
         """ Gets the most recent coordinates of the given poi.
@@ -377,7 +384,15 @@ class PoiManagerLogic(GenericLogic):
                 
         if poikey != None and name != None and poikey in self.track_point_list.keys():
             self.signal_poi_updated.emit()
-            return self.track_point_list[poikey].set_name(name=name)
+
+            success = self.track_point_list[poikey].set_name(name=name)
+
+            # if this is the active POI then we need to update poi tag in savelogic
+            if self.track_point_list[poikey] == self.active_poi:
+                self.update_poi_tag_in_savelogic()
+
+            return success
+
         else:
             self.logMsg('AAAThe given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
@@ -552,3 +567,34 @@ class PoiManagerLogic(GenericLogic):
         self.track_point_list[sample._key] = sample
         
         self.signal_poi_updated.emit()
+
+
+    def set_active_poi(self, poi = None):
+        """
+        Set the active POI object.
+        """
+        
+        # If poikey gives the current active POI then we don't do anything
+        if poi == self.active_poi:
+            return
+        else:
+
+            self.active_poi = poi
+
+            self.update_poi_tag_in_savelogic()
+
+        
+        
+        
+
+    def _deactivate_poi(self):
+        self.set_active_poi(poi = None)
+
+    def update_poi_tag_in_savelogic(self):
+        
+        if self.active_poi != None:
+            self._save_logic.active_poi_name = self.active_poi.get_name()
+        else:
+            self._save_logic.active_poi_name = ''
+
+
