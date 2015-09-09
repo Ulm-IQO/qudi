@@ -322,7 +322,8 @@ class OptimizerLogic(GenericLogic):
                 self._confocal_logic.set_position(x = self.refocus_x, 
                                                   y = self.refocus_y, 
                                                   z = self.refocus_z, 
-                                                  a = 0.)
+                                                  a = 0.,
+                                                  deactivate_poi = False)
                                               
             self.signal_refocus_finished.emit()
         

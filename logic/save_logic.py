@@ -27,7 +27,6 @@ class SaveLogic(GenericLogic):
     ## declare connectors
     _out = {'savelogic': 'SaveLogic'}
 
-    active_poi = None
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
@@ -39,6 +38,9 @@ class SaveLogic(GenericLogic):
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
+        
+        # name of active POI, default to empty string   
+        self.active_poi_name = ''
 
         # Some default variables concerning the operating system:
         self.os_system = None
@@ -215,13 +217,6 @@ class SaveLogic(GenericLogic):
             module_name =  mod.__name__.split('.')[-1]  # that will extract the
                                                         # name of the class.
 
-            # get the POI name if one is active
-            if self.active_poi is not None:
-                poi_name = '_' + self.active_poi.get_name()
-                #TODO: this poi_name needs to be parsed to replace spaces with underscores.
-
-            else:
-                poi_name = ''
 
             # check whether the given directory path does exist. If not, the
             # file will be saved anyway in the unspecified directory.
@@ -231,7 +226,12 @@ class SaveLogic(GenericLogic):
                 self.logMsg('No Module name specified! Please correct this! '
                             'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.',
                             msgType='warning', importance=7)
-
+            
+            # Produce a filename tag from the active POI name
+            if self.active_poi_name == '':
+                poi_tag = ''
+            else:
+                poi_tag = '_'+self.active_poi_name.replace(" ","_")
 
             # create a unique name for the file, if no name was passed:
             if filename is None:
@@ -239,15 +239,15 @@ class SaveLogic(GenericLogic):
                 if timestamp is not None:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+module_name+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+module_name+'.dat')
                     else:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+filelabel+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+filelabel+'.dat')
                 else:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+module_name+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+module_name+'.dat')
                     else:
-                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_name+'_'+filelabel+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+filelabel+'.dat')
 
             # open the file
             textfile = open(filepath+self.dir_slash+filename,'w')
@@ -260,6 +260,10 @@ class SaveLogic(GenericLogic):
             textfile.write('# Parameters:\n')
             textfile.write('# ===========\n')
             textfile.write('#\n')
+
+            # Include the active POI name (if not empty) as a parameter in the header 
+            if self.active_poi_name != '':
+                textfile.write('# Measured at POI: '+self.active_poi_name+'\n')
 
 
             if parameters != None:
