@@ -476,14 +476,14 @@ class ModuleListItem(QtGui.QFrame):
         """ Get the state of this module and display it in the statusLabel
         """
         state = ''
-        try:
-            if self.base in self.manager.tree['loaded'] and self.name in self.manager.tree['loaded'][self.base]:
-                state = self.manager.tree['loaded'][self.base][self.name].getState()
-            else:
-                state = 'not loaded'
-        except:
-            self.manager.logger.logExc('Exception while querying module state.')
-            state = 'exception, cannot get state'
+        if self.statusLabel.text() != 'exception, cannot get state':
+            try:
+                if self.base in self.manager.tree['loaded'] and self.name in self.manager.tree['loaded'][self.base]:
+                    state = self.manager.tree['loaded'][self.base][self.name].getState()
+                else:
+                    state = 'not loaded'
+            except:
+                state = 'exception, cannot get state'
         
-        self.statusLabel.setText(state)
+            self.statusLabel.setText(state)
 
