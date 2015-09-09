@@ -28,6 +28,7 @@ class TaskRunner(GenericLogic):
     """
     _modclass = 'TaskRunner'
     _modtype = 'Logic'
+    _out = {'runner': 'TaskRunner'}
 
     def __init__(self, manager, name, configuation, **kwargs):
         """ Initialzize a logic module.
@@ -41,12 +42,13 @@ class TaskRunner(GenericLogic):
         super().__init__(manager, name, configuation, callbacks, **kwargs)
 
     def activation(self, e):
-        self._tasks.rowsInserted.connect(self.modelChanged)
-        self._tasks.rowsRemoved.connect(self.modelChanged)
+        #self._tasks.rowsInserted.connect(self.modelChanged)
+        #self._tasks.rowsRemoved.connect(self.modelChanged)
+        pass
 
     def deactivation(self, e):
         pass
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
-        print('Inserted into task list: {} {}'.format(first, last) )
+        print('Inserted into task list: {} {}'.format(first, last))
