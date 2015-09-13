@@ -213,7 +213,7 @@ class PoiManagerLogic(GenericLogic):
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_done, QtCore.Qt.QueuedConnection)
 
         # listen for the deactivation of a POI caused by moving to a different position
-        self._confocal_logic.signal_deactivate_poi.connect(self._deactivate_poi)
+        self._confocal_logic.signal_moved_to_arbitrary_position.connect(self._deactivate_poi)
                 
         self.testing()
         
@@ -574,7 +574,7 @@ class PoiManagerLogic(GenericLogic):
         Set the active POI object.
         """
         
-        # If poikey gives the current active POI then we don't do anything
+        # If poi is the current active POI then we don't do anything
         if poi == self.active_poi:
             return
         else:
@@ -583,8 +583,6 @@ class PoiManagerLogic(GenericLogic):
 
             self.update_poi_tag_in_savelogic()
 
-        
-        
         
 
     def _deactivate_poi(self):

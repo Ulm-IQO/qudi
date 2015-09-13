@@ -29,7 +29,7 @@ class ConfocalLogic(GenericLogic):
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal()
 
-    signal_deactivate_poi = QtCore.Signal() #used by POI manager 
+    signal_moved_to_arbitrary_position = QtCore.Signal() #used by POI manager 
     
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -383,7 +383,7 @@ class ConfocalLogic(GenericLogic):
         return 0
 
 
-    def set_position(self, x = None, y = None, z = None, a = None, deactivate_poi = True):
+    def set_position(self, x = None, y = None, z = None, a = None, arbitrary = True):
         """Forwarding the desired new position from the GUI to the scanning device.
 
         @param float x: if defined, changes to postion in x-direction (microns)
@@ -410,8 +410,8 @@ class ConfocalLogic(GenericLogic):
         else:
             self.signal_change_position.emit()
 
-            if deactivate_poi:
-                self.signal_deactivate_poi.emit()
+            if arbitrary:
+                self.signal_moved_to_arbitrary_position.emit()
 
             return 0
 
