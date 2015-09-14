@@ -402,7 +402,7 @@ class ConfocalLogic(GenericLogic):
             self._current_z = z
 
         print("set_position was called")
-        print(deactivate_poi)
+        print(arbitrary)
 
         #Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
