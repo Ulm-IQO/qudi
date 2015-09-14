@@ -308,7 +308,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey != None and poikey in self.track_point_list.keys():
             self._current_poi_key = poikey
             x,y,z = self.track_point_list[poikey].get_last_point()
-            self._confocal_logic.set_position(x=x, y=y, z=z, deactivate_poi = False)
+            self._confocal_logic.set_position(x=x, y=y, z=z, arbitrary = False)
         else:
             self.logMsg('F. The given POI ({}) does not exist.'.format(poikey), 
                 msgType='error')
