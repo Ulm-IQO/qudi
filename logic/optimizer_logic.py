@@ -59,8 +59,6 @@ class OptimizerLogic(GenericLogic):
         self.stopRequested = False
         self.is_crosshair = True
 
-        self.refocusTask = InterruptableTask('optimize', self.start_refocus)
-                       
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         @param e: error code
