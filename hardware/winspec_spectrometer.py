@@ -102,12 +102,12 @@ class WinSpec32(Base, SpectrometerInterface):
             print("Could not initiate acquisition.")
             return {'wavelength': [0], 'intensity': [0]}
 
-    def saveSpectrum(self, path, prefix = ''):
+    def saveSpectrum(self, path, postfix = ''):
         w32c.pythoncom.CoInitialize()
         timestr = strftime("_%Y-%m-%d_%H%M%S", gmtime())
         self.WinspecDoc.SetParam(
             WinSpecLib.DM_FILENAME,
-            str(path) + str(prefix) + timestr + ".spe"
+            str(path) +timestr + str(postfix) + ".spe"
         )
         #print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
         self.WinspecDoc.Save()
