@@ -22,7 +22,7 @@ import visa
 import time
 from core.base import Base
 from core.util.mutex import Mutex
-from .LaserSwitchInterface import LaserSwitchInterface
+from .laser_switch_interface import LaserSwitchInterface
 
 class HBridge(Base, LaserSwitchInterface):
     """ Methods to control slow laser switching devices.
@@ -33,17 +33,19 @@ class HBridge(Base, LaserSwitchInterface):
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
+        Base.__init__(self, manager, name, config,  c_dict)
         self.lock = Mutex()
 
     def activation(self, e):
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
-        self.inst = visa.SerialInstrument(
+        self.rm = visa.ResourceManager()
+        self.inst = self.rm.open_resource(
                 config['interface'],
-                baud_rate = 9600,
-                term_chars='\r\n',
+                baud_rate=9600,
+                write_termination='\r\n',
+                read_termination='\r\n',
                 timeout=10,
                 send_end=True
         )
