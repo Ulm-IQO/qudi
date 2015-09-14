@@ -22,7 +22,7 @@ import visa
 import time
 from core.base import Base
 from core.util.mutex import Mutex
-from .LaserSwitchInterface import LaserSwitchInterface
+from .laser_switch_interface import LaserSwitchInterface
 
 class FlipMirror(Base, LaserSwitchInterface):
     """ This class is implements communication with the Radiant Dyes flip mirror driver
@@ -41,8 +41,10 @@ class FlipMirror(Base, LaserSwitchInterface):
           @param dict kwargs: aditional parameters in a dict
         """
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
+        Base.__init__(self, manager, name, config, c_dict)
         self.lock = Mutex()
+        print(config)
+        print(self._configuration)
 
     def activation(self, e):
         """ Prepare module, connect to hardware.
@@ -52,10 +54,12 @@ class FlipMirror(Base, LaserSwitchInterface):
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
-        self.inst = visa.SerialInstrument(
+        self.rm = visa.ResourceManager()
+        self.inst = self.rm.open_resource(
                 config['interface'],
-                baud_rate = 115200,
-                term_chars='\r\n',
+                baud_rate=115200,
+                write_termination='\r\n',
+                read_termination='\r\n',
                 timeout=10,
                 send_end=True
         )
@@ -66,6 +70,7 @@ class FlipMirror(Base, LaserSwitchInterface):
           @param e: Fysom stae change notification.
         """
         self.inst.close()
+        self.rm.close()
 
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.

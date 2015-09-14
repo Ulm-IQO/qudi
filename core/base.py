@@ -47,7 +47,7 @@ class Base(QtCore.QObject, Fysom):
     _in = dict()
     _out = dict()
 
-    def __init__(self, manager, name, configuration = {}, callbacks = {}, **kwargs):
+    def __init__(self, manager, name, configuration={}, callbacks={}, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
           @param object self: tthe object being initialised
