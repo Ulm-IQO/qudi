@@ -539,7 +539,7 @@ class SaveLogic(GenericLogic):
         If the daily directory does not exits in the specified <root_dir> path
         in the config file, then it is created according to the following scheme:
 
-            <root_dir>\<year>\<month>\<day>
+            <root_dir>\<year>\<month>\<yearmonthday>
 
         and the filepath is returned. There should be always a filepath
         returned.
