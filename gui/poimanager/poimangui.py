@@ -146,6 +146,11 @@ class PoiMark(pg.CircleROI):
             self.viewwidget=viewwidget
         self.viewwidget.removeItem(self.label)
         self.viewwidget.removeItem(self)
+
+    def set_position(self, pos=None):
+        if not pos is None:
+            self.position=pos # This is the POI pos, so the centre of the marker circle.
+        
         
     def select(self):
         self.selected = True
@@ -668,7 +673,7 @@ class PoiManagerGui(GUIBase):
                 position=position[:2]
                 
                 if key in self._markers.keys():
-                    self._markers[key].setPos(position)                    
+                    self._markers[key].set_position(position)                    
                     self._markers[key].deselect()
                 else:
                     # Create Region of Interest as marker:
