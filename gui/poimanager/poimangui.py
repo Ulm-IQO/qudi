@@ -664,7 +664,7 @@ class PoiManagerGui(GUIBase):
         
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
-                position=self._poi_manager_logic.get_last_point(poikey=key)
+                position=self._poi_manager_logic.get_poi_position(poikey=key)
                 position=position[:2]
                 
                 if key in self._markers.keys():
@@ -685,7 +685,7 @@ class PoiManagerGui(GUIBase):
                     
                 if key == curkey:
                     self._markers[key].select()
-                    cur_poi_pos=self._poi_manager_logic.get_last_point(poikey=curkey)
+                    cur_poi_pos=self._poi_manager_logic.get_poi_position(poikey=curkey)
                     self._mw.poi_coords_label.setText('({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
                 
 
