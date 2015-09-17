@@ -33,7 +33,6 @@ import datetime
 class ODMRLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for ODMR.
-    known issue: after running odmr device stay in cw mode, despide gui displaying off (Matze)
     """
     _modclass = 'odmrlogic'
     _modtype = 'logic'
@@ -261,8 +260,8 @@ class ODMRLogic(GenericLogic):
         '''
         if self.stopRequested:
             with self.threadlock:
-                self.MW_off()
                 self._MW_device.set_cw(f=self.MW_frequency,power=self.MW_power)
+                self.MW_off()
                 self.kill_ODMR()
                 self.stopRequested = False
                 self.unlock()
