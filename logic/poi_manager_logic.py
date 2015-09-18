@@ -43,7 +43,7 @@ class PoI(object):
         self._position_time_trace=[]
 
         # Other general information parameters for the POI.
-        self._name = time.strftime('Point_%Y%m%d_%M%S')
+        self._name = time.strftime('poi_%Y%m%d_%H%M%S')
         self._key = str(self._name)
         self._creation_time = time.time()
         
@@ -57,8 +57,8 @@ class PoI(object):
 
     def set_coords_in_sample(self, coords = None):
         '''Defines the position of the poi relative to the sample, 
-        allowing a sample map to be constructed.  Once set, this 
-        "pos in sample" will not be altered unless the user wants to 
+        allowing a sample map to be constructed.  Once set, these
+        "coordinates in sample" will not be altered unless the user wants to 
         manually redefine this POI (for example, they put the POI in 
         the wrong place).
         '''
@@ -271,7 +271,9 @@ class PoiManagerLogic(GenericLogic):
         Also crosshair and sample are included.
         """
         
-        return self.track_point_list.keys()
+        return sorted(self.track_point_list.keys())
+
+        # TODO: Find a way to return a list of POI keys sorted in order of the POI names.
             
     def delete_poi(self,poikey = None):   
         """ Completely deletes the whole given poi.
@@ -356,22 +358,6 @@ class PoiManagerLogic(GenericLogic):
                 msgType='error')
             return [-1.,-1.,-1.]
                 
-    def get_name(self, poikey = None):
-        """ Gets the name of the given poi.
-
-        FIXME: This is the same name as a method in the POI class.  Do we need both?  The user can already do track_point_list[poikey].get_name()
-        
-        @param string poikey: the key of the poi
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        
-        if poikey != None and poikey in self.track_point_list.keys():
-            return self.track_point_list[poikey].get_name()
-        else:
-            self.logMsg('H. The given POI ({}) does not exist.'.format(poikey), 
-                msgType='error')
-            return -1
                 
     def set_new_position(self, poikey = None, point = None):
         """ Adds another point to the trace of the given poi.
@@ -399,7 +385,7 @@ class PoiManagerLogic(GenericLogic):
             msgType='error')
         return -1
             
-    def set_name(self, poikey = None, name = None):
+    def rename_poi(self, poikey = None, name = None):
         """ Sets the name of the given poi.
         
         @param string poikey: the key of the poi
