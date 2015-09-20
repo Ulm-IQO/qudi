@@ -19,7 +19,7 @@ import comtypes.client as ctc
 import win32com.client as w32c
 from win32com.client import constants
 from ctypes import byref, pointer, c_long, c_float, c_bool
-from time import strftime, gmtime
+from time import strftime, localtime
 
 ctc.GetModule( ('{1A762221-D8BA-11CF-AFC2-508201C10000}', 3, 11) )
 import comtypes.gen.WINX32Lib as WinSpecLib
@@ -64,13 +64,13 @@ class WinSpec32(Base, SpectrometerInterface):
             if self.status != 0:
                 print('Error running experiment.')
 
-            timestr = strftime("_%Y-%m-%d_%H%M%S", gmtime())
-            self.WinspecDoc.SetParam(
-                WinSpecLib.DM_FILENAME,
-                str(self.path) + str(self.prefix) + timestr + ".spe"
-                )
-            #print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
-            self.WinspecDoc.Save()
+            #timestr = strftime("_%Y-%m-%d_%H%M%S", localtime())
+            #self.WinspecDoc.SetParam(
+            #    WinSpecLib.DM_FILENAME,
+            #    str(self.path) + str(self.prefix) + timestr + ".spe"
+            #    )
+            ##print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
+            #self.WinspecDoc.Save()
 
             """
                 Pass a pointer to Winspec so it can put the spectrum in a place in
@@ -104,12 +104,12 @@ class WinSpec32(Base, SpectrometerInterface):
 
     def saveSpectrum(self, path, postfix = ''):
         w32c.pythoncom.CoInitialize()
-        timestr = strftime("_%Y-%m-%d_%H%M%S", gmtime())
+        timestr = strftime("%Y%m%d-%H%M-%S_", localtime())
         self.WinspecDoc.SetParam(
             WinSpecLib.DM_FILENAME,
-            str(path) +timestr + str(postfix) + ".spe"
+            str(path) + timestr + str(postfix) + ".spe"
         )
-        #print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
+        print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
         self.WinspecDoc.Save()
 
     def getExposure(self):
