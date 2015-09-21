@@ -37,10 +37,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
     sigExecutionStarted = QtCore.Signal()
     sigExecutionFinished = QtCore.Signal()
 
-    def __init__(self, name, function, args=[], kwargs={}):
+    def __init__(self, name, runner, args=[], kwargs={}):
         QtCore.QObject.__init__(self)
         _default_callbacks = {'run': self._run, 'pause': self._pause, 'resume': self._resume, 'finish': self._finish}
-        _stateList = {
+        _stateDict = {
             'initial': 'stopped',
             'events': [
                 {'name': 'run', 'src': 'stopped', 'dst': 'running'},
@@ -50,13 +50,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
             ],
             'callbacks': _default_callbacks
         }
-        Fysom.__init__(self)
+        Fysom.__init__(self, _stateDict)
         self.lock = Mutex()
         self.name = name
-        self.func = function
         self.args = args
         self.interruptable = False
         self.success = False
+        self.taskRunner = runner
 
     def makeInterruptable(self, pausefunction, resumefunction):
         if callable(self.pausefunction) and callable(resumefunction):
@@ -67,12 +67,11 @@ class InterruptableTask(QtCore.QObject, Fysom):
     def _run(self, e):
         self.result = TaskResult()
         try:
-            if callable(self.function):
-                 self.function(*self.args, **self.kwargs)
-            else:
-               self.result.update(None, False)
+            self.startTasklet()
+            self.sigStarted.emit()
+            self.sig
         except Exception as e:
-            self.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
             
                 
@@ -83,7 +82,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             else:
                self.result.update(None, False)
         except Exception as e:
-            self.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
  
         self.sigPaused.emit()
