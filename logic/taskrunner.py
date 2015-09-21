@@ -23,6 +23,30 @@ from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 from core.util.models import ListTableModel
 
+class TaskListTableModel(ListTableModel):
+
+    def __init__(self):
+        super().__init__()
+        self.headers = ['Task Name']
+
+    def data(self, index, role):
+        """ Get data from model for a given cell. Data can have a role that affects display.
+
+          @param QModelIndex index: cell for which data is requested
+          @param ItemDataRole role: role for which data is requested
+
+          @return QVariant: data for given cell and role
+        """
+        if not index.isValid():
+            return None
+        elif role == QtCore.Qt.DisplayRole:
+            if index.column() == 0:
+               return self.storage[index.row()].name
+            else:
+                return None
+        else:
+            return Non
+
 class TaskRunner(GenericLogic):
     """A generic logic interface class.
     """
@@ -42,9 +66,9 @@ class TaskRunner(GenericLogic):
         super().__init__(manager, name, configuation, callbacks, **kwargs)
 
     def activation(self, e):
-        #self._tasks.rowsInserted.connect(self.modelChanged)
-        #self._tasks.rowsRemoved.connect(self.modelChanged)
-        pass
+        self.model = TaskListTableModel()
+        self.model.rowsInserted.connect(self.modelChanged)
+        self.model.rowsRemoved.connect(self.modelChanged)
 
     def deactivation(self, e):
         pass
@@ -52,3 +76,4 @@ class TaskRunner(GenericLogic):
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
         print('Inserted into task list: {} {}'.format(first, last))
+
