@@ -512,7 +512,7 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_ComboBox.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
-                self._mw.active_poi_ComboBox.addItem(self._poi_manager_logic.get_name(poikey=key), key)
+                self._mw.active_poi_ComboBox.addItem(self._poi_manager_logic.track_point_list[key].get_name(), key)
 
 
     def change_poi_name(self):
@@ -524,7 +524,7 @@ class PoiManagerGui(GUIBase):
         newname=self._mw.poi_name_LineEdit.text()
 
 
-        self._poi_manager_logic.set_name(poikey=key, name=newname)
+        self._poi_manager_logic.rename_poi(poikey=key, name=newname)
 
         self.population_poi_list()
 
