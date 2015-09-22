@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -58,14 +58,14 @@
      <property name="title">
       <string>Toolbars</string>
      </property>
-     <addaction name="actionCofocal_Toolbar"/>
+     <addaction name="actionScan_Toolbar"/>
      <addaction name="actionUtil_Toolbar"/>
     </widget>
     <addaction name="actionXY_scan_view"/>
     <addaction name="actionDepth_scan_view"/>
     <addaction name="actionScan_control_view"/>
     <addaction name="actionOptimizer_view"/>
-    <addaction name="actionTilt_correction"/>
+    <addaction name="actionTilt_correction_view"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
     <addaction name="separator"/>
@@ -73,14 +73,7 @@
     <addaction name="separator"/>
     <addaction name="optimizer_only_view_Action"/>
    </widget>
-   <widget class="QMenu" name="menu_Tools">
-    <property name="title">
-     <string>&amp;Tools</string>
-    </property>
-    <addaction name="action_Tiltcorrection"/>
-   </widget>
    <addaction name="menuFile"/>
-   <addaction name="menu_Tools"/>
    <addaction name="menuView"/>
    <addaction name="menu_Options"/>
   </widget>
@@ -1486,9 +1479,9 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="scan_ToolBar">
    <property name="windowTitle">
-    <string>Scaning toolbar</string>
+    <string>Scan toolbar</string>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -1509,9 +1502,9 @@
    <addaction name="action_loop_scan_depth"/>
    <addaction name="action_optimize_position"/>
   </widget>
-  <widget class="QToolBar" name="toolBar_2">
+  <widget class="QToolBar" name="util_ToolBar">
    <property name="windowTitle">
-    <string>toolBar_2</string>
+    <string>Utilities Toolbar</string>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -1520,7 +1513,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_zoom"/>
-   <addaction name="action_optimize_position"/>
+   <addaction name="action_Tiltcorrection"/>
   </widget>
   <widget class="QDockWidget" name="tilt_correction_dockWidget">
    <property name="enabled">
@@ -2145,7 +2138,7 @@
     <string>Switch between x- and y- depth scan</string>
    </property>
   </action>
-  <action name="actionCofocal_Toolbar">
+  <action name="actionScan_Toolbar">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -2153,7 +2146,10 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Cofocal Toolbar</string>
+    <string>Scan Toolbar</string>
+   </property>
+   <property name="toolTip">
+    <string>This toolbar contains all the scan actions that let you record images in the confocal microscope</string>
    </property>
   </action>
   <action name="actionUtil_Toolbar">
@@ -2175,7 +2171,7 @@
     <string>&amp;Use Tiltcorrection</string>
    </property>
   </action>
-  <action name="actionTilt_correction">
+  <action name="actionTilt_correction_view">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -2359,9 +2355,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionCofocal_Toolbar</sender>
+   <sender>actionScan_Toolbar</sender>
    <signal>triggered(bool)</signal>
-   <receiver>toolBar</receiver>
+   <receiver>scan_ToolBar</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2377,7 +2373,7 @@
   <connection>
    <sender>actionUtil_Toolbar</sender>
    <signal>triggered(bool)</signal>
-   <receiver>toolBar_2</receiver>
+   <receiver>util_ToolBar</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2391,7 +2387,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionTilt_correction</sender>
+   <sender>actionTilt_correction_view</sender>
    <signal>triggered(bool)</signal>
    <receiver>tilt_correction_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -2403,6 +2399,54 @@
     <hint type="destinationlabel">
      <x>1124</x>
      <y>844</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>scan_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionScan_Toolbar</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>471</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>util_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionUtil_Toolbar</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1145</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tilt_correction_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionTilt_correction_view</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1197</x>
+     <y>881</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>
