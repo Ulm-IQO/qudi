@@ -27,8 +27,16 @@
     <property name="title">
      <string>View</string>
     </property>
+    <widget class="QMenu" name="menuToolbars">
+     <property name="title">
+      <string>Toolbars</string>
+     </property>
+     <addaction name="counting_controls_view_Action"/>
+    </widget>
     <addaction name="slow_counter_view_Action"/>
-    <addaction name="slow_counter_control_view_Action"/>
+    <addaction name="slow_counter_parameters_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
     <addaction name="separator"/>
     <addaction name="restore_default_view_Action"/>
    </widget>
@@ -67,7 +75,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="slow_counter_control_DockWidget">
+  <widget class="QDockWidget" name="slow_counter_parameters_DockWidget">
    <property name="maximumSize">
     <size>
      <width>524287</width>
@@ -161,9 +169,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     </layout>
    </widget>
   </widget>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="counting_control_ToolBar">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Counting Controls</string>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -218,20 +226,25 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>Show the Slow counter</string>
    </property>
   </action>
-  <action name="slow_counter_control_view_Action">
+  <action name="slow_counter_parameters_view_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Slow counter control</string>
+    <string>Slow counter parameters</string>
    </property>
    <property name="toolTip">
-    <string>Show Slow counter control</string>
+    <string>Show Slow counter parameters</string>
    </property>
   </action>
   <action name="restore_default_view_Action">
    <property name="text">
     <string>Restore default</string>
+   </property>
+  </action>
+  <action name="counting_controls_view_Action">
+   <property name="text">
+    <string>Counting controls</string>
    </property>
   </action>
  </widget>
@@ -277,9 +290,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </hints>
   </connection>
   <connection>
-   <sender>slow_counter_control_view_Action</sender>
+   <sender>slow_counter_parameters_view_Action</sender>
    <signal>triggered(bool)</signal>
-   <receiver>slow_counter_control_DockWidget</receiver>
+   <receiver>slow_counter_parameters_DockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -293,9 +306,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </hints>
   </connection>
   <connection>
-   <sender>slow_counter_control_DockWidget</sender>
+   <sender>slow_counter_parameters_DockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>slow_counter_control_view_Action</receiver>
+   <receiver>slow_counter_parameters_view_Action</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -305,6 +318,38 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>counting_controls_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>counting_control_ToolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>counting_control_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>counting_controls_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>399</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>455</y>
     </hint>
    </hints>
   </connection>
