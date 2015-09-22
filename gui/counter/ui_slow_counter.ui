@@ -29,6 +29,8 @@
     </property>
     <addaction name="slow_counter_view_Action"/>
     <addaction name="slow_counter_control_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
@@ -225,6 +227,11 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
    <property name="toolTip">
     <string>Show Slow counter control</string>
+   </property>
+  </action>
+  <action name="restore_default_view_Action">
+   <property name="text">
+    <string>Restore default</string>
    </property>
   </action>
  </widget>

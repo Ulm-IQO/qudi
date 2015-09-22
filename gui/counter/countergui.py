@@ -103,6 +103,10 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.valueChanged.connect( self.count_length_changed )
         self._mw.count_freq_SpinBox.valueChanged.connect( self.count_frequency_changed )
         self._mw.oversampling_SpinBox.valueChanged.connect( self.oversampling_changed )
+            
+        # Connect the default view action
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+
 
         #####################
         # starting the physical measurement
@@ -189,3 +193,18 @@ class CounterGui(GUIBase):
         """
         self._counting_logic.set_counting_samples(samples=self._mw.oversampling_SpinBox.value())
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
+
+    def restore_default_view(self):
+        """ Restore the arrangement of DockWidgets to the default
+        """
+        # Show any hidden dock widgets
+        self._mw.counter_trace_DockWidget.show()
+        self._mw.slow_counter_control_DockWidget.show()
+
+        # re-dock any floating dock widgets
+        self._mw.counter_trace_DockWidget.setFloating(False)
+        self._mw.slow_counter_control_DockWidget.setFloating(False)
+        
+        # Arrange docks widgets
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_control_DockWidget)
