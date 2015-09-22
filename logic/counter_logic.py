@@ -224,6 +224,11 @@ class CounterLogic(GenericLogic):
             self._data_to_save=[]
             self._saving_start_time=time.time()
         self._saving=True
+
+        # If the counter is not running, then it should start running so there is data to save
+        if self.isstate('idle'):
+            self.startCount()
+
         return 0
 
     def save_data(self, save=True):
