@@ -404,8 +404,8 @@ class ConfocalLogic(GenericLogic):
         if z != None:
             self._current_z = z
 
-        print("set_position was called")
-        print(arbitrary)
+        # print("set_position was called")
+        # print(arbitrary)
 
         #Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
