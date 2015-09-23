@@ -114,6 +114,9 @@ class ConfocalLogic(GenericLogic):
         self._tiltreference_y = 0.5*(self.y_range[0] + self.y_range[1])
         self._tilt_variable_ax = 0.
         self._tilt_variable_ay = 0.
+        self.point1 = np.array((0, 0, 0))
+        self.point2 = np.array((0, 0, 0))
+        self.point3 = np.array((0, 0, 0))
 
         # Sets connections between signals and functions
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
