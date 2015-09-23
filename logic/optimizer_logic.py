@@ -43,7 +43,7 @@ class OptimizerLogic(GenericLogic):
                                 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
-        self._clock_frequency = 200
+        self._clock_frequency = 50
         self.return_slowness = 20
         
         #setting standard parameter for refocus
