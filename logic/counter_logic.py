@@ -231,7 +231,7 @@ class CounterLogic(GenericLogic):
 
         return 0
 
-    def save_data(self, save=True):
+    def save_data(self, save=True, postfix=''):
         """ Save the counter trace data and writes it to a file.
 
         @return int: error code (0:OK, -1:error)
@@ -242,7 +242,7 @@ class CounterLogic(GenericLogic):
         if save:
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
             datetime
-            filelabel = 'count_trace'
+            filelabel = 'count_trace'+postfix
 
             # prepare the data in a dict or in an OrderedDict:
             data = OrderedDict()
