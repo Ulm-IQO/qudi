@@ -38,25 +38,34 @@
     <property name="title">
      <string>Menu</string>
     </property>
-    <addaction name="actionNew_ROI"/>
-    <addaction name="actionOpen_ROI"/>
-    <addaction name="actionSave_ROI"/>
+    <addaction name="new_roi_Action"/>
+    <addaction name="open_roi_Action"/>
+    <addaction name="save_roi_Action"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionROI_Map_view"/>
-    <addaction name="actionPOI_Editor_view"/>
-    <addaction name="actionPOI_Tracker_view"/>
-    <addaction name="actionSample_shfit_view"/>
+    <widget class="QMenu" name="menuToolbars">
+     <property name="title">
+      <string>Toolbars</string>
+     </property>
+     <addaction name="roi_management_view_Action"/>
+     <addaction name="poi_tools_view_Action"/>
+    </widget>
+    <addaction name="roi_map_view_Action"/>
+    <addaction name="poi_editor_view_Action"/>
+    <addaction name="poi_tracker_view_Action"/>
+    <addaction name="sample_shift_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
    </widget>
    <addaction name="menuMenu"/>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QToolBar" name="roi_ToolBar">
+  <widget class="QToolBar" name="roi_management_ToolBar">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>ROI management</string>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -67,7 +76,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionNew_ROI"/>
+   <addaction name="new_roi_Action"/>
    <addaction name="separator"/>
   </widget>
   <widget class="QDockWidget" name="poi_editor_dockWidget">
@@ -94,7 +103,7 @@
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Select:</string>
+          <string>POI:</string>
          </property>
         </widget>
        </item>
@@ -108,6 +117,9 @@
          </property>
          <property name="editable">
           <bool>false</bool>
+         </property>
+         <property name="insertPolicy">
+          <enum>QComboBox::InsertAlphabetically</enum>
          </property>
         </widget>
        </item>
@@ -135,13 +147,6 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="delete_poi_PushButton">
-       <property name="text">
-        <string>Delete POI</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QLabel" name="label_9">
        <property name="font">
         <font>
@@ -163,6 +168,33 @@
        </property>
        <property name="textInteractionFlags">
         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton">
+       <property name="toolTip">
+        <string>Set a new position for a named POI, without updating the sample shift (so no movement of any other POIs).  For example, if a POI has been accidentally placed incorrectly.</string>
+       </property>
+       <property name="text">
+        <string>Move POI</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="manual_update_poi_PushButton">
+       <property name="toolTip">
+        <string>Manually specify a new position for a known trackpoint, and update the sample shift accordingly. For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
+       </property>
+       <property name="text">
+        <string>Manual update position</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="delete_poi_PushButton">
+       <property name="text">
+        <string>Delete POI</string>
        </property>
       </widget>
      </item>
@@ -195,55 +227,59 @@
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_7">
-       <item>
-        <widget class="QPushButton" name="goto_poi_PushButton">
-         <property name="text">
-          <string>Go to POI</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </item>
-     <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QPushButton" name="refind_poi_PushButton">
-         <property name="text">
-          <string>Refind POI</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>using</string>
+          <string>Refind using:</string>
          </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="refind_method_ComboBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <item>
+          <property name="text">
+           <string>position optimisation</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>offset anchor</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
      </item>
      <item>
-      <widget class="QComboBox" name="refind_method_ComboBox">
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
        <item>
-        <property name="text">
-         <string>position optimisation</string>
-        </property>
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>anchor: </string>
+         </property>
+        </widget>
        </item>
-      </widget>
+       <item>
+        <widget class="QComboBox" name="offset_anchor_ComboBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -253,7 +289,7 @@
           <string>Move crosshair to updated POI position afterwards.</string>
          </property>
          <property name="text">
-          <string>Follow</string>
+          <string>Crosshair follows POI</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -276,35 +312,18 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_8">
-       <item>
-        <spacer name="horizontalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="QPushButton" name="delete_last_pos_Button">
-         <property name="text">
-          <string>Delete last position</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_11">
        <item>
-        <widget class="QCheckBox" name="periodic_update_CheckBox">
+        <widget class="QCheckBox" name="periodic_refind_CheckBox">
          <property name="text">
-          <string>Refind every</string>
+          <string>Track (refind every</string>
          </property>
         </widget>
        </item>
@@ -327,7 +346,7 @@
        <item>
         <widget class="QLabel" name="label_6">
          <property name="text">
-          <string>seconds</string>
+          <string>seconds)</string>
          </property>
         </widget>
        </item>
@@ -347,14 +366,47 @@
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_12">
+      <widget class="Line" name="line_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_8">
        <item>
-        <widget class="QPushButton" name="manual_update_poi_PushButton">
-         <property name="toolTip">
-          <string>This is for telling QuDi a totally new position for a known trackpoint.  For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="delete_last_pos_Button">
          <property name="text">
-          <string>Manual update position</string>
+          <string>Delete last position</string>
          </property>
         </widget>
        </item>
@@ -662,7 +714,7 @@
   </widget>
   <widget class="QToolBar" name="poi_ToolBar">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>POI tools</string>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -674,10 +726,11 @@
     <bool>false</bool>
    </attribute>
    <addaction name="new_poi_Action"/>
+   <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
   </widget>
-  <action name="actionNew_ROI">
+  <action name="new_roi_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</iconset>
@@ -689,7 +742,7 @@
     <string>Start a new ROI (such as after moving to a different part of the sample</string>
    </property>
   </action>
-  <action name="actionSave_ROI">
+  <action name="save_roi_Action">
    <property name="icon">
     <iconset theme="document-save">
      <normaloff/>
@@ -702,7 +755,7 @@
     <string>Save ROI for future reuse</string>
    </property>
   </action>
-  <action name="actionOpen_ROI">
+  <action name="open_roi_Action">
    <property name="icon">
     <iconset theme="document-open">
      <normaloff/>
@@ -715,7 +768,7 @@
     <string>Load a saved ROI</string>
    </property>
   </action>
-  <action name="actionPOI_Editor_view">
+  <action name="poi_editor_view_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -729,7 +782,7 @@
     <string>Alt+E</string>
    </property>
   </action>
-  <action name="actionPOI_Tracker_view">
+  <action name="poi_tracker_view_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -743,7 +796,7 @@
     <string>Alt+T</string>
    </property>
   </action>
-  <action name="actionSample_shfit_view">
+  <action name="sample_shift_view_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -751,13 +804,16 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Sample shfit</string>
+    <string>Sample shift</string>
+   </property>
+   <property name="toolTip">
+    <string>Display the sample shift</string>
    </property>
    <property name="shortcut">
     <string>Alt+S</string>
    </property>
   </action>
-  <action name="actionROI_Map_view">
+  <action name="roi_map_view_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -766,6 +822,9 @@
    </property>
    <property name="text">
     <string>ROI Map</string>
+   </property>
+   <property name="toolTip">
+    <string>Display the ROI Map</string>
    </property>
    <property name="shortcut">
     <string>Alt+M</string>
@@ -784,6 +843,9 @@
    </property>
   </action>
   <action name="track_poi_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</iconset>
@@ -807,6 +869,34 @@
     <string>Add a new POI at the current crosshair position</string>
    </property>
   </action>
+  <action name="roi_management_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>ROI management</string>
+   </property>
+  </action>
+  <action name="poi_tools_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>POI tools</string>
+   </property>
+  </action>
+  <action name="goto_poi_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/goto_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/goto_poi.png</iconset>
+   </property>
+   <property name="text">
+    <string>Go to POI</string>
+   </property>
+   <property name="toolTip">
+    <string>Move scanner to the position of the selected POI</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -818,7 +908,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>actionPOI_Editor_view</sender>
+   <sender>poi_editor_view_Action</sender>
    <signal>triggered(bool)</signal>
    <receiver>poi_editor_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -836,7 +926,7 @@
   <connection>
    <sender>poi_editor_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionPOI_Editor_view</receiver>
+   <receiver>poi_editor_view_Action</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -850,7 +940,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionROI_Map_view</sender>
+   <sender>roi_map_view_Action</sender>
    <signal>triggered(bool)</signal>
    <receiver>roi_map_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -868,7 +958,7 @@
   <connection>
    <sender>roi_map_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionROI_Map_view</receiver>
+   <receiver>roi_map_view_Action</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -882,7 +972,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionPOI_Tracker_view</sender>
+   <sender>poi_tracker_view_Action</sender>
    <signal>triggered(bool)</signal>
    <receiver>poi_tracker_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -900,7 +990,7 @@
   <connection>
    <sender>poi_tracker_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionPOI_Tracker_view</receiver>
+   <receiver>poi_tracker_view_Action</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -914,7 +1004,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionSample_shfit_view</sender>
+   <sender>sample_shift_view_Action</sender>
    <signal>triggered(bool)</signal>
    <receiver>sample_shift_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -932,12 +1022,108 @@
   <connection>
    <sender>sample_shift_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionSample_shfit_view</receiver>
+   <receiver>sample_shift_view_Action</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>547</x>
      <y>599</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>roi_management_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>roi_management_ToolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>45</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>roi_management_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>roi_management_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>45</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>45</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>poi_tools_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>poi_ToolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>384</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>poi_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>poi_tools_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>384</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>track_poi_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>periodic_refind_CheckBox</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>268</x>
+     <y>603</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>periodic_refind_CheckBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>track_poi_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>268</x>
+     <y>603</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>

@@ -1668,7 +1668,7 @@ class ConfocalGui(GUIBase):
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
         """
-        # Show any hiden dock widgets
+        # Show any hidden dock widgets
         self._mw.xy_scan_dockWidget.show()
         self._mw.scan_control_dockWidget.show()
         self._mw.depth_scan_dockWidget.show()
