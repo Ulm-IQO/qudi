@@ -325,20 +325,25 @@ class PoiManagerGui(GUIBase):
         # Connect signals
         #####################        
 
+        # Toolbar actions
+        self._mw.new_roi_Action.triggered.connect( self.make_new_roi )
+        self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
+        self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
+        self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
+
+        # Interface controls
         self._mw.get_confocal_image_PushButton.clicked.connect(self.get_confocal_image)
         self._mw.set_poi_PushButton.clicked.connect(self.set_new_poi)
-        self._mw.goto_poi_PushButton.clicked.connect(self.goto_poi)
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_poi_PushButton.clicked.connect(self.manual_update_poi)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
         self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
 
-        self._mw.refind_poi_PushButton.clicked.connect(self.update_poi_pos)
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
 
-        self._mw.periodic_update_CheckBox.stateChanged.connect(self.toggle_periodic_update)
+        self._mw.periodic_refind_CheckBox.stateChanged.connect(self.toggle_periodic_refind)
         self._mw.active_poi_ComboBox.currentIndexChanged.connect(self._redraw_poi_markers)
-        self._mw.actionNew_ROI.triggered.connect( self.make_new_roi )
+        self._mw.refind_method_ComboBox.currentIndexChanged.connect( self.change_refind_method )
         
         # Connect the buttons and inputs for the colorbar
         self._mw.roi_cb_centiles_RadioButton.toggled.connect( self.refresh_roi_colorscale )
@@ -446,7 +451,7 @@ class PoiManagerGui(GUIBase):
 #        print(self._poi_manager_logic.get_all_pois())
 #        print(self._poi_manager_logic.get_last_point(poikey=key))
 
-        self.population_poi_list()
+        self.populate_poi_list()
 
         # Set the newly added poi as the selected poi to manage.
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
@@ -472,7 +477,7 @@ class PoiManagerGui(GUIBase):
         
         self._poi_manager_logic.delete_poi(poikey=key)
     
-        self.population_poi_list()
+        self.populate_poi_list()
 
     def manual_update_poi(self):
         """ Manually adds a point to the trace of a given poi without refocussing.
@@ -482,17 +487,17 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.set_new_position(poikey=key)
         
-    def toggle_periodic_update(self):
+    def toggle_periodic_refind(self):
         if self._poi_manager_logic.timer ==  None:
             key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
             period = self._mw.track_period_SpinBox.value()
 
             self._poi_manager_logic.start_periodic_refocus(duration=period, poikey = key)
-           # self._mw.periodic_update_CheckBox.setChecked(True)
+           # self._mw.periodic_refind_CheckBox.setChecked(True)
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
-           # self._mw.periodic_update_CheckBox.setChecked(False)
+           # self._mw.periodic_refind_CheckBox.setChecked(False)
 
     def goto_poi(self, key):
         ''' Go to the last known position of poi <key>
@@ -505,14 +510,29 @@ class PoiManagerGui(GUIBase):
 #        print(self._poi_manager_logic.get_last_point(poikey=key))
 
 
-    def population_poi_list(self):
+    def populate_poi_list(self):
         ''' Populate the dropdown box for selecting a poi
         '''
         self._mw.active_poi_ComboBox.clear()
-        self._mw.active_poi_ComboBox.setInsertPolicy(QtGui.QComboBox.InsertAlphabetically)
+        self._mw.offset_anchor_ComboBox.clear()
+
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_poi_ComboBox.addItem(self._poi_manager_logic.track_point_list[key].get_name(), key)
+                self._mw.offset_anchor_ComboBox.addItem(self._poi_manager_logic.track_point_list[key].get_name(), key)
+
+    
+    def change_refind_method(self):
+        ''' Make appropriate changes in the GUI to reflect the newly chosen refind method.
+        '''
+
+        if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
+            self._mw.offset_anchor_ComboBox.setEnabled(False)
+        elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
+            self._mw.offset_anchor_ComboBox.setEnabled(True)
+        else:
+            #TODO: throw an error
+            print('error 123')
 
 
     def change_poi_name(self):
@@ -526,7 +546,7 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.rename_poi(poikey=key, name=newname)
 
-        self.population_poi_list()
+        self.populate_poi_list()
 
         # Keep the renamed POI as the selected POI to manage.
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
@@ -573,7 +593,7 @@ class PoiManagerGui(GUIBase):
         self._mw.time_till_next_update_ProgressBar.setMaximum( new_track_period )
 
         # If the tracker is not active, then set the value of the progress bar to the new maximum
-        if not self._mw.periodic_update_CheckBox.isChecked():
+        if not self._mw.periodic_refind_CheckBox.isChecked():
             self._mw.time_till_next_update_ProgressBar.setValue( new_track_period )
         # Otherwise (if the tracker is active), send the new track period to the tracking logic.
         else:
@@ -707,4 +727,4 @@ class PoiManagerGui(GUIBase):
 
         self._poi_manager_logic.reset_roi()
 
-        self.population_poi_list()
+        self.populate_poi_list()
