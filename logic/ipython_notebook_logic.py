@@ -355,8 +355,8 @@ class NotebookApp(BaseIPythonApplication):
     """
     examples = 'no usage example'
     
-    classes = IPythonConsoleApp.classes + [MappingKernelManager, NotebookManager,
-        FileNotebookManager, NotebookNotary]
+    classes = IPythonConsoleApp.classes + [MappingKernelManager, NotebookManager, FileNotebookManager, NotebookNotary]
+    print(classes)
     flags = Dict(flags)
     aliases = Dict(aliases)
     
