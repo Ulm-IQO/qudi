@@ -8,17 +8,17 @@ class Task(InterruptibleTask):
         super().__init__('Refocus')
         print('Task {} added!'.format(self.name))
 
-    def startTasklet(self):
+    def startTask(self):
         pass
 
-    def runTaskletStep(self):
+    def runTaskStep(self):
         pass
 
-    def pauseTasklet(self):
+    def pauseTask(self):
         pass
 
-    def resumeTasklet(self):
+    def resumeTask(self):
         pass
 
-    def cleanupTasklet(self):
+    def cleanupTask(self):
         pass
