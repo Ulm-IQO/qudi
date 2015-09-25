@@ -39,8 +39,8 @@
      <string>Menu</string>
     </property>
     <addaction name="new_roi_Action"/>
-    <addaction name="open_roi_Action"/>
     <addaction name="save_roi_Action"/>
+    <addaction name="open_roi_Action"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -444,11 +444,41 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
-      <widget class="QPushButton" name="get_confocal_image_PushButton">
-       <property name="text">
-        <string>Get Confocal image</string>
-       </property>
-      </widget>
+      <layout class="QHBoxLayout" name="horizontalLayout_7">
+       <item>
+        <widget class="QPushButton" name="get_confocal_image_PushButton">
+         <property name="text">
+          <string>Get Confocal image</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>60</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>ROI Name: </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="roi_name_LineEdit"/>
+       </item>
+      </layout>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_10">
@@ -1062,8 +1092,8 @@
      <y>41</y>
     </hint>
     <hint type="destinationlabel">
-     <x>45</x>
-     <y>41</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>

@@ -183,6 +183,7 @@ class PoiManagerLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
         
+        self.roi_name = ''
         self.track_point_list = dict()
         self._current_poi_key = None
         self.go_to_crosshair_after_refocus = False # default value
@@ -263,15 +264,29 @@ class PoiManagerLogic(GenericLogic):
     def deactivation(self, e):
         return
         
-    def get_all_pois(self):
+    def get_all_pois(self, abc_sort=False):
         """ Returns a list of the names of all existing trankpoints.
         
         @return string[]: List of names of the pois
         
         Also crosshair and sample are included.
         """
-        
-        return sorted(self.track_point_list.keys())
+        if abc_sort == False:
+            return sorted(self.track_point_list.keys())
+
+        elif abc_sort == True:
+            # First create a dictionary with poikeys indexed against names
+            poinames=dict()
+            for poikey in self.track_point_list.keys():
+                poiname=self.track_point_list[poikey].get_name()
+                poinames[poiname]=poikey
+
+            # Now we can sort poinames by name and return keys in that order
+            return [value for (key, value) in sorted(poinames.items() )]
+
+        else:
+            #TODO: produce sensible error about unknown value of abc_sort.
+            print('fix TODO!')
 
         # TODO: Find a way to return a list of POI keys sorted in order of the POI names.
             
@@ -570,6 +585,8 @@ class PoiManagerLogic(GenericLogic):
         del self.track_point_list
 
         self.track_point_list=dict()
+        
+        self.roi_name = ''
 
         # initally add crosshair to the pois
         crosshair=PoI(point=[0,0,0], name='crosshair')
@@ -609,5 +626,43 @@ class PoiManagerLogic(GenericLogic):
             self._save_logic.active_poi_name = self.active_poi.get_name()
         else:
             self._save_logic.active_poi_name = ''
+
+
+    def save_poi_map_as_roi(self):
+        '''Save a list of POIs with their coordinates to a file.
+        '''
+        # File path and name
+        filepath = self._save_logic.get_path_for_module(module_name='ROIs')
+        
+        # We will fill the data OderedDict to send to savelogic
+        data = OrderedDict()
+
+        # Lists for each column of the output file
+        poinames = []
+        x_coords = []
+        y_coords = []
+        z_coords = []
+
+
+        for poikey in self.get_all_pois(abc_sort=True):
+            if poikey is not 'sample' and poikey is not 'crosshair' :
+                thispoi = self.track_point_list[poikey]
+                poinames.append( thispoi.get_name() )
+                x_coords.append( thispoi.get_coords_in_sample()[0] )
+                y_coords.append( thispoi.get_coords_in_sample()[1] )
+                z_coords.append( thispoi.get_coords_in_sample()[2] )
+
+        data['POI Name'] = poinames
+        data['X'] = x_coords
+        data['Y'] = y_coords
+        data['Z'] = z_coords
+
+        self._save_logic.save_data( data, filepath, filelabel=self.roi_name, as_text=True) 
+
+        self.logMsg('ROI saved to:\n{0}'.format(filepath),
+                        msgType='status', importance=3)
+
+        return 0
+
 
 

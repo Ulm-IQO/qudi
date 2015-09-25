@@ -377,7 +377,12 @@ class SaveLogic(GenericLogic):
         opened_file.write('# '+str(trace_name)+'\n')
 
         for entry in trace_data:
-            opened_file.write(str('{0'+precision+'}\n').format(entry))
+            # If entry is a string, then print directly
+            if isinstance(entry, str):
+                opened_file.write(entry+'\n')
+            # Otherwise, format number to requested precision
+            else:
+                opened_file.write(str('{0'+precision+'}\n').format(entry))
 
 
         if close_file_flag:
@@ -409,7 +414,13 @@ class SaveLogic(GenericLogic):
         for row in range(max_trace_length):
             for column in range(len(trace_data)):
                 try:
-                    opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[column][row]))
+                #TODO: Lachlan has inserted the if-else in here, but it should be properly integrated with the try
+                    # If entry is a string, then print directly
+                    if isinstance(trace_data[column][row], str):
+                        opened_file.write(str('{0}'+delimiter).format(trace_data[column][row]))
+                    # Otherwise, format number to requested precision
+                    else:
+                        opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[column][row]))
                 except:
                     opened_file.write(str('{0}'+delimiter).format('NaN'))
             opened_file.write('\n')

@@ -327,6 +327,7 @@ class PoiManagerGui(GUIBase):
 
         # Toolbar actions
         self._mw.new_roi_Action.triggered.connect( self.make_new_roi )
+        self._mw.save_roi_Action.triggered.connect( self.save_roi )
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
@@ -337,6 +338,7 @@ class PoiManagerGui(GUIBase):
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_poi_PushButton.clicked.connect(self.manual_update_poi)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
+        self._mw.roi_name_LineEdit.editingFinished.connect(self.set_roi_name)
         self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
 
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
@@ -534,6 +536,13 @@ class PoiManagerGui(GUIBase):
             #TODO: throw an error
             print('error 123')
 
+    def set_roi_name(self):
+        '''Set the name of a ROI (useful when saving)
+        '''
+
+        self._poi_manager_logic.roi_name = self._mw.roi_name_LineEdit.text().replace(" ", "_")
+
+
 
     def change_poi_name(self):
         '''Change the name of a poi
@@ -567,7 +576,13 @@ class PoiManagerGui(GUIBase):
 
         key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
-        self._poi_manager_logic.optimise_poi(poikey=key)
+        if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
+            self._poi_manager_logic.optimise_poi(poikey=key)
+
+        elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
+            anchor_key = self._mw.offset_anchor_ComboBox.itemData(self._mw.offset_anchor_ComboBox.currentIndex())
+            self._poi_manager_logic.optimise_poi(poikey=key, anchorkey=anchor_key)
+
 
     def toggle_follow(self):
         if self._mw.goto_poi_after_update_checkBox.isChecked():
@@ -728,3 +743,9 @@ class PoiManagerGui(GUIBase):
         self._poi_manager_logic.reset_roi()
 
         self.populate_poi_list()
+
+    def save_roi(self):
+        '''Save ROI to file
+        '''
+
+        self._poi_manager_logic.save_poi_map_as_roi()
