@@ -69,6 +69,8 @@ class TaskRunner(GenericLogic):
         self.model = TaskListTableModel()
         self.model.rowsInserted.connect(self.modelChanged)
         self.model.rowsRemoved.connect(self.modelChanged)
+        config = self.getConfiguration()
+        print(config)
 
     def deactivation(self, e):
         pass

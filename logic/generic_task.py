@@ -18,6 +18,8 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
+from core.util.customexceptions import InterfaceImplementationError
+
 class TaskResult(QtCore.QObject):
     def __init__(self):
         super().__init__()
@@ -32,10 +34,19 @@ class InterruptableTask(QtCore.QObject, Fysom):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
     """
+    sigDoStart = QtCore.Signal()
+    sigStarted = QtCore.Signal()
+    sigNextTaskStep = QtCore.Signal()
+    sigDoPause = QtCore.Signal()
     sigPaused = QtCore.Signal()
+    sigDoResume = QtCore.Signal()
     sigResumed = QtCore.Signal()
-    sigExecutionStarted = QtCore.Signal()
-    sigExecutionFinished = QtCore.Signal()
+    sigDoFinish = QtCore.Signal()
+    sigFinished = QtCore.Signal()
+
+    prePostTasks = {}
+    pauseTasks = {}
+    requiredModules = {}
 
     def __init__(self, name, runner, args=[], kwargs={}):
         QtCore.QObject.__init__(self)
@@ -43,10 +54,14 @@ class InterruptableTask(QtCore.QObject, Fysom):
         _stateDict = {
             'initial': 'stopped',
             'events': [
-                {'name': 'run', 'src': 'stopped', 'dst': 'running'},
-                {'name': 'pause', 'src': 'running', 'dst': 'paused'},
-                {'name': 'finish', 'src': 'running', 'dst': 'stopped'},
-                {'name': 'resume', 'src': 'paused', 'dst': 'running'}
+                {'name': 'run', 'src': 'stopped', 'dst': 'starting'},
+                {'name': 'startingFinished', 'src': 'starting', 'dst': 'running'},
+                {'name': 'pause', 'src': 'running', 'dst': 'pausing'},
+                {'name': 'pausingFinished', 'src': 'pausing', 'dst': 'paused'},
+                {'name': 'finish', 'src': 'running', 'dst': 'finishing'},
+                {'name': 'finishingFinished', 'src': 'finishing', 'dst': 'stopped'},
+                {'name': 'resume', 'src': 'paused', 'dst': 'resuming'}
+                {'name': 'resumingFinished', 'src': 'resuming', 'dst': 'running'}
             ],
             'callbacks': _default_callbacks
         }
@@ -58,53 +73,128 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.success = False
         self.taskRunner = runner
 
-    def makeInterruptable(self, pausefunction, resumefunction):
-        if callable(self.pausefunction) and callable(resumefunction):
-            self.pausefunction = pausefunction
-            self.resumefuncion = resumefunction
-            self.interruptable = True
+        self.sigDoStart.connect(self._doStart, QtCore.Qt.QueuedConnection)
+        self.sigDoPause.connect(self._doPause, QtCore.Qt.QueuedConnection)
+        self.sigDoResume.connect(self._doResume, QtCore.Qt.QueuedConnection)
+        self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
+        self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
 
     def _run(self, e):
         self.result = TaskResult()
+        if self.checkStartPrerequisites():
+            self.sigDoStart.emit()
+        else:
+            return False
+
+    def _doStart(self):
         try:
-            self.startTasklet()
+            for task in prePostTasks:
+                prePostTasks[task].prerun()
+            for task in pauseTasks:
+                if not pauseTasks[task].isstate('stopped') and pauseTasks[task].can('pause'):
+                    pauseTasks[task].pause()
+            self.startTask()
+            self.startingFinished()
             self.sigStarted.emit()
-            self.sig
         except Exception as e:
             runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
-            
+    
+    def _doTaskStep(self):
+        try:
+            if self.runTaskStep():
+                if self.isstate('pausing'):
+                    self.sigDoPause.emit()
+                else:
+                    self.sigNextTaskStep.emit()
+            else:
+                self.finish()
+        except Exception as e:
+            runner.logMsg('Exception during task step {}. {}'.format(self.name, e), msgType='error')
+            self.result.update(None, False)
+            self.finish()
                 
     def _pause(self, e):
         try:
-            if callable(self.function):
-                 self.function(*self.args, **self.kwargs)
+            if self.checkPausePrerequisites():
+                self.sigDoPause.emit()
             else:
-               self.result.update(None, False)
+                self.sigNextTaskStep.emit()
+                return False
         except Exception as e:
-            runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            runner.logMsg('Exception while preparing pause of task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
- 
-        self.sigPaused.emit()
 
-    def _resume(self, e):
+    def _doPause(self):
         try:
-            if callable(self.function):
-                 self.function(*self.args, **self.kwargs)
-            else:
-               self.result.update(None, False)
+            self.pauseTask()
+            self.pausingFinished()
+            self.sigPaused.emit()
         except Exception as e:
-            self.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            runner.logMsg('Exception while pausing task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
- 
-        self.sigResumed.eimit()
+        
+    def _resume(self, e):
+            self.sigDoResume.emit()
+
+    def _doResume(self):
+        try:
+            self.resumeTask()
+            self.resumingFinished()
+            self.sigResumed.emit()
+            self.sigNextTaskStep.emit()
+        except Exception as e:
+            self.logMsg('Exception while resuming task {}. {}'.format(self.name, e), msgType='error')
+            self.result.update(None, False)
 
     def _finish(self, e):
+        self.sigDoFinish.emit()
+
+    def _doFinish(self):
         result.update(self.result, self.success)
         self.sigFinished.emit()
 
+    def checkStartPrerequisites(self):
+        for task in prePostTasks:
+            if not ( isinstance(prePostTasks[task], PrePostTask) and prePostTasks[task].can('prerun') ):
+                self.log('Cannot start task {} as pre/post task {} is not in a state to run.'.format(self.name, task), msgType='error')
+                return False
+        for task in pauseTasks:
+            if not (isinstance(pauseTasks[task], InterruptibleTask)
+                    and ( 
+                        pauseTasks[task].can('pause')
+                        or pauseTasks[task].isstate('stopped')
+                    )):
+                self.log('Cannot start task {} as interruptable task {} is not stopped or able to pause.'.format(self.name, task), msgType='error')
+                return False
+        if not checkExtraStartPrerequisites():
+            return False
+        return True
+
+    def checkExtraStartPrerequisites(self):
+        return True
+
+    def checkPausePrerequisites(self):
+    def checkExtraPausePrerequisites(self):
+
     def canPause(self):
-        return self.interruptable and self.can('pause')
+        return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
+
+    def startTask(self):
+        raise InterfaceImplementationError('startTask needs to be implemented in subclasses!')
+
+    def runTaskStep(self):
+        raise InterfaceImplementationError('runTaskStep needs to be implemented in subclasses!')
+        return False
+
+    def pauseTask(self):
+        raise InterfaceImplementationError('pauseTask may need to be implemented in subclasses!')
+
+    def resumeTask(self):
+        raise InterfaceImplementationError('resumeTask may need to be implemented in subclasses!')
+
+    def cleanupTask(self):
+        raise InterfaceImplementationError('cleanupTask needs to be implemented in subclasses!')
 
 class PrePostTask(QtCore.QObject, Fysom):
 
