@@ -50,6 +50,7 @@ class TaskGui(GUIBase):
         """
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
+        self._mw.taskListview.setModel(self.connector['in']['tasklogic']['object'].imodel)
         self.show()
        
     def show(self):
