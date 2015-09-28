@@ -41,11 +41,11 @@ class TaskListTableModel(ListTableModel):
             return None
         elif role == QtCore.Qt.DisplayRole:
             if index.column() == 0:
-               return self.storage[index.row()].name
+               return self.storage[index.row()]['name']
             else:
                 return None
         else:
-            return Non
+            return None
 
 class TaskRunner(GenericLogic):
     """A generic logic interface class.
@@ -59,23 +59,65 @@ class TaskRunner(GenericLogic):
 
           @param object manager: Manager object that has instantiated this object
           @param str name: unique module name
-          @param dict configuration: module configuration as a dict
+          @param dict configuration: module configuration as a ict
           @param dict kwargs: dict of additional arguments
         """
         callbacks = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, configuation, callbacks, **kwargs)
 
     def activation(self, e):
-        self.model = TaskListTableModel()
-        self.model.rowsInserted.connect(self.modelChanged)
-        self.model.rowsRemoved.connect(self.modelChanged)
+        self.imodel = TaskListTableModel()
+        self.imodel.rowsInserted.connect(self.imodelChanged)
+        self.imodel.rowsRemoved.connect(self.imodelChanged)
+        self.ppmodel = TaskListTableModel()
+        self.ppmodel.rowsInserted.connect(self.ppmodelChanged)
+        self.ppmodel.rowsRemoved.connect(self.ppmodelChanged)
         config = self.getConfiguration()
         print(config)
+        self.loadTasks()
+
+    def configTasks(self):
+        config = self.getConfiguration()
+        if not 'tasks' in config:
+            return
+        for task in config['tasks']:
+            t = {}
+            t['ok'] = False
+            t['object'] = None
+            t['name'] = task
+            if not 'module' in config['tasks'][task]:
+                self.logMsg('No module given for task {}'.format(task), msgType='error')
+                continue
+            else:
+                t['module'] = config['tasks'][task]['module']
+            if 'preposttasks' in config['tasks'][task]:
+                t['preposttasks'] = config['tasks'][task]['preposttasks']
+            else:
+                t['preposttasks'] = []
+            if 'pausetasks' in config['tasks'][task]:
+                t['pausetasks'] = config['tasks'][task]['pausetasks']
+            else:
+                t['pausetasks'] = []
+            if 'needsmodules' in config['tasks'][task]:
+                t['modules'] = config['tasks'][task]['needsmodules']
+            else:
+                t['modules'] = {}
+            self.imodel.append(t)
+
+    def checkTasksInModel(self):
+        for task in self.model.storage:
+            for pptask in task['preposttasks']:
+            for ptask in task['preposttasks']:
+            for mod in task['preposttasks']:
+
 
     def deactivation(self, e):
         pass
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
-    def modelChanged(self, parent, first, last):
+    def imodelChanged(self, parent, first, last):
         print('Inserted into task list: {} {}'.format(first, last))
 
+    @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
+    def ppmodelChanged(self, parent, first, last):
+        print('Inserted into task list: {} {}'.format(first, last))

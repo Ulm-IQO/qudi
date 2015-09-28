@@ -60,8 +60,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 {'name': 'pausingFinished', 'src': 'pausing', 'dst': 'paused'},
                 {'name': 'finish', 'src': 'running', 'dst': 'finishing'},
                 {'name': 'finishingFinished', 'src': 'finishing', 'dst': 'stopped'},
-                {'name': 'resume', 'src': 'paused', 'dst': 'resuming'}
-                {'name': 'resumingFinished', 'src': 'resuming', 'dst': 'running'}
+                {'name': 'resume', 'src': 'paused', 'dst': 'resuming'},
+                {'name': 'resumingFinished', 'src': 'resuming', 'dst': 'running'},
+                {'name': 'abort', 'src': 'pausing', 'dst': 'stopped'}
             ],
             'callbacks': _default_callbacks
         }
@@ -175,7 +176,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkPausePrerequisites(self):
+        return True
+
     def checkExtraPausePrerequisites(self):
+        return True
 
     def canPause(self):
         return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
@@ -203,7 +207,7 @@ class PrePostTask(QtCore.QObject, Fysom):
     sigPostExecStart = QtCore.Signal()
     sigPostExecFinish = QtCore.Signal()
 
-    def __init__(self, name, function, args=[]):
+    def __init__(self, name, args=[]):
         QtCore.QObject.__init__()
         _default_callbacks = {'prerun': self.preExecute, 'postrun': self.postExecute}
         _stateList = {
@@ -217,18 +221,29 @@ class PrePostTask(QtCore.QObject, Fysom):
         Fysom.__init__()
         self.lock = Mutex()
         self.name = name
-        self.func = function
         self.args = args
 
     def preExecute(self):
+        raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
+
+    def postExecute(self):
+        raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
+
+    def _pre(self):
         self.sigPreExecStart.emit()
+        try:
+            self.preExecute()
+        except Exception as e:
+            runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
 
         self.sigPreExecFinish.emit()
 
-    def postExecute(self):
+    def _post(self):
         self.sigPostExecStart.emit()
+        try:
+            self.postExecute()
+        except Exception as e:
+            runner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
 
         self.sigPostExecFinish.emit()
-
-    def canPause():
-        return False
+        
