@@ -19,6 +19,8 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.util.customexceptions import InterfaceImplementationError
+from pyqtgraph.Qt import QtCore
+from fysom import Fysom
 
 class TaskResult(QtCore.QObject):
     def __init__(self):
