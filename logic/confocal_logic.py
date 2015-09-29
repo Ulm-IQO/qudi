@@ -437,7 +437,7 @@ class ConfocalLogic(GenericLogic):
 
         @return int[]: Current position
         """
-        return [self._current_x, self._current_y, self._current_z]
+        return [self._current_x, self._current_y, self._current_z + self._calc_dz(x=self._current_x, y=self._current_y)]
 
 
     def _scan_line(self):
