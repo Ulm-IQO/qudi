@@ -287,6 +287,7 @@ class ODMRGui(GUIBase):
         if is_checked:
             self._odmr_logic.stop_ODMR_scan()
             self._odmr_logic.start_ODMR_scan()
+            self._mw.odmr_ViewWidget.removeItem(self.odmr_fit_image)
             self._sd.matrix_lines_InputWidget.setReadOnly(True)
         else:
             self._odmr_logic.stop_ODMR_scan()
