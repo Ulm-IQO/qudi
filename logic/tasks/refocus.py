@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from logic.generic_task import InterruptibleTask
+from logic.generic_task import InterruptableTask
 
-class Task(InterruptibleTask):
+class Task(InterruptableTask):
 
     def __init__(self):
         super().__init__('Refocus')

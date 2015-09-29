@@ -50,7 +50,10 @@ class TaskGui(GUIBase):
         """
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
-        self._mw.taskListview.setModel(self.connector['in']['tasklogic']['object'].imodel)
+        self.logic = self.connector['in']['tasklogic']['object']
+        self._mw.itaskListView.setModel(self.logic.imodel)
+        self._mw.pptaskListView.setModel(self.logic.ppmodel)
+        self._mw.actionStart_Task.triggered.connect(self.manualStart)
         self.show()
        
     def show(self):
@@ -64,6 +67,13 @@ class TaskGui(GUIBase):
         """
         self.saveWindowPos(self._mw)
         self._mw.close()
+
+    def manualStart(self):
+        selected = self._mw.itaskListView.selectedIndexes()
+        if len(selected) >= 1:
+            print(self._mw.itaskListView.model().data(selected[0], QtCore.Qt.DisplayRole))
+            print(self.logic.imodel.storage[selected[0].row()])
+
 
 
 class TaskMainWindow(QtGui.QMainWindow):

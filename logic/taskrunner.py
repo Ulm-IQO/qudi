@@ -22,6 +22,8 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 from core.util.models import ListTableModel
+import logic.generic_task
+import importlib
 
 class TaskListTableModel(ListTableModel):
 
@@ -72,11 +74,9 @@ class TaskRunner(GenericLogic):
         self.ppmodel = TaskListTableModel()
         self.ppmodel.rowsInserted.connect(self.ppmodelChanged)
         self.ppmodel.rowsRemoved.connect(self.ppmodelChanged)
-        config = self.getConfiguration()
-        print(config)
         self.loadTasks()
 
-    def configTasks(self):
+    def loadTasks(self):
         config = self.getConfiguration()
         if not 'tasks' in config:
             return
@@ -85,11 +85,13 @@ class TaskRunner(GenericLogic):
             t['ok'] = False
             t['object'] = None
             t['name'] = task
+            print('tsk:', task)
             if not 'module' in config['tasks'][task]:
                 self.logMsg('No module given for task {}'.format(task), msgType='error')
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
+                print('mod:', config['tasks'][task]['module'])
             if 'preposttasks' in config['tasks'][task]:
                 t['preposttasks'] = config['tasks'][task]['preposttasks']
             else:
@@ -102,14 +104,23 @@ class TaskRunner(GenericLogic):
                 t['modules'] = config['tasks'][task]['needsmodules']
             else:
                 t['modules'] = {}
-            self.imodel.append(t)
+            try:
+                print('Attempting to import: logic.tasks.{}'.format(t['module']))
+                mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
+                print(mod)
+                #t['object'] = mod.Task(t.['name'])
+                self.imodel.append(t)
+            except Exception as e:
+                self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
 
     def checkTasksInModel(self):
         for task in self.model.storage:
             for pptask in task['preposttasks']:
-            for ptask in task['preposttasks']:
-            for mod in task['preposttasks']:
-
+                print(pptask)
+            for ptask in task['pausetasks']:
+                print(ptask)
+            for mod in task['needsmodules']:
+                print(mod)
 
     def deactivation(self, e):
         pass

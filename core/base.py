@@ -22,6 +22,8 @@ from pyqtgraph.Qt import QtCore
 from fysom import Fysom # provides a final state machine
 from collections import OrderedDict
 import os
+import sys
+import traceback
 
 class Base(QtCore.QObject, Fysom):
     """
@@ -187,6 +189,23 @@ class Base(QtCore.QObject, Fysom):
         """
         self.sigLogMessage.emit(('{0}.{1}: {2}'.format(self._modclass, self._modtype, message), kwargs))
 
+    def logExc(self, *args, **kwargs):
+        """Calls logMsg, but adds in the current exception and callstack.
+
+          @param list args: arguments for logMsg()
+          @param dict kwargs: dictionary containing exception information.
+
+        Must be called within an except block, and should only be called if the
+        exception is not re-raised.
+        Unhandled exceptions, or exceptions that reach the top of the callstack
+        are automatically logged, so logging an exception that will be 
+        re-raised can cause the exception to be logged twice.
+        Takes the same arguments as logMsg.
+        """
+        kwargs['exception'] = sys.exc_info()
+        kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
+        self.logMsg(*args, **kwargs)
+ 
     @staticmethod
     def identify():
         """ Return module id.
