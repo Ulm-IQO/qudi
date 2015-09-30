@@ -19,6 +19,7 @@ Copyright (C) 2015 Lachlan J. Rogers  lachlan.rogers@uni-ulm.de
 """
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
+from PyQt4.QtGui import QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import time
@@ -328,6 +329,7 @@ class PoiManagerGui(GUIBase):
         # Toolbar actions
         self._mw.new_roi_Action.triggered.connect( self.make_new_roi )
         self._mw.save_roi_Action.triggered.connect( self.save_roi )
+        self._mw.load_roi_Action.triggered.connect( self.load_roi )
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
@@ -749,3 +751,15 @@ class PoiManagerGui(GUIBase):
         '''
 
         self._poi_manager_logic.save_poi_map_as_roi()
+
+    def load_roi(self):
+        '''Load a saved ROI from file.
+        '''
+
+        this_file=QFileDialog.getOpenFileName(self._mw, str("Open ROI"), None, str("Data files (*.dat)") )
+        
+        self._poi_manager_logic.load_roi_from_file( filename=this_file )
+
+        self.populate_poi_list()
+
+

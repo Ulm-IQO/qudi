@@ -26,7 +26,10 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+import datetime
 import time
+import string
+import random
 
 class PoI(object):
     """    
@@ -34,7 +37,7 @@ class PoI(object):
 
     """
     
-    def __init__(self, point = None, name=None):
+    def __init__(self, point = None, name=None, key=None):
         # The POI has fixed coordinates relative to the sample, enabling a map to be saved.
         self._coords_in_sample=[]
 
@@ -43,17 +46,26 @@ class PoI(object):
         self._position_time_trace=[]
 
         # Other general information parameters for the POI.
-        self._name = time.strftime('poi_%Y%m%d_%H%M%S')
-        self._key = str(self._name)
-        self._creation_time = time.time()
+        self._creation_time = datetime.datetime.now()
+
+        print(key)
+
+        if key == None:
+            self._key = self._creation_time.strftime('poi_%Y%m%d_%H%M_%S_%f')
+        else:
+            self._key = key
+
         
         if point != None:
             if len(point) != 3:
                 self.logMsg('Given position does not contain 3 dimensions.', 
                              msgType='error')
             self._position_time_trace.append(np.array([self._creation_time,point[0],point[1],point[2]]))
-        if name != None:
+        if name == None:
+            self._name = self._creation_time.strftime('poi_%H%M%S')
+        else:
             self._name=name
+
 
     def set_coords_in_sample(self, coords = None):
         '''Defines the position of the poi relative to the sample, 
@@ -63,7 +75,7 @@ class PoI(object):
         the wrong place).
         '''
 
-        if coords != None:
+        if coords != None: #FIXME: Futurewarning fired here.
             if len(coords) != 3:
                 self.logMsg('Given position does not contain 3 dimensions.', 
                              msgType='error')
@@ -233,12 +245,13 @@ class PoiManagerLogic(GenericLogic):
         """ Debug function for testing. """
         pass
                     
-    def add_poi(self):
+    def add_poi(self, position=None, key=None):
         """ Creates a new poi and adds it to the list.
                 
         @return int: key of this new poi
         
-        The initial position is taken from the current crosshair.
+        A position can be provided (such as during re-loading a saved ROI).
+        If no position is provided, then the current crosshair position is used.
         """
         if len( self.track_point_list ) == 2:
             self.track_point_list['sample']._creation_time = time.time()
@@ -246,18 +259,20 @@ class PoiManagerLogic(GenericLogic):
             self.track_point_list['sample'].add_position_to_trace( position=[0,0,0] )
             self.track_point_list['sample'].set_coords_in_sample( coords=[0,0,0] )
 
-        this_scanner_position = self._confocal_logic.get_position()
-        new_track_point=PoI( point=this_scanner_position )
+        if position == None:
+            position = self._confocal_logic.get_position()
+
+        new_track_point=PoI( point=position, key=key )
         self.track_point_list[new_track_point.get_key()] = new_track_point
 
         # The POI coordinates are set relative to the last known sample position
         most_recent_sample_pos = self.track_point_list['sample'].get_trace()[-1,:][1:4]
-        this_poi_coords = this_scanner_position - most_recent_sample_pos
+        this_poi_coords = position - most_recent_sample_pos
         new_track_point.set_coords_in_sample( coords = this_poi_coords )
 
         # Since POI was created at current scanner position, it automatically 
         # becomes the active POI.
-        self.set_active_poi( poi = new_track_point)
+        self.set_active_poi( poi = new_track_point )
         
         return new_track_point.get_key()
 
@@ -265,7 +280,7 @@ class PoiManagerLogic(GenericLogic):
         return
         
     def get_all_pois(self, abc_sort=False):
-        """ Returns a list of the names of all existing trankpoints.
+        """ Returns a list of the names of all existing trackpoints.
         
         @return string[]: List of names of the pois
         
@@ -639,6 +654,7 @@ class PoiManagerLogic(GenericLogic):
 
         # Lists for each column of the output file
         poinames = []
+        poikeys  = []
         x_coords = []
         y_coords = []
         z_coords = []
@@ -647,12 +663,15 @@ class PoiManagerLogic(GenericLogic):
         for poikey in self.get_all_pois(abc_sort=True):
             if poikey is not 'sample' and poikey is not 'crosshair' :
                 thispoi = self.track_point_list[poikey]
+
                 poinames.append( thispoi.get_name() )
+                poikeys.append( poikey )
                 x_coords.append( thispoi.get_coords_in_sample()[0] )
                 y_coords.append( thispoi.get_coords_in_sample()[1] )
                 z_coords.append( thispoi.get_coords_in_sample()[2] )
 
         data['POI Name'] = poinames
+        data['POI Key'] = poikeys
         data['X'] = x_coords
         data['Y'] = y_coords
         data['Z'] = z_coords
@@ -661,6 +680,27 @@ class PoiManagerLogic(GenericLogic):
 
         self.logMsg('ROI saved to:\n{0}'.format(filepath),
                         msgType='status', importance=3)
+
+        return 0
+
+    
+    def load_roi_from_file(self, filename=None):
+
+        if filename == None:
+            return -1
+
+        roifile = open(filename, 'r')
+
+        for line in roifile:
+            if line[0] != '#' and line.split()[0] !='NaN':
+                saved_poi_name = line.split()[0]
+                saved_poi_key = line.split()[1]
+                saved_poi_coords = [ float(line.split()[2]), float( line.split()[3] ), float( line.split()[4] ) ]
+
+                this_poi_key = self.add_poi( position=saved_poi_coords, key=saved_poi_key )
+                self.rename_poi( poikey=this_poi_key, name=saved_poi_name )
+
+        roifile.close()
 
         return 0
 

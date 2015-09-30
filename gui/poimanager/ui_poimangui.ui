@@ -40,7 +40,7 @@
     </property>
     <addaction name="new_roi_Action"/>
     <addaction name="save_roi_Action"/>
-    <addaction name="open_roi_Action"/>
+    <addaction name="load_roi_Action"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -785,14 +785,14 @@
     <string>Save ROI for future reuse</string>
    </property>
   </action>
-  <action name="open_roi_Action">
+  <action name="load_roi_Action">
    <property name="icon">
     <iconset theme="document-open">
      <normaloff/>
     </iconset>
    </property>
    <property name="text">
-    <string>Open ROI</string>
+    <string>Load ROI</string>
    </property>
    <property name="toolTip">
     <string>Load a saved ROI</string>
