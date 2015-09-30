@@ -181,6 +181,21 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:,:,1] = y_value_matrix.transpose()
         self.xy_refocus_image[:,:,2] = self._trackpoint_z * np.ones((len(self._Y_values), len(self._X_values)))
 
+    
+    def _initialize_z_refocus_image(self):
+        """Initialisation of the z refocus image
+        """
+        self._scan_counter = 0
+        z0 = self._trackpoint_z  #falls tilt correction, dann hier aufpassen
+        zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
+        zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
+        
+        self._zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
+        self._fit_zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.fit_Z_step)
+        self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
+        #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
+        self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
+        self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
         
         
     def _refocus_line(self):
@@ -325,21 +340,6 @@ class OptimizerLogic(GenericLogic):
                                               
             self.signal_refocus_finished.emit()
         
-    
-    def _initialize_z_refocus_image(self):
-        """Initialisation of the z refocus image
-        """
-        self._scan_counter = 0
-        z0 = self._trackpoint_z  #falls tilt correction, dann hier aufpassen
-        zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
-        zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
-        
-        self._zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
-        self._fit_zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.fit_Z_step)
-        self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
-        #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
-        self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
-        self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
         
         
     def _scan_z_line(self):
@@ -361,6 +361,7 @@ class OptimizerLogic(GenericLogic):
         
         self.z_refocus_line = line_counts
         
+
     def start_scanner(self):
         """Setting up the scanner device.
         
