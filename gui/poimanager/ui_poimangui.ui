@@ -172,7 +172,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="move_poi_PushButton">
        <property name="toolTip">
         <string>Set a new position for a named POI, without updating the sample shift (so no movement of any other POIs).  For example, if a POI has been accidentally placed incorrectly.</string>
        </property>
