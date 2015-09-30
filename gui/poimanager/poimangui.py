@@ -339,6 +339,7 @@ class PoiManagerGui(GUIBase):
         self._mw.set_poi_PushButton.clicked.connect(self.set_new_poi)
         self._mw.delete_last_pos_Button.clicked.connect(self.delete_last_point)
         self._mw.manual_update_poi_PushButton.clicked.connect(self.manual_update_poi)
+        self._mw.move_poi_PushButton.clicked.connect(self.move_poi)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.set_roi_name)
         self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
@@ -484,12 +485,21 @@ class PoiManagerGui(GUIBase):
         self.populate_poi_list()
 
     def manual_update_poi(self):
-        """ Manually adds a point to the trace of a given poi without refocussing.
+        """ Manually adds a point to the trace of a given poi without refocussing, and uses that information to update sample position.
         """
         
         key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
         self._poi_manager_logic.set_new_position(poikey=key)
+
+    def move_poi(self):
+        """Manually move a POI to a new location in the sample map, but WITHOUT changing the sample position.  This moves a POI relative to all the others.
+        """
+        key=self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
+
+        self._poi_manager_logic.move_coords(poikey=key)
+
+
         
     def toggle_periodic_refind(self):
         if self._poi_manager_logic.timer ==  None:
@@ -520,7 +530,7 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
 
-        for key in self._poi_manager_logic.get_all_pois():
+        for key in self._poi_manager_logic.get_all_pois(abc_sort=True):
             if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_poi_ComboBox.addItem(self._poi_manager_logic.track_point_list[key].get_name(), key)
                 self._mw.offset_anchor_ComboBox.addItem(self._poi_manager_logic.track_point_list[key].get_name(), key)

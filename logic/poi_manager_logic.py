@@ -390,7 +390,7 @@ class PoiManagerLogic(GenericLogic):
                 
                 
     def set_new_position(self, poikey = None, point = None):
-        """ Adds another point to the trace of the given poi.
+        """ Adds another point to the trace of the given poi, and uses this information to updated the sample position.
         
         @param string poikey: the key of the poi
         @param float[3] point: coordinates of the next point
@@ -414,6 +414,35 @@ class PoiManagerLogic(GenericLogic):
         self.logMsg('J. The given POI ({}) does not exist.'.format(poikey), 
             msgType='error')
         return -1
+
+    def move_coords(self, poikey = None, point = None):
+        """Updates the coords of a given POI, and adds a point to the POI history, but DOES NOT update the sample position.
+        """
+        if point == None:
+            point=self._confocal_logic.get_position()
+            
+        if poikey != None and poikey in self.track_point_list.keys():
+            if len(point) != 3:
+                self.logMsg('Length of set poi is not 3.', 
+                             msgType='error')
+                return -1
+            this_poi = self.track_point_list[poikey]
+            return_val = this_poi.add_position_to_trace(position=point)
+
+            sample_pos = self.track_point_list['sample'].get_trace()[-1,:][1:4]
+
+            new_coords = point - sample_pos
+
+            this_poi.set_coords_in_sample( new_coords )
+
+            self.signal_poi_updated.emit()
+
+            return return_val
+            
+        self.logMsg('J. The given POI ({}) does not exist.'.format(poikey), 
+            msgType='error')
+        return -1
+
             
     def rename_poi(self, poikey = None, name = None):
         """ Sets the name of the given poi.
