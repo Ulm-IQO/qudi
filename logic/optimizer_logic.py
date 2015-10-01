@@ -352,14 +352,18 @@ class OptimizerLogic(GenericLogic):
         A_line = np.zeros(self._zimage_Z_values.shape)
         
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )
+
+        line_bg = np.vstack( (X_line+1, Y_line, Z_line, A_line) )
+
         try:
             line_counts = self._scanning_device.scan_line(line)
+            line_bg = self._scanning_device.scan_line(line_bg)
         except Exception:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_refocus()           
             self.signal_scan_xy_line_next.emit()
         
-        self.z_refocus_line = line_counts
+        self.z_refocus_line = line_counts - line_bg
         
 
     def start_scanner(self):
