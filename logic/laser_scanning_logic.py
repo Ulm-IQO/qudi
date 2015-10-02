@@ -81,6 +81,7 @@ class LaserScanningLogic(GenericLogic):
     sig_data_updated = QtCore.Signal()
     sig_update_histogram_next = QtCore.Signal(bool)
     sig_handle_timer = QtCore.Signal(bool)
+    sig_new_data_point = QtCore.Signal(list)
 
     _modclass = 'laserscanninglogic'
     _modtype = 'logic'
@@ -167,6 +168,7 @@ class LaserScanningLogic(GenericLogic):
 
         # start the event loop for the hardware
         self.hardware_thread.start()
+        self.last_point_time = time.time()
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -231,7 +233,8 @@ class LaserScanningLogic(GenericLogic):
             self.sumhisto=np.ones(self._bins)*1.0e-10
             self.intern_xmax = -1.0
             self.intern_xmin = 1.0e10
-
+            self.recent_avg = [0, 0, 0]
+            self.recent_count = 0
 
         # start the measuring thread
         self.sig_handle_timer.emit(True)
@@ -264,14 +267,14 @@ class LaserScanningLogic(GenericLogic):
             self.logMsg('Recalcutating Laser Scanning Histogram for: {0:d} counts and {1:d} wavelength.'.format(count_window, len(self._wavelength_data)),
                     msgType='status')
         else:
-            count_window = min(100,len(self._counter_logic._data_to_save))
+            count_window = min(100, len(self._counter_logic._data_to_save))
 
         if  count_window < 2:
             time.sleep(self._logic_update_timing*1e-3)
             self.sig_update_histogram_next.emit(False)
             return
 
-        temp=np.array(self._counter_logic._data_to_save[-count_window:])
+        temp = np.array(self._counter_logic._data_to_save[-count_window:])
 
         # only do something, if there is data to work with
         if len(self._wavelength_data)>0:
@@ -289,10 +292,20 @@ class LaserScanningLogic(GenericLogic):
                     continue
 
                 # sum the counts in rawhisto and count the occurence of the bin in sumhisto
-                self.rawhisto[newbin]+=np.interp(i[0],
-                                                 xp=temp[:,0],
-                                                 fp=temp[:,1])
-                self.sumhisto[newbin]+=1.0
+                interpolation = np.interp(i[0], xp=temp[:,0], fp=temp[:,1])
+                self.rawhisto[newbin] += interpolation
+                self.sumhisto[newbin] += 1.0
+
+                datapoint = [i[1], i[0], interpolation]
+                if time.time() - self.last_point_time > 1:
+                    self.sig_new_data_point.emit(self.recent_avg)
+                    self.last_point_time = time.time()
+                    self.recent_count = 0
+                else:
+                    self.recent_count += 1
+                    for j in range(3):
+                        self.recent_avg[j] -= self.recent_avg[j] / self.recent_count
+                        self.recent_avg[j] += datapoint[j] / self.recent_count
 
             # the plot data is the summed counts divided by the occurence of the respective bins
             self.histogram=self.rawhisto/self.sumhisto

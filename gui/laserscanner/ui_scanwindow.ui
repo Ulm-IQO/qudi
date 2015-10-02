@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>803</width>
-    <height>600</height>
+    <width>888</width>
+    <height>780</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,6 +38,9 @@
     <item row="1" column="0" colspan="2">
      <widget class="PlotWidget" name="plotWidget"/>
     </item>
+    <item row="2" column="0" colspan="2">
+     <widget class="PlotWidget" name="scatterPlotWidget"/>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -45,8 +48,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>803</width>
-     <height>29</height>
+     <width>888</width>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -257,7 +260,7 @@ High bin number gives noisy but detailed data.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Wavelength</string>
+    <string>&amp;Wavelength</string>
    </property>
   </action>
   <action name="actionScan_parameters">
@@ -268,12 +271,12 @@ High bin number gives noisy but detailed data.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Scan parameters</string>
+    <string>&amp;Scan parameters</string>
    </property>
   </action>
   <action name="actionReset_to_default_view">
    <property name="text">
-    <string>Reset to default view</string>
+    <string>&amp;Reset to default view</string>
    </property>
   </action>
  </widget>
