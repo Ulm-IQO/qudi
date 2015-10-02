@@ -117,6 +117,16 @@ class LaserScanningGui(GUIBase):
         
         self._save_PNG = True
         
+        # scatter plot for time series
+        self._spw = self._mw.scatterPlotWidget
+        self._spi = self._spw.plotItem
+        self._spw.setLabel('bottom', 'Wavelength', units='nm')
+        self._spw.setLabel('left', 'Time', units='s')
+        self._scatterplot =  pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 20))
+        self._spw.addItem(self._scatterplot)
+        self._spw.setXLink(self._plot_item)
+        self._scanning_logic.sig_new_data_point.connect(self.add_data_point)
+        
         self._scanning_logic.sig_data_updated.connect(self.updateData)
         
     def deactivation(self, e):
@@ -150,6 +160,12 @@ class LaserScanningGui(GUIBase):
             self._mw.actionStop_resume_scan.setText('Resume')
             self._mw.actionStart_scan.setEnabled(True)
 
+    def add_data_point(self, point):
+        if len(point) >= 3 :
+            spts = [{'pos': (point[0], point[1]), 'size': 5, 'brush':pg.intColor( point[2]/100, 255)}]
+            self._scatterplot.addPoints(spts)
+            #print(point)
+
     def stop_resume_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
@@ -168,6 +184,7 @@ class LaserScanningGui(GUIBase):
         """ Handling resume of the scanning without resetting the data.
         """
         if self._scanning_logic.getState() == 'idle':
+            self._scatterplot.clear()
             self._scanning_logic.start_scanning()
 
             # Enable the stop button once a scan starts.
