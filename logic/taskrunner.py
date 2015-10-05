@@ -22,7 +22,7 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 from core.util.models import ListTableModel
-import logic.generic_task
+import logic.generic_task as gt
 import importlib
 
 class TaskListTableModel(ListTableModel):
@@ -56,6 +56,8 @@ class TaskRunner(GenericLogic):
     _modtype = 'Logic'
     _out = {'runner': 'TaskRunner'}
 
+    sigLoadTasks = QtCore.Signal()
+
     def __init__(self, manager, name, configuation, **kwargs):
         """ Initialzize a logic module.
 
@@ -68,13 +70,11 @@ class TaskRunner(GenericLogic):
         super().__init__(manager, name, configuation, callbacks, **kwargs)
 
     def activation(self, e):
-        self.imodel = TaskListTableModel()
-        self.imodel.rowsInserted.connect(self.imodelChanged)
-        self.imodel.rowsRemoved.connect(self.imodelChanged)
-        self.ppmodel = TaskListTableModel()
-        self.ppmodel.rowsInserted.connect(self.ppmodelChanged)
-        self.ppmodel.rowsRemoved.connect(self.ppmodelChanged)
-        self.loadTasks()
+        self.model = TaskListTableModel()
+        self.model.rowsInserted.connect(self.modelChanged)
+        self.model.rowsRemoved.connect(self.modelChanged)
+        self.sigLoadTasks.connect(self.loadTasks)
+        self.sigLoadTasks.emit()
 
     def loadTasks(self):
         config = self.getConfiguration()
@@ -107,9 +107,13 @@ class TaskRunner(GenericLogic):
             try:
                 print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
-                print(mod)
-                #t['object'] = mod.Task(t.['name'])
-                self.imodel.append(t)
+                print('loaded:', mod)
+                print('dir:', dir(mod))
+                t['object'] = mod.Task(t['name'], self)
+                if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
+                    self.model.append(t)
+                else:
+                    self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
             except Exception as e:
                 self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
 
@@ -126,9 +130,18 @@ class TaskRunner(GenericLogic):
         pass
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
-    def imodelChanged(self, parent, first, last):
+    def modelChanged(self, parent, first, last):
         print('Inserted into task list: {} {}'.format(first, last))
 
-    @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
-    def ppmodelChanged(self, parent, first, last):
-        print('Inserted into task list: {} {}'.format(first, last))
+    def runTask(self, index):
+        print('runner', QtCore.QThread.currentThreadId())
+        task = self.model.storage[index.row()]['object']
+        if task.can('run'):
+            task.run()
+        elif task.can('prerun'):
+            task.prerun()
+        elif task.can('postrun'):
+            task.postrun()
+        else:
+            self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
+
