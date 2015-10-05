@@ -4,8 +4,8 @@ from logic.generic_task import InterruptableTask
 
 class Task(InterruptableTask):
 
-    def __init__(self):
-        super().__init__('Refocus')
+    def __init__(self, name, runner):
+        super().__init__(name, runner)
         print('Task {} added!'.format(self.name))
 
     def startTask(self):

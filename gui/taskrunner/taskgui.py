@@ -32,6 +32,8 @@ class TaskGui(GUIBase):
     ## declare connectors
     _in = {'tasklogic': 'TaskRunner'}
 
+    sigRunTaskFromList = QtCore.Signal(object)
+
     def __init__(self, manager, name, config, **kwargs):
         """ Create the switch control GUI.
 
@@ -51,9 +53,9 @@ class TaskGui(GUIBase):
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
         self.logic = self.connector['in']['tasklogic']['object']
-        self._mw.itaskListView.setModel(self.logic.imodel)
-        self._mw.pptaskListView.setModel(self.logic.ppmodel)
+        self._mw.itaskListView.setModel(self.logic.model)
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
+        self.sigRunTaskFromList.connect(self.logic.runTask)
         self.show()
        
     def show(self):
@@ -71,8 +73,7 @@ class TaskGui(GUIBase):
     def manualStart(self):
         selected = self._mw.itaskListView.selectedIndexes()
         if len(selected) >= 1:
-            print(self._mw.itaskListView.model().data(selected[0], QtCore.Qt.DisplayRole))
-            print(self.logic.imodel.storage[selected[0].row()])
+            self.sigRunTaskFromList.emit(selected[0])
 
 
 
