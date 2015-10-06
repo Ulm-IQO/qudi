@@ -25,6 +25,8 @@ from core.util.mutex import Mutex
 
 from pyqtgraph.Qt import QtCore
 
+from time import strftime, localtime
+
 import random
 import time
 import numpy as np
@@ -71,6 +73,10 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
         time.sleep(self.exposure)
         return data
+
+    def saveSpectrum(self, path, postfix = ''):
+        timestr = strftime("%Y%m%d-%H%M-%S_", localtime())
+        print( 'Dummy would save to: ' + str(path) + timestr + str(postfix) + ".spe" )
 
     def getExposure(self):
         return self.exposure
