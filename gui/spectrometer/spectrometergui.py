@@ -85,6 +85,7 @@ class SpectrometerGui(GUIBase):
         self._mw.rec_single_spectrum_Action.triggered.connect(self.record_single_spectrum)
         self._mw.start_diff_spec_Action.triggered.connect(self.start_differential_measurement)
         self._mw.stop_diff_spec_Action.triggered.connect(self.stop_differential_measurement)
+        self._mw.save_spectrum_Action.triggered.connect(self.save_spectrum_data)
 
         self._spectrum_logic.sig_specdata_updated.connect(self.updateData)
         
@@ -141,3 +142,6 @@ class SpectrometerGui(GUIBase):
         self._mw.start_diff_spec_Action.setEnabled(True)
         self._mw.rec_single_spectrum_Action.setEnabled(True)
 
+   
+    def save_spectrum_data(self):
+        self._spectrum_logic.save_spectrum_data()

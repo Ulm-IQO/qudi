@@ -40,7 +40,9 @@ class SpectrumLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'spectrometer': 'SpectrometerInterface'
+    _in = { 'spectrometer': 'SpectrometerInterface',
+            'odmrlogic1' : 'ODMRLogic',
+            'savelogic': 'SaveLogic'
             }
     _out = {'spectrumlogic': 'SpectrumLogic'}
 
@@ -71,8 +73,8 @@ class SpectrumLogic(GenericLogic):
         self.diff_spec_data_mod_off = np.array([])
 
         self._spectrometer_device = self.connector['in']['spectrometer']['object']
-
-        #self._save_logic = self.connector['in']['savelogic']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
         
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
 
@@ -154,4 +156,27 @@ class SpectrumLogic(GenericLogic):
         self._continue_differential = False
 
     def toggle_modulation(self, on):
-        pass
+        """ Toggle the modulation.
+        """
+
+        if on:
+            self._odmr_logic.MW_on()
+        elif not on:
+            self._odmr_logic.MW_off()
+        else:
+            print("Parameter 'on' needs to be boolean")
+
+    def save_spectrum_data(self):
+        """ Saves the current spectrum data to a file.
+        """
+        filepath = self._save_logic.get_path_for_module(module_name='spectra')
+        filelabel = 'spectrum'
+
+        # prepare the data in an OrderedDict:
+        data = OrderedDict()
+
+        data['wavelength'] = self.spectrum_data[0,:]
+        data['signal'] = self.spectrum_data[1,:]
+
+        self._save_logic.save_data(data, filepath, filelabel=filelabel, as_text=True)
+
