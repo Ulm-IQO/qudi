@@ -54,6 +54,8 @@ class SpectrometerGui(GUIBase):
         # setting up the window
         self._mw = SpectrometerWindow()
 
+        self._mw.stop_diff_spec_Action.setEnabled(False)
+
         ## giving the plots names allows us to link their axes together
         self._pw = self._mw.plotWidget # pg.PlotWidget(name='Counter1')
         self._plot_item = self._pw.plotItem
@@ -80,7 +82,11 @@ class SpectrometerGui(GUIBase):
         self._pw.setLabel('bottom', 'Wavelength', units='nm')
         self._pw.setLabel('top', 'Relative Frequency', units='Hz')
                 
-        self._mw.actionStart_scan.triggered.connect(self.start_clicked)
+        self._mw.rec_single_spectrum_Action.triggered.connect(self.record_single_spectrum)
+        self._mw.start_diff_spec_Action.triggered.connect(self.start_differential_measurement)
+        self._mw.stop_diff_spec_Action.triggered.connect(self.stop_differential_measurement)
+
+        self._spectrum_logic.sig_specdata_updated.connect(self.updateData)
         
 
         self._mw.show()
@@ -111,9 +117,27 @@ class SpectrometerGui(GUIBase):
         self._curve1.setData(x=data[0,:], y=data[1,:])
         
 
-    def start_clicked(self):
+    def record_single_spectrum(self):
         """ Handling resume of the scanning without resetting the data.
         """
-        self._spectrum_logic.get_spectrum()
+        self._spectrum_logic.get_single_spectrum()
 
         self.updateData()
+
+    def start_differential_measurement(self):
+        
+        # Change enabling of GUI actions
+        self._mw.stop_diff_spec_Action.setEnabled(True)
+        self._mw.start_diff_spec_Action.setEnabled(False)
+        self._mw.rec_single_spectrum_Action.setEnabled(False)
+
+        self._spectrum_logic.start_differential_spectrum()
+
+    def stop_differential_measurement(self):
+        self._spectrum_logic.stop_differential_spectrum()
+
+        # Change enabling of GUI actions
+        self._mw.stop_diff_spec_Action.setEnabled(False)
+        self._mw.start_diff_spec_Action.setEnabled(True)
+        self._mw.rec_single_spectrum_Action.setEnabled(True)
+

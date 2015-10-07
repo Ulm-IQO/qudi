@@ -57,8 +57,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionStart_scan"/>
-   <addaction name="actionStop_resume_scan"/>
+   <addaction name="rec_single_spectrum_Action"/>
+   <addaction name="start_diff_spec_Action"/>
+   <addaction name="stop_diff_spec_Action"/>
   </widget>
   <widget class="QToolBar" name="plotToolBar">
    <property name="windowTitle">
@@ -81,22 +82,27 @@
     <string>&amp;Close</string>
    </property>
   </action>
-  <action name="actionStart_scan">
+  <action name="rec_single_spectrum_Action">
    <property name="text">
     <string>Record spectrum</string>
    </property>
   </action>
-  <action name="actionStop_resume_scan">
+  <action name="stop_diff_spec_Action">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
-    <string>Stop scan</string>
+    <string>Stop differential</string>
    </property>
   </action>
   <action name="actionReset_to_default_view">
    <property name="text">
     <string>&amp;Reset to default view</string>
+   </property>
+  </action>
+  <action name="start_diff_spec_Action">
+   <property name="text">
+    <string>Start differential</string>
    </property>
   </action>
  </widget>

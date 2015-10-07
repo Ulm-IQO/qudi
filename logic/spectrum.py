@@ -33,8 +33,8 @@ class SpectrumLogic(GenericLogic):
     """This logic module gathers data from the spectrometer.
     """
 
-    sig_data_updated = QtCore.Signal()
-    sig_update_spectrum_plot = QtCore.Signal(bool)
+    sig_specdata_updated = QtCore.Signal()
+    sig_next_diff_loop = QtCore.Signal()
 
     _modclass = 'spectrumlogic'
     _modtype = 'logic'
@@ -67,11 +67,14 @@ class SpectrumLogic(GenericLogic):
           @param object e: Fysom state change event
         """
         self.spectrum_data = np.array([])
+        self.diff_spec_data_mod_on = np.array([])
+        self.diff_spec_data_mod_off = np.array([])
 
         self._spectrometer_device = self.connector['in']['spectrometer']['object']
 
         #self._save_logic = self.connector['in']['savelogic']['object']
-
+        
+        self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
 
 
     def deactivation(self, e):
@@ -83,8 +86,10 @@ class SpectrumLogic(GenericLogic):
             pass
         
 
-    def get_spectrum(self):
+    def get_single_spectrum(self):
          self.spectrum_data = self._spectrometer_device.recordSpectrum()
+
+         self.sig_specdata_updated.emit()
 
     def save_raw_spectrometer_file(self, path = '', postfix = '' ):
         """Ask the hardware device to save its own raw file.
@@ -92,3 +97,61 @@ class SpectrumLogic(GenericLogic):
         #TODO: sanity check the passed parameters.
 
         self._spectrometer_device.saveSpectrum( path, postfix = postfix )
+
+
+    def start_differential_spectrum(self):
+        """Start a differential spectrum acquisition.  An initial spectrum is recorded to initialise the data arrays to the right size.
+        """
+
+        self._continue_differential = True
+
+        # Taking a demo spectrum gives us the wavelength values and the length of the spectrum data.
+        demo_data = self._spectrometer_device.recordSpectrum()
+
+        wavelengths = demo_data[0,:]
+        empty_signal = np.zeros(len(wavelengths) )
+
+        # Using this information to initialise the differential spectrum data arrays.
+        self.spectrum_data = np.array( [wavelengths, empty_signal] )
+        self.diff_spec_data_mod_on = np.array( [wavelengths, empty_signal] )
+        self.diff_spec_data_mod_off= np.array( [wavelengths, empty_signal] )
+
+        # Starting the measurement loop
+        self._loop_differential_spectrum()
+
+    def _loop_differential_spectrum(self):
+        """ This loop toggles the modulation and iteratively records a differential spectrum.
+        """
+        
+        # If the loop should not continue, then return immediately without emitting any signal to repeat.
+        if not self._continue_differential:
+            return
+
+        # Otherwise, we make a measurement and then emit a signal to repeat this loop.
+        
+        # Toggle on, take spectrum and add data to the mod_on data
+        self.toggle_modulation( on=True )
+        these_data = self._spectrometer_device.recordSpectrum()
+        self.diff_spec_data_mod_on[1,:] += these_data[1,:]
+
+        # Toggle off, take spectrum and add data to the mod_off data
+        self.toggle_modulation( on=False )
+        these_data = self._spectrometer_device.recordSpectrum()
+        self.diff_spec_data_mod_off[1,:] += these_data[1,:]
+
+        # Calculate the differential spectrum
+        self.spectrum_data[1,:] = self.diff_spec_data_mod_on[1,:] - self.diff_spec_data_mod_off[1,:]
+
+        self.sig_specdata_updated.emit()
+
+        self.sig_next_diff_loop.emit()
+
+
+    def stop_differential_spectrum(self):
+        """Stop an ongoing differential spectrum acquisition
+        """
+        
+        self._continue_differential = False
+
+    def toggle_modulation(self, on):
+        pass
