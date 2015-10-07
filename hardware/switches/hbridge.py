@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Control the Radiant Dyes flip mirror driver through the serial interface.
+Control custom board with 4 H bridges.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,42 +22,28 @@ import visa
 import time
 from core.base import Base
 from core.util.mutex import Mutex
-from .laser_switch_interface import LaserSwitchInterface
+from .switch_interface import SwitchInterface
 
-class FlipMirror(Base, LaserSwitchInterface):
-    """ This class is implements communication with the Radiant Dyes flip mirror driver
-        through pyVISA.
+class HBridge(Base, SwitchInterface):
+    """ Methods to control slow laser switching devices.
     """
-    _modclass = 'laserswitchinterface'
+    _modclass = 'switchinterface'
     _modtype = 'hardware'
-    _out = {'switch':'LaserSwitchInterface'}
+    _out = {'switch': 'SwitchInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        """ Creae flip mirror control module 
-
-          @param object manager: reference to module manager
-          @param str name: unique module name
-          @param dict config; configuration parameters in a dict
-          @param dict kwargs: aditional parameters in a dict
-        """
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
+        Base.__init__(self, manager, name, config,  c_dict)
         self.lock = Mutex()
-        print(config)
-        print(self._configuration)
 
     def activation(self, e):
-        """ Prepare module, connect to hardware.
-
-          @param e: Fysom stae change notification.
-        """
         config = self.getConfiguration()
         if not 'interface' in config:
             raise KeyError('{0} definitely needs an "interface" configuration value.'.format(self.__class__.__name__))
         self.rm = visa.ResourceManager()
         self.inst = self.rm.open_resource(
                 config['interface'],
-                baud_rate=115200,
+                baud_rate=9600,
                 write_termination='\r\n',
                 read_termination='\r\n',
                 timeout=10,
@@ -65,35 +51,28 @@ class FlipMirror(Base, LaserSwitchInterface):
         )
 
     def deactivation(self, e):
-        """ Disconnect from hardware on deactivation.
-
-          @param e: Fysom stae change notification.
-        """
         self.inst.close()
-        self.rm.close()
 
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
 
-          @return int: number of swiches on this hardware
+          @return int: number of switches
         """
-        return 1
+        return 4
 
     def getSwitchState(self, switchNumber):
         """ Gives state of switch.
 
           @param int switchNumber: number of switch
 
-          @return bool: True if vertical, False if horizontal, None on error
+          @return bool: True if on, False if off, None on error
         """
         with self.lock:
-            pos = self.inst.ask('GP1')
-            if pos == 'H1':
-                return False
-            elif pos == 'V1':
-                return True
-            else:
-                return None
+            pos = self.inst.ask('STATUS')
+            ret = list()
+            for i in pos.split():
+                ret.append(int(i))
+            return ret[switchNumber]
 
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
@@ -103,20 +82,11 @@ class FlipMirror(Base, LaserSwitchInterface):
 
           @return str: calibration parameter fir switch and state.
 
-        In this case, the calibration parameter is a integer number that says where the
-        horizontal and vertical position of the flip mirror is in the 16 bit PWM range of the motor driver.
-        The number is returned as a string, not as an int, and needs to be converted.
+        In this case, the calibration parameter is the time for which current is
+        applied to the coil/motor for switching.
+
         """
-        with self.lock:
-            try:
-                if state == 'On':
-                    answer = self.inst.ask('GVT1')
-                else:
-                    answer = self.inst.ask('GHT1')
-                result = int(answer.split('=')[1])
-            except:
-                result = -1
-            return result
+        return 0
 
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
@@ -127,51 +97,51 @@ class FlipMirror(Base, LaserSwitchInterface):
 
           @return bool: True if success, False on error
         """
-        with self.lock:
-            try:
-                answer = self.inst.ask('SHT1 {0}'.format(int(value)))
-                if answer != 'OK1':
-                    return False
-            except:
-                return False
-            return True
+        pass
 
     def switchOn(self, switchNumber):
-        """ Turn the flip mirror to vertical position.
+        """ Extend coil or move motor.
 
           @param int switchNumber: number of switch to be switched
 
           @return bool: True if suceeds, False otherwise
         """
-        with self.lock:
-            try:
-                answer = self.inst.ask('SV1')
-                if answer != 'OK1':
+        coilnr = int(switchNumber) + 1
+        if int(coilnr) > 0 and int(coilnr) < 5:
+            with self.lock:
+                try:
+                    answer = self.inst.ask('P{0}=1'.format(coilnr))
+                    if answer != 'P{0}=1'.format(coilnr):
+                        return False
+                    time.sleep(self.getSwitchTime(switchNumber))
+                    self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
+                except:
                     return False
-                time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: On'.format(self._name, switchNumber))
-            except:
-                return False
-            return True
+                return True
+        else:
+            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
     
     def switchOff(self, switchNumber):
-        """ Turn the flip mirror to horizontal position.
+        """ Retract coil ore move motor.
 
           @param int switchNumber: number of switch to be switched
 
           @return bool: True if suceeds, False otherwise
         """
-        with self.lock:
-            try:
-                answer = self.inst.ask('SH1')
-                if answer != 'OK1':
+        coilnr = int(switchNumber) + 1
+        if int(coilnr) > 0 and int(coilnr) < 5:
+            with self.lock:
+                try:
+                    answer = self.inst.ask('P{0}=0'.format(coilnr))
+                    if answer != 'P{0}=0'.format(coilnr):
+                        return False
+                    time.sleep(self.getSwitchTime(switchNumber))
+                    self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
+                except:
                     return False
-                time.sleep(self.getSwitchTime(switchNumber))
-                self.logMsg('{0} switch {1}: Off'.format(self._name, switchNumber))
-            except:
-                return False
-            return True
-
+                return True
+        else:
+            self.logMsg('You are trying to use non-existing output no {0}'.format(coilnr), msgType='error')
 
     def getSwitchTime(self, switchNumber):
         """ Give switching time for switch.
@@ -179,5 +149,8 @@ class FlipMirror(Base, LaserSwitchInterface):
           @param int switchNumber: number of switch
 
           @return float: time needed for switch state change
+
+          Coils typically switch faster than 0.5s, but safety first!
         """
-        return 2.0
+        return 0.5
+

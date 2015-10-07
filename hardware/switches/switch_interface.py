@@ -20,7 +20,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from core.util.customexceptions import InterfaceImplementationError
 
-class LaserSwitchInterface():
+class SwitchInterface():
     """ Methods to control slow (mechaincal) laser switching devices.
     """
 
