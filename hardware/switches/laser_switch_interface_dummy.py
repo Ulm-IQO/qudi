@@ -20,17 +20,17 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from core.base import Base
 from collections import OrderedDict
-from .laser_switch_interface import LaserSwitchInterface
+from .switch_interface import SwitchInterface
 import time
 
-class LaserSwitchInterfaceDummy(Base, LaserSwitchInterface):
+class LaserSwitchInterfaceDummy(Base, SwitchInterface):
     """ Methods to control slow laser switching devices.
     """
     _modclass = 'laserswitchinterfacedummy'
     _modtype = 'hardware'
 
     # connectors
-    _out = {'switch': 'LaserSwitchInterface'}
+    _out = {'switch': 'SwitchInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
