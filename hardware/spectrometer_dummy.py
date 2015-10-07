@@ -51,7 +51,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
         data = np.empty((2, length), dtype=np.double)
         data[0] = np.arange(730, 750, 20/length)
-        data[1] = np.random.uniform(0, 200, length)
+        data[1] = np.random.uniform(0, 2000, length)
 
         lorentians, params = self._fitLogic.make_multiple_lorentzian_model(no_of_lor=4)
         sigma = 0.05
