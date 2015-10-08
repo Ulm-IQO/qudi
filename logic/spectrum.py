@@ -184,19 +184,24 @@ class SpectrumLogic(GenericLogic):
         data['wavelength'] = self.spectrum_data[0,:]
         data['signal'] = self.spectrum_data[1,:]
 
+        # Save to file
         self._save_logic.save_data( data, filepath, 
                                     filelabel=filelabel, timestamp=timestamp,
                                     as_text=True)
 
         #If the differential spectra arrays are not empty, save them as raw data
         if len(self.diff_spec_data_mod_on) != 0 and len(self.diff_spec_data_mod_off) !=0:
+            # This file will have the same timestamp, so needs a different label.
             filelabel = 'spectrum_raw_modulation'
+            
+            # prepare the data in an OrderedDict:
             data = OrderedDict()
 
             data['wavelength'] = self.diff_spec_data_mod_on[0,:]
             data['signal_mod_on'] = self.diff_spec_data_mod_on[1,:]
             data['signal_mod_off'] = self.diff_spec_data_mod_off[1,:]
 
+            # Save to file
             self._save_logic.save_data( data, filepath, 
                                         filelabel=filelabel, timestamp=timestamp,
                                         as_text=True)
