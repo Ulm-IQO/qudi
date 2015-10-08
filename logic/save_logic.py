@@ -210,13 +210,17 @@ class SaveLogic(GenericLogic):
             """
 
 
-            frm = inspect.stack()[1]    # try to trace back the functioncall to
-                                        # the class which was calling it.
-            mod = inspect.getmodule(frm[0]) # this will get the object, which
-                                            # called the save_data function.
-            module_name =  mod.__name__.split('.')[-1]  # that will extract the
-                                                        # name of the class.
-
+            try:
+                frm = inspect.stack()[1]    # try to trace back the functioncall to
+                                            # the class which was calling it.
+                mod = inspect.getmodule(frm[0]) # this will get the object, which
+                                                # called the save_data function.
+                module_name =  mod.__name__.split('.')[-1]  # that will extract the
+                                                            # name of the class.
+            except:
+                # Sometimes it is not possible to get the object which called the save_data function (such as when calling this from the console).
+                module_name = 'NaN'
+            
 
             # check whether the given directory path does exist. If not, the
             # file will be saved anyway in the unspecified directory.
