@@ -89,9 +89,14 @@ class SpectrumLogic(GenericLogic):
         
 
     def get_single_spectrum(self):
-         self.spectrum_data = self._spectrometer_device.recordSpectrum()
+        self.spectrum_data = self._spectrometer_device.recordSpectrum()
 
-         self.sig_specdata_updated.emit()
+        # Clearing the differential spectra data arrays so that they do not get saved with this single spectrum.
+        self.diff_spec_data_mod_on = np.array([])
+        self.diff_spec_data_mod_off = np.array([])
+
+
+        self.sig_specdata_updated.emit()
 
     def save_raw_spectrometer_file(self, path = '', postfix = '' ):
         """Ask the hardware device to save its own raw file.
@@ -171,6 +176,7 @@ class SpectrumLogic(GenericLogic):
         """
         filepath = self._save_logic.get_path_for_module(module_name='spectra')
         filelabel = 'spectrum'
+        timestamp = datetime.datetime.now()
 
         # prepare the data in an OrderedDict:
         data = OrderedDict()
@@ -178,5 +184,19 @@ class SpectrumLogic(GenericLogic):
         data['wavelength'] = self.spectrum_data[0,:]
         data['signal'] = self.spectrum_data[1,:]
 
-        self._save_logic.save_data(data, filepath, filelabel=filelabel, as_text=True)
+        self._save_logic.save_data( data, filepath, 
+                                    filelabel=filelabel, timestamp=timestamp,
+                                    as_text=True)
 
+        #If the differential spectra arrays are not empty, save them as raw data
+        if len(self.diff_spec_data_mod_on) != 0 and len(self.diff_spec_data_mod_off) !=0:
+            filelabel = 'spectrum_raw_modulation'
+            data = OrderedDict()
+
+            data['wavelength'] = self.diff_spec_data_mod_on[0,:]
+            data['signal_mod_on'] = self.diff_spec_data_mod_on[1,:]
+            data['signal_mod_off'] = self.diff_spec_data_mod_off[1,:]
+
+            self._save_logic.save_data( data, filepath, 
+                                        filelabel=filelabel, timestamp=timestamp,
+                                        as_text=True)
