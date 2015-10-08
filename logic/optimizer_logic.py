@@ -41,17 +41,19 @@ class OptimizerLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
                                 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
+        # default values for clock frequency and slowness
+        # slowness: steps during retrace line
         self._clock_frequency = 50
         self.return_slowness = 20
         
-        #setting standard parameter for refocus
+        # setting standard parameter for refocus
         self.refocus_XY_size =  0.6
-        self.refocus_XY_step = 0.06
+        self.optimizer_XY_res = 10
         self.refocus_Z_size = 2
-        self.refocus_Z_step = 0.1
-        self.fit_Z_step = 0.01
+        self.optimizer_Z_res = 30
+
+        # settings option for surface subtraction in depth scan
+        self.do_surface_subtraction = False
         
         #locking for thread safety
         self.threadlock = Mutex()
@@ -168,11 +170,11 @@ class OptimizerLogic(GenericLogic):
         ymin = np.clip(y0 - 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
         ymax = np.clip(y0 + 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
         
-        self._X_values = np.arange(xmin, xmax + self.refocus_XY_step, self.refocus_XY_step)
-        self._Y_values = np.arange(ymin, ymax + self.refocus_XY_step, self.refocus_XY_step)
+        self._X_values = np.linspace(xmin, xmax, num = self.optimizer_XY_res)
+        self._Y_values = np.linspace(ymin, ymax, num = self.optimizer_XY_res)
         self._Z_values = self._trackpoint_z * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
-        self._return_X_values = np.arange(xmax, xmin - self.refocus_XY_step, -self.refocus_XY_step)
+        self._return_X_values = np.linspace(xmax, xmin, num = self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
         
         self.xy_refocus_image = np.zeros((len(self._Y_values), len(self._X_values), 4))
@@ -190,8 +192,8 @@ class OptimizerLogic(GenericLogic):
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         
-        self._zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.refocus_Z_step)
-        self._fit_zimage_Z_values = np.arange(zmin, zmax + self.refocus_Z_step, self.fit_Z_step)
+        self._zimage_Z_values = np.linspace(zmin, zmax, num = self.optimizer_Z_res)
+        self._fit_zimage_Z_values = np.linspace(zmin, zmax, num = self.optimizer_Z_res)
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         #self._Z_values = np.clip(z0-0.5*self.ZSize, z0+0.5*self.ZSize, self.ZStep)
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
@@ -345,7 +347,7 @@ class OptimizerLogic(GenericLogic):
     def _scan_z_line(self):
         """Scans the z line for refocus
         """
-        #defining trace of positions for z-refocus 
+        # defining trace of positions for z-refocus 
         Z_line = self._zimage_Z_values    #todo: tilt_correction
         X_line = self.refocus_x * np.ones(self._zimage_Z_values.shape)
         Y_line = self.refocus_y * np.ones(self._zimage_Z_values.shape)
@@ -353,17 +355,30 @@ class OptimizerLogic(GenericLogic):
         
         line = np.vstack( (X_line, Y_line, Z_line, A_line) )
 
-        line_bg = np.vstack( (X_line+1, Y_line, Z_line, A_line) )
-
+        # Perform scan
         try:
             line_counts = self._scanning_device.scan_line(line)
-            line_bg = self._scanning_device.scan_line(line_bg)
         except Exception:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_refocus()           
             self.signal_scan_xy_line_next.emit()
+
+        # Set the data
+        self.z_refocus_line = line_counts
         
-        self.z_refocus_line = line_counts - line_bg
+        # If subtracting surface, perform a displaced depth line scan
+        if self.do_surface_subtraction:
+            line_bg = np.vstack( (X_line+1, Y_line, Z_line, A_line) )
+            
+            try:
+                line_bg = self._scanning_device.scan_line(line_bg)
+            except Exception:
+                self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+                self.stop_refocus()           
+                self.signal_scan_xy_line_next.emit()
+        
+            # surface-subtracted line scan data is the difference
+            self.z_refocus_line = line_counts - line_bg
         
 
     def start_scanner(self):
