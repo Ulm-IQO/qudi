@@ -29,7 +29,7 @@ class TaskListTableModel(ListTableModel):
 
     def __init__(self):
         super().__init__()
-        self.headers = ['Task Name']
+        self.headers = ['Task Name', 'Task State']
 
     def data(self, index, role):
         """ Get data from model for a given cell. Data can have a role that affects display.
@@ -44,6 +44,8 @@ class TaskListTableModel(ListTableModel):
         elif role == QtCore.Qt.DisplayRole:
             if index.column() == 0:
                return self.storage[index.row()]['name']
+            elif index.column() == 1:
+               return self.storage[index.row()]['object'].current
             else:
                 return None
         else:
@@ -138,10 +140,28 @@ class TaskRunner(GenericLogic):
         task = self.model.storage[index.row()]['object']
         if task.can('run'):
             task.run()
+        elif task.can('resume'):
+            task.resume()
         elif task.can('prerun'):
             task.prerun()
         elif task.can('postrun'):
             task.postrun()
         else:
             self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
+
+    def pauseTask(self, index):
+        print('runner', QtCore.QThread.currentThreadId())
+        task = self.model.storage[index.row()]['object']
+        if task.can('pause'):
+            task.pause()
+        else:
+            self.logMsg('This thing cannot be paused:  {}'.format(task.name), msgType='error')
+
+    def stopTask(self, index):
+        print('runner', QtCore.QThread.currentThreadId())
+        task = self.model.storage[index.row()]['object']
+        if task.can('finish'):
+            task.finish()
+        else:
+            self.logMsg('This thing cannot be stopped:  {}'.format(task.name), msgType='error')
 

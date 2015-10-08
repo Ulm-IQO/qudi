@@ -111,7 +111,7 @@ class DictTableModel(QtCore.QAbstractTableModel):
         elif orientation != QtCore.Qt.Horizontal:
             return None
         else:
-            return self.header[section]
+            return self.headers[section]
 
     def add(self, key, data):
         with self.lock:
@@ -200,7 +200,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
         elif orientation != QtCore.Qt.Horizontal:
             return None
         else:
-            return self.header[section]
+            return self.headers[section]
 
     def insert(self, n, data):
         with self.lock:

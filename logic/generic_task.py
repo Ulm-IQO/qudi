@@ -51,28 +51,32 @@ class InterruptableTask(QtCore.QObject, Fysom):
     pauseTasks = {}
     requiredModules = {}
 
-    def __init__(self, name, runner, *args, **kwargs):
+    def __init__(self, name, runner, **kwargs):
         QtCore.QObject.__init__(self)
-        _default_callbacks = {'run': self._start, 'pause': self._pause, 'resume': self._resume, 'finish': self._finish}
+        default_callbacks = {
+                'onrun': self._start,
+                'onpause': self._pause,
+                'onresume': self._resume,
+                'onfinish': self._finish
+                }
         _stateDict = {
             'initial': 'stopped',
             'events': [
-                {'name': 'run',                 'src': 'stopped', 'dst': 'starting'},
-                {'name': 'startingFinished',    'src': 'starting', 'dst': 'running'},
-                {'name': 'pause',               'src': 'running', 'dst': 'pausing'},
-                {'name': 'pausingFinished',     'src': 'pausing', 'dst': 'paused'},
-                {'name': 'finish',              'src': 'running', 'dst': 'finishing'},
+                {'name': 'run',                 'src': 'stopped',   'dst': 'starting'},
+                {'name': 'startingFinished',    'src': 'starting',  'dst': 'running'},
+                {'name': 'pause',               'src': 'running',   'dst': 'pausing'},
+                {'name': 'pausingFinished',     'src': 'pausing',   'dst': 'paused'},
+                {'name': 'finish',              'src': 'running',   'dst': 'finishing'},
                 {'name': 'finishingFinished',   'src': 'finishing', 'dst': 'stopped'},
-                {'name': 'resume',              'src': 'paused', 'dst': 'resuming'},
-                {'name': 'resumingFinished',    'src': 'resuming', 'dst': 'running'},
-                {'name': 'abort', 'src': 'pausing', 'dst': 'stopped'}
+                {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
+                {'name': 'resumingFinished',    'src': 'resuming',  'dst': 'running'},
+                {'name': 'abort',               'src': 'pausing',   'dst': 'stopped'}
             ],
-            'callbacks': _default_callbacks
+            'callbacks': default_callbacks
         }
         Fysom.__init__(self, _stateDict)
         self.lock = Mutex()
         self.name = name
-        self.args = args
         self.interruptable = False
         self.success = False
         self.taskRunner = runner
@@ -104,6 +108,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.startTask()
             self.startingFinished()
             self.sigStarted.emit()
+            self.sigNextTaskStep.emit()
         except Exception as e:
             self.taskRunner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
@@ -216,7 +221,7 @@ class PrePostTask(QtCore.QObject, Fysom):
 
     def __init__(self, name, runner, *args, **kwargs):
         QtCore.QObject.__init__(self)
-        _default_callbacks = {'prerun': self._pre, 'postrun': self._post}
+        _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
             'initial': 'stopped',
             'events': [
@@ -225,7 +230,7 @@ class PrePostTask(QtCore.QObject, Fysom):
             ],
             'callbacks': _default_callbacks
         }
-        Fysom.__init__(self)
+        Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
         self.args = args
