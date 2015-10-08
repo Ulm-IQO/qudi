@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0" rowspan="2">
-     <widget class="QListView" name="itaskListView"/>
+     <widget class="QTableView" name="taskTableView"/>
     </item>
    </layout>
   </widget>
@@ -49,6 +49,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionStart_Task"/>
+   <addaction name="actionPause_Task"/>
+   <addaction name="actionStop_Task"/>
   </widget>
   <action name="actionStart_Task">
    <property name="icon">
@@ -70,6 +72,20 @@
    </property>
    <property name="text">
     <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="actionPause_Task">
+   <property name="text">
+    <string>Pause Task</string>
+   </property>
+  </action>
+  <action name="actionStop_Task">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</iconset>
+   </property>
+   <property name="text">
+    <string>Stop Task</string>
    </property>
   </action>
  </widget>

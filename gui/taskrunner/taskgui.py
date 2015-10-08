@@ -33,6 +33,8 @@ class TaskGui(GUIBase):
     _in = {'tasklogic': 'TaskRunner'}
 
     sigRunTaskFromList = QtCore.Signal(object)
+    sigPauseTaskFromList = QtCore.Signal(object)
+    sigStopTaskFromList = QtCore.Signal(object)
 
     def __init__(self, manager, name, config, **kwargs):
         """ Create the switch control GUI.
@@ -53,9 +55,14 @@ class TaskGui(GUIBase):
         self._mw = TaskMainWindow()
         self.restoreWindowPos(self._mw)
         self.logic = self.connector['in']['tasklogic']['object']
-        self._mw.itaskListView.setModel(self.logic.model)
+        self._mw.taskTableView.setModel(self.logic.model)
+        self._mw.taskTableView.clicked.connect(self.setRunToolState)
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
+        self._mw.actionPause_Task.triggered.connect(self.manualPause)
+        self._mw.actionStop_Task.triggered.connect(self.manualStop)
         self.sigRunTaskFromList.connect(self.logic.runTask)
+        self.sigPauseTaskFromList.connect(self.logic.pauseTask)
+        self.sigStopTaskFromList.connect(self.logic.stopTask)
         self.show()
        
     def show(self):
@@ -71,11 +78,40 @@ class TaskGui(GUIBase):
         self._mw.close()
 
     def manualStart(self):
-        selected = self._mw.itaskListView.selectedIndexes()
+        selected = self._mw.taskTableView.selectedIndexes()
         if len(selected) >= 1:
             self.sigRunTaskFromList.emit(selected[0])
 
+    def manualPause(self):
+        selected = self._mw.taskTableView.selectedIndexes()
+        if len(selected) >= 1:
+            self.sigPauseTaskFromList.emit(selected[0])
 
+    def manualStop(self):
+        selected = self._mw.taskTableView.selectedIndexes()
+        if len(selected) >= 1:
+            self.sigStopTaskFromList.emit(selected[0])
+
+    def setRunToolState(self, index):
+        selected = self._mw.taskTableView.selectedIndexes()
+        if len(selected) >= 1:
+            state = self.logic.model.storage[selected[0].row()]['object'].current
+            if state == 'stopped':
+                self._mw.actionStart_Task.setEnabled(True)
+                self._mw.actionStop_Task.setEnabled(False)
+                self._mw.actionPause_Task.setEnabled(False)
+            elif state == 'running':
+                self._mw.actionStart_Task.setEnabled(False)
+                self._mw.actionStop_Task.setEnabled(True)
+                self._mw.actionPause_Task.setEnabled(True)
+            elif state == 'paused':
+                self._mw.actionStart_Task.setEnabled(True)
+                self._mw.actionStop_Task.setEnabled(False)
+                self._mw.actionPause_Task.setEnabled(True)
+            else:
+                self._mw.actionStart_Task.setEnabled(False)
+                self._mw.actionStop_Task.setEnabled(False)
+                self._mw.actionPause_Task.setEnabled(False)
 
 class TaskMainWindow(QtGui.QMainWindow):
     """ Helper class for window loaded from UI file.

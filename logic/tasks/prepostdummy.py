@@ -13,7 +13,7 @@ class Task(PrePostTask):
         time.sleep(1)
         print('pre action of task {}'.format(self.name))
 
-    def preExecute(self):
+    def postExecute(self):
         time.sleep(1)
         print('post action of task {}'.format(self.name))
 
