@@ -1,5 +1,22 @@
 # -*- coding: utf-8 -*-
+"""
+This file contains the QuDi HARDWARE module PicoHarp300 class.
 
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
 
 import ctypes
 import numpy as np
@@ -32,9 +49,6 @@ correspond to standard C/C++ data types as follows:
     float                   32 bit floating point number
     double                  64 bit floating point number
 """
-
-
-
 
 # Bitmask in hex.
 # the comments behind each bitmask contain the integer value for the bitmask.
@@ -359,7 +373,8 @@ class PicoHarp300(Base, SlowCounterInterface):
         return features.value
 
     def set_input_CFD(self, channel, level, zerocross):
-        """
+        """ Set the Constant Fraction Discriminators for the Picoharp300.
+
         @param int channel: number (0 or 1) of the input channel
         @param int level: CFD discriminator level in millivolts
         @param int zerocross: CFD zero cross in millivolts
@@ -751,7 +766,7 @@ class PicoHarp300(Base, SlowCounterInterface):
 
         @param int holdofftime: holdofftime in ns. Maximal value is HOLDOFFMAX.
 
-        This setting can be used to clean up gliches on the marker signals.
+        This setting can be used to clean up glitches on the marker signals.
         When set to X ns then after detecting a first marker edge the next
         marker will not be accepted before x ns. Observe that the internal
         granularity of this time is only about 50ns. The holdoff time is set
@@ -769,13 +784,153 @@ class PicoHarp300(Base, SlowCounterInterface):
             self.check(self._dll.PH_SetMarkerHoldofftime(self._deviceID,
                                                           holfofftime))
 
+    # =========================================================================
+    #  Special functions for Routing Devices
+    # =========================================================================
+    # If this functions wanted to be used, then you have to use the current
+    # PicoHarp300 with a router device like PHR 402, PHR 403 or PHR 800.
 
+    def get_routing_channels(self):
+        """  Retrieve the number of routing channels.
 
+        @param return int: The number of possible routing_channels.
+        """
+        routing_channels = ctypes.c_int32()
+        self.check(self._dll.PH_GetRoutingChannels(self._deviceID,
+                                                   ctypes.byref(elapsed)))
 
+        return routing_channels.value
 
-    # FIXME: routing functions not yet wrapped, but will be wrapped if it will
-    # be necessary to use them.
+    def set_enable_routing(self, use_router):
+        """ Configure whether the connected router is used or not.
 
+        @param int use_router: 0 = enable routing 
+                               1 = disable routing 
+
+        Note: This function can also be used to detect the presence of a router!
+        """
+        
+        return self.check(self._dll.PH_EnableRouting(self._deviceID, use_router))
+
+    def get_router_version(self):
+        """ Retrieve the model number and the router version.
+
+        @return string list[2]: first entry will be the model number and second
+                                entry the router version.
+        """
+        # pointer to a buffer for at least 8 characters:
+        model_number = ctypes.create_string_buffer(16)
+        version_number =  ctypes.create_string_buffer(16)
+
+        self.check(self._dll.PH_GetRouterVersion(self._deviceID, 
+                                                 ctypes.byref(model_number),
+                                                 ctypes.byref(version_number)))
+
+        return [model_number.value.decode(), version_number.value.decode()]
+
+    def set_routing_channel_offset(self, offset_time):
+        """ Set the offset for the routed channels to compensate cable delay.
+
+        @param int offset_time: offset (time shift) in ps for that channel. 
+                                Value must be within [OFFSETMIN,OFFSETMAX]
+
+        Note: This function can be used to compensate small timing delays 
+              between the individual routing channels. It is similar to 
+              PH_SetSyncOffset and can replace cumbersome cable length 
+              adjustments but compared to PH_SetSyncOffset the adjustment range 
+              is relatively small. A positive number corresponds to inserting 
+              cable in that channel.
+        """
+
+        if (offset_time < self.OFFSETMIN) or (offset_time > self.OFFSETMAX):
+            self.logMsg('PicoHarp: Invalid offset time for routing.\nThe '
+                        'offset time was expected to be within the interval '
+                        '[{0},{1}] ps, but a value of {2} was '
+                        'passed.'.format(self.OFFSETMIN, self.OFFSETMAX, 
+                                         offset_time),
+                        msgType='error')
+            return
+        else:
+            self.check(self._dll.PH_SetRoutingChannelOffset(self._deviceID, 
+                                                            offset_time))
+
+    def set_phr800_input(self, channel, level, edge):
+        """ Configure the input channels of the PHR800 device.
+
+        @param int channel: which router channel is going to be programmed. 
+                            This number but be within the range [0,3].
+        @param int level: set the trigger voltage level in mV. The entered
+                          value must be within [PHR800LVMIN,PHR800LVMAX].
+        @param int edge: Specify whether the trigger should be detected on 
+                            0 = falling edge or
+                            1 = rising edge.
+
+        Note: Not all channels my be present!
+        Note: INVALID COMBINATIONS OF LEVEL AND EDGES MAY LOOK UP ALL CHANNELS!
+        """
+
+        channel = int(channel)
+        level =  int(level)
+        edge = int(edge)
+
+        if (channel < 0) or (channel > 3):
+            self.logMsg('PicoHarp: Invalid channel for routing.\nThe channel '
+                        'must be within the interval [0,3], but a value of {2} '
+                        'was passed.'.format(channel), msgType='error')
+            return
+        if (level < self.PHR800LVMIN) or (level > self.PHR800LVMAX):
+            self.logMsg('PicoHarp: Invalid level for routing.\nThe level '
+                        'used for channel {0} must be within the interval '
+                        '[{1},{2}] mV, but a value of {3} was '
+                        'passed.'.format(channel, self.PHR800LVMIN, 
+                                         self.PHR800LVMAX, level),
+                         msgType='error')
+            return
+        if (edge != 0) or (edge != 1):
+            self.logMsg('PicoHarp: Could not set edge.\n'
+                        'The edge setting must be either 0 or 1, but the '
+                        'current edge value {0} was '
+                        'passed'.format(edge), msgType='error')
+            return
+
+        self.check(self._dll.PH_SetPHR800Input(self._deviceID, channel, level, 
+                                               edge))
+
+    def set_phr800_cfd(self, channel, dscrlevel, zerocross):
+        """ Set the Constant Fraction Discriminators (CFD) for the PHR800 device.
+
+        @param int channel: which router channel is going to be programmed. 
+                            This number but be within the range [0,3].
+        @param dscrlevel: the discriminator level in mV, which must be within a
+                          range of [DISCRMIN,DISCRMAX]  
+        """
+
+        channel = int(channel)
+        dscrlevel = int(dscrlevel)
+        zerocross = int(zerocross)
+
+        if (channel < 0) or (channel > 3):
+            self.logMsg('PicoHarp: Invalid channel for routing.\nThe channel '
+                        'must be within the interval [0,3], but a value of {2} '
+                        'has been passed.'.format(channel), msgType='error')
+            return
+        if (dscrlevel < self.DISCRMIN) or (self.DISCRMAX < dscrlevel):
+            self.logMsg('PicoHarp: Invalid Constant Fraction Discriminators '
+                        'level.\nValue must be within the range [{0},{1}] '
+                        ' millivolts but a value of {2} has been '
+                        'passed.'.format(self.DISCRMIN, self.DISCRMAX, 
+                                         dscrlevel), msgType='error')
+            return
+        if (zerocross < self.ZCMIN) or (self.ZCMAX < zerocross):
+            self.logMsg('PicoHarp: Invalid CFD zero cross.\nValue must be '
+                        'within the range [{0},{1}] millivolts but a value of '
+                        '{2} has been '
+                        'passed.'.format(self.ZCMIN, self.ZCMAX, zerocross),
+                         msgType='error')
+            return
+
+        self.check(self._dll.PH_SetPHR800CFD(self._deviceID, channel, dscrlevel,
+                                             zerocross))
 
     # =========================================================================
     #  Higher Level function, which should be called directly from Logic
@@ -798,16 +953,21 @@ class PicoHarp300(Base, SlowCounterInterface):
 
         The Hardware clock for the Picoharp is not programmable. It is a gated
         counter every 100ms. That you cannot change. You can retrieve from both
-        channels simultaniously the count rates.
+        channels simultaneously the count rates.
 
         @return int: error code (0:OK, -1:error)
         """
+        self.logMsg('Picoharp: The Hardware clock for the Picoharp is not '
+                    'programmable!\n'
+                    'It is a gated counter every 100ms. That you cannot change. '
+                    'You can retrieve from both channels simultaneously the '
+                    'count rates.', msgType='status')
 
         return 0
 
     def set_up_counter(self, counter_channel = 0, photon_source = None,
                        clock_channel = None):
-        """ Ensure Interface compatibility. The counter does not to be set up.
+        """ Ensure Interface compatibility. The counter allows no set up.
 
         @param string counter_channel: Set the actual channel which you want to
                                        read out. Default it is 0. It can
@@ -818,6 +978,9 @@ class PicoHarp300(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         self._count_channel = counter_channel
+        self.logMsg('Picoharp: The counter allows no set up!\n'
+                    'The implementation of this command ensures Interface '
+                    'compatibility.', msgType='status')
 
         return 0
 
@@ -848,3 +1011,9 @@ class PicoHarp300(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         return 0
+
+    # =========================================================================
+    #  Functions for the FastCounter Interface
+    # =========================================================================
+
+    #FIXME: The interface connection to the fast counter must be established!
