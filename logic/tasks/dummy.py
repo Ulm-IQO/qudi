@@ -8,13 +8,17 @@ class Task(InterruptableTask):
     def __init__(self, name, runner):
         super().__init__(name, runner)
         print('Task {} added!'.format(self.name))
+        self.ctr = 0
 
     def startTask(self):
         print('Start')
+        self.ctr = 0
 
     def runTaskStep(self):
         time.sleep(0.1)
         print('one task step')
+        self.ctr += 1
+        self._result = '{} lines printed!'.format(self.ctr)
         return True
 
     def pauseTask(self):
@@ -26,6 +30,7 @@ class Task(InterruptableTask):
         print('resumed task')
 
     def cleanupTask(self):
+        print(self._result)
         print('task cleaned up')
 
     def checkExtraStartPrerequisites(self):

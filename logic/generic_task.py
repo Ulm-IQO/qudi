@@ -116,8 +116,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
     def _doTaskStep(self):
         try:
             if self.runTaskStep():
-                if self.isstate('pausing'):
+                if self.isstate('pausing') and self.checkPausePrerequisites():
                     self.sigDoPause.emit()
+                elif self.isstate('finishing'):
+                    self.sigDoFinish.emit()
                 else:
                     self.sigNextTaskStep.emit()
             else:
@@ -128,15 +130,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.finish()
                 
     def _pause(self, e):
-        try:
-            if self.checkPausePrerequisites():
-                self.sigDoPause.emit()
-            else:
-                self.sigNextTaskStep.emit()
-                return False
-        except Exception as e:
-            self.taskRunner.logMsg('Exception while preparing pause of task {}. {}'.format(self.name, e), msgType='error')
-            self.result.update(None, False)
+        pass
 
     def _doPause(self):
         try:
@@ -161,10 +155,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
 
     def _finish(self, e):
-        self.sigDoFinish.emit()
+        pass
 
     def _doFinish(self):
-        result.update(self.result, self.success)
+        self.result.update(self._result, self.success)
+        self.cleanupTask()
+        self.finishingFinished()
         self.sigFinished.emit()
 
     def checkStartPrerequisites(self):
@@ -188,7 +184,11 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkPausePrerequisites(self):
-        return True
+        try:
+            return checkExtraPausePrerequisites():
+        except Exception as e:
+            self.logMsg('Exception while checking pause prerequisites for task {}. {}'.format(self.name, e), msgType='error')
+            return False
 
     def checkExtraPausePrerequisites(self):
         return True
