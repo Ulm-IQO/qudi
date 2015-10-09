@@ -59,6 +59,7 @@ class TaskRunner(GenericLogic):
     _out = {'runner': 'TaskRunner'}
 
     sigLoadTasks = QtCore.Signal()
+    sigCheckTasks = QtCore.Signal()
 
     def __init__(self, manager, name, configuation, **kwargs):
         """ Initialzize a logic module.
@@ -76,6 +77,7 @@ class TaskRunner(GenericLogic):
         self.model.rowsInserted.connect(self.modelChanged)
         self.model.rowsRemoved.connect(self.modelChanged)
         self.sigLoadTasks.connect(self.loadTasks)
+        self.sigCheckTasks.connect(self.checkTasksInModel)
         self.sigLoadTasks.emit()
 
     def loadTasks(self):
@@ -118,6 +120,7 @@ class TaskRunner(GenericLogic):
                     self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
             except Exception as e:
                 self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
+        self.sigCheckTasks.emit()
 
     def checkTasksInModel(self):
         for task in self.model.storage:
