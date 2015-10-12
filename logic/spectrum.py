@@ -71,6 +71,7 @@ class SpectrumLogic(GenericLogic):
         self.spectrum_data = np.array([])
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
+        self.repetition_count = 0 #count loops for differential spectrum
 
         self._spectrometer_device = self.connector['in']['spectrometer']['object']
         self._odmr_logic = self.connector['in']['odmrlogic1']['object']
@@ -122,6 +123,7 @@ class SpectrumLogic(GenericLogic):
         self.spectrum_data = np.array( [wavelengths, empty_signal] )
         self.diff_spec_data_mod_on = np.array( [wavelengths, empty_signal] )
         self.diff_spec_data_mod_off= np.array( [wavelengths, empty_signal] )
+        self.repetition_count = 0
 
         # Starting the measurement loop
         self._loop_differential_spectrum()
@@ -145,6 +147,8 @@ class SpectrumLogic(GenericLogic):
         self.toggle_modulation( on=False )
         these_data = self._spectrometer_device.recordSpectrum()
         self.diff_spec_data_mod_off[1,:] += these_data[1,:]
+
+        self.repetition_count += 1 #increment the loop count
 
         # Calculate the differential spectrum
         self.spectrum_data[1,:] = self.diff_spec_data_mod_on[1,:] - self.diff_spec_data_mod_off[1,:]
@@ -177,6 +181,10 @@ class SpectrumLogic(GenericLogic):
         filepath = self._save_logic.get_path_for_module(module_name='spectra')
         filelabel = 'spectrum'
 
+        # write experimental parameters
+        parameters = OrderedDict()
+        parameters['Spectrometer acquisition repetitions'] = self.repetition_count
+
         # prepare the data in an OrderedDict:
         data = OrderedDict()
 
@@ -191,7 +199,9 @@ class SpectrumLogic(GenericLogic):
             data['signal'] = self.spectrum_data[1,:]
 
         # Save to file
-        self._save_logic.save_data( data, filepath, 
-                                    filelabel=filelabel,
-                                    as_text=True)
+        self._save_logic.save_data( data, 
+                                    filepath, 
+                                    parameters = parameters,
+                                    filelabel = filelabel,
+                                    as_text = True)
 
