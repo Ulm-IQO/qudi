@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qudi: Laser scanning</string>
+   <string>qudi: Spectrometer</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -45,7 +45,7 @@
    <addaction name="menuLaserscan"/>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QToolBar" name="scanToolBar">
+  <widget class="QToolBar" name="measure_ToolBar">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -62,7 +62,7 @@
    <addaction name="start_diff_spec_Action"/>
    <addaction name="stop_diff_spec_Action"/>
   </widget>
-  <widget class="QToolBar" name="plotToolBar">
+  <widget class="QToolBar" name="file_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -72,6 +72,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="save_spectrum_Action"/>
   </widget>
   <action name="actionClose">
    <property name="icon">
