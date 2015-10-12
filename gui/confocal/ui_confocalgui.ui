@@ -1247,7 +1247,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0,0,0,0,0">
          <item>
-          <widget class="QSpinBox" name="xy_cb_max_InputWidget">
+          <widget class="QDoubleSpinBox" name="xy_cb_max_InputWidget">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1273,16 +1273,13 @@
             <bool>true</bool>
            </property>
            <property name="minimum">
-            <number>-100000000</number>
+            <double>-10.000000000000000</double>
            </property>
            <property name="maximum">
-            <number>100000000</number>
-           </property>
-           <property name="singleStep">
-            <number>1000</number>
+            <double>20000000.000000000000000</double>
            </property>
            <property name="value">
-            <number>100000</number>
+            <double>100000.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -1305,21 +1302,18 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="xy_cb_high_centile_InputWidget">
+            <widget class="QDoubleSpinBox" name="xy_cb_high_centile_InputWidget">
              <property name="maximumSize">
               <size>
                <width>16777215</width>
                <height>16777215</height>
               </size>
              </property>
-             <property name="minimum">
-              <number>0</number>
-             </property>
              <property name="maximum">
-              <number>100</number>
+              <double>100.000000000000000</double>
              </property>
              <property name="value">
-              <number>100</number>
+              <double>100.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -1357,7 +1351,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="xy_cb_low_centile_InputWidget">
+            <widget class="QDoubleSpinBox" name="xy_cb_low_centile_InputWidget">
              <property name="maximumSize">
               <size>
                <width>16777215</width>
@@ -1365,17 +1359,14 @@
               </size>
              </property>
              <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>0</number>
+              <double>100.000000000000000</double>
              </property>
             </widget>
            </item>
           </layout>
          </item>
          <item>
-          <widget class="QSpinBox" name="xy_cb_min_InputWidget">
+          <widget class="QDoubleSpinBox" name="xy_cb_min_InputWidget">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1401,16 +1392,13 @@
             <bool>true</bool>
            </property>
            <property name="minimum">
-            <number>-100000000</number>
+            <double>-10.000000000000000</double>
            </property>
            <property name="maximum">
-            <number>100000000</number>
-           </property>
-           <property name="singleStep">
-            <number>1000</number>
+            <double>10000000.000000000000000</double>
            </property>
            <property name="value">
-            <number>100</number>
+            <double>100.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -2184,7 +2172,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>PlotWidgetModified</class>
