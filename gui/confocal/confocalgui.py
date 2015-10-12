@@ -607,6 +607,7 @@ class ConfocalGui(GUIBase):
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self._sd.hardware_switch.clicked.connect(self.switch_hardware)
 
+
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
@@ -871,6 +872,8 @@ class ConfocalGui(GUIBase):
 #        self.image_z_padding = self._sd.z_padding_InputWidget.value()
 #        self.slider_stepsize = self._sd.slider_stepwidth_InputWidget.value()
 
+        self._scanning_logic.difference_scan = self._sd.do_difference_scan_CheckBox.isChecked()
+
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
         self._sd.clock_frequency_InputWidget.setValue(int(self._scanning_logic._clock_frequency))
@@ -879,6 +882,7 @@ class ConfocalGui(GUIBase):
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
         self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
         self._sd.slider_big_step_SpinBox.setValue(int(self.slider_big_step))
+        self._sd.do_difference_scan_CheckBox.setChecked(self._scanning_logic.difference_scan)
 #        self._sd.x_padding_InputWidget.setValue(self.image_x_padding)
 #        self._sd.y_padding_InputWidget.setValue(self.image_y_padding)
 #        self._sd.z_padding_InputWidget.setValue(self.image_z_padding)
