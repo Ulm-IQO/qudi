@@ -682,6 +682,135 @@ class FitLogic(GenericLogic):
                 self.logMsg('The 1D gaussian fit did not work. Error message:'+result.message, \
                             msgType='message')            
             return result
+            
+         
+         
+######################## Lorentz fit for peak instead of dip ##################            
+            
+            
+        def estimate_lorentz_peak (self,x_axis=None,data=None):
+            """ This method provides a lorentzian function to fit a peak.
+        
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+
+            @return int error: error code (0:OK, -1:error)
+            @return float amplitude: estimated amplitude
+            @return float x_zero: estimated x value of maximum
+            @return float sigma_x: estimated standard deviation in x direction
+            @return float offset: estimated offset
+                                
+                    
+            """
+#           TODO: make sigma and amplitude good, this is only a dirty fast solution
+            error=0
+            # check if parameters make sense
+            
+            parameters=[x_axis,data]
+            for var in parameters:
+                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.', \
+                                msgType='error') 
+                    error=-1
+                elif len(np.shape(var))!=1:
+                    self.logMsg('Given parameter is no one dimensional array.', \
+                                msgType='error')                     
+            #set paraameters          
+            #print('data',data)
+            data_smooth,offset=self.find_offset_parameter(x_axis,data)
+            #print('offset',offset)
+            data_level=data-offset        
+            data_min=data_level.min()       
+            data_max=data_level.max()
+            #print('data_min',data_min)
+            #print('data_max',data_max) 
+            #estimate sigma
+
+            numerical_integral=np.sum(data_level) * (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
+            
+                
+
+            if data_max<abs(data_min):
+                try:
+                    self.logMsg('This lorentzian estimator set the peak to the maximum value, if you want to fit a dip instead of a peak use estimate_lorentz.', \
+                                    msgType='warning')     
+                except:
+                    print('This lorentzian estimator set the peak to the maximum value, if you want to fit a dip instead of a peak use estimate_lorentz.')
+
+            amplitude_median=data_max
+            #x_zero=x_axis[np.argmax(data_smooth)]
+            x_zero=x_axis[np.argmax(data)]
+            sigma = np.abs(numerical_integral / (np.pi * amplitude_median))         
+            amplitude=amplitude_median * np.pi * sigma
+
+            #print('amplitude',amplitude)
+            #print('x_zero',x_zero)
+            #print('offset',offset)            
+                        
+            return error, amplitude, x_zero, sigma, offset
+
+        def make_lorentzian_peak_fit(self,axis=None,data=None, add_parameters=None):
+            """ This method performes a 1D lorentzian peak fit on the provided data.
+        
+            @param array [] axis: axis values
+            @param array[]  x_data: data   
+            @param dictionary add_parameters: Additional parameters
+                    
+            @return lmfit.model.ModelFit result: All parameters provided about 
+                                                 the fitting, like: success,
+                                                 initial fitting values, best 
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+                    
+            """
+                
+            error,amplitude, x_zero, sigma, offset = self.estimate_lorentz_peak(axis,data)
+                                                                    
+                                                                    
+            model,params = self.make_lorentzian_model() 
+            
+            #auxiliary variables
+            
+            
+            stepsize=np.abs(axis[1]-axis[0])          
+                         
+            n_steps=len(axis)
+
+#            TODO: Make sigma amplitude and x_zero better 
+
+
+           
+            #Defining standard parameters
+           
+           
+            if axis[1]-axis[0]>0:
+                
+            #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
+                params.add_many(('amplitude',amplitude, True,         2e-12,                    None,                    None),
+                                (  'sigma',    sigma,    True,     (axis[1]-axis[0])/2 ,     (axis[-1]-axis[0])*10,   None),
+                               (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
+                               (    'c',      offset,   True,        None,                    None,                  None))
+            if axis[0]-axis[1]>0:
+                
+            #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
+                params.add_many(('amplitude',amplitude, True,         2e-12,                    None,                    None),
+                                (  'sigma',    sigma,    True,     (axis[0]-axis[1])/2 ,     (axis[0]-axis[1])*10,   None),
+                               (  'center',  x_zero,    True,      (axis[-1])       ,         (axis[0])            , None),
+                               (    'c',      offset,   True,        None,                    None,                  None))
+#TODO: Add logmessage when value is changed            
+            #redefine values of additional parameters
+            if add_parameters!=None:  
+                params=self.substitute_parameter(parameters=params,update_parameters=add_parameters)                                     
+            try:
+                result=model.fit(data, x=axis,params=params)
+            except:
+                result=model.fit(data, x=axis,params=params)
+                self.logMsg('The 1D gaussian fit did not work. Error message:'+result.message, \
+                            msgType='message')  
+                         
+            return result                     
+            
 
 ##############################################################################
 ##############################################################################
