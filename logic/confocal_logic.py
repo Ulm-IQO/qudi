@@ -17,6 +17,7 @@ class ConfocalLogic(GenericLogic):
 
     # declare connectors
     _in = { 'confocalscanner1': 'ConfocalScannerInterface',
+            'odmrlogic1' : 'ODMRLogic',
             'savelogic': 'SaveLogic'
             }
     _out = {'scannerlogic': 'ConfocalLogic'}
@@ -29,8 +30,8 @@ class ConfocalLogic(GenericLogic):
     signal_depth_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal()
 
-    signal_moved_to_arbitrary_position = QtCore.Signal() #used by POI manager 
-    
+    signal_moved_to_arbitrary_position = QtCore.Signal() #used by POI manager
+
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
 
@@ -55,9 +56,9 @@ class ConfocalLogic(GenericLogic):
         self.return_slowness = 50
 
         self._zscan = False
-        
+
         self._depth_line_pos = 0
-        
+
         self._xy_line_pos = 0
 
         #locking for thread safety
@@ -66,7 +67,7 @@ class ConfocalLogic(GenericLogic):
         self.stopRequested = False
 
         self.yz_instead_of_xz_scan = False
-        
+
         self.permanent_scan = False
 
 
@@ -79,6 +80,8 @@ class ConfocalLogic(GenericLogic):
 #        print("Scanning device is", self._scanning_device)
 
         self._save_logic = self.connector['in']['savelogic']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
+
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
@@ -103,7 +106,7 @@ class ConfocalLogic(GenericLogic):
 
         # Initialization of internal counter for scanning
         self._scan_counter=0
-        
+
         # Variable to check if a scan is continuable
         self._xyscan_continuable=False
         self._zscan_continuable=False
@@ -123,9 +126,9 @@ class ConfocalLogic(GenericLogic):
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
-
         self.initialize_image()
         self._zscan = True
+        self.difference_scan = False #TODO: should this be here or in the init?
         self.initialize_image()
         self._zscan = False
 
@@ -188,7 +191,7 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
-        #TODO: this is dirty, but it works for now
+        # TODO: this is dirty, but it works for now
 #        while self.getState() == 'locked':
 #            time.sleep(0.01)
 
@@ -196,12 +199,12 @@ class ConfocalLogic(GenericLogic):
         self._zscan=zscan
         if self._zscan:
             self._zscan_continuable=True
-            
+
         else:
             self._xyscan_continuable=True
-            
+
         self.signal_start_scanning.emit()
-        
+
         return 0
 
 
@@ -227,12 +230,12 @@ class ConfocalLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
-                                
+
         return 0
-        
-   
-        
-        
+
+
+
+
 
 
     def initialize_image(self):
@@ -444,8 +447,8 @@ class ConfocalLogic(GenericLogic):
         """scanning an image in either depth or xy
 
         """
-        #TODO: change z_values, if z is changed during scan!
-        #stops scanning
+        # TODO: change z_values, if z is changed during scan!
+        # stops scanning
         if self.stopRequested:
             with self.threadlock:
                 self.kill_scanner()
@@ -456,10 +459,10 @@ class ConfocalLogic(GenericLogic):
                 self.set_position()
                 if self._zscan :
                     self._depth_line_pos = self._scan_counter
-                    
+
                 else:
                     self._xy_line_pos = self._scan_counter
-                    
+
                 return
 
         if self._zscan:
@@ -490,7 +493,18 @@ class ConfocalLogic(GenericLogic):
                                image[self._scan_counter,:,2],
                                self._AL) )
             # scan of a single line
-            line_counts = self._scanning_device.scan_line(line)
+            if self.difference_scan:
+                self._odmr_logic.MW_on() # firstly with MW on
+                #time.sleep(2)
+                line_counts_mw_on = self._scanning_device.scan_line(line)
+
+                self._odmr_logic.MW_off() # then with MW off
+                #time.sleep(2)
+                line_counts_mw_off = self._scanning_device.scan_line(line)
+
+                line_counts = line_counts_mw_on / line_counts_mw_off
+            else:
+                line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
             if not self.yz_instead_of_xz_scan:
                 return_line = np.vstack( (self._return_XL,
@@ -520,7 +534,7 @@ class ConfocalLogic(GenericLogic):
         # call this again from event loop
             self._scan_counter += 1
             # stop scanning when last line scan was performed and makes scan not continuable
-            
+
             if self._scan_counter >= np.size(self._image_vert_axis):
                 if not self.permanent_scan:
                     self.stop_scanning()
@@ -528,11 +542,11 @@ class ConfocalLogic(GenericLogic):
                         self._zscan_continuable=False
                     else:
                         self._xyscan_continuable=False
-                    
-                    
+
+
                 else:
-                    self._scan_counter = 0  
-            
+                    self._scan_counter = 0
+
             self.signal_scan_lines_next.emit()
 
         except Exception as e:
