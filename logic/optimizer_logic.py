@@ -1,6 +1,24 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2015 Kay Jahnke
-# Copyright (c) 2015 Lachlan J. Rogers
+# -*- coding: utf-8 -*
+"""
+This file contains the QuDi logic class for optimizing scanner position.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Kay D. Jahnke
+Copyright (c) 2015 Christoph Müller
+Copyright (C) 2015 Lachlan J. Rogers
+"""
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
@@ -10,9 +28,9 @@ import numpy as np
 
 class OptimizerLogic(GenericLogic):
 
-    """unstable: Christoph Müller
-    This is the Logic class for refocussing on and tracking bright features in the confocal scan.
+    """This is the Logic class for optimizing scanner position on bright features.
     """
+
     _modclass = 'trackerlogic'
     _modtype = 'logic'
 
@@ -23,10 +41,16 @@ class OptimizerLogic(GenericLogic):
            }
     _out = {'optimizerlogic': 'OptimizerLogic'}
 
-    signal_scan_xy_line_next = QtCore.Signal()
+    # "private" signals to keep track of activities here in the optimizer logic
+    _signal_scan_next_xy_line = QtCore.Signal()
+    _signal_completed_xy_optimizer_scan = QtCore.Signal()
+    _signal_found_optimal_xy = QtCore.Signal()
+    _signal_found_optimal_z = QtCore.Signal()
+
+    # public signals
     signal_image_updated = QtCore.Signal()
-    signal_refocus_finished = QtCore.Signal()
     signal_refocus_started = QtCore.Signal()
+    signal_refocus_finished = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -75,12 +99,12 @@ class OptimizerLogic(GenericLogic):
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
 
-        self._trackpoint_x = 0.
-        self._trackpoint_y = 0.
-        self._trackpoint_z = 0.
-        self.refocus_x = self._trackpoint_x
-        self.refocus_y = self._trackpoint_y
-        self.refocus_z = self._trackpoint_z
+        self._initial_pos_x = 0.
+        self._initial_pos_y = 0.
+        self._initial_pos_z = 0.
+        self.optim_pos_x = self._initial_pos_x
+        self.optim_pos_y = self._initial_pos_y
+        self.optim_pos_z = self._initial_pos_z
 
         self._max_offset = 3.
 
@@ -88,7 +112,10 @@ class OptimizerLogic(GenericLogic):
         self._scan_counter = 0
 
         # Sets connections between signals and functions
-        self.signal_scan_xy_line_next.connect(self._refocus_line, QtCore.Qt.QueuedConnection)
+        self._signal_scan_next_xy_line.connect(self._refocus_line, QtCore.Qt.QueuedConnection)
+
+        self._signal_completed_xy_optimizer_scan.connect(self._set_optimized_xy_from_fit, QtCore.Qt.QueuedConnection)
+        self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
@@ -121,22 +148,19 @@ class OptimizerLogic(GenericLogic):
         else:
             return 0
 
-    def start_refocus(self, trackpoint=None):
-        """Starts refocus
-        @param trackpoint
+    def start_refocus(self, initial_pos):
+        """Starts the optimization scan around initial_pos
+
+        @param initial_pos
         """
         # checking if refocus corresponding to crosshair or corresponding
-        # to trackpoint
-        if isinstance(trackpoint, (np.ndarray,)) and trackpoint.size == 3:
-            self.is_crosshair = False
-            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
-        elif isinstance(trackpoint, (list, tuple)) and len(trackpoint) == 3:
-            self.is_crosshair = False
-            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = trackpoint
+        # to initial_pos
+        if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size == 3:
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
+        elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) == 3:
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
         else:
-            self.is_crosshair = True
-            self._trackpoint_x, self._trackpoint_y, self._trackpoint_z = \
-                self._confocal_logic.get_position()
+            pass  # TODO: throw error
 
         self.lock()
         self.signal_refocus_started.emit()
@@ -145,7 +169,9 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
 
         self.start_scanner()
-        self.signal_scan_xy_line_next.emit()
+        self.move_to_first_scan_line()
+
+        self._signal_scan_next_xy_line.emit()
 
     def stop_refocus(self):
         """Stops refocus
@@ -153,13 +179,21 @@ class OptimizerLogic(GenericLogic):
         with self.threadlock:
             self.stopRequested = True
 
+    def finish_refocus(self):
+        """ Finishes up and releases hardware after the optimizer scans
+        """
+        self.kill_scanner()
+        self.unlock()
+
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image
         """
         self._scan_counter = 0
+
         # defining center of refocus image
-        x0 = self._trackpoint_x
-        y0 = self._trackpoint_y
+        x0 = self._initial_pos_x
+        y0 = self._initial_pos_y
+
         # defining position intervals for refocus
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         xmax = np.clip(x0 + 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
@@ -168,7 +202,7 @@ class OptimizerLogic(GenericLogic):
 
         self._X_values = np.linspace(xmin, xmax, num=self.optimizer_XY_res)
         self._Y_values = np.linspace(ymin, ymax, num=self.optimizer_XY_res)
-        self._Z_values = self._trackpoint_z * np.ones(self._X_values.shape)
+        self._Z_values = self._initial_pos_z * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
@@ -178,14 +212,14 @@ class OptimizerLogic(GenericLogic):
             (len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_refocus_image[:, :, 2] = self._trackpoint_z * \
+        self.xy_refocus_image[:, :, 2] = self._initial_pos_z * \
             np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image
         """
         self._scan_counter = 0
-        z0 = self._trackpoint_z  # falls tilt correction, dann hier aufpassen
+        z0 = self._initial_pos_z  # falls tilt correction, dann hier aufpassen
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
 
@@ -195,42 +229,44 @@ class OptimizerLogic(GenericLogic):
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
+    def move_to_first_scan_line(self):
+        """Moves the scanner into position at the start of the first line in the optimizer scan.
+        """
+        try:
+            move_to_start_line = np.vstack((np.linspace(self._initial_pos_x,
+                                                        self.xy_refocus_image[0, 0, 0],
+                                                        self.return_slowness),
+                                            np.linspace(self._initial_pos_y,
+                                                        self.xy_refocus_image[0, 0, 1],
+                                                        self.return_slowness),
+                                            np.linspace(self._initial_pos_z,
+                                                        self.xy_refocus_image[0, 0, 2],
+                                                        self.return_slowness),
+                                            np.linspace(0,
+                                                        0,
+                                                        self.return_slowness)))
+
+            self._scanning_device.scan_line(move_to_start_line)
+
+        except Exception:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.stop_refocus()
+
     def _refocus_line(self):
-        """Scanning one line of the xy refocus image
+        """Scanning a line of the xy optimization image.  This method repeats itself using the _signal_scan_next_xy_line until the xy optimization image is complete.
         """
 
-        # stops scanning
+        # stop scanning if instructed
         if self.stopRequested:
             with self.threadlock:
                 self.stopRequested = False
-                self.kill_scanner()
-                self.unlock()
+                self.finish_refocus()
                 self.signal_image_updated.emit()
                 self.signal_refocus_finished.emit()
                 return
 
-        self.refocus_x = self._trackpoint_x
-        self.refocus_y = self._trackpoint_y
-        self.refocus_z = self._trackpoint_z
-
+        # scan a line of the xy optimization image
         try:
-            if self._scan_counter == 0:
-
-                start_line = np.vstack((np.linspace(self._trackpoint_x,
-                                                    self.xy_refocus_image[self._scan_counter, 0, 0],
-                                                    self.return_slowness),
-                                        np.linspace(self._trackpoint_y,
-                                                    self.xy_refocus_image[self._scan_counter, 0, 1],
-                                                    self.return_slowness),
-                                        np.linspace(self._trackpoint_z,
-                                                    self.xy_refocus_image[self._scan_counter, 0, 2],
-                                                    self.return_slowness),
-                                        np.linspace(0,
-                                                    0,
-                                                    self.return_slowness)))
-
-                start_line_counts = self._scanning_device.scan_line(start_line)
-
             line = np.vstack((self.xy_refocus_image[self._scan_counter, :, 0],
                               self.xy_refocus_image[self._scan_counter, :, 1],
                               self.xy_refocus_image[self._scan_counter, :, 2],
@@ -245,113 +281,121 @@ class OptimizerLogic(GenericLogic):
                                          self._scan_counter, 0, 2] * np.ones(self._return_X_values.shape),
                                      self._return_A_values))
 
-            return_line_counts = self._scanning_device.scan_line(return_line)
+            self._scanning_device.scan_line(return_line)
 
         except Exception:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_refocus()
-            self.signal_scan_xy_line_next.emit()
+            self._signal_scan_next_xy_line.emit()
 
         self.xy_refocus_image[self._scan_counter, :, 3] = line_counts
-
         self.signal_image_updated.emit()
+
         self._scan_counter += 1
 
         if self._scan_counter < np.size(self._Y_values):
-            # calling next line scan in refocus procedure
-            self.signal_scan_xy_line_next.emit()
+            self._signal_scan_next_xy_line.emit()
         else:
-            # x,y-fit when refocus is finished
-            fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
-            xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
-            axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
-            axes = (fit_x.flatten(), fit_y.flatten())
-            result_2D_gaus = self._fit_logic.make_twoD_gaussian_fit(axis=axes, data=xy_fit_data)
-#            print(result_2D_gaus.fit_report())
+            self._signal_completed_xy_optimizer_scan.emit()
 
-            if result_2D_gaus.success is False:
-                self.logMsg('error in 2D Gaussian Fit.',
-                            msgType='error')
-                print('2D gaussian fit not successfull')
-                self.refocus_x = self._trackpoint_x
-                self.refocus_y = self._trackpoint_y
-                # hier abbrechen
+    def _set_optimized_xy_from_fit(self):
+        """Fit the completed xy optimizer scan and set the optimized xy position.
+        """
+
+        fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
+        xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
+        axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
+        axes = (fit_x.flatten(), fit_y.flatten())
+        result_2D_gaus = self._fit_logic.make_twoD_gaussian_fit(axis=axes, data=xy_fit_data)
+        print(result_2D_gaus.fit_report())
+
+        if result_2D_gaus.success is False:
+            self.logMsg('error in 2D Gaussian Fit.',
+                        msgType='error')
+            print('2D gaussian fit not successfull')
+            self.optim_pos_x = self._initial_pos_x
+            self.optim_pos_y = self._initial_pos_y
+            # hier abbrechen
+        else:
+            #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
+            if abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['x_zero']) < self._max_offset:
+                if result_2D_gaus.best_values['x_zero'] >= self.x_range[0] and result_2D_gaus.best_values['x_zero'] <= self.x_range[1]:
+                    if result_2D_gaus.best_values['y_zero'] >= self.y_range[0] and result_2D_gaus.best_values['y_zero'] <= self.y_range[1]:
+                        self.optim_pos_x = result_2D_gaus.best_values['x_zero']
+                        self.optim_pos_y = result_2D_gaus.best_values['y_zero']
             else:
-                #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
-                if abs(self._trackpoint_x - result_2D_gaus.best_values['x_zero']) < self._max_offset and abs(self._trackpoint_x - result_2D_gaus.best_values['x_zero']) < self._max_offset:
-                    if result_2D_gaus.best_values['x_zero'] >= self.x_range[0] and result_2D_gaus.best_values['x_zero'] <= self.x_range[1]:
-                        if result_2D_gaus.best_values['y_zero'] >= self.y_range[0] and result_2D_gaus.best_values['y_zero'] <= self.y_range[1]:
-                            self.refocus_x = result_2D_gaus.best_values['x_zero']
-                            self.refocus_y = result_2D_gaus.best_values['y_zero']
-                else:
-                    self.refocus_x = self._trackpoint_x
-                    self.refocus_y = self._trackpoint_y
+                self.optim_pos_x = self._initial_pos_x
+                self.optim_pos_y = self._initial_pos_y
 
-            # xz scaning
-            self._scan_z_line()
+        self._signal_found_optimal_xy.emit()
 
-            self.kill_scanner()
-            self.unlock()
+    def do_z_optimization(self):
+        """ Do the z axis optimisation
+        """
 
-            self.signal_image_updated.emit()
+        # xz scaning
+        self._scan_z_line()
 
-            # z-fit
+        self.finish_refocus()
 
-            result = self._fit_logic.make_gaussian_fit(
-                axis=self._zimage_Z_values, data=self.z_refocus_line)
+        self.signal_image_updated.emit()
 
-            if result.success is False:
-                self.logMsg('error in 1D Gaussian Fit.',
-                            msgType='error')
-                self.refocus_z = self._trackpoint_z
-                # hier abbrechen
-            else:  # move to new position
-                #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
-                # checks if new pos is too far away
-                if abs(self._trackpoint_z - result.best_values['center']) < self._max_offset:
-                    # checks if new pos is within the scanner range
-                    if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
-                        self.refocus_z = result.best_values['center']
-                        gauss, params = self._fit_logic.make_gaussian_model()
-                        self.z_fit_data = gauss.eval(
-                            x=self._fit_zimage_Z_values, params=result.params)
-                    else:  # new pos is too far away
-                        # checks if new pos is too high
-                        if result.best_values['center'] > self._trackpoint_z:
-                            if self._trackpoint_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
-                                # moves to higher edge of scan range
-                                self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size
-                            else:
-                                self.refocus_z = self.z_range[1]  # moves to highest possible value
+        # z-fit
+
+        result = self._fit_logic.make_gaussian_fit(
+            axis=self._zimage_Z_values, data=self.z_refocus_line)
+
+        if result.success is False:
+            self.logMsg('error in 1D Gaussian Fit.',
+                        msgType='error')
+            self.optim_pos_z = self._initial_pos_z
+            # hier abbrechen
+        else:  # move to new position
+            #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
+            # checks if new pos is too far away
+            if abs(self._initial_pos_z - result.best_values['center']) < self._max_offset:
+                # checks if new pos is within the scanner range
+                if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
+                    self.optim_pos_z = result.best_values['center']
+                    gauss, params = self._fit_logic.make_gaussian_model()
+                    self.z_fit_data = gauss.eval(
+                        x=self._fit_zimage_Z_values, params=result.params)
+                else:  # new pos is too far away
+                    # checks if new pos is too high
+                    if result.best_values['center'] > self._initial_pos_z:
+                        if self._initial_pos_z + 0.5 * self.refocus_Z_size <= self.z_range[1]:
+                            # moves to higher edge of scan range
+                            self.optim_pos_z = self._initial_pos_z + 0.5 * self.refocus_Z_size
                         else:
-                            if self._trackpoint_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
-                                # moves to lower edge of scan range
-                                self.refocus_z = self._trackpoint_z + 0.5 * self.refocus_Z_size
-                            else:
-                                self.refocus_z = self.z_range[0]  # moves to lowest possible value
+                            self.optim_pos_z = self.z_range[1]  # moves to highest possible value
+                    else:
+                        if self._initial_pos_z + 0.5 * self.refocus_Z_size >= self.z_range[0]:
+                            # moves to lower edge of scan range
+                            self.optim_pos_z = self._initial_pos_z + 0.5 * self.refocus_Z_size
+                        else:
+                            self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
 
-            self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(
-                self._trackpoint_x, self._trackpoint_y, self._trackpoint_z,
-                self.refocus_x, self.refocus_y, self.refocus_z),
-                msgType='status')
-            # TODO: werte als neuen Trackpoint setzen
+        self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z,
+            self.optim_pos_x, self.optim_pos_y, self.optim_pos_z),
+            msgType='status')
 
-            if self.is_crosshair:
-                self._confocal_logic.set_position(x=self.refocus_x,
-                                                  y=self.refocus_y,
-                                                  z=self.refocus_z,
-                                                  a=0.,
-                                                  arbitrary=False)
+        if self.is_crosshair:
+            self._confocal_logic.set_position(x=self.optim_pos_x,
+                                              y=self.optim_pos_y,
+                                              z=self.optim_pos_z,
+                                              a=0.,
+                                              arbitrary=False)
 
-            self.signal_refocus_finished.emit()
+        self.signal_refocus_finished.emit()
 
     def _scan_z_line(self):
         """Scans the z line for refocus
         """
         # defining trace of positions for z-refocus
         Z_line = self._zimage_Z_values  # todo: tilt_correction
-        X_line = self.refocus_x * np.ones(self._zimage_Z_values.shape)
-        Y_line = self.refocus_y * np.ones(self._zimage_Z_values.shape)
+        X_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
+        Y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
         A_line = np.zeros(self._zimage_Z_values.shape)
 
         line = np.vstack((X_line, Y_line, Z_line, A_line))
@@ -362,7 +406,7 @@ class OptimizerLogic(GenericLogic):
         except Exception:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_refocus()
-            self.signal_scan_xy_line_next.emit()
+            self._signal_scan_next_xy_line.emit()
 
         # Set the data
         self.z_refocus_line = line_counts
@@ -376,7 +420,7 @@ class OptimizerLogic(GenericLogic):
             except Exception:
                 self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
                 self.stop_refocus()
-                self.signal_scan_xy_line_next.emit()
+                self._signal_scan_next_xy_line.emit()
 
             # surface-subtracted line scan data is the difference
             self.z_refocus_line = line_counts - line_bg
