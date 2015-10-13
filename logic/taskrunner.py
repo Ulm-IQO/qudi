@@ -51,6 +51,20 @@ class TaskListTableModel(ListTableModel):
         else:
             return None
 
+    def append(self, data):
+        with self.lock:
+            n = len(self.storage)
+            self.beginInsertRows(QtCore.QModelIndex(), n, n)
+            self.storage.append(data)
+            self.endInsertRows()
+            self.storage[-1]['object'].sigStateChanged.connect(
+                lambda x:
+                    self.dataChanged.emit(
+                        self.index(n, 1),
+                        self.index(n, 1)
+                        )
+                )
+    
 class TaskRunner(GenericLogic):
     """A generic logic interface class.
     """
@@ -124,12 +138,34 @@ class TaskRunner(GenericLogic):
 
     def checkTasksInModel(self):
         for task in self.model.storage:
+            ppok = False
+            pok = False
+            modok = False
+
+            #check if all required pre/post action tasks tasks are present
+            if len(task['preposttasks']) == 0:
+                ppok = True
             for pptask in task['preposttasks']:
-                print(pptask)
+                for t in self.model.storage:
+                    if t['name'] == pptask:
+                        ppok =True
+                    
+            #check if all required pause tasks are present
+            if len(task['pausetasks']) == 0:
+                pok = True
             for ptask in task['pausetasks']:
-                print(ptask)
-            for mod in task['needsmodules']:
-                print(mod)
+                for t in self.model.storage:
+                    if t['name'] == ptask:
+                        pok = True
+
+            # check if all required moduls are present
+            if len(task['modules']) == 0:
+                modok = True
+            for mod in task['modules']:
+                if mod in self._manager.tree['loaded']['logic'] and not  self._manager.tree['loaded']['logic'].isstate('deactivated'):
+                    modok = True
+            print(task['name'], ppok, pok, modok)
+            task['ok'] = ppok and pok and modok
 
     def deactivation(self, e):
         pass
@@ -138,33 +174,119 @@ class TaskRunner(GenericLogic):
     def modelChanged(self, parent, first, last):
         print('Inserted into task list: {} {}'.format(first, last))
 
-    def runTask(self, index):
+    def startTask(self, index):
         print('runner', QtCore.QThread.currentThreadId())
-        task = self.model.storage[index.row()]['object']
-        if task.can('run'):
-            task.run()
-        elif task.can('resume'):
-            task.resume()
-        elif task.can('prerun'):
-            task.prerun()
-        elif task.can('postrun'):
-            task.postrun()
+        task = self.model.storage[index.row()]
+        if not task['ok']:
+            self.logMsg('Task {} did not pass all its checks for required tasks and modules and cannot be run'.format(task['name']), msgType='error')
+            return
+        if task['object'].can('run'):
+            for pptask in task['preposttasks']:
+                print(pptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == pptask:
+                            if t['object'].can('prerun'):
+                                t['object'].prerun()
+                            else:
+                                self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                    return
+            for ptask in task['pausetasks']:
+                print(ptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == ptask:
+                            if t['object'].can('pause'):
+                                t['object'].pause()
+                            elif t['object'].isstate('stopped'):
+                                pass
+                            else:
+                                self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                    return
+            task['object'].run()
+
+        elif task['object'].can('resume'):
+            for pptask in task['preposttasks']:
+                print(pptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == pptask:
+                            if t['object'].can('prerun'):
+                                t['object'].prerun()
+                            else:
+                                self.logMsg('This preposttask {} failed while preparing resume in: {}'.format(pptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This preposttask {} failed while preparing resume in: {}'.format(pptask, task['name']), msgType='error')
+                    return
+            task['object'].resume()
+        elif task['object'].can('prerun'):
+            task['object'].prerun()
+        elif task['object'].can('postrun'):
+            task['object'].postrun()
         else:
             self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
 
     def pauseTask(self, index):
         print('runner', QtCore.QThread.currentThreadId())
-        task = self.model.storage[index.row()]['object']
-        if task.can('pause'):
-            task.pause()
+        task = self.model.storage[index.row()]
+        if task['object'].can('pause'):
+            for pptask in task['preposttasks']:
+                print(pptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == pptask:
+                            if t['object'].can('postrun'):
+                                t['object'].postrun()
+                            else:
+                                self.logMsg('This preposttask {} failed while preparing pause in: {}'.format(pptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This preposttask {} failed while preparingpause in: {}'.format(pptask, task['name']), msgType='error')
+                    return
+            task['object'].pause()
         else:
-            self.logMsg('This thing cannot be paused:  {}'.format(task.name), msgType='error')
+            self.logMsg('This thing cannot be paused:  {}'.format(task['name']), msgType='error')
 
     def stopTask(self, index):
         print('runner', QtCore.QThread.currentThreadId())
-        task = self.model.storage[index.row()]['object']
-        if task.can('finish'):
-            task.finish()
+        task = self.model.storage[index.row()]
+        if task['object'].can('finish'):
+            for pptask in task['preposttasks']:
+                print(pptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == pptask:
+                            if t['object'].can('postrun'):
+                                t['object'].postrun()
+                            else:
+                                self.logMsg('This preposttask {} failed while preparing pause in: {}'.format(pptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This preposttask {} failed while preparingpause in: {}'.format(pptask, task['name']), msgType='error')
+                    return
+            for ptask in task['pausetasks']:
+                print(ptask)
+                try:
+                    for t in self.model.storage:
+                        if t['name'] == ptask:
+                            if t['object'].can('resume'):
+                                t['object'].resume()
+                            elif t['object'].isstate('stopped'):
+                                pass
+                            else:
+                                self.logMsg('This pausetask {} failed while resuming after stop: {}'.format(ptask, task['name']), msgType='error')
+                                return
+                except:
+                    self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                    return
+            task['object'].finish()
         else:
-            self.logMsg('This thing cannot be stopped:  {}'.format(task.name), msgType='error')
+            self.logMsg('This thing cannot be stopped:  {}'.format(task['name']), msgType='error')
 
