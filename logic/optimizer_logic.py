@@ -43,6 +43,7 @@ class OptimizerLogic(GenericLogic):
 
     # "private" signals to keep track of activities here in the optimizer logic
     _signal_scan_next_xy_line = QtCore.Signal()
+    _signal_scan_z_line = QtCore.Signal()
     _signal_completed_xy_optimizer_scan = QtCore.Signal()
     _signal_found_optimal_xy = QtCore.Signal()
     _signal_found_optimal_z = QtCore.Signal()
@@ -111,11 +112,19 @@ class OptimizerLogic(GenericLogic):
         # Initialization of internal counter for scanning
         self._scan_counter = 0
 
-        # Sets connections between signals and functions
-        self._signal_scan_next_xy_line.connect(self._refocus_line, QtCore.Qt.QueuedConnection)
+        self.optimization_sequence = 'XY-Z'
 
+        # Sets connections between signals and functions
+        self._signal_scan_next_xy_line.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
+        self._signal_scan_z_line.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
         self._signal_completed_xy_optimizer_scan.connect(self._set_optimized_xy_from_fit, QtCore.Qt.QueuedConnection)
-        self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
+
+        if self.optimization_sequence == 'XY-Z':
+            self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
+            self._signal_found_optimal_z.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
+        elif self.optimization_sequence == 'Z-XY':
+            self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
+            self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
@@ -132,6 +141,22 @@ class OptimizerLogic(GenericLogic):
 
     def testing(self):
         pass
+
+    def set_optimization_sequence(self):
+        """ Set the sequence of scan events for the optimization.
+        The desired sequence is configured using self.optimization_sequence,
+        and can be either 'XY-Z' or 'Z-XY'.
+        """
+
+        self._signal_found_optimal_xy.disconnect()
+        self._signal_found_optimal_z.disconnect()
+
+        if self.optimization_sequence == 'XY-Z':
+            self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
+            self._signal_found_optimal_z.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
+        elif self.optimization_sequence == 'Z-XY':
+            self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
+            self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -169,21 +194,17 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
 
         self.start_scanner()
-        self.move_to_first_scan_line()
 
-        self._signal_scan_next_xy_line.emit()
+        if self.optimization_sequence == 'XY-Z':
+            self._signal_scan_next_xy_line.emit()
+        elif self.optimization_sequence == 'Z-XY':
+            self._signal_scan_z_line.emit()
 
     def stop_refocus(self):
         """Stops refocus
         """
         with self.threadlock:
             self.stopRequested = True
-
-    def finish_refocus(self):
-        """ Finishes up and releases hardware after the optimizer scans
-        """
-        self.kill_scanner()
-        self.unlock()
 
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image
@@ -229,17 +250,19 @@ class OptimizerLogic(GenericLogic):
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
-    def move_to_first_scan_line(self):
-        """Moves the scanner into position at the start of the first line in the optimizer scan.
+    def _move_to_xy_scan_start_pos(self):
+        """Moves the scanner from its current position to the start of the first line in the optimizer scan.
         """
+        scanner_pos = self._confocal_logic.get_position()
+
         try:
-            move_to_start_line = np.vstack((np.linspace(self._initial_pos_x,
+            move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
                                                         self.xy_refocus_image[0, 0, 0],
                                                         self.return_slowness),
-                                            np.linspace(self._initial_pos_y,
+                                            np.linspace(scanner_pos[1],
                                                         self.xy_refocus_image[0, 0, 1],
                                                         self.return_slowness),
-                                            np.linspace(self._initial_pos_z,
+                                            np.linspace(scanner_pos[2],
                                                         self.xy_refocus_image[0, 0, 2],
                                                         self.return_slowness),
                                             np.linspace(0,
@@ -252,7 +275,7 @@ class OptimizerLogic(GenericLogic):
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.stop_refocus()
 
-    def _refocus_line(self):
+    def _refocus_xy_line(self):
         """Scanning a line of the xy optimization image.  This method repeats itself using the _signal_scan_next_xy_line until the xy optimization image is complete.
         """
 
@@ -264,6 +287,10 @@ class OptimizerLogic(GenericLogic):
                 self.signal_image_updated.emit()
                 self.signal_refocus_finished.emit()
                 return
+
+        # move to the start of the first line
+        if self._scan_counter == 0:
+            self._move_to_xy_scan_start_pos()
 
         # scan a line of the xy optimization image
         try:
@@ -327,16 +354,40 @@ class OptimizerLogic(GenericLogic):
                 self.optim_pos_x = self._initial_pos_x
                 self.optim_pos_y = self._initial_pos_y
 
+        # emit image updated signal so crosshair can be updated from this fit
+        self.signal_image_updated.emit()
         self._signal_found_optimal_xy.emit()
 
     def do_z_optimization(self):
         """ Do the z axis optimisation
         """
 
-        # xz scaning
-        self._scan_z_line()
+        # Move to start of z-scan
 
-        self.finish_refocus()
+        scanner_pos = self._confocal_logic.get_position()
+
+        move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
+                                                    self.optim_pos_x,
+                                                    self.return_slowness),
+                                        np.linspace(scanner_pos[1],
+                                                    self.optim_pos_y,
+                                                    self.return_slowness),
+                                        np.linspace(scanner_pos[2],
+                                                    self._zimage_Z_values[0],
+                                                    self.return_slowness),
+                                        np.linspace(0,
+                                                    0,
+                                                    self.return_slowness)))
+
+        try:
+            self._scanning_device.scan_line(move_to_start_line)
+
+        except Exception:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.finish_refocus()
+
+        # z scaning
+        self._scan_z_line()
 
         self.signal_image_updated.emit()
 
@@ -374,6 +425,14 @@ class OptimizerLogic(GenericLogic):
                             self.optim_pos_z = self._initial_pos_z + 0.5 * self.refocus_Z_size
                         else:
                             self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
+
+        self._signal_found_optimal_z.emit()
+
+    def finish_refocus(self):
+        """ Finishes up and releases hardware after the optimizer scans
+        """
+        self.kill_scanner()
+        self.unlock()
 
         self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z,
