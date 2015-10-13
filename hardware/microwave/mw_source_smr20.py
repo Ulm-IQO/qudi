@@ -5,9 +5,6 @@ from hardware.microwave.mwsourceinterface import MWInterface
 import visa
 import numpy as np
 
-import time
-
-
 class MWSourceSMR20(Base,MWInterface):
     """ The hardware control for the device Rohde and Schwarz SMR 20. 
     
@@ -92,6 +89,7 @@ class MWSourceSMR20(Base,MWInterface):
         
         @return float: the power set at the device in dBm
         """
+        self._gpib_connection.write('*WAI')
         return float(self._gpib_connection.ask(':POW?'))
         
     def set_power(self,power):
@@ -122,12 +120,12 @@ class MWSourceSMR20(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-#        self._gpib_connection.write("*OPC?")
+        self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':FREQ {:e}'.format(freq))
         # {:e} meens a representation in float with exponential style
         return 0
         
-    def set_cw(self,freq=None, power=None):
+    def set_cw(self, freq=None, power=None):
         """ Sets the MW mode to cw and additionally frequency and power
         
         @param float freq: frequency to set in Hz
@@ -135,19 +133,22 @@ class MWSourceSMR20(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+
+        error = 0
         self._gpib_connection.write(':FREQ:MODE CW')
         
         if freq != None:
-            self.set_frequency(freq)
-
+            error = self.set_frequency(freq)
+        else:
+            return -1
         if power != None:
-            self.set_power(power)
+            error = self.set_power(power)
+        else:
+            return -1
         
-        self.on()
+        return error
         
-        return 0
-        
-    def set_list(self,freq=None, power=None):
+    def set_list(self, freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list freq: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
@@ -240,5 +241,16 @@ class MWSourceSMR20(Base,MWInterface):
         self._gpib_connection.write(':AM:STAT OFF')
         self._gpib_connection.write('*WAI')
         
+        return 0
+    
+    def trigger(self, source, pol):
+        """ Configurate the trigger channel.
+        
+        @param source: which channel/output is used as a trigger source
+        @param pol: which polarity should be set for the source
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        # for the SMR20 no configuration is needed.
         return 0
         

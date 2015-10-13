@@ -38,9 +38,9 @@ class ODMRLogic(GenericLogic):
     _modtype = 'logic'
     ## declare connectors
     _in = {'odmrcounter': 'ODMRCounterInterface',
-            'fitlogic': 'FitLogic',
-            'microwave1': 'mwsourceinterface',
-            'savelogic': 'SaveLogic'
+           'fitlogic': 'FitLogic',
+           'microwave1': 'mwsourceinterface',
+           'savelogic': 'SaveLogic'
             }
     _out = {'odmrlogic': 'ODMRLogic'}
 
@@ -52,7 +52,8 @@ class ODMRLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        state_actions = {'onactivate': self.activation, 
+                         'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.',
@@ -139,8 +140,8 @@ class ODMRLogic(GenericLogic):
 
 
     def deactivation(self, e):
-        '''Tasks that are required to be performed during deactivation of the module.
-        '''
+        """ Perform required deactivation. """
+
         # save parameters stored in app state store
         self._statusVariables['MW_trigger_source'] = self.MW_trigger_source
         self._statusVariables['MW_trigger_pol'] = self.MW_trigger_pol
@@ -178,24 +179,23 @@ class ODMRLogic(GenericLogic):
 
 
     def start_ODMR(self):
-        '''Starting the ODMR counter.
-        '''
+        """ Starting the ODMR counter. """
         self.lock()
         self._ODMR_counter.set_up_odmr_clock(clock_frequency = self._clock_frequency)
         self._ODMR_counter.set_up_odmr()
 
 
     def kill_ODMR(self):
-        '''Stopping the ODMR counter.
-        '''
+        """ Stopping the ODMR counter. """
+        
         self._ODMR_counter.close_odmr()
         self._ODMR_counter.close_odmr_clock()
         return 0
 
 
     def start_ODMR_scan(self):
-        '''Starting an ODMR scan.
-        '''
+        """ Starting an ODMR scan. """
+        
         self._odmrscan_counter = 0
         self._StartTime = time.time()
         self.ElapsedTime = 0
@@ -205,9 +205,9 @@ class ODMRLogic(GenericLogic):
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
         
         if self.safeRawData:
-            '''
-            All that is necesarry fo saving of raw data
-            '''        
+
+            # All that is necesarry fo saving of raw data:
+      
             self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list    
             self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line 
             self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
@@ -230,7 +230,8 @@ class ODMRLogic(GenericLogic):
 
 
     def stop_ODMR_scan(self):
-        """Stop the ODMR scan
+        """ Stop the ODMR scan.
+
         @return int: error code (0:OK, -1:error)
         """
         # self.save_ODMR_Data()
@@ -241,26 +242,28 @@ class ODMRLogic(GenericLogic):
 
 
     def _initialize_ODMR_plot(self):
-        '''Initializing the ODMR line plot.
-        '''
+        """ Initializing the ODMR line plot. """
+        
         self.ODMR_plot_x = self._MW_frequency_list
         self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
         self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
 
 
     def _initialize_ODMR_matrix(self):
-        '''Initializing the ODMR matrix plot.
-        '''
+        """ Initializing the ODMR matrix plot. """
+        
         self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self._MW_frequency_list)) )
 
 
     def _scan_ODMR_line(self):
-        '''Scans one line in ODMR.
+        """ Scans one line in ODMR 
+
         (from MW_start to MW_stop in steps of MW_step)
-        '''
+        """
+        
         if self.stopRequested:
             with self.threadlock:
-                self._MW_device.set_cw(f=self.MW_frequency,power=self.MW_power)
+                self._MW_device.set_cw(freq=self.MW_frequency, power=self.MW_power)
                 self.MW_off()
                 self.kill_ODMR()
                 self.stopRequested = False
@@ -295,7 +298,7 @@ class ODMRLogic(GenericLogic):
 
 
     def set_power(self, power = None):
-        """Forwarding the desired new power from the GUI to the MW source.
+        """ Forwarding the desired new power from the GUI to the MW source.
 
         @param float power: power set at the GUI
 
@@ -309,7 +312,7 @@ class ODMRLogic(GenericLogic):
 
 
     def get_power(self):
-        """Getting the current power from the MW source.
+        """ Getting the current power from the MW source.
 
         @return float: current power off the MW source
         """
@@ -318,7 +321,7 @@ class ODMRLogic(GenericLogic):
 
 
     def set_frequency(self, frequency = None):
-        """Forwarding the desired new frequency from the GUI to the MW source.
+        """ Forwarding the desired new frequency from the GUI to the MW source.
 
         @param float frequency: frequency set at the GUI
 
@@ -338,7 +341,7 @@ class ODMRLogic(GenericLogic):
 
 
     def get_frequency(self):
-        """Getting the current frequency from the MW source.
+        """ Getting the current frequency from the MW source.
 
         @return float: current frequency off the MW source
         """
@@ -347,7 +350,7 @@ class ODMRLogic(GenericLogic):
 
 
     def MW_on(self):
-        """Switching on the MW source.
+        """ Switching on the MW source.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -356,7 +359,7 @@ class ODMRLogic(GenericLogic):
 
 
     def MW_off(self):
-        """Switching off the MW source.
+        """ Switching off the MW source.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -365,10 +368,10 @@ class ODMRLogic(GenericLogic):
 
 
     def do_fit(self, fit_function = None):
-        '''Performs the chosen fit on the measured data.
+        """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
-        '''
+        """
         self.fit_function = fit_function
 
         if self.fit_function == 'No Fit':
@@ -463,8 +466,8 @@ class ODMRLogic(GenericLogic):
 
 
     def save_ODMR_Data(self):
-        """ Saves the current ODMR data to a file.
-        """
+        """ Saves the current ODMR data to a file. """
+
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filelabel = 'ODMR_data'
         filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')

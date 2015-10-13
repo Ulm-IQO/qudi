@@ -118,10 +118,10 @@ class mwsourcegigatronics(Base, MWInterface):
             return -1
 
 
-    def set_cw(self, f = None, power = None):
+    def set_cw(self, freq=None, power=None):
         """ Sets the MW mode to cw and additionally frequency and power
         
-        @param float f: frequency to set
+        @param float freq: frequency to set
         @param float power: power to set
         
         @return int: error code (0:OK, -1:error)
@@ -129,8 +129,8 @@ class mwsourcegigatronics(Base, MWInterface):
         error = 0
         self._gpib_connection.write(':MODE CW')
         
-        if f != None:
-            error = self.set_frequency(f)
+        if freq != None:
+            error = self.set_frequency(freq)
         else:
             return -1
         if power != None:
@@ -140,8 +140,7 @@ class mwsourcegigatronics(Base, MWInterface):
         
         return error
 
-
-    def set_list(self,freq=None, power=None):
+    def set_list(self, freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list f: list of frequencies
         @param float power: MW power
