@@ -49,12 +49,13 @@ class CrossROI(pg.ROI):
         pg.ROI.__init__(self, pos, size, **args)
         # That is a relative position of the small box inside the region of
         # interest, where 0 is the lowest value and 1 is the higherst:
-        center = [0.5,0.5]
+        center = [0.5, 0.5]
         # Translate the center to the intersection point of the crosshair.
         self.addTranslateHandle(center)
 
 
 class CrossLine(pg.InfiniteLine):
+
     """ Construct one line for the Crosshair in the plot.
 
     @param float pos: optional parameter to set the position
@@ -63,10 +64,10 @@ class CrossLine(pg.InfiniteLine):
 
     For additional options consider the documentation of pyqtgraph.InfiniteLine
     """
+
     def __init__(self, **args):
         pg.InfiniteLine.__init__(self, **args)
 #        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
-
 
     def adjust(self, extroi):
         """
@@ -913,6 +914,13 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
 
+        if self._osd.optim_sequence_z_last_RadioButton.isChecked():
+            self._optimizer_logic.optimization_sequence = 'XY-Z'
+        if self._osd.optim_sequence_z_first_RadioButton.isChecked():
+            self._optimizer_logic.optimization_sequence = 'Z-XY'
+
+        self._optimizer_logic.set_optimization_sequence()
+
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
 
@@ -923,6 +931,12 @@ class ConfocalGui(GUIBase):
         self._osd.count_freq_SpinBox.setValue(self._optimizer_logic._clock_frequency)
         self._osd.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
+
+        if self._optimizer_logic.optimization_sequence == 'XY-Z':
+            self._osd.optim_sequence_z_last_RadioButton.setChecked(True)
+        else:
+            self._osd.optim_sequence_z_first_RadioButton.setChecked(True)
+
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
@@ -1340,11 +1354,13 @@ class ConfocalGui(GUIBase):
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
         xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:,:,3].transpose()
+        
+        # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
+        if np.max(xy_optimizer_image) != 0:
+            colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
+            colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
 
-        colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
-        colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
-
-        self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max) )
+            self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max) )
 
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
