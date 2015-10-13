@@ -83,7 +83,7 @@ class mwsourcedummy(Base,MWInterface):
         self.logMsg("mwsourcedummy>get_frequency", msgType='warning')
         return random.uniform(0, 1e6)
         
-    def set_frequency(self,frequency=None):
+    def set_frequency(self, frequency=None):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
@@ -93,18 +93,18 @@ class mwsourcedummy(Base,MWInterface):
         self.logMsg("mwsourcedummy>set_frequency, frequency: {0:f}".format(frequency), msgType='warning')
         return 0
 
-    def set_cw(self,f=None, power=None):
+    def set_cw(self, freq=None, power=None):
         """ Sets the MW mode to cw and additionally frequency and power
         
-        @param float f: frequency to set
+        @param float freq: frequency to set
         @param float power: power to set
         
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("mwsourcedummy>set_cw, frequency: {0:f}".format(power), msgType='warning')
+        self.logMsg("mwsourcedummy>set_cw, frequency: {0:f}, power{0:f}:".format(freq, power), msgType='warning')
         return 0
         
-    def set_list(self,freq=None, power=None):
+    def set_list(self, freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list f: list of frequencies
         @param float power: MW power

@@ -31,7 +31,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>get_power')
         return 0.0
         
-    def set_power(self,power=0.):
+    def set_power(self, power=0.):
         """ Sets the microwave output power. 
         
         @param float power: this power is set at the device
@@ -49,7 +49,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>get_frequency')
         return 0.0
         
-    def set_frequency(self,frequency=0.):
+    def set_frequency(self, freq=0.):
         """ Sets the frequency of the microwave output. 
         
         @param float power: this power is set at the device
@@ -59,7 +59,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>set_frequency')
         return -1
         
-    def set_cw(self,frequency=None, power=None, useinterleave=None):
+    def set_cw(self, freq=None, power=None, useinterleave=None):
         """ Sets the microwave output to CW. 
         
         @param float power: this power is set at the device
@@ -69,7 +69,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>set_cw')
         return -1
         
-    def set_list(self,frequency=None, power=None):
+    def set_list(self, freq=None, power=None):
         """ Sets the microwave output to list.
         
         @return int: Returns the number of items of the list.
@@ -93,19 +93,19 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>list_on')
         return -1
         
-    def set_sweep(self,frequency_start=None,frequency_stop=None,frequency_delta=None):
+    def set_sweep(self, frequency_start=None, frequency_stop=None, frequency_delta=None):
         """
         """
         raise InterfaceImplementationError('MWInterface>set_sweep')
         return -1
         
-    def sweep_pos(self,frequency=None):
+    def sweep_pos(self, frequency=None):
         """
         """
         raise InterfaceImplementationError('MWInterface>sweep_pos')
         return -1
         
-    def trigger(self,source,pol):
+    def trigger(self, source,pol):
         """
         
         @return int: error code (0:OK, -1:error)
@@ -113,7 +113,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>trigger')
         return -1
         
-    def set_modulation(self,flag=None):
+    def set_modulation(self, flag=None):
         """
         """
         raise InterfaceImplementationError('MWInterface>set_modulation')
@@ -125,7 +125,7 @@ class MWInterface():
         raise InterfaceImplementationError('MWInterface>output')
         return -1
         
-    def am(self,depth=None):
+    def am(self, depth=None):
         """
         
         @return float:
