@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi couner logic class.
+This file contains the QuDi logic class that captures and processes fluorescence spectra.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,9 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke
-Copyright (C) 2015 Alexander Stark
-Copyright (C) 2015 Jan M. Binder
+Copyright (C) 2015 Lachlan J. Rogers
 """
 
 from logic.generic_logic import GenericLogic

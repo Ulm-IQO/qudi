@@ -23,20 +23,19 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 #from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
-import pyqtgraph.exporters
 import numpy as np
-import copy
 import time
 import os
 
-from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by
 # uic.loadUI in the QtGui classes below.
 
+
 class CrossROI(pg.ROI):
+
     """ Create a Region of interest, which is a zoomable rectangular.
 
     @param float pos: optional parameter to set the position
@@ -45,6 +44,7 @@ class CrossROI(pg.ROI):
     Have a look at:
     http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
     """
+
     def __init__(self, pos, size, **args):
         pg.ROI.__init__(self, pos, size, **args)
         # That is a relative position of the small box inside the region of
@@ -260,8 +260,8 @@ class ConfocalGui(GUIBase):
 
         # Load the image for the optimizer tab
         self.xy_refocus_image = pg.ImageItem(self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                                                    self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                                                    self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
                                                     self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
         self.depth_refocus_image = pg.ScatterPlotItem(self._optimizer_logic._zimage_Z_values,
                                                 self._optimizer_logic.z_refocus_line,
@@ -515,8 +515,8 @@ class ConfocalGui(GUIBase):
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
-        self._mw.action_Settings.triggered.connect(self.menue_settings)
-        self._mw.action_optimizer_settings.triggered.connect(self.menue_optimizer_settings)
+        self._mw.action_Settings.triggered.connect(self.menu_settings)
+        self._mw.action_optimizer_settings.triggered.connect(self.menu_optimizer_settings)
         self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
         self._mw.actionSave_Depth_Scan.triggered.connect(self.save_depth_scan_data)
         self._mw.actionSave_XY_Image_Data.triggered.connect(self.save_xy_scan_image)
@@ -855,8 +855,8 @@ class ConfocalGui(GUIBase):
     def _refocus_finished_wrapper(self):
         self.enable_scan_actions()
 
-    def menue_settings(self):
-        """ This method opens the settings menue. """
+    def menu_settings(self):
+        """ This method opens the settings menu. """
         self._sd.exec_()
 
     def update_settings(self):
@@ -898,8 +898,8 @@ class ConfocalGui(GUIBase):
 #            self._mw.y_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
 #            self._mw.x_SliderWidget.setSingleStep = self.slider_stepsize/self.slider_res
 
-    def menue_optimizer_settings(self):
-        """ This method opens the settings menue. """
+    def menu_optimizer_settings(self):
+        """ This method opens the settings menu. """
         self._osd.exec_()
 
     def update_optimizer_settings(self):
@@ -999,7 +999,12 @@ class ConfocalGui(GUIBase):
         """
 
         self._scanning_logic.stop_scanning()#CHECK: is this necessary?
-        self._optimizer_logic.start_refocus()
+
+        # Get the current crosshair position to send to optimizer
+        crosshair_pos = self._scanning_logic.get_position()
+
+        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos)
+
         self.disable_scan_actions()
 
 
@@ -1344,12 +1349,12 @@ class ConfocalGui(GUIBase):
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
-        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._trackpoint_x - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic._trackpoint_y - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
+        self.xy_refocus_image.setRect(QtCore.QRectF(self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size , self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
 
         ##########
         # Crosshair in optimizer
-        self.vLine.setValue(self._optimizer_logic.refocus_x)
-        self.hLine.setValue(self._optimizer_logic.refocus_y)
+        self.vLine.setValue(self._optimizer_logic.optim_pos_x)
+        self.hLine.setValue(self._optimizer_logic.optim_pos_y)
 
         ##########
         # The depth optimization
@@ -1358,7 +1363,7 @@ class ConfocalGui(GUIBase):
 
         ##########
         # Set the optimized position label
-        self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimizer_logic.refocus_x, self._optimizer_logic.refocus_y, self._optimizer_logic.refocus_z))
+        self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(self._optimizer_logic.optim_pos_x, self._optimizer_logic.optim_pos_y, self._optimizer_logic.optim_pos_z))
 
 
     def adjust_xy_window(self):
