@@ -60,9 +60,10 @@ class TaskGui(GUIBase):
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
         self._mw.actionPause_Task.triggered.connect(self.manualPause)
         self._mw.actionStop_Task.triggered.connect(self.manualStop)
-        self.sigRunTaskFromList.connect(self.logic.runTask)
+        self.sigRunTaskFromList.connect(self.logic.startTask)
         self.sigPauseTaskFromList.connect(self.logic.pauseTask)
         self.sigStopTaskFromList.connect(self.logic.stopTask)
+        self.logic.model.dataChanged.connect(lambda i1, i2: self.setRunToolState(None, i1))
         self.show()
        
     def show(self):
@@ -92,8 +93,12 @@ class TaskGui(GUIBase):
         if len(selected) >= 1:
             self.sigStopTaskFromList.emit(selected[0])
 
-    def setRunToolState(self, index):
+    def setRunToolState(self, index, index2=None):
         selected = self._mw.taskTableView.selectedIndexes()
+
+        if not index2 is None and selected[0].row() != index2.row():
+                return
+                
         if len(selected) >= 1:
             state = self.logic.model.storage[selected[0].row()]['object'].current
             if state == 'stopped':

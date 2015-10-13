@@ -46,6 +46,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
     sigResumed = QtCore.Signal()
     sigDoFinish = QtCore.Signal()
     sigFinished = QtCore.Signal()
+    sigStateChanged = QtCore.Signal(object)
 
     prePostTasks = {}
     pauseTasks = {}
@@ -86,6 +87,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigDoResume.connect(self._doResume, QtCore.Qt.QueuedConnection)
         self.sigDoFinish.connect(self._doFinish, QtCore.Qt.QueuedConnection)
         self.sigNextTaskStep.connect(self._doTaskStep, QtCore.Qt.QueuedConnection)
+
+    def onchangestate(self, e):
+        """ Fysom callback for state transition.
+
+          @param object e: Fysom state transition description
+        """
+        self.sigStateChanged.emit(e)
 
     def _start(self, e):
         self.result = TaskResult()
@@ -185,7 +193,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
 
     def checkPausePrerequisites(self):
         try:
-            return checkExtraPausePrerequisites():
+            return self.checkExtraPausePrerequisites()
         except Exception as e:
             self.logMsg('Exception while checking pause prerequisites for task {}. {}'.format(self.name, e), msgType='error')
             return False
@@ -218,6 +226,7 @@ class PrePostTask(QtCore.QObject, Fysom):
     sigPreExecFinish = QtCore.Signal()
     sigPostExecStart = QtCore.Signal()
     sigPostExecFinish = QtCore.Signal()
+    sigStateChanged = QtCore.Signal(object)
 
     def __init__(self, name, runner, *args, **kwargs):
         QtCore.QObject.__init__(self)
@@ -234,6 +243,13 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.lock = Mutex()
         self.name = name
         self.args = args
+
+    def onchangestate(self, e):
+        """ Fysom callback for state transition.
+
+          @param object e: Fysom state transition description
+        """
+        self.sigStateChanged.emit(e)
 
     def preExecute(self):
         raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
