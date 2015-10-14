@@ -43,6 +43,7 @@ class AWG(Base):
         else:
             self.logMsg("This is AWG: Did not find >>awg_port<< in configuration.", msgType='error')
         
+        self.max_samplerate = 50e9
     
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -88,7 +89,9 @@ class AWG(Base):
         if not command.endswith('\n'): # I always forget the line feed.
             command += '\n'
         command = bytes(command, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send(command)
+        self.soc.close()
         return
         
     def ask(self, question):
@@ -100,6 +103,7 @@ class AWG(Base):
         if not question.endswith('\n'): # I always forget the line feed.
             question += '\n'
         question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send(question)    
         time.sleep(1)                   # you need to wait until AWG generating
                                         # an answer.
@@ -107,13 +111,18 @@ class AWG(Base):
         message = message.decode('UTF-8') # decode bytes into a python str
         message = message.replace('\n','')      # cut away the characters\r and \n.
         message = message.replace('\r','')
+        self.soc.close()
         return message
     
     def run(self):
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('AWGC:RUN\n')
+        self.soc.close()
         
     def stop(self):
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('AWGC:STOP\n')
+        self.soc.close()
         
     def get_status(self):
         """ Asks the current state of the AWG.
@@ -123,11 +132,12 @@ class AWG(Base):
                 2 indicates that the instrument is running.
                -1 indicates that the request of the status for AWG has failed.
                 """
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('AWGC:RSTate?\n') # send at first a command to request.
         time.sleep(1)                   # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
-        
+        self.soc.close()
         # the output message contains always the string '\r\n' at the end. Use
         # the split command to get rid of this
         try:
@@ -147,9 +157,11 @@ class AWG(Base):
                 'SOFT' or 1 indicates Software Mode
                 'Error' or -1 indicates a failure of request
         """
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('AWGControl:SEQuencer:TYPE?\n')
         time.sleep(1)
         message = self.soc.recv(self.input_buffer)
+        self.soc.close()
         if output_as_int == True:
             if 'HARD' in message:
                 return 0
@@ -169,12 +181,14 @@ class AWG(Base):
         """Turns Interleave of the AWG on or off.
             @param state: A Boolean, defines if Interleave is turned on or off, Default=False
         """
+        self.soc.connect((self.ip_address, self.port))
         if(state):
             print('interleave is on')
             self.soc.send('AWGC:INT:STAT 1\n')
         else:
             print('interleave is off')
             self.soc.send('AWGC:INT:STAT 0\n')
+        self.soc.close()
         return    
     
     def set_output(self, state, channel=3):
@@ -188,10 +202,12 @@ class AWG(Base):
         look_up = {'on' : 1, 1 : 1, True : 1,
                    'off' : 0, 0 : 0, False : 0
                   }
+        self.soc.connect((self.ip_address, self.port))
         if channel & 1 == 1:
             self.soc.send('OUTP1 %i\n' % look_up[state])
         if channel & 2 == 2:
             self.soc.send('OUTP2 %i\n' % look_up[state])
+        self.soc.close()
         return
         
     def set_mode(self, mode):
@@ -210,7 +226,9 @@ class AWG(Base):
                    'E' : 'ENH' , 
                    'S' : 'SEQ'
                   }
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('AWGC:RMOD %s\n' % look_up[mode.upper()])
+        self.soc.close()
         return
         
     def set_sample(self, frequency):
@@ -218,7 +236,9 @@ class AWG(Base):
         
         @param frequency: sampling rate [GHz] - min 5.0E-05 GHz, max 24.0 GHz 
         """
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('SOUR:FREQ %.4GGHz\n' % frequency)
+        self.soc.close()
         return
         
     def set_amp(self, voltage, channel=3):
@@ -228,10 +248,12 @@ class AWG(Base):
         @param channel:  1 : channel 1; 2 : channel 2; 3 : both (default)
         
         """
+        self.soc.connect((self.ip_address, self.port))
         if channel & 1 == 1:
             self.soc.send('SOUR1:VOLT %.4GV\n' % voltage)
         if channel & 2 == 2:
             self.soc.send('SOUR2:VOLT %.4GV\n' % voltage)
+        self.soc.close()
         return
     
     def set_jump_timing(self, synchronous = False):
@@ -243,10 +265,12 @@ class AWG(Base):
         @param synchronous: Bool, if True the jump timing will be set to synchornous, 
         if False the jump timing will be set to asynchronous
         """
+        self.soc.connect((self.ip_address, self.port))
         if(synchronous):
             self.soc.send('EVEN:JTIM SYNC\n')
         else:
             self.soc.send('EVEN:JTIM ASYNC\n')
+        self.soc.close()
         return
             
     def load(self, filename, channel=1, cwd=None):
@@ -262,19 +286,28 @@ class AWG(Base):
         """
         if cwd is None:
             cwd = 'C:\\InetPub\\ftproot\\waves' # default
+        self.soc.connect((self.ip_address, self.port))
         if channel & 1 == 1:
             self.soc.send('SOUR1:FUNC:USER "%s/%s"\n' % (cwd, filename))
         if channel & 2 == 2:
             self.soc.send('SOUR2:FUNC:USER "%s/%s"\n' % (cwd, filename))
+        self.soc.close()
         return
     
     def clear_AWG(self):
         """ Delete all waveforms and sequences from Hardware memory and clear the visual display """
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('WLIS:WAV:DEL ALL\n')
+        self.soc.close()
         return
     
     def reset(self):
         """Reset the AWG."""
+        self.soc.connect((self.ip_address, self.port))
         self.soc.send('*RST\n')
+        self.soc.close()
         return
 
+    def max_samplerate(self):
+        return_val = self.max_samplerate
+        return return_val
