@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1348</width>
-    <height>981</height>
+    <height>1000</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>20</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -56,7 +56,7 @@
     </property>
     <widget class="QMenu" name="menuToolbars">
      <property name="title">
-      <string>Toolbars</string>
+      <string>Too&amp;lbars</string>
      </property>
      <addaction name="actionScan_Toolbar"/>
      <addaction name="actionUtil_Toolbar"/>
@@ -80,7 +80,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="depth_scan_dockWidget">
    <property name="windowTitle">
-    <string>Depth scan</string>
+    <string>Depth s&amp;can</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -258,7 +258,7 @@
        <item>
         <widget class="QRadioButton" name="depth_cb_centiles_RadioButton">
          <property name="text">
-          <string>Centiles</string>
+          <string>Centi&amp;les</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -268,7 +268,7 @@
        <item>
         <widget class="QRadioButton" name="depth_cb_manual_RadioButton">
          <property name="text">
-          <string>Manual</string>
+          <string>Man&amp;ual</string>
          </property>
          <property name="checked">
           <bool>false</bool>
@@ -326,7 +326,7 @@
   </widget>
   <widget class="QDockWidget" name="optimizer_dockWidget">
    <property name="windowTitle">
-    <string>Optimizer</string>
+    <string>Opti&amp;mizer</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -443,7 +443,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>Scan parameters</string>
+    <string>Scan &amp;parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -1225,7 +1225,7 @@
   </widget>
   <widget class="QDockWidget" name="xy_scan_dockWidget">
    <property name="windowTitle">
-    <string>XY scan</string>
+    <string>&amp;XY scan</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -1426,6 +1426,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout_6">
            <item>
             <widget class="QPushButton" name="xy_rotate_anticlockwise_PushButton">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -1443,6 +1446,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="xy_rotate_clockwise_PushButton">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -1520,7 +1526,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>Tilt correction</string>
+    <string>&amp;Tilt correction</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -1849,7 +1855,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Save XY Data</string>
+    <string>&amp;Save XY Data</string>
    </property>
   </action>
   <action name="actionSave_configuration">
@@ -1879,7 +1885,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Close</string>
+    <string>C&amp;lose</string>
    </property>
    <property name="toolTip">
     <string>Close confocal</string>
@@ -1895,7 +1901,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Save XZ Data</string>
+    <string>Save &amp;XZ Data</string>
    </property>
   </action>
   <action name="action_optimizer_settings">
@@ -1905,7 +1911,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Optimizer Settings</string>
+    <string>&amp;Optimizer Settings</string>
    </property>
   </action>
   <action name="actionSave_XY_Image_Data">
@@ -1915,7 +1921,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Save XY Image+Data</string>
+    <string>Save XY &amp;Image+Data</string>
    </property>
   </action>
   <action name="actionSave_Depth_Image_Data">
@@ -1925,7 +1931,7 @@
     </iconset>
    </property>
    <property name="text">
-    <string>Save XZ Image+Data</string>
+    <string>Save XZ Image+&amp;Data</string>
    </property>
   </action>
   <action name="action_zoom">
@@ -1949,7 +1955,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>XY scan</string>
+    <string>&amp;XY scan</string>
    </property>
    <property name="shortcut">
     <string>Alt+X</string>
@@ -1963,7 +1969,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Depth scan</string>
+    <string>&amp;Depth scan</string>
    </property>
    <property name="shortcut">
     <string>Alt+D</string>
@@ -1977,7 +1983,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Scan parameters</string>
+    <string>&amp;Scan parameters</string>
    </property>
    <property name="shortcut">
     <string>Alt+C</string>
@@ -1991,7 +1997,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Optimizer</string>
+    <string>&amp;Optimizer</string>
    </property>
    <property name="shortcut">
     <string>Alt+O</string>
@@ -2095,7 +2101,7 @@
   </action>
   <action name="restore_default_view_Action">
    <property name="text">
-    <string>Restore default</string>
+    <string>&amp;Restore default</string>
    </property>
    <property name="toolTip">
     <string>Restore default arrangement of dock widgets </string>
@@ -2103,7 +2109,7 @@
   </action>
   <action name="optimizer_only_view_Action">
    <property name="text">
-    <string>Optimizer-only</string>
+    <string>O&amp;ptimizer-only</string>
    </property>
    <property name="toolTip">
     <string>Rearrange window as a small optimizer interface.</string>
@@ -2134,7 +2140,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Scan Toolbar</string>
+    <string>&amp;Scan Toolbar</string>
    </property>
    <property name="toolTip">
     <string>This toolbar contains all the scan actions that let you record images in the confocal microscope</string>
@@ -2148,7 +2154,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Util Toolbar</string>
+    <string>&amp;Util Toolbar</string>
    </property>
   </action>
   <action name="action_Tiltcorrection">
@@ -2164,7 +2170,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Tilt correction</string>
+    <string>&amp;Tilt correction</string>
    </property>
   </action>
  </widget>
