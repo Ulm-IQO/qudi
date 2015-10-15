@@ -601,19 +601,19 @@ class PulsedMeasurementGui(GUIBase):
         # the attributes are assigned to function an the desired argument one
         # wants to pass to these functions.
         self._param_a_ch = OrderedDict()
-        self._param_a_ch['Function'] = [self._create_combobox, '()']
-        self._param_a_ch['Freq (GHz)'] = [self._create_doublespinbox, '(min_val=0)']
-        self._param_a_ch['Ampl. (V)'] = [self._create_doublespinbox, '(min_val=0,max_val=1.5)']
-        self._param_a_ch['Phase(°)'] = [self._create_doublespinbox, '()']
+        self._param_a_ch['Function'] = self._get_settings_combobox()
+        self._param_a_ch['Freq (GHz)'] = self._get_settings_dspinbox_freq()
+        self._param_a_ch['Ampl. (V)'] = self._get_settings_dspinbox_amp()
+        self._param_a_ch['Phase(°)'] = self._get_settings_dspinbox_phase()
 
         self._param_d_ch = OrderedDict()
-        self._param_d_ch['CheckBox'] = [self._create_checkbox,'()']
+        self._param_d_ch['CheckBox'] = self._get_settings_checkbox()
 
         self._param_block = OrderedDict()
-        self._param_block['Length (ns)'] = [self._create_doublespinbox, '(min_val=0)']
-        self._param_block['Inc. (ns)'] = [self._create_doublespinbox,'(min_val=0)']
-        self._param_block['Repeat?'] = [self._create_checkbox,'()']
-        self._param_block['Use as tau?'] = [self._create_checkbox,'()']
+        self._param_block['Length (ns)'] = self._get_settings_dspinbox_length()
+        self._param_block['Inc. (ns)'] = self._get_settings_dspinbox_inc()
+        self._param_block['Repeat?'] = self._get_settings_checkbox()
+        self._param_block['Use as tau?'] = self._get_settings_checkbox()
 
         # This method should be executed when the tablewidget is subclassed in
         # an extra file:
@@ -622,72 +622,151 @@ class PulsedMeasurementGui(GUIBase):
         #$$$$$$$$$$$$$$$$$$$$$$$$              Eplain usage of TableQidget.
         # &***************
 
-        # For QTableView you have to define a model of how the treated data are
-        # stored.
-#        model = QtGui.QStandardItemModel(self._mw.init_block_TableWidget.rowCount(),self._mw.init_block_TableWidget.columnCount(),parent=self._mw.init_block_TableWidget)
-#        self._mw.init_block_TableWidget.setModel(model)
 
         # emit a trigger event when for all mouse click and keyboard click events:
         # compare the C++ references:
         self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        self._mw.repeat_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
+        #FIXME:
+        # Set the first elements manually. That will be just for test reasons.
+        # Later on this should happen automated with any arbitrary table.
 
+        # column1:
+        items_list = self._param_d_ch['CheckBox'][1:]
+        delegate = eval(self._param_d_ch['CheckBox'][0].__name__)(self._mw.init_block_TableWidget, items_list)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(0, delegate)
+        self._mw.init_block_TableWidget.setColumnWidth(0, 40)
 
-        # replace also the combobox through a QListWidget have a look on:
-        # http://stackoverflow.com/questions/28037126/how-to-use-qcombobox-as-delegate-with-qtableview
+        for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+            model = self._mw.init_block_TableWidget.model()
+            index = model.index(row_num, 0)
+            ini_values = delegate.get_initial_value()
+            model.setData(index, ini_values[0], ini_values[1])
 
+        items_list = self._param_d_ch['CheckBox'][1:]
+        delegate = eval(self._param_d_ch['CheckBox'][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
+        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(0, delegate)
+        self._mw.repeat_block_TableWidget.setColumnWidth(0, 40)
 
+        for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+            model = self._mw.repeat_block_TableWidget.model()
+            index = model.index(row_num, 0)
+            ini_values = delegate.get_initial_value()
+            model.setData(index, ini_values[0], ini_values[1])
+
+        # column2:
+        items_list = self._param_d_ch['CheckBox'][1:]
+        delegate = eval(self._param_d_ch['CheckBox'][0].__name__)(self._mw.init_block_TableWidget, items_list)
+        self._mw.init_block_TableWidget.setItemDelegateForColumn(1, delegate)
+        self._mw.init_block_TableWidget.setColumnWidth(1, 40)
+
+        for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+            model = self._mw.init_block_TableWidget.model()
+            index = model.index(row_num, 1)
+            ini_values = delegate.get_initial_value()
+            model.setData(index, ini_values[0], ini_values[1])
+
+        items_list = self._param_d_ch['CheckBox'][1:]
+        delegate = eval(self._param_d_ch['CheckBox'][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
+        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(1, delegate)
+        self._mw.repeat_block_TableWidget.setColumnWidth(1, 40)
+
+        for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+            model = self._mw.repeat_block_TableWidget.model()
+            index = model.index(row_num, 1)
+            ini_values = delegate.get_initial_value()
+            model.setData(index, ini_values[0], ini_values[1])
 
 
         # Modified by me
-        self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover);
+        self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
+        self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover);
 
-        self.items = ['a','b','c']
+    def _get_settings_combobox(self):
+        """ Get the custom setting for a general ComboBox object.
 
-        comboDelegate = ComboBoxDelegate(self._mw.init_block_TableWidget,self.items)
-        self._mw.init_block_TableWidget.setItemDelegateForColumn(0, comboDelegate)
+        @return list[N]: A list with pulse functions.
 
-        items_list = [2,0,1000000]
-        spinDelegate = SpinBoxDelegate(self._mw.init_block_TableWidget,items_list)
-        self._mw.init_block_TableWidget.setItemDelegateForColumn(1,spinDelegate)
+        This return object must coincide with the according delegate class.
+        """
+        return [ComboBoxDelegate,'Idle','Sin','Cos','DC','Sin-Gauss']
 
-        items_list = [1.0, -1000000, 1000000, 0.1, 5]
-        dspinDelegate = DoubleSpinBoxDelegate(self._mw.init_block_TableWidget,items_list)
-        self._mw.init_block_TableWidget.setItemDelegateForColumn(2,dspinDelegate)
+    def _get_settings_checkbox(self):
+        """ Get the custom setting for a general CheckBox object.
 
-        items_list = [QtCore.Qt.Unchecked]
-        checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget, items_list)
-        self._mw.init_block_TableWidget.setItemDelegateForColumn(3,checkDelegate)
+        @return list[1]: A list with
+                        [class, default_val]
+
+        This return object must coincide with the according delegate class.
+        """
+        return [CheckBoxDelegate,QtCore.Qt.Unchecked]
+
+    def _get_settings_spinbox(self):
+        """ Get the custom setting for a general SpinBox object.
+
+        @return list[3]: A list with
+                        [default_val, min_val, max_val]
+
+        This return object must coincide with the according delegate class.
+        """
+        return [2,0,1000000]
+
+    def _get_settings_dspinbox_phase(self):
+        """ Get the custom setting for a general phase DoubleSpinBox object.
+
+        @return list[5]: A list with
+                        [class, default_val, min_val, max_val, step_size, digits]
+
+        This return object must coincide with the according delegate class.
+        """
+        return [DoubleSpinBoxDelegate, 0.0, -1000000, 1000000, 0.1, 5]
+
+    def _get_settings_dspinbox_freq(self):
+        """ Get the custom setting for a general frequency DoubleSpinBox object.
+
+        @return list[5]: A list with
+                        [class, default_val, min_val, max_val, step_size, digits]
+
+        This return object must coincide with the according delegate class.
+        """
+        return [DoubleSpinBoxDelegate, 2.8, 0, 1000000, 0.01, 5]
+
+    def _get_settings_dspinbox_amp(self):
+        """ Get the custom setting for a general amplitude DoubleSpinBox object.
+
+        @return list[5]: A list with
+                        [class, default_val, min_val, max_val, step_size, digits]
+
+        This return object must coincide with the according delegate class.
+        """
+        return [DoubleSpinBoxDelegate, 1, 0, 2, 0.01, 5]
 
 
-        # self._mw.init_block_TableWidget.setEditTrigger( )
+    #FIXME: connect the current default value of length of the dspinbox with
+    #       the minimal sequence length and the sampling rate.
+    #FIXME: Later that should be able to round up the values directly within
+    #       the entering in the dspinbox for a consistent display of the
+    #       sequence length.
+    def _get_settings_dspinbox_length(self):
+        """ Get the custom setting for a general length DoubleSpinBox object.
 
+        @return list[5]: A list with
+                        [class, default_val, min_val, max_val, step_size, digits]
 
-    def _create_doublespinbox(self, min_val=None, max_val=None, num_digits=None):
-        dspinbox = QtGui.QDoubleSpinBox()
-        dspinbox.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        dspinbox.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
-        if min_val is None:
-            min_val = -100000
-        if max_val is None:
-            max_val = 100000
-        if num_digits is None:
-            num_digits = 3
-        dspinbox.setMinimum(min_val)
-        dspinbox.setMaximum(max_val)
-        dspinbox.setDecimals(num_digits)
-        return dspinbox
+        This return object must coincide with the according delegate class.
+        """
+        return [DoubleSpinBoxDelegate, 10, 0, 2, 0.01, 5]
 
-    def _create_checkbox(self):
-        #http://stackoverflow.com/questions/17748546/pyqt-column-of-checkboxes-in-a-qtableview
-        checkbox = QtGui.QCheckBox()
-        checkbox.setLayoutDirection(QtCore.Qt.RightToLeft)
-        return checkbox
+    def _get_settings_dspinbox_inc(self):
+        """ Get the custom setting for a general increment DoubleSpinBox object.
 
-    def _create_combobox(self):
-        combobox = QtGui.QComboBox()
-        return combobox
+        @return list[5]: A list with
+                        [class, default_val, min_val, max_val, step_size, digits]
 
+        This return object must coincide with the according delegate class.
+        """
+        return [DoubleSpinBoxDelegate, 0, 0, 2, 0.01, 5]
 
     def get_data_init(self, row, column):
         """ Simplified wrapper function to get the data from the init table """
@@ -899,9 +978,9 @@ class PulsedMeasurementGui(GUIBase):
         return count_dch
 
     def _use_digital_ch(self, num_d_ch):
-        """
+        """ Set how much degital should be used.
 
-        @param int num_d_ch:
+        @param int num_d_ch: Number of needed digital channels.
 
         This method is based on the idea that digital channels are added or
         removed subsequently and not at once, therefore you have to ensure that
@@ -956,10 +1035,22 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.init_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self._num_d_ch+appended_channel) )
                 self._mw.init_block_TableWidget.setColumnWidth(channel_pos, 40)
 
-                # add the new properties to the whole column
+                # add the new properties to the whole column through delegate:
+                items_list = self._param_d_ch['CheckBox'][1:]
+                checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget, items_list)
+                self._mw.init_block_TableWidget.setItemDelegateForColumn(channel_pos,checkDelegate)
+
+                # initialize the whole row with default values:
                 for row_num in range(self._mw.init_block_TableWidget.rowCount()):
-                    cellobject = eval('self.'+self._param_d_ch['CheckBox'][0].__name__ + self._param_d_ch['CheckBox'][1] )
-                    self._mw.init_block_TableWidget.setCellWidget(row_num, channel_pos, cellobject)
+                    # get the model, here are the data stored:
+                    model = self._mw.init_block_TableWidget.model()
+                    # get the corresponding index of the current element:
+                    index = model.index(row_num,channel_pos)
+                    # get the initial values of the delegate class which was
+                    # uses for this column:
+                    ini_values = checkDelegate.get_initial_value()
+                    # set initial values:
+                    model.setData(index, ini_values[0], ini_values[1])
 
                 # create the channels for the repeated block
                 self._mw.repeat_block_TableWidget.insertColumn(channel_pos)
@@ -967,10 +1058,22 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.repeat_block_TableWidget.horizontalHeaderItem(channel_pos).setText('DCh{0}'.format(self._num_d_ch+appended_channel) )
                 self._mw.repeat_block_TableWidget.setColumnWidth(channel_pos, 40)
 
-                # add the new properties to the whole column
+                # add the new properties to the whole column through delegate:
+                items_list = self._param_d_ch['CheckBox'][1:]
+                checkDelegate = CheckBoxDelegate(self._mw.repeat_block_TableWidget, items_list)
+                self._mw.repeat_block_TableWidget.setItemDelegateForColumn(channel_pos,checkDelegate)
+
+                # initialize the whole row with default values:
                 for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
-                    cellobject = eval('self.'+self._param_d_ch['CheckBox'][0].__name__ + self._param_d_ch['CheckBox'][1] )
-                    self._mw.repeat_block_TableWidget.setCellWidget(row_num, channel_pos, cellobject)
+                    # get the model, here are the data stored:
+                    model = self._mw.repeat_block_TableWidget.model()
+                    # get the corresponding index of the current element:
+                    index = model.index(row_num,channel_pos)
+                    # get the initial values of the delegate class which was
+                    # uses for this column:
+                    ini_values = checkDelegate.get_initial_value()
+                    # set initial values:
+                    model.setData(index, ini_values[0], ini_values[1])
 
             self._num_d_ch = self._num_d_ch + len(position_list)
 
@@ -1082,22 +1185,48 @@ class PulsedMeasurementGui(GUIBase):
                     self._mw.init_block_TableWidget.insertColumn(column_pos+column)
                     self._mw.init_block_TableWidget.setHorizontalHeaderItem(column_pos+column, QtGui.QTableWidgetItem())
                     self._mw.init_block_TableWidget.horizontalHeaderItem(column_pos+column).setText('ACh{0}\n'.format(channel) + parameter)
-                    self._mw.init_block_TableWidget.setColumnWidth(column_pos+column, 70)
+                    self._mw.init_block_TableWidget.setColumnWidth(column_pos+column, 90)
 
-                    # add the new properties to the whole column
+                    # add the new properties to the whole column through delegate:
+                    items_list = self._param_a_ch[parameter][1:]
+                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
+                    self._mw.init_block_TableWidget.setItemDelegateForColumn(column_pos+column, delegate)
+
+                    # initialize the whole row with default values:
                     for row_num in range(self._mw.init_block_TableWidget.rowCount()):
-                        cellobject = eval('self.'+self._param_a_ch[parameter][0].__name__ + self._param_a_ch[parameter][1] )
-                        self._mw.init_block_TableWidget.setCellWidget(row_num, column_pos+column, cellobject)
+                        # get the model, here are the data stored:
+                        model = self._mw.init_block_TableWidget.model()
+                        # get the corresponding index of the current element:
+                        index = model.index(row_num, column_pos+column)
+                        # get the initial values of the delegate class which was
+                        # uses for this column:
+                        ini_values = delegate.get_initial_value()
+                        # set initial values:
+                        model.setData(index, ini_values[0], ini_values[1])
 
                     self._mw.repeat_block_TableWidget.insertColumn(column_pos+column)
                     self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column_pos+column, QtGui.QTableWidgetItem())
                     self._mw.repeat_block_TableWidget.horizontalHeaderItem(column_pos+column).setText('ACh{0}\n'.format(channel) + parameter)
-                    self._mw.repeat_block_TableWidget.setColumnWidth(column_pos+column, 70)
+                    self._mw.repeat_block_TableWidget.setColumnWidth(column_pos+column, 90)
 
-                    # add the new properties to the whole column
+                    # add the new properties to the whole column through delegate:
+                    items_list = self._param_a_ch[parameter][1:]
+                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
+                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column_pos+column, delegate)
+
+                    # initialize the whole row with default values:
                     for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
-                        cellobject = eval('self.'+self._param_a_ch[parameter][0].__name__ + self._param_a_ch[parameter][1] )
-                        self._mw.repeat_block_TableWidget.setCellWidget(row_num, column_pos+column, cellobject)
+                        # get the model, here are the data stored:
+                        model = self._mw.repeat_block_TableWidget.model()
+                        # get the corresponding index of the current element:
+                        index = model.index(row_num, column_pos+column)
+                        # get the initial values of the delegate class which was
+                        # uses for this column:
+                        ini_values = delegate.get_initial_value()
+                        # set initial values:
+                        model.setData(index, ini_values[0], ini_values[1])
 
                 self._num_a_ch = channel+1 # tell how many analog channel has been created
                 self._use_digital_ch(2)
