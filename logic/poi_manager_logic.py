@@ -114,7 +114,7 @@ class PoI(object):
             #            self.logMsg('You can not change the name of the crosshair.',
             #                        msgType='error')
             return -1
-        if name is None:
+        if name is not None:
             self._name = name
             return 0
         if len(self._position_time_trace) > 0:
@@ -237,7 +237,6 @@ class PoiManagerLogic(GenericLogic):
     def user_move_deactivates_poi(self, tag):
         if tag != 'optimizer':
             self._deactivate_poi()
-        
 
     def testing(self):
         """ Debug function for testing. """
@@ -721,3 +720,119 @@ class PoiManagerLogic(GenericLogic):
         roifile.close()
 
         return 0
+
+    def triangulate(self, r, a1, b1, c1, a2, b2, c2):
+        """ Reorients a coordinate r that is known relative to reference points a1, b1, c1 to
+            produce a new vector rnew that has exactly the same relation to rotated/shifted/tilted
+            reference positions a2, b2, c2.
+
+            @param np.array r: position to be remapped.
+
+            @param np.array a1: initial location of ref1.
+
+            @param np.array a2: final location of ref1.
+
+            @param np.array b1, b2, c1, c2: similar for ref2 and ref3
+        """
+
+        ab_old = b1 - a1
+        ac_old = c1 - a1
+
+        ab_new = b2 - a2
+        ac_new = c2 - a2
+
+        # Firstly, find the angle to rotate ab_old onto ab_new.  This rotation must be done in
+        # the plane that contains these two vectors, which means rotating about an axis
+        # perpendicular to both of them (the cross product).
+
+        axis1 = np.cross(ab_old, ab_new)  # Only works if ab_old and ab_new are not parallel
+        axis1length = np.sqrt((axis1 * axis1).sum())
+
+        if axis1length == 0:
+            ab_olddif = ab_old + np.array([100, 0, 0])
+            axis1 = np.cross(ab_old, ab_olddif)
+
+        # normalising the axis1 vector
+        axis1 = axis1 / np.sqrt((axis1 * axis1).sum())
+
+        # The dot product gives the angle between ab_old and ab_new
+        dot = np.dot(ab_old, ab_new)
+        x_modulus = np.sqrt((ab_old * ab_old).sum())
+        y_modulus = np.sqrt((ab_new * ab_new).sum())
+        cos_angle = min(dot / x_modulus / y_modulus, 1)  # float errors can cause the division to be slightly above 1 for 90 degree rotations, which will confuse arccos.
+        angle1 = np.arccos(cos_angle)  # angle in radians
+
+        # Construct a rotational matrix for axis1
+        n1 = axis1[0]
+        n2 = axis1[1]
+        n3 = axis1[2]
+
+        m1 = np.matrix(((((n1*n1)*(1-np.cos(angle1))+np.cos(angle1)),((n1*n2)*(1-np.cos(angle1))-n3*np.sin(angle1)),((n1*n3)*(1-np.cos(angle1))+n2*np.sin(angle1))),
+                        (((n2*n1)*(1-np.cos(angle1))+n3*np.sin(angle1)),((n2*n2)*(1-np.cos(angle1))+np.cos(angle1)),((n2*n3)*(1-np.cos(angle1))-n1*np.sin(angle1))),
+                        (((n3*n1)*(1-np.cos(angle1))-n2*np.sin(angle1)),((n3*n2)*(1-np.cos(angle1))+n1*np.sin(angle1)),((n3*n3)*(1-np.cos(angle1))+np.cos(angle1)))))
+
+        # Now that ab_old can be rotated to overlap with ab_new, we need to rotate in another
+        # axis to fix "tilt".  By choosing ab_new as the rotation axis we ensure that the
+        # ab vectors stay where they need to be.
+
+        # ac_old_rot is the rotated ac_old (around axis1).  We need to find the angle to rotate
+        # ac_old_rot around ab_new to get ac_new.
+        ac_old_rot = np.array(np.dot(m1, ac_old))[0]
+
+        axis2 = -ab_new  # TODO: check maths to find why this negative sign is necessary.  Empirically it is now working.
+        axis2 = axis2 / np.sqrt((axis2 * axis2).sum())
+
+        # To get the angle of rotation it is most convenient to work in the plane for which axis2 is the normal.
+        # We must project vectors ac_old_rot and ac_new into this plane.
+        a = ac_old_rot - np.dot(ac_old_rot, axis2) * axis2  # projection of ac_old_rot in the plane of rotation about axis2
+        b = ac_new - np.dot(ac_new, axis2) * axis2  # projection of ac_new in the plane of rotation about axis2
+
+        # The dot product gives the angle of rotation around axis2
+        dot = np.dot(a, b)
+
+        x_modulus = np.sqrt((a * a).sum())
+        y_modulus = np.sqrt((b * b).sum())
+        cos_angle = min(dot / x_modulus / y_modulus, 1)  # float errors can cause the division to be slightly above 1 for 90 degree rotations, which will confuse arccos.
+        angle2 = np.arccos(cos_angle)  # angle in radians
+
+        # Construct a rotation matrix around axis2
+        n1 = axis2[0]
+        n2 = axis2[1]
+        n3 = axis2[2]
+
+        m2 = np.matrix(((((n1*n1)*(1-np.cos(angle2))+np.cos(angle2)),((n1*n2)*(1-np.cos(angle2))-n3*np.sin(angle2)),((n1*n3)*(1-np.cos(angle2))+n2*np.sin(angle2))),
+                        (((n2*n1)*(1-np.cos(angle2))+n3*np.sin(angle2)),((n2*n2)*(1-np.cos(angle2))+np.cos(angle2)),((n2*n3)*(1-np.cos(angle2))-n1*np.sin(angle2))),
+                        (((n3*n1)*(1-np.cos(angle2))-n2*np.sin(angle2)),((n3*n2)*(1-np.cos(angle2))+n1*np.sin(angle2)),((n3*n3)*(1-np.cos(angle2))+np.cos(angle2)))))
+
+        # To find the new position of r, displace by (a2 - a1) and do the rotations
+        r = r + (a2 - a1)
+
+        rnew = np.array(np.dot(m2, np.array(np.dot(m1, r))[0]))[0]
+
+        return rnew
+
+    def reorient_roi(self, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos):
+        """ Move and rotate the ROI to a new position specified by the newpos of 3 reference POIs from the saved ROI.
+
+        @param ref1_coords: coordinates (from ROI save file) of reference 1.
+
+        @param ref2_coords: similar, ref2.
+
+        @param ref3_coords: similar, ref3.
+
+        @param ref1_newpos: the new (current) position of POI reference 1.
+
+        @param ref2_newpos: similar, ref2.
+
+        @param ref3_newpos: similar, ref3.
+        """
+
+        for poikey in self.get_all_pois(abc_sort=True):
+            if poikey is not 'sample' and poikey is not 'crosshair':
+                thispoi = self.track_point_list[poikey]
+
+                old_coords = thispoi.get_coords_in_sample()
+
+                new_coords = self.triangulate(old_coords, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos)
+
+                self.move_coords(poikey=poikey, point=new_coords)
