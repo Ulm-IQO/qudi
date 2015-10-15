@@ -227,13 +227,17 @@ class PoiManagerLogic(GenericLogic):
         self.track_point_list[sample._key] = sample
 
         # listen for the refocus to finish
-        self._optimizer_logic.signal_refocus_finished.connect(
-            self._refocus_done, QtCore.Qt.QueuedConnection)
+        self._optimizer_logic.signal_refocus_finished.connect(self._refocus_done)
 
         # listen for the deactivation of a POI caused by moving to a different position
-        self._confocal_logic.signal_moved_to_arbitrary_position.connect(self._deactivate_poi)
+        self._confocal_logic.signal_change_position.connect(self.user_move_deactivates_poi)
 
         self.testing()
+
+    def user_move_deactivates_poi(self, tag):
+        if tag != 'optimizer':
+            self._deactivate_poi()
+        
 
     def testing(self):
         """ Debug function for testing. """
@@ -353,7 +357,7 @@ class PoiManagerLogic(GenericLogic):
         if poikey is not None and poikey in self.track_point_list.keys():
             self._current_poi_key = poikey
             x, y, z = self.get_poi_position(poikey=poikey)
-            self._confocal_logic.set_position(x=x, y=y, z=z, arbitrary=False)
+            self._confocal_logic.set_position('poimanager', x=x, y=y, z=z)
         else:
             self.logMsg('F. The given POI ({}) does not exist.'.format(poikey),
                         msgType='error')
@@ -580,15 +584,14 @@ class PoiManagerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        optimized_position = [self._optimizer_logic.refocus_x,
-                              self._optimizer_logic.refocus_y,
-                              self._optimizer_logic.refocus_z]
+        optimized_position = [self._optimizer_logic.optim_pos_x,
+                              self._optimizer_logic.optim_pos_y,
+                              self._optimizer_logic.optim_pos_z]
 
         # If the refocus was on the crosshair, then only update crosshair POI and don't
         # do anything with sample position.
         if self._optimizer_logic.is_crosshair:
-            self.track_point_list['crosshair'].\
-                add_position_to_trace(position=optimized_position)
+            self.track_point_list['crosshair'].add_position_to_trace(position=optimized_position)
             return 0
 
         # Otherwise the refocus was on a known POI that should update sample position.
