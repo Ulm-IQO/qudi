@@ -381,8 +381,8 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        print(tag, x, y, z)
-        #Changes the respective value
+        # print(tag, x, y, z)
+        # Changes the respective value
         if x != None:
             self._current_x = x
         if y != None:
