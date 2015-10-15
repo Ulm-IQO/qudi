@@ -131,6 +131,38 @@
             </item>
             <item row="2" column="0" colspan="4">
              <layout class="QGridLayout" name="gridLayout_17">
+              <item row="0" column="0" rowspan="9">
+               <widget class="QTableWidget" name="repeat_block_TableWidget">
+                <property name="frameShadow">
+                 <enum>QFrame::Sunken</enum>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::ContiguousSelection</enum>
+                </property>
+                <property name="rowCount">
+                 <number>6</number>
+                </property>
+                <property name="columnCount">
+                 <number>2</number>
+                </property>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <column>
+                 <property name="text">
+                  <string>DCh0</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>DCh1</string>
+                 </property>
+                </column>
+               </widget>
+              </item>
               <item row="0" column="1">
                <spacer name="verticalSpacer_5">
                 <property name="orientation">
@@ -213,116 +245,6 @@ sel.</string>
                 </property>
                </spacer>
               </item>
-              <item row="0" column="0" rowspan="9">
-               <widget class="QTableWidget" name="repeat_block_TableWidget">
-                <property name="frameShadow">
-                 <enum>QFrame::Sunken</enum>
-                </property>
-                <property name="selectionMode">
-                 <enum>QAbstractItemView::ContiguousSelection</enum>
-                </property>
-                <property name="rowCount">
-                 <number>6</number>
-                </property>
-                <property name="columnCount">
-                 <number>16</number>
-                </property>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Function</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Freq. (GHz)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Ampl. (V)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Phase (°)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh0</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh1</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Function</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Freq. (GHz)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Ampl. (V)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Phase (°)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh2</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh3</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Length (ns)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Inc. (ns)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Repeat?</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Use as tau?</string>
-                 </property>
-                </column>
-               </widget>
-              </item>
               <item row="2" column="1">
                <widget class="QPushButton" name="del_repeat_row_selected_PushButton">
                 <property name="maximumSize">
@@ -376,292 +298,6 @@ last</string>
                  </size>
                 </property>
                </spacer>
-              </item>
-             </layout>
-            </item>
-            <item row="1" column="0" colspan="4">
-             <layout class="QGridLayout" name="gridLayout_11">
-              <item row="0" column="1">
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>190</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="6" column="1">
-               <widget class="QPushButton" name="del_init_row_last_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Del.
-last</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QPushButton" name="add_init_row_selected_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="baseSize">
-                 <size>
-                  <width>40</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string/>
-                </property>
-                <property name="text">
-                 <string>Add
-sel.</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QPushButton" name="del_init_row_selected_PushButton">
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Del.
-sel.</string>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="1">
-               <spacer name="verticalSpacer_7">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>200</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="8" column="1">
-               <widget class="QPushButton" name="clear_init_table_PushButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Clear</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <spacer name="verticalSpacer_3">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>200</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="0" column="0" rowspan="11">
-               <widget class="QTableWidget" name="init_block_TableWidget">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="frameShadow">
-                 <enum>QFrame::Sunken</enum>
-                </property>
-                <property name="selectionMode">
-                 <enum>QAbstractItemView::ContiguousSelection</enum>
-                </property>
-                <property name="selectionBehavior">
-                 <enum>QAbstractItemView::SelectItems</enum>
-                </property>
-                <property name="gridStyle">
-                 <enum>Qt::SolidLine</enum>
-                </property>
-                <property name="sortingEnabled">
-                 <bool>false</bool>
-                </property>
-                <property name="rowCount">
-                 <number>6</number>
-                </property>
-                <property name="columnCount">
-                 <number>16</number>
-                </property>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Function</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Freq. (GHz)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Ampl. (V)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh0
-Phase (°)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh0</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh1</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Function</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Freq. (GHz)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Ampl. (V)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>ACh1
-Phase (°)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh2</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh3</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Length (ns)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Inc. (ns)</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Repeat?</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>Use as tau?</string>
-                 </property>
-                </column>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <spacer name="verticalSpacer_6">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>180</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="4" column="1" rowspan="2">
-               <widget class="QPushButton" name="add_init_row_last_PushButton">
-                <property name="maximumSize">
-                 <size>
-                  <width>40</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Add
-last</string>
-                </property>
-               </widget>
               </item>
              </layout>
             </item>
@@ -899,6 +535,217 @@ last</string>
               </property>
              </spacer>
             </item>
+            <item row="1" column="0" colspan="4">
+             <layout class="QGridLayout" name="gridLayout_11">
+              <item row="0" column="1">
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>190</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="1">
+               <widget class="QPushButton" name="del_init_row_last_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Del.
+last</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QPushButton" name="add_init_row_selected_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="baseSize">
+                 <size>
+                  <width>40</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="toolTip">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string>Add
+sel.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QPushButton" name="del_init_row_selected_PushButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Del.
+sel.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <spacer name="verticalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>200</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="8" column="1">
+               <widget class="QPushButton" name="clear_init_table_PushButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Clear</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>200</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="7" column="1">
+               <spacer name="verticalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>180</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="4" column="1" rowspan="2">
+               <widget class="QPushButton" name="add_init_row_last_PushButton">
+                <property name="maximumSize">
+                 <size>
+                  <width>40</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Add
+last</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" rowspan="10">
+               <widget class="QTableWidget" name="init_block_TableWidget">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Sunken</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::ContiguousSelection</enum>
+                </property>
+                <property name="selectionBehavior">
+                 <enum>QAbstractItemView::SelectItems</enum>
+                </property>
+                <property name="gridStyle">
+                 <enum>Qt::SolidLine</enum>
+                </property>
+                <property name="sortingEnabled">
+                 <bool>false</bool>
+                </property>
+                <property name="rowCount">
+                 <number>6</number>
+                </property>
+                <property name="columnCount">
+                 <number>2</number>
+                </property>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <row/>
+                <column>
+                 <property name="text">
+                  <string>DCh0</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>DCh1</string>
+                 </property>
+                </column>
+               </widget>
+              </item>
+             </layout>
+            </item>
            </layout>
           </item>
          </layout>
@@ -920,8 +767,8 @@ last</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1167</width>
-                 <height>662</height>
+                 <width>98</width>
+                 <height>28</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
