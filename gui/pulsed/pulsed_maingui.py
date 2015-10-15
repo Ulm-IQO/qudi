@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Jun 29 17:06:00 2015
 
-@author: astark
+"""
+This file contains the QuDi GUI module base class.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from PyQt4 import QtGui, QtCore, uic
@@ -16,30 +30,107 @@ from core.util.mutex import Mutex
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
-class ComboBoxDelegate(QtGui.QItemDelegate):
 
-    def __init__(self, parent):
-        QtGui.QItemDelegate.__init__(self, parent)
-#		self.itemslist = itemslist
+
+
+# =============================================================================
+#                       Define some delegate classes.
+# =============================================================================
+
+# These delegate classes can modify the behaviour of a whole row or column of
+# in a QTableWidget.
+#
+# A general idea, which functions are customizable for our purpose it is worth
+# to read the documentation for the QItemDelegate Class:
+# http://pyqt.sourceforge.net/Docs/PyQt4/qitemdelegate.html
+#
+# If you want to delegate a row or a column of a QTableWidget, then you have
+# at least to declare the constructors and the modification function for the
+# displayed data (which you see in the table) and the saved data (which is
+# handeled by the model class of the table). That means your delegate should
+# at least contain the functions:
+#       - createEditor
+#       - setEditor
+#       - updateEditorGeometry
+#       - setModelData
+#
+# I.e. when editing data in an item view, editors are created and displayed by
+# a delegate.
+#
+# Use the QStyledItemDelegate class instead of QItemDelegate, since the first
+# one provides extended possibilities of painting the windows and can be
+# changed by Qt style sheets.
+# Since the delegate is a subclass of QItemDelegate or QStyledItemDelegate, the
+# data it retrieves from the model is displayed in a default style, and we do
+# not need to provide a custom paintEvent().
+# We use QStyledItemDelegate as our base class so that we benefit from the
+# default delegate implementation. We could also have used
+# QAbstractItemDelegate, if we had wanted to start completely from scratch.
+#
+# Examples how to create e.g. of SpinBoxdelegate in native Qt:
+# http://qt.developpez.com/doc/4.7/itemviews-spinboxdelegate/
+# and a similar python implementation:
+# https://github.com/PySide/Examples/blob/master/examples/itemviews/spinboxdelegate.py
+
+class ComboBoxDelegate(QtGui.QStyledItemDelegate):
+
+    def __init__(self, parent, list_items):
+        # Use the constructor of the inherited class.
+        QtGui.QStyledItemDelegate.__init__(self, parent)
+        self.items = list_items     # save the passed values to a list, which
+                                    # will be displayed and from which you can
+                                    # choose. The entries will be
 
 #    def paint(self, painter, option, index):
-#		# Get Item Data
-##		value = index.data(QtCore.Qt.DisplayRole).toInt()[0]
-#		# fill style options with item data
+#        self.parent.openPersistentEditor(index)
+		# Get Item Data
+#		value = index.data(QtCore.Qt.DisplayRole).toInt()[0]
+		# fill style options with item data
 #        style = QtGui.QApplication.style()
 #        opt = QtGui.QStyleOptionComboBox()
-###		opt.currentText = str(self.itemslist[value])
+##		opt.currentText = str(self.itemslist[value])
 #        opt.rect = option.rect
-##
-##		# draw item data as ComboBox
+#
+#		# draw item data as ComboBox
 #        style.drawComplexControl(QtGui.QStyle.CC_ComboBox, opt, painter)
 
+    def get_initial_value(self):
+        """ Tells you which object to insert in the model.setData function.
+
+        @return list[2]: returns the two values, which corresponds to the last
+                         two values you shoul insert in the setData function.
+                         The first one is the first element of the passed item
+                         list list_items and the second one is the Role.
+            model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
+        """
+        return [self.items[0], QtCore.Qt.DisplayRole]
 
     def createEditor(self, parent, option, index):
-         # create the ProgressBar as our editor.
-        editor = QtGui.QComboBox(parent)
+        """ Create for the display and interaction with the user an editor.
 
-        editor.addItems(['a','b','c'])
+        @param QtGui.QWidget parent: The parent object, here QTableWidget
+        @param QtGui.QStyleOptionViewItemV4 option: This is a setting option
+                                                    which you can use for style
+                                                    configuration.
+        @param QtCore.QModelIndex index: That index will be passed by the model
+                                         object of the QTableWidget to the
+                                         delegated object. This index contains
+                                         information about the selected current
+                                         cell.
+
+        An editor can be in principle any QWidget, which you want to use to
+        display the current (model-)data. Therefore the editor is also a
+        container, which handles the passed entries from the user interface and
+        should save the data in the model object of the QTableWidget.
+
+        Do not save the created editor as a class variable! This consumes a lot
+        of unneeded memory. It is way better to create an editor if it is
+        needed. The inherent function closeEditor() of QStyledItemDelegate
+        takes care of closing and destroying the editor for you, if it is not
+        needed any longer.
+        """
+        editor = QtGui.QComboBox(parent)    # Editor is Combobox
+        editor.addItems(self.items)
         editor.setCurrentIndex(0)
         editor.installEventFilter(self)
         return editor
@@ -50,23 +141,60 @@ class ComboBoxDelegate(QtGui.QItemDelegate):
 #        editor.setCurrentIndex(num)
 
     def setEditorData(self, editor, index):
+        """ Set the display of the current value of the used editor.
+
+        @param QComboBox editor: QObject which was created in createEditor
+                                 function, here a QCombobox.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+        """
+
+        # just for safety, block any signal which might change the values of
+        # the editor during the access.
         editor.blockSignals(True)
-        editor.setCurrentIndex(editor.currentIndex())
+        editor.setCurrentIndex(editor.currentIndex()) # display the current item
         editor.blockSignals(False)
 
     def setModelData(self, editor, model, index):
-        value = editor.currentIndex()
-        model.setData(index, editor.itemText(value))
-#        model.setData(index, QtCore.Qt.DisplayRole, QtCore.QVariant(value))
+        """ Save the data of the editor to the model of the QTableWidget.
+
+        @param QComboBox editor: QObject which was created in createEditor
+                                 function, here a QCombobox.
+        @param QtCore.QAbstractTableModel model: That is the object which
+                                                 contains the data of the
+                                                 QTableWidget.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+        Before the editor is destroyed the current selection should be saved
+        in the model of the data.
+        """
+        value = editor.currentIndex()   # take current value and save to model
+        model.setData(index, editor.itemText(value), QtCore.Qt.DisplayRole)
 
     def updateEditorGeometry(self, editor, option, index):
-        editor.setGeometry(option.rect)
+        """ State how the editor should behave if it is opened.
 
+        @param QComboBox editor: QObject which was created in createEditor
+                                 function, here a QCombobox.
+        @param QtGui.QStyleOptionViewItemV4 option: This is a setting option
+                                                    which you can use for style
+                                                    configuration.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        Here you can basically change the appearance of you displayed editor.
+        """
+
+        # Every time the editor is displayed the current list should be renewed.
+        # This is introduced for experimenting with a passed data set. It is
+        # not clear whether this will be useful or not. That will be found out.
+        editor.clear()
+        editor.addItems(self.items)
+        editor.setGeometry(option.rect)
 
 
 class SpinBoxDelegate(QtGui.QItemDelegate):
     """
-    qt help for spinboxes:
+    Create delegated Spinboxes.
+
+    a well made qt help for spinboxes:
     http://doc.qt.io/qt-4.8/qt-itemviews-spinboxdelegate-example.html
 
     python help for spinboxes:
@@ -79,6 +207,8 @@ class SpinBoxDelegate(QtGui.QItemDelegate):
         need to provide a custom paintEvent().
         """
         QtGui.QItemDelegate.__init__(self, parent)
+        # tab.model().setData(tab.model().index(4,0),'b')
+
 
     def createEditor(self, parent, option, index):
         """
@@ -87,13 +217,13 @@ class SpinBoxDelegate(QtGui.QItemDelegate):
         inclusive.
         """
         editor = QtGui.QSpinBox(parent)
+        self.editor = editor
         editor.setMinimum(0)
         editor.setMaximum(10000000)
         editor.installEventFilter(self)
         editor.setValue(100)
         # self.setModelData(editor, QtCore.QAbstractTableModel,QtCore.QModelIndex)
-        # QtCore.QAbstractTableModel
-        # QtCore.QModelIndex
+
         return editor
 
     def setEditorData(self, spinBox, index):
@@ -103,8 +233,9 @@ class SpinBoxDelegate(QtGui.QItemDelegate):
         """
 
         # value, ok = index.model().data(index, QtCore.Qt.EditRole)
-        value = index.model().data(index)
-        if value is not int:
+        value = index.data()
+
+        if not isinstance(value,int):
             value = 0
         spinBox.setValue(value)
 
@@ -119,6 +250,7 @@ class SpinBoxDelegate(QtGui.QItemDelegate):
         value = spinBox.value()
         self.value = value
 
+        # set the data to the table model:
         model.setData(index, value, QtCore.Qt.EditRole)
 #        model.setData(index, QtCore.QVariant(value))
 
@@ -135,44 +267,79 @@ class SpinBoxDelegate(QtGui.QItemDelegate):
         return QtCore.QSize(64,64)
 
     def paint(self, painter, option, index):
+        """ This method should be used when you want to change displaying
+        behavior of the view.
+        """
         if (option.state & QtGui.QStyle.State_MouseOver):
-            painter.fillRect(option.rect, QtCore.Qt.red);
+            painter.fillRect(option.rect, QtGui.QColor(68, 171, 230))
+            # painter.fillRect(option.rect, QtCore.Qt.red)
+        #     self.selectionmodel.select(index, QtGui.QItemSelectionModel.Select)
+        # self.selectionmodel.select(index, QtGui.QItemSelectionModel.Deselect)
         QtGui.QItemDelegate.paint(self, painter, option, index)
 
-
+    def flags(self, index):
+        if (index.column() == 0):
+            return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled
+        else:
+            return QtCore.Qt.ItemIsEnabled
 
 class ComboDelegate(QtGui.QItemDelegate):
+
+
+    def __init__(self, parent):
+        QtGui.QItemDelegate.__init__(self, parent)
+        self.parent = parent
+
     editorItems=['Combo_Zero', 'Combo_One','Combo_Two']
-    height = 25
-    width = 200
+    height = 45
+    width = 100
     def createEditor(self, parent, option, index):
         editor = QtGui.QListWidget(parent)
-        # editor.addItems(self.editorItems)
-        # editor.setEditable(True)
+        editor.addItems(self.editorItems)
+#         editor.setEditable(True)
         editor.currentItemChanged.connect(self.currentItemChanged)
+        editor.clicked.connect(self.accept_input)
         return editor
 
     def setEditorData(self,editor,index):
         z = 0
         for item in self.editorItems:
-            ai = QtGui.QListWidgetItem(item)
-            editor.addItem(ai)
             if item == index.data():
                 editor.setCurrentItem(editor.item(z))
             z += 1
-        editor.setGeometry(0,index.row()*self.height,self.width,self.height*len(self.editorItems))
+        real_height = self.parent.rowHeight(self.parent.currentRow())
+        column_width = 0
+        for column in range(self.parent.currentColumn()):
+            column_width = column_width + self.parent.columnWidth(column)
+        offset = self.parent.rowViewportPosition(0)
+
+        editor.setGeometry(column_width, index.row()*real_height+offset, self.width, self.height*len(self.editorItems))
+        editor.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+
+    def updateEditorGeometry(self, editor, option, index):
+        """
+        The updateEditorGeometry() function updates the editor widget's
+        geometry using the information supplied in the style option. This is
+        the minimum that the delegate must do in this case.
+        """
+        editor.setGeometry(option.rect)
+
 
     def setModelData(self, editor, model, index):
-        editorIndex=editor.currentIndex()
+#        editorIndex=editor.currentIndex()
         text=editor.currentItem().text()
         model.setData(index, text)
         # print '\t\t\t ...setModelData() 1', text
 
+    # this command enables a close of the editor, if an entry was chosen.
     @QtCore.pyqtSlot()
     def currentItemChanged(self):
         self.commitData.emit(self.sender())
 
-class CheckBoxDelegate(QtGui.QItemDelegate):
+    def accept_input(self):
+        self.closeEditor.emit(self.sender(), self.NoHint)
+
+class CheckBoxDelegate(QtGui.QStyledItemDelegate):
     """
     A delegate that places a fully functioning QCheckBox in every
     cell of the column to which it's applied
@@ -184,7 +351,7 @@ class CheckBoxDelegate(QtGui.QItemDelegate):
         retrieves from the model is displayed in a default style, and we do not
         need to provide a custom paintEvent().
         """
-        QtGui.QItemDelegate.__init__(self, parent)
+        QtGui.QStyledItemDelegate.__init__(self, parent)
 
     def createEditor(self, parent, option, index):
         """
@@ -192,6 +359,7 @@ class CheckBoxDelegate(QtGui.QItemDelegate):
         spin box that restricts values from the model to integers from 0 to 100
         inclusive.
         """
+
         editor = QtGui.QCheckBox(parent)
         editor.setCheckState(QtCore.Qt.Unchecked)
 
@@ -232,6 +400,7 @@ class CheckBoxDelegate(QtGui.QItemDelegate):
         """
         editor.setGeometry(option.rect)
 
+
     def sizeHint(self, option, index):
         print('sizeHint', index.row(), index.column())
         return QtCore.QSize(64,64)
@@ -239,7 +408,7 @@ class CheckBoxDelegate(QtGui.QItemDelegate):
     def paint(self, painter, option, index):
         if (option.state & QtGui.QStyle.State_MouseOver):
             painter.fillRect(option.rect, QtCore.Qt.red);
-        QtGui.QItemDelegate.paint(self, painter, option, index)
+        QtGui.QStyledItemDelegate.paint(self, painter, option, index)
 
 class PulsedMeasurementMainWindow(QtGui.QMainWindow):
     def __init__(self):
@@ -249,6 +418,7 @@ class PulsedMeasurementMainWindow(QtGui.QMainWindow):
 
         # Load it
         super(PulsedMeasurementMainWindow, self).__init__()
+
         uic.loadUi(ui_file, self)
         self.show()
 
@@ -260,6 +430,7 @@ class BlockSettingDialog(QtGui.QDialog):
 
         # Load it
         super(BlockSettingDialog, self).__init__()
+
         uic.loadUi(ui_file, self)
 
 class PulsedMeasurementGui(GUIBase):
@@ -335,22 +506,34 @@ class PulsedMeasurementGui(GUIBase):
 
         # This method should be executed when the tablewidget is subclassed in
         # an extra file:
-#        model = QtGui.QStandardItemModel(4, 2)
+
+        # &&&&&&&&&&&&&&&
+        #$$$$$$$$$$$$$$$$$$$$$$$$              Eplain usage of TableQidget.
+        # &***************
+
+        # For QTableView you have to define a model of how the treated data are
+        # stored.
+#        model = QtGui.QStandardItemModel(self._mw.init_block_TableWidget.rowCount(),self._mw.init_block_TableWidget.columnCount(),parent=self._mw.init_block_TableWidget)
 #        self._mw.init_block_TableWidget.setModel(model)
 
         # emit a trigger event when for all mouse click and keyboard click events:
         # compare the C++ references:
         self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
+
+
         # replace also the combobox through a QListWidget have a look on:
         # http://stackoverflow.com/questions/28037126/how-to-use-qcombobox-as-delegate-with-qtableview
+
+
 
 
         # Modified by me
         self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover);
 
+        self.items = ['a','b','c']
 
-        comboDelegate = ComboBoxDelegate(self._mw.init_block_TableWidget)
+        comboDelegate = ComboBoxDelegate(self._mw.init_block_TableWidget,self.items)
         self._mw.init_block_TableWidget.setItemDelegateForColumn(0, comboDelegate)
 
         spinDelegate = SpinBoxDelegate(self._mw.init_block_TableWidget)
@@ -361,6 +544,10 @@ class PulsedMeasurementGui(GUIBase):
 
         checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget)
         self._mw.init_block_TableWidget.setItemDelegateForColumn(3,checkDelegate)
+
+
+        # self._mw.init_block_TableWidget.setEditTrigger( )
+
 
     def _create_doublespinbox(self, min_val=None, max_val=None, num_digits=None):
         dspinbox = QtGui.QDoubleSpinBox()
@@ -387,6 +574,12 @@ class PulsedMeasurementGui(GUIBase):
         combobox = QtGui.QComboBox()
         return combobox
 
+
+    def get_data_init(self, row, column):
+        """ Simplified wrapper function to get the data from the init table """
+        tab =self._mw.init_block_TableWidget
+        data = tab.model().data(tab.model().index(row, column))
+        return data
 
     def deactivation(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed measurement GUI.
