@@ -28,9 +28,7 @@ class ConfocalLogic(GenericLogic):
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
-    signal_change_position = QtCore.Signal()
-
-    signal_moved_to_arbitrary_position = QtCore.Signal() #used by POI manager
+    signal_change_position = QtCore.Signal(str)
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -43,12 +41,11 @@ class ConfocalLogic(GenericLogic):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
+            self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -56,18 +53,14 @@ class ConfocalLogic(GenericLogic):
         self.return_slowness = 50
 
         self._zscan = False
-
         self._depth_line_pos = 0
-
         self._xy_line_pos = 0
 
         #locking for thread safety
         self.threadlock = Mutex()
 
         self.stopRequested = False
-
         self.yz_instead_of_xz_scan = False
-
         self.permanent_scan = False
 
 
@@ -105,16 +98,16 @@ class ConfocalLogic(GenericLogic):
         self.z_resolution = 50
 
         # Initialization of internal counter for scanning
-        self._scan_counter=0
+        self._scan_counter = 0
 
         # Variable to check if a scan is continuable
-        self._xyscan_continuable=False
-        self._zscan_continuable=False
+        self._xyscan_continuable = False
+        self._zscan_continuable = False
 
         #tilt correction stuff:
         self.TiltCorrection = False
-        self._tiltreference_x = 0.5*(self.x_range[0] + self.x_range[1])
-        self._tiltreference_y = 0.5*(self.y_range[0] + self.y_range[1])
+        self._tiltreference_x = 0.5 * (self.x_range[0] + self.x_range[1])
+        self._tiltreference_y = 0.5 * (self.y_range[0] + self.y_range[1])
         self._tilt_variable_ax = 0.
         self._tilt_variable_ay = 0.
         self.point1 = np.array((0, 0, 0))
@@ -146,7 +139,7 @@ class ConfocalLogic(GenericLogic):
 
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.
-
+ 
         @param to_on: True switches on, False switched off
 
         @return int: error code (0:OK, -1:error)
@@ -162,7 +155,7 @@ class ConfocalLogic(GenericLogic):
         """ Debug method. """
         pass
 #        self.start_scanner()
-#        self.set_position(x = 1., y = 2., z = 3., a = 4.)
+#        self.set_position('testing', x = 1., y = 2., z = 3., a = 4.)
 #        self.start_scanning()
 #        self.kill_scanner()
 
@@ -174,7 +167,6 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._clock_frequency = int(clock_frequency)
         #checks if scanner is still running
         if self.getState() == 'locked':
@@ -190,21 +182,17 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-
         # TODO: this is dirty, but it works for now
 #        while self.getState() == 'locked':
 #            time.sleep(0.01)
-
         self._scan_counter = 0
         self._zscan=zscan
         if self._zscan:
             self._zscan_continuable=True
-
         else:
             self._xyscan_continuable=True
 
         self.signal_start_scanning.emit()
-
         return 0
 
 
@@ -232,10 +220,6 @@ class ConfocalLogic(GenericLogic):
                 self.stopRequested = True
 
         return 0
-
-
-
-
 
 
     def initialize_image(self):
@@ -328,8 +312,6 @@ class ConfocalLogic(GenericLogic):
             if self.TiltCorrection:
                 self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
             self.sigImageXYInitialized.emit()
-
-
         return 0
 
 
@@ -347,13 +329,13 @@ class ConfocalLogic(GenericLogic):
         returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         if returnvalue < 0:
             self.unlock()
-            self.set_position()
+            self.set_position('scanner')
             return
 
         returnvalue = self._scanning_device.set_up_scanner()
         if returnvalue < 0:
             self.unlock()
-            self.set_position()
+            self.set_position('scanner')
             return
 
         self.signal_scan_lines_next.emit()
@@ -389,7 +371,7 @@ class ConfocalLogic(GenericLogic):
         return 0
 
 
-    def set_position(self, x = None, y = None, z = None, a = None, arbitrary = True):
+    def set_position(self, tag, x = None, y = None, z = None, a = None):
         """Forwarding the desired new position from the GUI to the scanning device.
 
         @param float x: if defined, changes to postion in x-direction (microns)
@@ -399,6 +381,7 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        print(tag, x, y, z)
         #Changes the respective value
         if x != None:
             self._current_x = x
@@ -407,31 +390,25 @@ class ConfocalLogic(GenericLogic):
         if z != None:
             self._current_z = z
 
-        # print("set_position was called")
-        # print(arbitrary)
-
         #Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
         else:
-            self.signal_change_position.emit()
-
-            if arbitrary:
-                self.signal_moved_to_arbitrary_position.emit()
-
+            self.signal_change_position.emit(tag)
             return 0
 
 
-    def _change_position(self):
+    def _change_position(self, tag):
         """ Threaded method to change the hardware position.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.scanner_set_position(x = self._current_x,
-                                                   y = self._current_y,
-                                                   z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
-                                                   a = self._current_a)
-
+        self._scanning_device.scanner_set_position(
+            x = self._current_x,
+            y = self._current_y,
+            z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
+            a = self._current_a
+            )
         return 0
 
 
@@ -440,7 +417,11 @@ class ConfocalLogic(GenericLogic):
 
         @return int[]: Current position
         """
-        return [self._current_x, self._current_y, self._current_z + self._calc_dz(x=self._current_x, y=self._current_y)]
+        return [
+            self._current_x,
+            self._current_y,
+            self._current_z + self._calc_dz(x=self._current_x, y=self._current_y)
+            ]
 
 
     def _scan_line(self):
@@ -456,13 +437,11 @@ class ConfocalLogic(GenericLogic):
                 self.unlock()
                 self.signal_xy_image_updated.emit()
                 self.signal_depth_image_updated.emit()
-                self.set_position()
+                self.set_position('scanner')
                 if self._zscan :
                     self._depth_line_pos = self._scan_counter
-
                 else:
                     self._xy_line_pos = self._scan_counter
-
                 return
 
         if self._zscan:
@@ -473,24 +452,18 @@ class ConfocalLogic(GenericLogic):
         try:
             if self._scan_counter == 0:
                 # defines trace of positions for single line scan
-                start_line = np.vstack( (np.linspace(self._current_x, \
-                                                     image[self._scan_counter,0,0], \
-                                                     self.return_slowness), \
-                                         np.linspace(self._current_y, \
-                                                     image[self._scan_counter,0,1], \
-                                                     self.return_slowness), \
-                                         np.linspace(self._current_z, \
-                                                     image[self._scan_counter,0,2], \
-                                                     self.return_slowness), \
-                                         np.linspace(self._current_a, \
-                                                     0, \
-                                                     self.return_slowness) ))
+                start_line = np.vstack((
+                    np.linspace(self._current_x, image[self._scan_counter, 0, 0], self.return_slowness),
+                    np.linspace(self._current_y, image[self._scan_counter, 0, 1], self.return_slowness),
+                    np.linspace(self._current_z, image[self._scan_counter, 0, 2], self.return_slowness),
+                    np.linspace(self._current_a, 0, self.return_slowness)
+                    ))
                 # scan of a single line
                 start_line_counts = self._scanning_device.scan_line(start_line)
             # defines trace of positions for a single line scan
-            line = np.vstack( (image[self._scan_counter,:,0],
-                               image[self._scan_counter,:,1],
-                               image[self._scan_counter,:,2],
+            line = np.vstack( (image[self._scan_counter, :, 0],
+                               image[self._scan_counter, :, 1],
+                               image[self._scan_counter, :, 2],
                                self._AL) )
             # scan of a single line
             if self.difference_scan:
@@ -507,15 +480,19 @@ class ConfocalLogic(GenericLogic):
                 line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
             if not self.yz_instead_of_xz_scan:
-                return_line = np.vstack( (self._return_XL,
-                                      image[self._scan_counter,0,1] * np.ones(self._return_XL.shape),
-                                      image[self._scan_counter,0,2] * np.ones(self._return_XL.shape),
-                                      self._return_AL) )
+                return_line = np.vstack((
+                    self._return_XL,
+                    image[self._scan_counter,0,1] * np.ones(self._return_XL.shape),
+                    image[self._scan_counter,0,2] * np.ones(self._return_XL.shape),
+                    self._return_AL
+                    ))
             else:
-                return_line = np.vstack( (image[self._scan_counter,0,1] * np.ones(self._return_YL.shape),
-                                      self._return_YL,
-                                      image[self._scan_counter,0,2] * np.ones(self._return_YL.shape),
-                                      self._return_AL) )
+                return_line = np.vstack((
+                    image[self._scan_counter,0,1] * np.ones(self._return_YL.shape),
+                    self._return_YL,
+                    image[self._scan_counter,0,2] * np.ones(self._return_YL.shape),
+                    self._return_AL
+                    ))
 
             # scan of a single return-line
             return_line_counts = self._scanning_device.scan_line(return_line)
@@ -589,8 +566,8 @@ class ConfocalLogic(GenericLogic):
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
         filelabel = 'confocal_xy_imagedata'
-        self._save_logic.save_data(image_data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        #, as_xml=False, precision=None, delimiter=None)
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -612,11 +589,10 @@ class ConfocalLogic(GenericLogic):
         data['count values (micros)'] = counts_data
 
         filelabel = 'confocal_xy_data'
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
 
     def save_depth_data(self):
@@ -651,8 +627,8 @@ class ConfocalLogic(GenericLogic):
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
         filelabel = 'confocal_depth_imagedata'
-        self._save_logic.save_data(image_data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(image_data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        #, as_xml=False, precision=None, delimiter=None)
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -674,11 +650,10 @@ class ConfocalLogic(GenericLogic):
         data['count values (micros)'] = counts_data
 
         filelabel = 'confocal_depth_data'
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        #, as_xml=False, precision=None, delimiter=None)
 
-        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.logMsg('Confocal Image saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
 
     def set_tilt_point1(self):
@@ -702,7 +677,12 @@ class ConfocalLogic(GenericLogic):
         # I took this from the old code, maybe we should double-check the formulas, but so far it worked...
         a = self.point2 - self.point1
         b = self.point3 - self.point1
-        n = np.array( ( a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ) )
+        # guys is there really no cross product?????
+        n = np.array((
+            a[1]*b[2] - a[2]*b[1],
+            a[2]*b[0] - a[0]*b[2],
+            a[0]*b[1] - a[1]*b[0]
+            ))
         self._tilt_variable_ax = n[0] / n[2]
         self._tilt_variable_ay = n[1] / n[2]
 

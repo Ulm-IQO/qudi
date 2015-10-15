@@ -440,12 +440,13 @@ class OptimizerLogic(GenericLogic):
             msgType='status')
 
         if self.is_crosshair:
-            self._confocal_logic.set_position(x=self.optim_pos_x,
-                                              y=self.optim_pos_y,
-                                              z=self.optim_pos_z,
-                                              a=0.,
-                                              arbitrary=False)
-
+            self._confocal_logic.set_position(
+                'optimizer',
+                x=self.optim_pos_x,
+                y=self.optim_pos_y,
+                z=self.optim_pos_z,
+                a=0.0
+                )
         self.signal_refocus_finished.emit()
 
     def _scan_z_line(self):
