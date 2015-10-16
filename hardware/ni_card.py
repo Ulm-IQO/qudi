@@ -885,7 +885,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         #   (this task creates a channel to measure the time between state 
         #    transitions of a digital signal and adds the channel to the task 
         #    you choose)
-        daq.DAQmxCreateCISemiPeriodChan(        
+        daq.DAQmxCreateCISemiPeriodChan(
                 self._scanner_counter_daq_task, # The task to which to add the 
                                                 # channels
                 self._scanner_counter_channel,  # use this counter channel
@@ -896,7 +896,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                                                                 # value
                 daq.DAQmx_Val_Ticks,            # units of width measurement, 
                                                 # here Timebase photon ticks
-                None)
+                '')
                 
         # Set the Counter Input to a Semi Period input Terminal.
         # Connect the pulses from the scanner clock to the scanner counter
@@ -1105,7 +1105,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                 self._scanner_clock_daq_task,   # define task
                 daq.DAQmx_Val_FiniteSamps,      # only a limited number of 
                                                 # counts
-                2*self._line_length+1)          # count twice for each voltage
+                self._line_length+1)          # count twice for each voltage
                                                 # +1 for safety
                               
         # Configure Implicit Timing for the scanner counting task.
@@ -1182,9 +1182,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # now to be sampled by a hardware (clock) signal.
         daq.DAQmxSetSampTimingType(self._scanner_ao_task, daq.DAQmx_Val_SampClk)
         
-        if np.shape(line_path)[1] is not self._line_length:
-            self.set_up_line(np.shape(line_path)[1])
-            
+        #if np.shape(line_path)[1] is not self._line_length:
+        self.set_up_line(np.shape(line_path)[1])
         
         # write the positions to the analoque output
         written_voltages = self._write_scanner_ao(voltages=
@@ -1192,29 +1191,28 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                                                   length=self._line_length, 
                                                   start=False)
         
-#        # start the timed analoque output task
+        # start the timed analoque output task
         daq.DAQmxStartTask(self._scanner_ao_task)
         
         daq.DAQmxStopTask(self._scanner_counter_daq_task)
         daq.DAQmxStopTask(self._scanner_clock_daq_task)        
         
         # start the scanner counting task that acquires counts synchroneously
-        daq.DAQmxStartTask(self._scanner_clock_daq_task)
         daq.DAQmxStartTask(self._scanner_counter_daq_task)
+        daq.DAQmxStartTask(self._scanner_clock_daq_task)
         
-        # wait for the scanner clock to finish
-        daq.DAQmxWaitUntilTaskDone(
-                self._scanner_clock_daq_task,       # define task
-                self._RWTimeout*2*self._line_length)# maximal timeout for the 
-                                                    # counter times the positions 
-                
         # wait for the scanner counter to finish
         daq.DAQmxWaitUntilTaskDone(
                 self._scanner_counter_daq_task,     # define task
                 self._RWTimeout*2*self._line_length)# maximal timeout for the 
                                                     # counter times the 
                                                     # positions. Unit is second
-
+        # wait for the scanner clock to finish
+        daq.DAQmxWaitUntilTaskDone(
+                self._scanner_clock_daq_task,       # define task
+                self._RWTimeout*2*self._line_length)# maximal timeout for the 
+                                                    # counter times the positions 
+                
 #        self._line_length = 100
         # count data will be written here
         self._scan_data = np.empty((2*self._line_length,), dtype=np.uint32)
