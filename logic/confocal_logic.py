@@ -237,8 +237,7 @@ class ConfocalLogic(GenericLogic):
 
         #Checks if the x-start and x-end value are ok
         if x2 < x1:
-            self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2),
-                    msgType='error')
+            self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2), msgType='error')
             return -1
 
         if self._zscan:
@@ -247,8 +246,7 @@ class ConfocalLogic(GenericLogic):
             self._X = np.linspace(x1, x2, self.xy_resolution)
             #Checks if the z-start and z-end value are ok
             if z2 < z1:
-                self.logMsg('z1 must be smaller than z2, but they are ({0:.3f},{1:.3f}).'.format(z1, z2),
-                    msgType='error')
+                self.logMsg('z1 must be smaller than z2, but they are ({0:.3f},{1:.3f}).'.format(z1, z2), msgType='error')
                 return -1
             #creates an array of evenly spaced numbers over the interval
             #z1, z2 and the spacing is equal to z_resolution
@@ -256,8 +254,7 @@ class ConfocalLogic(GenericLogic):
         else:
             #Checks if the y-start and y-end value are ok
             if y2 < y1:
-                self.logMsg('y1 must be smaller than y2, but they are ({0:.3f},{1:.3f}).'.format(y1, y2),
-                    msgType='error')
+                self.logMsg('y1 must be smaller than y2, but they are ({0:.3f},{1:.3f}).'.format(y1, y2), msgType='error')
                 return -1
 
             #prevents distorion of the image

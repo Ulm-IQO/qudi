@@ -45,6 +45,7 @@ class CrossROI(pg.ROI):
     sigMachineRegionUpdate = QtCore.Signal(object)
 
     def __init__(self, pos, size, **args):
+        """Create a ROI with a central handle."""
         self.userDrag = False
         pg.ROI.__init__(self, pos, size, **args)
         # That is a relative position of the small box inside the region of
@@ -58,15 +59,25 @@ class CrossROI(pg.ROI):
         self.sigRegionChanged.connect(self.regionUpdateInfo)
 
     def setPos(self, pos, update=True, finish=False):
+        """Sets the position of the ROI.
+        
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+
+        Changed finish from parent class implementation to not disrupt user dragging detection.
+        """
         super().setPos(pos, update=update, finish=finish)
     
     def startUserDrag(self, roi):
+        """ROI has started being dragged by user."""
         self.userDrag = True
 
     def stopUserDrag(self, roi):
+        """ROI has stopped being dragged by user"""
         self.userDrag = False
 
     def regionUpdateInfo(self, roi):
+        """When the region is being dragged by the user, emit the corresponding signal."""
         if self.userDrag:
             self.sigUserRegionUpdate.emit(roi)
         else:
@@ -482,8 +493,8 @@ class ConfocalGui(GUIBase):
 
         # Connect the buttons and inputs for the depth colorbars
         #RadioButtons in Main tab
-        self._mw.depth_cb_manual_RadioButton.clicked.connect(self.toggle_depth_cb_mode)
-        self._mw.depth_cb_centiles_RadioButton.clicked.connect(self.toggle_depth_cb_mode)
+        self._mw.depth_cb_manual_RadioButton.clicked.connect(self.update_depth_cb_range)
+        self._mw.depth_cb_centiles_RadioButton.clicked.connect(self.update_depth_cb_range)
 
         #input edits in Main tab
         self._mw.depth_cb_min_InputWidget.valueChanged.connect( self.shortcut_to_depth_cb_manual )
@@ -500,7 +511,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.sigImageDepthInitialized.connect(self.adjust_depth_window)
 
         # Connect the signal from the logic with an update of the cursor position
-        self._scanning_logic.signal_change_position.connect(self.update_crosshair_position)
+        self._scanning_logic.signal_change_position.connect(self.update_crosshair_position_from_logic)
 
         # Connect the tracker
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
@@ -567,7 +578,7 @@ class ConfocalGui(GUIBase):
         self.adjust_aspect_roi_xy()
         self.adjust_aspect_roi_depth()
         self.enable_scan_actions()
-        self.update_crosshair_position('init')
+        self.update_crosshair_position_from_logic('init')
         self.adjust_xy_window()
         self.adjust_depth_window()
 
@@ -946,10 +957,17 @@ class ConfocalGui(GUIBase):
 
         self.disable_scan_actions()
 
-    def update_crosshair_position(self, tag):
-        """ Update the GUI position of the crosshair from the logic. """
-        x_pos, y_pos, z_pos = self._scanning_logic.get_position()
+    def update_crosshair_position_from_logic(self, tag):
+        """ Update the GUI position of the crosshair from the logic.
+
+        @param str tag: tag indicating the source of the update
+
+        Ignore the update when it is tagged with one of the tags that the confocal gui emits, as the
+        GUI elements were already adjusted.
+        """
         if not 'roi' in tag and not 'slider' in tag and not 'key' in tag and not 'input' in tag:
+            x_pos, y_pos, z_pos = self._scanning_logic.get_position()
+
             roi_x_view = x_pos - self.roi_xy.size()[0] * 0.5
             roi_y_view = y_pos - self.roi_xy.size()[1] * 0.5
             self.roi_xy.setPos([roi_x_view, roi_y_view])
@@ -1009,6 +1027,10 @@ class ConfocalGui(GUIBase):
         self.roi_depth.setPos([roi_x_view, roi_y_view])
 
     def update_from_roi_xy(self, roi):
+        """The user manually moved the XY ROI, adjust all other GUI elements accordingly
+        
+        @params object roi: PyQtGraph ROI object
+        """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1023,6 +1045,10 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_position('roixy', x=x_pos, y=y_pos)
 
     def update_from_roi_depth(self, roi):
+        """The user manually moved the Z ROI, adjust all other GUI elements accordingly
+        
+        @params object roi: PyQtGraph ROI object
+        """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         z_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
@@ -1035,6 +1061,12 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_position('roidepth', x=x_pos, z=z_pos)
 
     def update_from_key(self, x=None, y=None, z=None):
+        """The user pressed a key to move the crosshair, adjust all GUI elements.
+
+        @param float x: new x position in µm
+        @param float y: new y position in µm
+        @param float z: new z position in µm
+        """
         if not x is None:
             self.update_roi_xy(x=x)
             self.update_roi_depth(x=x)
@@ -1050,6 +1082,7 @@ class ConfocalGui(GUIBase):
             self.update_input_z(z)
 
     def update_from_input_x(self):
+        """The user changed the number in the x position spin box, adjust all other GUI elements."""
         x_pos = self._mw.x_current_InputWidget.value()
         self.update_roi_xy(x=x_pos)
         self.update_roi_depth(x=x_pos)
@@ -1057,12 +1090,14 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_position('xinput', x=x_pos)
         
     def update_from_input_y(self):
+        """The user changed the number in the y position spin box, adjust all other GUI elements."""
         y_pos = self._mw.y_current_InputWidget.value()
         self.update_roi_xy(y=y_pos)
         self.update_slider_y(y_pos)
         self._scanning_logic.set_position('yinput', y=y_pos)
 
     def update_from_input_z(self):
+        """The user changed the number in the z position spin box, adjust all other GUI elements."""
         z_pos = self._mw.z_current_InputWidget.value()
         self.update_roi_depth(z=z_pos)
         self.update_slider_z(z_pos)
@@ -1071,7 +1106,7 @@ class ConfocalGui(GUIBase):
     def update_input_x(self, x_pos):
         """ Update the displayed x-value.
 
-        @param float x_pos: the current value of the x position
+        @param float x_pos: the current value of the x position in µm
         """
         # Convert x_pos to number of points for the slider:
         self._mw.x_current_InputWidget.setValue(x_pos)
@@ -1079,7 +1114,7 @@ class ConfocalGui(GUIBase):
     def update_input_y(self, y_pos):
         """ Update the displayed y-value.
 
-        @param float y_pos: the current value of the y position
+        @param float y_pos: the current value of the y position in µm
         """
         # Convert x_pos to number of points for the slider:
         self._mw.y_current_InputWidget.setValue(y_pos)
@@ -1087,13 +1122,16 @@ class ConfocalGui(GUIBase):
     def update_input_z(self, z_pos):
         """ Update the displayed z-value.
 
-        @param float z_pos: the current value of the z position
+        @param float z_pos: the current value of the z position in µm
         """
         # Convert x_pos to number of points for the slider:
         self._mw.z_current_InputWidget.setValue(z_pos)
 
     def update_from_slider_x(self, sliderValue):
-        """X Slider was moved, we need to change things """
+        """The user moved the x position slider, adjust the other GUI elements.
+        
+        @params int sliderValue: slider postion, a quantized whole number
+        """
         x_pos = (self._scanning_logic.x_range[0] + sliderValue) * self.slider_res
         self.update_roi_xy(x=x_pos)
         self.update_roi_depth(x=x_pos)
@@ -1101,31 +1139,43 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_position('xslider', x=x_pos)
 
     def update_from_slider_y(self, sliderValue):
-        """Y Slider was moved, we need to change things """
+        """The user moved the y position slider, adjust the other GUI elements.
+        
+        @params int sliderValue: slider postion, a quantized whole number
+        """
         y_pos = (self._scanning_logic.y_range[0] + sliderValue) * self.slider_res
         self.update_roi_xy(y=y_pos)
         self.update_input_y(y_pos)
         self._scanning_logic.set_position('yslider', y=y_pos)
 
     def update_from_slider_z(self, sliderValue):
-        """Z Slider was moved, we need to change things """
+        """The user moved the z position slider, adjust the other GUI elements.
+        
+        @params int sliderValue: slider postion, a quantized whole number
+        """
         z_pos = (self._scanning_logic.z_range[0] + sliderValue) * self.slider_res
         self.update_roi_depth(z=z_pos)
         self.update_input_z(z_pos)
         self._scanning_logic.set_position('zslider', z=z_pos)
 
     def update_slider_x(self, x_pos):
-        """ Update the x slider if a change happens.
+        """ Update the x slider when a change happens.
+        
+        @param float x_pos: x position in µm
         """
         self._mw.x_SliderWidget.setValue((x_pos - self._scanning_logic.x_range[0]) / self.slider_res)
 
     def update_slider_y(self, y_pos):
-        """ Update the y slider if a change happens.
+        """ Update the y slider when a change happens.
+
+        @param float y_pos: x yosition in µm
         """
         self._mw.y_SliderWidget.setValue((y_pos - self._scanning_logic.y_range[0]) / self.slider_res)
 
     def update_slider_z(self, z_pos):
-        """ Update the z slider if a change happens.
+        """ Update the z slider when a change happens.
+
+        @param float z_pos: z position in µm
         """
         self._mw.z_SliderWidget.setValue((z_pos - self._scanning_logic.z_range[0]) / self.slider_res)
 
@@ -1155,56 +1205,64 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.image_z_range = [self._mw.z_min_InputWidget.value(),
                                               self._mw.z_max_InputWidget.value()]
 
-    def use_tiltcorrection_clicked(self,e):
+    def use_tiltcorrection_clicked(self, e):
+        """ """
         self._scanning_logic.TiltCorrection = e
 
     def calculate_tiltcorrection_clicked(self):
+        """ """
         self._scanning_logic.calc_tilt_correction()
 
     def set_tiltpoint_01_clicked(self):
+        """Set the crosshair position as the first reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point1()
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
         self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
 
     def set_tiltpoint_02_clicked(self):
+        """Set the crosshair position as the second reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point2()
         self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
         self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
         self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
 
     def set_tiltpoint_03_clicked(self):
+        """Set the crosshair position as the third reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point3()
         self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
 
     def shortcut_to_xy_cb_manual(self):
+        """Someone edited the absolute counts range for the xy colour bar, better update."""
         self._mw.xy_cb_manual_RadioButton.setChecked(True)
         self.update_xy_cb_range()
 
     def shortcut_to_xy_cb_centiles(self):
+        """Someone edited the centiles range for the xy colour bar, better update."""
         self._mw.xy_cb_centiles_RadioButton.setChecked(True)
         self.update_xy_cb_range()
 
     def shortcut_to_depth_cb_manual(self):
+        """Someone edited the absolute counts range for the z colour bar, better update."""
         # Change cb mode
         self._mw.depth_cb_manual_RadioButton.setChecked(True)
         self.update_depth_cb_range()
 
     def shortcut_to_depth_cb_centiles(self):
+        """Someone edited the centiles range for the z colour bar, better update."""
         # Change cb mode
         self._mw.depth_cb_centiles_RadioButton.setChecked(True)
         self.update_depth_cb_range()
 
     def update_xy_cb_range(self):
+        """Redraw xy couour bar and scan image."""
         self.refresh_xy_colorbar()
         self.refresh_xy_image()
 
-    def toggle_depth_cb_mode(self):
-        self.update_depth_cb_range()
-
     def update_depth_cb_range(self):
+        """Redraw z colour bar and scan image."""
         self.refresh_depth_colorbar()
         self.refresh_depth_image()
 
@@ -1302,7 +1360,6 @@ class ConfocalGui(GUIBase):
             colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
 
             self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max) )
-
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
@@ -1314,17 +1371,14 @@ class ConfocalGui(GUIBase):
                 self._optimizer_logic.refocus_XY_size
                 )
             )
-
         ##########
         # Crosshair in optimizer
         self.vLine.setValue(self._optimizer_logic.optim_pos_x)
         self.hLine.setValue(self._optimizer_logic.optim_pos_y)
-
         ##########
         # The depth optimization
         self.depth_refocus_image.setData(self._optimizer_logic._zimage_Z_values,self._optimizer_logic.z_refocus_line)
         self.depth_refocus_fit_image.setData(self._optimizer_logic._fit_zimage_Z_values,self._optimizer_logic.z_fit_data)
-
         ##########
         # Set the optimized position label
         self._mw.refocus_position_label.setText('({0:.3f}, {1:.3f}, {2:.3f})'.format(
@@ -1332,7 +1386,6 @@ class ConfocalGui(GUIBase):
             self._optimizer_logic.optim_pos_y,
             self._optimizer_logic.optim_pos_z
             ))
-
 
     def adjust_xy_window(self):
         """ Fit the visible window in the xy scan to full view.
@@ -1487,11 +1540,6 @@ class ConfocalGui(GUIBase):
         new_size_x_roi = current_x_view_range/20
         new_size_y_roi = current_y_view_range/20
 
-#        if self.fixed_aspect_ratio_xy:
-#            if new_size_x_roi > new_size_y_roi:
-#                new_size_y_roi = new_size_x_roi
-#            else:
-#                new_size_x_roi = new_size_y_roi
         old_size_x_roi = self.roi_xy.size()[0]
         old_size_y_roi = self.roi_xy.size()[1]
 
@@ -1861,10 +1909,10 @@ class ConfocalGui(GUIBase):
         """
         if (viewbox.state['autoRange'][0] == True) and (self._mw.action_zoom.isChecked()):
             # extract the range directly from the image:
-            xMin = self._scanning_logic.depth_image[0,0,0]
-            zMin = self._scanning_logic.depth_image[0,0,2]
-            xMax = self._scanning_logic.depth_image[-1,-1,0]
-            zMax = self._scanning_logic.depth_image[-1,-1,2]
+            xMin = self._scanning_logic.depth_image[ 0,  0, 0]
+            zMin = self._scanning_logic.depth_image[ 0,  0, 2]
+            xMax = self._scanning_logic.depth_image[-1, -1, 0]
+            zMax = self._scanning_logic.depth_image[-1, -1, 2]
 
             self._mw.x_min_InputWidget.setValue(xMin)
             self._mw.x_max_InputWidget.setValue(xMax)
