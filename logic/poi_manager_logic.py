@@ -805,9 +805,9 @@ class PoiManagerLogic(GenericLogic):
                         (((n3*n1)*(1-np.cos(angle2))-n2*np.sin(angle2)),((n3*n2)*(1-np.cos(angle2))+n1*np.sin(angle2)),((n3*n3)*(1-np.cos(angle2))+np.cos(angle2)))))
 
         # To find the new position of r, displace by (a2 - a1) and do the rotations
-        r = r + (a2 - a1)
+        a1r = r - a1
 
-        rnew = np.array(np.dot(m2, np.array(np.dot(m1, r))[0]))[0]
+        rnew = a2 + np.array(np.dot(m2, np.array(np.dot(m1, a1r))[0]))[0]
 
         return rnew
 

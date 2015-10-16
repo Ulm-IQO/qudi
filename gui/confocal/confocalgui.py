@@ -21,7 +21,6 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
-#from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import numpy as np
@@ -193,7 +192,7 @@ class ConfocalGui(GUIBase):
         # tells you the actual position. The number tells you how often a 90
         # degree trun is applied.
         self.xy_image_orientation = np.array([0,1,2,-1],int)
-        self.depth_image_orientation = np.array([0,1,2,-1],int)
+        self.depth_image_orientation = np.array([0, 1, 2, -1], int)
 
     def deactivation(self, e):
         """ Reverse steps of activation
@@ -209,7 +208,9 @@ class ConfocalGui(GUIBase):
         """ Initializes all needed UI files and establishes the connectors.
 
         This method executes the all the inits for the differnt GUIs and passes
-        the event argument from fysom to the methods."""
+        the event argument from fysom to the methods.
+        """
+
         # Getting an access to all connectors:
         self._scanning_logic = self.connector['in']['confocallogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -624,7 +625,7 @@ class ConfocalGui(GUIBase):
         self.keep_former_optimizer_settings()
 
     def show(self):
-        """Make window visible and put it above all other windows. """
+        """Make main window visible and put it above all other windows. """
         # Show the Main Confocal GUI:
         self._mw.show()
         self._mw.activateWindow()

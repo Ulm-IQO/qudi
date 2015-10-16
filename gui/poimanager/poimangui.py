@@ -197,6 +197,18 @@ class PoiManagerMainWindow(QtGui.QMainWindow):
         self.show()
 
 
+class ReorientRoiDialog(QtGui.QDialog):
+
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_reorient_roi_dialog.ui')
+
+        # Load it
+        super(ReorientRoiDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
+
 class PoiManagerGui(GUIBase):
 
     """
@@ -223,7 +235,26 @@ class PoiManagerGui(GUIBase):
             self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
+    def deactivation(self, e):
+        self._mw.close()
+
     def initUI(self, e=None):
+        """ Initializes the overall GUI, and establishes the connectors.
+        This method executes the init methods for each of the GUIs and passes
+        the event argument from fysom to these methods.
+        """
+
+        # Connectors
+        self._poi_manager_logic = self.connector['in']['poimanagerlogic1']['object']
+        self._confocal_logic = self.connector['in']['confocallogic1']['object']
+        print("POI Manager logic is", self._poi_manager_logic)
+        print("Confocal logic is", self._confocal_logic)
+
+        # Initializing the GUIs
+        self.initMainUI(e)
+        self.initReorientRoiDialogUI(e)
+
+    def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the POI Manager GUI.
 
           @param class e: event class from Fysom
@@ -233,15 +264,6 @@ class PoiManagerGui(GUIBase):
         *.ui file and configures the event handling between the modules.
 
         """
-
-        self._poi_manager_logic = self.connector['in']['poimanagerlogic1']['object']
-        self._confocal_logic = self.connector['in']['confocallogic1']['object']
-        print("POI Manager logic is", self._poi_manager_logic)
-        print("Confocal logic is", self._confocal_logic)
-
-#        self._save_logic = self.connector['in']['savelogic']['object']
-#        print("Save logic is", self._save_logic)
-
         # Use the inherited class 'Ui_PoiManagerGuiTemplate' to create now the
         # GUI element:
         self._mw = PoiManagerMainWindow()
@@ -323,6 +345,7 @@ class PoiManagerGui(GUIBase):
         self._mw.new_roi_Action.triggered.connect(self.make_new_roi)
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
+        self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
@@ -375,11 +398,42 @@ class PoiManagerGui(GUIBase):
 #        print('Main POI Manager Window shown:')
         self._mw.show()
 
-    def deactivation(self, e):
-        self._mw.close()
+    def initReorientRoiDialogUI(self, e):
+        """Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
+
+        @param class e: event class from Fysom
+
+        This init connects all the graphic modules which were created in the *.ui file and configures event handling.
+        """
+
+        # Create the Reorient ROI Dialog window
+        self._rrd = ReorientRoiDialog()
+
+        # Connect the QDialog buttons to methods in the GUI
+        self._rrd.accepted.connect(self.do_roi_reorientation)
+        self._rrd.rejected.connect(self.reset_reorientation_dialog)
+
+        # Connect the at_crosshair buttons
+        self._rrd.ref_a_at_crosshair_PushButton.clicked.connect(self.ref_a_at_crosshair)
+        self._rrd.ref_b_at_crosshair_PushButton.clicked.connect(self.ref_b_at_crosshair)
+        self._rrd.ref_c_at_crosshair_PushButton.clicked.connect(self.ref_c_at_crosshair)
+
+        # Connect input value changes to update the sanity-check values
+        self._rrd.ref_a_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
+        self._rrd.ref_b_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
+        self._rrd.ref_c_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
+        self._rrd.ref_a_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_a_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_a_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_b_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_b_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_b_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_c_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
+        self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
 
     def show(self):
-        """Make window visible and put it above all other windows.
+        """Make main window visible and put it above all other windows.
         """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
@@ -501,11 +555,9 @@ class PoiManagerGui(GUIBase):
             period = self._mw.track_period_SpinBox.value()
 
             self._poi_manager_logic.start_periodic_refocus(duration=period, poikey=key)
-            #self._mw.periodic_refind_CheckBox.setChecked(True)
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
-            #self._mw.periodic_refind_CheckBox.setChecked(False)
 
     def goto_poi(self, key):
         ''' Go to the last known position of poi <key>
@@ -522,12 +574,21 @@ class PoiManagerGui(GUIBase):
         '''
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
+        self._rrd.ref_a_poi_ComboBox.clear()
+        self._rrd.ref_b_poi_ComboBox.clear()
+        self._rrd.ref_c_poi_ComboBox.clear()
 
         for key in self._poi_manager_logic.get_all_pois(abc_sort=True):
             if key is not 'crosshair' and key is not 'sample':
                 self._mw.active_poi_ComboBox.addItem(
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
                 self._mw.offset_anchor_ComboBox.addItem(
+                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                self._rrd.ref_a_poi_ComboBox.addItem(
+                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                self._rrd.ref_b_poi_ComboBox.addItem(
+                    self._poi_manager_logic.track_point_list[key].get_name(), key)
+                self._rrd.ref_c_poi_ComboBox.addItem(
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
 
     def change_refind_method(self):
@@ -763,3 +824,99 @@ class PoiManagerGui(GUIBase):
         self._poi_manager_logic.load_roi_from_file(filename=this_file)
 
         self.populate_poi_list()
+
+    def open_reorient_roi_dialog(self):
+        """Open the dialog for reorienting the ROI.
+        """
+        self._rrd.show()
+
+    def ref_a_at_crosshair(self):
+        """ Set the newpos for ref A from the current crosshair position.
+        """
+        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
+        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
+        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+
+    def ref_b_at_crosshair(self):
+        """ Set the newpos for ref B from the current crosshair position.
+        """
+        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
+        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
+        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+
+    def ref_c_at_crosshair(self):
+        """ Set the newpos for ref C from the current crosshair position.
+        """
+        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
+        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
+        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
+
+    def do_roi_reorientation(self):
+        """Pass the old and new positions of refs A, B, C to PoiManager Logic to reorient every POI in the ROI.
+        """
+
+        ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos = self._read_reorient_roi_dialog_values()
+
+        self._poi_manager_logic.reorient_roi(ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos)
+
+        # Clear the values in the Reorient Roi Dialog in case it is needed again
+        self.reset_reorientation_dialog()
+
+    def _read_reorient_roi_dialog_values(self):
+        """ This reads the values from reorient ROI Dialog, and returns them
+        """
+
+        # Get POI keys for the chosen ref points
+        ref_a_key = self._rrd.ref_a_poi_ComboBox.itemData(self._rrd.ref_a_poi_ComboBox.currentIndex())
+        ref_b_key = self._rrd.ref_b_poi_ComboBox.itemData(self._rrd.ref_b_poi_ComboBox.currentIndex())
+        ref_c_key = self._rrd.ref_c_poi_ComboBox.itemData(self._rrd.ref_c_poi_ComboBox.currentIndex())
+
+        # Get the old coords for these refs
+        ref_a_coords = np.array(self._poi_manager_logic.track_point_list[ref_a_key].get_coords_in_sample())
+        ref_b_coords = np.array(self._poi_manager_logic.track_point_list[ref_b_key].get_coords_in_sample())
+        ref_c_coords = np.array(self._poi_manager_logic.track_point_list[ref_c_key].get_coords_in_sample())
+
+        ref_a_newpos = np.array([self._rrd.ref_a_x_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_a_y_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_a_z_pos_DoubleSpinBox.value()])
+        ref_b_newpos = np.array([self._rrd.ref_b_x_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_b_y_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_b_z_pos_DoubleSpinBox.value()])
+        ref_c_newpos = np.array([self._rrd.ref_c_x_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_c_y_pos_DoubleSpinBox.value(),
+                                 self._rrd.ref_c_z_pos_DoubleSpinBox.value()])
+
+        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos
+
+    def reset_reorientation_dialog(self):
+        """ Reset all the values in the reorient roi dialog.
+        """
+
+        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(0)
+
+        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(0)
+
+        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(0)
+        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(0)
+
+    def reorientation_sanity_check(self):
+        """ Calculate the difference in length between edges of old triangle defined by refs A, B, C and the new triangle.
+        """
+
+        # Get set of positions from GUI
+        ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos = self._read_reorient_roi_dialog_values()
+
+        # Calculate the difference in side lengths AB, BC, CA between the old triangle and the new triangle
+        delta_ab = np.linalg.norm(ref_b_coords - ref_a_coords) - np.linalg.norm(ref_b_newpos - ref_a_newpos)
+        delta_bc = np.linalg.norm(ref_c_coords - ref_b_coords) - np.linalg.norm(ref_c_newpos - ref_b_newpos)
+        delta_ca = np.linalg.norm(ref_a_coords - ref_c_coords) - np.linalg.norm(ref_a_newpos - ref_c_newpos)
+
+        # Write to the GUI
+        self._rrd.length_difference_ab_Label.setText(str(delta_ab))
+        self._rrd.length_difference_bc_Label.setText(str(delta_bc))
+        self._rrd.length_difference_ca_Label.setText(str(delta_ca))
