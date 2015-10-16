@@ -1034,22 +1034,22 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         # Calculate the voltages from the positions, their ranges and stack 
         # them together:
-        volts = np.vstack(( 
-            (self._voltage_range[1]-self._voltage_range[0])
-                / (self._position_range[0][1]-self._position_range[0][0])
-                * (positions[0]-self._position_range[0][0])
-                    + self._voltage_range[0],
-           (self._voltage_range[1]-self._voltage_range[0])
-               / (self._position_range[1][1]-self._position_range[1][0])
-               * (positions[1]-self._position_range[1][0])
-               + self._voltage_range[0],
-            (self._voltage_range[1]-self._voltage_range[0])
-                / (self._position_range[2][1]-self._position_range[2][0])
-                * (positions[2]-self._position_range[2][0])
-                    + self._voltage_range[0],
-            (self._voltage_range[1]-self._voltage_range[0])
-                / (self._position_range[3][1]-self._position_range[3][0])
-                * (positions[3]-self._position_range[3][0])
+        volts = np.vstack(( \
+            (self._voltage_range[1]-self._voltage_range[0])\
+                / (self._position_range[0][1]-self._position_range[0][0])\
+                * (positions[0]-self._position_range[0][0])\
+                    + self._voltage_range[0],\
+           (self._voltage_range[1]-self._voltage_range[0])\
+               / (self._position_range[1][1]-self._position_range[1][0])\
+               * (positions[1]-self._position_range[1][0])\
+               + self._voltage_range[0],\
+            (self._voltage_range[1]-self._voltage_range[0])\
+                / (self._position_range[2][1]-self._position_range[2][0])\
+                * (positions[2]-self._position_range[2][0])\
+                    + self._voltage_range[0],\
+            (self._voltage_range[1]-self._voltage_range[0])\
+                / (self._position_range[3][1]-self._position_range[3][0])\
+                * (positions[3]-self._position_range[3][0])\
                     + self._voltage_range[0] ) )
   
         if volts.min() < self._voltage_range[0] or volts.max() > self._voltage_range[1]:
