@@ -411,7 +411,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             my_idle = daq.DAQmx_Val_Low
         
         # create task for clock
-        daq.DAQmxCreateTask('Clock Task', daq.byref(my_clock_daq_task))
+        daq.DAQmxCreateTask('', daq.byref(my_clock_daq_task))
         
         # create a digital clock channel with specific clock frequency:
         daq.DAQmxCreateCOPulseChanFreq( #
@@ -490,7 +490,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             my_clock_channel = self._clock_channel
         
         # Create task for the counter
-        daq.DAQmxCreateTask('Counter Task', daq.byref(self._counter_daq_task))  
+        daq.DAQmxCreateTask('', daq.byref(self._counter_daq_task))  
         
         # Create a Counter Input which samples with Semi Perides the Channel.
         # set up semi period width measurement in photon ticks, i.e. the width
@@ -785,7 +785,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         # create the actual analoque output task on the hardware device. Via
         # byref you pass the pointer of the object to the TaskCreation function:
-        daq.DAQmxCreateTask('Analog Output Task',
+        daq.DAQmxCreateTask('',
                             daq.byref(self._scanner_ao_task))
         
         # Assign and configure the created task to an analog output voltage 
@@ -875,7 +875,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._scanner_counter_daq_task = daq.TaskHandle()
         
         # actually create the scanner counting task
-        daq.DAQmxCreateTask('Scanner Count Task', 
+        daq.DAQmxCreateTask('', 
                             daq.byref(self._scanner_counter_daq_task))
         
         # Create a Counter Input which samples with Semi Perides the Channel.
