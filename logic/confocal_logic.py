@@ -371,6 +371,8 @@ class ConfocalLogic(GenericLogic):
     def set_position(self, tag, x = None, y = None, z = None, a = None):
         """Forwarding the desired new position from the GUI to the scanning device.
 
+        @param string tag: TODO
+
         @param float x: if defined, changes to postion in x-direction (microns)
         @param float y: if defined, changes to postion in y-direction (microns)
         @param float z: if defined, changes to postion in z-direction (microns)

@@ -41,6 +41,7 @@
     <addaction name="new_roi_Action"/>
     <addaction name="save_roi_Action"/>
     <addaction name="load_roi_Action"/>
+    <addaction name="reorient_roi_Action"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -76,6 +77,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="save_roi_Action"/>
    <addaction name="new_roi_Action"/>
    <addaction name="separator"/>
   </widget>
@@ -925,6 +927,11 @@
    </property>
    <property name="toolTip">
     <string>Move scanner to the position of the selected POI</string>
+   </property>
+  </action>
+  <action name="reorient_roi_Action">
+   <property name="text">
+    <string>Reorient ROI</string>
    </property>
   </action>
  </widget>
