@@ -23,10 +23,10 @@ from collections import OrderedDict
 from .switch_interface import SwitchInterface
 import time
 
-class LaserSwitchInterfaceDummy(Base, SwitchInterface):
+class SwitchInterfaceDummy(Base, SwitchInterface):
     """ Methods to control slow laser switching devices.
     """
-    _modclass = 'laserswitchinterfacedummy'
+    _modclass = 'switchinterfacedummy'
     _modtype = 'hardware'
 
     # connectors

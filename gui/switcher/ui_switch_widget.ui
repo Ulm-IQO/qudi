@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>61</height>
+    <height>66</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,10 +47,18 @@
     </widget>
    </item>
    <item row="1" column="1">
-    <widget class="QDoubleSpinBox" name="calOnVal"/>
+    <widget class="QDoubleSpinBox" name="calOnVal">
+     <property name="maximum">
+      <double>1000000.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item row="1" column="2">
-    <widget class="QDoubleSpinBox" name="calOffVal"/>
+    <widget class="QDoubleSpinBox" name="calOffVal">
+     <property name="maximum">
+      <double>1000000.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item row="1" column="3">
     <widget class="QLabel" name="switchTimeLabel">
