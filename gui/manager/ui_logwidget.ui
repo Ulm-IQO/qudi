@@ -53,8 +53,17 @@
        </property>
        <item row="0" column="0">
         <widget class="QTableView" name="output">
+         <property name="autoScroll">
+          <bool>false</bool>
+         </property>
          <property name="editTriggers">
           <set>QAbstractItemView::DoubleClicked</set>
+         </property>
+         <property name="showDropIndicator" stdset="0">
+          <bool>false</bool>
+         </property>
+         <property name="dragDropOverwriteMode">
+          <bool>false</bool>
          </property>
          <property name="alternatingRowColors">
           <bool>true</bool>
@@ -71,8 +80,14 @@
          <property name="horizontalScrollMode">
           <enum>QAbstractItemView::ScrollPerPixel</enum>
          </property>
+         <property name="showGrid">
+          <bool>false</bool>
+         </property>
          <property name="gridStyle">
           <enum>Qt::NoPen</enum>
+         </property>
+         <property name="cornerButtonEnabled">
+          <bool>false</bool>
          </property>
          <attribute name="horizontalHeaderCascadingSectionResizes">
           <bool>true</bool>
