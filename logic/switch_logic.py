@@ -23,12 +23,12 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
 
-class LaserSwitchLogic(GenericLogic):        
+class SwitchLogic(GenericLogic):        
     """ Logic module agreggating multiple hardware switches.
     """
-    _modclass = 'laserswitch'
+    _modclass = 'switch'
     _modtype = 'logic'
-    _out = {'laserswitchlogic': 'LaserSwitchLogic'}
+    _out = {'switchlogic': 'SwitchLogic'}
         
     def __init__(self, manager, name, config, **kwargs):
         """ Create logic object
@@ -46,7 +46,7 @@ class LaserSwitchLogic(GenericLogic):
         if 'connect' in config:
             for connector in config['connect']:
                 self.connector['in'][connector] = OrderedDict()
-                self.connector['in'][connector]['class'] = 'LaserSwitchInterface'
+                self.connector['in'][connector]['class'] = 'SwitchInterface'
                 self.connector['in'][connector]['object'] = None
         
     def activation(self, e):

@@ -29,7 +29,7 @@ class SwitchGui(GUIBase):
     _modclass = 'SwitchGui'
     _modtype = 'gui'
     ## declare connectors
-    _in = {'laserswitchlogic': 'LaserSwitchLogic'}
+    _in = {'switchlogic': 'SwitchLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         """ Create the switch control GUI.
@@ -48,7 +48,7 @@ class SwitchGui(GUIBase):
           @param object e: Fysom state change notice
         """
         self._mw = SwitchMainWindow()
-        lsw =  self.connector['in']['laserswitchlogic']['object']
+        lsw =  self.connector['in']['switchlogic']['object']
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
             frame = QtGui.QGroupBox(hw[0]['hw']._name, self._mw.scrollAreaWidgetContents)
