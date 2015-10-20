@@ -81,6 +81,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.interruptable = False
         self.success = False
         self.taskRunner = runner
+        self.kwargs = kwargs
 
         self.sigDoStart.connect(self._doStart, QtCore.Qt.QueuedConnection)
         self.sigDoPause.connect(self._doPause, QtCore.Qt.QueuedConnection)
@@ -228,7 +229,7 @@ class PrePostTask(QtCore.QObject, Fysom):
     sigPostExecFinish = QtCore.Signal()
     sigStateChanged = QtCore.Signal(object)
 
-    def __init__(self, name, runner, *args, **kwargs):
+    def __init__(self, name, runner, **kwargs):
         QtCore.QObject.__init__(self)
         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
@@ -242,7 +243,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
-        self.args = args
+        self.kwargs = kwargs
 
     def onchangestate(self, e):
         """ Fysom callback for state transition.

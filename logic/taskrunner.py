@@ -29,7 +29,7 @@ class TaskListTableModel(ListTableModel):
 
     def __init__(self):
         super().__init__()
-        self.headers = ['Task Name', 'Task State']
+        self.headers = ['Task Name', 'Task State', 'Pre/Post actions', 'Pauses', 'Needs modules', 'is ok']
 
     def data(self, index, role):
         """ Get data from model for a given cell. Data can have a role that affects display.
@@ -46,6 +46,14 @@ class TaskListTableModel(ListTableModel):
                return self.storage[index.row()]['name']
             elif index.column() == 1:
                return self.storage[index.row()]['object'].current
+            elif index.column() == 2:
+               return str(self.storage[index.row()]['preposttasks'])
+            elif index.column() == 3:
+               return str(self.storage[index.row()]['pausetasks'])
+            elif index.column() == 4:
+               return str(self.storage[index.row()]['modules'])
+            elif index.column() == 5:
+               return self.storage[index.row()]['ok']
             else:
                 return None
         else:
@@ -127,7 +135,7 @@ class TaskRunner(GenericLogic):
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
                 print('loaded:', mod)
                 print('dir:', dir(mod))
-                t['object'] = mod.Task(t['name'], self)
+                t['object'] = mod.Task(t['name'], self, modules=t['modules'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
@@ -161,8 +169,10 @@ class TaskRunner(GenericLogic):
             # check if all required moduls are present
             if len(task['modules']) == 0:
                 modok = True
-            for mod in task['modules']:
-                if mod in self._manager.tree['loaded']['logic'] and not  self._manager.tree['loaded']['logic'].isstate('deactivated'):
+            for moddef, mod in task['modules'].items():
+                if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
+                    self._manager.startModule('logic', mod)
+                if mod in self._manager.tree['loaded']['logic'] and not self._manager.tree['loaded']['logic'][mod].isstate('deactivated'):
                     modok = True
             print(task['name'], ppok, pok, modok)
             task['ok'] = ppok and pok and modok
@@ -188,6 +198,8 @@ class TaskRunner(GenericLogic):
                         if t['name'] == pptask:
                             if t['object'].can('prerun'):
                                 t['object'].prerun()
+                            elif  t['object'].isstate('paused'):
+                                pass
                             else:
                                 self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
                                 return
@@ -201,7 +213,7 @@ class TaskRunner(GenericLogic):
                         if t['name'] == ptask:
                             if t['object'].can('pause'):
                                 t['object'].pause()
-                            elif t['object'].isstate('stopped'):
+                            elif t['object'].isstate('stopped') or t['object'].isstate('paused'):
                                 pass
                             else:
                                 self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
@@ -289,4 +301,17 @@ class TaskRunner(GenericLogic):
             task['object'].finish()
         else:
             self.logMsg('This thing cannot be stopped:  {}'.format(task['name']), msgType='error')
+
+    def getTaskByName(self, taskname):
+        for task in self.model.storage:
+            if task['name'] == taskname:
+                return task
+        raise KeyError(taskname)
+
+    def getModule(self, taskname, modname):
+        task = self.getTaskByName(taskname)
+        if modname in task['modules']:
+            return self._manager.tree['loaded']['logic'][modname]
+        else:
+            raise KeyError(modname)
 
