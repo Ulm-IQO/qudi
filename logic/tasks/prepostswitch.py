@@ -9,7 +9,7 @@ class Task(PrePostTask):
         super().__init__(name, runner, **kwargs)
         print('PrePost init task {}'.format(name))
         print(self.kwargs)
-    
+
     def preExecute(self):
         time.sleep(1)
         print('pre action of task {}'.format(self.name))
