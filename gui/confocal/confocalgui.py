@@ -66,6 +66,11 @@ class CrossROI(pg.ROI):
         Changed finish from parent class implementation to not disrupt user dragging detection.
         """
         super().setPos(pos, update=update, finish=finish)
+
+    def handleMoveStarted(self):
+        """ Handles should always be moved by user."""
+        super().handleMoveStarted()
+        self.userDrag = True
     
     def startUserDrag(self, roi):
         """ROI has started being dragged by user."""
