@@ -51,7 +51,7 @@ class OptimizerLogic(GenericLogic):
     # public signals
     signal_image_updated = QtCore.Signal()
     signal_refocus_started = QtCore.Signal()
-    signal_refocus_finished = QtCore.Signal()
+    signal_refocus_finished = QtCore.Signal(str, list)
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -85,6 +85,9 @@ class OptimizerLogic(GenericLogic):
 
         self.stopRequested = False
         self.is_crosshair = True
+
+        # Keep track of who called the refocus
+        self._caller_tag = ''
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -173,7 +176,7 @@ class OptimizerLogic(GenericLogic):
         else:
             return 0
 
-    def start_refocus(self, initial_pos):
+    def start_refocus(self, initial_pos, caller_tag='unknown'):
         """Starts the optimization scan around initial_pos
 
         @param initial_pos
@@ -186,6 +189,9 @@ class OptimizerLogic(GenericLogic):
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
         else:
             pass  # TODO: throw error
+
+        # Keep track of where the start_refocus was initiated
+        self._caller_tag = caller_tag
 
         self.lock()
         self.signal_refocus_started.emit()
@@ -253,7 +259,7 @@ class OptimizerLogic(GenericLogic):
     def _move_to_xy_scan_start_pos(self):
         """Moves the scanner from its current position to the start of the first line in the optimizer scan.
         """
-        scanner_pos = self._confocal_logic.get_position()
+        scanner_pos = self._scanning_device.get_scanner_position()
 
         try:
             move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
@@ -364,7 +370,7 @@ class OptimizerLogic(GenericLogic):
 
         # Move to start of z-scan
 
-        scanner_pos = self._confocal_logic.get_position()
+        scanner_pos = self._scanning_device.get_scanner_position()
 
         move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
                                                     self.optim_pos_x,
@@ -439,15 +445,8 @@ class OptimizerLogic(GenericLogic):
             self.optim_pos_x, self.optim_pos_y, self.optim_pos_z),
             msgType='status')
 
-        if self.is_crosshair:
-            self._confocal_logic.set_position(
-                'optimizer',
-                x=self.optim_pos_x,
-                y=self.optim_pos_y,
-                z=self.optim_pos_z,
-                a=0.0
-                )
-        self.signal_refocus_finished.emit()
+        # Signal that the optimization has finished, and "return" the optimal position along with caller_tag
+        self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
 
     def _scan_z_line(self):
         """Scans the z line for refocus

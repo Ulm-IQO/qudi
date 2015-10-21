@@ -2,12 +2,13 @@
 
 from core.base import Base
 from hardware.confocal_scanner_interface import ConfocalScannerInterface
-from collections import OrderedDict
 import time
 
 import numpy as np
 
-class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
+
+class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
+
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
@@ -18,7 +19,7 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
     _out = {'confocalscanner': 'ConfocalScannerInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
+        # declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
@@ -27,23 +28,25 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
         if 'clock_frequency' in config.keys():
-            self._clock_frequency=config['clock_frequency']
+            self._clock_frequency = config['clock_frequency']
         else:
-            self._clock_frequency=100
-            self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
-            msgType='warning')
+            self._clock_frequency = 100
+            self.logMsg('No clock_frequency configured taking 100 Hz instead.',
+                        msgType='warning')
 
+
+        # Internal parameters
         self._line_length = None
         self._scanner_counter_daq_task = None
         self._voltage_range = [-10., 10.]
 
-        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
-
+        self._position_range = [[0., 100.], [0., 100.], [0., 100.], [0., 1.]]
         self._current_position = [0., 0., 0., 0.]
+
         self._num_points = 500
 
     def activation(self, e):
@@ -51,46 +54,46 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         """
 
         self._fit_logic = self.connector['in']['fitlogic']['object']
-#        print("Fit Logic is", self._fit_logic)
-        #put randomly distributed NVs in the scanner, first the x,y scan
-        self._points = np.empty([self._num_points,7])
+
+        # put randomly distributed NVs in the scanner, first the x,y scan
+        self._points = np.empty([self._num_points, 7])
         # amplitude
-        self._points[:,0] = np.random.normal( 4e5,
+        self._points[:, 0] = np.random.normal(4e5,
                                               1e5,
                                               self._num_points)
         # x_zero
-        self._points[:,1] = np.random.uniform(self._position_range[0][0],
-                                              self._position_range[0][1],
-                                              self._num_points)
+        self._points[:, 1] = np.random.uniform(self._position_range[0][0],
+                                               self._position_range[0][1],
+                                               self._num_points)
         # y_zero
-        self._points[:,2] = np.random.uniform(self._position_range[1][0],
-                                              self._position_range[1][1],
-                                              self._num_points)
+        self._points[:, 2] = np.random.uniform(self._position_range[1][0],
+                                               self._position_range[1][1],
+                                               self._num_points)
         # sigma_x
-        self._points[:,3] = np.random.normal( 0.7,
+        self._points[:, 3] = np.random.normal(0.7,
                                               0.1,
                                               self._num_points)
         # sigma_y
-        self._points[:,4] = np.random.normal( 0.7,
+        self._points[:, 4] = np.random.normal(0.7,
                                               0.1,
                                               self._num_points)
         # theta
-        self._points[:,5] = 10
+        self._points[:, 5] = 10
         # offset
-        self._points[:,6] = 0
+        self._points[:, 6] = 0
 
-        #now also the z-position
+        # now also the z-position
 #       gaussian_function(self,x_data=None,amplitude=None, x_zero=None, sigma=None, offset=None):
-        self._points_z= np.empty([self._num_points,4])
+        self._points_z = np.empty([self._num_points, 4])
         # amplitude
-        self._points_z[:,0]= np.random.normal( 1,
-                                               0.05,
-                                               self._num_points)
+        self._points_z[:, 0] = np.random.normal(1,
+                                                0.05,
+                                                self._num_points)
 
         # x_zero
-        self._points_z[:,1] = np.random.uniform(45,
-                                              55,
-                                              self._num_points)
+        self._points_z[:, 1] = np.random.uniform(45,
+                                                 55,
+                                                 self._num_points)
 
         # sigma
         self._points_z[:,2] = np.random.normal(0.5,
@@ -242,9 +245,6 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-#        self.logMsg('ConfocalScannerInterfaceDummy>scanner_set_pos: [{0:f},{1:f},{2:f},{3:f}]'.format(x,y,z,a),
-#                    msgType='warning')
-
         if self.getState() == 'locked':
             self.logMsg('A Scanner is already running, close this one first.', \
             msgType='error')
@@ -252,7 +252,17 @@ class ConfocalScannerInterfaceDummy(Base,ConfocalScannerInterface):
 
         time.sleep(0.01)
 
+        self._current_position = [x, y, z, a]
+
         return 0
+
+    def get_scanner_position(self):
+        """ Get the current position of the scanner hardware.
+
+        @return float[]: current position in (x, y, z, a).
+        """
+
+        return self._current_position
 
     def set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.

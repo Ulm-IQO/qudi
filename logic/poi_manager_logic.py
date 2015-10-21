@@ -339,7 +339,7 @@ class PoiManagerLogic(GenericLogic):
             self.track_point_list['crosshair'].add_position_to_trace(
                 position=self._confocal_logic.get_position())
             self._current_poi_key = poikey
-            self._optimizer_logic.start_refocus(trackpoint=self.get_poi_position(poikey=poikey))
+            self._optimizer_logic.start_refocus(initial_pos=self.get_poi_position(poikey=poikey), caller_tag='poimanager')
             return 0
         else:
             self.logMsg('Z. The given POI ({}) does not exist.'.format(poikey),
@@ -576,46 +576,53 @@ class PoiManagerLogic(GenericLogic):
         self.timer = None
         return 0
 
-    def _refocus_done(self):
+    def _refocus_done(self, caller_tag, optimal_pos):
         """ Gets called automatically after the refocus is done and saves the new point.
 
         Also it tracks the sample and may go back to the crosshair.
 
         @return int: error code (0:OK, -1:error)
         """
-        optimized_position = [self._optimizer_logic.optim_pos_x,
-                              self._optimizer_logic.optim_pos_y,
-                              self._optimizer_logic.optim_pos_z]
+        # We only need x, y, z
+        optimized_position = optimal_pos[0:3]
 
         # If the refocus was on the crosshair, then only update crosshair POI and don't
         # do anything with sample position.
-        if self._optimizer_logic.is_crosshair:
+        if caller_tag == 'confocalgui':
             self.track_point_list['crosshair'].add_position_to_trace(position=optimized_position)
-            return 0
+    
+        # If the refocus was initiated here by poimanager, then update POI and sample
+        elif caller_tag == 'poimanager':
 
-        # Otherwise the refocus was on a known POI that should update sample position.
-        if self._current_poi_key is not None and self._current_poi_key in self.track_point_list.keys():
-            sample_shift = optimized_position - self.get_poi_position(poikey=self._current_poi_key)
-            sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
-            self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
-            self.track_point_list[self._current_poi_key].\
-                add_position_to_trace(position=optimized_position)
+            if self._current_poi_key is not None and self._current_poi_key in self.track_point_list.keys():
+                print(optimized_position)
+                print(self.get_poi_position(poikey=self._current_poi_key) )
 
-            if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
-                self.signal_refocus_finished.emit()
-                self.signal_poi_updated.emit()
+                sample_shift = optimized_position - self.get_poi_position(poikey=self._current_poi_key)
 
-            if self.go_to_crosshair_after_refocus:
-                temp_key = self._current_poi_key
-                self.go_to_poi(poikey='crosshair')
-                self._current_poi_key = temp_key
+                sample_shift += self.track_point_list['sample'].get_trace()[-1, :][1:4]
+                self.track_point_list['sample'].add_position_to_trace(position=sample_shift)
+                self.track_point_list[self._current_poi_key].\
+                    add_position_to_trace(position=optimized_position)
+
+                if (not (self._current_poi_key is 'crosshair')) and (not (self._current_poi_key is 'sample')):
+                    self.signal_refocus_finished.emit()  # TODO rename this to sample_shifted to remove ambiguity with optimizer_logic.signal_refocus_finished
+                    self.signal_poi_updated.emit()
+
+                if self.go_to_crosshair_after_refocus:
+                    temp_key = self._current_poi_key
+                    self.go_to_poi(poikey='crosshair')
+                    self._current_poi_key = temp_key
+                else:
+                    self.go_to_poi(poikey=self._current_poi_key)
+                return 0
             else:
-                self.go_to_poi(poikey=self._current_poi_key)
-            return 0
+                self.logMsg('W. The given POI ({}) does not exist.'.format(self._current_poi_key),
+                            msgType='error')
+                return -1
+
         else:
-            self.logMsg('W. The given POI ({}) does not exist.'.format(self._current_poi_key),
-                        msgType='error')
-            return -1
+            self.logMsg('Unknown caller_tag for the optimizer.  POI Manager does not know what to do with optimized position, and has done nothing.', msgType='error')
 
     def reset_roi(self):
 
