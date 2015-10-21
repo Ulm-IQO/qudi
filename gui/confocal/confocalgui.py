@@ -355,6 +355,7 @@ class ConfocalGui(GUIBase):
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
         self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
         self.roi_xy.sigUserRegionUpdate.connect(self.update_from_roi_xy)
+        self.roi_xy.sigRegionChangeFinished.connect(self.roi_xy_bounds_check)
 
         # add the configured crosshair to the xy Widget
         self._mw.xy_ViewWidget.addItem(self.hline_xy)
@@ -387,6 +388,7 @@ class ConfocalGui(GUIBase):
         self.roi_depth.sigRegionChanged.connect(self.hline_depth.adjust)
         self.roi_depth.sigRegionChanged.connect(self.vline_depth.adjust)
         self.roi_depth.sigUserRegionUpdate.connect(self.update_from_roi_depth)
+        self.roi_depth.sigRegionChangeFinished.connect(self.roi_depth_bounds_check)
 
         # add the configured crosshair to the depth Widget:
         self._mw.depth_ViewWidget.addItem(self.hline_depth)
@@ -1003,6 +1005,54 @@ class ConfocalGui(GUIBase):
             self.update_input_y(y_pos)
             self.update_input_z(z_pos)
 
+    def roi_xy_bounds_check(self, roi):
+        """Check if the focus cursor is oputside the allowed range after drag and set its position to the limit """
+        x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
+        y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+
+        needs_reset = False
+
+        if x_pos < self._scanning_logic.x_range[0]:
+            x_pos = self._scanning_logic.x_range[0]
+            needs_reset = True
+        elif x_pos > self._scanning_logic.x_range[1]:
+            x_pos = self._scanning_logic.x_range[1]
+            needs_reset = True
+
+        if y_pos < self._scanning_logic.y_range[0]:
+            y_pos = self._scanning_logic.y_range[0]
+            needs_reset = True
+        elif y_pos > self._scanning_logic.y_range[1]:
+            y_pos = self._scanning_logic.y_range[1]
+            needs_reset = True
+
+        if needs_reset:
+            self.update_roi_xy(x_pos, y_pos)
+
+    def roi_depth_bounds_check(self, roi):
+        """Check if the focus cursor is oputside the allowed range after drag and set its position to the limit """
+        x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
+        z_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+
+        needs_reset = False
+
+        if x_pos < self._scanning_logic.z_range[0]:
+            x_pos = self._scanning_logic.z_range[0]
+            needs_reset = True
+        elif x_pos > self._scanning_logic.z_range[1]:
+            x_pos = self._scanning_logic.z_range[1]
+            needs_reset = True
+
+        if z_pos < self._scanning_logic.z_range[0]:
+            z_pos = self._scanning_logic.z_range[0]
+            needs_reset = True
+        elif z_pos > self._scanning_logic.z_range[1]:
+            z_pos = self._scanning_logic.z_range[1]
+            needs_reset = True
+
+        if needs_reset:
+            self.update_roi_depth(x_pos, z_pos)
+
     def update_roi_xy(self, x=None, y=None):
         """ Adjust the xy ROI position if the value has changed.
 
@@ -1053,6 +1103,16 @@ class ConfocalGui(GUIBase):
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
 
+        if x_pos < self._scanning_logic.x_range[0]:
+            x_pos = self._scanning_logic.x_range[0]
+        elif x_pos > self._scanning_logic.x_range[1]:
+            x_pos = self._scanning_logic.x_range[1]
+
+        if y_pos < self._scanning_logic.y_range[0]:
+            y_pos = self._scanning_logic.y_range[0]
+        elif y_pos > self._scanning_logic.y_range[1]:
+            y_pos = self._scanning_logic.y_range[1]
+
         self.update_roi_depth(x=x_pos)
 
         self.update_slider_x(x_pos)
@@ -1070,6 +1130,16 @@ class ConfocalGui(GUIBase):
         """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         z_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+
+        if x_pos < self._scanning_logic.x_range[0]:
+            x_pos = self._scanning_logic.x_range[0]
+        elif x_pos > self._scanning_logic.x_range[1]:
+            x_pos = self._scanning_logic.x_range[1]
+
+        if z_pos < self._scanning_logic.z_range[0]:
+            z_pos = self._scanning_logic.z_range[0]
+        elif z_pos > self._scanning_logic.z_range[1]:
+            z_pos = self._scanning_logic.z_range[1]
 
         self.update_roi_xy(x=x_pos)
         self.update_slider_x(x_pos)
