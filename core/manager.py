@@ -400,7 +400,7 @@ class Manager(QtCore.QObject):
                         return {}
                     else:
                         raise Exception('Config file {0} not found.'.format(fileName) )
-            
+
     def writeConfigFile(self, data, fileName):
         """Write a file into the currently used config directory.
 
@@ -453,6 +453,19 @@ class Manager(QtCore.QObject):
         if restart:
             self.logger.logMsg('Restarting QuDi after configuration reload.', msgType='status')
             self.restart()
+
+    def reloadConfigPart(self, base, mod):
+        """Reread the configuration file and update the internal configuration of module
+        
+        @params str modname: name of module where config file should be reloaded.
+        """
+        configFile = self._getConfigFile()
+        cfg = self.readConfigFile(configFile)
+        try:
+            if cfg[base][mod]['module.Class'] == self.tree['defined'][base][mod]['module.Class']:
+                self.tree['defined'][base][mod] = cfg[base][mod]
+        except KeyError:
+            pass
 
     ##################
     # Module loading #
@@ -731,6 +744,8 @@ class Manager(QtCore.QObject):
             try:
                 with self.lock:
                     self.tree['loaded'][base].pop(key, None)
+                # reload config part associated with module
+                self.reloadConfigPart(base, key)
                 # class_name is the last part of the config entry
                 class_name = re.split('\.', self.tree['defined'][base][key]['module.Class'])[-1]
                 # module_name is the whole line without this last part (and with the trailing dot removed also)
