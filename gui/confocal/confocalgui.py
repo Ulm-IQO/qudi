@@ -1151,7 +1151,7 @@ class ConfocalGui(GUIBase):
         
         @params int sliderValue: slider postion, a quantized whole number
         """
-        x_pos = (self._scanning_logic.x_range[0] + sliderValue) * self.slider_res
+        x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
         self.update_roi_xy(x=x_pos)
         self.update_roi_depth(x=x_pos)
         self.update_input_x(x_pos)
@@ -1162,7 +1162,7 @@ class ConfocalGui(GUIBase):
         
         @params int sliderValue: slider postion, a quantized whole number
         """
-        y_pos = (self._scanning_logic.y_range[0] + sliderValue) * self.slider_res
+        y_pos = self._scanning_logic.y_range[0] + sliderValue * self.slider_res
         self.update_roi_xy(y=y_pos)
         self.update_input_y(y_pos)
         self._scanning_logic.set_position('yslider', y=y_pos)
@@ -1172,7 +1172,7 @@ class ConfocalGui(GUIBase):
         
         @params int sliderValue: slider postion, a quantized whole number
         """
-        z_pos = (self._scanning_logic.z_range[0] + sliderValue) * self.slider_res
+        z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
         self.update_roi_depth(z=z_pos)
         self.update_input_z(z_pos)
         self._scanning_logic.set_position('zslider', z=z_pos)
