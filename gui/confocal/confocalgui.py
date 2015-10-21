@@ -824,8 +824,21 @@ class ConfocalGui(GUIBase):
           self._mw.action_scan_xy_resume.setEnabled(False)
 
 
-    def _refocus_finished_wrapper(self):
+    def _refocus_finished_wrapper(self, caller_tag, optimal_pos):
+        """ Re-enable the scan buttons in the GUI.  Also, if the refocus was initiated here in confocalgui then we need to handle the "returned" optimal position.
+        """
+
         self.enable_scan_actions()
+
+        if caller_tag == 'confocalgui':
+            self._scanning_logic.set_position(
+                'optimizer',
+                x=optimal_pos[0],
+                y=optimal_pos[1],
+                z=optimal_pos[2],
+                a=0.0
+                )
+
 
     def menu_settings(self):
         """ This method opens the settings menu. """
@@ -959,7 +972,7 @@ class ConfocalGui(GUIBase):
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()
 
-        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos)
+        self._optimizer_logic.start_refocus(initial_pos=crosshair_pos, caller_tag='confocalgui')
 
         self.disable_scan_actions()
 

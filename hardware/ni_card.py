@@ -1059,6 +1059,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             
         return volts
         
+    def get_scanner_position(self):
+        """ Get the current position of the scanner hardware.
+
+        @return float[]: current position in (x, y, z, a).
+        """
+        
+        return self._current_position
+        
         
     def set_up_line(self, length=100):
         """ Sets up the analoque output for scanning a line.
