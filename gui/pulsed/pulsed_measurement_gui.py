@@ -62,6 +62,7 @@ class PulsedMeasurementGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
         self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']
+        self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
 
         # Use the inherited class 'Ui_ODMRGuiUI' to create now the
         # GUI element:
@@ -114,6 +115,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_length_InputWidget.setValidator(validator2)
         self._mw.reference_start_InputWidget.setValidator(validator2)
         self._mw.reference_length_InputWidget.setValidator(validator2)
+        # sequence generator tab
+        self._mw.pg_timebase_InputWidget.setValidator(validator)
+        self._mw.rabi_mwfreq_InputWidget.setValidator(validator)
+        self._mw.rabi_mwpower_InputWidget.setValidator(validator)
+        self._mw.rabi_waittime_InputWidget.setValidator(validator)
+        self._mw.rabi_lasertime_InputWidget.setValidator(validator)
+        self._mw.rabi_taustart_InputWidget.setValidator(validator)
+        self._mw.rabi_tauend_InputWidget.setValidator(validator)
+        self._mw.rabi_tauincrement_InputWidget.setValidator(validator)
         
         # Fill in default values:
         
@@ -133,6 +143,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.reference_length_InputWidget.setText(str(200))
         self._mw.elapsed_time_label.setText('00:00:00:00')
         self._mw.analysis_period_InputWidget.setText(str(5))
+        # sequence generator tab
+        self._mw.pg_timebase_InputWidget.setText(str(50e9))
+        self._mw.rabi_mwfreq_InputWidget.setText(str(2870.))
+        self._mw.rabi_mwpower_InputWidget.setText(str(-30.))
+        self._mw.rabi_waittime_InputWidget.setText(str(1000.))
+        self._mw.rabi_lasertime_InputWidget.setText(str(3000.))
+        self._mw.rabi_taustart_InputWidget.setText(str(10.))
+        self._mw.rabi_tauend_InputWidget.setText(str(1000.))
+        self._mw.rabi_tauincrement_InputWidget.setText(str(10.))
 
         #######################################################################
         ##                      Connect signals                              ##
@@ -149,6 +168,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+        # sequence generator tab
+        self._mw.gen_rabi_pushButton.clicked.connect(self.generate_rabi_clicked)
         
         # Connect InputWidgets to events
         # pulsed measurement tab
@@ -161,6 +182,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        # sequence generator tab
+        self._mw.pg_timebase_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_mwfreq_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_mwpower_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_waittime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_lasertime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_taustart_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_tauend_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        self._mw.rabi_tauincrement_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
         
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
@@ -225,6 +255,18 @@ class PulsedMeasurementGui(GUIBase):
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
         
+    def generate_rabi_clicked(self):
+        # calculate parameters in terms of timebins/samples
+        samplerate = float(self._mw.pg_timebase_InputWidget.text())
+        mw_freq = np.round(float(self._mw.rabi_mwfreq_InputWidget.text()) * 10e9 * samplerate)
+        mw_power = np.round(float(self._mw.rabi_mwpower_InputWidget.text()) * 10e9 * samplerate)
+        waittime = np.round(float(self._mw.rabi_waittime_InputWidget.text()) * 10e9 * samplerate)
+        lasertime = np.round(float(self._mw.rabi_waittime_InputWidget.text()) * 10e9 * samplerate)
+        tau_start = np.round(float(self._mw.rabi_taustart_InputWidget.text()) * 10e9 * samplerate)
+        tau_end = np.round(float(self._mw.rabi_tauend_InputWidget.text()) * 10e9 * samplerate)
+        tau_incr = np.round(float(self._mw.rabi_tauincrement_InputWidget.text()) * 10e9 * samplerate)
+        # generate sequence
+        self._sequence_generator_logic.generate_rabi(mw_freq, mw_power, waittime, lasertime, tau_start, tau_end, tau_incr) 
 
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
@@ -283,6 +325,9 @@ class PulsedMeasurementGui(GUIBase):
         return
         
         
+    def check_input_with_samplerate(self):
+        
+    
     def save_clicked(self):
         self._pulsed_measurement_logic._save_data()
         return
