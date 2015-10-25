@@ -54,20 +54,17 @@ class SwitchLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        self.switches = list()
+        self.switches = dict()
         for connector in self.connector['in']:
-            switchHW = list()
+            hwname = self.connector['in'][connector]['object']._name
+            self.switches[hwname] = dict()
             for i in range(self.connector['in'][connector]['object'].getNumberOfSwitches()):
-                switchHW.append({
-                    'hw': self.connector['in'][connector]['object'],
-                    'n': i
-                    })
-            self.switches.append(switchHW)
+                self.switches[hwname][i] = self.connector['in'][connector]['object']
 
     def deactivation(self, e):
         """ Deactivate modeule.
 
           @param object e: Fysom state change notification
         """
-        self.switches = list()
+        self.switches = dict()
 

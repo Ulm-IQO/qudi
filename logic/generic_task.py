@@ -80,7 +80,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.name = name
         self.interruptable = False
         self.success = False
-        self.taskRunner = runner
+        self.runner = runner
         self.kwargs = kwargs
 
         self.sigDoStart.connect(self._doStart, QtCore.Qt.QueuedConnection)
@@ -119,7 +119,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigStarted.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.taskRunner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
     
     def _doTaskStep(self):
@@ -134,7 +134,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             else:
                 self.finish()
         except Exception as e:
-            self.taskRunner.logMsg('Exception during task step {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception during task step {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
             self.finish()
                 
@@ -147,7 +147,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.pausingFinished()
             self.sigPaused.emit()
         except Exception as e:
-            self.taskRunner.logMsg('Exception while pausing task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception while pausing task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
         
     def _resume(self, e):
@@ -160,7 +160,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigResumed.emit()
             self.sigNextTaskStep.emit()
         except Exception as e:
-            self.logMsg('Exception while resuming task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception while resuming task {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
 
     def _finish(self, e):
@@ -196,7 +196,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         try:
             return self.checkExtraPausePrerequisites()
         except Exception as e:
-            self.logMsg('Exception while checking pause prerequisites for task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception while checking pause prerequisites for task {}. {}'.format(self.name, e), msgType='error')
             return False
 
     def checkExtraPausePrerequisites(self):
@@ -243,6 +243,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         Fysom.__init__(self, _stateList)
         self.lock = Mutex()
         self.name = name
+        self.runner = runner
         self.kwargs = kwargs
 
     def onchangestate(self, e):
@@ -263,7 +264,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.preExecute()
         except Exception as e:
-            self.taskRunner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
 
         self.sigPreExecFinish.emit()
 
@@ -272,7 +273,7 @@ class PrePostTask(QtCore.QObject, Fysom):
         try:
             self.postExecute()
         except Exception as e:
-            self.taskRunner.logMsg('Exception during task {}. {}'.format(self.name, e), msgType='error')
+            self.runner.logExc('Exception during task {}. {}'.format(self.name, e), msgType='error')
 
         self.sigPostExecFinish.emit()
         
