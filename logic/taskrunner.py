@@ -130,12 +130,16 @@ class TaskRunner(GenericLogic):
                 t['modules'] = config['tasks'][task]['needsmodules']
             else:
                 t['modules'] = {}
+            if 'config' in config['tasks'][task]:
+                t['config'] = config['tasks'][task]['config']
+            else:
+                t['config'] = {}
             try:
                 print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
                 print('loaded:', mod)
                 print('dir:', dir(mod))
-                t['object'] = mod.Task(t['name'], self, modules=t['modules'])
+                t['object'] = mod.Task(t['name'], self, modules=t['modules'], config=t['config'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
@@ -147,7 +151,7 @@ class TaskRunner(GenericLogic):
     def checkTasksInModel(self):
         for task in self.model.storage:
             ppok = False
-            pok = False
+            pok = True
             modok = False
 
             #check if all required pre/post action tasks tasks are present
@@ -159,12 +163,12 @@ class TaskRunner(GenericLogic):
                         ppok =True
                     
             #check if all required pause tasks are present
-            if len(task['pausetasks']) == 0:
-                pok = True
-            for ptask in task['pausetasks']:
-                for t in self.model.storage:
-                    if t['name'] == ptask:
-                        pok = True
+            #if len(task['pausetasks']) == 0:
+            #    pok = True
+            #for ptask in task['pausetasks']:
+            #    for t in self.model.storage:
+            #        if t['name'] == ptask:
+            #            pok = True
 
             # check if all required moduls are present
             if len(task['modules']) == 0:

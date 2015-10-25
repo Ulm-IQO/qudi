@@ -51,13 +51,13 @@ class SwitchGui(GUIBase):
         lsw =  self.connector['in']['switchlogic']['object']
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
-            frame = QtGui.QGroupBox(hw[0]['hw']._name, self._mw.scrollAreaWidgetContents)
+            frame = QtGui.QGroupBox(hw, self._mw.scrollAreaWidgetContents)
             frame.setAlignment(QtCore.Qt.AlignLeft)
             frame.setFlat(False)
             self._mw.layout.addWidget(frame)
             layout = QtGui.QVBoxLayout(frame)
-            for switch in hw:
-                swidget = SwitchWidget(switch)
+            for switch in lsw.switches[hw]:
+                swidget = SwitchWidget(switch, lsw.switches[hw][switch])
                 layout.addWidget(swidget)
 
         self.restoreWindowPos(self._mw)
@@ -97,7 +97,7 @@ class SwitchMainWindow(QtGui.QMainWindow):
 class SwitchWidget(QtGui.QWidget):
     """ A widget that shows all data associated to a switch.
     """
-    def __init__(self, switch):
+    def __init__(self, switch, hwobject):
         """ Create a switch widget.
 
           @param dict switch: dict that contains reference to hardware  module as 'hw' and switch number as 'n'.
@@ -112,10 +112,11 @@ class SwitchWidget(QtGui.QWidget):
 
         # get switch states from the logic and put them in the GUI elements
         self.switch = switch
-        self.SwitchButton.setChecked( self.switch['hw'].getSwitchState(self.switch['n']) )
-        self.calOffVal.setValue( self.switch['hw'].getCalibration(self.switch['n'], 'Off') )
-        self.calOnVal.setValue(self.switch['hw'].getCalibration(self.switch['n'], 'On'))
-        self.switchTimeLabel.setText('{0}s'.format(self.switch['hw'].getSwitchTime(self.switch['n'])))
+        self.hw = hwobject
+        self.SwitchButton.setChecked( self.hw.getSwitchState(self.switch) )
+        self.calOffVal.setValue( self.hw.getCalibration(self.switch, 'Off') )
+        self.calOnVal.setValue(self.hw.getCalibration(self.switch, 'On'))
+        self.switchTimeLabel.setText('{0}s'.format(self.hw.getSwitchTime(self.switch)))
         # connect button
         self.SwitchButton.clicked.connect(self.toggleSwitch)
 
@@ -123,12 +124,12 @@ class SwitchWidget(QtGui.QWidget):
         """ Invert the state of the switch associated with this widget.
         """
         if self.SwitchButton.isChecked():
-            self.switch['hw'].switchOn(self.switch['n'])
+            self.hw.switchOn(self.switch)
         else:
-            self.switch['hw'].switchOff(self.switch['n'])
+            self.hw.switchOff(self.switch)
 
     def switchStateUpdated(self):
         """ Get state of switch from hardware module and adjust checkbox to correct value.
         """
-        self.SwitchButton.setChecked(self.switch['hw'].getSwitchState(self.switch['n']))
+        self.SwitchButton.setChecked(self.hw.getSwitchState(self.switch))
 
