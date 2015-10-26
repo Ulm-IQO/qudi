@@ -1036,11 +1036,11 @@ class ConfocalGui(GUIBase):
 
         needs_reset = False
 
-        if x_pos < self._scanning_logic.z_range[0]:
-            x_pos = self._scanning_logic.z_range[0]
+        if x_pos < self._scanning_logic.x_range[0]:
+            x_pos = self._scanning_logic.x_range[0]
             needs_reset = True
-        elif x_pos > self._scanning_logic.z_range[1]:
-            x_pos = self._scanning_logic.z_range[1]
+        elif x_pos > self._scanning_logic.x_range[1]:
+            x_pos = self._scanning_logic.x_range[1]
             needs_reset = True
 
         if z_pos < self._scanning_logic.z_range[0]:
