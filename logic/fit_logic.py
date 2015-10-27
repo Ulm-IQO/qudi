@@ -208,12 +208,22 @@ class FitLogic(GenericLogic):
 #                    here the values have to be reseted to the initial value also
 #                    when no new value was set in the beginning
                 if min_new:
-                    if abs(min_value/parameters[para].value-1.)<1e-12:
-                        parameters[para].value=store_value                        
+                    # in case the value is 0, devision by 0 has to be avoided
+                    if parameters[para].value<1e-12:
+                        if abs((min_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
+                            parameters[para].value=store_value
+                    else:
+                        if abs(min_value/parameters[para].value-1.)<1e-12:
+                            parameters[para].value=store_value                        
                 if max_new:
-                    if abs(max_value/parameters[para].value-1.)<1e-12:
-                        parameters[para].value=store_value
-
+                    # in case the value is 0, devision by 0 has to be avoided
+                    if parameters[para].value<1e-12:
+                        if abs((max_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
+                            parameters[para].value=store_value
+                    else:
+                        if abs(max_value/parameters[para].value-1.)<1e-12:
+                            parameters[para].value=store_value
+                            
                 #check if the suggested value or the value in parameters is smaller/
 #                bigger than min/max values and set then the value to min or max                        
                 if min_new:
