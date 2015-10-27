@@ -279,11 +279,11 @@ class FitLogic(GenericLogic):
             n_steps=len(axis)
             
             #Defining standard parameters
-            #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
-            params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),                    None),
-                           (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),   None),
-                           (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
-                           (    'c',      offset,   True,        100,                    data.max(),                  None))
+            #                  (Name,       Value,  Vary,         Min,                    Max,                                Expr)
+            params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),  None),
+                           (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),               None),
+                           (  'center',  x_zero,    True, (axis[0])-n_steps*stepsize,     (axis[-1])+n_steps*stepsize,        None),
+                           (    'c',      offset,   True,         100,                    data.max(),                         None))
 
 
             #redefine values of additional parameters

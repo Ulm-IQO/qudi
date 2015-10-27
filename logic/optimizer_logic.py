@@ -23,6 +23,7 @@ Copyright (C) 2015 Lachlan J. Rogers
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
+from lmfit import Parameters
 import numpy as np
 import time
 
@@ -82,6 +83,7 @@ class OptimizerLogic(GenericLogic):
 
         # settings option for surface subtraction in depth scan
         self.do_surface_subtraction = False
+        self.surface_subtr_scan_offset = 1  # micron
 
         # settings option for optimization sequence
         self.optimization_sequence = 'XY-Z'
@@ -260,26 +262,28 @@ class OptimizerLogic(GenericLogic):
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
-    def _move_to_xy_scan_start_pos(self):
-        """Moves the scanner from its current position to the start of the first line in the optimizer scan.
+    def _move_to_start_pos(self, start_pos):
+        """Moves the scanner from its current position to the start position of the optimizer scan.
+
+        @param start_pos float[]: 3-point vector giving x, y, z position to go to.
         """
         scanner_pos = self._scanning_device.get_scanner_position()
 
+        move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
+                                                    start_pos[0],
+                                                    self.return_slowness),
+                                        np.linspace(scanner_pos[1],
+                                                    start_pos[1],
+                                                    self.return_slowness),
+                                        np.linspace(scanner_pos[2],
+                                                    start_pos[2],
+                                                    self.return_slowness),
+                                        np.linspace(0,
+                                                    0,
+                                                    self.return_slowness)))
         try:
-            move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
-                                                        self.xy_refocus_image[0, 0, 0],
-                                                        self.return_slowness),
-                                            np.linspace(scanner_pos[1],
-                                                        self.xy_refocus_image[0, 0, 1],
-                                                        self.return_slowness),
-                                            np.linspace(scanner_pos[2],
-                                                        self.xy_refocus_image[0, 0, 2],
-                                                        self.return_slowness),
-                                            np.linspace(0,
-                                                        0,
-                                                        self.return_slowness)))
-
             self._scanning_device.scan_line(move_to_start_line)
+            time.sleep(self.hw_settle_time)
 
         except Exception:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
@@ -300,8 +304,8 @@ class OptimizerLogic(GenericLogic):
 
         # move to the start of the first line
         if self._xy_scan_line_count == 0:
-            self._move_to_xy_scan_start_pos()
-            time.sleep(self.hw_settle_time)
+            self._move_to_start_pos([self.xy_refocus_image[0, 0, 0],self.xy_refocus_image[0, 0, 1],self.xy_refocus_image[0, 0, 2]])
+
 
         # scan a line of the xy optimization image
         try:
@@ -373,40 +377,21 @@ class OptimizerLogic(GenericLogic):
         """ Do the z axis optimisation
         """
 
-        # Move to start of z-scan
-
-        scanner_pos = self._scanning_device.get_scanner_position()
-
-        move_to_start_line = np.vstack((np.linspace(scanner_pos[0],
-                                                    self.optim_pos_x,
-                                                    self.return_slowness),
-                                        np.linspace(scanner_pos[1],
-                                                    self.optim_pos_y,
-                                                    self.return_slowness),
-                                        np.linspace(scanner_pos[2],
-                                                    self._zimage_Z_values[0],
-                                                    self.return_slowness),
-                                        np.linspace(0,
-                                                    0,
-                                                    self.return_slowness)))
-
-        try:
-            self._scanning_device.scan_line(move_to_start_line)
-
-        except Exception:
-            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
-            self.finish_refocus()
-
-        time.sleep(self.hw_settle_time)
         # z scaning
         self._scan_z_line()
 
         self.signal_image_updated.emit()
 
         # z-fit
-
-        result = self._fit_logic.make_gaussian_fit(
-            axis=self._zimage_Z_values, data=self.z_refocus_line)
+        # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
+        if self.do_surface_subtraction:
+            adjusted_param = Parameters()
+            # TODO: in the following line the seed value should be 0 instead of 1, but this hits a bug in fit_logic.
+            adjusted_param.add('c', 1, True, -self.z_refocus_line.max(), self.z_refocus_line.max(), None)
+            result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
+        else:
+            result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
+        print(result.fit_report())
 
         if result.success is False:
             self.logMsg('error in 1D Gaussian Fit.',
@@ -457,6 +442,10 @@ class OptimizerLogic(GenericLogic):
     def _scan_z_line(self):
         """Scans the z line for refocus
         """
+
+        # Move to start of z-scan
+        self._move_to_start_pos([self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
+
         # defining trace of positions for z-refocus
         Z_line = self._zimage_Z_values  # todo: tilt_correction
         X_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
@@ -478,7 +467,11 @@ class OptimizerLogic(GenericLogic):
 
         # If subtracting surface, perform a displaced depth line scan
         if self.do_surface_subtraction:
-            line_bg = np.vstack((X_line + 1, Y_line, Z_line, A_line))
+            # Move to start of z-scan
+            self._move_to_start_pos([self.optim_pos_x + self.surface_subtr_scan_offset, self.optim_pos_y, self._zimage_Z_values[0]])
+
+            # define an offset line to measure "background"
+            line_bg = np.vstack((X_line + self.surface_subtr_scan_offset, Y_line, Z_line, A_line))
 
             try:
                 line_bg = self._scanning_device.scan_line(line_bg)
