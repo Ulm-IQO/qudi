@@ -24,6 +24,7 @@ from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 import numpy as np
+import time
 
 
 class OptimizerLogic(GenericLogic):
@@ -77,8 +78,13 @@ class OptimizerLogic(GenericLogic):
         self.refocus_Z_size = 2
         self.optimizer_Z_res = 30
 
+        self.hw_settle_time = 0.1  # let scanner reach start of xy and z scans
+
         # settings option for surface subtraction in depth scan
         self.do_surface_subtraction = False
+
+        # settings option for optimization sequence
+        self.optimization_sequence = 'XY-Z'
 
         # locking for thread safety
         self.threadlock = Mutex()
@@ -113,9 +119,7 @@ class OptimizerLogic(GenericLogic):
         self._max_offset = 3.
 
         # Initialization of internal counter for scanning
-        self._scan_counter = 0
-
-        self.optimization_sequence = 'XY-Z'
+        self._xy_scan_line_count = 0
 
         # Sets connections between signals and functions
         self._signal_scan_next_xy_line.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
@@ -195,7 +199,7 @@ class OptimizerLogic(GenericLogic):
 
         self.lock()
         self.signal_refocus_started.emit()
-        self._scan_counter = 0
+        self._xy_scan_line_count = 0
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
 
@@ -215,7 +219,7 @@ class OptimizerLogic(GenericLogic):
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image
         """
-        self._scan_counter = 0
+        self._xy_scan_line_count = 0
 
         # defining center of refocus image
         x0 = self._initial_pos_x
@@ -245,7 +249,7 @@ class OptimizerLogic(GenericLogic):
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image
         """
-        self._scan_counter = 0
+        self._xy_scan_line_count = 0
         z0 = self._initial_pos_z  # falls tilt correction, dann hier aufpassen
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
@@ -295,23 +299,24 @@ class OptimizerLogic(GenericLogic):
                 return
 
         # move to the start of the first line
-        if self._scan_counter == 0:
+        if self._xy_scan_line_count == 0:
             self._move_to_xy_scan_start_pos()
+            time.sleep(self.hw_settle_time)
 
         # scan a line of the xy optimization image
         try:
-            line = np.vstack((self.xy_refocus_image[self._scan_counter, :, 0],
-                              self.xy_refocus_image[self._scan_counter, :, 1],
-                              self.xy_refocus_image[self._scan_counter, :, 2],
+            line = np.vstack((self.xy_refocus_image[self._xy_scan_line_count, :, 0],
+                              self.xy_refocus_image[self._xy_scan_line_count, :, 1],
+                              self.xy_refocus_image[self._xy_scan_line_count, :, 2],
                               self._A_values))
 
             line_counts = self._scanning_device.scan_line(line)
 
             return_line = np.vstack((self._return_X_values,
                                      self.xy_refocus_image[
-                                         self._scan_counter, 0, 1] * np.ones(self._return_X_values.shape),
+                                         self._xy_scan_line_count, 0, 1] * np.ones(self._return_X_values.shape),
                                      self.xy_refocus_image[
-                                         self._scan_counter, 0, 2] * np.ones(self._return_X_values.shape),
+                                         self._xy_scan_line_count, 0, 2] * np.ones(self._return_X_values.shape),
                                      self._return_A_values))
 
             self._scanning_device.scan_line(return_line)
@@ -321,12 +326,12 @@ class OptimizerLogic(GenericLogic):
             self.stop_refocus()
             self._signal_scan_next_xy_line.emit()
 
-        self.xy_refocus_image[self._scan_counter, :, 3] = line_counts
+        self.xy_refocus_image[self._xy_scan_line_count, :, 3] = line_counts
         self.signal_image_updated.emit()
 
-        self._scan_counter += 1
+        self._xy_scan_line_count += 1
 
-        if self._scan_counter < np.size(self._Y_values):
+        if self._xy_scan_line_count < np.size(self._Y_values):
             self._signal_scan_next_xy_line.emit()
         else:
             self._signal_completed_xy_optimizer_scan.emit()
@@ -392,6 +397,7 @@ class OptimizerLogic(GenericLogic):
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
             self.finish_refocus()
 
+        time.sleep(self.hw_settle_time)
         # z scaning
         self._scan_z_line()
 

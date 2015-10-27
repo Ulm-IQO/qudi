@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>380</width>
-    <height>192</height>
+    <width>392</width>
+    <height>318</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -21,8 +21,8 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
       <widget class="QLabel" name="label_2">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -32,7 +32,7 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="1">
       <widget class="QDoubleSpinBox" name="xy_optimizer_range_DoubleSpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Scan range of the optimizer in the xy area.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -57,14 +57,14 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="2">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>XY Resolution:</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="3">
       <widget class="QSpinBox" name="xy_optimizer_resolution_SpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Specify the distance between two subsequent scanned points for optimizer in xy scan.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -77,18 +77,14 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
+     <item row="1" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
         <string>Z Range (µm):</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="1">
       <widget class="QDoubleSpinBox" name="z_optimizer_range_DoubleSpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Scan range of the optimizer in the z direction.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -110,14 +106,14 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="2">
       <widget class="QLabel" name="label_4">
        <property name="text">
         <string>Z Resolution:</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="3">
       <widget class="QSpinBox" name="z_optimizer_resolution_SpinBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Specify the distance between two subsequent scanned points for optimizer z scan.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -137,7 +133,7 @@
      <item>
       <widget class="QLabel" name="label_5">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;That is the inverse time how long the scanner stays at the desired position during the scan and counts.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>Frequency at which the scan pixels are acquired.</string>
        </property>
        <property name="text">
         <string>Count frequency (Hz):</string>
@@ -146,11 +142,14 @@
      </item>
      <item>
       <widget class="QSpinBox" name="count_freq_SpinBox">
+       <property name="toolTip">
+        <string>Frequency at which the scan pixels are acquired.</string>
+       </property>
        <property name="maximum">
         <number>10000</number>
        </property>
        <property name="value">
-        <number>200</number>
+        <number>50</number>
        </property>
       </widget>
      </item>
@@ -161,7 +160,7 @@
      <item>
       <widget class="QLabel" name="label_6">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;That is basically the 'scan' resolution when the scanner moves backwards to prepare to scan again a line. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;How many points are scanned in one line is depending on the resolution. Since the scanner is permanently counting during the scan, only the clock frequency determined the speed, how fast a line is scanned by a given resolution. If the scanner has to move back, it uses the same scan line method but just in the reverse. How many points are approached in the backwards movement depends on the 'return slowness' parameter. If you scan with 10 point resolution (for XY Range of 10 and YX Stepsize of 1) and set return slowness to 2, than the return movement will be 5 times faster.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>Resolution (number of steps) in the return scan that occurs between each line of the XY scan.</string>
        </property>
        <property name="text">
         <string>return slowdown (points):</string>
@@ -171,13 +170,40 @@
      <item>
       <widget class="QSpinBox" name="return_slow_SpinBox">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;That is basically the 'scan' resolution when the scanner moves backwards to prepare to scan again a line.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>Resolution (number of steps) in the return scan that occurs between each line of the XY scan.</string>
        </property>
        <property name="maximum">
         <number>1000</number>
        </property>
        <property name="value">
         <number>20</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <item>
+      <widget class="QLabel" name="label_8">
+       <property name="toolTip">
+        <string>Settle time to let the scanning HW reach the start-point of the optimization scans.</string>
+       </property>
+       <property name="text">
+        <string>HW settle time (ms)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="hw_settle_time_SpinBox">
+       <property name="toolTip">
+        <string>Settle time to let the scanning HW reach the start-point of the optimization scans.</string>
+       </property>
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+       <property name="value">
+        <number>100</number>
        </property>
       </widget>
      </item>
@@ -238,6 +264,10 @@
     </widget>
    </item>
   </layout>
+  <zorder>do_surface_subtraction_CheckBox</zorder>
+  <zorder>buttonBox</zorder>
+  <zorder>optim_sequence_z_last_RadioButton</zorder>
+  <zorder>layoutWidget</zorder>
  </widget>
  <tabstops>
   <tabstop>buttonBox</tabstop>
