@@ -30,6 +30,7 @@ import os
 from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
 
+
 class CrossROI(pg.ROI):
 
     """ Create a Region of interest, which is a zoomable rectangular.
@@ -59,7 +60,7 @@ class CrossROI(pg.ROI):
 
     def setPos(self, pos, update=True, finish=False):
         """Sets the position of the ROI.
-        
+
         @param bool update: whether to update the display for this call of setPos
         @param bool finish: whether to emit sigRegionChangeFinished
 
@@ -71,7 +72,7 @@ class CrossROI(pg.ROI):
         """ Handles should always be moved by user."""
         super().handleMoveStarted()
         self.userDrag = True
-    
+
     def startUserDrag(self, roi):
         """ROI has started being dragged by user."""
         self.userDrag = True
@@ -86,6 +87,7 @@ class CrossROI(pg.ROI):
             self.sigUserRegionUpdate.emit(roi)
         else:
             self.sigMachineRegionUpdate.emit(roi)
+
 
 class CrossLine(pg.InfiniteLine):
 
@@ -109,12 +111,13 @@ class CrossLine(pg.InfiniteLine):
         @param object extroi: external roi object from pyqtgraph
         """
         if self.angle == 0:
-            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5 )
+            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5)
         if self.angle == 90:
-            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5 )
+            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
 
 class ConfocalMainWindow(QtGui.QMainWindow):
+
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
@@ -135,6 +138,7 @@ class ConfocalMainWindow(QtGui.QMainWindow):
 
 
 class ConfocalSettingDialog(QtGui.QDialog):
+
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
 
     def __init__(self):
@@ -146,7 +150,9 @@ class ConfocalSettingDialog(QtGui.QDialog):
         super(ConfocalSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
+
 class OptimizerSettingDialog(QtGui.QDialog):
+
 
     def __init__(self):
         # Get the path to the *.ui file
@@ -159,19 +165,20 @@ class OptimizerSettingDialog(QtGui.QDialog):
 
 
 class ConfocalGui(GUIBase):
+
     """ Main Confocal Class for xy and depth scans.
     """
     _modclass = 'ConfocalGui'
     _modtype = 'gui'
 
-    ## declare connectors
-    _in = { 'confocallogic1': 'ConfocalLogic',
-            'savelogic': 'SaveLogic',
-            'optimizerlogic1': 'OptimizerLogic'
-            }
+    # declare connectors
+    _in = {'confocallogic1': 'ConfocalLogic',
+           'savelogic': 'SaveLogic',
+           'optimizerlogic1': 'OptimizerLogic'
+           }
 
     def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
+        # declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
@@ -180,7 +187,7 @@ class ConfocalGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
         self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
@@ -196,7 +203,7 @@ class ConfocalGui(GUIBase):
         # the 4 possible orientations, where the first entry of the array
         # tells you the actual position. The number tells you how often a 90
         # degree trun is applied.
-        self.xy_image_orientation = np.array([0,1,2,-1],int)
+        self.xy_image_orientation = np.array([0, 1, 2, -1],int)
         self.depth_image_orientation = np.array([0, 1, 2, -1], int)
 
     def deactivation(self, e):
@@ -226,7 +233,7 @@ class ConfocalGui(GUIBase):
 
         self.initMainUI(e)      # initialize the main GUI
         self.initSettingsUI(e)  # initialize the settings GUI
-        self.initOptimizerSettingsUI(e) # initialize the optimizer settings GUI
+        self.initOptimizerSettingsUI(e)  # initialize the optimizer settings GUI
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
@@ -256,14 +263,14 @@ class ConfocalGui(GUIBase):
         # matrix to get the proper scan. The graphig widget displays vector-
         # wise the lines and the lines are normally columns, but in our
         # measurement we scan rows per row. That's why it has to be transposed.
-        arr01 = self._scanning_logic.xy_image[:,:,3].transpose()
-        arr02 = self._scanning_logic.depth_image[:,:,3].transpose()
+        arr01 = self._scanning_logic.xy_image[:, :, 3].transpose()
+        arr02 = self._scanning_logic.depth_image[:, :, 3].transpose()
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01)/2
-        ini_pos_y_crosshair = len(arr01)/2
-        ini_pos_z_crosshair = len(arr02)/2
+        ini_pos_x_crosshair = len(arr01) / 2
+        ini_pos_y_crosshair = len(arr01) / 2
+        ini_pos_z_crosshair = len(arr02) / 2
 
         # Load the images for xy and depth in the display:
         self.xy_image = pg.ImageItem(arr01)
@@ -276,7 +283,7 @@ class ConfocalGui(GUIBase):
         ###               Configuration of the optimizer tab                ###
         #######################################################################
         # Load the image for the optimizer tab
-        self.xy_refocus_image = pg.ImageItem(self._optimizer_logic.xy_refocus_image[:,:,3].transpose())
+        self.xy_refocus_image = pg.ImageItem(self._optimizer_logic.xy_refocus_image[:, :, 3].transpose())
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
                 self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
@@ -293,7 +300,7 @@ class ConfocalGui(GUIBase):
         self.depth_refocus_fit_image = pg.PlotDataItem(
             self._optimizer_logic._fit_zimage_Z_values,
             self._optimizer_logic.z_fit_data,
-            pen=QtGui.QPen(QtGui.QColor(255,0,255,255))
+            pen=QtGui.QPen(QtGui.QColor(255, 0, 255, 255))
             )
 
         # Add the display item to the xy and depth VieWidget, which was defined in
@@ -879,6 +886,7 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.optimizer_Z_res = self._osd.z_optimizer_resolution_SpinBox.value()
         self._optimizer_logic.set_clock_frequency(self._osd.count_freq_SpinBox.value())
         self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
+        self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value()/1000
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
 
         if self._osd.optim_sequence_z_last_RadioButton.isChecked():
@@ -896,6 +904,7 @@ class ConfocalGui(GUIBase):
         self._osd.z_optimizer_resolution_SpinBox.setValue(self._optimizer_logic.optimizer_Z_res)
         self._osd.count_freq_SpinBox.setValue(self._optimizer_logic._clock_frequency)
         self._osd.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
+        self._osd.hw_settle_time_SpinBox.setValue(self._optimizer_logic.hw_settle_time * 1000)
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
 
         if self._optimizer_logic.optimization_sequence == 'XY-Z':
