@@ -199,6 +199,11 @@ class OptimizerLogic(GenericLogic):
         # Keep track of where the start_refocus was initiated
         self._caller_tag = caller_tag
 
+        # Set the optim_pos values to match the initial_pos values.  This means we can use optim_pos in subsequent steps and ensure that we benefit from any completed optimization step.
+        self.optim_pos_x = self._initial_pos_x
+        self.optim_pos_y = self._initial_pos_y
+        self.optim_pos_z = self._initial_pos_z
+
         self.lock()
         self.signal_refocus_started.emit()
         self._xy_scan_line_count = 0
