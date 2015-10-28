@@ -1180,7 +1180,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             return np.array([-1.])
             
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
-            self.logMsg('Given voltage list is no array type.',msgType='error')
+            self.logMsg('Given line_path list is not array type.',msgType='error')
             return np.array([-1.])
         
         self.lock() # lock this thread so others cannot call
@@ -1265,6 +1265,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._real_data += self._scan_data[1::2]        
         
         self.unlock()   # unlock the thread
+
+        # update the scanner position instance variable
+        self._current_position = list(line_path[:,-1])
         
         return self._real_data*(self._scanner_clock_frequency)
         
