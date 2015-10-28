@@ -245,8 +245,12 @@ class CounterLogic(GenericLogic):
 
         if save:
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
-            datetime
-            filelabel = 'count_trace'+postfix
+
+            # If there is a postfix then add separating underscore
+            if postfix == '':
+                filelabel = 'count_trace'
+            else:
+                filelabel = 'count_trace_'+postfix
 
             # prepare the data in a dict or in an OrderedDict:
             data = OrderedDict()
