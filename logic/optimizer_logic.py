@@ -304,8 +304,7 @@ class OptimizerLogic(GenericLogic):
 
         # move to the start of the first line
         if self._xy_scan_line_count == 0:
-            self._move_to_start_pos([self.xy_refocus_image[0, 0, 0],self.xy_refocus_image[0, 0, 1],self.xy_refocus_image[0, 0, 2]])
-
+            self._move_to_start_pos([self.xy_refocus_image[0, 0, 0], self.xy_refocus_image[0, 0, 1], self.xy_refocus_image[0, 0, 2]])
 
         # scan a line of the xy optimization image
         try:
