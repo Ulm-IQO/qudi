@@ -328,6 +328,9 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
         self.unlock()
 
+        # update the scanner position instance variable
+        self._current_position = list(line_path[:,-1])
+
         return count_data
 
     def close_scanner(self):
