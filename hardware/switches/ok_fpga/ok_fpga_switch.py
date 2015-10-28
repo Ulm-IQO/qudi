@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Control the Radiant Dyes flip mirror driver through the serial interface.
+Control an output channel of the FPGA to use as a TTL switch.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 from core.base import Base
 from core.util.mutex import Mutex
 from hardware.switches.switch_interface import SwitchInterface
-import ok
+import thirdparty.opal_kelly as ok
 
 class OkFpgaTtlSwitch(Base, SwitchInterface):
     """Methods to control TTL switch running on OK FPGA.
@@ -30,8 +30,6 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
     _modclass = 'switchinterface'
     _modtype = 'hardware'
     _out = {'switch': 'SwitchInterface'}
-
-
     
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -39,9 +37,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.lock = Mutex()
 
     def activation(self, e):
-
         self.xem = ok.FrontPanel()
-
         self.xem.GetDeviceCount()
         self.xem.OpenBySerial(self.xem.GetDeviceListSerial(0))
         self.xem.ConfigureFPGA('switch_top.bit')
@@ -49,13 +45,23 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
             print('ERROR: FrontPanel is not enabled in FPGA switch!')
             return
         else:
-            reset()
+            self.reset()
             print('FPGA connected')
-        return
-
 
     def deactivation(self, e):
         self.inst.close()
+        
+    def reset(self):
+        self.xem.SetWireInValue(0x00, 0)
+        self.xem.SetWireInValue(0x01, 0)
+        self.xem.SetWireInValue(0x02, 0)
+        self.xem.SetWireInValue(0x03, 0)
+        self.xem.SetWireInValue(0x04, 0)
+        self.xem.SetWireInValue(0x05, 0)
+        self.xem.SetWireInValue(0x06, 0)
+        self.xem.SetWireInValue(0x07, 0)
+        self.xem.UpdateWireIns()
+        print('FPGA switch reset')
     
     def getNumberOfSwitches(self):
         """ There are 8 TTL channels on the OK FPGA.
@@ -71,8 +77,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
 
           @return bool: True if on, False if off, None on error
         """
-        pass
-
+        return True
 
     def reset(self):
         self.xem.SetWireInValue(0x00, 0)
@@ -85,8 +90,6 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.xem.SetWireInValue(0x07, 0)
         self.xem.UpdateWireIns()
         print('FPGA switch reset')
-        return
-        
 
     def switchOn(self, channel):
         if (channel >= 9) or (channel <= 0):
@@ -95,8 +98,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.xem.SetWireInValue(int(channel), 1)
         self.xem.UpdateWireIns()
         print('Channel ' + str(int(channel)) + ' switched on')
-        return
-        
+
     def switchOff(self, channel):
         if (channel >= 9) or (channel <= 0):
             print('ERROR: FPGA switch only accepts channel numbers 1..8')
@@ -104,5 +106,3 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.xem.SetWireInValue(int(channel), 0)
         self.xem.UpdateWireIns()
         print('Channel ' + str(int(channel)) + ' switched off')
-        return
-    
