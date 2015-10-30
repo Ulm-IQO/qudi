@@ -123,10 +123,23 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
     
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
-        c_dict = {'onactivate': self.activation}
+        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
         
-        #FIXME: What are the variables doing (i.e. RWTimeout)?            
+    def activation(self, e=None): 
+        """ Starts up the NI Card at activation.
+        
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
+                
+        @return int: error code (0:OK, -1:error)
+        """
+        #FIXME: What are the variables doing (i.e. RWTimeout)?
         self._max_counts = 3e7  # used as a default for expected maximum counts
         #FIXME: Read-Write timeout
         self._RWTimeout = 5
@@ -138,16 +151,17 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._line_length = None
         self._odmr_length = None
         self._gated_counter_daq_task = None
-        
-        # FIXME: Here you assign a value to some variables. For _sample_number, 
+
+        # FIXME: Here you assign a value to some variables. For _sample_number,
         # _clock_frequency, _scanner_clock_frequency you are doing this later.
-        # Wouldn't it be more convenient to also put the default values for 
-        # _sample_number, _clock_frequency, _scanner_clock_frequency here. 
+        # Wouldn't it be more convenient to also put the default values for
+        # _sample_number, _clock_frequency, _scanner_clock_frequency here.
         # Then it is also a bit simpler to change...
-        self._voltage_range = [-10., 10.]        
-        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]        
+        self._voltage_range = [-10., 10.]
+        self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         self._current_position = [0., 0., 0., 0.]
-        
+
+        config = self.getConfiguration()
         # handle all the parameters given by the config
         #FIXME: Suggestion: and  partially set the parameters to default values
         #if not given by the config
@@ -156,33 +170,33 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         else:
             self.logMsg('No scanner_ao_channels found in the configuration!',
                         msgType='error')
-            
+
         if 'odmr_trigger_channel' in config.keys():
             self._odmr_trigger_channel=config['odmr_trigger_channel']
         else:
             self.logMsg('No odmr_trigger_channel found in configuration!',
                         msgType='error')
-            
+
         if 'clock_channel' in config.keys():
             self._clock_channel=config['clock_channel']
         else:
             self.logMsg('No clock_channel configured.', msgType='error')
-            
+
         if 'counter_channel' in config.keys():
             self._counter_channel=config['counter_channel']
         else:
             self.logMsg('No counter_channel configured.', msgType='error')
-            
+
         if 'scanner_clock_channel' in config.keys():
             self._scanner_clock_channel=config['scanner_clock_channel']
         else:
             self.logMsg('No scanner_clock_channel configured.', msgType='error')
-            
+
         if 'scanner_counter_channel' in config.keys():
             self._scanner_counter_channel=config['scanner_counter_channel']
         else:
             self.logMsg('No scanner_counter_channel configured.', msgType='error')
-            
+
         if 'photon_source' in config.keys():
             self._photon_source=config['photon_source']
         else:
@@ -214,14 +228,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             self._scanner_clock_frequency=100
             self.logMsg('No scanner_clock_frequency configured taking '
                         '100 Hz instead.', msgType='warning')
-            
+
         if 'samples_number' in config.keys():
             self._samples_number=config['samples_number']
         else:
             self._samples_number=10
             self.logMsg('No samples_number configured taking 10 instead.',
                         msgType='warning')
-            
+
         if 'x_range' in config.keys():
             if float(config['x_range'][0]) < float(config['x_range'][1]):
                 self._position_range[0] = [float(config['x_range'][0]),
@@ -229,11 +243,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             else:
                 self.logMsg('Configuration ({}) of x_range incorrect, taking '
                             '[0,100] instead.'.format(config['x_range']),
-                            msgType='warning')                
+                            msgType='warning')
         else:
             self.logMsg('No x_range configured taking [0,100] instead.',
                         msgType='warning')
-            
+
         if 'y_range' in config.keys():
             if float(config['y_range'][0]) < float(config['y_range'][1]):
                 self._position_range[1] = [float(config['y_range'][0]),
@@ -241,11 +255,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             else:
                 self.logMsg('Configuration ({}) of y_range incorrect, taking '
                             '[0,100] instead.'.format(config['y_range']),
-                            msgType='warning')                
+                            msgType='warning')
         else:
             self.logMsg('No y_range configured taking [0,100] instead.',
                         msgType='warning')
-            
+
         if 'z_range' in config.keys():
             if float(config['z_range'][0]) < float(config['z_range'][1]):
                 self._position_range[2] = [float(config['z_range'][0]),
@@ -253,11 +267,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             else:
                 self.logMsg('Configuration ({}) of z_range incorrect, taking '
                             '[0,100] instead.'.format(config['z_range']),
-                            msgType='warning')                
+                            msgType='warning')
         else:
             self.logMsg('No z_range configured taking [0,100] instead.',
                         msgType='warning')
-            
+
         if 'a_range' in config.keys():
             if float(config['a_range'][0]) < float(config['a_range'][1]):
                 self._position_range[3] = [float(config['a_range'][0]),
@@ -265,11 +279,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             else:
                 self.logMsg('Configuration ({}) of a_range incorrect, taking '
                             '[0,100] instead.'.format(config['a_range']),
-                            msgType='warning')                
+                            msgType='warning')
         else:
             self.logMsg('No a_range configured taking [0,100] instead.',
                         msgType='warning')
-            
+
         if 'voltage_range' in config.keys():
             if float(config['voltage_range'][0]) < float(config['voltage_range'][1]):
                 self._voltage_range = [float(config['voltage_range'][0]),
@@ -277,28 +291,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             else:
                 self.logMsg('Configuration ({}) of voltage_range incorrect, '
                             'taking [-10,10] instead.'.format(config['voltage_range']),
-                            msgType='warning')                
+                            msgType='warning')
         else:
             self.logMsg('No voltage_range configured taking [-10,10] instead.',
                         msgType='warning')
-         
-         #FIXME: Noch rausnehmen?
-#        self.testing()
-        
-    def activation(self, e=None): 
-        """ Starts up the NI Card at activation.
-        
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
-                
-        @return int: error code (0:OK, -1:error)
-        """
-        
+
         #FIXME: Where is the error code returned?
         
         # Analoque output is always needed and it does not interfere with the 
