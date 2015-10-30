@@ -37,31 +37,32 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.lock = Mutex()
 
     def activation(self, e):
-        self.xem = ok.FrontPanel()
-        self.xem.GetDeviceCount()
-        self.xem.OpenBySerial(self.xem.GetDeviceListSerial(0))
-        self.xem.ConfigureFPGA('switch_top.bit')
-        if not self.xem.IsFrontPanelEnabled():
-            print('ERROR: FrontPanel is not enabled in FPGA switch!')
+        self.fp = ok.FrontPanel()
+        self.fp.GetDeviceCount()
+        self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
+        self.fp.ConfigureFPGA('switch_top.bit')
+        if not self.fp.IsFrontPanelEnabled():
+            self.logMsg('ERROR: FrontPanel is not enabled in FPGA switch!', msgType='error')
             return
         else:
             self.reset()
-            print('FPGA connected')
+            self.logMsg('FPGA connected')
 
     def deactivation(self, e):
-        self.inst.close()
+        pass
+        #self.fp.
         
     def reset(self):
-        self.xem.SetWireInValue(0x00, 0)
-        self.xem.SetWireInValue(0x01, 0)
-        self.xem.SetWireInValue(0x02, 0)
-        self.xem.SetWireInValue(0x03, 0)
-        self.xem.SetWireInValue(0x04, 0)
-        self.xem.SetWireInValue(0x05, 0)
-        self.xem.SetWireInValue(0x06, 0)
-        self.xem.SetWireInValue(0x07, 0)
-        self.xem.UpdateWireIns()
-        print('FPGA switch reset')
+        self.fp.SetWireInValue(0x00, 0)
+        self.fp.SetWireInValue(0x01, 0)
+        self.fp.SetWireInValue(0x02, 0)
+        self.fp.SetWireInValue(0x03, 0)
+        self.fp.SetWireInValue(0x04, 0)
+        self.fp.SetWireInValue(0x05, 0)
+        self.fp.SetWireInValue(0x06, 0)
+        self.fp.SetWireInValue(0x07, 0)
+        self.fp.UpdateWireIns()
+        self.logMsg('FPGA switch reset')
     
     def getNumberOfSwitches(self):
         """ There are 8 TTL channels on the OK FPGA.
@@ -70,39 +71,34 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         """
         return 8
 
-    def getSwitchState(self, switchNumber):
+    def getSwitchState(self, channel):
         """ Gives state of switch.
 
           @param int switchNumber: number of switch
 
           @return bool: True if on, False if off, None on error
         """
-        return True
-
-    def reset(self):
-        self.xem.SetWireInValue(0x00, 0)
-        self.xem.SetWireInValue(0x01, 0)
-        self.xem.SetWireInValue(0x02, 0)
-        self.xem.SetWireInValue(0x03, 0)
-        self.xem.SetWireInValue(0x04, 0)
-        self.xem.SetWireInValue(0x05, 0)
-        self.xem.SetWireInValue(0x06, 0)
-        self.xem.SetWireInValue(0x07, 0)
-        self.xem.UpdateWireIns()
-        print('FPGA switch reset')
+       return self.fp.GetWireInValue(int(channel) + 1) == 1
 
     def switchOn(self, channel):
-        if (channel >= 9) or (channel <= 0):
-            print('ERROR: FPGA switch only accepts channel numbers 1..8')
+        if channel > 7 or channel < 0:
+            self.logMsg('ERROR: FPGA switch only accepts channel numbers 0..7', msgType='error')
             return
-        self.xem.SetWireInValue(int(channel), 1)
-        self.xem.UpdateWireIns()
-        print('Channel ' + str(int(channel)) + ' switched on')
+        self.fp.SetWireInValue(int(channel) + 1, 1)
+        self.fp.UpdateWireIns()
 
     def switchOff(self, channel):
-        if (channel >= 9) or (channel <= 0):
-            print('ERROR: FPGA switch only accepts channel numbers 1..8')
+        if channel > 7 or channel < 0:
+            self.logMsg('ERROR: FPGA switch only accepts channel numbers 0..7', msgType='error')
             return
-        self.xem.SetWireInValue(int(channel), 0)
-        self.xem.UpdateWireIns()
-        print('Channel ' + str(int(channel)) + ' switched off')
+        self.fp.SetWireInValue(int(channel) + 1, 0)
+        self.fp.UpdateWireIns()
+
+    def getCalibration(self, switchNumber, state):
+        return 0
+
+    def setCalibration(self, switchNumber, state, value):
+        pass
+
+    def getSwitchTime(self, switchNumber):
+        return 0.01
