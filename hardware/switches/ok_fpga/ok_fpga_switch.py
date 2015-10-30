@@ -78,19 +78,19 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
 
           @return bool: True if on, False if off, None on error
         """
-       return self.fp.GetWireInValue(int(channel) + 1) == 1
+        if channel > 7 or channel < 0:
+            raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
+        return self.fp.GetWireInValue(int(channel) + 1)[1] == 1
 
     def switchOn(self, channel):
         if channel > 7 or channel < 0:
-            self.logMsg('ERROR: FPGA switch only accepts channel numbers 0..7', msgType='error')
-            return
+            raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
         self.fp.SetWireInValue(int(channel) + 1, 1)
         self.fp.UpdateWireIns()
 
     def switchOff(self, channel):
         if channel > 7 or channel < 0:
-            self.logMsg('ERROR: FPGA switch only accepts channel numbers 0..7', msgType='error')
-            return
+            raise KeyError('ERROR: FPGA switch only accepts channel numbers 0..7')
         self.fp.SetWireInValue(int(channel) + 1, 0)
         self.fp.UpdateWireIns()
 
