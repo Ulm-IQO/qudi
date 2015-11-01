@@ -24,7 +24,7 @@ from PyQt4 import QtGui, QtCore, uic
 import numpy as np
 import os
 from collections import OrderedDict
-
+import pyqtgraph as pg
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 
@@ -583,6 +583,7 @@ class PulsedMeasurementGui(GUIBase):
         """
 
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
+        #self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']        
         self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
@@ -591,10 +592,98 @@ class PulsedMeasurementGui(GUIBase):
 
         self.count_analog_channels()
         self.count_digital_channels()
+        
+        # plotwidgets of analysis tab
+        
+        # Get the image from the logic
+        # pulsed measurement tab
+#        self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+#        self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
+#        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+#        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+#        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
+#        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))        
+#
+#        # Add the display item to the xy VieWidget, which was defined in
+#        # the UI file.
+#        self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
+#        self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+#        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
+#        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
+#        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
+#        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
+#        self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
 
+
+        # Set the state button as ready button as default setting.
+        self._mw.idle_radioButton.click()
+
+        # Configuration of the comboWidget
+#        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
+#        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
         # set up the types of the columns and create a pattern based on
         # the desired settings:
 
+#        # Add Validators to InputWidgets
+        validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
+
+        # pulsed measurement tab
+        self._mw.frequency_InputWidget.setValidator(validator)
+        self._mw.power_InputWidget.setValidator(validator)
+        self._mw.analysis_period_InputWidget.setValidator(validator)
+        self._mw.numlaser_InputWidget.setValidator(validator2)
+        self._mw.taustart_InputWidget.setValidator(validator)
+        self._mw.tauincrement_InputWidget.setValidator(validator)
+        self._mw.signal_start_InputWidget.setValidator(validator2)
+        self._mw.signal_length_InputWidget.setValidator(validator2)
+        self._mw.reference_start_InputWidget.setValidator(validator2)
+        self._mw.reference_length_InputWidget.setValidator(validator2)
+        
+        #######################################################################
+        ##                      Connect signals                              ##
+        #######################################################################
+
+        # Connect the RadioButtons and connect to the events if they are clicked:
+        # pulsed measurement tab
+        self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
+        self._mw.run_radioButton.toggled.connect(self.run_clicked)
+        
+        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
+        self._mw.pull_data_pushButton.setEnabled(False)
+
+#        self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
+#        self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
+#        self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+        # sequence generator tab
+
+        
+        # Connect InputWidgets to events
+        # pulsed measurement tab
+#        self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+#        self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
+#        self._mw.taustart_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+#        self._mw.tauincrement_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+#        self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+#        self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+#        self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+#        self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+#        self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        # sequence generator tab
+#        self._mw.pg_timebase_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_mwfreq_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_mwpower_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_waittime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_lasertime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_taustart_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_tauend_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+#        self._mw.rabi_tauincrement_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
+        
+#        self.seq_parameters_changed()
+#        self.analysis_parameters_changed()
+#        
+#        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
+        
         #FIXME: Make the analog channel parameter chooseable in the settings.
 
 
@@ -782,7 +871,14 @@ class PulsedMeasurementGui(GUIBase):
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
-
+        self.idle_clicked()
+        # disconnect signals
+        self._mw.idle_radioButton.toggled.disconnect()
+        self._mw.run_radioButton.toggled.disconnect()
+        self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
+        self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
+        self._mw.numlaser_InputWidget.editingFinished.disconnect()
+        self._mw.lasertoshow_spinBox.valueChanged.disconnect()
         self._deactivat_main_ui(e)
         self._deactivate_block_ui(e)
 
@@ -1235,7 +1331,11 @@ class PulsedMeasurementGui(GUIBase):
 
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
-        self._pulse_analysis_logic.stop_pulsed_measurement()
+        self._pulsed_measurement_logic.stop_pulsed_measurement()
+        self._mw.frequency_InputWidget.setEnabled(True)
+        self._mw.power_InputWidget.setEnabled(True)
+        self._mw.binning_comboBox.setEnabled(True)
+        self._mw.pull_data_pushButton.setEnabled(False)
 
 
     def run_clicked(self, enabled):
@@ -1246,11 +1346,16 @@ class PulsedMeasurementGui(GUIBase):
 
         #Firstly stop any scan that might be in progress
         self._pulse_analysis_logic.stop_pulsed_measurement()
-        #Then if enabled. start a new odmr scan.
+        #Then if enabled. start a new scan.
         if enabled:
-            self._pulse_analysis_logic.start_pulsed_measurement()
+            self._mw.frequency_InputWidget.setEnabled(False)
+            self._mw.power_InputWidget.setEnabled(False)
+            self._mw.binning_comboBox.setEnabled(False)
+            self._mw.pull_data_pushButton.setEnabled(True)
+            self._pulsed_measurement_logic.start_pulsed_measurement()
 
-
+    def pull_data_clicked(self):
+        self._pulsed_measurement_logic.manually_pull_data()
 
 
 
@@ -1263,6 +1368,47 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the xy-matrix image
         '''
         self.signal_image.setData(self._pulse_analysis_logic.signal_plot_x, self._pulse_analysis_logic.signal_plot_y)
+        
+#    def seq_parameters_changed(self):
+#        laser_num = int(self._mw.numlaser_InputWidget.text())
+#        tau_start = int(self._mw.taustart_InputWidget.text())
+#        tau_incr = int(self._mw.tauincrement_InputWidget.text())
+#        mw_frequency = float(self._mw.frequency_InputWidget.text())
+#        mw_power = float(self._mw.power_InputWidget.text())
+#        self._mw.lasertoshow_spinBox.setRange(0, laser_num)
+#        laser_show = self._mw.lasertoshow_spinBox.value()
+#        if (laser_show > laser_num):
+#            self._mw.lasertoshow_spinBox.setValue(0)
+#            laser_show = self._mw.lasertoshow_spinBox.value()
+#        tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
+#        self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
+#        self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
+#        self._pulsed_measurement_logic.display_pulse_no = laser_show
+#        self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
+#        self._pulsed_measurement_logic.mykrowave_power = mw_power
+#        return
+#     
+#     
+#    def analysis_parameters_changed(self):
+#        sig_start = int(self._mw.signal_start_InputWidget.text())
+#        sig_length = int(self._mw.signal_length_InputWidget.text())
+#        ref_start = int(self._mw.reference_start_InputWidget.text())
+#        ref_length = int(self._mw.reference_length_InputWidget.text())
+#        timer_interval = float(self._mw.analysis_period_InputWidget.text())
+#        self.signal_start_bin = sig_start
+#        self.signal_width_bins = sig_length
+#        self.norm_start_bin = ref_start
+#        self.norm_width_bins = ref_length
+#        self.sig_start_line.setValue(sig_start)
+#        self.sig_end_line.setValue(sig_start+sig_length)
+#        self.ref_start_line.setValue(ref_start)
+#        self.ref_end_line.setValue(ref_start+ref_length)
+#        self._pulsed_measurement_logic.signal_start_bin = sig_start
+#        self._pulsed_measurement_logic.signal_width_bin = sig_length
+#        self._pulsed_measurement_logic.norm_start_bin = ref_start
+#        self._pulsed_measurement_logic.norm_width_bin = ref_length
+#        self._pulsed_measurement_logic.change_timer_interval(timer_interval)
+#        return
 
 
     def create_row(self):
