@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1215</width>
-    <height>771</height>
+    <width>944</width>
+    <height>663</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,69 +20,337 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
           <string>Analysis</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_6">
+          <item row="1" column="0">
+           <widget class="PlotWidget" name="signal_plot_ViewWidget">
+            <property name="autoFillBackground">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
-            <item row="1" column="1">
-             <widget class="QComboBox" name="current_sequence_ComboBox"/>
-            </item>
-            <item row="1" column="2">
-             <spacer name="horizontalSpacer">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>Pulse Sequence to run:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="4">
-             <widget class="QComboBox" name="fastcounter_bin_ComboBox"/>
-            </item>
-            <item row="1" column="3">
-             <widget class="QLabel" name="label">
-              <property name="text">
-               <string>FastCounter binning</string>
-              </property>
-             </widget>
-            </item>
             <item row="0" column="0">
-             <widget class="QRadioButton" name="idle_RadioButton">
-              <property name="text">
-               <string>Idle</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QRadioButton" name="run_RadioButton">
-              <property name="text">
-               <string>Run</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0" colspan="6">
-             <widget class="QGraphicsView" name="graphicsView"/>
-            </item>
-            <item row="3" column="0" colspan="6">
-             <widget class="QGraphicsView" name="graphicsView_2"/>
+             <layout class="QGridLayout" name="gridLayout_18">
+              <item row="3" column="0" colspan="2" alignment="Qt::AlignRight">
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>MW Power [dBm] :</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QComboBox" name="binning_comboBox"/>
+              </item>
+              <item row="3" column="2">
+               <widget class="QLineEdit" name="power_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>50</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="11">
+               <widget class="QLabel" name="label_15">
+                <property name="text">
+                 <string>Laser to show:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="12">
+               <widget class="QSpinBox" name="lasertoshow_spinBox"/>
+              </item>
+              <item row="2" column="0" colspan="2" alignment="Qt::AlignRight">
+               <widget class="QLabel" name="label_14">
+                <property name="text">
+                 <string>MW Frequency [MHz] :</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2" alignment="Qt::AlignRight">
+               <widget class="QLabel" name="label_16">
+                <property name="text">
+                 <string>Fast counter binning [ns] :</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QLineEdit" name="frequency_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QRadioButton" name="run_radioButton">
+                <property name="text">
+                 <string>Run</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QRadioButton" name="idle_radioButton">
+                <property name="text">
+                 <string>Idle</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="12">
+               <widget class="QLineEdit" name="taustart_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="11">
+               <widget class="QLabel" name="label_17">
+                <property name="text">
+                 <string>Number of laser pulses:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="11">
+               <widget class="QLabel" name="label_18">
+                <property name="text">
+                 <string>Tau increment:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="11">
+               <widget class="QLabel" name="label_19">
+                <property name="text">
+                 <string>Tau start:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="12">
+               <widget class="QLineEdit" name="tauincrement_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="12">
+               <widget class="QLineEdit" name="numlaser_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="8">
+               <widget class="QLabel" name="label_20">
+                <property name="text">
+                 <string>Start [bin]</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="9">
+               <widget class="QLabel" name="label_21">
+                <property name="text">
+                 <string>Length [bin]</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="7">
+               <widget class="QLabel" name="label_22">
+                <property name="text">
+                 <string>Reference (green):</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="7">
+               <widget class="QLabel" name="label_23">
+                <property name="text">
+                 <string>Signal (red):</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="10">
+               <spacer name="horizontalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="2" column="8">
+               <widget class="QLineEdit" name="signal_start_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="9">
+               <widget class="QLineEdit" name="signal_length_InputWidget">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="8">
+               <widget class="QLineEdit" name="reference_start_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="9">
+               <widget class="QLineEdit" name="reference_length_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="5">
+               <widget class="QLabel" name="elapsed_time_label">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>00:00:00:00</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="4">
+               <widget class="QLabel" name="label_24">
+                <property name="text">
+                 <string>Elapsed time:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="3">
+               <spacer name="horizontalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="3" column="6">
+               <spacer name="horizontalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="1" column="4">
+               <widget class="QLabel" name="label_25">
+                <property name="text">
+                 <string>Analysis period (s):</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="5">
+               <widget class="QLineEdit" name="analysis_period_InputWidget">
+                <property name="maximumSize">
+                 <size>
+                  <width>75</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="4">
+               <widget class="QPushButton" name="pull_data_pushButton">
+                <property name="text">
+                 <string>Pull data</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
+          </item>
+          <item row="2" column="0">
+           <widget class="PlotWidget" name="lasertrace_plot_ViewWidget">
+            <property name="autoFillBackground">
+             <bool>false</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -767,8 +1035,8 @@ last</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>98</width>
-                 <height>28</height>
+                 <width>896</width>
+                 <height>554</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -800,7 +1068,7 @@ last</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1215</width>
+     <width>944</width>
      <height>21</height>
     </rect>
    </property>
@@ -837,6 +1105,13 @@ last</string>
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
