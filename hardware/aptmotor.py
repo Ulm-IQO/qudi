@@ -313,8 +313,8 @@ class APTMotor(Base):
         if self.verbose:
             print('mbRel ', relDistance, c_float(relDistance))
         if not self.Connected:
+            # TODO: This should use our error message system
             print('Please connect first! Use initializeHardwareDevice')
-            # raise Exception('Please connect first! Use initializeHardwareDevice')
         self.mRel(relDistance - self.blCorr)
         self.mRel(self.blCorr)
         if self.verbose:
