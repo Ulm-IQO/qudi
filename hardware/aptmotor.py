@@ -308,7 +308,7 @@ class APTMotor(Base):
     def mbRel(self, relDistance):
         '''
         Moves the motor a relative distance specified
-        relDistance    float     Relative position desired
+        @param relDistance    float     Relative position desired
         '''
         if self.verbose:
             print('mbRel ', relDistance, c_float(relDistance))
