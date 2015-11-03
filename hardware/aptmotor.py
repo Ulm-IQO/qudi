@@ -324,7 +324,7 @@ class APTMotor(Base):
     def mbAbs(self, absPosition):
         '''
         Moves the motor to the Absolute position specified
-        absPosition    float     Position desired
+        @param absPosition    float     Position desired
         '''
         if self.verbose:
             print('mbAbs ', absPosition, c_float(absPosition))
