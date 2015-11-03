@@ -134,7 +134,9 @@ class APTMotor(Base):
         return True
 
         ''' Interfacing with the motor settings '''
+
     def getHardwareInformation(self):
+        ''' Get information from the hardware'''
         model = c_buffer(255)
         softwareVersion = c_buffer(255)
         hardwareNotes = c_buffer(255)
@@ -227,7 +229,7 @@ class APTMotor(Base):
     def mRel(self, relDistance):
         '''
         Moves the motor a relative distance specified
-        relDistance    float     Relative position desired
+        @param relDistance    float     Relative position desired
         '''
         if self.verbose: print( 'mRel ', relDistance, c_float(relDistance))
         if not self.Connected:
