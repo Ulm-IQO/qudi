@@ -113,7 +113,7 @@ class APTMotor(Base):
         '''
         Sets the Serial Number of the specified index
         '''
-        if self.verbose: 
+        if self.verbose:
             print("Serial is", SerialNum)
         self.SerialNum = c_long(SerialNum)
         return self.SerialNum.value
@@ -218,17 +218,20 @@ class APTMotor(Base):
         Rel = relative distance from current position.
         Abs = absolute position
         '''
+
     def getPos(self):
         '''
         Obtain the current absolute position of the stage
         '''
-        if self.verbose: print( 'getPos probing...')
+        if self.verbose:
+            print('getPos probing...')
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
 
         position = c_float()
         self.aptdll.MOT_GetPosition(self.SerialNum, pointer(position))
-        if self.verbose: print( 'getPos ', position.value)
+        if self.verbose:
+            print('getPos ', position.value)
         return position.value
 
     def mRel(self, relDistance):
@@ -236,13 +239,15 @@ class APTMotor(Base):
         Moves the motor a relative distance specified
         @param relDistance    float     Relative position desired
         '''
-        if self.verbose: print( 'mRel ', relDistance, c_float(relDistance))
+        if self.verbose:
+            print('mRel ', relDistance, c_float(relDistance))
         if not self.Connected:
-            print( 'Please connect first! Use initializeHardwareDevice')
-            #raise Exception('Please connect first! Use initializeHardwareDevice')
+            # TODO: This should use our error message system
+            print('Please connect first! Use initializeHardwareDevice')
         relativeDistance = c_float(relDistance)
         self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, True)
-        if self.verbose: print( 'mRel SUCESS')
+        if self.verbose:
+            print('mRel SUCESS')
         return True
 
     def mAbs(self, absPosition):
@@ -250,12 +255,14 @@ class APTMotor(Base):
         Moves the motor to the Absolute position specified
         absPosition    float     Position desired
         '''
-        if self.verbose: print( 'mAbs ', absPosition, c_float(absPosition))
+        if self.verbose:
+            print('mAbs ', absPosition, c_float(absPosition))
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         absolutePosition = c_float(absPosition)
         self.aptdll.MOT_MoveAbsoluteEx(self.SerialNum, absolutePosition, True)
-        if self.verbose: print( 'mAbs SUCESS')
+        if self.verbose:
+            print('mAbs SUCESS')
         return True
 
     def mcRel(self, relDistance, moveVel=0.5):
@@ -264,7 +271,8 @@ class APTMotor(Base):
         relDistance    float     Relative position desired
         moveVel        float     Motor velocity, mm/sec
         '''
-        if self.verbose: print( 'mcRel ', relDistance, c_float(relDistance), 'mVel', moveVel)
+        if self.verbose:
+            print('mcRel ', relDistance, c_float(relDistance), 'mVel', moveVel)
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         # Save velocities to reset after move
@@ -273,7 +281,8 @@ class APTMotor(Base):
         self.setVel(moveVel)
         self.mRel(relDistance)
         self.setVel(maxVel)
-        if self.verbose: print( 'mcRel SUCESS')
+        if self.verbose:
+            print('mcRel SUCESS')
         return True
 
     def mcAbs(self, absPosition, moveVel=0.5):
@@ -282,7 +291,8 @@ class APTMotor(Base):
         absPosition    float     Position desired
         moveVel        float     Motor velocity, mm/sec
         '''
-        if self.verbose: print( 'mcAbs ', absPosition, c_float(absPosition), 'mVel', moveVel)
+        if self.verbose:
+            print('mcAbs ', absPosition, c_float(absPosition), 'mVel', moveVel)
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         # Save velocities to reset after move
@@ -291,7 +301,8 @@ class APTMotor(Base):
         self.setVel(moveVel)
         self.mAbs(absPosition)
         self.setVel(maxVel)
-        if self.verbose: print( 'mcAbs SUCESS')
+        if self.verbose:
+            print('mcAbs SUCESS')
         return True
 
     def mbRel(self, relDistance):
@@ -299,13 +310,15 @@ class APTMotor(Base):
         Moves the motor a relative distance specified
         relDistance    float     Relative position desired
         '''
-        if self.verbose: print( 'mbRel ', relDistance, c_float(relDistance))
+        if self.verbose:
+            print('mbRel ', relDistance, c_float(relDistance))
         if not self.Connected:
-            print( 'Please connect first! Use initializeHardwareDevice')
-            #raise Exception('Please connect first! Use initializeHardwareDevice')
-        self.mRel(relDistance-self.blCorr)
+            print('Please connect first! Use initializeHardwareDevice')
+            # raise Exception('Please connect first! Use initializeHardwareDevice')
+        self.mRel(relDistance - self.blCorr)
         self.mRel(self.blCorr)
-        if self.verbose: print( 'mbRel SUCESS')
+        if self.verbose:
+            print('mbRel SUCESS')
         return True
 
     def mbAbs(self, absPosition):
@@ -313,17 +326,21 @@ class APTMotor(Base):
         Moves the motor to the Absolute position specified
         absPosition    float     Position desired
         '''
-        if self.verbose: print( 'mbAbs ', absPosition, c_float(absPosition))
+        if self.verbose:
+            print('mbAbs ', absPosition, c_float(absPosition))
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         if (absPosition < self.getPos()):
-            if self.verbose: print( 'backlash mAbs', absPosition - self.blCorr)
-            self.mAbs(absPosition-self.blCorr)
+            if self.verbose:
+                print('backlash mAbs', absPosition - self.blCorr)
+            self.mAbs(absPosition - self.blCorr)
         self.mAbs(absPosition)
-        if self.verbose: print( 'mbAbs SUCESS')
+        if self.verbose:
+            print('mbAbs SUCESS')
         return True
 
         ''' Miscelaneous '''
+
     def identify(self):
         '''
         Causes the motor to blink the Active LED
@@ -337,5 +354,6 @@ class APTMotor(Base):
         Use when exiting the program
         '''
         self.aptdll.APTCleanUp()
-        if self.verbose: print( 'APT cleaned up')
+        if self.verbose:
+            print('APT cleaned up')
         self.Connected = False
