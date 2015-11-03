@@ -113,7 +113,8 @@ class APTMotor(Base):
         '''
         Sets the Serial Number of the specified index
         '''
-        if self.verbose: print( "Serial is", SerialNum)
+        if self.verbose: 
+            print("Serial is", SerialNum)
         self.SerialNum = c_long(SerialNum)
         return self.SerialNum.value
 
@@ -123,11 +124,13 @@ class APTMotor(Base):
         You can only get the position of the motor and move the motor after it has been initialised.
         Once initiallised, it will not respond to other objects trying to control it, until released.
         '''
-        if self.verbose: print( 'initializeHardwareDevice serial', self.SerialNum)
+        if self.verbose:
+            print('initializeHardwareDevice serial', self.SerialNum)
         result = self.aptdll.InitHWDevice(self.SerialNum)
         if result == 0:
             self.Connected = True
-            if self.verbose: print( 'initializeHardwareDevice connection SUCESS')
+            if self.verbose:
+                print('initializeHardwareDevice connection SUCESS')
         # need some kind of error reporting here
         else:
             raise Exception('Connection Failed. Check Serial Number!')
@@ -156,7 +159,7 @@ class APTMotor(Base):
     def setStageAxisInformation(self, minimumPosition, maximumPosition):
         minimumPosition = c_float(minimumPosition)
         maximumPosition = c_float(maximumPosition)
-        units = c_long(1) #units of mm
+        units = c_long(1)  # units of mm
         # Get different pitches of lead screw for moving stages for different stages.
         pitch = c_float(self.config.get_pitch())
         self.aptdll.MOT_SetStageAxisInfo(self.SerialNum, minimumPosition, maximumPosition, units, pitch)
@@ -178,11 +181,12 @@ class APTMotor(Base):
         return velocityParameters
 
     def getVel(self):
-        if self.verbose: print( 'getVel probing...')
+        if self.verbose:
+            print('getVel probing...')
         minVel, acc, maxVel = self.getVelocityParameters()
-        if self.verbose: print( 'getVel maxVel')
+        if self.verbose:
+            print('getVel maxVel')
         return maxVel
-
 
     def setVelocityParameters(self, minVel, acc, maxVel):
         minimumVelocity = c_float(minVel)
@@ -192,7 +196,8 @@ class APTMotor(Base):
         return True
 
     def setVel(self, maxVel):
-        if self.verbose: print( 'setVel', maxVel)
+        if self.verbose:
+            print('setVel', maxVel)
         minVel, acc, oldVel = self.getVelocityParameters()
         self.setVelocityParameters(minVel, acc, maxVel)
         return True
