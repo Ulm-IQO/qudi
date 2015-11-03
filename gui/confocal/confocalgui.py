@@ -23,6 +23,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import numpy as np
 import time
 import os
