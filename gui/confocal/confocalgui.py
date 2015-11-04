@@ -689,23 +689,22 @@ class ConfocalGui(GUIBase):
     def get_xy_cb_range(self):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
-        # Exclude any zeros (which are typically due to unfinished scan)
-        xy_image_nonzero = self.xy_image.image[ np.nonzero(self.xy_image.image) ]
+        # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
+        if self._mw.xy_cb_manual_RadioButton.isChecked() or np.max(self.xy_image.image) == 0.0:
+            cb_min = self._mw.xy_cb_min_InputWidget.value()
+            cb_max = self._mw.xy_cb_max_InputWidget.value()
 
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # It only makes sense to do this if there is some nonzero data, and from PEP 8:
-        # "For sequences, (strings, lists, tuples), use the fact that empty sequences are false."
-        if self._mw.xy_cb_centiles_RadioButton.isChecked() and xy_image_nonzero.any():
+        # Otherwise, calculate cb range from percentiles.
+        else:
+            # Exclude any zeros (which are typically due to unfinished scan)
+            xy_image_nonzero = self.xy_image.image[ np.nonzero(self.xy_image.image) ]
+
+            # Read centile range
             low_centile = self._mw.xy_cb_low_centile_InputWidget.value()
             high_centile = self._mw.xy_cb_high_centile_InputWidget.value()
 
             cb_min = np.percentile( xy_image_nonzero, low_centile )
             cb_max = np.percentile( xy_image_nonzero, high_centile )
-
-        # Otherwise, take user-defined values.
-        else:
-            cb_min = self._mw.xy_cb_min_InputWidget.value()
-            cb_max = self._mw.xy_cb_max_InputWidget.value()
 
         cb_range = [cb_min, cb_max]
 
@@ -714,23 +713,22 @@ class ConfocalGui(GUIBase):
     def get_depth_cb_range(self):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
-        # Exclude any zeros (which are typically due to unfinished scan)
-        depth_image_nonzero = self.depth_image.image[ np.nonzero(self.depth_image.image) ]
+        # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
+        if self._mw.depth_cb_manual_RadioButton.isChecked() or np.max(self.depth_image.image) == 0.0:
+            cb_min = self._mw.depth_cb_min_InputWidget.value()
+            cb_max = self._mw.depth_cb_max_InputWidget.value()
 
-        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
-        # It only makes sense to do this if there is some nonzero data, and from PEP 8:
-        # "For sequences, (strings, lists, tuples), use the fact that empty sequences are false."
-        if self._mw.depth_cb_centiles_RadioButton.isChecked() and depth_image_nonzero.any():
+        # Otherwise, calculate cb range from percentiles.
+        else:
+            # Exclude any zeros (which are typically due to unfinished scan)
+            depth_image_nonzero = self.depth_image.image[ np.nonzero(self.depth_image.image) ]
+
+            # Read centile range
             low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
             high_centile = self._mw.depth_cb_high_centile_InputWidget.value()
 
             cb_min = np.percentile( depth_image_nonzero, low_centile )
             cb_max = np.percentile( depth_image_nonzero, high_centile )
-
-        # Otherwise, take user-defined values.
-        else:
-            cb_min = self._mw.depth_cb_min_InputWidget.value()
-            cb_max = self._mw.depth_cb_max_InputWidget.value()
 
         cb_range = [cb_min, cb_max]
         return cb_range
@@ -1356,7 +1354,7 @@ class ConfocalGui(GUIBase):
         self.update_depth_cb_range()
 
     def update_xy_cb_range(self):
-        """Redraw xy couour bar and scan image."""
+        """Redraw xy colour bar and scan image."""
         self.refresh_xy_colorbar()
         self.refresh_xy_image()
 
