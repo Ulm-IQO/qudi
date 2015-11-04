@@ -408,27 +408,12 @@
                  <enum>QAbstractItemView::ContiguousSelection</enum>
                 </property>
                 <property name="rowCount">
-                 <number>6</number>
+                 <number>1</number>
                 </property>
                 <property name="columnCount">
-                 <number>2</number>
+                 <number>0</number>
                 </property>
                 <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <column>
-                 <property name="text">
-                  <string>DCh0</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh1</string>
-                 </property>
-                </column>
                </widget>
               </item>
               <item row="0" column="1">
@@ -989,27 +974,12 @@ last</string>
                  <bool>false</bool>
                 </property>
                 <property name="rowCount">
-                 <number>6</number>
+                 <number>1</number>
                 </property>
                 <property name="columnCount">
-                 <number>2</number>
+                 <number>0</number>
                 </property>
                 <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <row/>
-                <column>
-                 <property name="text">
-                  <string>DCh0</string>
-                 </property>
-                </column>
-                <column>
-                 <property name="text">
-                  <string>DCh1</string>
-                 </property>
-                </column>
                </widget>
               </item>
              </layout>
