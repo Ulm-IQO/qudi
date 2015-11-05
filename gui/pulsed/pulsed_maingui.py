@@ -554,7 +554,8 @@ class PulsedMeasurementGui(GUIBase):
     ## declare connectors
     _in = { 'pulseanalysislogic': 'PulseAnalysisLogic',
             'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-            'savelogic': 'SaveLogic'
+            'savelogic': 'SaveLogic',
+            'pulsedmeasurementlogic': 'PulsedMeasurementLogic'
             }
 
     def __init__(self, manager, name, config, **kwargs):
@@ -582,8 +583,9 @@ class PulsedMeasurementGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
+
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        #self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']        
+        self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']
         self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
@@ -730,58 +732,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         self._mw.repeat_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
+        self.insert_parameters(column=0)
 
-        # insert parameter:
-        insert_at_col_pos = 0
-        for column, parameter in enumerate(self._param_block):
-
-            self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
-
-            # add the new properties to the whole column through delegate:
-            items_list = self._param_block[parameter][1:]
-
-            # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
-            self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self._mw.init_block_TableWidget.rowCount()):
-                # get the model, here are the data stored:
-                model = self._mw.init_block_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, insert_at_col_pos+column)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
-            self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
-
-            # add the new properties to the whole column through delegate:
-            items_list = self._param_block[parameter][1:]
-
-            # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
-            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
-                # get the model, here are the data stored:
-                model = self._mw.repeat_block_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, insert_at_col_pos+column)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
 
 
         # Modified by me
@@ -895,10 +847,10 @@ class PulsedMeasurementGui(GUIBase):
         # disconnect signals
         self._mw.idle_radioButton.toggled.disconnect()
         self._mw.run_radioButton.toggled.disconnect()
-        self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
-        self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
-        self._mw.numlaser_InputWidget.editingFinished.disconnect()
-        self._mw.lasertoshow_spinBox.valueChanged.disconnect()
+        #self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
+        #self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
+        #self._mw.numlaser_InputWidget.editingFinished.disconnect()
+        #self._mw.lasertoshow_spinBox.valueChanged.disconnect()
         self._deactivat_main_ui(e)
         self._deactivate_block_ui(e)
 
@@ -1074,6 +1026,62 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.repeat_block_TableWidget.setRowCount(1)
         self._mw.repeat_block_TableWidget.clearContents()
 
+
+    def insert_parameters(self, column):
+
+        # insert parameter:
+        insert_at_col_pos = column
+        for column, parameter in enumerate(self._param_block):
+
+            self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
+            self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+
+            # add the new properties to the whole column through delegate:
+            items_list = self._param_block[parameter][1:]
+
+            # extract the classname from the _param_block list to be able to deligate:
+            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
+            self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
+
+            # initialize the whole row with default values:
+            for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+                # get the model, here are the data stored:
+                model = self._mw.init_block_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, insert_at_col_pos+column)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = delegate.get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
+            self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
+            self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+
+            # add the new properties to the whole column through delegate:
+            items_list = self._param_block[parameter][1:]
+
+            # extract the classname from the _param_block list to be able to deligate:
+            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
+            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
+
+            # initialize the whole row with default values:
+            for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+                # get the model, here are the data stored:
+                model = self._mw.repeat_block_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, insert_at_col_pos+column)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = delegate.get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
+
     def count_digital_channels(self):
         """ Get the number of currently displayed digital channels.
 
@@ -1112,7 +1120,6 @@ class PulsedMeasurementGui(GUIBase):
                         'passed.'.format(num_d_ch), msgType='error')
             return
 
-
         # If no digital channels are needed, remove all available:
         if num_d_ch == 0:
             # count backwards and remove from the back the digital channels.
@@ -1120,12 +1127,33 @@ class PulsedMeasurementGui(GUIBase):
             # contain the string 'DCh':
             for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                 if 'DCh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                   self._mw.init_block_TableWidget.removeColumn(column)
+
+                    # save all columns afterwards in order to rearrange the
+                    # delegate, since it does not switch the column if one is
+                    # removed.
+                    delegate_items = []
+                    for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                    self._mw.init_block_TableWidget.removeColumn(column)
+
+                    for item,object in enumerate(delegate_items):
+                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item, object)
 
             # apply now the same for the repeated block:
             for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
                 if 'DCh' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-                   self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                    delegate_items = []
+                    for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                    self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                    for item,object in enumerate(delegate_items):
+                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
 
             self._num_d_ch = 0
 
@@ -1139,11 +1167,29 @@ class PulsedMeasurementGui(GUIBase):
 
                 for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                     if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                       self._mw.init_block_TableWidget.removeColumn(column)
+
+                        delegate_items = []
+                        for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
+                            delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                            # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                        self._mw.init_block_TableWidget.removeColumn(column)
+
+                        for item,object in enumerate(delegate_items):
+                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
 
                 for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
                     if search_text in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-                       self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                        delegate_items = []
+                        for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                            delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                            # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                        self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                        for item,object in enumerate(delegate_items):
+                            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
 
             self._num_d_ch = num_d_ch
 
@@ -1200,11 +1246,19 @@ class PulsedMeasurementGui(GUIBase):
                     # else insert_at_col_pos must be zero and here will be
                     # inserted
 
+                delegate_items = []
+                for item in range(insert_at_col_pos+1, self._mw.init_block_TableWidget.columnCount()+1):
+                    delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                    # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
                 # create the channels for the initial block
                 self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos)
                 self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos, QtGui.QTableWidgetItem())
                 self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos).setText('DCh{:d}'.format(curr_d_ch) )
                 self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos, 40)
+
+                for item,object in enumerate(delegate_items):
+                    self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
 
                 # add the new properties to the whole column through delegate:
                 items_list = self._param_d_ch['CheckBox'][1:]
@@ -1223,11 +1277,19 @@ class PulsedMeasurementGui(GUIBase):
                     # set initial values:
                     model.setData(index, ini_values[0], ini_values[1])
 
+                delegate_items = []
+                for item in range(insert_at_col_pos+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                    delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                    # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
                 # create the channels for the repeated block
                 self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos)
                 self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos, QtGui.QTableWidgetItem())
                 self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos).setText('DCh{:d}'.format(curr_d_ch) )
                 self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos, 40)
+
+                for item,object in enumerate(delegate_items):
+                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
 
                 # add the new properties to the whole column through delegate:
                 items_list = self._param_d_ch['CheckBox'][1:]
@@ -1305,12 +1367,30 @@ class PulsedMeasurementGui(GUIBase):
             # contain the string 'ACh':
             for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                 if 'ACh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                   self._mw.init_block_TableWidget.removeColumn(column)
+
+                    delegate_items = []
+                    for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                    self._mw.init_block_TableWidget.removeColumn(column)
+
+                    for item,object in enumerate(delegate_items):
+                        self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
 
             # apply now the same for the repeated block:
             for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
                 if 'ACh' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-                   self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                    delegate_items = []
+                    for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                    self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                    for item,object in enumerate(delegate_items):
+                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
 
             self._num_a_ch = 0
 
@@ -1324,12 +1404,29 @@ class PulsedMeasurementGui(GUIBase):
 
                 for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
                     if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                       self._mw.init_block_TableWidget.removeColumn(column)
+
+                        delegate_items = []
+                        for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
+                            delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                            # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                        self._mw.init_block_TableWidget.removeColumn(column)
+
+                        for item,object in enumerate(delegate_items):
+                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
 
                 for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
                     if search_text in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-                       self._mw.repeat_block_TableWidget.removeColumn(column)
 
+                        delegate_items = []
+                        for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                            delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                            # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
+                        self._mw.repeat_block_TableWidget.removeColumn(column)
+
+                        for item,object in enumerate(delegate_items):
+                            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item,object)
 
             self._num_a_ch = num_a_ch
 
@@ -1384,10 +1481,18 @@ class PulsedMeasurementGui(GUIBase):
 
                 for column, parameter in enumerate(self._param_a_ch):
 
+                    delegate_items = []
+                    for item in range(insert_at_col_pos+1, self._mw.init_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+
                     self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos+column)
                     self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
                     self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('ACh{:d}\n'.format(curr_a_ch) + parameter)
                     self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+
+                    for item, object in enumerate(delegate_items):
+                        self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
 
                     # add the new properties to the whole column through delegate:
                     items_list = self._param_a_ch[parameter][1:]
@@ -1408,10 +1513,18 @@ class PulsedMeasurementGui(GUIBase):
                         # set initial values:
                         model.setData(index, ini_values[0], ini_values[1])
 
+                    delegate_items = []
+                    for item in range(insert_at_col_pos+1, self._mw.repeat_block_TableWidget.columnCount()+1):
+                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
+                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+
                     self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos+column)
                     self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
                     self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('ACh{:d}\n'.format(curr_a_ch) + parameter)
                     self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+
+                    for item, object in enumerate(delegate_items):
+                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
 
                     # add the new properties to the whole column through delegate:
                     items_list = self._param_a_ch[parameter][1:]
