@@ -12,9 +12,9 @@ import time
 from collections import OrderedDict
 from core.base import Base
 from core.util.mutex import Mutex
-
-#the next import is only needed for the FastWrite method
-#import DTG_IO 
+import numpy as np
+import hdf5storage
+import copy
 
 
 class AWG(Base):
@@ -44,19 +44,27 @@ class AWG(Base):
             self.logMsg("This is AWG: Did not find >>awg_port<< in configuration.", msgType='error')
         
         self.max_samplerate = 50e9
+        self.samplerate = 25e9
+        self.amplitude = 0.25
+        self.loaded_sequence = None
+        self.use_sequencer = False
+        
+        self.waveform_directory_awg = ''
+        self.waveform_directory_host = ''
+
     
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
         # connect ethernet socket and FTP        
-        self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.connect((self.ip_address, self.port))
-        self.ftp = FTP(self.ip_address)
-        self.ftp.login()
-        self.ftp.cwd('/waves') # hardcoded default folder
-        
-        self.input_buffer = int(2 * 1024)
-        
+#        self.soc = socket(AF_INET, SOCK_STREAM)
+#        self.soc.connect((self.ip_address, self.port))
+#        self.ftp = FTP(self.ip_address)
+#        self.ftp.login()
+#        self.ftp.cwd('/waves') # hardcoded default folder
+#        
+#        self.input_buffer = int(2 * 1024)
+#        
         self.connected = True
         
     
@@ -64,12 +72,195 @@ class AWG(Base):
         '''Tasks that are required to be performed during deactivation of the module.
         '''        
         # Closes the connection to the AWG via ftp and the socket
-        self.tell('\n')
-        self.soc.close()
-        self.ftp.close()
+#        self.tell('\n')
+#        self.soc.close()
+#        self.ftp.close()
 
         self.connected = False
         pass
+    
+    def _write_to_matfile(self, sequence):
+        matcontent = {}
+        sample_arr, marker1_arr, marker2_arr = self._sample_sequence(sequence)
+            
+        matcontent[u'Waveform_Name_1'] = sequence.name # each key must be a unicode string
+        matcontent[u'Waveform_Data_1'] = sample_arr[0]
+        matcontent[u'Waveform_M1_1'] = marker1_arr[0]
+        matcontent[u'Waveform_M2_1'] = marker2_arr[0]
+        matcontent[u'Waveform_Sampling_Rate_1'] = self.samplerate
+        matcontent[u'Waveform_Amplitude_1'] = self.amplitude
+        
+        if marker1_arr.shape[0] == 2:
+            matcontent[u'Waveform_Name_2'] = sequence.name + '_Ch2'
+            matcontent[u'Waveform_Data_2'] = sample_arr[1]
+            matcontent[u'Waveform_M1_2'] = marker1_arr[1]
+            matcontent[u'Waveform_M2_2'] = marker2_arr[1]
+            matcontent[u'Waveform_Sampling_Rate_2'] = self.samplerate
+            matcontent[u'Waveform_Amplitude_2'] = self.amplitude
+        
+        hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
+        return
+        
+        
+    def generate_sampled_sequence(self, sequence):
+        self._write_to_matfile(sequence)            
+        return
+    
+    
+    def _refine_sequence(self, sequence):
+        sequence_ch1 = copy.deepcopy(sequence)
+        sequence_ch2 = copy.deepcopy(sequence)
+        for block, reps in sequence_ch1.block_list:
+            for element in block.element_list:
+                element.pulse_function = element.pulse_function[0]
+                element.marker_active = element.markers_on[0:2]
+                for key in element.parameters.keys():
+                    entry_length = len(element.parameters[key])
+                    element.parameters[key] = element.parameters[key][0:entry_length//2]
+        for block, reps in sequence_ch2.block_list:
+            for element in block.element_list:
+                element.pulse_function = element.pulse_function[1]
+                element.marker_active = element.markers_on[2:4]
+                for key in element.parameters.keys():
+                    entry_length = len(element.parameters[key])
+                    element.parameters[key] = element.parameters[key][entry_length//2:entry_length]
+        return sequence_ch1, sequence_ch2
+    
+    
+    
+    def _sample_sequence(self, sequence):
+        """ Calculates actual sample points given a Sequence.
+        """
+        arr_len = np.round(sequence.length_bins*1.01)
+        chnl_num = sequence.analogue_channels
+    
+        sample_arr = np.empty([chnl_num, arr_len])
+        marker1_arr = np.zeros([chnl_num, arr_len], dtype = bool)
+        marker2_arr = np.zeros([chnl_num, arr_len], dtype = bool)          
+
+        entry = 0
+        bin_offset = 0
+        for block, reps in sequence.block_list:
+            for rep_no in range(reps+1):
+                temp_sample_arr, temp_marker1_arr, temp_marker2_arr = self._sample_block(block, rep_no, bin_offset)
+                temp_len = temp_sample_arr.shape[1]
+                sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+                marker1_arr[:, entry:temp_len+entry] = temp_marker1_arr
+                marker2_arr[:, entry:temp_len+entry] = temp_marker2_arr
+                entry += temp_len
+                if sequence.rotating_frame:
+                    bin_offset = entry
+        # slice the sample array to cut off uninitialized entrys at the end
+        return sample_arr[:, :entry], marker1_arr[:, :entry], marker2_arr[:, :entry]
+    
+            
+    def _sample_block(self, block, iteration_no = 0, bin_offset = 0):
+        """ Calculates actual sample points given a Block.
+        """
+        chnl_num = block.analogue_channels
+        block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
+        arr_len = np.round(block_length_bins*1.01)
+        sample_arr = np.empty([chnl_num ,arr_len])
+        marker1_arr = np.zeros([chnl_num, arr_len], dtype = bool)
+        marker2_arr = np.zeros([chnl_num, arr_len], dtype = bool)
+        entry = 0
+        bin_offset_temp = bin_offset
+        for block_element in block.element_list:
+            temp_sample_arr, temp_marker1_arr, temp_marker2_arr = self._sample_block_element(block_element, iteration_no, bin_offset_temp)
+            temp_len = temp_sample_arr.shape[1]
+            sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+            marker1_arr[:, entry:temp_len+entry] = temp_marker1_arr
+            marker2_arr[:, entry:temp_len+entry] = temp_marker2_arr
+            entry += temp_len
+            bin_offset_temp = bin_offset + entry
+        # slice the sample array to cut off uninitialized entrys at the end
+        return sample_arr[:, :entry], marker1_arr[:, :entry], marker2_arr[:, :entry]
+            
+
+    def _sample_block_element(self, block_element, iteration_no = 0, bin_offset = 0):
+        """ Calculates actual sample points given a Block_Element.
+        """
+        chnl_num = block_element.analogue_channels
+        parameters = block_element.parameters
+        init_length_bins = block_element.init_length_bins
+        increment_bins = block_element.increment_bins
+        markers_on = block_element.markers_on
+        pulse_function = block_element.pulse_function
+            
+        element_length_bins = init_length_bins + (iteration_no*increment_bins)
+        sample_arr = np.empty([chnl_num, element_length_bins])
+        marker1_arr = np.empty([chnl_num, element_length_bins], dtype = bool)
+        marker2_arr = np.empty([chnl_num, element_length_bins], dtype = bool)
+        time_arr = (bin_offset + np.arange(element_length_bins)) / self.samplerate
+
+        for i, func_name in enumerate(pulse_function):
+            sample_arr[i] = self._math_function(func_name, time_arr, parameters[i])
+            marker1_arr[i] = np.full(element_length_bins, markers_on[0+i], dtype = bool)
+            marker2_arr[i] = np.full(element_length_bins, markers_on[1+i], dtype = bool)
+            
+        return sample_arr, marker1_arr, marker2_arr
+    
+    
+    def download_waveform(self, waveform_name):
+        pass
+    
+    def delete_waveform_from_awg(self, waveform_name):
+        pass
+        
+    def delete_waveform_from_host(self, waveform_name):
+        pass
+    
+    def change_waveform_directory_awg(self, dir_path):
+        self.waveform_directory_awg = dir_path
+        pass
+    
+    def change_waveform_directory_host(self, dir_path):
+        self.waveform_directory_host = dir_path
+        return
+    
+    
+    def _math_function(self, func_name, time_arr, parameters={}):
+        """ actual mathematical function of the block_elements.
+        parameters is a dictionary
+        """
+        if func_name == 'DC':
+            amp = parameters['amplitude'][0]
+            result_arr = np.full(len(time_arr), amp)
+            
+        elif func_name == 'idle':
+            result_arr = np.zeros(len(time_arr))
+            
+        elif func_name == 'sin':
+            amp = parameters['amplitude'][0]
+            freq = parameters['frequency'][0]
+            phase = 180*np.pi * parameters['phase'][0]
+            result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
+            
+        elif func_name == 'doublesin':
+            amp1 = parameters['amplitude'][0]
+            amp2 = parameters['amplitude'][1]
+            freq1 = parameters['frequency'][0]
+            freq2 = parameters['frequency'][1]
+            phase1 = 180*np.pi * parameters['phase'][0]
+            phase2 = 180*np.pi * parameters['phase'][1]
+            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
+            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
+            
+        elif func_name == 'triplesin':
+            amp1 = parameters['amplitude'][0]
+            amp2 = parameters['amplitude'][1]
+            amp3 = parameters['amplitude'][2]
+            freq1 = parameters['frequency'][0]
+            freq2 = parameters['frequency'][1]
+            freq3 = parameters['frequency'][2]
+            phase1 = 180*np.pi * parameters['phase'][0]
+            phase2 = 180*np.pi * parameters['phase'][1]
+            phase3 = 180*np.pi * parameters['phase'][2]
+            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
+            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
+            result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
+            
+        return result_arr
     
     def delete(self, filelist):
         

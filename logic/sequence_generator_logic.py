@@ -20,12 +20,14 @@ import os
 class Pulse_Block_Element():
     """Object representing a single atomic element of an AWG sequence, i.e. a waiting time, a sine wave, etc.
     """
-    def __init__(self, init_length_bins, is_tau, pulse_function = None, marker_active = None, parameters={}):
+    def __init__(self, init_length_bins, is_tau, analogue_channels, increment_bins = 0, pulse_function = None, marker_active = None, parameters={}):
         self.pulse_function = pulse_function
         self.init_length_bins = init_length_bins
-        self.marker_active = marker_active
+        self.markers_on = marker_active
         self.is_tau = is_tau
+        self.increment_bins = increment_bins
         self.parameters = parameters
+        self.analogue_channels = analogue_channels
 
 
 class Pulse_Block():
@@ -39,10 +41,12 @@ class Pulse_Block():
     def refresh_parameters(self):
         self.init_length_bins = 0
         self.increment_bins = 0
+        self.analogue_channels = 0
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
-            if elem.is_tau:
-                self.increment_bins += elem.parameters['increment_bins']
+            self.increment_bins += elem.increment_bins
+            if elem.analogue_channels > self.analogue_channels:
+                self.analogue_channels = elem.analogue_channels
         return
     
     def replace_element(self, position, element):
@@ -67,19 +71,20 @@ class Pulse_Block():
 class Pulse_Sequence():
     """Represents a sequence of Blocks in the AWG.
     Needs name and block_list (=[(Pulse_Block, repetitions), ...]) for initialization"""
-    def __init__(self, name, block_list, tau_array, digital_channels, analogue_channels, rotating_frame = True):
+    def __init__(self, name, block_list, tau_array, rotating_frame = True):
         self.name = name                        # block name
         self.block_list = block_list        # List of AWG_Block objects with repetition number
         self.tau_array = tau_array
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
-        self.analogue_channels = analogue_channels 
-        self.digital_channels = digital_channels
 
     def refresh_parameters(self):
         self.length_bins = 0
+        self.analogue_channels = 0
         for block, reps in self.block_list:
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
+            if block.analogue_channels > self.analogue_channels:
+                self.analogue_channels = block.analogue_channels
         return    
     
     def replace_block(self, position, block):
