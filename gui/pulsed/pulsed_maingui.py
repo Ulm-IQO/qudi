@@ -734,7 +734,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.insert_parameters(column=0)
 
-
+        self.keep_former_block_settings()
 
         # Modified by me
         self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -813,7 +813,7 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 10, 0, 2, 0.01, 5]
+        return [DoubleSpinBoxDelegate, 10, 0, 100000000, 0.01, 5]
 
     def _get_settings_dspinbox_inc(self):
         """ Get the custom setting for a general increment DoubleSpinBox object.
@@ -923,9 +923,9 @@ class PulsedMeasurementGui(GUIBase):
 
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
-
-        self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
-        self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
+        self._set_channels(num_d_ch=self._bs.digital_channels_SpinBox.value(), num_a_ch=self._bs.analog_channels_SpinBox.value())
+        # self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
+        # self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
 
     def keep_former_block_settings(self):
         """ Keep the old block settings and restores them in the gui. """
@@ -1101,219 +1101,170 @@ class PulsedMeasurementGui(GUIBase):
         self._num_d_ch = count_dch
         return count_dch
 
-    def _use_digital_ch(self, num_d_ch):
-        """ Set how much digital should be used.
 
-        @param int num_d_ch: Number of needed digital channels.
-
-        This method is based on the idea that digital channels are added or
-        removed subsequently and not at once, therefore you have to ensure that
-        this function is called by changing num_digital_channels
-        subsequentially. It should also be ensured that the number of channels
-        are not falling below 2 (that number is more or less arbitrary).
+    def set_d_ch(self, num_d_ch):
         """
 
+        @param num_d_ch: number of digital channels.
+        """
+        self._set_channels(num_d_ch=num_d_ch)
 
-        if (type(num_d_ch) is not int) or (num_d_ch < 0):
-            self.logMsg('A non-negativ number was expected as a digital '
-                        'channel, but a number of {0} was '
-                        'passed.'.format(num_d_ch), msgType='error')
-            return
+    def set_a_ch(self, num_a_ch):
+        """
 
-        # If no digital channels are needed, remove all available:
-        if num_d_ch == 0:
-            # count backwards and remove from the back the digital channels.
-            # It is crutial that the digital channels have a column name which
-            # contain the string 'DCh':
-            for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
-                if 'DCh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
+        @param num_a_ch: number of analog channels.
+        @return:
+        """
+        self._set_channels(num_a_ch=num_a_ch)
 
-                    # save all columns afterwards in order to rearrange the
-                    # delegate, since it does not switch the column if one is
-                    # removed.
-                    delegate_items = []
-                    for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
 
-                    self._mw.init_block_TableWidget.removeColumn(column)
+    def _set_channels(self, num_d_ch=None, num_a_ch=None):
+        """ General function which creates the needed columns.
 
-                    for item,object in enumerate(delegate_items):
-                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item, object)
+        @param num_d_ch:
+        @param num_a_ch:
 
-            # apply now the same for the repeated block:
-            for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
-                if 'DCh' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
+        If no argument is passed, the table is simply renewed.
+        """
 
-                    delegate_items = []
-                    for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
+        if num_d_ch is None:
+            num_d_ch = self._num_d_ch
 
-                    self._mw.repeat_block_TableWidget.removeColumn(column)
+        if num_a_ch is None:
+            num_a_ch = self._num_a_ch
 
-                    for item,object in enumerate(delegate_items):
-                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
+        for column in range(self._mw.init_block_TableWidget.columnCount()):
+            self._mw.init_block_TableWidget.setItemDelegateForColumn(column,None)
+            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column,None)
 
-            self._num_d_ch = 0
+        self._mw.init_block_TableWidget.setColumnCount(0)
+        self._mw.repeat_block_TableWidget.setColumnCount(0)
 
-        # If less digital channels are needed then already exist, remove those
-        # which are too much. Start in the remove process from the right:
-        elif num_d_ch < self._num_d_ch:
+        num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
+        # num_ch = num_a_d_ch + len(self._param_block)
+        #
+        #
+        self._mw.init_block_TableWidget.setColumnCount(num_a_d_ch)
+        self._mw.repeat_block_TableWidget.setColumnCount(num_a_d_ch)
 
-            for curr_d_ch in range(self._num_d_ch, num_d_ch-1, -1):
+        # if num_a_ch == 0:
+        #     for column in range(num_d_ch):
+        #         self._mw.init_block_TableWidget.insertColumn
 
-                search_text =  'DCh' + str(int(curr_d_ch))
+        num_a_to_create = num_a_ch
+        num_d_to_create = num_d_ch
 
-                for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
-                    if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
+        a_created = False
+        d_created = False
 
-                        delegate_items = []
-                        for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
-                            delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                            # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
+        column = 0
+        while (column < num_a_d_ch):
 
-                        self._mw.init_block_TableWidget.removeColumn(column)
+            if num_a_to_create == 0 or a_created:
 
-                        for item,object in enumerate(delegate_items):
-                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
+                self._mw.init_block_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+                self._mw.init_block_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create))
+                self._mw.init_block_TableWidget.setColumnWidth(column, 40)
 
-                for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
-                    if search_text in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-
-                        delegate_items = []
-                        for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                            delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                            # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                        self._mw.repeat_block_TableWidget.removeColumn(column)
-
-                        for item,object in enumerate(delegate_items):
-                            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
-
-            self._num_d_ch = num_d_ch
-
-        # if more digital channels are needed, then insert at maximum two
-        # digital channels after an analog channel to make the view more
-        # intuitive. If that is not possible then insert the digital channels
-        # one after another:
-        elif num_d_ch > self._num_d_ch:
-
-            # at this column position the new digital channel will be inserted
-            insert_at_col_pos = 0
-
-            # if digital channels are already existing, then search the highest
-            # one according to the name 'DCh<number>':
-            if self._num_d_ch > 0:
-                search_text = 'DCh{:d}'.format(self._num_d_ch-1)
-
-                # Find at which column position to insert the new columns.
-                for column in range(self._mw.init_block_TableWidget.columnCount()):
-                    if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                        # take into account that the analog channels have an
-                        # arbitrary number of parameters:
-                        insert_at_col_pos = column
-                        break
-
-            for curr_d_ch in range(self._num_d_ch, num_d_ch, 1):
-
-                # Check alorithm:
-                # check whether the next column after the digital channels
-                # belongs to a analog channel. If not (and the position belongs
-                # to a parameter column then insert the new channel at that
-                # position):
-
-                curr_col_text = self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos).text()
-                next_col_text = self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos + 1).text()
-
-                if 'ACh' in next_col_text:
-                    next_col_text = self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos + len(self._param_a_ch)).text()
-
-                    if insert_at_col_pos == 0:
-                        insert_at_col_pos = insert_at_col_pos + len(self._param_a_ch)
-                    else:
-                        prev_col_text = self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos-1).text()
-                        if 'DCh' in prev_col_text:
-                            insert_at_col_pos = insert_at_col_pos + len(self._param_a_ch) + 1
-                        else:
-                            insert_at_col_pos = insert_at_col_pos + 1
-                else:
-
-                    if insert_at_col_pos != 0:
-                        insert_at_col_pos = insert_at_col_pos + 1
-                    elif 'DCh' in curr_col_text:
-                        insert_at_col_pos = insert_at_col_pos + 1
-                    # else insert_at_col_pos must be zero and here will be
-                    # inserted
-
-                delegate_items = []
-                for item in range(insert_at_col_pos+1, self._mw.init_block_TableWidget.columnCount()+1):
-                    delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                    # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                # create the channels for the initial block
-                self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos)
-                self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos, QtGui.QTableWidgetItem())
-                self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos).setText('DCh{:d}'.format(curr_d_ch) )
-                self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos, 40)
-
-                for item,object in enumerate(delegate_items):
-                    self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
-
-                # add the new properties to the whole column through delegate:
                 items_list = self._param_d_ch['CheckBox'][1:]
                 checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget, items_list)
-                self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos, checkDelegate)
+                self._mw.init_block_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
-                # initialize the whole row with default values:
-                for row_num in range(self._mw.init_block_TableWidget.rowCount()):
-                    # get the model, here are the data stored:
-                    model = self._mw.init_block_TableWidget.model()
-                    # get the corresponding index of the current element:
-                    index = model.index(row_num, insert_at_col_pos)
-                    # get the initial values of the delegate class which was
-                    # uses for this column:
-                    ini_values = checkDelegate.get_initial_value()
-                    # set initial values:
-                    model.setData(index, ini_values[0], ini_values[1])
+                self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+                self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create) )
+                self._mw.repeat_block_TableWidget.setColumnWidth(column, 40)
 
-                delegate_items = []
-                for item in range(insert_at_col_pos+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                    delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                    # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                # create the channels for the repeated block
-                self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos)
-                self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos, QtGui.QTableWidgetItem())
-                self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos).setText('DCh{:d}'.format(curr_d_ch) )
-                self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos, 40)
-
-                for item,object in enumerate(delegate_items):
-                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
-
-                # add the new properties to the whole column through delegate:
                 items_list = self._param_d_ch['CheckBox'][1:]
                 checkDelegate = CheckBoxDelegate(self._mw.repeat_block_TableWidget, items_list)
-                self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos, checkDelegate)
+                self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
-                # initialize the whole row with default values:
-                for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
-                    # get the model, here are the data stored:
-                    model = self._mw.repeat_block_TableWidget.model()
-                    # get the corresponding index of the current element:
-                    index = model.index(row_num, insert_at_col_pos)
-                    # get the initial values of the delegate class which was
-                    # uses for this column:
-                    ini_values = checkDelegate.get_initial_value()
-                    # set initial values:
-                    model.setData(index, ini_values[0], ini_values[1])
+                if not d_created and num_d_to_create != 1:
+                    d_created = True
+                else:
+                    a_created = False
+                    d_created = False
 
-            self._num_d_ch = num_d_ch
+                num_d_to_create = num_d_to_create - 1
+                column = column + 1
 
-        # in all other cases nothing should have changed, this case is entered
-        # if num_d_ch == self._num_d_ch
-        else:
-            return
+            else:
+                if num_d_to_create>0:
+                    a_created = True
+                for param_pos, parameter in enumerate(self._param_a_ch):
+
+                    # initial block:
+                    self._mw.init_block_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                    self._mw.init_block_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
+                    self._mw.init_block_TableWidget.setColumnWidth(column+param_pos, 70)
+
+                    # add the new properties to the whole column through delegate:
+                    items_list = self._param_a_ch[parameter][1:]
+
+                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
+                    self._mw.init_block_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+
+                    # repeated block:
+                    self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                    self._mw.repeat_block_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
+                    self._mw.repeat_block_TableWidget.setColumnWidth(column+param_pos, 70)
+
+                    # add the new properties to the whole column through delegate:
+                    items_list = self._param_a_ch[parameter][1:]
+
+                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
+                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+
+                column = column + len(self._param_a_ch)
+                num_a_to_create = num_a_to_create - 1
+
+
+
+        self._num_a_ch = num_a_ch
+        self._num_d_ch = num_d_ch
+        self.insert_parameters(num_a_d_ch)
+
+        self.initialize_row_init_block(0,self._mw.init_block_TableWidget.rowCount())
+        self.initialize_row_repeat_block(0,self._mw.repeat_block_TableWidget.rowCount())
+
+    def initialize_row_init_block(self, start_row, stop_row=None):
+
+        if stop_row is None:
+            stop_row = start_row +1
+
+        for col_num in range(self._mw.init_block_TableWidget.columnCount()):
+
+            for row_num in range(start_row,stop_row):
+                # get the model, here are the data stored:
+                model = self._mw.init_block_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = self._mw.init_block_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
+
+    def initialize_row_repeat_block(self, start_row, stop_row=None):
+
+        if stop_row is None:
+            stop_row = start_row +1
+
+        for col_num in range(self._mw.repeat_block_TableWidget.columnCount()):
+
+            for row_num in range(start_row,stop_row):
+                # get the model, here are the data stored:
+                model = self._mw.repeat_block_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = self._mw.repeat_block_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
 
     def count_analog_channels(self):
         """ Get the number of currently displayed analog channels.
@@ -1340,221 +1291,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._num_a_ch = count_a_ch
         return self._num_a_ch
-
-    def _use_analog_channel(self, num_a_ch):
-        """ Set how much analog should be used.
-
-        @param int num_a_ch: number of analog channels you want to use.
-
-        If digital channels are already present, then the analog channels are
-        inserted in the order of having two digital channels between analog
-        channels. If no or not enough digital channels are available then the
-        analog channels are inserted one after the other.
-        """
-
-
-        if (type(num_a_ch) is not int) or (num_a_ch < 0):
-            self.logMsg('The number for the analog channels was expected to '
-                        'be greater then 0 but a number of {0} was '
-                        'passed.'.format(num_a_ch), msgType='error')
-            return
-
-        # If no analog channels are needed, remove all available:
-        if num_a_ch == 0:
-            # count backwards and remove from the back the analog parameters:
-            # go through the initial block of the table widget first.
-            # It is crutial that the analog channels have a column name which
-            # contain the string 'ACh':
-            for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
-                if 'ACh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-
-                    delegate_items = []
-                    for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                    self._mw.init_block_TableWidget.removeColumn(column)
-
-                    for item,object in enumerate(delegate_items):
-                        self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
-
-            # apply now the same for the repeated block:
-            for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
-                if 'ACh' in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-
-                    delegate_items = []
-                    for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                    self._mw.repeat_block_TableWidget.removeColumn(column)
-
-                    for item,object in enumerate(delegate_items):
-                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item, object)
-
-            self._num_a_ch = 0
-
-        # If less analog channels are needed then already exist, remove those
-        # which are too much. Start in the remove process from the right:
-        elif num_a_ch < self._num_a_ch:
-
-            for curr_a_ch in range(self._num_a_ch, num_a_ch-1, -1):
-
-                search_text =  'ACh' + str(int(curr_a_ch))
-
-                for column in range(self._mw.init_block_TableWidget.columnCount()-1, -1, -1):
-                    if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-
-                        delegate_items = []
-                        for item in range(column+1, self._mw.init_block_TableWidget.columnCount()+1):
-                            delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                            # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                        self._mw.init_block_TableWidget.removeColumn(column)
-
-                        for item,object in enumerate(delegate_items):
-                            self._mw.init_block_TableWidget.setItemDelegateForColumn(column+item,object)
-
-                for column in range(self._mw.repeat_block_TableWidget.columnCount()-1, -1, -1):
-                    if search_text in self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).text():
-
-                        delegate_items = []
-                        for item in range(column+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                            delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                            # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                        self._mw.repeat_block_TableWidget.removeColumn(column)
-
-                        for item,object in enumerate(delegate_items):
-                            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+item,object)
-
-            self._num_a_ch = num_a_ch
-
-        # if more analog channels are needed, then insert each analog channel
-        # after two digital channel to make the view more intuitive. If that is
-        # not possible then insert the analog channels one after another:
-        elif num_a_ch > self._num_a_ch:
-
-            # At first the position has to be determined where the first
-            # insert will take place and from that all others should be
-            # added accordingliy.
-
-            # at this column position the new analog channel will be inserted
-            insert_at_col_pos = 0
-
-            # if analog channels are already existing, then search the highest
-            # one according to the name 'ACh<number>':
-            if self._num_a_ch > 0:
-                search_text = 'ACh{:d}'.format(self._num_a_ch-1)
-
-                # Find at which column position to insert the new columns.
-                for column in range(self._mw.init_block_TableWidget.columnCount()):
-                    if search_text in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
-                        # take into account that the analog channels have an
-                        # arbitrary number of parameters:
-                        insert_at_col_pos = column + len(self._param_a_ch)
-                        break
-
-            for curr_a_ch in range(self._num_a_ch, num_a_ch, 1):
-
-                # Check algorithm:
-                # check whether the next two columns after the analog channels
-                # belong to a digital channel. If not (and the position belongs
-                # to a parameter column then insert the new channel at that
-                # position):
-
-                for next_column in range(2):
-
-                    column_text = self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos + next_column).text()
-
-                    if 'DCh' not in column_text:
-                        insert_at_col_pos = insert_at_col_pos + next_column
-                        two_d_ch_after = False
-                        break
-                    else:
-                        two_d_ch_after = True
-
-                if two_d_ch_after and (insert_at_col_pos != 0):
-                    insert_at_col_pos = insert_at_col_pos + 2
-
-
-
-                for column, parameter in enumerate(self._param_a_ch):
-
-                    delegate_items = []
-                    for item in range(insert_at_col_pos+1, self._mw.init_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.init_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.init_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                    self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos+column)
-                    self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-                    self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('ACh{:d}\n'.format(curr_a_ch) + parameter)
-                    self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
-
-                    for item, object in enumerate(delegate_items):
-                        self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
-
-                    # add the new properties to the whole column through delegate:
-                    items_list = self._param_a_ch[parameter][1:]
-
-                    # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
-                    self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-                    # initialize the whole row with default values:
-                    for row_num in range(self._mw.init_block_TableWidget.rowCount()):
-                        # get the model, here are the data stored:
-                        model = self._mw.init_block_TableWidget.model()
-                        # get the corresponding index of the current element:
-                        index = model.index(row_num, insert_at_col_pos+column)
-                        # get the initial values of the delegate class which was
-                        # uses for this column:
-                        ini_values = delegate.get_initial_value()
-                        # set initial values:
-                        model.setData(index, ini_values[0], ini_values[1])
-
-                    delegate_items = []
-                    for item in range(insert_at_col_pos+1, self._mw.repeat_block_TableWidget.columnCount()+1):
-                        delegate_items.append(self._mw.repeat_block_TableWidget.itemDelegateForColumn(item))
-                        # self._mw.repeat_block_TableWidget.setItemDelegateForColumn(item, None)
-
-                    self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos+column)
-                    self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-                    self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('ACh{:d}\n'.format(curr_a_ch) + parameter)
-                    self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
-
-                    for item, object in enumerate(delegate_items):
-                        self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+item,object)
-
-                    # add the new properties to the whole column through delegate:
-                    items_list = self._param_a_ch[parameter][1:]
-
-                    # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
-                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-                    # initialize the whole row with default values:
-                    for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
-                        # get the model, here are the data stored:
-                        model = self._mw.repeat_block_TableWidget.model()
-                        # get the corresponding index of the current element:
-                        index = model.index(row_num, insert_at_col_pos+column)
-                        # get the initial values of the delegate class which was
-                        # uses for this column:
-                        ini_values = delegate.get_initial_value()
-                        # set initial values:
-                        model.setData(index, ini_values[0], ini_values[1])
-
-
-                insert_at_col_pos = insert_at_col_pos + len(self._param_a_ch)
-
-            self._num_a_ch = num_a_ch
-
-        # in all other cases nothing should have changed, this case is entered
-        # if num_a_ch == self._num_a_ch
-        else:
-            return
-
 
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
