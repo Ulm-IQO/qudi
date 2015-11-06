@@ -799,7 +799,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         return [DoubleSpinBoxDelegate, 1, 0, 2, 0.01, 5]
 
-
     #FIXME: connect the current default value of length of the dspinbox with
     #       the minimal sequence length and the sampling rate.
     #FIXME: Later that should be able to round up the values directly within
@@ -825,15 +824,11 @@ class PulsedMeasurementGui(GUIBase):
         """
         return [DoubleSpinBoxDelegate, 0, 0, 2, 0.01, 5]
 
-
-
     def get_data_init(self, row, column):
         """ Simplified wrapper function to get the data from the init table """
         tab =self._mw.init_block_TableWidget
         data = tab.model().data(tab.model().index(row, column))
         return data
-
-
 
     def deactivation(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed measurement GUI.
@@ -933,31 +928,25 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
         self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
 
-
-
-
-
-
     def add_init_row_before_selected(self):
         """
         """
         selected_row = self._mw.init_block_TableWidget.currentRow()
 
         self._mw.init_block_TableWidget.insertRow(selected_row)
-
+        self.initialize_row_init_block(selected_row)
 
 
     def add_n_rows(self, row_pos, ):
         pass
 
-
-
     def add_init_row_after_last(self):
         """
 
         """
-        pass
-
+        number_of_rows = self._mw.init_block_TableWidget.rowCount()
+        self._mw.init_block_TableWidget.setRowCount(number_of_rows+1)
+        self.initialize_row_init_block(number_of_rows)
 
     def del_init_row_selected(self):
         """
@@ -967,7 +956,6 @@ class PulsedMeasurementGui(GUIBase):
         row_to_remove = self._mw.init_block_TableWidget.currentRow()
         self._mw.init_block_TableWidget.removeRow(row_to_remove)
         #self.update_sequence_parameters()
-        pass
 
     def del_init_row_last(self):
         """
@@ -977,7 +965,6 @@ class PulsedMeasurementGui(GUIBase):
         # therefore one has to reduce the value by 1:
         self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
         #self.update_sequence_parameters()
-        pass
 
     def clear_init_table(self):
         """
@@ -985,20 +972,22 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.init_block_TableWidget.setRowCount(1)
         self._mw.init_block_TableWidget.clearContents()
-
-
+        self.initialize_row_init_block(0)
 
     def add_repeat_row_after_last(self):
         """
         """
-        pass
+        number_of_rows = self._mw.repeat_block_TableWidget.rowCount()
+        self._mw.repeat_block_TableWidget.setRowCount(number_of_rows+1)
+        self.initialize_row_repeat_block(number_of_rows)
 
     def add_repeat_row_before_selected(self):
         """
         """
+        selected_row = self._mw.repeat_block_TableWidget.currentRow()
 
-        pass
-
+        self._mw.repeat_block_TableWidget.insertRow(selected_row)
+        self.initialize_row_repeat_block(selected_row)
 
     def del_repeat_row_selected(self):
         """
@@ -1007,7 +996,6 @@ class PulsedMeasurementGui(GUIBase):
         row_to_remove = self._mw.repeat_block_TableWidget.currentRow()
         self._mw.repeat_block_TableWidget.removeRow(row_to_remove)
         #self.update_sequence_parameters()
-        pass
 
     def del_repeat_row_last(self):
         """
@@ -1017,7 +1005,6 @@ class PulsedMeasurementGui(GUIBase):
         # therefore one has to reduce the value by 1:
         self._mw.repeat_block_TableWidget.removeRow(number_of_rows-1)
         #self.update_sequence_parameters()
-        pass
 
     def clear_repeat_table(self):
         """
@@ -1025,7 +1012,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.repeat_block_TableWidget.setRowCount(1)
         self._mw.repeat_block_TableWidget.clearContents()
-
+        self.initialize_row_repeat_block(0)
 
     def insert_parameters(self, column):
 
@@ -1081,7 +1068,6 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-
     def count_digital_channels(self):
         """ Get the number of currently displayed digital channels.
 
@@ -1100,7 +1086,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._num_d_ch = count_dch
         return count_dch
-
 
     def set_d_ch(self, num_d_ch):
         """
@@ -1141,15 +1126,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.repeat_block_TableWidget.setColumnCount(0)
 
         num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
-        # num_ch = num_a_d_ch + len(self._param_block)
-        #
-        #
+
         self._mw.init_block_TableWidget.setColumnCount(num_a_d_ch)
         self._mw.repeat_block_TableWidget.setColumnCount(num_a_d_ch)
-
-        # if num_a_ch == 0:
-        #     for column in range(num_d_ch):
-        #         self._mw.init_block_TableWidget.insertColumn
 
         num_a_to_create = num_a_ch
         num_d_to_create = num_d_ch
@@ -1219,8 +1198,6 @@ class PulsedMeasurementGui(GUIBase):
                 column = column + len(self._param_a_ch)
                 num_a_to_create = num_a_to_create - 1
 
-
-
         self._num_a_ch = num_a_ch
         self._num_d_ch = num_d_ch
         self.insert_parameters(num_a_d_ch)
@@ -1229,7 +1206,12 @@ class PulsedMeasurementGui(GUIBase):
         self.initialize_row_repeat_block(0,self._mw.repeat_block_TableWidget.rowCount())
 
     def initialize_row_init_block(self, start_row, stop_row=None):
+        """
 
+        @param start_row:
+        @param stop_row:
+
+        """
         if stop_row is None:
             stop_row = start_row +1
 
@@ -1246,9 +1228,12 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-
     def initialize_row_repeat_block(self, start_row, stop_row=None):
+        """
+        @param start_row:
+        @param stop_row:
 
+        """
         if stop_row is None:
             stop_row = start_row +1
 
@@ -1264,7 +1249,6 @@ class PulsedMeasurementGui(GUIBase):
                 ini_values = self._mw.repeat_block_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
-
 
     def count_analog_channels(self):
         """ Get the number of currently displayed analog channels.
@@ -1299,7 +1283,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.power_InputWidget.setEnabled(True)
         self._mw.binning_comboBox.setEnabled(True)
         self._mw.pull_data_pushButton.setEnabled(False)
-
 
     def run_clicked(self, enabled):
         """ Manages what happens if odmr scan is started.
@@ -1462,7 +1445,6 @@ class PulsedMeasurementGui(GUIBase):
             # calculate the current sequence parameters
             self.update_sequence_parameters()
         return
-
 
     def update_sequence_parameters(self):
         """ Initialize the matrix creation and update the logic. """
