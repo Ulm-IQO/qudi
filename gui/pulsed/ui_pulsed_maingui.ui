@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -1023,7 +1023,135 @@ last</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_15">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_12"/>
+           <layout class="QGridLayout" name="gridLayout_12">
+            <item row="0" column="0">
+             <layout class="QGridLayout" name="gridLayout_22">
+              <item row="1" column="0">
+               <layout class="QGridLayout" name="gridLayout_23">
+                <item row="3" column="1">
+                 <widget class="QDoubleSpinBox" name="normalize_time_window_SpinBox">
+                  <property name="maximum">
+                   <double>9999999.990000000223517</double>
+                  </property>
+                  <property name="value">
+                   <double>1000.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QDoubleSpinBox" name="normalize_safety_SpinBox">
+                  <property name="maximum">
+                   <double>99999999.989999994635582</double>
+                  </property>
+                  <property name="value">
+                   <double>5.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QDoubleSpinBox" name="auto_analyzer_time_SpinBox">
+                  <property name="maximum">
+                   <double>999999.989999999990687</double>
+                  </property>
+                  <property name="value">
+                   <double>300.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="auto_analyzer_time_PushButton">
+                  <property name="text">
+                   <string>Auto</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="analyze_time_window_Label">
+                  <property name="text">
+                   <string>analyze time window (ns)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="auto_analyzer_time_Label">
+                  <property name="text">
+                   <string>auto analyzer time:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="do_average_normalization_Label">
+                  <property name="text">
+                   <string>Do averaged normalization?</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="normalize_time_window_Label">
+                  <property name="text">
+                   <string>Normalize time window (ns)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="normalize_safety_Label">
+                  <property name="text">
+                   <string>Normalize safety (ns)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="max_offset_Label">
+                  <property name="text">
+                   <string>Max offset (bins)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QSpinBox" name="max_offset_SpinBox">
+                  <property name="maximum">
+                   <number>99999999</number>
+                  </property>
+                  <property name="value">
+                   <number>500</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="do_average_normalization_CheckBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="0" column="0">
+               <widget class="QRadioButton" name="analysis1_RadioButton">
+                <property name="text">
+                 <string>Analysis1</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QComboBox" name="pulses_ComboBox"/>
+              </item>
+              <item row="4" column="1">
+               <widget class="PlotWidget" name="laser_trace_PlotWidget"/>
+              </item>
+              <item row="0" column="1">
+               <widget class="QRadioButton" name="analysis2_RadioButton">
+                <property name="text">
+                 <string>Analysis 2</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="PlotWidget" name="signal_to_ratio_PlotWidget"/>
+              </item>
+             </layout>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
