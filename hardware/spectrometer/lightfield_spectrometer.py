@@ -13,10 +13,20 @@ from hardware.spectrometer.spectrometer_interface import SpectrometerInterface
 import os
 import sys
 import time
+from enum import Enum
+import numpy as np
+
+# .Net imports
 import clr
 import System
 from System import EventHandler, EventArgs
 import System.Collections.Generic as col
+
+
+class LFImageMode(Enum):
+    LFImageModeNormal = 1
+    LFImageModePreview = 2
+    LFImageModeBackground = 3
 
 
 class Lightfield(Base, SpectrometerInterface):
@@ -78,6 +88,7 @@ class Lightfield(Base, SpectrometerInterface):
         print('Prev Exp', self.prevExperimentName)
         #self.getExperimentList()
         #self.openExperiment(name)
+        self.lastframe = list()
 
     def deactivation(self, e):
         if hasattr(self, 'au'):
@@ -91,7 +102,18 @@ class Lightfield(Base, SpectrometerInterface):
         del self.au
 
     def frameCallback(self, sender, args):
-        pass
+        print(sender)
+        print(args)
+        dataSet = args.ImageDataSet
+        frame = dataSet.GetFrame(0, 0)
+        arr = frame.GetData()
+        print(arr)
+        print(arr[0])
+        print(frame.Format)
+
+        dims = [frame.Width, frame.Height]
+        print(dims)
+        self.lastframe = list(arr)
 
     def setAcquisitionComplete(self, sender, args):
         pass
@@ -107,7 +129,11 @@ class Lightfield(Base, SpectrometerInterface):
         pass
 
     def startAcquire(self):
-        pass
+        self.calibration = self.exp.SystemColumnCalibration
+        self.calerrors = self.exp.SystemColumnCalibrationErrors
+        self.intcal = self.exp.SystemIntensityCalibration
+        if self.exp.IsReadyToRun:
+            self.exp.Acquire()
 
     def setFilePathAndName(self, autoIncrement):
         pass
@@ -124,3 +150,5 @@ class Lightfield(Base, SpectrometerInterface):
     def setShutter(self, isOpen):
         pass
 
+    def recordSpectrum(self):
+        pass
