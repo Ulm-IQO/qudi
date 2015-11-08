@@ -326,6 +326,7 @@ class PulsedMeasurementGui(GUIBase):
         
         
     def check_input_with_samplerate(self):
+        pass
         
     
     def save_clicked(self):

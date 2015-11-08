@@ -181,6 +181,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
+        print ("test")
         with self.threadlock:
             if self.getState() == 'locked':
                 self.timer.stop()
