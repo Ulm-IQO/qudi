@@ -42,14 +42,13 @@ class AWG(Base, PulserInterface):
         else:
             self.logMsg("This is AWG: Did not find >>awg_port<< in configuration.", msgType='error')
         
-        self.max_samplerate = 50e9
         self.samplerate = 25e9
         self.amplitude = 0.25
         self.loaded_sequence = None
         self.use_sequencer = False
         
-        self.waveform_directory_awg = ''
-        self.waveform_directory_host = ''
+        self.waveform_directory = ''
+        self.is_output_enabled = False
 
     
     def activation(self, e):
@@ -117,6 +116,19 @@ class AWG(Base, PulserInterface):
             # TODO: Download waveform to AWG and load it into channels
             self._send_file(sequence.name)
             self.load_sequence(sequence.name)
+        return 0
+    
+    def load_sequence(self, seq_name, channel = None):
+        """ Loads a sequence to the specified channel
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @param str seq_name: The name of the sequence to be loaded
+        @param int channel: The channel for the sequence to be loaded into if not already specified in the sequence itself
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        # TODO: Actually load the sequence into the channel(s)
+        self.loaded_sequence = seq_name
         return 0
     
     def _sample_sequence(self, sequence):
@@ -191,13 +203,36 @@ class AWG(Base, PulserInterface):
             
         return sample_arr, marker1_arr, marker2_arr
     
+    def set_sampling_rate(self, sampling_rate):
+        """ Set the sampling rate of the pulse generator hardware
+        
+        @param float sampling_rate: The sampling rate to be set (in Hz)
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        # TODO: Actually change the sampling rate
+        self.samplerate = sampling_rate
+        return 0
+        
+    def set_amplitude(self, channel, amplitude):
+        """ Set the output amplitude of the pulse generator hardware.
+        Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
+        
+        @param int channel: The channel to be reconfigured
+        @param float amplitude: The peak-to-peak amplitude the channel should be set to (in V)
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        # TODO: Actually change the amplitude
+        self.amplitude = amplitude
+        return 0
     
     def _send_file(self, filename):
-        pass
+        return 0
         
     
-    def change_waveform_directory_awg(self, dir_path):
-        self.waveform_directory_awg = dir_path
+    def change_waveform_directory(self, dir_path):
+        self.waveform_directory = dir_path
         pass
     
     
