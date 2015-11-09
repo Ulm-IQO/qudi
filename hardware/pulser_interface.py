@@ -2,7 +2,6 @@
 
 
 from core.util.customexceptions import InterfaceImplementationError
-import numpy as np
 
 
 class PulserInterface():
