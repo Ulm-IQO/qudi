@@ -14,10 +14,9 @@ from core.base import Base
 from core.util.mutex import Mutex
 import numpy as np
 import hdf5storage
-import copy
+from hardware.pulser_interface import PulserInterface
 
-
-class AWG(Base):
+class AWG(Base, PulserInterface):
     """ UNSTABLE: Nikolas
     """
     _modclass = 'AWG'
@@ -81,17 +80,16 @@ class AWG(Base):
     
     def get_constraints(self):
         constraints = {}
-        constraints['sample_rate'] = (1.5e3, 25.0e9)
-        constraints['amplitude'] = (0.25, 0.5, 0.0005)
-        constraints['total_length_bins'] = (0, 8e9)
-        constraints['channel_configs'] = [(1,1), (1,2), (2,1), (2,4)] # (analogue, digital)
+        constraints['sample_rate'] = (1.5e3, 25.0e9, 0) # (min, max, incr)
+        constraints['amplitude'] = (0.25, 0.5, 0.0005) # (min, max, incr)
+        constraints['total_length_bins'] = (0, 8e9, 0) # (min, max, incr)
+        constraints['channel_config'] = [(1,1), (1,2), (2,1), (2,4)] # (analogue, digital)
         return constraints
     
-    def _write_to_matfile(self, sequence):
+    def _write_to_file(self, name, sample_arr, marker1_arr, marker2_arr):
         matcontent = {}
-        sample_arr, marker1_arr, marker2_arr = self._sample_sequence(sequence)
             
-        matcontent[u'Waveform_Name_1'] = sequence.name # each key must be a unicode string
+        matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
         matcontent[u'Waveform_Data_1'] = sample_arr[0]
         matcontent[u'Waveform_M1_1'] = marker1_arr[0]
         matcontent[u'Waveform_M2_1'] = marker2_arr[0]
@@ -99,21 +97,27 @@ class AWG(Base):
         matcontent[u'Waveform_Amplitude_1'] = self.amplitude
         
         if marker1_arr.shape[0] == 2:
-            matcontent[u'Waveform_Name_1'] = sequence.name + '_Ch1'
-            matcontent[u'Waveform_Name_2'] = sequence.name + '_Ch2'
+            matcontent[u'Waveform_Name_1'] = name + '_Ch1'
+            matcontent[u'Waveform_Name_2'] = name + '_Ch2'
             matcontent[u'Waveform_Data_2'] = sample_arr[1]
             matcontent[u'Waveform_M1_2'] = marker1_arr[1]
             matcontent[u'Waveform_M2_2'] = marker2_arr[1]
             matcontent[u'Waveform_Sampling_Rate_2'] = self.samplerate
             matcontent[u'Waveform_Amplitude_2'] = self.amplitude
         
-        hdf5storage.write(matcontent, '.', sequence.name+'.mat', matlab_compatible=True)
+        hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
         return
         
         
-    def generate_sampled_sequence(self, sequence):
-        self._write_to_matfile(sequence)            
-        return   
+    def download_sequence(self, sequence, write_to_file = True):
+        if write_to_file:
+            sample_arr, marker1_arr, marker2_arr = self._sample_sequence(sequence)
+            self._write_to_file(sequence.name, sample_arr, marker1_arr, marker2_arr)
+            
+            # TODO: Download waveform to AWG and load it into channels
+            self._send_file(sequence.name)
+            self.load_sequence(sequence.name)
+        return 0
     
     def _sample_sequence(self, sequence):
         """ Calculates actual sample points given a Sequence.
@@ -188,22 +192,13 @@ class AWG(Base):
         return sample_arr, marker1_arr, marker2_arr
     
     
-    def download_waveform(self, waveform_name):
-        pass
-    
-    def delete_waveform_from_awg(self, waveform_name):
+    def _send_file(self, filename):
         pass
         
-    def delete_waveform_from_host(self, waveform_name):
-        pass
     
     def change_waveform_directory_awg(self, dir_path):
         self.waveform_directory_awg = dir_path
         pass
-    
-    def change_waveform_directory_host(self, dir_path):
-        self.waveform_directory_host = dir_path
-        return
     
     
     def _math_function(self, func_name, time_arr, parameters={}):
@@ -248,7 +243,14 @@ class AWG(Base):
             result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
             
         return result_arr
-    
+  
+
+
+
+
+
+
+#TODO: ------------------------------------------------------------------------- has to be reworked -----------------------------------------
     def delete(self, filelist):
         
         for filename in filelist:
