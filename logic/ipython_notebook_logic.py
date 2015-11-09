@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+
+Derived from IPython ....
 """
 
 # ----------------------------------------------------------------------------
@@ -632,7 +634,9 @@ class NotebookApp(BaseIPythonApplication):
         # force Session default to be secure
         default_secure(self.config)
         self.kernel_manager = MappingKernelManager(
-            parent=self, log=self.log, kernel_argv=self.kernel_argv,
+            parent=self,
+            log=self.log,
+            kernel_argv=self.kernel_argv,
             connection_dir = self.profile_dir.security_dir,
         )
         kls = import_item(self.notebook_manager_class)
@@ -661,9 +665,13 @@ class NotebookApp(BaseIPythonApplication):
         self.webapp_settings['allow_credentials'] = self.allow_credentials
 
         self.web_app = NotebookWebApplication(
-            self, self.kernel_manager, self.notebook_manager,
-            self.cluster_manager, self.session_manager,
-            self.log, self.base_url, self.webapp_settings,
+            self, self.kernel_manager,
+            self.notebook_manager,
+            self.cluster_manager,
+            self.session_manager,
+            self.log,
+            self.base_url,
+            self.webapp_settings,
             self.jinja_environment_options
         )
         if self.certfile:
@@ -673,8 +681,11 @@ class NotebookApp(BaseIPythonApplication):
         else:
             ssl_options = None
         self.web_app.password = self.password
-        self.http_server = httpserver.HTTPServer(self.web_app, ssl_options=ssl_options,
-                                                 xheaders=self.trust_xheaders)
+        self.http_server = httpserver.HTTPServer(
+            self.web_app,
+            ssl_options=ssl_options,
+            xheaders=self.trust_xheaders
+            )
         if not self.ip:
             warning = "WARNING: The notebook server is listening on all IP addresses"
             if ssl_options is None:
@@ -724,7 +735,7 @@ class NotebookApp(BaseIPythonApplication):
     
     @catch_config_error
     def initialize(self, argv=None):
-        super(NotebookApp, self).initialize(argv)
+        super(NotebookApp, self).initialize(argv), 
         self.init_logging()
         self.init_kernel_argv()
         self.init_configurables()
@@ -818,8 +829,3 @@ def list_running_servers(profile='default'):
             with io.open(os.path.join(pd.security_dir, file), encoding='utf-8') as f:
                 yield json.load(f)
 
-#-----------------------------------------------------------------------------
-# Main entry point
-#-----------------------------------------------------------------------------
-
-#launch_new_instance = NotebookApp.launch_instance
