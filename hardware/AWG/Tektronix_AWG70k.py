@@ -79,6 +79,14 @@ class AWG(Base):
         self.connected = False
         pass
     
+    def get_constraints(self):
+        constraints = {}
+        constraints['sample_rate'] = (1.5e3, 25.0e9)
+        constraints['amplitude'] = (0.25, 0.5, 0.0005)
+        constraints['total_length_bins'] = (0, 8e9)
+        constraints['channel_configs'] = [(1,1), (1,2), (2,1), (2,4)] # (analogue, digital)
+        return constraints
+    
     def _write_to_matfile(self, sequence):
         matcontent = {}
         sample_arr, marker1_arr, marker2_arr = self._sample_sequence(sequence)
@@ -91,6 +99,7 @@ class AWG(Base):
         matcontent[u'Waveform_Amplitude_1'] = self.amplitude
         
         if marker1_arr.shape[0] == 2:
+            matcontent[u'Waveform_Name_1'] = sequence.name + '_Ch1'
             matcontent[u'Waveform_Name_2'] = sequence.name + '_Ch2'
             matcontent[u'Waveform_Data_2'] = sample_arr[1]
             matcontent[u'Waveform_M1_2'] = marker1_arr[1]
@@ -98,35 +107,13 @@ class AWG(Base):
             matcontent[u'Waveform_Sampling_Rate_2'] = self.samplerate
             matcontent[u'Waveform_Amplitude_2'] = self.amplitude
         
-        hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
+        hdf5storage.write(matcontent, '.', sequence.name+'.mat', matlab_compatible=True)
         return
         
         
     def generate_sampled_sequence(self, sequence):
         self._write_to_matfile(sequence)            
-        return
-    
-    
-    def _refine_sequence(self, sequence):
-        sequence_ch1 = copy.deepcopy(sequence)
-        sequence_ch2 = copy.deepcopy(sequence)
-        for block, reps in sequence_ch1.block_list:
-            for element in block.element_list:
-                element.pulse_function = element.pulse_function[0]
-                element.marker_active = element.markers_on[0:2]
-                for key in element.parameters.keys():
-                    entry_length = len(element.parameters[key])
-                    element.parameters[key] = element.parameters[key][0:entry_length//2]
-        for block, reps in sequence_ch2.block_list:
-            for element in block.element_list:
-                element.pulse_function = element.pulse_function[1]
-                element.marker_active = element.markers_on[2:4]
-                for key in element.parameters.keys():
-                    entry_length = len(element.parameters[key])
-                    element.parameters[key] = element.parameters[key][entry_length//2:entry_length]
-        return sequence_ch1, sequence_ch2
-    
-    
+        return   
     
     def _sample_sequence(self, sequence):
         """ Calculates actual sample points given a Sequence.
@@ -224,38 +211,38 @@ class AWG(Base):
         parameters is a dictionary
         """
         if func_name == 'DC':
-            amp = parameters['amplitude'][0]
+            amp = parameters['amplitude']
             result_arr = np.full(len(time_arr), amp)
             
         elif func_name == 'idle':
             result_arr = np.zeros(len(time_arr))
             
         elif func_name == 'sin':
-            amp = parameters['amplitude'][0]
-            freq = parameters['frequency'][0]
-            phase = 180*np.pi * parameters['phase'][0]
+            amp = parameters['amplitude']
+            freq = parameters['frequency']
+            phase = 180*np.pi * parameters['phase']
             result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
             
         elif func_name == 'doublesin':
-            amp1 = parameters['amplitude'][0]
-            amp2 = parameters['amplitude'][1]
-            freq1 = parameters['frequency'][0]
-            freq2 = parameters['frequency'][1]
-            phase1 = 180*np.pi * parameters['phase'][0]
-            phase2 = 180*np.pi * parameters['phase'][1]
+            amp1 = parameters['amplitude']
+            amp2 = parameters['amplitude']
+            freq1 = parameters['frequency']
+            freq2 = parameters['frequency']
+            phase1 = 180*np.pi * parameters['phase']
+            phase2 = 180*np.pi * parameters['phase']
             result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
             result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
             
         elif func_name == 'triplesin':
-            amp1 = parameters['amplitude'][0]
-            amp2 = parameters['amplitude'][1]
-            amp3 = parameters['amplitude'][2]
-            freq1 = parameters['frequency'][0]
-            freq2 = parameters['frequency'][1]
-            freq3 = parameters['frequency'][2]
-            phase1 = 180*np.pi * parameters['phase'][0]
-            phase2 = 180*np.pi * parameters['phase'][1]
-            phase3 = 180*np.pi * parameters['phase'][2]
+            amp1 = parameters['amplitude']
+            amp2 = parameters['amplitude']
+            amp3 = parameters['amplitude']
+            freq1 = parameters['frequency']
+            freq2 = parameters['frequency']
+            freq3 = parameters['frequency']
+            phase1 = 180*np.pi * parameters['phase']
+            phase2 = 180*np.pi * parameters['phase']
+            phase3 = 180*np.pi * parameters['phase']
             result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
             result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
             result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
