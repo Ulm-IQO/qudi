@@ -24,6 +24,7 @@ from core.util.mutex import Mutex
 from hardware.pulser_interface import PulserInterface
 import thirdparty.opal_kelly as ok
 import time
+import os
 
 
 class OkFpgaPulser(Base, PulserInterface):
@@ -90,19 +91,18 @@ class OkFpgaPulser(Base, PulserInterface):
             self.logMsg('ERROR: FrontPanel is not enabled in FPGA switch!', msgType='error')
             return
         else:
-            self.reset()
             self.logMsg('FPGA connected')
 
-    def high(channels):
+    def run_cw_high(self, channels):
         """Set specified channels to high, all others to low."""
-        Sequence([[channels, 1024]])
+        self.run_sequence([[channels, 1024]])
 
-    def sequence(sequence):
-        """Run sequence of instructions"""
-
-        #determine total length of the sequence in bytes.
+    def pad_sequence(self, sequence):
+        """determine total length of the sequence in bytes.
         #expand the sequence with zeros if needed
-        totallength = 0 
+        """
+
+        totallength = 0
         numberofzeros = 0
         for step in sequence[0:]:
             totallength = totallength + step[1]
@@ -115,7 +115,7 @@ class OkFpgaPulser(Base, PulserInterface):
             if (numberofzeros != 0):
                 sequence += [([], numberofzeros)]
                 print('WARNING: Pulse sequence length is no integer multiple of 256 bit!')
-                print('Number of zero-timeslots appended to sequence: ' + str(numberofzeros)) 
+                print('Number of zero-timeslots appended to sequence: ' + str(numberofzeros))
             totallength = (totallength + numberofzeros)//2
         else:
             if ((totallength % 32) != 0):
@@ -123,7 +123,15 @@ class OkFpgaPulser(Base, PulserInterface):
                 totallength = totallength + numberofzeros
                 sequence += [([], numberofzeros)]
                 print('WARNING: Pulse sequence length is no integer multiple of 256 bit!')
-                print('Number of zero-timeslots appended to sequence: ' + str(numberofzeros)) 
+                print('Number of zero-timeslots appended to sequence: ' + str(numberofzeros))
+
+        return sequence, totallength
+
+    def run_sequence(self, sequence):
+        """Run sequence of instructions"""
+
+        #Pad with zeros if necessary
+        sequence, totallength = self.pad_sequence(sequence)
         
         #repeatedly attempt to send the pulse sequence and start the pulser until it works (due to memory init problems on the OK board)
         repeat = True
@@ -144,7 +152,7 @@ class OkFpgaPulser(Base, PulserInterface):
         MSB4bit = False
         #run through sequence    
         for step in sequence[0:]:
-            channel_encode = Encodechannels(step[0])
+            channel_encode = self.encode_channels(step[0])
             timeslot_cnt = step[1]
             if (self.pulser_channels == 4):
                 if MSB4bit:
@@ -220,21 +228,21 @@ class OkFpgaPulser(Base, PulserInterface):
                 print('DONE! Pulsing in progress.')
                 repeat = False
             
-    def Encodechannels(channels):
+    def encode_channels(self, channels):
         """creates a binary word representing the state of the channels"""
         bits = 0
         for channel in channels:
-            bits = bits | (1<<ch_map[channel])
+            bits = bits | (1<<self.ch_map[channel])
         return bits
     
-    def Light():
-        High(['LASER','MW'])
+    def light(self):
+        self.run_cw_high(['LASER','MW'])
         
-    def Stop():
-        High([])
+    def stop(self):
+        self.run_cw_high([])
         
-    def Night():
-        High([])
+    def night(self):
+        self.run_cw_high([])
     
-    def test():
-        High(['LASER'])    
+    def test(self):
+        self.run_cw_high(['LASER'])
