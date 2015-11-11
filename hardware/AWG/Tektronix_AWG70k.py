@@ -42,12 +42,12 @@ class AWG(Base, PulserInterface):
         else:
             self.logMsg("This is AWG: Did not find >>awg_port<< in configuration.", msgType='error')
         
-        self.samplerate = 25e9
+        self.samplingrate = 25e9
         self.amplitude = 0.25
         self.loaded_sequence = None
         self.use_sequencer = False
         
-        self.waveform_directory = ''
+        self.sequence_directory = '/waves'
         self.is_output_enabled = False
 
     
@@ -82,40 +82,51 @@ class AWG(Base, PulserInterface):
         constraints['sample_rate'] = (1.5e3, 25.0e9, 0) # (min, max, incr)
         constraints['amplitude'] = (0.25, 0.5, 0.0005) # (min, max, incr)
         constraints['total_length_bins'] = (0, 8e9, 0) # (min, max, incr)
-        constraints['channel_config'] = [(1,1), (1,2), (2,1), (2,4)] # (analogue, digital)
+        constraints['channel_config'] = [(1,0), (1,1), (1,2), (2,0), (2,1), (2,2), (2,3), (2,4)] # (analogue, digital)
         return constraints
     
-    def _write_to_file(self, name, sample_arr, marker1_arr, marker2_arr):
+    def _write_to_file(self, name, ana_samples, digi_samples, sampling_rate, amplitude):
         matcontent = {}
-            
-        matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
-        matcontent[u'Waveform_Data_1'] = sample_arr[0]
-        matcontent[u'Waveform_M1_1'] = marker1_arr[0]
-        matcontent[u'Waveform_M2_1'] = marker2_arr[0]
-        matcontent[u'Waveform_Sampling_Rate_1'] = self.samplerate
-        matcontent[u'Waveform_Amplitude_1'] = self.amplitude
         
-        if marker1_arr.shape[0] == 2:
+        matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
+        matcontent[u'Waveform_Data_1'] = ana_samples[0]
+        matcontent[u'Waveform_Sampling_Rate_1'] = sampling_rate
+        matcontent[u'Waveform_Amplitude_1'] = amplitude
+        
+        if ana_samples.shape[0] == 2:
             matcontent[u'Waveform_Name_1'] = name + '_Ch1'
             matcontent[u'Waveform_Name_2'] = name + '_Ch2'
-            matcontent[u'Waveform_Data_2'] = sample_arr[1]
-            matcontent[u'Waveform_M1_2'] = marker1_arr[1]
-            matcontent[u'Waveform_M2_2'] = marker2_arr[1]
-            matcontent[u'Waveform_Sampling_Rate_2'] = self.samplerate
-            matcontent[u'Waveform_Amplitude_2'] = self.amplitude
+            matcontent[u'Waveform_Data_2'] = ana_samples[1]
+            matcontent[u'Waveform_Sampling_Rate_2'] = sampling_rate
+            matcontent[u'Waveform_Amplitude_2'] = amplitude
+        
+        if digi_samples.shape[0] >= 1:
+            matcontent[u'Waveform_M1_1'] = digi_samples[0]
+        if digi_samples.shape[0] >= 2:
+            matcontent[u'Waveform_M2_1'] = digi_samples[1]
+        if digi_samples.shape[0] >= 3:
+            matcontent[u'Waveform_M1_2'] = digi_samples[2]
+        if digi_samples.shape[0] >= 4:
+            matcontent[u'Waveform_M2_2'] = digi_samples[3]
         
         hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
         return
         
         
-    def download_sequence(self, sequence, write_to_file = True):
+    def download_waveform(self, waveform, write_to_file = True):
+        """ Brings the numpy arrays containing the samples in the Waveform() object into a format the hardware understands.
+        Optionally this is then saved in a file. Afterwards they get downloaded to the Hardware.
+        
+        @param Waveform() sequence: The raw sampled pulse sequence.
+        @param bool write_to_file: Flag to indicate if the samples should be written to a file (True) or uploaded directly to the pulse generator channels (False).
+        
+        @return int: error code (0:OK, -1:error)
+        """
         if write_to_file:
-            sample_arr, marker1_arr, marker2_arr = self._sample_sequence(sequence)
-            self._write_to_file(sequence.name, sample_arr, marker1_arr, marker2_arr)
+            self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_rate, waveform.amplitude)
             
             # TODO: Download waveform to AWG and load it into channels
-            self._send_file(sequence.name)
-            self.load_sequence(sequence.name)
+            self.send_file(self.waveform_directory + waveform.name + '.mat')
         return 0
     
     def load_sequence(self, seq_name, channel = None):
@@ -130,89 +141,35 @@ class AWG(Base, PulserInterface):
         # TODO: Actually load the sequence into the channel(s)
         self.loaded_sequence = seq_name
         return 0
-    
-    def _sample_sequence(self, sequence):
-        """ Calculates actual sample points given a Sequence.
+        
+    def clear_channel(self, channel):
+        """ Clears the loaded waveform from the specified channel
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @param int channel: The channel to be cleared
+        
+        @return int: error code (0:OK, -1:error)
         """
-        arr_len = np.round(sequence.length_bins*1.01)
-        chnl_num = sequence.analogue_channels
-    
-        sample_arr = np.empty([chnl_num, arr_len])
-        marker1_arr = np.zeros([chnl_num, arr_len], dtype = bool)
-        marker2_arr = np.zeros([chnl_num, arr_len], dtype = bool)          
-
-        entry = 0
-        bin_offset = 0
-        for block, reps in sequence.block_list:
-            for rep_no in range(reps+1):
-                temp_sample_arr, temp_marker1_arr, temp_marker2_arr = self._sample_block(block, rep_no, bin_offset)
-                temp_len = temp_sample_arr.shape[1]
-                sample_arr[:, entry:temp_len+entry] = temp_sample_arr
-                marker1_arr[:, entry:temp_len+entry] = temp_marker1_arr
-                marker2_arr[:, entry:temp_len+entry] = temp_marker2_arr
-                entry += temp_len
-                if sequence.rotating_frame:
-                    bin_offset = entry
-        # slice the sample array to cut off uninitialized entrys at the end
-        return sample_arr[:, :entry], marker1_arr[:, :entry], marker2_arr[:, :entry]
-    
-            
-    def _sample_block(self, block, iteration_no = 0, bin_offset = 0):
-        """ Calculates actual sample points given a Block.
-        """
-        chnl_num = block.analogue_channels
-        block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
-        arr_len = np.round(block_length_bins*1.01)
-        sample_arr = np.empty([chnl_num ,arr_len])
-        marker1_arr = np.zeros([chnl_num, arr_len], dtype = bool)
-        marker2_arr = np.zeros([chnl_num, arr_len], dtype = bool)
-        entry = 0
-        bin_offset_temp = bin_offset
-        for block_element in block.element_list:
-            temp_sample_arr, temp_marker1_arr, temp_marker2_arr = self._sample_block_element(block_element, iteration_no, bin_offset_temp)
-            temp_len = temp_sample_arr.shape[1]
-            sample_arr[:, entry:temp_len+entry] = temp_sample_arr
-            marker1_arr[:, entry:temp_len+entry] = temp_marker1_arr
-            marker2_arr[:, entry:temp_len+entry] = temp_marker2_arr
-            entry += temp_len
-            bin_offset_temp = bin_offset + entry
-        # slice the sample array to cut off uninitialized entrys at the end
-        return sample_arr[:, :entry], marker1_arr[:, :entry], marker2_arr[:, :entry]
-            
-
-    def _sample_block_element(self, block_element, iteration_no = 0, bin_offset = 0):
-        """ Calculates actual sample points given a Block_Element.
-        """
-        chnl_num = block_element.analogue_channels
-        parameters = block_element.parameters
-        init_length_bins = block_element.init_length_bins
-        increment_bins = block_element.increment_bins
-        markers_on = block_element.markers_on
-        pulse_function = block_element.pulse_function
-            
-        element_length_bins = init_length_bins + (iteration_no*increment_bins)
-        sample_arr = np.empty([chnl_num, element_length_bins])
-        marker1_arr = np.empty([chnl_num, element_length_bins], dtype = bool)
-        marker2_arr = np.empty([chnl_num, element_length_bins], dtype = bool)
-        time_arr = (bin_offset + np.arange(element_length_bins)) / self.samplerate
-
-        for i, func_name in enumerate(pulse_function):
-            sample_arr[i] = self._math_function(func_name, time_arr, parameters[i])
-            marker1_arr[i] = np.full(element_length_bins, markers_on[0+i], dtype = bool)
-            marker2_arr[i] = np.full(element_length_bins, markers_on[1+i], dtype = bool)
-            
-        return sample_arr, marker1_arr, marker2_arr
+        return 0
     
     def set_sampling_rate(self, sampling_rate):
         """ Set the sampling rate of the pulse generator hardware
         
         @param float sampling_rate: The sampling rate to be set (in Hz)
         
-        @return int: error code (0:OK, -1:error)
+        @return foat: the sample rate returned from the device (-1:error)
         """
-        # TODO: Actually change the sampling rate
-        self.samplerate = sampling_rate
-        return 0
+        self.tell('CLOCK:SRATE %.4G\n' % sampling_rate)
+        return_rate = float(self.ask('CLOCK:SRATE?\n'))
+        self.samplingrate = return_rate
+        return return_rate
+        
+    def get_sampling_rate(self):
+        """ Set the sampling rate of the pulse generator hardware
+        
+        @return float: The current sampling rate of the device (in Hz)
+        """
+        return self.samplingrate
         
     def set_amplitude(self, channel, amplitude):
         """ Set the output amplitude of the pulse generator hardware.
@@ -226,101 +183,156 @@ class AWG(Base, PulserInterface):
         # TODO: Actually change the amplitude
         self.amplitude = amplitude
         return 0
+        
+    def get_amplitude(self, channel):
+        """ Get the output amplitude of the pulse generator hardware.
+        Unused for purely digital hardware without logic level setting capability (FPGA, etc.).
+        
+        @param int channel: The channel to be checked
+        
+        @return float: The peak-to-peak amplitude the channel is set to (in V)
+        """
+        return self.amplitude
     
-    def _send_file(self, filename):
+    def send_file(self, filepath):
+        """ Sends an already hardware specific waveform file to the pulse generators waveform directory.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @param string filepath: The file path of the source file
+        
+        @return int: error code (0:OK, -1:error)
+        """
         return 0
         
-    
-    def change_waveform_directory(self, dir_path):
-        self.waveform_directory = dir_path
-        pass
-    
-    
-    def _math_function(self, func_name, time_arr, parameters={}):
-        """ actual mathematical function of the block_elements.
-        parameters is a dictionary
+    def delete_sequence(self, seq_name):
+        """ Used to delete a sequence from the device memory.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @param str seq_name: The name of the sequence to be deleted. Optionally a list of names.
+        
+        @return int: error code (0:OK, -1:error)
         """
-        if func_name == 'DC':
-            amp = parameters['amplitude']
-            result_arr = np.full(len(time_arr), amp)
-            
-        elif func_name == 'idle':
-            result_arr = np.zeros(len(time_arr))
-            
-        elif func_name == 'sin':
-            amp = parameters['amplitude']
-            freq = parameters['frequency']
-            phase = 180*np.pi * parameters['phase']
-            result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
-            
-        elif func_name == 'doublesin':
-            amp1 = parameters['amplitude']
-            amp2 = parameters['amplitude']
-            freq1 = parameters['frequency']
-            freq2 = parameters['frequency']
-            phase1 = 180*np.pi * parameters['phase']
-            phase2 = 180*np.pi * parameters['phase']
-            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
-            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
-            
-        elif func_name == 'triplesin':
-            amp1 = parameters['amplitude']
-            amp2 = parameters['amplitude']
-            amp3 = parameters['amplitude']
-            freq1 = parameters['frequency']
-            freq2 = parameters['frequency']
-            freq3 = parameters['frequency']
-            phase1 = 180*np.pi * parameters['phase']
-            phase2 = 180*np.pi * parameters['phase']
-            phase3 = 180*np.pi * parameters['phase']
-            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
-            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
-            result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
-            
-        return result_arr
+        if not isinstance(seq_name, list):
+            seq_name = [seq_name]
+        self.ftp.connect(self.ip_address)
+        self.ftp.login('\r', '\r')
+        self.ftp.cwd(self.sequence_directory)
+        for name in seq_name:
+            self.ftp.delete(name + '.mat')
+        return 0
+        
+        
+    def set_sequence_directory(self, dir_path):
+        """ Change the directory where the sequences are stored on the device.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @param string dir_path: The target directory
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        self.sequence_directory = dir_path
+        return 0
+       
+    def get_sequence_directory(self):
+        """ Ask for the directory where the sequences are stored on the device.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @return string: The current sequence directory
+        """
+        return self.sequence_directory
   
-
-
-
-
-
-
-#TODO: ------------------------------------------------------------------------- has to be reworked -----------------------------------------
-    def delete(self, filelist):
+    def set_active_channels(self, digital_channels, analogue_channels = 0):
+        """ Set the active channels for the pulse generator hardware.
         
-        for filename in filelist:
-            self.ftp.delete(filename)
-        return
+        @param int digital_channels: The number of digital channels
+        @param int analogue_channels: The number of analogue channels
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        if digital_channels <= 2:
+            ch1_marker = digital_channels
+            ch2_marker = 0
+        else:
+            ch1_marker = 2
+            ch2_marker = digital_channels % 2
+            
+        self.tell('SOURCE1:DAC:RESOLUTION' + str(10-ch1_marker) + '\n')
+        self.tell('SOURCE2:DAC:RESOLUTION' + str(10-ch2_marker) + '\n')
+        
+        self.tell('OUTPUT1:STATE ON\n')
+        if analogue_channels == 2:
+            self.tell('OUTPUT2:STATE ON\n')
+        else:
+            self.tell('OUTPUT2:STATE OFF\n')
+        return 0
+        
+    def get_active_channels(self):
+        """ Get the active channels of the pulse generator hardware.
+        
+        @return (int, int): number of active channels (analogue, digital)
+        """
+        analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + int(self.ask('OUTPUT2:STATE?\n'))
+        digital_channels = 20 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) + int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
+        return (analogue_channels, digital_channels)
+        
+    # TODO: Actually retrieve the sequence names from the AWG
+    def get_sequence_names(self):
+        """ Used to get the names of all downloaded sequences on the device.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        
+        @return list: List of sequence name strings
+        """
+        names = []
+        return names
+        
+    def pulser_on(self):
+        """ Switches the pulsing device on. 
+        
+        @return int: error code (0:OK, -1:error)
+        """ 
+        self.soc.connect((self.ip_address, self.port))
+        self.soc.send('AWGC:RUN\n')
+        self.soc.close()
+        return 0
     
-    def delete_all(self):
+    def pulser_off(self):
+        """ Switches the pulsing device off. 
         
-        filelist = self.ftp.mlsd()
-        for filename in filelist:
-            self.ftp.delete(filename)
-        return
-        
+        @return int: error code (0:OK, -1:error)
+        """
+        self.soc.connect((self.ip_address, self.port))
+        self.soc.send('AWGC:STOP\n')
+        self.soc.close()
+        return 0
+
     def tell(self, command):
-        """Send a command string to the AWG."""
-        if not command.endswith('\n'): # I always forget the line feed.
+        """Send a command string to the AWG.
+        
+        @param command: string containing the command
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        if not command.endswith('\n'): 
             command += '\n'
         command = bytes(command, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
         self.soc.connect((self.ip_address, self.port))
         self.soc.send(command)
         self.soc.close()
-        return
+        return 0
         
     def ask(self, question):
-        """Asks the AWG a 'question' and receive and return an answer from AWG.
-        @param: question: string which has to have a proper format to be able
-                            to receive an answer.
-        @return: the answer of the AWG to the 'question' in a string
+        """Asks the device a 'question' and receive and return an answer from device.
+        
+        @param string question: string containing the command
+        
+        @return string: the answer of the device to the 'question'
         """
-        if not question.endswith('\n'): # I always forget the line feed.
+        if not question.endswith('\n'): 
             question += '\n'
         question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
         self.soc.connect((self.ip_address, self.port))
         self.soc.send(question)    
-        time.sleep(1)                   # you need to wait until AWG generating
+        time.sleep(0.5)                 # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
         message = message.decode('UTF-8') # decode bytes into a python str
@@ -328,16 +340,31 @@ class AWG(Base, PulserInterface):
         message = message.replace('\r','')
         self.soc.close()
         return message
-    
-    def run(self):
-        self.soc.connect((self.ip_address, self.port))
-        self.soc.send('AWGC:RUN\n')
-        self.soc.close()
+
+    def set_interleave(self, state=False):
+        # TODO: Implement this function
+        """ Turns the interleave of an AWG on or off.
+        Unused for pulse generator hardware other than an AWG.
         
-    def stop(self):
+        @param bool state: The state the interleave should be set to (True: ON, False: OFF)
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        return 0
+        
+    def reset(self):
+        """Reset the device.
+        
+        @return int: error code (0:OK, -1:error)
+        """
         self.soc.connect((self.ip_address, self.port))
-        self.soc.send('AWGC:STOP\n')
+        self.soc.send('*RST\n')
         self.soc.close()
+        return 0
+        
+    
+
+#TODO: ------------------------------------------------------------------------- has to be reworked -----------------------------------------
         
     def get_status(self):
         """ Asks the current state of the AWG.
@@ -516,12 +543,6 @@ class AWG(Base, PulserInterface):
         self.soc.close()
         return
     
-    def reset(self):
-        """Reset the AWG."""
-        self.soc.connect((self.ip_address, self.port))
-        self.soc.send('*RST\n')
-        self.soc.close()
-        return
 
     def max_samplerate(self):
         return_val = self.max_samplerate

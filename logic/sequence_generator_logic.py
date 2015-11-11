@@ -20,7 +20,7 @@ import os
 class Pulse_Block_Element():
     """Object representing a single atomic element of an AWG sequence, i.e. a waiting time, a sine wave, etc.
     """
-    def __init__(self, init_length_bins, is_tau, analogue_channels, increment_bins = 0, pulse_function = None, marker_active = None, parameters={}):
+    def __init__(self, init_length_bins, is_tau, analogue_channels, digital_channels, increment_bins = 0, pulse_function = None, marker_active = None, parameters={}):
         self.pulse_function = pulse_function
         self.init_length_bins = init_length_bins
         self.markers_on = marker_active
@@ -28,6 +28,7 @@ class Pulse_Block_Element():
         self.increment_bins = increment_bins
         self.parameters = parameters
         self.analogue_channels = analogue_channels
+        self.digital_channels = digital_channels
 
 
 class Pulse_Block():
@@ -42,11 +43,14 @@ class Pulse_Block():
         self.init_length_bins = 0
         self.increment_bins = 0
         self.analogue_channels = 0
+        self.digital_channels = 0
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
             self.increment_bins += elem.increment_bins
             if elem.analogue_channels > self.analogue_channels:
                 self.analogue_channels = elem.analogue_channels
+            if elem.digital_channels > self.digital_channels:
+                self.digital_channels = elem.digital_channels
         return
     
     def replace_element(self, position, element):
@@ -81,10 +85,13 @@ class Pulse_Sequence():
     def refresh_parameters(self):
         self.length_bins = 0
         self.analogue_channels = 0
+        self.digital_channels = 0
         for block, reps in self.block_list:
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
             if block.analogue_channels > self.analogue_channels:
                 self.analogue_channels = block.analogue_channels
+            if block.digital_channels > self.digital_channels:
+                self.digital_channels = block.digital_channels
         return    
     
     def replace_block(self, position, block):
@@ -104,6 +111,145 @@ class Pulse_Sequence():
             self.block_list.append(block)
         self.refresh_parameters()
         return
+        
+        
+class Waveform():
+    """ Represents the sampled Pulse_Sequence() object.
+    Contains methods to actually create the samples out of the abstract Pulse_Sequence().
+    Holds analogue and digital samples and important parameters.
+    """
+    def __init__(self, sequence, sampling_rate):
+        self.name = sequence.name
+        self.sampling_rate = sampling_rate
+        self.rotating_frame = sampling_rate
+        self.sequence = sequence
+        self.analogue_samples = None
+        self.digital_samples = None
+        self._sample_sequence()
+        
+    def _sample_sequence(self):
+        """ Calculates actual sample points given a Pulse_Sequence object.
+        
+        @param Pulse_sequence() sequence: Pulse sequence to be sampled.
+        
+        @return int: error code (0:OK, -1:error)
+        """
+        arr_len = np.round(self.sequence.length_bins*1.01)
+        ana_channels = self.sequence.analogue_channels
+        dig_channels = self.sequence.digital_channels
+    
+        sample_arr = np.empty([ana_channels, arr_len])
+        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)        
+
+        entry = 0
+        bin_offset = 0
+        for block, reps in self.sequence.block_list:
+            for rep_no in range(reps+1):
+                temp_sample_arr, temp_marker_arr = self._sample_block(block, rep_no, bin_offset)
+                temp_len = temp_sample_arr.shape[1]
+                sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+                marker_arr[:, entry:temp_len+entry] = temp_marker_arr
+                entry += temp_len
+                if self.sequence.rotating_frame:
+                    bin_offset = entry
+        # slice the sample array to cut off uninitialized entrys at the end
+        self.analogue_samples = sample_arr[:, :entry]
+        self.digital_samples = marker_arr[:, :entry]
+        return 0
+    
+            
+    def _sample_block(self, block, iteration_no = 0, bin_offset = 0):
+        """ Calculates actual sample points given a Block.
+        """
+        ana_channels = block.analogue_channels
+        dig_channels = block.digital_channels
+        block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
+        arr_len = np.round(block_length_bins*1.01)
+        sample_arr = np.empty([ana_channels, arr_len])
+        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
+        entry = 0
+        bin_offset_temp = bin_offset
+        for block_element in block.element_list:
+            temp_sample_arr, temp_marker_arr = self._sample_block_element(block_element, iteration_no, bin_offset_temp)
+            temp_len = temp_sample_arr.shape[1]
+            sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+            marker_arr[:, entry:temp_len+entry] = temp_marker_arr
+            entry += temp_len
+            bin_offset_temp = bin_offset + entry
+        # slice the sample array to cut off uninitialized entrys at the end
+        return sample_arr[:, :entry], marker_arr[:, :entry]
+            
+
+    def _sample_block_element(self, block_element, iteration_no = 0, bin_offset = 0):
+        """ Calculates actual sample points given a Block_Element.
+        """
+        ana_channels = block_element.analogue_channels
+        dig_channels = block_element.digital_channels
+        parameters = block_element.parameters
+        init_length_bins = block_element.init_length_bins
+        increment_bins = block_element.increment_bins
+        markers_on = block_element.markers_on
+        pulse_function = block_element.pulse_function
+            
+        element_length_bins = init_length_bins + (iteration_no*increment_bins)
+        sample_arr = np.empty([ana_channels, element_length_bins])
+        marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
+        time_arr = (bin_offset + np.arange(element_length_bins)) / self.sampling_rate
+        
+        for i, state in enumerate(markers_on):
+            marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
+        for i, func_name in enumerate(pulse_function):
+            sample_arr[i] = self._math_function(func_name, time_arr, parameters[i])
+            
+        return sample_arr, marker_arr
+        
+    def _math_function(self, func_name, time_arr, parameters={}):
+        """ actual mathematical function of the block_elements.
+        
+        @param str func_name: Identifier for the mathematical function to be sampled
+        @param 1D numpy.array time_arr: Sample times as a numpy array
+        @param dict parameters: The function parameters needed (amplitude, frequency, etc.)
+        
+        @return numpy.array: The sampled points corresponding to the timesteps in time_arr
+        """
+        if func_name == 'DC':
+            amp = parameters['amplitude']
+            result_arr = np.full(len(time_arr), amp)
+            
+        elif func_name == 'idle':
+            result_arr = np.zeros(len(time_arr))
+            
+        elif func_name == 'sin':
+            amp = parameters['amplitude']
+            freq = parameters['frequency']
+            phase = 180*np.pi * parameters['phase']
+            result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
+            
+        elif func_name == 'doublesin':
+            amp1 = parameters['amplitude'][0]
+            amp2 = parameters['amplitude'][1]
+            freq1 = parameters['frequency'][0]
+            freq2 = parameters['frequency'][1]
+            phase1 = 180*np.pi * parameters['phase'][0]
+            phase2 = 180*np.pi * parameters['phase'][1]
+            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
+            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
+            
+        elif func_name == 'triplesin':
+            amp1 = parameters['amplitude'][0]
+            amp2 = parameters['amplitude'][1]
+            amp3 = parameters['amplitude'][2]
+            freq1 = parameters['frequency'][0]
+            freq2 = parameters['frequency'][1]
+            freq3 = parameters['frequency'][2]
+            phase1 = 180*np.pi * parameters['phase'][0]
+            phase2 = 180*np.pi * parameters['phase'][1]
+            phase3 = 180*np.pi * parameters['phase'][2]
+            result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) 
+            result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
+            result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
+            
+        return result_arr
 
 class SequenceGeneratorLogic(GenericLogic):
     """unstable: Nikolas Tomek
