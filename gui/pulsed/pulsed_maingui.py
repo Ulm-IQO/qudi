@@ -30,8 +30,26 @@ from core.util.mutex import Mutex
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
-
-
+#FIXME: incoorporate the passed hardware constraints from the logic.
+#FIXME: save the length in sample points (bins)
+#FIXME: adjust the length to the bins
+#FIXME: choose as default value the minimal sampling rate
+#FIXME: insert warning text in choice of channels
+#FIXME: pass the posibile channels over to laser channel select
+#FIXME: count laser pulses
+#FIXME: calculate total length of the sequence
+#FIXME: insert checkbox (or something else) for removing the inital table
+#FIXME: remove repeat and inc from the initial table
+#FIXME: save the pattern of the table to a file. Think about possibilities to read in from file if number of channels is different. Therefore make also a load function.
+#FIXME: give general access to specific element in the column and let it be changable by this function
+#FIXME: return the whole table as a matrix
+#FIXME: Make the minimum and the maximum values of the sampling frequency be dependent on the used hardware file.
+#FIXME: make a generate button and insert a name for the pattern. The generate button will pass the values to the logic.
+#FIXME: connect the current default value of length of the dspinbox with
+#       the minimal sequence length and the sampling rate.
+#FIXME: Later that should be able to round up the values directly within
+#       the entering in the dspinbox for a consistent display of the
+#       sequence length.
 
 # =============================================================================
 #                       Define some delegate classes.
@@ -39,7 +57,7 @@ from core.util.mutex import Mutex
 
 # These delegate classes can modify the behaviour of a whole row or column of
 # in a QTableWidget. When this starts to work properly, then the delegate
-# classes will mose to a separate file.
+# classes will move to a separate file.
 #
 # A general idea, which functions are customizable for our purpose it is worth
 # to read the documentation for the QItemDelegate Class:
@@ -64,7 +82,7 @@ from core.util.mutex import Mutex
 # Since the delegate is a subclass of QItemDelegate or QStyledItemDelegate, the
 # data it retrieves from the model is displayed in a default style, and we do
 # not need to provide a custom paintEvent().
-# We use QStyledItemDelegate as our base class so that we benefit from the
+# We use QStyledItemDelegate as our base class, so that we benefit from the
 # default delegate implementation. We could also have used
 # QAbstractItemDelegate, if we had wanted to start completely from scratch.
 #
@@ -82,6 +100,10 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
                                         #  which will be displayed and from
                                         # which you can choose.
 
+        # constant from Qt how to access the specific data type:
+        self.model_data_access = QtCore.Qt.DisplayRole
+
+
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
 
@@ -91,7 +113,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
                          list items_list and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], QtCore.Qt.DisplayRole]
+        return [self.items_list[0], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -133,7 +155,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
 
         # just for safety, block any signal which might change the values of
         # the editor during the access.
-        value = index.data(QtCore.Qt.DisplayRole)
+        value = index.data(self.model_data_access)
         num = self.items_list.index(value)
         editor.setCurrentIndex(num)
 
@@ -154,7 +176,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         manipulated for the model.
         """
         value = editor.currentIndex()   # take current value and save to model
-        model.setData(index, editor.itemText(value), QtCore.Qt.DisplayRole)
+        model.setData(index, editor.itemText(value), self.model_data_access)
 
     def updateEditorGeometry(self, editor, option, index):
         """ State how the editor should behave if it is opened.
@@ -197,6 +219,9 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         QtGui.QStyledItemDelegate.__init__(self, parent)
         self.items_list = items_list
 
+        # constant from Qt how to access the specific data type:
+        self.model_data_access = QtCore.Qt.EditRole
+
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
 
@@ -206,7 +231,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], QtCore.Qt.DisplayRole]
+        return [self.items_list[0], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -252,7 +277,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         understood by the editor.
         """
 
-        value = index.data(QtCore.Qt.EditRole)
+        value = index.data(self.model_data_access)
 
         if not isinstance(value, int):
             value = self.items_list[0]
@@ -279,7 +304,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = spinBox.value()
         self.value = value
         # set the data to the table model:
-        model.setData(index, value, QtCore.Qt.EditRole)
+        model.setData(index, value, self.model_data_access)
 
     def updateEditorGeometry(self, editor, option, index):
         """ State how the editor should behave if it is opened.
@@ -318,16 +343,19 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         QtGui.QStyledItemDelegate.__init__(self, parent)
         self.items_list = items_list
 
+        # constant from Qt how to access the specific data type:
+        self.model_data_access = QtCore.Qt.CheckStateRole
+
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
 
         @return list[2]: returns the two values, which corresponds to the last
-                         two values you shoul insert in the setData function.
+                         two values you should insert in the setData function.
                          The first one is the first element of the passed item
                          list list_items and the second one is the Role.
             model.setData(index, value, QtCore.Qt.CheckStateRole)
         """
-        return [self.items_list[0], QtCore.Qt.CheckStateRole]
+        return [self.items_list[0], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -371,7 +399,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         understood by the editor.
         """
 
-        value = index.data(QtCore.Qt.CheckStateRole)
+        value = index.data(self.model_data_access)
         if value == 0:
             checkState = QtCore.Qt.Unchecked
         else:
@@ -396,7 +424,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         """
 
         value = editor.checkState()
-        model.setData(index, value, QtCore.Qt.CheckStateRole)
+        model.setData(index, value, self.model_data_access)
 
     def updateEditorGeometry(self, editor, option, index):
         """
@@ -419,6 +447,9 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         QtGui.QStyledItemDelegate.__init__(self, parent)
         self.items_list = items_list
 
+        # constant from Qt how to access the specific data type:
+        self.model_data_access = QtCore.Qt.EditRole
+
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
 
@@ -428,7 +459,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, editor.itemText(value), QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], QtCore.Qt.DisplayRole]
+        return [self.items_list[0], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -476,7 +507,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         understood by the editor.
         """
 
-        value = index.data(QtCore.Qt.EditRole)
+        value = index.data(self.model_data_access)
 
         if not isinstance(value, float):
             value = self.items_list[0]
@@ -502,7 +533,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = spinBox.value()
         self.value = value
         # set the data to the table model:
-        model.setData(index, value, QtCore.Qt.EditRole)
+        model.setData(index, value, self.model_data_access)
 
     def updateEditorGeometry(self, editor, option, index):
         """ State how the editor should behave if it is opened.
@@ -796,7 +827,7 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 0.0, -1000000, 1000000, 0.1, 5]
+        return [DoubleSpinBoxDelegate, 0.0, -1000000.0, 1000000.0, 0.1, 5]
 
     def _get_settings_dspinbox_freq(self):
         """ Get the custom setting for a general frequency DoubleSpinBox object.
@@ -806,7 +837,7 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 2.8, 0, 1000000, 0.01, 5]
+        return [DoubleSpinBoxDelegate, 2.8, 0.0, 1000000.0, 0.01, 5]
 
     def _get_settings_dspinbox_amp(self):
         """ Get the custom setting for a general amplitude DoubleSpinBox object.
@@ -816,13 +847,8 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 1, 0, 2, 0.01, 5]
+        return [DoubleSpinBoxDelegate, 1.0, 0.0, 2.0, 0.01, 5]
 
-    #FIXME: connect the current default value of length of the dspinbox with
-    #       the minimal sequence length and the sampling rate.
-    #FIXME: Later that should be able to round up the values directly within
-    #       the entering in the dspinbox for a consistent display of the
-    #       sequence length.
     def _get_settings_dspinbox_length(self):
         """ Get the custom setting for a general length DoubleSpinBox object.
 
@@ -831,7 +857,7 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 10, 0, 100000000, 0.01, 5]
+        return [DoubleSpinBoxDelegate, 10.0, 0.0, 100000000.0, 0.01, 5]
 
     def _get_settings_dspinbox_inc(self):
         """ Get the custom setting for a general increment DoubleSpinBox object.
@@ -841,13 +867,128 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 0, 0, 2, 0.01, 5]
+        return [DoubleSpinBoxDelegate, 0.0, 0.0, 2.0, 0.01, 5]
 
-    def get_data_init(self, row, column):
-        """ Simplified wrapper function to get the data from the init table """
-        tab =self._mw.init_block_TableWidget
-        data = tab.model().data(tab.model().index(row, column))
+
+
+    def get_element_in_init_table(self, row, column):
+        """ Simplified wrapper function to get the data from a specific cell
+            in the init table.
+
+        @param int column: column index
+        @param int row: row index
+        @return: the value of the corresponding cell, which can be a string, a
+                 float or an integer. Remember that the checkbox state
+                 unchecked corresponds to 0 and check to 2. That is Qt
+                 convention.
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        """
+
+        tab = self._mw.init_block_TableWidget
+
+        # Get from the corresponding delegate the data access model
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
         return data
+
+    def get_element_in_repeat_table(self, row, column):
+        """ Simplified wrapper function to get the data from a specific cell
+            in the repeat table.
+
+        @param int column: column index
+        @param int row: row index
+        @return: the value of the corresponding cell, which can be a string, a
+                 float or an integer. Remember that the checkbox state
+                 unchecked corresponds to 0 and check to 2. That is Qt
+                 convention.
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        """
+
+        tab = self._mw.repeat_block_TableWidget
+
+        # Get from the corresponding delegate the data access model
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+        return data
+
+    def get_init_table(self):
+        """ Convert initial table data to numpy array.
+
+        @return: np.array[rows][columns] which has a structure, i.e. strings
+                 integer and float values are represented by this array.
+                 The structure was taken according to the init table itself.
+        """
+
+        tab = self._mw.init_block_TableWidget
+
+        # create a structure for the output numpy array:
+        structure = ''
+        for column in range(tab.columnCount()):
+            elem = self.get_element_in_init_table(0,column)
+            if type(elem) is str:
+                structure = structure + '|S20, '
+            elif type(elem) is int:
+                structure = structure + '|i4, '
+            elif type(elem) is float:
+                structure = structure + '|f4, '
+            else:
+                self.logMsg('Type definition not found in the table. Include '
+                            'that type!', msgType='error')
+
+        # remove the last two elements since these are a comma and a space:
+        structure = structure[:-2]
+        table = np.zeros(tab.rowCount(), dtype=structure)
+
+        # fill the table:
+        for column in range(tab.columnCount()):
+            for row in range(tab.rowCount()):
+                # self.logMsg(, msgType='status')
+                table[row][column] = self.get_element_in_init_table(row, column)
+
+        return table
+
+
+    def get_repeat_table(self):
+        """ Convert repeat table data to numpy array.
+
+        @return: np.array[rows][columns] which has a structure, i.e. strings
+                 integer and float values are represented by this array.
+                 The structure was taken according to the repeat table itself.
+        """
+
+        tab = self._mw.repeat_block_TableWidget
+
+        # create a structure for the output numpy array:
+        structure = ''
+        for column in range(tab.columnCount()):
+            elem = self.get_element_in_repeat_table(0,column)
+            if type(elem) is str:
+                structure = structure + '|S20, '
+            elif type(elem) is int:
+                structure = structure + '|i4, '
+            elif type(elem) is float:
+                structure = structure + '|f4, '
+            else:
+                self.logMsg('Type definition not found in the table. Include '
+                            'that type!', msgType='error')
+
+        # remove the last two elements since these are a comma and a space:
+        structure = structure[:-2]
+        table = np.zeros(tab.rowCount(), dtype=structure)
+
+        # fill the table:
+        for column in range(tab.columnCount()):
+            for row in range(tab.rowCount()):
+                # self.logMsg(, msgType='status')
+                table[row][column] = self.get_element_in_repeat_table(row, column)
+
+        return table
+
+
 
     def deactivation(self, e):
         """ Undo the Definition, configuration and initialisation of the pulsed measurement GUI.
@@ -1295,14 +1436,13 @@ class PulsedMeasurementGui(GUIBase):
         self._num_a_ch = count_a_ch
         return self._num_a_ch
 
-###ab hier von pulsed_measurment_gui übernommen''''
 
-    def show(self):
-        """Make window visible and put it above all other windows.
-        """
-        QtGui.QMainWindow.show(self._mw)
-        self._mw.activateWindow()
-        self._mw.raise_()
+
+
+# =============================================================================
+# from here everything was taken over from the pulsed_measurement_gui
+# |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
         
         
     def idle_clicked(self):
