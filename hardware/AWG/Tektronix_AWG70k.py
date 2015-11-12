@@ -35,12 +35,14 @@ class AWG(Base, PulserInterface):
         if 'awg_IP_address' in config.keys():
             self.ip_address = config['awg_IP_address']
         else:
-            self.logMsg("This is AWG: Did not find >>awg_IP_address<< in configuration.", msgType='error')
+            self.logMsg('This is AWG: Did not find >>awg_IP_address<< in '
+                        'configuration.', msgType='error')
             
         if 'awg_port' in config.keys():
             self.port = config['awg_port']
         else:
-            self.logMsg("This is AWG: Did not find >>awg_port<< in configuration.", msgType='error')
+            self.logMsg('This is AWG: Did not find >>awg_port<< in '
+                        'configuration.', msgType='error')
         
         self.samplingrate = 25e9
         self.amplitude = 0.25
@@ -67,8 +69,8 @@ class AWG(Base, PulserInterface):
         
     
     def deactivation(self, e):
-        '''Tasks that are required to be performed during deactivation of the module.
-        '''        
+        """Tasks that are required to be performed during deactivation of the module.
+        """
         # Closes the connection to the AWG via ftp and the socket
 #        self.tell('\n')
 #        self.soc.close()
@@ -79,8 +81,8 @@ class AWG(Base, PulserInterface):
     
     def get_constraints(self):
         constraints = {}
-        constraints['sample_rate'] = (1.5e3, 25.0e9, 0) # (min, max, incr)
-        constraints['amplitude'] = (0.25, 0.5, 0.0005) # (min, max, incr)
+        constraints['sample_rate'] = (1.5e3, 25.0e9, 0) # (min, max, incr) in samples/second
+        constraints['amplitude'] = (0.25, 0.5, 0.0005) # (min, max, incr) in Volt
         constraints['total_length_bins'] = (0, 8e9, 0) # (min, max, incr)
         constraints['channel_config'] = [(1,0), (1,1), (1,2), (2,0), (2,1), (2,2), (2,3), (2,4)] # (analogue, digital)
         return constraints
