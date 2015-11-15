@@ -1489,12 +1489,12 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
         '''
-        self.lasertrace_image.setData(self._pulse_analysis_logic.laser_plot_x, self._pulse_analysis_logic.laser_plot_y)
+        self.lasertrace_image.setData(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
 
     def refresh_signal_plot(self):
         ''' This method refreshes the xy-matrix image
         '''
-        self.signal_image.setData(self._pulse_analysis_logic.signal_plot_x, self._pulse_analysis_logic.signal_plot_y)
+        self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
 
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time of the measurement
