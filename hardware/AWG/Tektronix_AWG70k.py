@@ -44,7 +44,7 @@ class AWG(Base, PulserInterface):
             self.logMsg('This is AWG: Did not find >>awg_port<< in '
                         'configuration.', msgType='error')
         
-        self.samplingrate = 25e9
+        self.sample_rate = 25e9
         self.amplitude = 0.25
         self.loaded_sequence = None
         self.use_sequencer = False
@@ -113,8 +113,25 @@ class AWG(Base, PulserInterface):
         
         hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
         return
-        
-        
+
+
+    def pulser_on(self):
+        """ Switches the pulsing device on.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self.tell('AWGC:RUN\n')
+        return 0
+
+    def pulser_off(self):
+        """ Switches the pulsing device off.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self.tell('AWGC:STOP\n')
+        return 0
+
     def download_waveform(self, waveform, write_to_file = True):
         """ Brings the numpy arrays containing the samples in the Waveform() object into a format the hardware understands.
         Optionally this is then saved in a file. Afterwards they get downloaded to the Hardware.
@@ -129,6 +146,16 @@ class AWG(Base, PulserInterface):
             
             # TODO: Download waveform to AWG and load it into channels
             self.send_file(self.waveform_directory + waveform.name + '.mat')
+        return 0
+
+    def send_file(self, filepath):
+        """ Sends an already hardware specific waveform file to the pulse generators waveform directory.
+        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+
+        @param string filepath: The file path of the source file
+
+        @return int: error code (0:OK, -1:error)
+        """
         return 0
     
     def load_sequence(self, seq_name, channel = None):
@@ -154,158 +181,200 @@ class AWG(Base, PulserInterface):
         """
         return 0
     
-    def set_sampling_rate(self, sampling_rate):
-        """ Set the sampling rate of the pulse generator hardware
+    def set_sample_rate(self, sample_rate):
+        """ Set the sample rate of the pulse generator hardware
         
-        @param float sampling_rate: The sampling rate to be set (in Hz)
+        @param float sample_rate: The sample rate to be set (in Hz)
         
         @return foat: the sample rate returned from the device (-1:error)
         """
-        self.tell('CLOCK:SRATE %.4G\n' % sampling_rate)
+        self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
         return_rate = float(self.ask('CLOCK:SRATE?\n'))
-        self.samplingrate = return_rate
+        self.sample_rate = return_rate
         return return_rate
         
-    def get_sampling_rate(self):
-        """ Set the sampling rate of the pulse generator hardware
+    def get_sample_rate(self):
+        """ Set the sample rate of the pulse generator hardware
         
-        @return float: The current sampling rate of the device (in Hz)
+        @return float: The current sample rate of the device (in Hz)
         """
-        return self.samplingrate
+        return self.sample_rate
         
     def set_amplitude(self, channel, amplitude):
         """ Set the output amplitude of the pulse generator hardware.
-        Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
         
         @param int channel: The channel to be reconfigured
-        @param float amplitude: The peak-to-peak amplitude the channel should be set to (in V)
+        @param float amplitude: The peak-to-peak amplitude the channel should
+                                be set to (in V)
         
         @return int: error code (0:OK, -1:error)
+
+        Unused for purely digital hardware without logic level setting
+        capability (DTG, FPGA, etc.).
         """
+
         # TODO: Actually change the amplitude
         self.amplitude = amplitude
         return 0
         
     def get_amplitude(self, channel):
         """ Get the output amplitude of the pulse generator hardware.
-        Unused for purely digital hardware without logic level setting capability (FPGA, etc.).
         
         @param int channel: The channel to be checked
         
         @return float: The peak-to-peak amplitude the channel is set to (in V)
+
+        Unused for purely digital hardware without logic level setting
+        capability (FPGA, etc.).
         """
         return self.amplitude
-    
-    def send_file(self, filepath):
-        """ Sends an already hardware specific waveform file to the pulse generators waveform directory.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @param string filepath: The file path of the source file
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
-        
-    def delete_sequence(self, seq_name):
-        """ Used to delete a sequence from the device memory.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @param str seq_name: The name of the sequence to be deleted. Optionally a list of names.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        if not isinstance(seq_name, list):
-            seq_name = [seq_name]
-        self.ftp.connect(self.ip_address)
-        self.ftp.login('\r', '\r')
-        self.ftp.cwd(self.sequence_directory)
-        for name in seq_name:
-            self.ftp.delete(name + '.mat')
-        return 0
-        
-        
-    def set_sequence_directory(self, dir_path):
-        """ Change the directory where the sequences are stored on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @param string dir_path: The target directory
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        self.sequence_directory = dir_path
-        return 0
-       
-    def get_sequence_directory(self):
-        """ Ask for the directory where the sequences are stored on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @return string: The current sequence directory
-        """
-        return self.sequence_directory
-  
+
     def set_active_channels(self, digital_channels, analogue_channels = 0):
         """ Set the active channels for the pulse generator hardware.
-        
+
         @param int digital_channels: The number of digital channels
         @param int analogue_channels: The number of analogue channels
-        
+
         @return int: error code (0:OK, -1:error)
         """
+        # FIXME: That is not a good way of setting the active channels since no
+        # deactivation method of the channels is provided.
         if digital_channels <= 2:
             ch1_marker = digital_channels
             ch2_marker = 0
         else:
             ch1_marker = 2
             ch2_marker = digital_channels % 2
-            
+
         self.tell('SOURCE1:DAC:RESOLUTION' + str(10-ch1_marker) + '\n')
         self.tell('SOURCE2:DAC:RESOLUTION' + str(10-ch2_marker) + '\n')
-        
+
         self.tell('OUTPUT1:STATE ON\n')
         if analogue_channels == 2:
             self.tell('OUTPUT2:STATE ON\n')
         else:
             self.tell('OUTPUT2:STATE OFF\n')
         return 0
-        
+
     def get_active_channels(self):
         """ Get the active channels of the pulse generator hardware.
-        
+
         @return (int, int): number of active channels (analogue, digital)
         """
-        analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + int(self.ask('OUTPUT2:STATE?\n'))
-        digital_channels = 20 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) + int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
+
+        analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + \
+                            int(self.ask('OUTPUT2:STATE?\n'))
+        digital_channels = 20 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) + \
+                           int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
         return (analogue_channels, digital_channels)
-        
-    # TODO: Actually retrieve the sequence names from the AWG
+
     def get_sequence_names(self):
-        """ Used to get the names of all downloaded sequences on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
+        """ Retrieve the names of all downloaded sequences on the device.
+
         @return list: List of sequence name strings
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
-        names = []
-        return names
+
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.sequence_directory)
+
+            # get only the files from the dir and skip possible directories
+            log =[]
+            file_list = []
+            ftp.retrlines('LIST', callback=log.append)
+            for line in log:
+                if not '<DIR>' in line:
+                    file_list.append(line.rsplit(None, 1)[1])
+        return file_list
+
+    def delete_sequence(self, seq_name):
+        """ Delete a sequence with the passed seq_name from the device memory.
+
+        @param str seq_name: The full name of the file to be deleted.
+                             Optionally a list of file names can be passed.
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+        if not isinstance(seq_name, list):
+            seq_name = [seq_name]
+
+        file_list = self.get_sequence_names()
+
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.sequence_directory)
+
+            for entry in seq_name:
+                if entry in file_list:
+                    ftp.delete(entry)
+
+        return 0
         
-    def pulser_on(self):
-        """ Switches the pulsing device on. 
+        
+    def set_sequence_directory(self, dir_path):
+        """ Change the directory where the sequences are stored on the device.
+        
+        @param string dir_path: The target directory
         
         @return int: error code (0:OK, -1:error)
-        """ 
-        self.soc.connect((self.ip_address, self.port))
-        self.soc.send('AWGC:RUN\n')
-        self.soc.close()
-        return 0
-    
-    def pulser_off(self):
-        """ Switches the pulsing device off. 
-        
-        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage
+        capability (PulseBlaster, FPGA).
         """
-        self.soc.connect((self.ip_address, self.port))
-        self.soc.send('AWGC:STOP\n')
-        self.soc.close()
+
+        # check whether the desired directory exists:
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+
+            try:
+                ftp.cwd(dir_path)
+            except:
+                self.logMsg('Desired directory {0} not found on AWG device.\n'
+                            'Create new.'.format(dir_path), msgType='status')
+                ftp.mkd(dir_path)
+
+        self.sequence_directory = dir_path
         return 0
+       
+    def get_sequence_directory(self):
+        """ Ask for the directory where the sequences are stored on the device.
+        
+        @return string: The current sequence directory
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+        return self.sequence_directory
+
+    def set_interleave(self, state=False):
+        # TODO: Implement this function
+        """ Turns the interleave of an AWG on or off.
+
+        @param bool state: The state the interleave should be set to
+                           (True: ON, False: OFF)
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for pulse generator hardware other than an AWG.
+        """
+        return 0
+
+    def get_interleave(self):
+        # TODO: Implement this function
+        """ Check whether Interleave is on in AWG.
+
+        @return bool: True: ON, False: OFF
+
+        Unused for pulse generator hardware other than an AWG.
+        """
+
+        return False
 
     def tell(self, command):
         """Send a command string to the AWG.
@@ -342,26 +411,14 @@ class AWG(Base, PulserInterface):
         message = message.replace('\r','')
         self.soc.close()
         return message
-
-    def set_interleave(self, state=False):
-        # TODO: Implement this function
-        """ Turns the interleave of an AWG on or off.
-        Unused for pulse generator hardware other than an AWG.
-        
-        @param bool state: The state the interleave should be set to (True: ON, False: OFF)
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
         
     def reset(self):
         """Reset the device.
         
         @return int: error code (0:OK, -1:error)
         """
-        self.soc.connect((self.ip_address, self.port))
-        self.soc.send('*RST\n')
-        self.soc.close()
+        self.tell('*RST\n')
+
         return 0
         
     
