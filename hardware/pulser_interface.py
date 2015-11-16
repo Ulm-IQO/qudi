@@ -10,6 +10,16 @@ class PulserInterface():
     Interface class to pass 
     """
 
+    def get_constraints(self):
+        """ provides all the constraints (sampling_rate, amplitude, total_length_bins, channel_config, ...)
+        related to the pulse generator hardware to the caller.
+        Each constraint is a tuple of the form (min_value, max_value, stepsize).
+
+        @return dict: dictionary holding the constraints for the sequence generation and GUI
+        """
+        constraints = {}
+        raise InterfaceImplementationError('PulserInterface>get_constraints')
+        return constraints
 
     def pulser_on(self):
         """ Switches the pulsing device on. 
@@ -72,27 +82,6 @@ class PulserInterface():
         """
         raise InterfaceImplementationError('PulserInterface>clear_channel')
         return -1
-        
-    def get_sequence_names(self):
-        """ Used to get the names of all downloaded sequences on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @return list: List of sequence name strings
-        """
-        names = []
-        raise InterfaceImplementationError('PulserInterface>get_sequence_names')
-        return names
-        
-    def delete_sequence(self, seq_name):
-        """ Used to delete a sequence from the device memory.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @param str seq_name: The name of the sequence to be deleted
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('PulserInterface>delete_sequence')
-        return -1
 
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
@@ -102,32 +91,21 @@ class PulserInterface():
         status = {}
         raise InterfaceImplementationError('PulserInterface>get_status')
         return status
-
-    def get_constraints(self):
-        """ provides all the constraints (sampling_rate, amplitude, total_length_bins, channel_config, ...) 
-        related to the pulse generator hardware to the caller. 
-        Each constraint is a tuple of the form (min_value, max_value, stepsize).
-        
-        @return dict: dictionary holding the constraints for the sequence generation and GUI
-        """
-        constraints = {}
-        raise InterfaceImplementationError('PulserInterface>get_constraints')
-        return constraints
     
-    def set_sampling_rate(self, sampling_rate):
-        """ Set the sampling rate of the pulse generator hardware
+    def set_sample_rate(self, sample_rate):
+        """ Set the sample rate of the pulse generator hardware
         
-        @param float sampling_rate: The sampling rate to be set (in Hz)
+        @param float sample_rate: The sampling rate to be set (in Hz)
         
         @return foat: the sample rate returned from the device (-1:error)
         """
         raise InterfaceImplementationError('PulserInterface>set_sampling_rate')
         return -1.
         
-    def get_sampling_rate(self):
-        """ Get the sampling rate of the pulse generator hardware
+    def get_sample_rate(self):
+        """ Get the sample rate of the pulse generator hardware
         
-        @return float: The current sampling rate of the device (in Hz)
+        @return float: The current sample rate of the device (in Hz)
         """
         raise InterfaceImplementationError('PulserInterface>get_sampling_rate')
         return -1
@@ -146,11 +124,13 @@ class PulserInterface():
         
     def get_amplitude(self, channel):
         """ Get the output amplitude of the pulse generator hardware.
-        Unused for purely digital hardware without logic level setting capability (FPGA, etc.).
         
         @param int channel: The channel to be checked
         
         @return float: The peak-to-peak amplitude the channel is set to (in V)
+
+        Unused for purely digital hardware without logic level setting
+        capability (FPGA, etc.).
         """
         raise InterfaceImplementationError('PulserInterface>get_amplitude')
         return -1
@@ -159,7 +139,7 @@ class PulserInterface():
         """ Set the active channels for the pulse generator hardware.
         
         @param int digital_channels: The number of digital channels
-        @param int analogue_channels: The number of analogue channels
+        @param int analogue_channels: optional, the number of analogue channels
         
         @return int: error code (0:OK, -1:error)
         """
@@ -173,38 +153,80 @@ class PulserInterface():
         """
         raise InterfaceImplementationError('PulserInterface>get_active_channels')
         return (-1, -1)
-    
+
+    def get_sequence_names(self):
+        """ Retrieve the names of all downloaded sequences on the device.
+
+        @return list: List of sequence name strings
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+        names = []
+        raise InterfaceImplementationError('PulserInterface>get_sequence_names')
+        return names
+
+    def delete_sequence(self, seq_name):
+        """ Delete a sequence with the passed seq_name from the device memory.
+
+        @param str seq_name: The name of the sequence to be deleted
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+        raise InterfaceImplementationError('PulserInterface>delete_sequence')
+        return -1
+
     def set_sequence_directory(self, dir_path):
         """ Change the directory where the sequences are stored on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
+
         @param string dir_path: The target directory
-        
+
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>set_sequence_directory')
         return -1
         
     def get_sequence_directory(self):
         """ Ask for the directory where the sequences are stored on the device.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
+
         @return string: The current sequence directory
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>get_sequence_directory')
         return ''
         
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
-        Unused for pulse generator hardware other than an AWG.
         
         @param bool state: The state the interleave should be set to (True: ON, False: OFF)
         
         @return int: error code (0:OK, -1:error)
+
+        Unused for pulse generator hardware other than an AWG.
         """
         raise InterfaceImplementationError('PulserInterface>set_interleave')
         return -1
-    
+
+    def get_interleave(self):
+        """ Check whether Interleave is ON or OFF in AWG.
+
+        @return bool: True: ON, False: OFF
+
+        Unused for pulse generator hardware other than an AWG.
+        """
+
+        raise InterfaceImplementationError('PulserInterface>set_interleave')
+        return -1
+
+
     def tell(self, command):
         """ Sends a command string to the device.
         
