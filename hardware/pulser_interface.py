@@ -1,5 +1,25 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi hardware interface for pulsing devices.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 
 from core.util.customexceptions import InterfaceImplementationError
 
@@ -7,15 +27,19 @@ from core.util.customexceptions import InterfaceImplementationError
 class PulserInterface():
     """ UNSTABLE: Nikolas Tomek
 
-    Interface class to pass 
+    This is the Interface class to define the abstract controls and
+    communication with all pulsing devices.
     """
 
     def get_constraints(self):
-        """ provides all the constraints (sampling_rate, amplitude, total_length_bins, channel_config, ...)
-        related to the pulse generator hardware to the caller.
-        Each constraint is a tuple of the form (min_value, max_value, stepsize).
+        """ Retrieve the hardware constrains from the Pulsing device.
 
-        @return dict: dictionary holding the constraints for the sequence generation and GUI
+        @return dict: dict with constraints for the sequence generation and GUI
+
+        Provides all the constraints (e.g. sample_rate, amplitude,
+        total_length_bins, channel_config, ...) related to the pulse generator
+        hardware to the caller.
+        Each constraint is a tuple of the form (min_value, max_value, stepsize).
         """
         constraints = {}
         raise InterfaceImplementationError('PulserInterface>get_constraints')
@@ -38,47 +62,62 @@ class PulserInterface():
         return -1
 
     def download_sequence(self, waveform, write_to_file = True):
-        """ Brings the numpy arrays containing the samples in the Waveform() object into a format the hardware understands.
-        Optionally this is then saved in a file. Afterwards they get downloaded to the Hardware.
+        """ Convert the pre-sampled numpy array to a specific hardware file.
         
         @param Waveform() waveform: The raw sampled pulse sequence.
-        @param bool write_to_file: Flag to indicate if the samples should be written to a file (True) or uploaded directly to the pulse generator channels (False).
+        @param bool write_to_file: Flag to indicate if the samples should be
+                                   written to a file (= True) or uploaded
+                                   directly to the pulse generator channels
+                                   (= False).
         
         @return int: error code (0:OK, -1:error)
+
+        Brings the numpy arrays containing the samples in the Waveform() object
+        into a format the hardware understands. Optionally this is then saved
+        in a file. Afterwards they get downloaded to the Hardware.
         """
         raise InterfaceImplementationError('PulserInterface>download_sequence')
         return -1
         
     def send_file(self, filepath):
-        """ Sends an already hardware specific waveform file to the pulse generators waveform directory.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        """ Sends an already hardware specific waveform file to the pulse
+            generators waveform directory.
         
         @param string filepath: The file path of the source file
         
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>send_file')
         return -1
 
-    def load_sequence(self, seq_name, channel = None):
-        """ Loads a sequence to the specified channel
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+    def load_sequence(self, seq_name, channel=None):
+        """ Loads a sequence to the specified channel of the pulsing device.
         
         @param str seq_name: The name of the sequence to be loaded
-        @param int channel: The channel for the sequence to be loaded into if not already specified in the sequence itself
+        @param int channel: The channel for the sequence to be loaded into if
+                            not already specified in the sequence itself
         
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>load_sequence')
         return -1
         
-    def clear_channel(self, channel):
-        """ Clears the loaded waveform from the specified channel
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+    def clear_channel(self, channel=None):
+        """ Clears the loaded waveform from the specified channel.
         
-        @param int channel: The channel to be cleared
+        @param int channel: The channel to be cleared. If no channel is passed
+                            all the channels will be cleared.
         
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>clear_channel')
         return -1
@@ -86,11 +125,20 @@ class PulserInterface():
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return dict: dictionary containing status variables of the pulse generator hardware
+        @return (int, dict): inter value of the current status with the
+                             corresponding dictionary containing status
+                             description for all the possible status variables
+                             of the pulse generator hardware
         """
-        status = {}
+        status_dic = {}
+        status_dic[-1] = 'Failed Request or Communication'
+        status_dic[0] = 'Device has stopped, but can receive commands.'
+        status_dic[1] = 'Device is active and running.'
+        # All the other status messages should have higher integer values
+        # then 1.
+
         raise InterfaceImplementationError('PulserInterface>get_status')
-        return status
+        return (-1, status_dic)
     
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
@@ -135,11 +183,11 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>get_amplitude')
         return -1
         
-    def set_active_channels(self, digital_channels, analogue_channels = 0):
+    def set_active_channels(self, d_ch=0, a_ch=0):
         """ Set the active channels for the pulse generator hardware.
         
-        @param int digital_channels: The number of digital channels
-        @param int analogue_channels: optional, the number of analogue channels
+        @param int d_ch: number of active digital channels
+        @param int a_ch: number of active analogue channels
         
         @return int: error code (0:OK, -1:error)
         """
