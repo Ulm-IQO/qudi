@@ -689,8 +689,20 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_length_InputWidget.setText(str(200))
         self._mw.reference_start_InputWidget.setText(str(500))
         self._mw.reference_length_InputWidget.setText(str(200))
+        self._mw.expected_duration_TimeLabel.setText('00:00:00:00')
         self._mw.elapsed_time_label.setText('00:00:00:00')
-        self._mw.analysis_period_InputWidget.setText(str(5))        
+        self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
+        self._mw.analysis_period_InputWidget.setText(str(5))
+        self._mw.laser_channel_LineEdit.setText(str(1))
+        self._mw.refocus_interval_LineEdit.setText(str(5))
+        self._mw.odmr_refocus_interval_LineEdit.setText(str(5))
+        self._mw.counter_safety_LineEdit.setText(str(0))
+        
+        self._mw.show_fft_plot_CheckBox.setChecked(False)
+        self._mw.ignore_first_laser_CheckBox.setChecked(False)
+        self._mw.ignore_last_laser_CheckBox.setChecked(True)
+        self._mw.alternating_sequence_CheckBox.setChecked(False)
+        self._mw.tau_defined_in_sequence_CheckBox.setChecked(False)
         
         #######################################################################
         ##                      Connect signals                              ##
