@@ -126,7 +126,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
 #                data[i*gate_length:(i+1)*gate_length] = trace
 #        data = np.loadtxt('141222_Rabi_old_NV_-11.04dbm_01.asc')
 #        data = np.loadtxt('20150701_binning4.asc')
-        data = np.loadtxt('20150701_binning4_1e6reps_really_nice.asc')
+        data = np.loadtxt('FastComTec_demo_timetrace.asc')
         time.sleep(0.5)
         return data
         
