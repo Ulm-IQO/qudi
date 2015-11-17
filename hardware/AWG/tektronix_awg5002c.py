@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi GUI module base class.
+This file contains the QuDi hardware file for AWG5000 Series.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -64,6 +64,13 @@ class AWG5002C(Base, PulserInterface):
                         'used instead.', msgType='warning')
             self.samplingrate = self.get_constraints()['sample_rate'][1]
 
+        if 'awg_ftp_path' in config.keys():
+            self.ftp_path = config['awg_ftp_path']
+        else:
+            self.logMsg('No parameter "awg_ftp_path" found in the config for '
+                        'the AWG5002C! State the FTP folder of this device!',
+                        msgType='error')
+
 
         self.connected = False
         self.amplitude = 0.25
@@ -82,6 +89,7 @@ class AWG5002C(Base, PulserInterface):
         self.connected = True
         # connect ethernet socket and FTP
         self.soc = socket(AF_INET, SOCK_STREAM)
+        self.soc.settimeout(5)  # set the timeout to 5 seconds
         self.soc.connect((self.ip_address, self.port))
         self.input_buffer = int(2 * 1024)   # buffer length for received text
 
@@ -89,12 +97,21 @@ class AWG5002C(Base, PulserInterface):
         self.connected = False
         self.soc.close()
 
+    # =========================================================================
+    # Below all the Pulser Interface routines.
+    # =========================================================================
 
     def get_constraints(self):
-        """ Retrieve the hardware constrains from the AWG.
+        """ Retrieve the hardware constrains from the Pulsing device.
 
-        @return: dict with the hardware constraints.
+        @return dict: dict with constraints for the sequence generation and GUI
+
+        Provides all the constraints (e.g. sample_rate, amplitude,
+        total_length_bins, channel_config, ...) related to the pulse generator
+        hardware to the caller.
+        Each constraint is a tuple of the form (min_value, max_value, stepsize).
         """
+
         constraints = {}
         # (min, max, incr) in samples/second:
         constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
@@ -116,29 +133,123 @@ class AWG5002C(Base, PulserInterface):
         constraints['channel_config'] = [(1,0), (1,1), (1,2), (2,0), (2,1), (2,2), (2,3), (2,4)]
         return constraints
 
+    def pulser_on(self):
+        """ Switches the pulsing device on.
+
+        @return int: error code (0:OK, -1:error, higher number corresponds to
+                                 current status of the device. Check then the
+                                 class variable status_dic.)
+        """
+
+        self.tell('AWGC:RUN\n')
+
+        return self.get_status()[0]
+
+    def pulser_off(self):
+        """ Switches the pulsing device off.
+
+        @return int: error code (0:OK, -1:error, higher number corresponds to
+                                 current status of the device. Check then the
+                                 class variable status_dic.)
+        """
+        self.tell('AWGC:STOP\n')
+
+        return self.get_status()[0]
+
+    #FIXME: implement method: download_sequence
+
+    #FIXME: implement method: send_file
+
+    def load_sequence(self, seq_name, channel=None):
+        """ Loads a sequence to the specified channel of the pulsing device.
+
+        @param str seq_name: The name of the sequence to be loaded
+        @param int channel: The channel for the sequence to be loaded into if
+                            not already specified in the sequence itself
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA). Waveforms and single channel sequences can be
+        assigned to each or both channels. Double channel sequences must be
+        assigned to channel 1. The AWG's file system is case-sensitive.
+        """
+
+        path = self.ftp_path + self.get_sequence_directory()
+
+        if channel is None or channel == 1:
+            self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, seq_name))
+        elif channel == 2:
+            self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, seq_name))
+        else:
+            self.logMsg('Channel number was expected to be 1 or 2 but a '
+                        'parameter "{0}" was passed.'.format(channel),
+                        msgType='error')
+            return -1
+
+        return 0
+
+    def clear_channel(self, channel=None):
+        """ Clears the loaded waveform from the specified channel.
+
+        @param int channel: The channel to be cleared. If no channel is passed
+                            all the channels will be cleared.
+
+        @return int: error code (0:OK, -1:error)
+
+        Delete all waveforms and sequences from Hardware memory and clear the
+        visual display.
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+        self.logMsg('Right now there is no possibility in clearing specific '
+                    'channels in the AWG5000 Series. Therefore this command '
+                    'will clear all the channels at once.',
+                    msgType='warning')
+
+        # if channel is None:
+        self.tell('WLIST:WAVEFORM:DELETE ALL\n')
+        return
 
 
-    # =========================================================================
-    # Below all the low level routines which are needed for the communication
-    # and establishment of a connection.
-    # ========================================================================
+    def get_status(self):
+        """ Retrieves the status of the pulsing hardware
 
+        @return (int, dict): inter value of the current status with the
+                             corresponding dictionary containing status
+                             description for all the possible status variables
+                             of the pulse generator hardware.
+                0 indicates that the instrument has stopped.
+                1 indicates that the instrument is waiting for trigger.
+                2 indicates that the instrument is running.
+               -1 indicates that the request of the status for AWG has failed.
+        """
+        status_dic = {}
+        # the possible status of the AWG have the following meaning:
+        status_dic[-1] = 'Failed Request or Communication with device.'
+        status_dic[0] = 'Instrument has stopped.'
+        status_dic[1] = 'Instrument is running.'
+        status_dic[2] = 'Instrument is waiting for trigger.'
 
+        # save the status dictionary is a class variable for later access.
+        self.status_dic = status_dic
 
+        # Keep in mind that the received integer number for the running status
+        # is 2 for this specific AWG5000 series device. Therefore a received
+        # message of 2 should be converted to a integer status variable of 1:
 
+        try:
+            message = int(self.ask('AWGC:RSTate?\n'))
+        except:
+            # if nothing comes back than the output should be marked as error
+            return -1
 
-
-    # =========================================================================
-    # Below all the higher level routines are situated which use the
-    # wrapped routines as a basis to perform the desired task.
-    # =========================================================================
-
-
-
-    # =========================================================================
-    # Below all the Pulser Interface routines.
-    # =========================================================================
-
+        if message==2:
+            return (1, status_dic)
+        elif message ==1:
+            return (2, status_dic)
+        else:
+            return (message, status_dic)
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
@@ -147,7 +258,7 @@ class AWG5002C(Base, PulserInterface):
 
         @return foat: the sample rate returned from the device (-1:error)
         """
-        # self.tell('CLOCK:SRATE {0:.4G}GHz\n'.format(sample_rate))
+
         self.tell('SOURCE1:FREQUENCY {0:.4G}MHz\n'.format(sample_rate/1e6))
 
         return self.get_sample_rate()
@@ -158,6 +269,7 @@ class AWG5002C(Base, PulserInterface):
 
         @return float: The current sample rate of the device (in Hz)
         """
+
         self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
         return self.sample_rate
 
@@ -191,50 +303,58 @@ class AWG5002C(Base, PulserInterface):
         # TODO: Actually ask for the amplitude
         return self.amplitude
 
-    def set_active_channels(self, digital_channels, analogue_channels = 0):
+    def set_active_channels(self, d_ch=2, a_ch=0):
         """ Set the active channels for the pulse generator hardware.
 
-        @param int digital_channels: The number of digital channels
-        @param int analogue_channels: optional, the number of analogue channels
+        @param int d_ch: The number of digital channels
+        @param int a_ch: optional, the number of analogue channels
 
         @return int: error code (0:OK, -1:error)
 
         AWG5000 Series instruments support only 14-bit resolution. Therefore
         this command will have no effect for these instruments.
         """
-        # FIXME: That is not a good way of setting the active channels since no
-        # deactivation method of the channels is provided.
-        if digital_channels <= 2:
-            ch1_marker = digital_channels
-            ch2_marker = 0
-        else:
-            ch1_marker = 2
-            ch2_marker = digital_channels % 2
 
-        # commented out for AWG5000 Series:
-        # self.tell('SOURCE1:DAC:RESOLUTION' + str(14-ch1_marker) + '\n')
-        # self.tell('SOURCE2:DAC:RESOLUTION' + str(14-ch2_marker) + '\n')
+        self.logMsg('Digital Channel of the AWG5000 series will always be '
+                    'active. This configuration cannot be changed.',
+                    msgType='status')
 
-        self.tell('OUTPUT1:STATE ON\n')
-
-        if analogue_channels == 2:
+        if a_ch == 2:
             self.tell('OUTPUT2:STATE ON\n')
-        else:
+            active_a_ch = self.get_active_channels()[1]
+
+        elif a_ch ==1:
+            self.tell('OUTPUT1:STATE ON\n')
             self.tell('OUTPUT2:STATE OFF\n')
-        return 0
+            active_a_ch = self.get_active_channels()[1]
+        else:
+            self.tell('OUTPUT1:STATE OFF\n')
+
+        if active_a_ch == a_ch:
+            return 0
+        else:
+            self.logMsg('Activation of the desired analogue channels not '
+                        'possible!\nMaybe no valid waveform(s) is loaded into '
+                        'the channels, or the waveform for the second channel '
+                        'is not valid (due to a different length).\n'
+                        'Correct that!', msgType='error')
+            return -1
+
 
     def get_active_channels(self):
         """ Get the active channels of the pulse generator hardware.
 
         @return (int, int): number of active channels (analogue, digital)
         """
-        # FIXME: That is not a good way of setting the active channels since no
-        # deactivation method of the channels is provided.
+
         analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + \
                             int(self.ask('OUTPUT2:STATE?\n'))
 
-        # 14bit resolution per channel. Since the resolution is fixed, it will
-        # always return the number 30-14-14=2 channels.
+        # For the AWG5000 series, the resolution of the DAC for the analogue
+        # channel is fixed to 14bit. Therefore the digital channels are always
+        # active and cannot be deactivated, by setting the DAC by 1bit per
+        # channel higher. The following construction will give always 2 since
+        # 30-14-14 =2:
         digital_channels =30 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) -\
                                int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
 
@@ -381,10 +501,19 @@ class AWG5002C(Base, PulserInterface):
         #  and no str.
         question = bytes(question, 'UTF-8')
         self.soc.send(question)
-        time.sleep(0.5) # you need to wait until AWG generating an answer.
+        time.sleep(0.3) # you need to wait until AWG generating an answer.
+                        # This number was determined experimentally.
+        try:
+            message = self.soc.recv(self.input_buffer)  # receive an answer
+            message = message.decode('UTF-8')   # decode bytes into a python str
+        except OSError:
+            self.logMsg('Most propably timeout was reached during querying '
+                        'the AWG5000 Series device with the question:\n'
+                        '{0}\n'
+                        'The question text must be wrong.'.format(question),
+                        msgType='error')
+            message = str(-1)
 
-        message = self.soc.recv(self.input_buffer)  # receive an answer
-        message = message.decode('UTF-8')   # decode bytes into a python str
         message = message.replace('\n','')  # cut away the characters\r and \n.
         message = message.replace('\r','')
 
@@ -399,3 +528,90 @@ class AWG5002C(Base, PulserInterface):
 
         return 0
 
+    # =========================================================================
+    # Below all the low level routines which are needed for the communication
+    # and establishment of a connection.
+    # ========================================================================
+
+    def set_lowpass_filter(self, a_ch, cutoff_freq):
+        """ Set a lowpass filter to the analog channels of the AWG.
+
+        @param int a_ch: To which channel to apply, either 1 or 2.
+        @param cutoff_freq: Cutoff Frequency of the lowpass filter in Hz.
+        """
+        if a_ch ==1:
+            self.tell('OUTPUT1:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq/1e6) )
+        elif a_ch ==2:
+            self.tell('OUTPUT2:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq/1e6) )
+
+    def set_jump_timing(self, synchronous = False):
+        """Sets control of the jump timing in the AWG.
+
+        @param bool synchronous: if True the jump timing will be set to
+                                 synchornous, otherwise the jump timing will be
+                                 set to asynchronous.
+
+        If the Jump timing is set to asynchornous the jump occurs as quickly as
+        possible after an event occurs (e.g. event jump tigger), if set to
+        synchornous the jump is made after the current waveform is output. The
+        default value is asynchornous.
+        """
+        if(synchronous):
+            self.tell('EVEN:JTIM SYNC\n')
+        else:
+            self.tell('EVEN:JTIM ASYNC\n')
+
+    def set_mode(self, mode):
+        """Change the output mode of the AWG5000 series.
+
+        @param str mode: Options for mode (case-insensitive):
+                            continuous - 'C'
+                            triggered  - 'T'
+                            gated      - 'G'
+                            sequence   - 'S'
+
+        """
+
+        look_up = {'C' : 'CONT',
+                   'T' : 'TRIG',
+                   'G' : 'GAT' ,
+                   'E' : 'ENH' ,
+                   'S' : 'SEQ'
+                  }
+        self.tell('AWGC:RMOD %s\n' % look_up[mode.upper()])
+
+
+    def get_sequencer_mode(self,output_as_int=False):
+        """ Asks the AWG which sequencer mode it is using.
+
+        @param: bool output_as_int: optional boolean variable to set the output
+        @return: str or int with the following meaning:
+                'HARD' or 0 indicates Hardware Mode
+                'SOFT' or 1 indicates Software Mode
+                'Error' or -1 indicates a failure of request
+
+        It can be either in Hardware Mode or in Software Mode. The optional
+        variable output_as_int sets if the returned value should be either an
+        integer number or string.
+        """
+
+        message = self.ask('AWGControl:SEQuencer:TYPE?\n')
+        if output_as_int == True:
+            if 'HARD' in message:
+                return 0
+            elif 'SOFT' in message:
+                return 1
+            else:
+                return -1
+        else:
+            if 'HARD' in message:
+                return 'Hardware-Sequencer'
+            elif 'SOFT' in message:
+                return 'Software-Sequencer'
+            else:
+                return 'Request-Error'
+
+    # =========================================================================
+    # Below all the higher level routines are situated which use the
+    # wrapped routines as a basis to perform the desired task.
+    # =========================================================================

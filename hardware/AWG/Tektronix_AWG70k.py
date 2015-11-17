@@ -16,14 +16,14 @@ import numpy as np
 import hdf5storage
 from hardware.pulser_interface import PulserInterface
 
-class AWG(Base, PulserInterface):
+class AWG70K(Base, PulserInterface):
     """ UNSTABLE: Nikolas
     """
-    _modclass = 'AWG'
+    _modclass = 'awg70k'
     _modtype = 'hardware'
     
     # declare connectors
-    _out = {'AWG': 'AWG'}
+    _out = {'awg70k': 'PulserInterface'}
 
     def __init__(self,manager, name, config = {}, **kwargs):
 
@@ -133,14 +133,21 @@ class AWG(Base, PulserInterface):
         return 0
 
     def download_waveform(self, waveform, write_to_file = True):
-        """ Brings the numpy arrays containing the samples in the Waveform() object into a format the hardware understands.
-        Optionally this is then saved in a file. Afterwards they get downloaded to the Hardware.
-        
-        @param Waveform() sequence: The raw sampled pulse sequence.
-        @param bool write_to_file: Flag to indicate if the samples should be written to a file (True) or uploaded directly to the pulse generator channels (False).
-        
+        """ Convert the pre-sampled numpy array to a specific hardware file.
+
+        @param Waveform() waveform: The raw sampled pulse sequence.
+        @param bool write_to_file: Flag to indicate if the samples should be
+                                   written to a file (= True) or uploaded
+                                   directly to the pulse generator channels
+                                   (= False).
+
         @return int: error code (0:OK, -1:error)
+
+        Brings the numpy arrays containing the samples in the Waveform() object
+        into a format the hardware understands. Optionally this is then saved
+        in a file. Afterwards they get downloaded to the Hardware.
         """
+
         if write_to_file:
             self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_rate, waveform.amplitude)
             
@@ -149,24 +156,31 @@ class AWG(Base, PulserInterface):
         return 0
 
     def send_file(self, filepath):
-        """ Sends an already hardware specific waveform file to the pulse generators waveform directory.
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        """ Sends an already hardware specific waveform file to the pulse
+            generators waveform directory.
 
         @param string filepath: The file path of the source file
 
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
         return 0
     
     def load_sequence(self, seq_name, channel = None):
-        """ Loads a sequence to the specified channel
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
+        """ Loads a sequence to the specified channel of the pulsing device.
+
         @param str seq_name: The name of the sequence to be loaded
-        @param int channel: The channel for the sequence to be loaded into if not already specified in the sequence itself
-        
+        @param int channel: The channel for the sequence to be loaded into if
+                            not already specified in the sequence itself
+
         @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
         """
+
         # TODO: Actually load the sequence into the channel(s)
         self.loaded_sequence = seq_name
         return 0
@@ -229,31 +243,34 @@ class AWG(Base, PulserInterface):
         """
         return self.amplitude
 
-    def set_active_channels(self, digital_channels, analogue_channels = 0):
+    def set_active_channels(self, d_ch=0, a_ch=0):
         """ Set the active channels for the pulse generator hardware.
 
-        @param int digital_channels: The number of digital channels
-        @param int analogue_channels: The number of analogue channels
+        @param int d_ch: Number of digital channels
+        @param int a_ch: Number of analogue channels
 
         @return int: error code (0:OK, -1:error)
         """
         # FIXME: That is not a good way of setting the active channels since no
         # deactivation method of the channels is provided.
-        if digital_channels <= 2:
-            ch1_marker = digital_channels
+        if d_ch <= 2:
+            ch1_marker = d_ch
             ch2_marker = 0
         else:
             ch1_marker = 2
-            ch2_marker = digital_channels % 2
+            ch2_marker = d_ch % 2
 
         self.tell('SOURCE1:DAC:RESOLUTION' + str(10-ch1_marker) + '\n')
         self.tell('SOURCE2:DAC:RESOLUTION' + str(10-ch2_marker) + '\n')
 
-        self.tell('OUTPUT1:STATE ON\n')
-        if analogue_channels == 2:
+
+        if a_ch == 2:
             self.tell('OUTPUT2:STATE ON\n')
-        else:
+        elif a_ch ==1:
+            self.tell('OUTPUT1:STATE ON\n')
             self.tell('OUTPUT2:STATE OFF\n')
+        else:
+            self.tell('OUTPUT1:STATE OFF\n')
         return 0
 
     def get_active_channels(self):
@@ -313,7 +330,6 @@ class AWG(Base, PulserInterface):
             for entry in seq_name:
                 if entry in file_list:
                     ftp.delete(entry)
-
         return 0
         
         
