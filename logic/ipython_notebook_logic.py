@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Aggregate multiple switches.
+Serve ipython notebooks via http
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,17 +38,16 @@ import sys
 import threading
 import time
 
-# Third party
+# IPython setup
 # check for pyzmq 2.1.11
 from IPython.utils.zmqrelated import check_for_zmq
 check_for_zmq('2.1.11', 'IPython.html')
 
-from jinja2 import Environment, FileSystemLoader
-
 # Install the pyzmq ioloop. This has to be done before anything else from
 # tornado is imported.
 from zmq.eventloop import ioloop
-ioloop.install()
+
+from jinja2 import Environment, FileSystemLoader
 
 # check for tornado 3.1.0
 msg = "The IPython Notebook requires tornado >= 3.1.0"
@@ -247,7 +246,7 @@ class NotebookWebApplication(web.Application):
         # Note that the URLs these patterns check against are escaped,
         # and thus guaranteed to be ASCII: 'héllo' is really 'h%C3%A9llo'.
         base_url = py3compat.unicode_to_str(base_url, 'ascii')
-        template_path = settings_overrides.get("template_path", os.path.join(os.path.dirname(__file__), "templates"))
+        template_path = settings_overrides.get("template_path", os.path.join(os.path.dirname(__file__), "..", "artwork", "html", "templates"))
         print(template_path)
         jenv_opt = jinja_env_options if jinja_env_options else {}
         env = Environment(loader=FileSystemLoader(template_path),**jenv_opt )
@@ -633,12 +632,16 @@ class NotebookApp(BaseIPythonApplication):
     def init_configurables(self):
         # force Session default to be secure
         default_secure(self.config)
+        self.log.info(self.kernel_argv)
+        self.log.info(self.profile_dir.security_dir)
         self.kernel_manager = MappingKernelManager(
             parent=self,
             log=self.log,
             kernel_argv=self.kernel_argv,
             connection_dir = self.profile_dir.security_dir,
         )
+        #self.kernel_manager.kernel_manager_class = "IPython.kernel.inprocess.InProcessKernelManager"
+        self.kernel_manager.kernel_manager_class = "IPython.kernel.ioloop.IOLoopKernelManager"
         kls = import_item(self.notebook_manager_class)
         self.notebook_manager = kls(parent=self, log=self.log)
         self.session_manager = SessionManager(parent=self, log=self.log)

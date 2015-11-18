@@ -148,6 +148,25 @@ class TaskRunner(GenericLogic):
                 self.logExc('Error while importing module for task {}'.format(t['name']), msgType='error')
         self.sigCheckTasks.emit()
 
+    def registerTask(self, task):
+        """
+        task: dict
+            bool ok: loading checks passed
+            obj object: refernece to task object
+            str name: unoque name of task
+            str module: module name of task module
+            [str] preposttasks: pre/post execution tasks for this task
+            [str] pausetasks: this stuff neds to be paused before task can run
+            dict needsmodules: task needs these modules
+            dict config: extra configuration
+        """
+        if (
+            isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask)
+            ):
+            self.model.append(t)
+        else:
+            self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
+
     def checkTasksInModel(self):
         for task in self.model.storage:
             ppok = False

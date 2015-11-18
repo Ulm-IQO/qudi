@@ -115,6 +115,15 @@ import faulthandler
 faulthandler.disable()
 faulthandler.enable(all_threads=True)
 
+# IPython setup
+# check for pyzmq 2.1.11
+from IPython.utils.zmqrelated import check_for_zmq
+check_for_zmq('2.1.11', 'IPython.html')
+
+# Install the pyzmq ioloop. This has to be done before anything else from
+# tornado is imported.
+from zmq.eventloop import ioloop
+ioloop.install()
 
 # Disable garbage collector to improve stability. 
 # (see pyqtgraph.util.garbage_collector in the doc for more information)
