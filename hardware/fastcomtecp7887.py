@@ -1,19 +1,38 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi Hardware module for the FAST ComTec 7887 device.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 #####################################################
 #                                                   #
 #   HARDWARE CLASS CURRENTLY NOT WORKING - ALEX S.  #
 #                                                   #
 #####################################################
+
 from core.base import Base
-from hardware.fastcounterinterface import FastCounterInterface
+from hardware.fast_counter_interface import FastCounterInterface
 
 import ctypes 
 import os
 import numpy, numpy.fft
 import time
 
-from collections import OrderedDict
 
 """
 Remark to the usage of ctypes:

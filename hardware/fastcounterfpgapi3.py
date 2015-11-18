@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 
-from hardware.fastcounterinterface import FastCounterInterface
+from hardware.fast_counter_interface import FastCounterInterface
 import numpy as np
 from collections import OrderedDict
 import TimeTagger as tt
