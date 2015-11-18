@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi HARDWARE module PicoHarp300 class.
+This file contains the QuDi hardware module for the PicoHarp300.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,10 +20,12 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 
 import ctypes
 import numpy as np
-from collections import OrderedDict
+import time
+
 from core.base import Base
 from hardware.slow_counter_interface import SlowCounterInterface
-import time
+from hardware.fast_counter_interface import FastCounterInterface
+
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
 # 'phdefin.h', 'phlib.h' and 'errorcodes.h'. The 'phdefin.h' contains all the
@@ -79,8 +81,7 @@ correspond to standard C/C++ data types as follows:
 
 #FIXME: The interface connetion to the fast counter must be established!
 
-#FIXME: Addapt to the slowCounter Interface
-class PicoHarp300(Base, SlowCounterInterface):
+class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     """Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
@@ -992,7 +993,7 @@ class PicoHarp300(Base, SlowCounterInterface):
         @return float: the photon counts per second
         """
         time.sleep(0.001)
-        return self.get_count_rate(self._count_channel)#*self.COUNTFREQ
+        return self.get_count_rate(self._count_channel)
 
     def close_counter(self):
         """ Closes the counter and cleans up afterwards. Actually, you do not

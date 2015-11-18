@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-from hardware.fastcounterinterface import FastCounterInterface
+from hardware.fast_counter_interface import FastCounterInterface
 from collections import OrderedDict
 from core.base import Base
 import numpy as np
