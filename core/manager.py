@@ -142,6 +142,9 @@ class Manager(QtCore.QObject):
             self.tm = ThreadManager()
             self.tm.sigLogMessage.connect(self.logger.queuedLogMsg)
             self.logger.logMsg('Main thread is {0}'.format(threading.get_ident()), msgType='thread')
+
+            # Task runner
+            self.tr = None
             
             # Handle command line options
             loadModules = []
@@ -1145,3 +1148,15 @@ class Manager(QtCore.QObject):
         
         return order
         
+    def registerTaskRunner(self, reference):
+        with self.lock:
+            if self.tr is None and reference is not None:
+                self.tr = reference
+                self.logger.logMsg('Task runner registered')
+            elif self.tr is not None and reference is None:
+                self.logger.logMsg('Task runner removed')
+            elif self.tr is None and reference is None:
+                self.logger.logMsg('You tried to remove the task runner but none was registered', msgType='error')
+            else:
+                self.logger.logMsg('Replacing task runner', msgType='warning')
+

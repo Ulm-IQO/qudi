@@ -100,7 +100,11 @@ class TaskRunner(GenericLogic):
         self.model.rowsRemoved.connect(self.modelChanged)
         self.sigLoadTasks.connect(self.loadTasks)
         self.sigCheckTasks.connect(self.checkTasksInModel)
+        self._manager.registerTaskRunner(self)
         self.sigLoadTasks.emit()
+
+    def deactivation(self, e):
+        self._manager.registerTaskRunner(None)
 
     def loadTasks(self):
         config = self.getConfiguration()
@@ -199,9 +203,6 @@ class TaskRunner(GenericLogic):
                     modok = True
             print(task['name'], ppok, pok, modok)
             task['ok'] = ppok and pok and modok
-
-    def deactivation(self, e):
-        pass
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
