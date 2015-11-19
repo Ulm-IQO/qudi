@@ -11,7 +11,6 @@ from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
 #from pyqtgraph.Qt import QtCore
 #from core.util.mutex import Mutex
-from collections import OrderedDict
 import numpy as np
 import pickle
 import glob
@@ -160,6 +159,20 @@ class Pulse_Sequence():
             self.ensemble_list.append(ensemble)
         self.refresh_parameters()
         return
+        
+        
+class Waveform():
+    """ 
+    Represents a sampled Pulse_Block_Ensemble() object.
+    Holds analogue and digital samples and important parameters.
+    """
+    def __init__(self, block_ensemble, sampling_freq, analogue_samples, digital_samples):
+        self.name = block_ensemble.name
+        self.sampling_freq = sampling_freq
+        self.block_ensemble = block_ensemble
+        self.analogue_samples = analogue_samples
+        self.digital_samples = digital_samples
+
 
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     """unstable: Nikolas Tomek
@@ -170,6 +183,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     ## declare connectors
     _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
+    
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -211,8 +225,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """ Deinitialisation performed during deactivation of the module.
         """
         pass
-     
-     
+    
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 #-------------------------------------------------------------------------------  
@@ -430,9 +443,24 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block sampling
 #-------------------------------------------------------------------------------
+    def generate_waveform(self, block_ensemble):
+        """
+        Samples a Pulse_Block_Ensemble() object and creates a Waveform().
+        The Waveform object can be really big so only create it if needed and delete it from memory asap.
+        
+        @param Pulse_Block_Ensemble() block_ensemble: The block ensemble object to be sampled
+        
+        @return Waveform(): A Waveform object containing the samples and metadata (sampling_freq etc)
+        """
+        analogue_samples, digital_samples = self.sample_ensemble(block_ensemble)
+        waveform_obj = Waveform(block_ensemble, self.sampling_freq, analogue_samples, digital_samples)
+        return waveform_obj
+    
     def sample_sequence(self):
         """
-        Creates chunks for waveform creation out of a sequence and samples them.
+        Creates a whole new structure of Block_Elements, Blocks and Block_Ensembles so that the phase of the seqeunce is preserved.
+        Then samples the new Block_Ensembles to obtain the waveforms needed for the sequence.
+        Not easy!
         """
         pass
      
