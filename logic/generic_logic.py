@@ -50,3 +50,9 @@ class GenericLogic(Base):
         """
         return self._manager.tm._threads['mod-logic-' + self._name].thread
 
+    def getTaskRunner(self):
+        with self._manager.lock:
+            if self._manager.tr is not None:
+                return self._manager.tr
+            else:
+                raise Exception('Tried to access task runner without loading one!')
