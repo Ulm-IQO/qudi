@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1192</width>
-    <height>860</height>
+    <height>778</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -481,7 +481,7 @@
         </widget>
         <widget class="QWidget" name="tab_2">
          <attribute name="title">
-          <string>Block Generator</string>
+          <string>Pulse Generator</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_5">
           <item row="0" column="2">
@@ -1276,7 +1276,7 @@ sel.</string>
         </widget>
         <widget class="QWidget" name="tab_3">
          <attribute name="title">
-          <string>Sequence Editor</string>
+          <string>Sequence Generator</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_8">
           <item row="0" column="0">
@@ -1292,7 +1292,7 @@ sel.</string>
                  <x>0</x>
                  <y>0</y>
                  <width>1144</width>
-                 <height>751</height>
+                 <height>669</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -1305,7 +1305,7 @@ sel.</string>
         </widget>
         <widget class="QWidget" name="tab_4">
          <attribute name="title">
-          <string>PulseExtraction</string>
+          <string>Pulse Extraction</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_15">
           <item row="0" column="0">
