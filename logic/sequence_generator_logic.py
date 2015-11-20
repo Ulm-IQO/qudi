@@ -9,7 +9,7 @@ Created on Fri Oct 23 16:00:38 2015
 
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
-#from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore
 #from core.util.mutex import Mutex
 import numpy as np
 import pickle
@@ -184,6 +184,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     ## declare connectors
     _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
     
+    # define signals
+    signal_block_list_updated = QtCore.Signal()
+    signal_ensemble_list_updated = QtCore.Signal()
+    signal_sequence_list_updated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -272,6 +276,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             blocks.append(filename[:-4])
         blocks.sort()
         self.saved_blocks = blocks
+        self.signal_block_list_updated.emit()
         return
     
     
@@ -318,6 +323,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             ensembles.append(filename[:-4])
         ensembles.sort()
         self.saved_ensembles = ensembles
+        self.signal_ensemble_list_updated.emit()
         return
         
         
@@ -364,6 +370,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             sequences.append(filename[:-4])
         sequences.sort()
         self.saved_sequences = sequences
+        self.signal_sequence_list_updated.emit()
         return
         
         
@@ -566,21 +573,30 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         params['frequency'] = mw_freq_Hz
         params['amplitude'] = mw_power_V
         params['phase'] = 0
-        params['increment_bins'] = tau_incr_bins
         # generate elements
-        laser_element = Pulse_Block_Element('idle', laser_time_bins, [True, False], False)
-        waiting_element = Pulse_Block_Element('idle', waiting_time_bins, [False, False], False)
-        mw_element = Pulse_Block_Element('sin', tau_start_bins, [False, False], True, params)
+        laser_markers = [False]*self.digital_channels
+        laser_markers[0] = True
+        laser_element = Pulse_Block_Element(laser_time_bins, self.analogue_channels, self.digital_channels, 0, 'Idle', laser_markers)
+        waiting_element = Pulse_Block_Element(waiting_time_bins, self.analogue_channels, self.digital_channels, 0, 'Idle', [False]*self.digital_channels)
+        mw_element = Pulse_Block_Element(tau_start_bins, self.analogue_channels, self.digital_channels, tau_incr_bins, 'Sin', [False]*self.digital_channels, params)
         # put elements in a list to create the block
         element_list = [laser_element, waiting_element, mw_element]
         # create block
-        block = Pulse_Block('rabi_block', element_list)
+        block = Pulse_Block('Rabi_block', element_list)
         # create tau_array
         tau_array = np.arange(tau_start_bins, tau_end_bins+1, tau_incr_bins)
         # put block(s) in a list with repetitions to create the sequence
-        repetitions = int(tau_end_bins - tau_start_bins)
+        repetitions = len(tau_array)-1
         block_list = [(block, repetitions)]
         # create sequence out of the block(s)
-        sequence = Pulse_Sequence('Rabi', block_list, tau_array, False)
-        return sequence
+        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, False)
+        # save block
+        self.save_block('Rabi_block', block)
+        # save ensemble
+        self.save_ensemble('Rabi', block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        return
 
