@@ -606,12 +606,12 @@ class PulsedMeasurementGui(GUIBase):
         self.threadlock = Mutex()
 
     def activation(self, e=None):
-        """ Definition, configuration and initialisation of the pulsed measurement GUI.
+        """ Initialize, connect and configure the pulsed measurement GUI.
 
-          @param class e: event class from Fysom
+        @param Fysom.event e: Event Object of Fysom
 
-        This init connects all the graphic modules, which were created in the
-        *.ui file and configures the event handling between the modules.
+        Establish general connectivity and activate the different tabs of the
+        GUI.
         """
 
 
@@ -620,134 +620,122 @@ class PulsedMeasurementGui(GUIBase):
         self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-        self._activted_main_ui(e)
-        self._activated_block_settings_ui(e)
 
-        # self.count_analog_channels()
-        # self.count_digital_channels()
-        
-        # plotwidgets of analysis tab
-        
-        # Get the image from the logic
-        # pulsed measurement tab
-        self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
-        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
-        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
-        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
-        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))        
-#
-#        # Add the display item to the xy VieWidget, which was defined in
-#        # the UI file.
-        self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
-        self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw = PulsedMeasurementMainWindow()
+
+        self._activate_analysis_settings_ui(e)
+        self._activate_analysis_ui(e)
+
+        self._activate_pulse_generator_settings_ui(e)
+        self._activate_pulse_generator_ui(e)
+
+        self._activate_sequence_settings_ui(e)
+        self._activate_sequence_generator_ui(e)
+
+        self._activate_pulse_extraction_settings_ui(e)
+        self._activate_pulse_extraction_ui(e)
+
+        self.show()
 
 
-        # Set the state button as ready button as default setting.
-        self._mw.idle_radioButton.click()
+    def deactivation(self, e):
+        """ Undo the Definition, configuration and initialisation of the pulsed
+            measurement GUI.
 
-        # Configuration of the comboWidget
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
-        # set up the types of the columns and create a pattern based on
-        # the desired settings:
+        @param Fysom.event e: Event Object of Fysom
 
-#        # Add Validators to InputWidgets
-        validator = QtGui.QDoubleValidator()
-        validator2 = QtGui.QIntValidator()
+        This deactivation disconnects all the graphic modules, which were
+        connected in the initUI method.
+        """
 
-        # pulsed measurement tab
-        self._mw.frequency_InputWidget.setValidator(validator)
-        self._mw.power_InputWidget.setValidator(validator)
-        self._mw.analysis_period_InputWidget.setValidator(validator)
-        self._mw.numlaser_InputWidget.setValidator(validator2)
-        self._mw.taustart_InputWidget.setValidator(validator)
-        self._mw.tauincrement_InputWidget.setValidator(validator)
-        self._mw.signal_start_InputWidget.setValidator(validator2)
-        self._mw.signal_length_InputWidget.setValidator(validator2)
-        self._mw.reference_start_InputWidget.setValidator(validator2)
-        self._mw.reference_length_InputWidget.setValidator(validator2)
-        
-        # Fill in default values:
-        
-        # pulsed measurement tab 
-        self._mw.frequency_InputWidget.setText(str(2870.))
-        self._mw.power_InputWidget.setText(str(-30.))
-        self._mw.numlaser_InputWidget.setText(str(50))
-        self._mw.taustart_InputWidget.setText(str(1))
-        self._mw.tauincrement_InputWidget.setText(str(1))
-        self._mw.lasertoshow_spinBox.setRange(0, 50)
-        self._mw.lasertoshow_spinBox.setPrefix("#")
-        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
-        self._mw.lasertoshow_spinBox.setValue(0)
-        self._mw.signal_start_InputWidget.setText(str(5))
-        self._mw.signal_length_InputWidget.setText(str(200))
-        self._mw.reference_start_InputWidget.setText(str(500))
-        self._mw.reference_length_InputWidget.setText(str(200))
-        self._mw.expected_duration_TimeLabel.setText('00:00:00:00')
-        self._mw.elapsed_time_label.setText('00:00:00:00')
-        self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
-        self._mw.analysis_period_InputWidget.setText(str(5))
-        self._mw.laser_channel_LineEdit.setText(str(1))
-        self._mw.refocus_interval_LineEdit.setText(str(5))
-        self._mw.odmr_refocus_interval_LineEdit.setText(str(5))
-        self._mw.counter_safety_LineEdit.setText(str(0))
-        
-        self._mw.show_fft_plot_CheckBox.setChecked(False)
-        self._mw.ignore_first_laser_CheckBox.setChecked(False)
-        self._mw.ignore_last_laser_CheckBox.setChecked(True)
-        self._mw.alternating_sequence_CheckBox.setChecked(False)
-        self._mw.tau_defined_in_sequence_CheckBox.setChecked(False)
-        
-        #######################################################################
-        ##                      Connect signals                              ##
-        #######################################################################
 
-        # Connect the RadioButtons and connect to the events if they are clicked:
-        # pulsed measurement tab
-        self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
-        self._mw.run_radioButton.toggled.connect(self.run_clicked)
-        
-        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
-        self._mw.pull_data_pushButton.setEnabled(False)
+        self._deactivate_analysis_settings_ui(e)
+        self._deactivate_analysis_ui(e)
 
-        self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
-        self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
-        self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
-        # sequence generator tab
+        self._deactivate_pulse_generator_settings_ui(e)
+        self._deactivate_pulse_generator_ui(e)
 
-        
-        # Connect InputWidgets to events
-        # pulsed measurement tab
-        self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
-        self._mw.taustart_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.tauincrement_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-#        # sequence generator tab
-#        self._mw.pg_timebase_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_mwfreq_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_mwpower_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_waittime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_lasertime_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_taustart_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_tauend_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-#        self._mw.rabi_tauincrement_InputWidget.editingFinished.connect(self.check_input_with_samplerate)
-        
-        self.seq_parameters_changed()
-        self.analysis_parameters_changed()
-#        
-#        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
-        
+        self._deactivate_sequence_settings_ui(e)
+        self._deactivate_sequence_generator_ui(e)
+
+        self._deactivate_pulse_extraction_settings_ui(e)
+        self._deactivate_pulse_extraction_ui(e)
+
+
+        self._mw.close()
+
+    def show(self):
+        """Make main window visible and put it above all other windows. """
+        QtGui.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
+
+
+
+    ###########################################################################
+    ###     Methods related to Settings for the 'Pulse Generator' Tab:      ###
+    ###########################################################################
+
+
+    def _activate_pulse_generator_settings_ui(self, e):
+        """ Initialize, connect and configure the Settings for the
+            'Pulse Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        self._bs = BlockSettingDialog() # initialize the block settings
+        self._bs.accepted.connect(self.update_block_settings)
+        self._bs.rejected.connect(self.keep_former_block_settings)
+        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
+
+    def _deactivate_pulse_generator_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for the
+            'Pulse Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        self._bs.accepted.disconnect()
+        self._bs.rejected.disconnect()
+        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
+
+        self._bs.close()
+
+    def show_block_settings(self):
+        """ Opens the block settings menue. """
+        self._bs.exec_()
+
+    def update_block_settings(self):
+        """ Write new block settings from the gui to the file. """
+        self._set_channels(num_d_ch=self._bs.digital_channels_SpinBox.value(), num_a_ch=self._bs.analog_channels_SpinBox.value())
+        # self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
+        # self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
+
+    def keep_former_block_settings(self):
+        """ Keep the old block settings and restores them in the gui. """
+
+        self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
+        self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
+
+
+    ###########################################################################
+    ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
+    ###########################################################################
+
+    def _activate_pulse_generator_ui(self, e):
+        """ Initialize, connect and configure the 'Pulse Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        # self._mw.block_add_last_PushButton.clicked.connect(self.ad)
+
+        # connect the menue to the actions:
+        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
+
+
         #FIXME: Make the analog channel parameter chooseable in the settings.
 
 
@@ -801,6 +789,19 @@ class PulsedMeasurementGui(GUIBase):
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
         # self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
+
+    def _deactivate_pulse_generator_ui(self, e):
+        """ Disconnects the configuration for 'Pulse Generator Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+        #FIXME: implement a proper deactivation for that.
+        pass
+
+
+    # -------------------------------------------------------------------------
+    #           Methods for the Pulse Block Editor
+    # -------------------------------------------------------------------------
 
     def _get_settings_combobox(self):
         """ Get the custom setting for a general ComboBox object.
@@ -881,9 +882,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         return [DoubleSpinBoxDelegate, 0.0, 0.0, 2.0, 0.01, 5]
 
-
-
-    def get_element_in_init_table(self, row, column):
+    def get_element_in_block_table(self, row, column):
         """ Simplified wrapper function to get the data from a specific cell
             in the init table.
 
@@ -905,29 +904,7 @@ class PulsedMeasurementGui(GUIBase):
         data = tab.model().index(row, column).data(access)
         return data
 
-    def get_element_in_repeat_table(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell
-            in the repeat table.
-
-        @param int column: column index
-        @param int row: row index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-
-        tab = self._mw.repeat_block_TableWidget
-
-        # Get from the corresponding delegate the data access model
-        access = tab.itemDelegateForColumn(column).model_data_access
-        data = tab.model().index(row, column).data(access)
-        return data
-
-    def get_init_table(self):
+    def get_block_table(self):
         """ Convert initial table data to numpy array.
 
         @return: np.array[rows][columns] which has a structure, i.e. strings
@@ -964,227 +941,92 @@ class PulsedMeasurementGui(GUIBase):
         return table
 
 
-    def get_repeat_table(self):
-        """ Convert repeat table data to numpy array.
+    #FIXME: Possibility to insert many rows at once
 
-        @return: np.array[rows][columns] which has a structure, i.e. strings
-                 integer and float values are represented by this array.
-                 The structure was taken according to the repeat table itself.
-        """
+    def block_editor_add_row_before_selected(self):
+        """ Add row before selected element. """
 
-        tab = self._mw.repeat_block_TableWidget
-
-        # create a structure for the output numpy array:
-        structure = ''
-        for column in range(tab.columnCount()):
-            elem = self.get_element_in_repeat_table(0,column)
-            if type(elem) is str:
-                structure = structure + '|S20, '
-            elif type(elem) is int:
-                structure = structure + '|i4, '
-            elif type(elem) is float:
-                structure = structure + '|f8, '
-            else:
-                self.logMsg('Type definition not found in the table. Include '
-                            'that type!', msgType='error')
-
-        # remove the last two elements since these are a comma and a space:
-        structure = structure[:-2]
-        table = np.zeros(tab.rowCount(), dtype=structure)
-
-        # fill the table:
-        for column in range(tab.columnCount()):
-            for row in range(tab.rowCount()):
-                # self.logMsg(, msgType='status')
-                table[row][column] = self.get_element_in_repeat_table(row, column)
-
-        return table
-
-
-
-    def deactivation(self, e):
-        """ Undo the Definition, configuration and initialisation of the pulsed measurement GUI.
-
-          @param class e: event class from Fysom
-
-        This deactivation disconnects all the graphic modules, which were
-        connected in the initUI method.
-        """
-        self.idle_clicked()
-        # disconnect signals
-        self._mw.idle_radioButton.toggled.disconnect()
-        self._mw.run_radioButton.toggled.disconnect()
-        self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
-        self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
-        self._mw.numlaser_InputWidget.editingFinished.disconnect()
-        self._mw.lasertoshow_spinBox.valueChanged.disconnect()
-        self._deactivat_main_ui(e)
-        self._deactivate_block_ui(e)
-
-
-    def _activted_main_ui(self, e):
-        """ Initialize, connect and configure the main UI. """
-
-        self._mw = PulsedMeasurementMainWindow()
-
-        # self._mw.add_init_row_selected_PushButton.clicked.connect(self.add_init_row_before_selected)
-        # self._mw.del_init_row_selected_PushButton.clicked.connect(self.del_init_row_selected)
-        # self._mw.add_init_row_last_PushButton.clicked.connect(self.add_init_row_after_last)
-        # self._mw.del_init_row_last_PushButton.clicked.connect(self.del_init_row_last)
-        # self._mw.clear_init_table_PushButton.clicked.connect(self.clear_init_table)
-        #
-        #
-        # self._mw.add_repeat_row_selected_PushButton.clicked.connect(self.add_repeat_row_before_selected)
-        # self._mw.del_repeat_row_selected_PushButton.clicked.connect(self.del_repeat_row_selected)
-        # self._mw.add_repeat_row_last_PushButton.clicked.connect(self.add_repeat_row_after_last)
-        # self._mw.del_repeat_row_last_PushButton.clicked.connect(self.del_repeat_row_last)
-        # self._mw.clear_repeat_table_PushButton.clicked.connect(self.clear_repeat_table)
-
-        # connect the menue to the actions:
-        self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
-        self.show()
-
-
-    def _deactivat_main_ui(self, e):
-        """ Disconnects the main ui and deactivates the window. """
-
-        # self._mw.add_init_row_selected_PushButton.clicked.disconnect()
-        # self._mw.del_init_row_selected_PushButton.clicked.disconnect()
-        # self._mw.add_init_row_last_PushButton.clicked.disconnect()
-        # self._mw.del_init_row_last_PushButton.clicked.disconnect()
-        # self._mw.clear_init_table_PushButton.clicked.disconnect()
-        #
-        # self._mw.add_repeat_row_selected_PushButton.clicked.disconnect()
-        # self._mw.del_repeat_row_selected_PushButton.clicked.disconnect()
-        # self._mw.add_repeat_row_last_PushButton.clicked.disconnect()
-        # self._mw.del_repeat_row_last_PushButton.clicked.disconnect()
-        # self._mw.clear_repeat_table_PushButton.clicked.disconnect()
-
-        self._mw.close()
-
-    def _activated_block_settings_ui(self, e):
-        """ Initialize, connect and configure the block settings UI. """
-
-        self._bs = BlockSettingDialog() # initialize the block settings
-        self._bs.accepted.connect(self.update_block_settings)
-        self._bs.rejected.connect(self.keep_former_block_settings)
-        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
-
-    def _deactivate_block_ui(self, e):
-        """ Deactivate the Block settings """
-        self._bs.accepted.disconnect()
-        self._bs.rejected.disconnect()
-        self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
-
-        self._bs.close()
-
-    def show(self):
-        """Make main window visible and put it above all other windows. """
-        QtGui.QMainWindow.show(self._mw)
-        self._mw.activateWindow()
-        self._mw.raise_()
-
-    def show_block_settings(self):
-        """ Opens the block settings menue. """
-        self._bs.exec_()
-
-    def update_block_settings(self):
-        """ Write new block settings from the gui to the file. """
-        self._set_channels(num_d_ch=self._bs.digital_channels_SpinBox.value(), num_a_ch=self._bs.analog_channels_SpinBox.value())
-        # self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
-        # self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
-
-    def keep_former_block_settings(self):
-        """ Keep the old block settings and restores them in the gui. """
-
-        self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
-        self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
-
-    def add_init_row_before_selected(self):
-        """
-        """
         selected_row = self._mw.init_block_TableWidget.currentRow()
 
         self._mw.init_block_TableWidget.insertRow(selected_row)
         self.initialize_row_init_block(selected_row)
 
 
-    def add_n_rows(self, row_pos, ):
-        pass
+    def block_editor_add_row_after_last(self):
+        """ Add row after last row in the block editor. """
 
-    def add_init_row_after_last(self):
-        """
-
-        """
         number_of_rows = self._mw.init_block_TableWidget.rowCount()
         self._mw.init_block_TableWidget.setRowCount(number_of_rows+1)
         self.initialize_row_init_block(number_of_rows)
 
-    def del_init_row_selected(self):
-        """
-        """
+    def block_editor_delete_row_selected(self):
+        """ Delete row of selected element. """
+
         # get the row number of the selected item(s). That will return the
         # lowest selected row
         row_to_remove = self._mw.init_block_TableWidget.currentRow()
         self._mw.init_block_TableWidget.removeRow(row_to_remove)
-        #self.update_sequence_parameters()
 
-    def del_init_row_last(self):
-        """
-        """
+    def block_editor_delete_row_last(self):
+        """ Delete the last row in the block editor. """
+
         number_of_rows = self._mw.init_block_TableWidget.rowCount()
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
         self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
-        #self.update_sequence_parameters()
 
-    def clear_init_table(self):
-        """
-        """
+    def block_editor_clear_table(self):
+        """ Delete all rows in the block editor table. """
 
         self._mw.init_block_TableWidget.setRowCount(1)
         self._mw.init_block_TableWidget.clearContents()
         self.initialize_row_init_block(0)
 
-    def add_repeat_row_after_last(self):
-        """
-        """
-        number_of_rows = self._mw.repeat_block_TableWidget.rowCount()
-        self._mw.repeat_block_TableWidget.setRowCount(number_of_rows+1)
-        self.initialize_row_repeat_block(number_of_rows)
+    # -------------------------------------------------------------------------
+    #           Methods for the Pulse Block Organizer
+    # -------------------------------------------------------------------------
 
-    def add_repeat_row_before_selected(self):
-        """
-        """
-        selected_row = self._mw.repeat_block_TableWidget.currentRow()
 
-        self._mw.repeat_block_TableWidget.insertRow(selected_row)
-        self.initialize_row_repeat_block(selected_row)
+    def block_organizer_add_row_before_selected(self):
+        """ Add row before selected element. """
 
-    def del_repeat_row_selected(self):
-        """
-        """
+        selected_row = self._mw.init_block_TableWidget.currentRow()
 
-        row_to_remove = self._mw.repeat_block_TableWidget.currentRow()
-        self._mw.repeat_block_TableWidget.removeRow(row_to_remove)
-        #self.update_sequence_parameters()
+        self._mw.init_block_TableWidget.insertRow(selected_row)
+        self.initialize_row_init_block(selected_row)
 
-    def del_repeat_row_last(self):
-        """
-        """
-        number_of_rows = self._mw.repeat_block_TableWidget.rowCount()
+
+    def block_organizer_add_row_after_last(self):
+        """ Add row after last row in the block editor. """
+
+        number_of_rows = self._mw.init_block_TableWidget.rowCount()
+        self._mw.init_block_TableWidget.setRowCount(number_of_rows+1)
+        self.initialize_row_init_block(number_of_rows)
+
+    def block_organizer_delete_row_selected(self):
+        """ Delete row of selected element. """
+
+        # get the row number of the selected item(s). That will return the
+        # lowest selected row
+        row_to_remove = self._mw.init_block_TableWidget.currentRow()
+        self._mw.init_block_TableWidget.removeRow(row_to_remove)
+
+    def block_organizer_delete_row_last(self):
+        """ Delete the last row in the block editor. """
+
+        number_of_rows = self._mw.init_block_TableWidget.rowCount()
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
-        self._mw.repeat_block_TableWidget.removeRow(number_of_rows-1)
-        #self.update_sequence_parameters()
+        self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
 
-    def clear_repeat_table(self):
-        """
-        """
+    def block_organizer_clear_table(self):
+        """ Delete all rows in the block editor table. """
 
-        self._mw.repeat_block_TableWidget.setRowCount(1)
-        self._mw.repeat_block_TableWidget.clearContents()
-        self.initialize_row_repeat_block(0)
+        self._mw.init_block_TableWidget.setRowCount(1)
+        self._mw.init_block_TableWidget.clearContents()
+        self.initialize_row_init_block(0)
+
+
 
     def insert_parameters(self, column):
 
@@ -1448,14 +1290,165 @@ class PulsedMeasurementGui(GUIBase):
         self._num_a_ch = count_a_ch
         return self._num_a_ch
 
+    ###########################################################################
+    ###        Methods related to Settings for the 'Analysis' Tab:          ###
+    ###########################################################################
+
+    #FIXME: Implement the setting for 'Analysis' tab.
+
+    def _activate_analysis_settings_ui(self, e):
+        """ Initialize, connect and configure the Settings of 'Analysis' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
+
+    def _deactivate_analysis_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for 'Analysis' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
 
 
+    ###########################################################################
+    ###     Methods related to the Tab 'Analysis' in the Pulsed Window:     ###
+    ###########################################################################
 
-# =============================================================================
-# from here everything was taken over from the pulsed_measurement_gui
-# |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    def _activate_analysis_ui(self, e):
+        """ Initialize, connect and configure the 'Analysis' Tab.
 
-        
+        @param Fysom.event e: Event Object of Fysom
+        """
+        # Get the image from the logic
+        # pulsed measurement tab
+        self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
+        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
+        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
+        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
+#
+#        # Add the display item to the xy VieWidget, which was defined in
+#        # the UI file.
+        self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
+        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
+        self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+
+
+        # Set the state button as ready button as default setting.
+        self._mw.idle_radioButton.click()
+
+        # Configuration of the comboWidget
+        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
+        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
+        # set up the types of the columns and create a pattern based on
+        # the desired settings:
+
+#        # Add Validators to InputWidgets
+        validator = QtGui.QDoubleValidator()
+        validator2 = QtGui.QIntValidator()
+
+        # pulsed measurement tab
+        self._mw.frequency_InputWidget.setValidator(validator)
+        self._mw.power_InputWidget.setValidator(validator)
+        self._mw.analysis_period_InputWidget.setValidator(validator)
+        self._mw.numlaser_InputWidget.setValidator(validator2)
+        self._mw.taustart_InputWidget.setValidator(validator)
+        self._mw.tauincrement_InputWidget.setValidator(validator)
+        self._mw.signal_start_InputWidget.setValidator(validator2)
+        self._mw.signal_length_InputWidget.setValidator(validator2)
+        self._mw.reference_start_InputWidget.setValidator(validator2)
+        self._mw.reference_length_InputWidget.setValidator(validator2)
+
+        # Fill in default values:
+
+        # pulsed measurement tab
+        self._mw.frequency_InputWidget.setText(str(2870.))
+        self._mw.power_InputWidget.setText(str(-30.))
+        self._mw.numlaser_InputWidget.setText(str(50))
+        self._mw.taustart_InputWidget.setText(str(1))
+        self._mw.tauincrement_InputWidget.setText(str(1))
+        self._mw.lasertoshow_spinBox.setRange(0, 50)
+        self._mw.lasertoshow_spinBox.setPrefix("#")
+        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
+        self._mw.lasertoshow_spinBox.setValue(0)
+        self._mw.signal_start_InputWidget.setText(str(5))
+        self._mw.signal_length_InputWidget.setText(str(200))
+        self._mw.reference_start_InputWidget.setText(str(500))
+        self._mw.reference_length_InputWidget.setText(str(200))
+        self._mw.expected_duration_TimeLabel.setText('00:00:00:00')
+        self._mw.elapsed_time_label.setText('00:00:00:00')
+        self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
+        self._mw.analysis_period_InputWidget.setText(str(5))
+        self._mw.laser_channel_LineEdit.setText(str(1))
+        self._mw.refocus_interval_LineEdit.setText(str(5))
+        self._mw.odmr_refocus_interval_LineEdit.setText(str(5))
+        self._mw.counter_safety_LineEdit.setText(str(0))
+
+        self._mw.show_fft_plot_CheckBox.setChecked(False)
+        self._mw.ignore_first_laser_CheckBox.setChecked(False)
+        self._mw.ignore_last_laser_CheckBox.setChecked(True)
+        self._mw.alternating_sequence_CheckBox.setChecked(False)
+        self._mw.tau_defined_in_sequence_CheckBox.setChecked(False)
+
+        # ---------------------------------------------------------------------
+        #                         Connect signals
+        # ---------------------------------------------------------------------
+
+        # Connect the RadioButtons and connect to the events if they are clicked:
+        # pulsed measurement tab
+        self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
+        self._mw.run_radioButton.toggled.connect(self.run_clicked)
+
+        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
+        self._mw.pull_data_pushButton.setEnabled(False)
+
+        self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
+        self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
+        self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+        # sequence generator tab
+
+
+        # Connect InputWidgets to events
+        # pulsed measurement tab
+        self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
+        self._mw.taustart_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.tauincrement_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+
+        self.seq_parameters_changed()
+        self.analysis_parameters_changed()
+#
+#        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
+
+
+    def _deactivate_analysis_ui(self, e):
+        """ Disconnects the configuration for 'Analysis' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        self.idle_clicked()
+
+        # disconnect signals
+        self._mw.idle_radioButton.toggled.disconnect()
+        self._mw.run_radioButton.toggled.disconnect()
+        self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
+        self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
+        self._mw.numlaser_InputWidget.editingFinished.disconnect()
+        self._mw.lasertoshow_spinBox.valueChanged.disconnect()
         
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
@@ -1580,3 +1573,94 @@ class PulsedMeasurementGui(GUIBase):
         name = self._mw.sequence_name_comboBox.currentText()
         self._pulse_analysis_logic.update_sequence_parameters(name)
         return
+
+
+    ###########################################################################
+    ###   Methods related to Settings for the 'Sequence Generator' Tab:     ###
+    ###########################################################################
+
+    #FIXME: Implement the setting for 'Sequence Generator' tab.
+
+    def _activate_sequence_settings_ui(self, e):
+        """ Initialize, connect and configure the Settings of the
+        'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
+
+    def _deactivate_sequence_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for the
+        'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
+
+
+    ###########################################################################
+    ###         Methods related to the Tab 'Sequence Generator':            ###
+    ###########################################################################
+
+    #FIXME: Implement the 'Sequence Generator' tab.
+
+    def _activate_sequence_generator_ui(self, e):
+        """ Initialize, connect and configure the 'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+        pass
+
+    def _deactivate_sequence_generator_ui(self, e):
+        """ Disconnects the configuration for 'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+        pass
+
+    ###########################################################################
+    ###    Methods related to Settings for the 'Pulse Extraction' Tab:      ###
+    ###########################################################################
+
+    #FIXME: Implement the setting for 'Pulse Extraction' tab.
+
+    def _activate_pulse_extraction_settings_ui(self, e):
+        """ Initialize, connect and configure the Settings of the
+        'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
+
+    def _deactivate_pulse_extraction_settings_ui(self, e):
+        """ Disconnects the configuration of the Settings for the
+        'Sequence Generator' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+
+        pass
+
+
+    ###########################################################################
+    ###          Methods related to the Tab 'Pulse Extraction':             ###
+    ###########################################################################
+
+    #FIXME: Implement the 'Pulse Extraction' tab.
+
+    def _activate_pulse_extraction_ui(self, e):
+        """ Initialize, connect and configure the 'Pulse Extraction' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+        pass
+
+    def _deactivate_pulse_extraction_ui(self, e):
+        """ Disconnects the configuration for 'Pulse Extraction' Tab.
+
+        @param Fysom.event e: Event Object of Fysom
+        """
+        pass
