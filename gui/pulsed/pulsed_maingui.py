@@ -623,8 +623,8 @@ class PulsedMeasurementGui(GUIBase):
         self._activted_main_ui(e)
         self._activated_block_settings_ui(e)
 
-        self.count_analog_channels()
-        self.count_digital_channels()
+        # self.count_analog_channels()
+        # self.count_digital_channels()
         
         # plotwidgets of analysis tab
         
@@ -791,16 +791,16 @@ class PulsedMeasurementGui(GUIBase):
         # a custom definition of QTableView with a Model is not needed.
 
         # emit a trigger event when for all mouse click and keyboard click events:
-        self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-        self._mw.repeat_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        # self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        # self._mw.repeat_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
-        self.insert_parameters(column=0)
+        # self.insert_parameters(column=0)
 
-        self.keep_former_block_settings()
+        # self.keep_former_block_settings()
 
         # Modified by me
-        self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
-        self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
+        # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
+        # self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
 
     def _get_settings_combobox(self):
         """ Get the custom setting for a general ComboBox object.
@@ -983,7 +983,7 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is int:
                 structure = structure + '|i4, '
             elif type(elem) is float:
-                structure = structure + '|f4, '
+                structure = structure + '|f8, '
             else:
                 self.logMsg('Type definition not found in the table. Include '
                             'that type!', msgType='error')
@@ -1027,18 +1027,18 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw = PulsedMeasurementMainWindow()
 
-        self._mw.add_init_row_selected_PushButton.clicked.connect(self.add_init_row_before_selected)
-        self._mw.del_init_row_selected_PushButton.clicked.connect(self.del_init_row_selected)
-        self._mw.add_init_row_last_PushButton.clicked.connect(self.add_init_row_after_last)
-        self._mw.del_init_row_last_PushButton.clicked.connect(self.del_init_row_last)
-        self._mw.clear_init_table_PushButton.clicked.connect(self.clear_init_table)
-
-
-        self._mw.add_repeat_row_selected_PushButton.clicked.connect(self.add_repeat_row_before_selected)
-        self._mw.del_repeat_row_selected_PushButton.clicked.connect(self.del_repeat_row_selected)
-        self._mw.add_repeat_row_last_PushButton.clicked.connect(self.add_repeat_row_after_last)
-        self._mw.del_repeat_row_last_PushButton.clicked.connect(self.del_repeat_row_last)
-        self._mw.clear_repeat_table_PushButton.clicked.connect(self.clear_repeat_table)
+        # self._mw.add_init_row_selected_PushButton.clicked.connect(self.add_init_row_before_selected)
+        # self._mw.del_init_row_selected_PushButton.clicked.connect(self.del_init_row_selected)
+        # self._mw.add_init_row_last_PushButton.clicked.connect(self.add_init_row_after_last)
+        # self._mw.del_init_row_last_PushButton.clicked.connect(self.del_init_row_last)
+        # self._mw.clear_init_table_PushButton.clicked.connect(self.clear_init_table)
+        #
+        #
+        # self._mw.add_repeat_row_selected_PushButton.clicked.connect(self.add_repeat_row_before_selected)
+        # self._mw.del_repeat_row_selected_PushButton.clicked.connect(self.del_repeat_row_selected)
+        # self._mw.add_repeat_row_last_PushButton.clicked.connect(self.add_repeat_row_after_last)
+        # self._mw.del_repeat_row_last_PushButton.clicked.connect(self.del_repeat_row_last)
+        # self._mw.clear_repeat_table_PushButton.clicked.connect(self.clear_repeat_table)
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
@@ -1048,17 +1048,17 @@ class PulsedMeasurementGui(GUIBase):
     def _deactivat_main_ui(self, e):
         """ Disconnects the main ui and deactivates the window. """
 
-        self._mw.add_init_row_selected_PushButton.clicked.disconnect()
-        self._mw.del_init_row_selected_PushButton.clicked.disconnect()
-        self._mw.add_init_row_last_PushButton.clicked.disconnect()
-        self._mw.del_init_row_last_PushButton.clicked.disconnect()
-        self._mw.clear_init_table_PushButton.clicked.disconnect()
-
-        self._mw.add_repeat_row_selected_PushButton.clicked.disconnect()
-        self._mw.del_repeat_row_selected_PushButton.clicked.disconnect()
-        self._mw.add_repeat_row_last_PushButton.clicked.disconnect()
-        self._mw.del_repeat_row_last_PushButton.clicked.disconnect()
-        self._mw.clear_repeat_table_PushButton.clicked.disconnect()
+        # self._mw.add_init_row_selected_PushButton.clicked.disconnect()
+        # self._mw.del_init_row_selected_PushButton.clicked.disconnect()
+        # self._mw.add_init_row_last_PushButton.clicked.disconnect()
+        # self._mw.del_init_row_last_PushButton.clicked.disconnect()
+        # self._mw.clear_init_table_PushButton.clicked.disconnect()
+        #
+        # self._mw.add_repeat_row_selected_PushButton.clicked.disconnect()
+        # self._mw.del_repeat_row_selected_PushButton.clicked.disconnect()
+        # self._mw.add_repeat_row_last_PushButton.clicked.disconnect()
+        # self._mw.del_repeat_row_last_PushButton.clicked.disconnect()
+        # self._mw.clear_repeat_table_PushButton.clicked.disconnect()
 
         self._mw.close()
 
