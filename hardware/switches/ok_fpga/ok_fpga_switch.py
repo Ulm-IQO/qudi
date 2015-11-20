@@ -22,7 +22,11 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 from core.base import Base
 from core.util.mutex import Mutex
 from hardware.switches.switch_interface import SwitchInterface
-import thirdparty.opal_kelly as ok
+import os
+try:
+    import thirdparty.opal_kelly as ok
+except ImportError:
+    import thirdparty.opal_kelly32 as ok
 
 class OkFpgaTtlSwitch(Base, SwitchInterface):
     """Methods to control TTL switch running on OK FPGA.
@@ -40,7 +44,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp = ok.FrontPanel()
         self.fp.GetDeviceCount()
         self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
-        self.fp.ConfigureFPGA('switch_top.bit')
+        self.fp.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware', 'switches', 'ok_fpga', 'switch_top.bit'))
         if not self.fp.IsFrontPanelEnabled():
             self.logMsg('ERROR: FrontPanel is not enabled in FPGA switch!', msgType='error')
             return
@@ -66,6 +70,16 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
     
     def getNumberOfSwitches(self):
         """ There are 8 TTL channels on the OK FPGA.
+        Chan   PIN
+        ----------
+        Ch1    D10
+        Ch2    D15
+        Ch3    C7
+        Ch4    B12
+        Ch5    B16
+        Ch6    B14
+        Ch7    C17
+        Ch8    C13
 
           @return int: number of switches
         """
