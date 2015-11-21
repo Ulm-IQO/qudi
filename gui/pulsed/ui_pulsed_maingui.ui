@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -1079,7 +1079,7 @@ last</string>
                   </widget>
                  </item>
                  <item row="0" column="0" rowspan="9">
-                  <widget class="QTableWidget" name="pulse_block_organizer_TableWidget">
+                  <widget class="QTableWidget" name="block_organizer_TableWidget">
                    <property name="rowCount">
                     <number>1</number>
                    </property>
@@ -1174,7 +1174,7 @@ last</string>
                   </widget>
                  </item>
                  <item row="0" column="0" rowspan="9">
-                  <widget class="QTableWidget" name="pulse_block_editor_TableWidget">
+                  <widget class="QTableWidget" name="block_editor_TableWidget">
                    <property name="rowCount">
                     <number>1</number>
                    </property>
