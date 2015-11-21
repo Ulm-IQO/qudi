@@ -99,7 +99,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
         #self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
-        self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
+        #self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
         self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
