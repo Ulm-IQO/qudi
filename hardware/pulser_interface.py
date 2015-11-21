@@ -39,9 +39,27 @@ class PulserInterface():
         Provides all the constraints (e.g. sample_rate, amplitude,
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
-        Each constraint is a tuple of the form (min_value, max_value, stepsize).
+        Each constraint is a tuple of the form
+            (min_value, max_value, stepsize)
+        and the key 'channel_map' indicates all possible combinations in usage
+        for this device.
+
+        The possible keys in the constraint are defined here in the interface
+        file. If the hardware does not support the values for the constraints,
+        then insert just None.
+        If you are not sure about the meaning, look in other hardware files
+        to get an impression.
         """
         constraints = {}
+        constraints['sample_rate']          = (None, None, None)
+        constraints['amplitude_analog']     = (None, None, None)
+        constraints['amplitude_digital']    = (None, None, None)
+        constraints['waveform_length']      = (None, None, None)
+        constraints['waveform_number']      = (None, None, None)
+        constraints['subsequence_elements'] = (None, None, None)
+        constraints['sequence_elements']    = (None, None, None)
+        constraints['total_length_bins']    = (None, None, None)
+        constraints['channel_config']       = [(None, None), (None, None)]
         raise InterfaceImplementationError('PulserInterface>get_constraints')
         return constraints
 
