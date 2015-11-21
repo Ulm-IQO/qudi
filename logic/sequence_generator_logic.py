@@ -16,8 +16,9 @@ import pickle
 import glob
 import os
 
-class Pulse_Block_Element():
-    """Object representing a single atomic element of an AWG sequence, i.e. a waiting time, a sine wave, etc.
+class Pulse_Block_Element(object):
+    """ Object representing a single atomic element of an AWG sequence, i.e. a
+        waiting time, a sine wave, etc.
     """
     def __init__(self, init_length_bins, analogue_channels, digital_channels, increment_bins = 0, pulse_function = None, marker_active = None, parameters={}):
         self.pulse_function = pulse_function
@@ -29,19 +30,27 @@ class Pulse_Block_Element():
         self.digital_channels = digital_channels
 
 
-class Pulse_Block():
-    """Represents one sequence block in the AWG.
-    Needs name and element_list (=[Pulse_Block_Element, Pulse_Block_Element, ...]) for initialization"""
+class Pulse_Block(object):
+    """ Represents one sequence block in the AWG.
+
+    Needs name and element_list
+    (=[Pulse_Block_Element, Pulse_Block_Element, ...]) for initialization.
+    """
+
     def __init__(self, name, element_list):
         self.name = name                        # block name
         self.element_list = element_list        # List of AWG_Block_Element objects
         self.refresh_parameters()
 
     def refresh_parameters(self):
+
+        # Initialize at first all parameters, which are going to be initialized
+        # with a default value and then assign the value from the element_list.
         self.init_length_bins = 0
         self.increment_bins = 0
         self.analogue_channels = 0
         self.digital_channels = 0
+
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
             self.increment_bins += elem.increment_bins
@@ -50,17 +59,17 @@ class Pulse_Block():
             if elem.digital_channels > self.digital_channels:
                 self.digital_channels = elem.digital_channels
         return
-    
+
     def replace_element(self, position, element):
         self.element_list[position] = element
         self.refresh_parameters()
         return
-        
+
     def delete_element(self, position):
         del(self.element_list[position])
         self.refresh_parameters()
         return
-        
+
     def append_element(self, element, at_beginning = False):
         if at_beginning:
             self.element_list.insert(0, element)
@@ -68,9 +77,9 @@ class Pulse_Block():
             self.element_list.append(element)
         self.refresh_parameters()
         return
-        
 
-class Pulse_Block_Ensemble():
+
+class Pulse_Block_Ensemble(object):
     """
     Represents an ensemble of pulse blocks.
     Needs name and block_list (=[(Pulse_Block, repetitions), ...]) for initialization
@@ -95,18 +104,18 @@ class Pulse_Block_Ensemble():
             if block.digital_channels > self.digital_channels:
                 self.digital_channels = block.digital_channels
         self.estimated_bytes = self.length_bins * (self.analogue_channels * 4 + self.digital_channels)
-        return    
-    
+        return
+
     def replace_block(self, position, block):
         self.block_list[position] = block
         self.refresh_parameters()
         return
-        
+
     def delete_block(self, position):
         del(self.block_list[position])
         self.refresh_parameters()
         return
-        
+
     def append_block(self, block, at_beginning = False):
         if at_beginning:
             self.block_list.insert(0, block)
@@ -116,7 +125,7 @@ class Pulse_Block_Ensemble():
         return
 
 
-class Pulse_Sequence():
+class Pulse_Sequence(object):
     """
     Represents a playback procedure for a number of Pulse_Block_Ensembles.
     Unused for pulse generator hardware without sequencing functionality.
@@ -140,18 +149,18 @@ class Pulse_Sequence():
             if ensemble.digital_channels > self.digital_channels:
                 self.digital_channels = ensemble.digital_channels
         self.estimated_bytes = self.length_bins * (self.analogue_channels * 4 + self.digital_channels)
-        return     
-    
+        return
+
     def replace_ensemble(self, position, ensemble):
         self.ensemble_list[position] = ensemble
         self.refresh_parameters()
         return
-        
+
     def delete_ensemble(self, position):
         del(self.ensemble_list[position])
         self.refresh_parameters()
         return
-        
+
     def append_ensemble(self, ensemble, at_beginning = False):
         if at_beginning:
             self.ensemble_list.insert(0, ensemble)
@@ -159,10 +168,10 @@ class Pulse_Sequence():
             self.ensemble_list.append(ensemble)
         self.refresh_parameters()
         return
-        
-        
-class Waveform():
-    """ 
+
+
+class Waveform(object):
+    """
     Represents a sampled Pulse_Block_Ensemble() object.
     Holds analogue and digital samples and important parameters.
     """
@@ -182,8 +191,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     _modtype = 'logic'
 
     ## declare connectors
+    _in = {'pulser':'PulserInterface'}
     _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
-    
+
+
+
     # define signals
     signal_block_list_updated = QtCore.Signal()
     signal_ensemble_list_updated = QtCore.Signal()
@@ -201,7 +213,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-        SamplingFunctions.__init__(self)              
+        SamplingFunctions.__init__(self)
         self.sampling_freq = 50e9
         self.analogue_channels = 2
         self.digital_channels = 4
@@ -214,8 +226,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.block_dir = ''
         self.ensemble_dir = ''
         self.sequence_dir = ''
-        
-        self.table_config = {'function_0': 0, 'frequency_0': 1, 'amplitude_0': 2, 'phase_0': 3, 'digital_0': 4, 'digital_1': 5, 'function_1': 6, 'frequency_1': 7, 'amplitude_1': 8, 'phase_1': 9, 'digital_2': 10, 'digital_3': 11, 'length': 12, 'increment': 13}
+
+        self.table_config = {'function_0': 0, 'frequency_0': 1,
+                             'amplitude_0': 2, 'phase_0': 3,
+                             'digital_0': 4, 'digital_1': 5,
+                             'function_1': 6, 'frequency_1': 7,
+                             'amplitude_1': 8, 'phase_1': 9,
+                             'digital_2': 10,
+                             'digital_3': 11,
+                             'length': 12, 'increment': 13}
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -223,16 +242,28 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_block_list()
         self.refresh_ensemble_list()
         self.refresh_sequence_list()
+
+        self._pulser = self.connector['in']['pulser']['object']
+
         pass
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
         """
         pass
-    
+
+    def get_hardware_constraints(self):
+        """ Request the constrains from the hardware, in order to pass them
+            to the GUI if necessary.
+
+        @return: dict where the keys in it are predefined in the interface.
+        """
+        return self._pulser.get_constraints()
+
+
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
-#-------------------------------------------------------------------------------  
+#-------------------------------------------------------------------------------
     def save_block(self, name, block):
         ''' saves a block generated by the block editor into a file
         '''
@@ -243,7 +274,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_block_list()
         self.current_block = block
         return
-        
+
     def load_block(self, name):
         ''' loads a block from a .blk-file into the block editor
         '''
@@ -256,7 +287,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             print('Error: No block with name "' + name + '" in saved blocks.')
             return
 
-    def delete_block(self, name): 
+    def delete_block(self, name):
         ''' remove the block "name" from the block list and HDD
         '''
         if name in self.saved_blocks:
@@ -266,7 +297,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No block with name "' + name + '" in saved blocks.')
         return
-    
+
     def refresh_block_list(self):
         ''' refresh the list of available (saved) blocks
         '''
@@ -278,8 +309,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.saved_blocks = blocks
         self.signal_block_list_updated.emit()
         return
-    
-    
+
+
     def save_ensemble(self, name, ensemble):
         ''' saves a block ensemble generated by the block ensemble editor into a file
         '''
@@ -290,7 +321,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         self.current_ensemble = ensemble
         return
-        
+
     def load_ensemble(self, name):
         ''' loads a block ensemble from a .ben-file into the block ensemble editor
         '''
@@ -303,7 +334,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             print('Error: No ensemble with name "' + name + '" in saved ensembles.')
             return
 
-    def delete_ensemble(self, name): 
+    def delete_ensemble(self, name):
         ''' remove the ensemble "name" from the ensemble list and HDD
         '''
         if name in self.saved_ensembles:
@@ -313,7 +344,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No ensemble with name "' + name + '" in saved ensembles.')
         return
-    
+
     def refresh_ensemble_list(self):
         ''' refresh the list of available (saved) ensembles
         '''
@@ -325,8 +356,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.saved_ensembles = ensembles
         self.signal_ensemble_list_updated.emit()
         return
-        
-        
+
+
     def save_sequence(self, name, sequence):
         ''' saves a sequence generated by the sequence editor into a file
         '''
@@ -337,7 +368,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_sequence_list()
         self.current_sequence = sequence
         return
-        
+
     def load_sequence(self, name):
         ''' loads a sequence from a .seq-file into the sequence editor
         '''
@@ -349,8 +380,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No sequence with name "' + name + '" in saved sequences.')
             return
-        
-    def delete_sequence(self, name): 
+
+    def delete_sequence(self, name):
         ''' remove the sequence "name" from the sequence list and HDD
         '''
         if name in self.saved_sequences:
@@ -372,34 +403,34 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.saved_sequences = sequences
         self.signal_sequence_list_updated.emit()
         return
-        
-        
+
+
     def generate_block(self, name, block_matrix):
         """
         Generates a Pulse_Block object out of the corresponding editor table/matrix.
         """
         # each line in the matrix corresponds to one Pulse_Block_Element
-        # Here these elements are created        
+        # Here these elements are created
         analogue_func = [None]*self.analogue_channels
         digital_flags = [None]*self.digital_channels
-        
+
         lengths = np.array([np.round(x/(1e9/self.sampling_freq)) for x in block_matrix['f'+str(self.table_config['length'])]])
         increments = np.array([np.round(x/(1e9/self.sampling_freq)) for x in block_matrix['f'+str(self.table_config['increment'])]])
-        
+
         for chnl_num in range(self.analogue_channels):
             # Save all function names for channel number "chnl_num" in one column of "analogue_func"
             # Also convert them to strings
-            analogue_func[chnl_num] = np.array([x.decode('utf-8') for x in block_matrix['f'+str(self.table_config['function_'+str(chnl_num)])]])    
+            analogue_func[chnl_num] = np.array([x.decode('utf-8') for x in block_matrix['f'+str(self.table_config['function_'+str(chnl_num)])]])
         # convert to numpy ndarray
         analogue_func = np.array(analogue_func)
-        
+
         for chnl_num in range(self.digital_channels):
             # Save the marker flag for channel number "chnl_num" in one column of "digital_flags"
             # Also convert them to bools
             digital_flags[chnl_num] = np.array([bool(x) for x in block_matrix['f'+str(self.table_config['digital_'+str(chnl_num)])]])
         # convert to numpy ndarray
         digital_flags = np.array(digital_flags)
-            
+
         block_element_list = [None]*len(block_matrix)
         for elem_num in range(len(block_matrix)):
             elem_func = analogue_func[:, elem_num]
@@ -407,6 +438,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             elem_incr = increments[elem_num]
             elem_length = lengths[elem_num]
             elem_parameters = [None]*self.analogue_channels
+
             # create parameter dictionarys for each channel
             for chnl_num, func in enumerate(elem_func):
                 param_dict = {}
@@ -416,10 +448,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     else:
                         param_dict[param] = block_matrix[elem_num][self.table_config[param+'_'+str(chnl_num)]]
                 elem_parameters[chnl_num] = param_dict
-                
+
             block_element = Pulse_Block_Element(elem_length, len(analogue_func), len(digital_flags), elem_incr, elem_func, elem_marker, elem_parameters)
             block_element_list[elem_num] = block_element
-            
+
         # generate the Pulse_Block() object
         block = Pulse_Block(name, block_element_list)
         # save block to a file
@@ -427,20 +459,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # set current block
         self.current_block = block
         return
-        
-        
+
+
     def generate_block_ensemble(self, ensemble_matrix):
         """
         Generates a Pulse_Block_Ensemble object out of the corresponding editor table/matrix.
         """
-        
+
         return
-        
+
     def generate_sequence(self, sequence_matrix):
         """
         Generates a Pulse_Sequence object out of the corresponding editor table/matrix.
         """
-        
+
         return
 #-------------------------------------------------------------------------------
 #                    END sequence/block generation
@@ -454,15 +486,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         Samples a Pulse_Block_Ensemble() object and creates a Waveform().
         The Waveform object can be really big so only create it if needed and delete it from memory asap.
-        
+
         @param Pulse_Block_Ensemble() block_ensemble: The block ensemble object to be sampled
-        
+
         @return Waveform(): A Waveform object containing the samples and metadata (sampling_freq etc)
         """
         analogue_samples, digital_samples = self.sample_ensemble(block_ensemble)
         waveform_obj = Waveform(block_ensemble, self.sampling_freq, analogue_samples, digital_samples)
         return waveform_obj
-    
+
     def sample_sequence(self):
         """
         Creates a whole new structure of Block_Elements, Blocks and Block_Ensembles so that the phase of the seqeunce is preserved.
@@ -470,21 +502,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         Not easy!
         """
         pass
-     
+
     def sample_ensemble(self, ensemble):
-        """ 
+        """
         Calculates actual sample points given a Pulse_Block_Ensemble object.
-        
+
         @param Pulse_Block_Ensemble() ensemble: Block ensemble to be sampled.
-        
+
         @return numpy_ndarrays[channel, sample]: The sampled analogue and digital channels
         """
         arr_len = np.round(ensemble.length_bins*1.01)
         ana_channels = ensemble.analogue_channels
         dig_channels = ensemble.digital_channels
-    
+
         sample_arr = np.empty([ana_channels, arr_len])
-        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)        
+        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
 
         entry = 0
         bin_offset = 0
@@ -501,16 +533,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.analogue_samples = sample_arr[:, :entry]
         self.digital_samples = marker_arr[:, :entry]
         return sample_arr[:, :entry], marker_arr[:, :entry]
-    
-            
+
+
     def _sample_block(self, block, iteration_no = 0, bin_offset = 0):
         """
         Calculates actual sample points given a Block.
-        
+
         @param Pulse_Block() block: Block to be sampled.
         @param int iteration_no: Current number of repetition step.
         @param int bin_offset: The time bin offset, i.e. the position of the block inside the whole sample array.
-        
+
         @return numpy_ndarrays[channel, sample]: The sampled analogue and digital channels
         """
         ana_channels = block.analogue_channels
@@ -530,16 +562,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             bin_offset_temp = bin_offset + entry
         # slice the sample array to cut off uninitialized entrys at the end
         return sample_arr[:, :entry], marker_arr[:, :entry]
-            
+
 
     def _sample_block_element(self, block_element, iteration_no = 0, bin_offset = 0):
-        """ 
+        """
         Calculates actual sample points given a Block_Element.
-        
+
         @param Pulse_Block_Element() block_element: Block element to be sampled.
         @param int iteration_no: Current number of repetition step.
         @param int bin_offset: The time bin offset, i.e. the position of the block_element inside the whole sample array.
-        
+
         @return (numpy_ndarrays[channel, sample], numpy_ndarrays[channel, sample]): The sampled analogue and digital channels
         """
         ana_channels = block_element.analogue_channels
@@ -549,17 +581,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         increment_bins = block_element.increment_bins
         markers_on = block_element.markers_on
         pulse_function = block_element.pulse_function
-            
+
         element_length_bins = init_length_bins + (iteration_no*increment_bins)
         sample_arr = np.empty([ana_channels, element_length_bins])
         marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
         time_arr = (bin_offset + np.arange(element_length_bins)) / self.sampling_freq
-        
+
         for i, state in enumerate(markers_on):
             marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
         for i, func_name in enumerate(pulse_function):
-            sample_arr[i] = self._math_function[func_name](time_arr, parameters[i])
-            
+            sample_arr[i] = self._math_func[func_name](time_arr, parameters[i])
+
         return sample_arr, marker_arr
 
 #-------------------------------------------------------------------------------
