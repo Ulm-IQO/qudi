@@ -39,31 +39,75 @@ class SamplingFunctions():
         self._math_func['DoubleSin']    = self._doublesin
         self._math_func['TripleSin']    = self._triplesin
 
+        # Definition of constraints for the parameters
+        # --------------------------------------------
+        # Mathematical parameters may be subjected to certain constraints
+        # (e.g. a range within the function is defined). These contraints can
+        # be set here individually for each parameter. There exist some
+        # predefined lists of constraints for the common parameters like
+        # frequency, amplitude, phase. If your functions do not desire special
+        # limitations, then use these.
+        # Moreover, the display Widget in the GUI will depend on the
+        # contraints you are setting here.
 
-        # Use ONLY THESE allowed set of parameters for the functions. You can
-        # use an arbitrary amount of these parameters in the mathematical
-        # functions. If you need a parameter for your mathematical function
-        # which cannot be represented by one of the given parameters, ONLY THEN
-        # you can extend the list (e.g. a variance parameter for a gaussian
-        # function).
-        # DO NOT INVENT NEW NAMES FOR ALREADY EXISTING PARAMETERS!
-        # (e.g. do not include 'ampl', since 'amplitude' already exists)
-        self._allowed_param = ['amplitude', 'frequency', 'phase']
+        # predefine a general range for the frequency, amplitude and phase
+        # <general_parameter> = {}
+        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
+                    'view_stepsize': 1e3, 'dec': 8, 'disp_unit': 'M'}
+        ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0, 'max': 1,
+                    'view_stepsize': 0.001, 'dec': 3}
+        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
+                    'view_stepsize': 0.1, 'dec': 8}
+
+        # the following keywords are known to the GUI elements, and you should
+        # use only those to define you own limitation. Here is an explanation
+        # for the used keywords is given:
+
+        # 'unit' : string for the SI unit.
+        # 'init_val' : initial value the parameter should have
+        # 'min' : minimal value of the parameter
+        # 'max' : maximal value of the parameter
+        # 'view_stepsize' : optional, the corresponding ViewWidget will have
+        #                   buttons to increment and decrement the current
+        #                   value.
+        # 'hard_stepsize' : optional, the accepted value will be a multiple of
+        #                   this. Normally, this will be dictate by hardware.
+        # 'dec' : number of decimals to be used for representation, this will
+        #         be related to the parameter 'disp_unit'.
+        # 'disp_unit' : desired display of the value, string, one of the list:
+        #               [ 'p', 'n', 'micro', 'm', 'k', 'M', 'G', 'T']
+        #               with the obvious meaning:
+        #           ['pico','nano','micro','milli','kilo','Mega','Giga','Tera']
+        #               If disp_unit is not specified, then 'unit' is displayed
+
 
         # Configure also the parameter for the defined functions so that it is
         # know which input parameters the function desires:
 
         self.func_config = OrderedDict()
         self.func_config['Idle'] = []
-        self.func_config['DC'] = {'amplitude': 1}
-        self.func_config['Sin'] = {'frequency':1, 'amplitude':1, 'phase':1}
-        self.func_config['Cos'] = {'frequency':1, 'amplitude':1, 'phase':1}
-        self.func_config['DoubleSin'] = {'frequency'    : 2,
-                                         'amplitude'    : 2,
-                                         'phase'        : 2}
-        self.func_config['TripleSin'] = {'frequency'    : 3,
-                                         'amplitude'    : 3,
-                                         'phase'        : 3}
+        self.func_config['DC'] =  {'amplitude': ampl_def}
+        self.func_config['Sin'] = {'frequency':freq_def, 'amplitude':ampl_def,
+                                   'phase':phase_def}
+        self.func_config['Cos'] = {'frequency':freq_def, 'amplitude':ampl_def,
+                                   'phase':phase_def}
+        self.func_config['DoubleSin'] = {'frequency1' : freq_def,
+                                         'frequency2' : freq_def,
+                                         'amplitude1' : ampl_def,
+                                         'amplitude2' : ampl_def,
+                                         'phase1'     : phase_def,
+                                         'phase2'     : phase_def}
+        self.func_config['TripleSin'] = {'frequency1' : freq_def,
+                                         'frequency2' : freq_def,
+                                         'frequency3' : freq_def,
+                                         'amplitude1' : ampl_def,
+                                         'amplitude2' : ampl_def,
+                                         'amplitude3' : ampl_def,
+                                         'phase1'     : phase_def,
+                                         'phase2'     : phase_def,
+                                         'phase3'     : phase_def}
+
+
 
         # self.func_config['DoubleSin'] = ['frequency1', 'frequency2',
         #                                  'amplitude1', 'amplitude2',
@@ -72,20 +116,6 @@ class SamplingFunctions():
         #                                  'frequency3', 'amplitude1',
         #                                  'amplitude2', 'amplitude3',
         #                                  'phase1', 'phase2', 'phase3']
-
-        self._validate()
-
-
-    def _validate(self):
-        """ Check whether the function configuration has valid parameters.
-        """
-        for func in self.func_config:
-            for param in self.func_config[func]:
-                if param not in self._allowed_param:
-                    raise ValueError('Sample Function: Invalid or not known '
-                                     'parameter "{0}" for the '
-                                     'function "{1}"!'.format(param, func))
-
 
     def _idle(self, time_arr, parameters={}):
         result_arr = np.zeros(len(time_arr))

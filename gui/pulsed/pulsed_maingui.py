@@ -889,9 +889,6 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-
-
-
         # =====================================================================
         #              Explanation of the usage of QTableWidget
         # =====================================================================
@@ -1017,6 +1014,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         return [DoubleSpinBoxDelegate, 10.0, 0.0, 100000000.0, 0.01, 5]
 
+
     def _get_settings_dspinbox_inc(self):
         """ Get the custom setting for a general increment DoubleSpinBox object.
 
@@ -1028,13 +1026,16 @@ class PulsedMeasurementGui(GUIBase):
         return [DoubleSpinBoxDelegate, 0.0, 0.0, 2.0, 0.01, 5]
 
 
+
     def _get_itemlist_combobox(self):
-        """ This is a special functions, which passes the needed itemlist
-            for the specific delegate class, here for ComboBoxDelegate.
-            That information is necessary to construct properly the ViewWidget.
+        """ Pass needed itemlist to specific delegate class ComboBoxDelegate.
 
         @return: list with the entries:
                  [initial value, reference to ask the available function list]
+
+        This is a special functions, which passes the needed itemlist for the
+        specific delegate class, here for ComboBoxDelegate. That information is
+        necessary to construct properly the ViewWidget.
         """
 
         return [self.get_current_function_list()[0],
@@ -1042,35 +1043,41 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def _get_itemlist_spinbox(self):
-        """ This is a special function, which passes the needed itemlist
-            for the specific delegate class, here for SpinBoxDelegate.
-            That information is necessary to construct properly the ViewWidget.
+        """ Pass needed itemlist to specific delegate class SpinBoxDelegate.
 
         @return: list with the entries:
                  [initial value, min_value, max_value,
                   desired stepsize in ViewWidget, displayed decimals (int),
                   reference to ask current sample rate]
+
+        This is a special function, which passes the needed itemlist for the
+        specific delegate class, here for SpinBoxDelegate. That information is
+        necessary to construct properly the ViewWidget.
         """
         pass
 
     def _get_itemlist_dspinbox(self):
-        """ This is a special function, which passes the needed itemlist
-            for the specific delegate class, here for DoubleSpinBoxDelegate.
-            That information is necessary to construct properly the ViewWidget.
+        """ Pass needed itemlist to specific delegate class DoubleSpinBoxDelegate.
 
         @return: list with the entries:
                  [initial value, min_value, max_value,
                   desired stepsize in ViewWidget]
+
+        This is a special function, which passes the needed itemlist for the
+        specific delegate class, here for DoubleSpinBoxDelegate. That
+        information is necessary to construct properly the ViewWidget.
         """
         pass
 
     def _get_itemlist_checkbox(self):
-        """ This is a special function, which passes the needed itemlist
-            for the specific delegate class, here for CheckBoxDelegate.
-            That information is necessary to construct properly the ViewWidget.
+        """ Pass needed itemlist to specific delegate class CheckBoxDelegate.
 
         @return: list: with the entries:
                  [initial value]
+
+        This is a special function, which passes the needed itemlist for the
+        specific delegate class, here for CheckBoxDelegate. That information is
+        necessary to construct properly the ViewWidget.
         """
 
         pass
