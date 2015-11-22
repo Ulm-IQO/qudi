@@ -444,12 +444,19 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, parent, items_list):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
-        @param list items_list: A list with predefined properties for the used
-                                editor. In this class the items must look like:
-                                [default_val, min_val, max_val,step_size]
+        @param list items_list: ????????????? FIXME
+
+
         """
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list
+        self.items_list = items_list[0]
+
+        self.unit_list = {'p':1e-12, 'n':1e-9, 'micro':1e-6, 'm':1e-3, 'k':1e3, 'M':1e6, 'G':1e9, 'T':1e12}
+
+        if 'disp_unit' in self.items_list.keys():
+            self.norm = self.unit_list[self.items_list['disp_unit']]
+        else:
+            self.norm = 1.0
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.EditRole
@@ -463,7 +470,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, editor.itemText(value), QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], self.model_data_access]
+        return [self.items_list['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -490,14 +497,17 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
+
+
+
         editor = QtGui.QDoubleSpinBox(parent)
         self.editor = editor
-        editor.setMinimum(self.items_list[1])
-        editor.setMaximum(self.items_list[2])
-        editor.setSingleStep(self.items_list[3])
-        editor.setDecimals(self.items_list[4])
+        editor.setMinimum(self.items_list['min'])
+        editor.setMaximum(self.items_list['max'])
+        editor.setSingleStep(self.items_list['view_stepsize']/self.norm)
+        editor.setDecimals(self.items_list['dec'])
         editor.installEventFilter(self)
-        editor.setValue(self.items_list[0])
+        editor.setValue(self.items_list['init_val'])
         return editor
 
     def setEditorData(self, editor, index):
@@ -514,7 +524,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = index.data(self.model_data_access)
 
         if not isinstance(value, float):
-            value = self.items_list[0]
+            value = self.items_list['init_val']
         editor.setValue(value)
 
     def setModelData(self, spinBox, model, index):
@@ -868,8 +878,8 @@ class PulsedMeasurementGui(GUIBase):
         self._param_block = OrderedDict()
         self._param_block['Length (ns)'] = self._get_settings_dspinbox_length()
         self._param_block['Inc. (ns)'] = self._get_settings_dspinbox_inc()
-        self._param_block['Repeat?'] = self._get_settings_checkbox()
-        self._param_block['Use as tau?'] = self._get_settings_checkbox()
+#        self._param_block['Repeat?'] = self._get_settings_checkbox()
+#        self._param_block['Use as tau?'] = self._get_settings_checkbox()
 
         # a dictionary containing the names and indices of the GUI block
         # generator table. Should be set and updated by the GUI:
@@ -931,14 +941,14 @@ class PulsedMeasurementGui(GUIBase):
                  parameter name as a string and for that string key how often
                  the parameter is used.
         """
-        return self._seq_gen_logic.func_config
+        return self._seq_gen_logic.get_func_config()
 
     def get_func_config_list(self):
         """ Retrieve the possible math functions as a list of strings.
 
         @return: list[] with string entries as function names.
         """
-        return list(self._seq_gen_logic.func_config)
+        return list(self._seq_gen_logic.get_func_config())
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
@@ -1012,7 +1022,8 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 10.0, 0.0, 100000000.0, 0.01, 5]
+        return [DoubleSpinBoxDelegate, {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 100000.0,
+                    'view_stepsize': 0.001, 'dec': 3}]
 
 
     def _get_settings_dspinbox_inc(self):
@@ -1023,7 +1034,8 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [DoubleSpinBoxDelegate, 0.0, 0.0, 2.0, 0.01, 5]
+        return [DoubleSpinBoxDelegate, {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 100000.0,
+                    'view_stepsize': 0.001, 'dec': 3}]
 
 
 
@@ -1102,6 +1114,13 @@ class PulsedMeasurementGui(GUIBase):
         """
         return self._seq_gen_logic.get_hardware_constraints()
 
+
+    def get_param_config(self):
+        """ Retrieve the parameter configuration from Logic.
+
+        @return: dict with the configurations for the additional parameters.
+        """
+        return self._seq_gen_logic.get_param_config()
 
 
     def get_element_in_block_table(self, row, column):
@@ -1254,18 +1273,23 @@ class PulsedMeasurementGui(GUIBase):
 
         # insert parameter:
         insert_at_col_pos = column
-        for column, parameter in enumerate(self._param_block):
+        for column, parameter in enumerate(self.get_param_config()):
+
+            # add the new properties to the whole column through delegate:
+            items_list = self.get_param_config()[parameter]
+
+            if 'disp_unit' in items_list.keys():
+                unit_text = items_list['disp_unit'] + items_list['unit']
+            else:
+                unit_text = items_list['unit']
 
             self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos+column)
             self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
-
-            # add the new properties to the whole column through delegate:
-            items_list = self._param_block[parameter][1:]
+            self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
+            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
             # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.block_editor_TableWidget, items_list)
+            delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, [items_list])
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
@@ -1280,16 +1304,23 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+
 
             # add the new properties to the whole column through delegate:
-            items_list = self._param_block[parameter][1:]
+            items_list = self.get_param_config()[parameter]
+
+            if 'disp_unit' in items_list.keys():
+                unit_text = items_list['disp_unit'] + items_list['unit']
+            else:
+                unit_text = items_list['unit']
+
+            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
+            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
             # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.block_organizer_TableWidget, items_list)
+            delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, [items_list])
             self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
@@ -1339,6 +1370,46 @@ class PulsedMeasurementGui(GUIBase):
         self._set_channels(num_a_ch=num_a_ch)
 
 
+    def _determine_needed_parameters(self):
+        """ Determine the maximal number of needed parameters for desired functions.
+
+        @return ('<biggest_func_name>, number_of_parameters)
+        """
+
+        #FIXME: Reimplement this function such that it will return the
+        #       parameters of all needed functions and not take only the
+        #       parameters of the biggest function. Then the return should be
+        #       not the biggest function, but a set of all the needed
+        #       parameters which is obtained from get_func_config()!
+
+
+        curr_func_list = self.get_current_function_list()
+        complete_func_config = self.get_func_config()
+
+        num_max_param = 0
+        biggest_func = ''
+
+        for func in curr_func_list:
+            if num_max_param < len(complete_func_config[func]):
+                num_max_param = len(complete_func_config[func])
+                biggest_func = func
+
+        return (num_max_param, biggest_func)
+
+    def get_current_table_config(self):
+        """ Ask for the current table configuration.
+
+        @return list with column configuration
+
+        """
+        table_config = []
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            text = self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text()
+            table_config.append(text)
+
+        return table_config
+
+
     def _set_channels(self, num_d_ch=None, num_a_ch=None):
         """ General function which creates the needed columns.
 
@@ -1354,14 +1425,21 @@ class PulsedMeasurementGui(GUIBase):
         if num_a_ch is None:
             num_a_ch = self._num_a_ch
 
+        (num_max_param, biggest_func) = self._determine_needed_parameters()
+
+        # Erase the delegate from the column:
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(column,None)
             self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column,None)
 
+        # clear the number of columns:
         self._mw.block_editor_TableWidget.setColumnCount(0)
         self._mw.block_organizer_TableWidget.setColumnCount(0)
 
-        num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
+#        num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
+        # +1 for the displayed function
+        num_a_d_ch =  num_a_ch*(num_max_param +1) + num_d_ch
+
 
         self._mw.block_editor_TableWidget.setColumnCount(num_a_d_ch)
         self._mw.block_organizer_TableWidget.setColumnCount(num_a_d_ch)
@@ -1385,6 +1463,8 @@ class PulsedMeasurementGui(GUIBase):
                 checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
+
+
                 self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
                 self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create) )
                 self._mw.block_organizer_TableWidget.setColumnWidth(column, 40)
@@ -1392,6 +1472,7 @@ class PulsedMeasurementGui(GUIBase):
                 items_list = self._param_d_ch['CheckBox'][1:]
                 checkDelegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
                 self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, checkDelegate)
+
 
                 if not d_created and num_d_to_create != 1:
                     d_created = True
@@ -1405,37 +1486,73 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 if num_d_to_create>0:
                     a_created = True
-                for param_pos, parameter in enumerate(self._param_a_ch):
+
+                param_pos = 0
+                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nFunction'.format(num_a_ch-num_a_to_create))
+                self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
+
+                items_list = [self.get_current_function_list]
+
+                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+
+
+
+
+                self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nFunction'.format(num_a_ch-num_a_to_create))
+                self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos, 70)
+
+                items_list = [self.get_current_function_list]
+
+                delegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+                self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+
+
+                for param_pos, parameter in enumerate(self.get_func_config()[biggest_func]):
 
                     # initial block:
-                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                    self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
-                    self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
+
+                    items_list = self.get_func_config()[biggest_func][parameter]
+
+                    if 'disp_unit' in items_list.keys():
+                        unit_text = items_list['disp_unit'] + items_list['unit']
+                    else:
+                        unit_text = items_list['unit']
+
+                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos+1, QtGui.QTableWidgetItem())
+                    self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos+1).setText('ACh{0:d}\n{1} ({2})'.format(num_a_ch-num_a_to_create, parameter, unit_text))
+                    self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos+1, 100)
 
                     # add the new properties to the whole column through delegate:
-                    items_list = self._param_a_ch[parameter][1:]
+
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.block_editor_TableWidget, items_list)
-                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, [items_list])
+                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
 
-                    # repeated block:
-                    self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                    self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
-                    self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos, 70)
+
+
+
+                    self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos+1, QtGui.QTableWidgetItem())
+                    self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos+1).setText('ACh{0:d}\n{1} ({2})'.format(num_a_ch-num_a_to_create, parameter, unit_text))
+                    self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos+1, 100)
 
                     # add the new properties to the whole column through delegate:
-                    items_list = self._param_a_ch[parameter][1:]
+
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.block_organizer_TableWidget, items_list)
-                    self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+                    delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, [items_list])
+                    self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
 
-                column = column + len(self._param_a_ch)
+                column = column + (num_max_param +1)
                 num_a_to_create = num_a_to_create - 1
 
         self._num_a_ch = num_a_ch
         self._num_d_ch = num_d_ch
+
+
         self.insert_parameters(num_a_d_ch)
 
         self.initialize_row_init_block(0,self._mw.block_editor_TableWidget.rowCount())

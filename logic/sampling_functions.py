@@ -54,7 +54,7 @@ class SamplingFunctions():
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
                     'view_stepsize': 1e3, 'dec': 8, 'disp_unit': 'M'}
-        ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0, 'max': 1,
+        ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
                     'view_stepsize': 0.001, 'dec': 3}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
                     'view_stepsize': 0.1, 'dec': 8}
@@ -85,58 +85,60 @@ class SamplingFunctions():
         # know which input parameters the function desires:
 
         self.func_config = OrderedDict()
-        self.func_config['Idle'] = []
-        self.func_config['DC'] =  {'amplitude': ampl_def}
-        self.func_config['Sin'] = {'frequency':freq_def, 'amplitude':ampl_def,
-                                   'phase':phase_def}
-        self.func_config['Cos'] = {'frequency':freq_def, 'amplitude':ampl_def,
-                                   'phase':phase_def}
-        self.func_config['DoubleSin'] = {'frequency1' : freq_def,
-                                         'frequency2' : freq_def,
-                                         'amplitude1' : ampl_def,
-                                         'amplitude2' : ampl_def,
-                                         'phase1'     : phase_def,
-                                         'phase2'     : phase_def}
-        self.func_config['TripleSin'] = {'frequency1' : freq_def,
-                                         'frequency2' : freq_def,
-                                         'frequency3' : freq_def,
-                                         'amplitude1' : ampl_def,
-                                         'amplitude2' : ampl_def,
-                                         'amplitude3' : ampl_def,
-                                         'phase1'     : phase_def,
-                                         'phase2'     : phase_def,
-                                         'phase3'     : phase_def}
+        self.func_config['Idle'] = OrderedDict()
+        self.func_config['DC'] =  OrderedDict()
+        self.func_config['DC']['amplitude1'] = ampl_def
 
+        self.func_config['Sin'] = OrderedDict()
+        self.func_config['Sin']['frequency1'] = freq_def
+        self.func_config['Sin']['amplitude1'] = ampl_def
+        self.func_config['Sin']['phase1'] = phase_def
 
+        self.func_config['Cos'] = OrderedDict()
+        self.func_config['Cos']['frequency1'] = freq_def
+        self.func_config['Cos']['amplitude1'] = ampl_def
+        self.func_config['Cos']['phase1'] = phase_def
 
-        # self.func_config['DoubleSin'] = ['frequency1', 'frequency2',
-        #                                  'amplitude1', 'amplitude2',
-        #                                  'phase1', 'phase2']
-        # self.func_config['TripleSin'] = ['frequency1', 'frequency2',
-        #                                  'frequency3', 'amplitude1',
-        #                                  'amplitude2', 'amplitude3',
-        #                                  'phase1', 'phase2', 'phase3']
+        self.func_config['DoubleSin'] = OrderedDict()
+        self.func_config['DoubleSin']['frequency1'] = freq_def
+        self.func_config['DoubleSin']['frequency2'] = freq_def
+        self.func_config['DoubleSin']['amplitude1'] = ampl_def
+        self.func_config['DoubleSin']['amplitude2'] = ampl_def
+        self.func_config['DoubleSin']['phase1']     = phase_def
+        self.func_config['DoubleSin']['phase2']     = phase_def
+
+        self.func_config['TripleSin'] = OrderedDict()
+        self.func_config['TripleSin']['frequency1'] = freq_def
+        self.func_config['TripleSin']['frequency2'] = freq_def
+        self.func_config['TripleSin']['frequency3'] = freq_def
+        self.func_config['TripleSin']['amplitude1'] = ampl_def
+        self.func_config['TripleSin']['amplitude2'] = ampl_def
+        self.func_config['TripleSin']['amplitude3'] = ampl_def
+        self.func_config['TripleSin']['phase1']     = phase_def
+        self.func_config['TripleSin']['phase2']     = phase_def
+        self.func_config['TripleSin']['phase3']     = phase_def
+
 
     def _idle(self, time_arr, parameters={}):
         result_arr = np.zeros(len(time_arr))
         return result_arr
 
     def _dc(self, time_arr, parameters):
-        amp = parameters['amplitude']
+        amp = parameters['amplitude1']
         result_arr = np.full(len(time_arr), amp)
         return result_arr
 
     def _sin(self, time_arr, parameters):
-        amp = parameters['amplitude']
-        freq = parameters['frequency']
-        phase = 180*np.pi * parameters['phase']
+        amp = parameters['amplitude1']
+        freq = parameters['frequency1']
+        phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _cos(self, time_arr, parameters):
-        amp = parameters['amplitude']
-        freq = parameters['frequency']
-        phase = 180*np.pi * parameters['phase']
+        amp = parameters['amplitude1']
+        freq = parameters['frequency1']
+        phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase)
         return result_arr
 
