@@ -10,6 +10,8 @@ Created on Fri Oct 23 16:00:38 2015
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
 from pyqtgraph.Qt import QtCore
+from collections import OrderedDict
+
 #from core.util.mutex import Mutex
 import numpy as np
 import pickle
@@ -227,6 +229,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.ensemble_dir = ''
         self.sequence_dir = ''
 
+        # Definition of this parameter. See fore more explanation in file
+        # sampling_functions.py
+        length_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': +1e12,
+                      'view_stepsize': 1e-9, 'dec': 8, 'disp_unit': 'n'}
+
+        # make a parameter constraint dict
+        self.param_config = OrderedDict()
+        self.param_config['Length'] = length_def
+        self.param_config['Increment'] = length_def
+
+
         self.table_config = {'function_0': 0, 'frequency_0': 1,
                              'amplitude_0': 2, 'phase_0': 3,
                              'digital_0': 4, 'digital_1': 5,
@@ -259,6 +272,38 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @return: dict where the keys in it are predefined in the interface.
         """
         return self._pulser.get_constraints()
+
+    def get_func_config(self):
+        """ Retrieve func_config dict of the logic, including hardware constraints.
+
+
+        @return dict: with all the defined functions and their corresponding
+                      parameters and constraints.
+
+        The contraints from the hardware are now also included in the dict. How
+        the returned dict is looking like is defined in the inherited class
+        SamplingFunctions.
+        """
+        const = self.get_hardware_constraints()
+
+        func_config = self.func_config
+
+        # set the max amplitude from the hardware:
+        ampl_max = const['amplitude_analog'][1]
+        if ampl_max is not None:
+            for func in func_config:
+                for param in func_config[func]:
+                    if 'amplitude' in param:
+                        func_config[func][param]['max'] = ampl_max
+
+        return func_config
+
+    def get_param_config(self):
+        """ Pass the param_config.
+
+        @return: dict with the configurations for the additional parameters.
+        """
+        return self.param_config
 
 
 #-------------------------------------------------------------------------------
