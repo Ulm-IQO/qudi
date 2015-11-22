@@ -34,7 +34,8 @@ class FastCounterInterface():
     
     
     def configure(self):
-        """ Initialize and open the connection to the Fast Counter and configure it."""
+        """ Initialize, open the connection to the Fast Counter and configure
+        it."""
         
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1

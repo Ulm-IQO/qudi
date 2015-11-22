@@ -1,5 +1,24 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi hardware interface dummy for pulsing devices.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 from core.base import Base
 from hardware.pulser_interface import PulserInterface
 
@@ -30,6 +49,9 @@ class PulserInterfaceDummy(Base, PulserInterface):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
+
+        self.logMsg('Dummy Pulser: I will simulate an AWG :) !',
+                    msgType='status')
 
         self.connected = False
         self.amplitude = 0.25
@@ -77,8 +99,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         to get an impression.
         """
 
-        self.logMsg('Dummy Pulser: I will simulate an AWG :) !',
-                    msgType='status')
+
         constraints = {}
         # (min, max, incr) in samples/second:
         constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
