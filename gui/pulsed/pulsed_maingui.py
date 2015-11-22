@@ -93,12 +93,13 @@ from core.util.mutex import Mutex
 
 class ComboBoxDelegate(QtGui.QStyledItemDelegate):
 
-    def __init__(self, parent, items_list):
+    def __init__(self, parent, get_func_config_list):
         # Use the constructor of the inherited class.
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list    # save the passed values to a list,
-                                        #  which will be displayed and from
-                                        # which you can choose.
+        self.get_func_config_list = get_func_config_list[0]  # pass to the object a
+                                                # reference to the calling
+                                                # function, so that it can
+                                                # check every time the value
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.DisplayRole
@@ -113,7 +114,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
                          list items_list and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], self.model_data_access]
+        return [self.get_func_config_list()[0], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -140,7 +141,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         needed any longer.
         """
         editor = QtGui.QComboBox(parent)    # Editor is Combobox
-        editor.addItems(self.items_list)
+        editor.addItems(self.get_func_config_list())
         editor.setCurrentIndex(0)
         editor.installEventFilter(self)
         return editor
@@ -156,7 +157,8 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         # just for safety, block any signal which might change the values of
         # the editor during the access.
         value = index.data(self.model_data_access)
-        num = self.items_list.index(value)
+        num = self.get_func_config_list().index(value)
+        # num = self.items_list.index(value)
         editor.setCurrentIndex(num)
 
     def setModelData(self, editor, model, index):
@@ -195,7 +197,9 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         # This is introduced for experimenting with a passed data set. It is
         # not clear whether this will be useful or not. That will be found out.
         editor.clear()
-        editor.addItems(self.items_list)
+
+        editor.addItems(self.get_func_config_list())
+        # editor.addItems(self.items_list)
         editor.setGeometry(option.rect)
 
 
@@ -617,7 +621,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
         self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']
-        self._sequence_generator_logic = self.connector['in']['sequencegeneratorlogic']['object']
+        self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
 
@@ -690,6 +694,41 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
+
+        # Add in the settings menu within the groupbox widget all the available
+        # math_functions, based on the list from the Logic. Right now, the GUI
+        # objects are inserted the 'hard' way, like it is done in the
+        # Qt-Designer.
+
+        # FIXME: Make a nicer way of displaying the available functions, maybe
+        #        with a Table!
+
+        _encoding = QtGui.QApplication.UnicodeUTF8
+        objectname = self._bs.objectName()
+        for index, func_name in enumerate(self.get_func_config_list()):
+
+            name_label = 'func_'+ str(index)
+            setattr(self._bs, name_label, QtGui.QLabel(self._bs.groupBox))
+            label = getattr(self._bs, name_label)
+            label.setObjectName(name_label)
+            self._bs.gridLayout_3.addWidget(label, index, 0, 1, 1)
+            label.setText(QtGui.QApplication.translate(objectname, func_name, None, _encoding))
+
+            name_checkbox = 'checkbox_'+ str(index)
+            setattr(self._bs, name_checkbox, QtGui.QCheckBox(self._bs.groupBox))
+            checkbox = getattr(self._bs, name_checkbox)
+            checkbox.setObjectName(name_checkbox)
+            self._bs.gridLayout_3.addWidget(checkbox, index, 1, 1, 1)
+            checkbox.setText(QtGui.QApplication.translate(objectname, '', None, _encoding))
+
+        # make the first 4 Functions as default.
+        # FIXME: the default functions, must be passed as a config
+
+        for index in range(4):
+            name_checkbox = 'checkbox_'+ str(index)
+            checkbox = getattr(self._bs, name_checkbox)
+            checkbox.setCheckState(QtCore.Qt.Checked)
+
     def _deactivate_pulse_generator_settings_ui(self, e):
         """ Disconnects the configuration of the Settings for the
             'Pulse Generator' Tab.
@@ -709,15 +748,74 @@ class PulsedMeasurementGui(GUIBase):
 
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
-        self._set_channels(num_d_ch=self._bs.digital_channels_SpinBox.value(), num_a_ch=self._bs.analog_channels_SpinBox.value())
-        # self._use_digital_ch(self._bs.digital_channels_SpinBox.value())
-        # self._use_analog_channel(self._bs.analog_channels_SpinBox.value())
+
+        channel_config = self.get_hardware_constraints()['channel_config']
+
+        ch_settings = (self._bs.analog_channels_SpinBox.value(), self._bs.digital_channels_SpinBox.value())
+
+        if ch_settings in channel_config:
+            self._set_channels(num_d_ch=ch_settings[1], num_a_ch=ch_settings[0])
+        else:
+            self.logMsg('Desired channel configuration (analog, digital) as '
+                        '{0} not possible, since the hardware does not '
+                        'support it!/n'
+                        'Restore previous configuration.'.format(ch_settings),
+                        msgType='warning')
+            self.keep_former_block_settings()
+
 
     def keep_former_block_settings(self):
         """ Keep the old block settings and restores them in the gui. """
 
         self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
         self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
+
+    def get_current_function_list(self):
+        """ Retrieve the functions, which are chosen by the user.
+
+        @return: list[] with strings of the used functions. Names are based on
+                 the passed func_config dict from the logic.
+        """
+
+        current_functions = []
+
+        for index in range(len(self.get_func_config_list())):
+            name_checkbox = 'checkbox_'+ str(index)
+            checkbox = getattr(self._bs, name_checkbox)
+            if checkbox.isChecked():
+                name_label = 'func_'+ str(index)
+                func = getattr(self._bs, name_label)
+                current_functions.append(func.text())
+
+        return current_functions
+
+    def set_channel_constraints(self):
+        """ Set limitations for the choise of the channels based on the
+            constraints received from the hardware. """
+
+        channel_config = self.get_hardware_constraints()['channel_config']
+
+        # at least one channel configuration must be known. Set this as initial
+        # values for the constraints:
+        a_ch_min = channel_config[0][0]
+        a_ch_max = channel_config[0][0]
+        d_ch_min = channel_config[0][1]
+        d_ch_max = channel_config[0][1]
+
+
+        for entry in (channel_config):
+            if entry[0] < a_ch_min:
+                a_ch_min = entry[0]
+            if entry[0] > a_ch_max:
+                a_ch_max = entry[0]
+            if entry[1] < d_ch_min:
+                d_ch_min = entry[1]
+            if entry[1] > d_ch_max:
+                d_ch_max = entry[1]
+
+        self._bs.analog_channels_SpinBox.setRange(a_ch_min, a_ch_max)
+        self._bs.digital_channels_SpinBox.setRange(d_ch_min, d_ch_max)
+
 
 
     ###########################################################################
@@ -730,10 +828,27 @@ class PulsedMeasurementGui(GUIBase):
         @param Fysom.event e: Event Object of Fysom
         """
 
-        # self._mw.block_add_last_PushButton.clicked.connect(self.ad)
+        # connect the signals for the block editor:
+        self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
+        self._mw.block_del_last_PushButton.clicked.connect(self.block_editor_delete_row_last)
+        self._mw.block_add_sel_PushButton.clicked.connect(self.block_editor_add_row_before_selected)
+        self._mw.block_del_sel_PushButton.clicked.connect(self.block_editor_delete_row_selected)
+        self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
+
+        # connect the signals for the block organizer:
+        self._mw.organizer_add_last_PushButton.clicked.connect(self.block_organizer_add_row_after_last)
+        self._mw.organizer_del_last_PushButton.clicked.connect(self.block_organizer_delete_row_last)
+        self._mw.organizer_add_sel_PushButton.clicked.connect(self.block_organizer_add_row_before_selected)
+        self._mw.organizer_del_sel_PushButton.clicked.connect(self.block_organizer_delete_row_selected)
+        self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
+
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
+
+        # emit a trigger event when for all mouse click and keyboard click events:
+        self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
 
         #FIXME: Make the analog channel parameter chooseable in the settings.
@@ -755,6 +870,26 @@ class PulsedMeasurementGui(GUIBase):
         self._param_block['Inc. (ns)'] = self._get_settings_dspinbox_inc()
         self._param_block['Repeat?'] = self._get_settings_checkbox()
         self._param_block['Use as tau?'] = self._get_settings_checkbox()
+
+        # a dictionary containing the names and indices of the GUI block
+        # generator table. Should be set and updated by the GUI:
+
+        #self._seq_gen_logic.table_config
+
+
+        self.insert_parameters(0)
+        channel_config = self.get_hardware_constraints()['channel_config'][-1]
+        self._set_channels(num_d_ch=channel_config[1], num_a_ch=channel_config[0])
+
+        self.keep_former_block_settings()
+        # A dictionary containing the mathematical function names to choose
+        # from in the block editor with corresponding lists of needed
+        # parameters like phase, frequency etc. This should be provided by the
+        #  "math logic".
+
+
+
+
 
 
         # =====================================================================
@@ -778,13 +913,6 @@ class PulsedMeasurementGui(GUIBase):
         # Since QTableWidget has all the (nice and) needed requirements for us,
         # a custom definition of QTableView with a Model is not needed.
 
-        # emit a trigger event when for all mouse click and keyboard click events:
-        # self._mw.init_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-        # self._mw.repeat_block_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-
-        # self.insert_parameters(column=0)
-
-        # self.keep_former_block_settings()
 
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -798,6 +926,22 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: implement a proper deactivation for that.
         pass
 
+    def get_func_config(self):
+        """ Retrieve the function configuration from the Logic.
+
+        @return: dict with keys denoting the function name as a string and the
+                 value of each key is again a dict, which contains as key the
+                 parameter name as a string and for that string key how often
+                 the parameter is used.
+        """
+        return self._seq_gen_logic.func_config
+
+    def get_func_config_list(self):
+        """ Retrieve the possible math functions as a list of strings.
+
+        @return: list[] with string entries as function names.
+        """
+        return list(self._seq_gen_logic.func_config)
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
@@ -810,7 +954,8 @@ class PulsedMeasurementGui(GUIBase):
 
         This return object must coincide with the according delegate class.
         """
-        return [ComboBoxDelegate,'Idle','Sin','Cos','DC','Sin-Gauss']
+        return [ComboBoxDelegate, self.get_current_function_list]
+        # return [ComboBoxDelegate,'Idle','Sin','Cos','DC','Sin-Gauss']
 
     def _get_settings_checkbox(self):
         """ Get the custom setting for a general CheckBox object.
@@ -882,6 +1027,76 @@ class PulsedMeasurementGui(GUIBase):
         """
         return [DoubleSpinBoxDelegate, 0.0, 0.0, 2.0, 0.01, 5]
 
+
+    def _get_itemlist_combobox(self):
+        """ This is a special functions, which passes the needed itemlist
+            for the specific delegate class, here for ComboBoxDelegate.
+            That information is necessary to construct properly the ViewWidget.
+
+        @return: list with the entries:
+                 [initial value, reference to ask the available function list]
+        """
+
+        return [self.get_current_function_list()[0],
+                self.get_current_function_list]
+
+
+    def _get_itemlist_spinbox(self):
+        """ This is a special function, which passes the needed itemlist
+            for the specific delegate class, here for SpinBoxDelegate.
+            That information is necessary to construct properly the ViewWidget.
+
+        @return: list with the entries:
+                 [initial value, min_value, max_value,
+                  desired stepsize in ViewWidget, displayed decimals (int),
+                  reference to ask current sample rate]
+        """
+        pass
+
+    def _get_itemlist_dspinbox(self):
+        """ This is a special function, which passes the needed itemlist
+            for the specific delegate class, here for DoubleSpinBoxDelegate.
+            That information is necessary to construct properly the ViewWidget.
+
+        @return: list with the entries:
+                 [initial value, min_value, max_value,
+                  desired stepsize in ViewWidget]
+        """
+        pass
+
+    def _get_itemlist_checkbox(self):
+        """ This is a special function, which passes the needed itemlist
+            for the specific delegate class, here for CheckBoxDelegate.
+            That information is necessary to construct properly the ViewWidget.
+
+        @return: list: with the entries:
+                 [initial value]
+        """
+
+        pass
+
+
+    def get_current_channels(self):
+        """ Get current number of analog and digial channels chosen by user.
+
+        @return: tuple(2), with (number_a_ch, number_d_ch).
+
+        The configuration will be one of those, received from the logic from
+        the method get_hardware_constraints.
+        """
+        return (self._num_a_ch, self._num_d_ch)
+
+
+    def get_hardware_constraints(self):
+        """ Request the constrains from the logic, which are coming from the
+            hardware.
+
+        @return: dict where the keys in it are predefined in the interface.
+        """
+        return self._seq_gen_logic.get_hardware_constraints()
+
+
+
     def get_element_in_block_table(self, row, column):
         """ Simplified wrapper function to get the data from a specific cell
             in the init table.
@@ -897,7 +1112,7 @@ class PulsedMeasurementGui(GUIBase):
         and then column index) was taken from the Qt convention.
         """
 
-        tab = self._mw.init_block_TableWidget
+        tab = self._mw.block_editor_TableWidget
 
         # Get from the corresponding delegate the data access model
         access = tab.itemDelegateForColumn(column).model_data_access
@@ -912,7 +1127,7 @@ class PulsedMeasurementGui(GUIBase):
                  The structure was taken according to the init table itself.
         """
 
-        tab = self._mw.init_block_TableWidget
+        tab = self._mw.block_editor_TableWidget
 
         # create a structure for the output numpy array:
         structure = ''
@@ -946,17 +1161,17 @@ class PulsedMeasurementGui(GUIBase):
     def block_editor_add_row_before_selected(self):
         """ Add row before selected element. """
 
-        selected_row = self._mw.init_block_TableWidget.currentRow()
+        selected_row = self._mw.block_editor_TableWidget.currentRow()
 
-        self._mw.init_block_TableWidget.insertRow(selected_row)
+        self._mw.block_editor_TableWidget.insertRow(selected_row)
         self.initialize_row_init_block(selected_row)
 
 
     def block_editor_add_row_after_last(self):
         """ Add row after last row in the block editor. """
 
-        number_of_rows = self._mw.init_block_TableWidget.rowCount()
-        self._mw.init_block_TableWidget.setRowCount(number_of_rows+1)
+        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
+        self._mw.block_editor_TableWidget.setRowCount(number_of_rows+1)
         self.initialize_row_init_block(number_of_rows)
 
     def block_editor_delete_row_selected(self):
@@ -964,22 +1179,22 @@ class PulsedMeasurementGui(GUIBase):
 
         # get the row number of the selected item(s). That will return the
         # lowest selected row
-        row_to_remove = self._mw.init_block_TableWidget.currentRow()
-        self._mw.init_block_TableWidget.removeRow(row_to_remove)
+        row_to_remove = self._mw.block_editor_TableWidget.currentRow()
+        self._mw.block_editor_TableWidget.removeRow(row_to_remove)
 
     def block_editor_delete_row_last(self):
         """ Delete the last row in the block editor. """
 
-        number_of_rows = self._mw.init_block_TableWidget.rowCount()
+        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
-        self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
+        self._mw.block_editor_TableWidget.removeRow(number_of_rows-1)
 
     def block_editor_clear_table(self):
         """ Delete all rows in the block editor table. """
 
-        self._mw.init_block_TableWidget.setRowCount(1)
-        self._mw.init_block_TableWidget.clearContents()
+        self._mw.block_editor_TableWidget.setRowCount(1)
+        self._mw.block_editor_TableWidget.clearContents()
         self.initialize_row_init_block(0)
 
     # -------------------------------------------------------------------------
@@ -990,17 +1205,17 @@ class PulsedMeasurementGui(GUIBase):
     def block_organizer_add_row_before_selected(self):
         """ Add row before selected element. """
 
-        selected_row = self._mw.init_block_TableWidget.currentRow()
+        selected_row = self._mw.block_organizer_TableWidget.currentRow()
 
-        self._mw.init_block_TableWidget.insertRow(selected_row)
+        self._mw.block_organizer_TableWidget.insertRow(selected_row)
         self.initialize_row_init_block(selected_row)
 
 
     def block_organizer_add_row_after_last(self):
         """ Add row after last row in the block editor. """
 
-        number_of_rows = self._mw.init_block_TableWidget.rowCount()
-        self._mw.init_block_TableWidget.setRowCount(number_of_rows+1)
+        number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
+        self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+1)
         self.initialize_row_init_block(number_of_rows)
 
     def block_organizer_delete_row_selected(self):
@@ -1008,22 +1223,22 @@ class PulsedMeasurementGui(GUIBase):
 
         # get the row number of the selected item(s). That will return the
         # lowest selected row
-        row_to_remove = self._mw.init_block_TableWidget.currentRow()
-        self._mw.init_block_TableWidget.removeRow(row_to_remove)
+        row_to_remove = self._mw.block_organizer_TableWidget.currentRow()
+        self._mw.block_organizer_TableWidget.removeRow(row_to_remove)
 
     def block_organizer_delete_row_last(self):
         """ Delete the last row in the block editor. """
 
-        number_of_rows = self._mw.init_block_TableWidget.rowCount()
+        number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
-        self._mw.init_block_TableWidget.removeRow(number_of_rows-1)
+        self._mw.block_organizer_TableWidget.removeRow(number_of_rows-1)
 
     def block_organizer_clear_table(self):
         """ Delete all rows in the block editor table. """
 
-        self._mw.init_block_TableWidget.setRowCount(1)
-        self._mw.init_block_TableWidget.clearContents()
+        self._mw.block_organizer_TableWidget.setRowCount(1)
+        self._mw.block_organizer_TableWidget.clearContents()
         self.initialize_row_init_block(0)
 
 
@@ -1034,22 +1249,22 @@ class PulsedMeasurementGui(GUIBase):
         insert_at_col_pos = column
         for column, parameter in enumerate(self._param_block):
 
-            self._mw.init_block_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.init_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.init_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.init_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+            self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
+            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
 
             # add the new properties to the whole column through delegate:
             items_list = self._param_block[parameter][1:]
 
             # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
-            self._mw.init_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
+            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.block_editor_TableWidget, items_list)
+            self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
-            for row_num in range(self._mw.init_block_TableWidget.rowCount()):
+            for row_num in range(self._mw.block_editor_TableWidget.rowCount()):
                 # get the model, here are the data stored:
-                model = self._mw.init_block_TableWidget.model()
+                model = self._mw.block_editor_TableWidget.model()
                 # get the corresponding index of the current element:
                 index = model.index(row_num, insert_at_col_pos+column)
                 # get the initial values of the delegate class which was
@@ -1058,22 +1273,22 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-            self._mw.repeat_block_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.repeat_block_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
-            self._mw.repeat_block_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
+            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0}'.format(parameter))
+            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 70)
 
             # add the new properties to the whole column through delegate:
             items_list = self._param_block[parameter][1:]
 
             # extract the classname from the _param_block list to be able to deligate:
-            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
-            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
+            delegate = eval(self._param_block[parameter][0].__name__)(self._mw.block_organizer_TableWidget, items_list)
+            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
-            for row_num in range(self._mw.repeat_block_TableWidget.rowCount()):
+            for row_num in range(self._mw.block_organizer_TableWidget.rowCount()):
                 # get the model, here are the data stored:
-                model = self._mw.repeat_block_TableWidget.model()
+                model = self._mw.block_organizer_TableWidget.model()
                 # get the corresponding index of the current element:
                 index = model.index(row_num, insert_at_col_pos+column)
                 # get the initial values of the delegate class which was
@@ -1089,13 +1304,13 @@ class PulsedMeasurementGui(GUIBase):
 
         The number of digital channal are counted and return and additionally
         the internal counter variable _num_d_ch is updated. The counting
-        procedure is based on the init_block_TableWidget since it is assumed
-        that all operation on the init_block_TableWidget is also applied on
-        repeat_block_TableWidget.
+        procedure is based on the block_editor_TableWidget since it is assumed
+        that all operation on the block_editor_TableWidget is also applied on
+        block_organizer_TableWidget.
         """
         count_dch = 0
-        for column in range(self._mw.init_block_TableWidget.columnCount()):
-            if 'DCh' in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
                 count_dch = count_dch + 1
 
         self._num_d_ch = count_dch
@@ -1132,17 +1347,17 @@ class PulsedMeasurementGui(GUIBase):
         if num_a_ch is None:
             num_a_ch = self._num_a_ch
 
-        for column in range(self._mw.init_block_TableWidget.columnCount()):
-            self._mw.init_block_TableWidget.setItemDelegateForColumn(column,None)
-            self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column,None)
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column,None)
+            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column,None)
 
-        self._mw.init_block_TableWidget.setColumnCount(0)
-        self._mw.repeat_block_TableWidget.setColumnCount(0)
+        self._mw.block_editor_TableWidget.setColumnCount(0)
+        self._mw.block_organizer_TableWidget.setColumnCount(0)
 
         num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
 
-        self._mw.init_block_TableWidget.setColumnCount(num_a_d_ch)
-        self._mw.repeat_block_TableWidget.setColumnCount(num_a_d_ch)
+        self._mw.block_editor_TableWidget.setColumnCount(num_a_d_ch)
+        self._mw.block_organizer_TableWidget.setColumnCount(num_a_d_ch)
 
         num_a_to_create = num_a_ch
         num_d_to_create = num_d_ch
@@ -1155,21 +1370,21 @@ class PulsedMeasurementGui(GUIBase):
 
             if num_a_to_create == 0 or a_created:
 
-                self._mw.init_block_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-                self._mw.init_block_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create))
-                self._mw.init_block_TableWidget.setColumnWidth(column, 40)
+                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+                self._mw.block_editor_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create))
+                self._mw.block_editor_TableWidget.setColumnWidth(column, 40)
 
                 items_list = self._param_d_ch['CheckBox'][1:]
-                checkDelegate = CheckBoxDelegate(self._mw.init_block_TableWidget, items_list)
-                self._mw.init_block_TableWidget.setItemDelegateForColumn(column, checkDelegate)
+                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
-                self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-                self._mw.repeat_block_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create) )
-                self._mw.repeat_block_TableWidget.setColumnWidth(column, 40)
+                self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create) )
+                self._mw.block_organizer_TableWidget.setColumnWidth(column, 40)
 
                 items_list = self._param_d_ch['CheckBox'][1:]
-                checkDelegate = CheckBoxDelegate(self._mw.repeat_block_TableWidget, items_list)
-                self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column, checkDelegate)
+                checkDelegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+                self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
                 if not d_created and num_d_to_create != 1:
                     d_created = True
@@ -1186,28 +1401,28 @@ class PulsedMeasurementGui(GUIBase):
                 for param_pos, parameter in enumerate(self._param_a_ch):
 
                     # initial block:
-                    self._mw.init_block_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                    self._mw.init_block_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
-                    self._mw.init_block_TableWidget.setColumnWidth(column+param_pos, 70)
+                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                    self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
+                    self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
 
                     # add the new properties to the whole column through delegate:
                     items_list = self._param_a_ch[parameter][1:]
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.init_block_TableWidget, items_list)
-                    self._mw.init_block_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.block_editor_TableWidget, items_list)
+                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
 
                     # repeated block:
-                    self._mw.repeat_block_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                    self._mw.repeat_block_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
-                    self._mw.repeat_block_TableWidget.setColumnWidth(column+param_pos, 70)
+                    self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
+                    self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{:d}\n'.format(num_a_ch-num_a_to_create) + parameter)
+                    self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos, 70)
 
                     # add the new properties to the whole column through delegate:
                     items_list = self._param_a_ch[parameter][1:]
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.repeat_block_TableWidget, items_list)
-                    self._mw.repeat_block_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
+                    delegate = eval(self._param_a_ch[parameter][0].__name__)(self._mw.block_organizer_TableWidget, items_list)
+                    self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
 
                 column = column + len(self._param_a_ch)
                 num_a_to_create = num_a_to_create - 1
@@ -1216,8 +1431,8 @@ class PulsedMeasurementGui(GUIBase):
         self._num_d_ch = num_d_ch
         self.insert_parameters(num_a_d_ch)
 
-        self.initialize_row_init_block(0,self._mw.init_block_TableWidget.rowCount())
-        self.initialize_row_repeat_block(0,self._mw.repeat_block_TableWidget.rowCount())
+        self.initialize_row_init_block(0,self._mw.block_editor_TableWidget.rowCount())
+        self.initialize_row_repeat_block(0,self._mw.block_organizer_TableWidget.rowCount())
 
     def initialize_row_init_block(self, start_row, stop_row=None):
         """
@@ -1229,16 +1444,16 @@ class PulsedMeasurementGui(GUIBase):
         if stop_row is None:
             stop_row = start_row +1
 
-        for col_num in range(self._mw.init_block_TableWidget.columnCount()):
+        for col_num in range(self._mw.block_editor_TableWidget.columnCount()):
 
             for row_num in range(start_row,stop_row):
                 # get the model, here are the data stored:
-                model = self._mw.init_block_TableWidget.model()
+                model = self._mw.block_editor_TableWidget.model()
                 # get the corresponding index of the current element:
                 index = model.index(row_num, col_num)
                 # get the initial values of the delegate class which was
                 # uses for this column:
-                ini_values = self._mw.init_block_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
@@ -1251,16 +1466,16 @@ class PulsedMeasurementGui(GUIBase):
         if stop_row is None:
             stop_row = start_row +1
 
-        for col_num in range(self._mw.repeat_block_TableWidget.columnCount()):
+        for col_num in range(self._mw.block_organizer_TableWidget.columnCount()):
 
             for row_num in range(start_row,stop_row):
                 # get the model, here are the data stored:
-                model = self._mw.repeat_block_TableWidget.model()
+                model = self._mw.block_organizer_TableWidget.model()
                 # get the corresponding index of the current element:
                 index = model.index(row_num, col_num)
                 # get the initial values of the delegate class which was
                 # uses for this column:
-                ini_values = self._mw.repeat_block_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                ini_values = self._mw.block_organizer_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
@@ -1271,18 +1486,18 @@ class PulsedMeasurementGui(GUIBase):
 
         The number of analog channal are counted and return and additionally
         the internal counter variable _num_a_ch is updated. The counting
-        procedure is based on the init_block_TableWidget since it is assumed
-        that all operation on the init_block_TableWidget is also applied on
-        repeat_block_TableWidget.
+        procedure is based on the block_editor_TableWidget since it is assumed
+        that all operation on the block_editor_TableWidget is also applied on
+        block_organizer_TableWidget.
         """
 
         count_a_ch = 0
         # there must be definitly less analog channels then available columns
         # in the table, therefore the number of columns can be used as the
         # upper border.
-        for poss_a_ch in range(self._mw.init_block_TableWidget.columnCount()):
-            for column in range(self._mw.init_block_TableWidget.columnCount()):
-                if ('ACh'+str(poss_a_ch)) in self._mw.init_block_TableWidget.horizontalHeaderItem(column).text():
+        for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
+            for column in range(self._mw.block_editor_TableWidget.columnCount()):
+                if ('ACh'+str(poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
                     # analog channel found, break the inner loop to
                     count_a_ch = count_a_ch + 1
                     break
@@ -1449,7 +1664,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
         self._mw.numlaser_InputWidget.editingFinished.disconnect()
         self._mw.lasertoshow_spinBox.valueChanged.disconnect()
-        
+
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
         self._pulsed_measurement_logic.stop_pulsed_measurement()
@@ -1505,7 +1720,7 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the elapsed time of the measurement
         '''
         self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
-        
+
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
         tau_start = int(self._mw.taustart_InputWidget.text())
@@ -1524,8 +1739,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
         self._pulsed_measurement_logic.mykrowave_power = mw_power
         return
-     
-     
+
+
     def analysis_parameters_changed(self):
         sig_start = int(self._mw.signal_start_InputWidget.text())
         sig_length = int(self._mw.signal_length_InputWidget.text())
@@ -1546,11 +1761,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.norm_width_bin = ref_length
         self._pulsed_measurement_logic.change_timer_interval(timer_interval)
         return
-        
+
     def check_input_with_samplerate(self):
         pass
-        
-    
+
+
     def save_clicked(self):
         self._pulsed_measurement_logic._save_data()
         return
