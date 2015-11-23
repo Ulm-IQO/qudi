@@ -196,8 +196,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     _in = {'pulser':'PulserInterface'}
     _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
 
-
-
+    
     # define signals
     signal_block_list_updated = QtCore.Signal()
     signal_ensemble_list_updated = QtCore.Signal()
@@ -306,6 +305,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return self.param_config
 
 
+    def set_sampling_freq(self, freq_Hz):
+        """
+        Sets the sampling frequency of the pulse generator device and updates the corresponding value in this logic.
+        """
+        self._pulse_generator_device.set_sample_rate(freq_Hz)
+        self.sampling_freq = freq_Hz
+        return 0
+        
+    def set_active_channels(self, digital, analogue):
+        """
+        Sets the number of active channels in the pulse generator device and updates the corresponding variables in this logic.
+        """
+        self._pulse_generator_device.set_active_channels(digital, analogue)
+        self.analogue_channels = analogue
+        self.digital_channels = digital
+        return 0
+        
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 #-------------------------------------------------------------------------------
@@ -638,12 +654,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             sample_arr[i] = self._math_func[func_name](time_arr, parameters[i])
 
         return sample_arr, marker_arr
-
 #-------------------------------------------------------------------------------
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    # TODO: Properly implement a predefined sequence... this here is deprecated
     def generate_rabi(self, mw_freq_Hz, mw_power_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, tau_incr_bins):
         # create parameter dictionary for MW signal
         params = {}

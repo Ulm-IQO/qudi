@@ -422,10 +422,10 @@ class AWG70K(Base, PulserInterface):
         time.sleep(0.5)                 # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
+        self.soc.close()
         message = message.decode('UTF-8') # decode bytes into a python str
         message = message.replace('\n','')      # cut away the characters\r and \n.
         message = message.replace('\r','')
-        self.soc.close()
         return message
         
     def reset(self):
@@ -434,7 +434,6 @@ class AWG70K(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.tell('*RST\n')
-
         return 0
         
     
