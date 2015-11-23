@@ -235,15 +235,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # make a parameter constraint dict
         self.param_config = OrderedDict()
-        self.param_config['Length'] = length_def
-        self.param_config['Increment'] = length_def
+        self.param_config['length'] = length_def
+        self.param_config['increment'] = length_def
 
 
-        self.table_config = {'function_0': 0, 'frequency_0': 1,
-                             'amplitude_0': 2, 'phase_0': 3,
+        self.table_config = {'function_0': 0, 'frequency1_0': 1,
+                             'amplitude1_0': 2, 'phase1_0': 3,
                              'digital_0': 4, 'digital_1': 5,
-                             'function_1': 6, 'frequency_1': 7,
-                             'amplitude_1': 8, 'phase_1': 9,
+                             'function_1': 6, 'frequency1_1': 7,
+                             'amplitude1_1': 8, 'phase1_1': 9,
                              'digital_2': 10,
                              'digital_3': 11,
                              'length': 12, 'increment': 13}
@@ -255,7 +255,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         self.refresh_sequence_list()
 
-        self._pulser = self.connector['in']['pulser']['object']
+        self._pulse_generator_device = self.connector['in']['pulser']['object']
 
         pass
 
@@ -270,7 +270,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         @return: dict where the keys in it are predefined in the interface.
         """
-        return self._pulser.get_constraints()
+        return self._pulse_generator_device.get_constraints()
 
     def get_func_config(self):
         """ Retrieve func_config dict of the logic, including hardware constraints.
@@ -322,6 +322,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.digital_channels = digital
         return 0
         
+        
+    def update_table_config(self, table_headers):
+        
+        return 0
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 #-------------------------------------------------------------------------------
