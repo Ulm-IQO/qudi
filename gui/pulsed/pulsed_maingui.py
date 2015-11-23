@@ -704,7 +704,6 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
-
         # Add in the settings menu within the groupbox widget all the available
         # math_functions, based on the list from the Logic. Right now, the GUI
         # objects are inserted the 'hard' way, like it is done in the
@@ -859,6 +858,8 @@ class PulsedMeasurementGui(GUIBase):
         # emit a trigger event when for all mouse click and keyboard click events:
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        
+        self._mw.curr_block_save_PushButton.clicked.connect(self.block_save_clicked)
 
 
         #FIXME: Make the analog channel parameter chooseable in the settings.
@@ -1158,7 +1159,7 @@ class PulsedMeasurementGui(GUIBase):
         # create a structure for the output numpy array:
         structure = ''
         for column in range(tab.columnCount()):
-            elem = self.get_element_in_init_table(0,column)
+            elem = self.get_element_in_block_table(0,column)
             if type(elem) is str:
                 structure = structure + '|S20, '
             elif type(elem) is int:
@@ -1177,7 +1178,7 @@ class PulsedMeasurementGui(GUIBase):
         for column in range(tab.columnCount()):
             for row in range(tab.rowCount()):
                 # self.logMsg(, msgType='status')
-                table[row][column] = self.get_element_in_init_table(row, column)
+                table[row][column] = self.get_element_in_block_table(row, column)
 
         return table
 
@@ -1222,6 +1223,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.setRowCount(1)
         self._mw.block_editor_TableWidget.clearContents()
         self.initialize_row_init_block(0)
+        
+    def block_save_clicked(self):
+        """
+        Actions to perform when the save button in the block editor is clicked
+        """
+        name = self._mw.curr_block_name_LineEdit.text()
+        table_struct = self.get_block_table()
+        self._seq_gen_logic.generate_block(name, table_struct)
+        return
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
@@ -1396,18 +1406,24 @@ class PulsedMeasurementGui(GUIBase):
 
         return (num_max_param, biggest_func)
 
-    def get_current_table_config(self):
-        """ Ask for the current table configuration.
+    def update_current_table_config(self):
+        """ Updates the current table configuration in the logic.
 
         @return list with column configuration
 
         """
-        table_config = []
+        table_config = {}
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
             text = self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text()
-            table_config.append(text)
-
-        return table_config
+            split_text = text.split()
+            if 'DCh' in split_text[0]:
+                table_config['digital_' + split_text[0][3]] = column
+            elif 'ACh' in split_text[0]:
+                table_config[split_text[1] + '_' + split_text[0][3]] = column
+            else:
+                table_config[split_text[0]] = column
+        self._seq_gen_logic.table_config = table_config
+        return
 
 
     def _set_channels(self, num_d_ch=None, num_a_ch=None):
@@ -1489,7 +1505,7 @@ class PulsedMeasurementGui(GUIBase):
 
                 param_pos = 0
                 self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nFunction'.format(num_a_ch-num_a_to_create))
+                self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nfunction'.format(num_a_ch-num_a_to_create))
                 self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
 
                 items_list = [self.get_current_function_list]
@@ -1501,7 +1517,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
                 self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nFunction'.format(num_a_ch-num_a_to_create))
+                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nfunction'.format(num_a_ch-num_a_to_create))
                 self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos, 70)
 
                 items_list = [self.get_current_function_list]
@@ -1557,6 +1573,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.initialize_row_init_block(0,self._mw.block_editor_TableWidget.rowCount())
         self.initialize_row_repeat_block(0,self._mw.block_organizer_TableWidget.rowCount())
+        self.update_current_table_config()
 
     def initialize_row_init_block(self, start_row, stop_row=None):
         """
