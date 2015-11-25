@@ -836,13 +836,18 @@ class PulsedMeasurementGui(GUIBase):
 
         @param Fysom.event e: Event Object of Fysom
         """
-
+        # connect the signal for a change of the sample frequency
+        self._mw.sample_freq_DSpinBox.editingFinished.connect(self.sample_frequency_changed)
+        
         # connect the signals for the block editor:
         self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
         self._mw.block_del_last_PushButton.clicked.connect(self.block_editor_delete_row_last)
         self._mw.block_add_sel_PushButton.clicked.connect(self.block_editor_add_row_before_selected)
         self._mw.block_del_sel_PushButton.clicked.connect(self.block_editor_delete_row_selected)
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
+        
+        self._mw.curr_block_save_PushButton.clicked.connect(self.block_editor_save_clicked)
+        self._mw.curr_block_del_PushButton.clicked.connect(self.block_editor_delete_clicked)
 
         # connect the signals for the block organizer:
         self._mw.organizer_add_last_PushButton.clicked.connect(self.block_organizer_add_row_after_last)
@@ -851,6 +856,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.organizer_del_sel_PushButton.clicked.connect(self.block_organizer_delete_row_selected)
         self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
 
+        # connect the signals for the "Upload on device" section
+        self._mw.upload_on_ch1_PushButton.clicked.connect(self.upload_on_ch1_clicked)
+        self._mw.upload_on_ch2_PushButton.clicked.connect(self.upload_on_ch2_clicked)
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
@@ -859,9 +867,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         
-        self._mw.curr_block_save_PushButton.clicked.connect(self.block_save_clicked)
-
-
+        # connect update signals of the sequence_generator_logic
+        self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
+        self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
+        self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
+        
         #FIXME: Make the analog channel parameter chooseable in the settings.
 
 
@@ -898,6 +908,10 @@ class PulsedMeasurementGui(GUIBase):
         # parameters like phase, frequency etc. This should be provided by the
         #  "math logic".
 
+        # initialize the lists of available blocks, ensembles and sequences
+        self.update_block_list()
+        self.update_ensemble_list()
+        self.update_sequence_list()
 
 
         # =====================================================================
@@ -950,7 +964,75 @@ class PulsedMeasurementGui(GUIBase):
         @return: list[] with string entries as function names.
         """
         return list(self._seq_gen_logic.get_func_config())
-
+        
+    def sample_frequency_changed(self):
+        """
+        This method is called when the user enters a new sample frequency in the SpinBox
+        """
+        freq = 1e6*self._mw.sample_freq_DSpinBox.value()
+        self._seq_gen_logic.set_sampling_freq(freq)
+        return
+        
+    def upload_on_ch1_clicked(self):
+        """
+        This method is called when the user clicks on "Upload on Ch1"
+        """
+        # Get the ensemble name to be uploaded from the ComboBox
+        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Sample and upload the ensemble via logic module
+        self._seq_gen_logic.download_ensemble(ensemble_name)
+        # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
+        self._seq_gen_logic.load_asset(ensemble_name, 1)
+        return
+        
+    def upload_on_ch2_clicked(self):
+        """
+        This method is called when the user clicks on "Upload on Ch2"
+        """
+        # Get the ensemble name to be uploaded from the ComboBox
+        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Sample and upload the ensemble via logic module
+        self._seq_gen_logic.download_ensemble(ensemble_name)
+        # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
+        self._seq_gen_logic.load_asset(ensemble_name, 2)
+        return
+    
+    def update_block_list(self):
+        """
+        This method is called upon signal_block_list_updated emit of the sequence_generator_logic.
+        Updates all ComboBoxes showing generated blocks.
+        """
+        # updated list of all generated blocks
+        new_list = self._seq_gen_logic.saved_blocks
+        # update saved_blocks_ComboBox items
+        self._mw.saved_blocks_ComboBox.clear()
+        self._mw.saved_blocks_ComboBox.addItems(new_list)
+        return
+    
+    def update_ensemble_list(self):
+        """
+        This method is called upon signal_ensemble_list_updated emit of the sequence_generator_logic.
+        Updates all ComboBoxes showing generated block_ensembles.
+        """
+        # updated list of all generated ensembles
+        new_list = self._seq_gen_logic.saved_ensembles
+        # update upload_ensemble_ComboBox items
+        self._mw.upload_ensemble_ComboBox.clear()
+        self._mw.upload_ensemble_ComboBox.addItems(new_list)
+        # update saved_ensembles_ComboBox items
+        self._mw.saved_ensembles_ComboBox.clear()
+        self._mw.saved_ensembles_ComboBox.addItems(new_list)
+        return
+        
+    def update_sequence_list(self):
+        """
+        This method is called upon signal_sequence_list_updated emit of the sequence_generator_logic.
+        Updates all ComboBoxes showing generated sequences.
+        """
+        # updated list of all generated sequences
+        new_list = self._seq_gen_logic.saved_sequences
+        return
+        
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
     # -------------------------------------------------------------------------
@@ -1224,13 +1306,21 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.clearContents()
         self.initialize_row_init_block(0)
         
-    def block_save_clicked(self):
+    def block_editor_save_clicked(self):
         """
         Actions to perform when the save button in the block editor is clicked
         """
         name = self._mw.curr_block_name_LineEdit.text()
         table_struct = self.get_block_table()
         self._seq_gen_logic.generate_block(name, table_struct)
+        return
+        
+    def block_editor_delete_clicked(self):
+        """
+        Actions to perform when the delete button in the block editor is clicked
+        """
+        name = self._mw.saved_blocks_ComboBox.currentText()
+        self._seq_gen_logic.delete_block(name)
         return
 
     # -------------------------------------------------------------------------
@@ -1276,7 +1366,14 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setRowCount(1)
         self._mw.block_organizer_TableWidget.clearContents()
         self.initialize_row_init_block(0)
-
+        
+    def block_organizer_delete_clicked(self):
+        """
+        Actions to perform when the delete button in the block organizer is clicked
+        """
+        name = self._mw.saved_ensembles_ComboBox.currentText()
+        self._seq_gen_logic.delete_ensemble(name)
+        return
 
 
     def insert_parameters(self, column):
@@ -1645,6 +1742,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._num_a_ch = count_a_ch
         return self._num_a_ch
+        
 
     ###########################################################################
     ###        Methods related to Settings for the 'Analysis' Tab:          ###

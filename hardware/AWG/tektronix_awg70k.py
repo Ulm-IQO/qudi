@@ -64,14 +64,16 @@ class AWG70K(Base, PulserInterface):
         """ Initialisation performed during activation of the module.
         """
         # connect ethernet socket and FTP        
-#        self.soc = socket(AF_INET, SOCK_STREAM)
-#        self.soc.connect((self.ip_address, self.port))
-#        self.ftp = FTP(self.ip_address)
-#        self.ftp.login()
-#        self.ftp.cwd('/waves') # hardcoded default folder
-#        
-#        self.input_buffer = int(2 * 1024)
-#        
+        self.soc = socket(AF_INET, SOCK_STREAM)
+        self.soc.settimeout(3)
+        self.soc.connect((self.ip_address, self.port))
+        self.soc.close()
+        self.ftp = FTP(self.ip_address)
+        self.ftp.login()
+        self.ftp.cwd('/waves') # hardcoded default folder
+        
+        self.input_buffer = int(2 * 1024)
+        
         self.connected = True
         
     
@@ -212,7 +214,7 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        self.uploaded_sequence_list.append(filepath.rsplit('\\', 1)[1][:-4])
+        self.uploaded_sequence_list.append(filepath.rsplit('/', 1)[1][:-4])
         return 0
     
     def load_sequence(self, seq_name, channel = None):
@@ -268,9 +270,9 @@ class AWG70K(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
         self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
-        return_rate = float(self.ask('CLOCK:SRATE?\n'))
-        self.sample_rate = return_rate
-        return return_rate
+        #return_rate = float(self.ask('CLOCK:SRATE?\n'))
+        #self.sample_rate = return_rate
+        return sample_rate
         
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
@@ -355,7 +357,7 @@ class AWG70K(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.sequence_directory)
+            ftp.cwd(self.waveform_directory)
 
             # get only the files from the dir and skip possible directories
             log =[]
@@ -384,7 +386,7 @@ class AWG70K(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.sequence_directory)
+            ftp.cwd(self.waveform_directory)
 
             for entry in seq_name:
                 if entry in file_list:
@@ -420,7 +422,7 @@ class AWG70K(Base, PulserInterface):
                             'Create new.'.format(dir_path), msgType='status')
                 ftp.mkd(dir_path)
 
-        self.sequence_directory = dir_path
+        self.waveform_directory = dir_path
         return 0
        
     def get_sequence_directory(self):
@@ -431,7 +433,7 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        return self.sequence_directory
+        return self.waveform_directory
 
     def set_interleave(self, state=False):
         # TODO: Implement this function

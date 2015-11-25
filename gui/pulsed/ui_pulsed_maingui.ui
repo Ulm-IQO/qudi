@@ -569,7 +569,7 @@
                   </widget>
                  </item>
                  <item row="6" column="1" colspan="2">
-                  <widget class="QComboBox" name="curr_ensemble_saved_ensembles_LineEdit">
+                  <widget class="QComboBox" name="saved_ensembles_ComboBox">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -736,7 +736,7 @@
                   </widget>
                  </item>
                  <item row="6" column="1" colspan="2">
-                  <widget class="QComboBox" name="curr_block_saved_blocks_LineEdit">
+                  <widget class="QComboBox" name="saved_blocks_ComboBox">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                      <horstretch>0</horstretch>

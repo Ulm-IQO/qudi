@@ -258,7 +258,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_sequence_list()
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
-
         pass
 
     def deactivation(self, e):
@@ -333,17 +332,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.digital_channels = digital
         return 0
         
-    def download_ensemble(self, block_ensemble):
+    def download_ensemble(self, ensemble_name):
         """
-        Samples and downloads a Pulse_Block_Ensemble onto the pulse generator internal memory.
+        Samples and downloads a saved Pulse_Block_Ensemble with name "ensemble_name" into the pulse generator internal memory.
         """
-        waveform = self.generate_waveform(block_ensemble)
+        ensemble = self.get_ensemble(ensemble_name)
+        waveform = self.generate_waveform(ensemble)
         self._pulse_generator_device.download_waveform(waveform)
+        return 0
         
-    def load_asset(self, name):
-        assets_on_device = self._pulse_generator_device.get_sequence_names
+    def load_asset(self, name, channel = None):
+        assets_on_device = self._pulse_generator_device.get_sequence_names()
         if name in assets_on_device:
-            self._pulse_generator_device.load_sequence(name)
+            self._pulse_generator_device.load_sequence(name, channel)
         
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -370,6 +371,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No block with name "' + name + '" in saved blocks.')
         return
+        
+    def get_block(self, name):
+        """
+        Returns the saved Pulse_Block object by name without setting it as current block
+        """
+        if name in self.saved_blocks:
+            with open(self.block_dir + name + '.blk', 'rb') as infile:
+                block = pickle.load(infile)
+        else:
+            block = None
+            # TODO: implement proper error
+            print('Error: No block with name "' + name + '" in saved blocks.')
+        return block
 
     def delete_block(self, name):
         ''' remove the block "name" from the block list and HDD
@@ -417,6 +431,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No ensemble with name "' + name + '" in saved ensembles.')
         return
+        
+    def get_ensemble(self, name):
+        """
+        Returns the saved Pulse_Block_Ensemble object by name without setting it as current ensemble
+        """
+        if name in self.saved_ensembles:
+            with open(self.ensemble_dir + name + '.ben', 'rb') as infile:
+                ensemble = pickle.load(infile)
+        else:
+            ensemble = None
+            # TODO: implement proper error
+            print('Error: No ensemble with name "' + name + '" in saved ensembles.')
+        return ensemble
 
     def delete_ensemble(self, name):
         ''' remove the ensemble "name" from the ensemble list and HDD
@@ -464,6 +491,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No sequence with name "' + name + '" in saved sequences.')
         return
+        
+    def get_sequence(self, name):
+        """
+        Returns the saved Pulse_Sequence object by name without setting it as current sequence
+        """
+        if name in self.saved_sequences:
+            with open(self.sequence_dir + name + '.seq', 'rb') as infile:
+                sequence = pickle.load(infile)
+        else:
+            sequence = None
+            # TODO: implement proper error
+            print('Error: No sequence with name "' + name + '" in saved sequences.')
+        return sequence
 
     def delete_sequence(self, name):
         ''' remove the sequence "name" from the sequence list and HDD
