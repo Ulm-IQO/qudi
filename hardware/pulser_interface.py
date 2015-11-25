@@ -176,8 +176,8 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>get_sampling_rate')
         return -1
 
-    def set_amplitude(self, channel, amplitude):
-        """ Set the output amplitude of the pulse generator hardware.
+    def set_pp_voltage(self, channel, voltage):
+        """ Set the peak-to-peak voltage of the pulse generator hardware analogue channels.
         Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
 
         @param int channel: The channel to be reconfigured
@@ -185,11 +185,11 @@ class PulserInterface():
 
         @return int: error code (0:OK, -1:error)
         """
-        raise InterfaceImplementationError('PulserInterface>set_amplitude')
+        raise InterfaceImplementationError('PulserInterface>set_pp_voltage')
         return -1
 
-    def get_amplitude(self, channel):
-        """ Get the output amplitude of the pulse generator hardware.
+    def get_pp_voltage(self, channel):
+        """ Get the peak-to-peak voltage of the pulse generator hardware analogue channels.
 
         @param int channel: The channel to be checked
 
@@ -198,7 +198,7 @@ class PulserInterface():
         Unused for purely digital hardware without logic level setting
         capability (FPGA, etc.).
         """
-        raise InterfaceImplementationError('PulserInterface>get_amplitude')
+        raise InterfaceImplementationError('PulserInterface>get_pp_voltage')
         return -1
 
     def set_active_channels(self, d_ch=0, a_ch=0):

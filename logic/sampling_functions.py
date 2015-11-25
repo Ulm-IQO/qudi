@@ -129,22 +129,22 @@ class SamplingFunctions():
         return result_arr
 
     def _sin(self, time_arr, parameters):
-        amp = parameters['amplitude1']
+        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _cos(self, time_arr, parameters):
-        amp = parameters['amplitude1']
+        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _doublesin(self, time_arr, parameters):
-        amp1 = parameters['amplitude1']
-        amp2 = parameters['amplitude2']
+        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         phase1 = 180*np.pi * parameters['phase1']
@@ -154,9 +154,9 @@ class SamplingFunctions():
         return result_arr
 
     def _triplesin(self, time_arr, parameters):
-        amp1 = parameters['amplitude1']
-        amp2 = parameters['amplitude2']
-        amp3 = parameters['amplitude3']
+        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp3 = 2*parameters['amplitude3']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         freq3 = parameters['frequency3']

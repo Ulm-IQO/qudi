@@ -177,9 +177,10 @@ class Waveform(object):
     Represents a sampled Pulse_Block_Ensemble() object.
     Holds analogue and digital samples and important parameters.
     """
-    def __init__(self, block_ensemble, sampling_freq, analogue_samples, digital_samples):
+    def __init__(self, block_ensemble, sampling_freq, pp_voltage, analogue_samples, digital_samples):
         self.name = block_ensemble.name
         self.sampling_freq = sampling_freq
+        self.pp_voltage = pp_voltage
         self.block_ensemble = block_ensemble
         self.analogue_samples = analogue_samples
         self.digital_samples = digital_samples
@@ -215,7 +216,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
         SamplingFunctions.__init__(self)
-        self.sampling_freq = 50e9
+        self.sampling_freq = 25e9
+        self.pp_voltage = 0.5
         self.analogue_channels = 2
         self.digital_channels = 4
         self.current_block = None
@@ -313,6 +315,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.sampling_freq = freq_Hz
         return 0
         
+    def set_pp_voltage(self, voltage):
+        """
+        Sets the peak-to-peak output voltage of the pulse generator device and updates the corresponding value in this logic.
+        Only of importance if the device has analogue channels with adjustable peak-to-peak voltage.
+        """
+        self._pulse_generator_device.set_pp_voltage(voltage)
+        self.pp_voltage = voltage
+        return 0
+        
     def set_active_channels(self, digital, analogue):
         """
         Sets the number of active channels in the pulse generator device and updates the corresponding variables in this logic.
@@ -322,10 +333,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.digital_channels = digital
         return 0
         
+    def download_ensemble(self, block_ensemble):
+        """
+        Samples and downloads a Pulse_Block_Ensemble onto the pulse generator internal memory.
+        """
+        waveform = self.generate_waveform(block_ensemble)
+        self._pulse_generator_device.download_waveform(waveform)
         
-    def update_table_config(self, table_headers):
+    def load_asset(self, name):
+        assets_on_device = self._pulse_generator_device.get_sequence_names
+        if name in assets_on_device:
+            self._pulse_generator_device.load_sequence(name)
         
-        return 0
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 #-------------------------------------------------------------------------------
@@ -346,11 +365,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if name in self.saved_blocks:
             with open(self.block_dir + name + '.blk', 'rb') as infile:
                 block = pickle.load(infile)
-            return block
+            self.current_block = block
         else:
             # TODO: implement proper error
             print('Error: No block with name "' + name + '" in saved blocks.')
-            return
+        return
 
     def delete_block(self, name):
         ''' remove the block "name" from the block list and HDD
@@ -393,11 +412,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if name in self.saved_ensembles:
             with open(self.ensemble_dir + name + '.ben', 'rb') as infile:
                 ensemble = pickle.load(infile)
-            return ensemble
+            self.current_ensemble = ensemble
         else:
             # TODO: implement proper error
             print('Error: No ensemble with name "' + name + '" in saved ensembles.')
-            return
+        return
 
     def delete_ensemble(self, name):
         ''' remove the ensemble "name" from the ensemble list and HDD
@@ -440,11 +459,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if name in self.saved_sequences:
             with open(self.sequence_dir + name + '.seq', 'rb') as infile:
                 sequence = pickle.load(infile)
-            return sequence
+            self.current_sequence = sequence
         else:
             # TODO: implement proper error
             print('Error: No sequence with name "' + name + '" in saved sequences.')
-            return
+        return
 
     def delete_sequence(self, name):
         ''' remove the sequence "name" from the sequence list and HDD
@@ -509,7 +528,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 param_dict = {}
                 for param in self.func_config[func]:
                     if 'frequency' in param:
-                        param_dict[param] = 1e9*block_matrix[elem_num][self.table_config[param+'_'+str(chnl_num)]]
+                        param_dict[param] = 1e6*block_matrix[elem_num][self.table_config[param+'_'+str(chnl_num)]]
                     else:
                         param_dict[param] = block_matrix[elem_num][self.table_config[param+'_'+str(chnl_num)]]
                 elem_parameters[chnl_num] = param_dict
@@ -536,8 +555,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def generate_sequence(self, sequence_matrix):
         """
         Generates a Pulse_Sequence object out of the corresponding editor table/matrix.
+        Creates a whole new structure of Block_Elements, Blocks and Block_Ensembles so that the phase of the seqeunce is preserved.
+        NOT EASY!
         """
-
         return
 #-------------------------------------------------------------------------------
 #                    END sequence/block generation
@@ -556,19 +576,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         @return Waveform(): A Waveform object containing the samples and metadata (sampling_freq etc)
         """
-        analogue_samples, digital_samples = self.sample_ensemble(block_ensemble)
-        waveform_obj = Waveform(block_ensemble, self.sampling_freq, analogue_samples, digital_samples)
+        analogue_samples, digital_samples = self._sample_ensemble(block_ensemble)
+        waveform_obj = Waveform(block_ensemble, self.sampling_freq, self.pp_voltage, analogue_samples, digital_samples)
         return waveform_obj
 
-    def sample_sequence(self):
+    def sample_sequence(self, sequence):
         """
-        Creates a whole new structure of Block_Elements, Blocks and Block_Ensembles so that the phase of the seqeunce is preserved.
-        Then samples the new Block_Ensembles to obtain the waveforms needed for the sequence.
-        Not easy!
+        Samples the sequence to obtain the needed waveforms.
         """
         pass
 
-    def sample_ensemble(self, ensemble):
+    def _sample_ensemble(self, ensemble):
         """
         Calculates actual sample points given a Pulse_Block_Ensemble object.
 
@@ -662,11 +680,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, mw_freq_Hz, mw_power_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, tau_incr_bins):
+    def generate_rabi(self, mw_freq_Hz, mw_amp_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, tau_incr_bins):
         # create parameter dictionary for MW signal
         params = {}
         params['frequency'] = mw_freq_Hz
-        params['amplitude'] = mw_power_V
+        params['amplitude'] = mw_amp_V
         params['phase'] = 0
         # generate elements
         laser_markers = [False]*self.digital_channels
@@ -684,7 +702,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         repetitions = len(tau_array)-1
         block_list = [(block, repetitions)]
         # create sequence out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, False)
+        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, self.pp_voltage, self.sampling_freq, False)
         # save block
         self.save_block('Rabi_block', block)
         # save ensemble
