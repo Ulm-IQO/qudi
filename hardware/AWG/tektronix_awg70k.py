@@ -67,7 +67,6 @@ class AWG70K(Base, PulserInterface):
         self.soc = socket(AF_INET, SOCK_STREAM)
         self.soc.settimeout(3)
         self.soc.connect((self.ip_address, self.port))
-        self.soc.close()
         self.ftp = FTP(self.ip_address)
         self.ftp.login()
         self.ftp.cwd('/waves') # hardcoded default folder
@@ -76,14 +75,16 @@ class AWG70K(Base, PulserInterface):
         
         self.connected = True
         
+        self.update_sequence_list()
+        
     
     def deactivation(self, e):
         """Tasks that are required to be performed during deactivation of the module.
         """
         # Closes the connection to the AWG via ftp and the socket
-#        self.tell('\n')
-#        self.soc.close()
-#        self.ftp.close()
+        self.tell('\n')
+        self.soc.close()
+        self.ftp.close()
 
         self.connected = False
         pass
@@ -230,18 +231,29 @@ class AWG70K(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
         if seq_name in self.uploaded_sequence_list:
+            self.clear_all()
+            file_path  = 'C:/inetpub/ftproot' + self.waveform_directory + '/' + seq_name + '.mat'
+            self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
+            self.tell('*OPC?\n')
+            wfm_num = int(self.ask('WLISt:SIZE?\n'))
+            if wfm_num == 1:
+                wfm_name = seq_name + '_Ch1'
+                self.tell('SOUR1:CASS:WAV "%s"\n' % wfm_name)
+            elif wfm_num == 2:
+                wfm_name = seq_name + '_Ch1'
+                self.tell('SOUR1:CASS:WAV "%s"\n' % wfm_name)
+                wfm_name = seq_name + '_Ch2'
+                self.tell('SOUR2:CASS:WAV "%s"\n' % wfm_name)
             self.current_loaded_file = seq_name
-        # TODO: Actually load the sequence into the channel(s)
         return 0
-        
-    def clear_channel(self, channel = None):
-        """ Clears the loaded waveform from the specified channel
-        Unused for digital pulse generators without sequence storage capability (PulseBlaster, FPGA).
-        
-        @param int channel: The channel to be cleared
+                
+    def clear_all(self):
+        """ Clears all loaded waveform from the pulse generators RAM
+        Unused for digital pulse generators without storage capability (PulseBlaster, FPGA).
         
         @return int: error code (0:OK, -1:error)
         """
+        self.tell('WLIS:WAV:DEL ALL\n')
         self.current_loaded_file = None
         return 0
         
@@ -270,9 +282,10 @@ class AWG70K(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
         self.tell('CLOCK:SRATE %.4G\n' % sample_rate)
-        #return_rate = float(self.ask('CLOCK:SRATE?\n'))
-        #self.sample_rate = return_rate
-        return sample_rate
+        time.sleep(3)
+        return_rate = float(self.ask('CLOCK:SRATE?\n'))
+        self.sample_rate = return_rate
+        return return_rate
         
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
@@ -318,12 +331,15 @@ class AWG70K(Base, PulserInterface):
         if d_ch <= 2:
             ch1_marker = d_ch
             ch2_marker = 0
+        elif d_ch == 3:
+            ch1_marker = 2
+            ch2_marker = 1
         else:
             ch1_marker = 2
-            ch2_marker = d_ch % 2
+            ch2_marker = 2
 
-        self.tell('SOURCE1:DAC:RESOLUTION' + str(10-ch1_marker) + '\n')
-        self.tell('SOURCE2:DAC:RESOLUTION' + str(10-ch2_marker) + '\n')
+        self.tell('SOURCE1:DAC:RESOLUTION ' + str(10-ch1_marker) + '\n')
+        self.tell('SOURCE2:DAC:RESOLUTION ' + str(10-ch2_marker) + '\n')
 
 
         if a_ch == 2:
@@ -365,8 +381,16 @@ class AWG70K(Base, PulserInterface):
             ftp.retrlines('LIST', callback=log.append)
             for line in log:
                 if not '<DIR>' in line:
-                    file_list.append(line.rsplit(None, 1)[1])
+                    file_list.append(line.rsplit(None, 1)[1][:-4])
         return file_list
+        
+    def update_sequence_list(self):
+        """
+        Updates uploaded_sequence_list 
+        """
+        self.uploaded_sequence_list = self.get_sequence_names()
+        return 0
+        
 
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
@@ -382,21 +406,16 @@ class AWG70K(Base, PulserInterface):
         if not isinstance(seq_name, list):
             seq_name = [seq_name]
 
-        file_list = self.get_sequence_names()
-
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.waveform_directory)
 
             for entry in seq_name:
-                if entry in file_list:
-                    ftp.delete(entry)
-                    
-        if seq_name in self.uploaded_sequence_list:
-            self.uploaded_sequence_list.remove(seq_name)
-            if seq_name == self.current_loaded_file:
-                self.clear_channel()
-                
+                if entry in self.uploaded_sequence_list:
+                    ftp.delete(entry + '.mat')
+                    self.uploaded_sequence_list.remove(entry)
+                    if entry == self.current_loaded_file:
+                        self.clear_all()        
         return 0
         
         
@@ -468,9 +487,7 @@ class AWG70K(Base, PulserInterface):
         if not command.endswith('\n'): 
             command += '\n'
         command = bytes(command, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
-        self.soc.connect((self.ip_address, self.port))
         self.soc.send(command)
-        self.soc.close()
         return 0
         
     def ask(self, question):
@@ -483,12 +500,10 @@ class AWG70K(Base, PulserInterface):
         if not question.endswith('\n'): 
             question += '\n'
         question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
-        self.soc.connect((self.ip_address, self.port))
         self.soc.send(question)    
-        time.sleep(0.5)                 # you need to wait until AWG generating
+        time.sleep(0.1)                 # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
-        self.soc.close()
         message = message.decode('UTF-8') # decode bytes into a python str
         message = message.replace('\n','')      # cut away the characters\r and \n.
         message = message.replace('\r','')

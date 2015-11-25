@@ -190,15 +190,12 @@ class PulserInterfaceDummy(Base, PulserInterface):
             self.current_loaded_file = seq_name
         return 0
 
-    def clear_channel(self, channel=None):
-        """ Clears the loaded waveform from the specified channel.
-
-        @param int channel: The channel to be cleared. If no channel is passed
-                            all the channels will be cleared.
+    def clear_all(self):
+        """ Clears all loaded waveform from the pulse generators RAM.
 
         @return int: error code (0:OK, -1:error)
 
-        Unused for digital pulse generators without sequence storage capability
+        Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
         self.current_loaded_file = None
