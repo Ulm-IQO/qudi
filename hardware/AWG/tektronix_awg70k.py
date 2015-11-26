@@ -7,7 +7,7 @@ Created on Fri Aug 21 12:31:16 2015
 
 from socket import socket, AF_INET, SOCK_STREAM
 from ftplib import FTP
-from io import StringIO
+import os
 import time
 from collections import OrderedDict
 from core.base import Base
@@ -52,7 +52,8 @@ class AWG70K(Base, PulserInterface):
         
         self.use_sequencer = False
         
-        self.waveform_directory = '/waves'
+        self.awg_waveform_directory = '/waves'
+        self.host_waveform_directory = 'C:/software/qudi/trunk/waveforms/'
         
         self.active_channel = (2,4)
         self.interleave = False
@@ -69,7 +70,7 @@ class AWG70K(Base, PulserInterface):
         self.soc.connect((self.ip_address, self.port))
         self.ftp = FTP(self.ip_address)
         self.ftp.login()
-        self.ftp.cwd('/waves') # hardcoded default folder
+        self.ftp.cwd(self.awg_waveform_directory)
         
         self.input_buffer = int(2 * 1024)
         
@@ -157,7 +158,13 @@ class AWG70K(Base, PulserInterface):
         if digi_samples.shape[0] >= 4:
             matcontent[u'Waveform_M2_2'] = digi_samples[3]
         
-        hdf5storage.write(matcontent, '.', name+'.mat', matlab_compatible=True)
+        # create file in current directory
+        filename = name +'.mat'
+        hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
+        # check if file already exists and overwrite it
+        if os.path.isfile(self.host_waveform_directory + filename):
+            os.remove(self.host_waveform_directory + filename)
+        os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
         return
 
 
@@ -200,7 +207,7 @@ class AWG70K(Base, PulserInterface):
             self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_freq, waveform.pp_voltage)
             
             # TODO: Download waveform to AWG and load it into channels
-            self.send_file(self.waveform_directory + waveform.name + '.mat')
+            self.send_file(self.host_waveform_directory + waveform.name + '.mat')
             self.load_sequence(waveform.name)
         return 0
 
@@ -215,7 +222,12 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        self.uploaded_sequence_list.append(filepath.rsplit('/', 1)[1][:-4])
+        filename = filepath.rsplit('/', 1)[1]
+        file = open(filepath, 'rb')
+        self.ftp.storbinary('STOR '+filename, file)
+        file.close()
+
+        self.uploaded_sequence_list.append(filename[:-4])
         return 0
     
     def load_sequence(self, seq_name, channel = None):
@@ -232,9 +244,10 @@ class AWG70K(Base, PulserInterface):
         """
         if seq_name in self.uploaded_sequence_list:
             self.clear_all()
-            file_path  = 'C:/inetpub/ftproot' + self.waveform_directory + '/' + seq_name + '.mat'
+            self.soc.settimeout(None)
+            file_path  = 'C:/inetpub/ftproot' + self.awg_waveform_directory + '/' + seq_name + '.mat'
             self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
-            self.tell('*OPC?\n')
+            print(self.ask('*OPC?\n'))
             wfm_num = int(self.ask('WLISt:SIZE?\n'))
             if wfm_num == 1:
                 wfm_name = seq_name + '_Ch1'
@@ -245,6 +258,7 @@ class AWG70K(Base, PulserInterface):
                 wfm_name = seq_name + '_Ch2'
                 self.tell('SOUR2:CASS:WAV "%s"\n' % wfm_name)
             self.current_loaded_file = seq_name
+            self.soc.settimeout(3)
         return 0
                 
     def clear_all(self):
@@ -373,7 +387,7 @@ class AWG70K(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.waveform_directory)
+            ftp.cwd(self.awg_waveform_directory)
 
             # get only the files from the dir and skip possible directories
             log =[]
@@ -408,7 +422,7 @@ class AWG70K(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.waveform_directory)
+            ftp.cwd(self.awg_waveform_directory)
 
             for entry in seq_name:
                 if entry in self.uploaded_sequence_list:
@@ -441,7 +455,7 @@ class AWG70K(Base, PulserInterface):
                             'Create new.'.format(dir_path), msgType='status')
                 ftp.mkd(dir_path)
 
-        self.waveform_directory = dir_path
+        self.awg_waveform_directory = dir_path
         return 0
        
     def get_sequence_directory(self):
@@ -452,7 +466,7 @@ class AWG70K(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        return self.waveform_directory
+        return self.awg_waveform_directory
 
     def set_interleave(self, state=False):
         # TODO: Implement this function

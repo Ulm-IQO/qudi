@@ -721,17 +721,29 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 
     def generate_rabi(self, mw_freq_Hz, mw_amp_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, tau_incr_bins):
-        # create parameter dictionary for MW signal
+        # create parameter dictionary list for MW signal
         params = {}
-        params['frequency'] = mw_freq_Hz
-        params['amplitude'] = mw_amp_V
-        params['phase'] = 0
-        # generate elements
+        params['frequency1'] = mw_freq_Hz
+        params['amplitude1'] = mw_amp_V
+        params['phase1'] = 0
+        params = [params]
+        for i in range(self.analogue_channels-1):
+            params.append({})
+        # create pulse_function lists
+        idle_func = ['Idle']
+        sin_func = ['Sin']
+        for i in range(self.analogue_channels-1):
+            idle_func.append('Idle')
+            sin_func.append('Idle')
+        # create marker lists
         laser_markers = [False]*self.digital_channels
         laser_markers[0] = True
-        laser_element = Pulse_Block_Element(laser_time_bins, self.analogue_channels, self.digital_channels, 0, 'Idle', laser_markers)
-        waiting_element = Pulse_Block_Element(waiting_time_bins, self.analogue_channels, self.digital_channels, 0, 'Idle', [False]*self.digital_channels)
-        mw_element = Pulse_Block_Element(tau_start_bins, self.analogue_channels, self.digital_channels, tau_incr_bins, 'Sin', [False]*self.digital_channels, params)
+        idle_markers = [False]*self.digital_channels
+        
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, self.analogue_channels, self.digital_channels, 0, idle_func, laser_markers, params)
+        waiting_element = Pulse_Block_Element(waiting_time_bins, self.analogue_channels, self.digital_channels, 0, idle_func, idle_markers, params)
+        mw_element = Pulse_Block_Element(tau_start_bins, self.analogue_channels, self.digital_channels, tau_incr_bins, sin_func, idle_markers, params)
         # put elements in a list to create the block
         element_list = [laser_element, waiting_element, mw_element]
         # create block
@@ -740,9 +752,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tau_array = np.arange(tau_start_bins, tau_end_bins+1, tau_incr_bins)
         # put block(s) in a list with repetitions to create the sequence
         repetitions = len(tau_array)-1
-        block_list = [(block, repetitions)]
+        block_list = [(block, repetitions),]
         # create sequence out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, self.pp_voltage, self.sampling_freq, False)
+        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, False)
         # save block
         self.save_block('Rabi_block', block)
         # save ensemble
