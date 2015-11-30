@@ -45,7 +45,9 @@ class PoI(object):
         # trace records every time+position when the POI position was explicitly known.
         self._position_time_trace = []
 
-        # Other general information parameters for the POI.
+        # To avoid duplication while algorithmically setting POIs, we need the key string to go to sub-second.
+        # This requires the datetime module.
+
         self._creation_time = datetime.datetime.now()
 
         print(key)
@@ -59,8 +61,10 @@ class PoI(object):
             if len(point) != 3:
                 self.logMsg('Given position does not contain 3 dimensions.',
                             msgType='error')
+            # Store the time in the history log as seconds since 1970, rather than as a datetime object.
+            creation_time_sec = (self._creation_time - datetime.datetime.utcfromtimestamp(0)).total_seconds()
             self._position_time_trace.append(
-                np.array([self._creation_time, point[0], point[1], point[2]]))
+                np.array([creation_time_sec, point[0], point[1], point[2]]))
         if name is None:
             self._name = self._creation_time.strftime('poi_%H%M%S')
         else:
@@ -250,6 +254,7 @@ class PoiManagerLogic(GenericLogic):
         A position can be provided (such as during re-loading a saved ROI).
         If no position is provided, then the current crosshair position is used.
         """
+        # If there are only 2 POIs (sample and crosshair) then the newly added POI needs to start the sample drift logging.
         if len(self.track_point_list) == 2:
             self.track_point_list['sample']._creation_time = time.time()
             self.track_point_list['sample'].delete_last_point()
