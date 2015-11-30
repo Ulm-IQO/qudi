@@ -833,6 +833,7 @@ class PoiManagerGui(GUIBase):
     def ref_a_at_crosshair(self):
         """ Set the newpos for ref A from the current crosshair position.
         """
+        # TODO: get the range for these spinboxes from the hardware scanner range!
         self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[0])
         self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[1])
         self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self._confocal_logic.get_position()[2])
