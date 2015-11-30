@@ -319,18 +319,22 @@ class ConfocalLogic(GenericLogic):
         """
 
         self.lock()
+        self._scanning_device.lock()
         if self.initialize_image() < 0:
+            self._scanning_device.unlock()
             self.unlock()
             return -1
 
         returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         if returnvalue < 0:
+            self._scanning_device.unlock()
             self.unlock()
             self.set_position('scanner')
             return
 
         returnvalue = self._scanning_device.set_up_scanner()
         if returnvalue < 0:
+            self._scanning_device.unlock()
             self.unlock()
             self.set_position('scanner')
             return
@@ -346,6 +350,7 @@ class ConfocalLogic(GenericLogic):
         """
 
         self.lock()
+        self._scanning_device.lock()
         self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         self._scanning_device.set_up_scanner()
         self.signal_scan_lines_next.emit()
@@ -362,8 +367,12 @@ class ConfocalLogic(GenericLogic):
             self._scanning_device.close_scanner()
             self._scanning_device.close_scanner_clock()
         except Exception as e:
-            self.logMsg('Could not even close the scanner, giving up.', msgType='error')
+            self.logExc('Could not even close the scanner, giving up.', msgType='error')
             raise e
+        try:
+            self._scanning_device.unlock()
+        except Exception as e:
+            self.logExc('Could not unlock scanning device.', msgType='error')
 
         return 0
 

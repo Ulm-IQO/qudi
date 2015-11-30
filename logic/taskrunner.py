@@ -51,7 +51,7 @@ class TaskListTableModel(ListTableModel):
             elif index.column() == 3:
                return str(self.storage[index.row()]['pausetasks'])
             elif index.column() == 4:
-               return str(self.storage[index.row()]['modules'])
+               return str(self.storage[index.row()]['needsmodules'])
             elif index.column() == 5:
                return self.storage[index.row()]['ok']
             else:
@@ -131,19 +131,24 @@ class TaskRunner(GenericLogic):
             else:
                 t['pausetasks'] = []
             if 'needsmodules' in config['tasks'][task]:
-                t['modules'] = config['tasks'][task]['needsmodules']
+                t['needsmodules'] = config['tasks'][task]['needsmodules']
             else:
-                t['modules'] = {}
+                t['needsmodules'] = {}
             if 'config' in config['tasks'][task]:
                 t['config'] = config['tasks'][task]['config']
             else:
                 t['config'] = {}
             try:
+                ref = dict()
+                for moddef, mod in t['needsmodules'].items():
+                    if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
+                        self._manager.startModule('logic', mod)
+                        ref[moddef] = self._manager.tree['loaded']['logic'][mod]
                 print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
                 print('loaded:', mod)
                 print('dir:', dir(mod))
-                t['object'] = mod.Task(t['name'], self, modules=t['modules'], config=t['config'])
+                t['object'] = mod.Task(t['name'], self, ref, t['config'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
                 else:
@@ -160,16 +165,34 @@ class TaskRunner(GenericLogic):
             str name: unoque name of task
             str module: module name of task module
             [str] preposttasks: pre/post execution tasks for this task
-            [str] pausetasks: this stuff neds to be paused before task can run
+            [str] pausetasks: this stuff needs to be paused before task can run
             dict needsmodules: task needs these modules
             dict config: extra configuration
         """
+        try:
+            if not 'preposttasks' in task:
+                task['preposttasks'] = []
+            if not 'pausetasks' in task:
+                task['pausetasks'] = []
+            task['module'] = None
+            task['needsmodules'] = {}
+            task['config'] = {}
+        except:
+            self.logMsg('Cannot registerTask, not a wirteable dict.')
+            return False
+
+        checklist = ('ok', 'object', 'name')
+        for entry in checklist:
+            if not entry in task:
+                return False
         if (
             isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask)
             ):
             self.model.append(t)
         else:
             self.logMsg('Not a subclass of allowd task classes {}'.format(task), msgType='error')
+            return False
+        return True
 
     def checkTasksInModel(self):
         for task in self.model.storage:
@@ -194,9 +217,9 @@ class TaskRunner(GenericLogic):
             #            pok = True
 
             # check if all required moduls are present
-            if len(task['modules']) == 0:
+            if len(task['needsmodules']) == 0:
                 modok = True
-            for moddef, mod in task['modules'].items():
+            for moddef, mod in task['needsmodules'].items():
                 if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
                     self._manager.startModule('logic', mod)
                 if mod in self._manager.tree['loaded']['logic'] and not self._manager.tree['loaded']['logic'][mod].isstate('deactivated'):
@@ -334,7 +357,7 @@ class TaskRunner(GenericLogic):
 
     def getModule(self, taskname, modname):
         task = self.getTaskByName(taskname)
-        if modname in task['modules']:
+        if modname in task['needsmodules']:
             return self._manager.tree['loaded']['logic'][modname]
         else:
             raise KeyError(modname)

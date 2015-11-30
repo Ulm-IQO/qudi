@@ -493,6 +493,7 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
+        self._scanning_device.lock()
         self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         self._scanning_device.set_up_scanner()
 
@@ -505,5 +506,6 @@ class OptimizerLogic(GenericLogic):
         """
         self._scanning_device.close_scanner()
         self._scanning_device.close_scanner_clock()
+        self._scanning_device.unlock()
 
         return 0

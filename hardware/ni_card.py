@@ -745,10 +745,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                         'wrong order.'.format(myrange), msgType='error')
             return -1
                 
-        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
-            self.logMsg('A Scanner is already running, close this one first.',
-                        msgType='error')
-            return -1
+        #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
+        #    self.logMsg('A Scanner is already running, close this one first.',
+        #                msgType='error')
+        #    return -1
             
         self._voltage_range = myrange
             
@@ -760,10 +760,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         @return int: error code (0:OK, -1:error)
         """
         
-        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
-            self.logMsg('A Scanner is already running, close this one first.',
-                        msgType='error')
-            return -1
+        #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
+        #    self.logMsg('A Scanner is already running, close this one first.',
+        #                msgType='error')
+        #    return -1
             
         # If an analoque task is already running, kill that one first
         if self._scanner_ao_task is not None:
@@ -842,10 +842,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             self.logMsg('No clock running, call set_up_clock before starting '
                         'the counter.', msgType='error')
             return -1
-        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
-            self.logMsg('Another scanner is already running, close this one '
-                        'first.', msgType='error')
-            return -1
+        #if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:            
+        #    self.logMsg('Another scanner is already running, close this one '
+        #                'first.', msgType='error')
+        #    return -1
                     
         if counter_channel is not None:
             self._scanner_counter_channel = counter_channel
@@ -1164,12 +1164,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         """
         
-        if self.getState() == 'locked':            
-            self.logMsg('Another scan_line is already running, close this '
-                        'one first.', msgType='error')
-            #FIXME: Here you just return -1 and below you return np.array([-1.])
-            #Is there a difference? If not make consistent.
-            return -1
+        #if self.getState() == 'locked':            
+        #    self.logMsg('Another scan_line is already running, close this '
+        #                'one first.', msgType='error')
+        #    #FIXME: Here you just return -1 and below you return np.array([-1.])
+        #    #Is there a difference? If not make consistent.
+        #    return -1
             
         if self._scanner_counter_daq_task is None:            
             self.logMsg('No counter is running, cannot scan a line without '
@@ -1180,7 +1180,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             self.logMsg('Given line_path list is not array type.',msgType='error')
             return np.array([-1.])
         
-        self.lock() # lock this thread so others cannot call
+        #self.lock() # lock this thread so others cannot call
         
         # set task timing to use a sampling clock:
         # specify how the Data of the selected task is collected, i.e. set it
@@ -1245,7 +1245,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         #stop the analoque output taks
         daq.DAQmxStopTask(self._scanner_ao_task)
-#        
+
         # set task timing to on demand, i.e. when demanded by software
         daq.DAQmxSetSampTimingType(
                 self._scanner_ao_task,  # define task
@@ -1261,7 +1261,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._real_data = self._scan_data[::2]
         self._real_data += self._scan_data[1::2]        
         
-        self.unlock()   # unlock the thread
+        #self.unlock()   # unlock the thread
 
         # update the scanner position instance variable
         self._current_position = list(line_path[:,-1])
@@ -1441,10 +1441,10 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         @return float[]: the photon counts per second
         """
         
-        if self.getState() == 'locked':            
-            self.logMsg('Another scan_line is already running, close this '
-                        'one first.', msgType='error')
-            return np.array([-1.])
+        #if self.getState() == 'locked':            
+        #    self.logMsg('Another scan_line is already running, close this '
+        #                'one first.', msgType='error')
+        #    return np.array([-1.])
             
         
         if self._scanner_counter_daq_task is None:            
@@ -1452,7 +1452,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                         'one.', msgType='error')
             return np.array([-1.])
             
-        self.lock()
+        #self.lock()
             
         # check if length setup is correct, if not, adjust.
 #        if self._odmr_length != length:
@@ -1506,7 +1506,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._real_data = self._odmr_data[::2]
         self._real_data += self._odmr_data[1::2]        
         
-        self.unlock()
+        # self.unlock()
         
         return self._real_data*(self._scanner_clock_frequency)
         
