@@ -5,8 +5,8 @@ import time
 
 class Task(InterruptableTask):
 
-    def __init__(self, name, runner, **kwargs):
-        super().__init__(name, runner, **kwargs)
+    def __init__(self, name, runner, references, config):
+        super().__init__(name, runner, references, config)
         print('Task {} added!'.format(self.name))
         self.ctr = 0
 

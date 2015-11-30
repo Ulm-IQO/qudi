@@ -5,10 +5,10 @@ import time
 
 class Task(PrePostTask):
 
-    def __init__(self, name, runner, **kwargs):
-        super().__init__(name, runner, **kwargs)
+    def __init__(self, name, runner, references, config):
+        super().__init__(name, runner, references, config)
         print('PrePost init task {}'.format(name))
-        print(self.kwargs)
+        print(self.config)
     
     def preExecute(self):
         time.sleep(1)
