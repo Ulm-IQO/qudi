@@ -1794,7 +1794,18 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-
+        
+        self._mw.mw_frequency_Label.setVisible(False)
+        self._mw.mw_frequency_InputWidget.setVisible(False)
+        self._mw.mw_power_Label.setVisible(False)
+        self._mw.mw_power_InputWidget.setVisible(False)
+        
+        self._mw.tau_start_Label.setVisible(False)
+        self._mw.tau_start_InputWidget.setVisible(False)
+        self._mw.tau_increment_Label.setVisible(False)
+        self._mw.tau_increment_InputWidget.setVisible(False)
+        
+        self._mw.fft_PlotWidget.setVisible(False)
 
         # Set the state button as ready button as default setting.
         self._mw.idle_radioButton.click()
@@ -1810,12 +1821,12 @@ class PulsedMeasurementGui(GUIBase):
         validator2 = QtGui.QIntValidator()
 
         # pulsed measurement tab
-        self._mw.frequency_InputWidget.setValidator(validator)
-        self._mw.power_InputWidget.setValidator(validator)
+        self._mw.mw_frequency_InputWidget.setValidator(validator)
+        self._mw.mw_power_InputWidget.setValidator(validator)
         self._mw.analysis_period_InputWidget.setValidator(validator)
         self._mw.numlaser_InputWidget.setValidator(validator2)
-        self._mw.taustart_InputWidget.setValidator(validator)
-        self._mw.tauincrement_InputWidget.setValidator(validator)
+        self._mw.tau_start_InputWidget.setValidator(validator)
+        self._mw.tau_increment_InputWidget.setValidator(validator)
         self._mw.signal_start_InputWidget.setValidator(validator2)
         self._mw.signal_length_InputWidget.setValidator(validator2)
         self._mw.reference_start_InputWidget.setValidator(validator2)
@@ -1824,11 +1835,11 @@ class PulsedMeasurementGui(GUIBase):
         # Fill in default values:
 
         # pulsed measurement tab
-        self._mw.frequency_InputWidget.setText(str(2870.))
-        self._mw.power_InputWidget.setText(str(-30.))
+        self._mw.mw_frequency_InputWidget.setText(str(2870.))
+        self._mw.mw_power_InputWidget.setText(str(-30.))
         self._mw.numlaser_InputWidget.setText(str(50))
-        self._mw.taustart_InputWidget.setText(str(1))
-        self._mw.tauincrement_InputWidget.setText(str(1))
+        self._mw.tau_start_InputWidget.setText(str(1))
+        self._mw.tau_increment_InputWidget.setText(str(1))
         self._mw.lasertoshow_spinBox.setRange(0, 50)
         self._mw.lasertoshow_spinBox.setPrefix("#")
         self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
@@ -1841,16 +1852,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.elapsed_time_label.setText('00:00:00:00')
         self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
         self._mw.analysis_period_InputWidget.setText(str(5))
-        self._mw.laser_channel_LineEdit.setText(str(1))
         self._mw.refocus_interval_LineEdit.setText(str(5))
         self._mw.odmr_refocus_interval_LineEdit.setText(str(5))
-        self._mw.counter_safety_LineEdit.setText(str(0))
 
-        self._mw.show_fft_plot_CheckBox.setChecked(False)
-        self._mw.ignore_first_laser_CheckBox.setChecked(False)
-        self._mw.ignore_last_laser_CheckBox.setChecked(True)
-        self._mw.alternating_sequence_CheckBox.setChecked(False)
-        self._mw.tau_defined_in_sequence_CheckBox.setChecked(False)
+
+
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1869,13 +1875,19 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         # sequence generator tab
 
+        # Connect the CheckBoxes
+        # anaylsis tab
+
+        self._mw.turn_off_external_mw_source_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
+        self._mw.tau_defined_in_sequence_CheckBox.stateChanged.connect(self.show_tau_editor)
+        self._mw.show_fft_plot_CheckBox.stateChanged.connect(self.show_fft_plot)
 
         # Connect InputWidgets to events
         # pulsed measurement tab
         self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
-        self._mw.taustart_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.tauincrement_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.tau_start_InputWidget.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.tau_increment_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
@@ -1907,8 +1919,8 @@ class PulsedMeasurementGui(GUIBase):
     def idle_clicked(self):
         """ Stopp the scan if the state has switched to idle. """
         self._pulsed_measurement_logic.stop_pulsed_measurement()
-        self._mw.frequency_InputWidget.setEnabled(True)
-        self._mw.power_InputWidget.setEnabled(True)
+        self._mw.mw_frequency_InputWidget.setEnabled(True)
+        self._mw.mw_power_InputWidget.setEnabled(True)
         self._mw.binning_comboBox.setEnabled(True)
         self._mw.pull_data_pushButton.setEnabled(False)
 
@@ -1922,8 +1934,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
         if enabled:
-            self._mw.frequency_InputWidget.setEnabled(False)
-            self._mw.power_InputWidget.setEnabled(False)
+            self._mw.mw_frequency_InputWidget.setEnabled(False)
+            self._mw.mw_power_InputWidget.setEnabled(False)
             self._mw.binning_comboBox.setEnabled(False)
             self._mw.pull_data_pushButton.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
@@ -1959,13 +1971,45 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the elapsed time of the measurement
         '''
         self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
+    
+    def show_external_mw_source_checked(self):
+        if self._mw.turn_off_external_mw_source_CheckBox.isChecked():
 
+            self._mw.mw_frequency_Label.setVisible(False)
+            self._mw.mw_frequency_InputWidget.setVisible(False)
+            self._mw.mw_power_Label.setVisible(False)
+            self._mw.mw_power_InputWidget.setVisible(False)
+        else:
+            self._mw.mw_frequency_Label.setVisible(True)
+            self._mw.mw_frequency_InputWidget.setVisible(True)
+            self._mw.mw_power_Label.setVisible(True)
+            self._mw.mw_power_InputWidget.setVisible(True)
+
+            
+    def show_tau_editor(self):
+        if self._mw.tau_defined_in_sequence_CheckBox.isChecked():
+            self._mw.tau_start_Label.setVisible(True)
+            self._mw.tau_start_InputWidget.setVisible(True)
+            self._mw.tau_increment_Label.setVisible(True)
+            self._mw.tau_increment_InputWidget.setVisible(True)   
+        else:
+            self._mw.tau_start_Label.setVisible(False)
+            self._mw.tau_start_InputWidget.setVisible(False)
+            self._mw.tau_increment_Label.setVisible(False)
+            self._mw.tau_increment_InputWidget.setVisible(False)              
+        
+    def show_fft_plot(self):
+        if self._mw.show_fft_plot_CheckBox.isChecked():
+            self._mw.fft_PlotWidget.setVisible(True)   
+        else:
+            self._mw.fft_PlotWidget.setVisible(False)  
+    
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
-        tau_start = int(self._mw.taustart_InputWidget.text())
-        tau_incr = int(self._mw.tauincrement_InputWidget.text())
-        mw_frequency = float(self._mw.frequency_InputWidget.text())
-        mw_power = float(self._mw.power_InputWidget.text())
+        tau_start = int(self._mw.tau_start_InputWidget.text())
+        tau_incr = int(self._mw.tau_increment_InputWidget.text())
+        mw_frequency = float(self._mw.mw_frequency_InputWidget.text())
+        mw_power = float(self._mw.mw_power_InputWidget.text())
         self._mw.lasertoshow_spinBox.setRange(0, laser_num)
         laser_show = self._mw.lasertoshow_spinBox.value()
         if (laser_show > laser_num):

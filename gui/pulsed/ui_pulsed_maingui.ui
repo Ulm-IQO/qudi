@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1192</width>
-    <height>778</height>
+    <height>812</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -33,6 +33,9 @@
              <bool>false</bool>
             </property>
            </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="PlotWidget" name="fft_PlotWidget"/>
           </item>
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
@@ -87,16 +90,6 @@
               </item>
               <item row="1" column="0">
                <layout class="QGridLayout" name="gridLayout_20">
-                <item row="0" column="10">
-                 <widget class="QLineEdit" name="laser_channel_LineEdit"/>
-                </item>
-                <item row="0" column="9">
-                 <widget class="QLabel" name="laser_channel_Label">
-                  <property name="text">
-                   <string>Laser channel:</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="3" column="3">
                  <widget class="QLineEdit" name="analysis_period_InputWidget">
                   <property name="maximumSize">
@@ -123,13 +116,6 @@
                 <item row="1" column="10">
                  <widget class="QLineEdit" name="refocus_interval_LineEdit"/>
                 </item>
-                <item row="4" column="9">
-                 <widget class="QPushButton" name="laser_on_PushButton">
-                  <property name="text">
-                   <string>Laser on</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="9">
                  <widget class="QLabel" name="odmr_refocus_interval_Label">
                   <property name="text">
@@ -141,6 +127,9 @@
                  <widget class="QCheckBox" name="ignore_last_laser_CheckBox">
                   <property name="text">
                    <string>Ignore last laser?</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
@@ -178,13 +167,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="2">
-                 <widget class="QPushButton" name="pull_data_pushButton">
-                  <property name="text">
-                   <string>Pull data</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="5">
                  <widget class="QCheckBox" name="ignore_first_laser_CheckBox">
                   <property name="text">
@@ -216,17 +198,10 @@
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0">
-                 <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBo">
-                  <property name="text">
-                   <string>Turn off external MW source?</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="7">
                  <layout class="QGridLayout" name="gridLayout_33">
                   <item row="0" column="0">
-                   <widget class="QLabel" name="label_18">
+                   <widget class="QLabel" name="tau_increment_Label">
                     <property name="text">
                      <string>Tau increment:</string>
                     </property>
@@ -236,7 +211,7 @@
                    </widget>
                   </item>
                   <item row="0" column="1">
-                   <widget class="QLineEdit" name="tauincrement_InputWidget">
+                   <widget class="QLineEdit" name="tau_increment_InputWidget">
                     <property name="maximumSize">
                      <size>
                       <width>75</width>
@@ -260,64 +235,8 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="1" column="0">
-                 <layout class="QGridLayout" name="gridLayout_28">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_16">
-                    <property name="text">
-                     <string>Fast counter binning [ns] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="binning_comboBox"/>
-                  </item>
-                 </layout>
-                </item>
                 <item row="2" column="3">
                  <widget class="QLCDNumber" name="elapsed_sweeps_LCDNumber"/>
-                </item>
-                <item row="3" column="0">
-                 <layout class="QGridLayout" name="gridLayout_30">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_14">
-                    <property name="text">
-                     <string>MW Frequency [MHz] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="frequency_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="0">
-                 <layout class="QGridLayout" name="gridLayout_31">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_13">
-                    <property name="text">
-                     <string>MW Power [dBm] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="power_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>50</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
                 </item>
                 <item row="0" column="5">
                  <layout class="QGridLayout" name="gridLayout_27">
@@ -362,7 +281,7 @@
                 <item row="1" column="7">
                  <layout class="QGridLayout" name="gridLayout_32">
                   <item row="0" column="0">
-                   <widget class="QLabel" name="label_19">
+                   <widget class="QLabel" name="tau_start_Label">
                     <property name="text">
                      <string>Tau start:</string>
                     </property>
@@ -372,7 +291,7 @@
                    </widget>
                   </item>
                   <item row="0" column="1">
-                   <widget class="QLineEdit" name="taustart_InputWidget">
+                   <widget class="QLineEdit" name="tau_start_InputWidget">
                     <property name="maximumSize">
                      <size>
                       <width>75</width>
@@ -422,7 +341,14 @@
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="7">
+                <item row="3" column="9">
+                 <widget class="QPushButton" name="laser_on_PushButton">
+                  <property name="text">
+                   <string>Laser on</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="7">
                  <widget class="QCheckBox" name="show_fft_plot_CheckBox">
                   <property name="text">
                    <string>Show FFT plot?</string>
@@ -430,18 +356,77 @@
                  </widget>
                 </item>
                 <item row="0" column="0">
-                 <layout class="QGridLayout" name="gridLayout_34">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="counter_safety_Label">
+                 <layout class="QGridLayout" name="gridLayout_28">
+                  <item row="0" column="2">
+                   <widget class="QComboBox" name="binning_comboBox"/>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLabel" name="label_16">
                     <property name="text">
-                     <string>Counter safety:</string>
+                     <string>Fast counter binning [ns] :</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBox">
+                  <property name="text">
+                   <string>Turn off external MW source?</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <layout class="QGridLayout" name="gridLayout_30">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="mw_frequency_Label">
+                    <property name="text">
+                     <string>MW Frequency [MHz] :</string>
                     </property>
                    </widget>
                   </item>
                   <item row="0" column="1">
-                   <widget class="QLineEdit" name="counter_safety_LineEdit"/>
+                   <widget class="QLineEdit" name="mw_frequency_InputWidget">
+                    <property name="maximumSize">
+                     <size>
+                      <width>75</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
+                </item>
+                <item row="3" column="0">
+                 <layout class="QGridLayout" name="gridLayout_31">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="mw_power_Label">
+                    <property name="text">
+                     <string>MW Power [dBm] :</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLineEdit" name="mw_power_InputWidget">
+                    <property name="maximumSize">
+                     <size>
+                      <width>50</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="9">
+                 <widget class="QPushButton" name="pull_data_pushButton">
+                  <property name="text">
+                   <string>Pull data</string>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </item>
@@ -454,6 +439,13 @@
                   </property>
                  </widget>
                 </item>
+                <item row="0" column="3">
+                 <widget class="QRadioButton" name="continue_RadiButton">
+                  <property name="text">
+                   <string>Continue</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="0" column="1">
                  <widget class="QRadioButton" name="run_radioButton">
                   <property name="text">
@@ -462,9 +454,9 @@
                  </widget>
                 </item>
                 <item row="0" column="2">
-                 <widget class="QRadioButton" name="continue_RadiButton">
+                 <widget class="QRadioButton" name="radioButton">
                   <property name="text">
-                   <string>Continue</string>
+                   <string>Pause</string>
                   </property>
                  </widget>
                 </item>
@@ -473,9 +465,6 @@
              </layout>
             </item>
            </layout>
-          </item>
-          <item row="2" column="0">
-           <widget class="PlotWidget" name="fft_PlotWidget"/>
           </item>
          </layout>
         </widget>
@@ -1315,72 +1304,6 @@ sel.</string>
               <item row="1" column="1">
                <widget class="PlotWidget" name="signal_to__ratio_PlotWidget"/>
               </item>
-              <item row="1" column="0">
-               <layout class="QGridLayout" name="gridLayout_23">
-                <item row="0" column="0">
-                 <widget class="QLabel" name="auto_analyzer_time_Label">
-                  <property name="text">
-                   <string>auto analyzer time:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="normalize_safety_Label">
-                  <property name="text">
-                   <string>Normalize safety (ns)</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QSpinBox" name="max_offset_SpinBox">
-                  <property name="maximum">
-                   <number>99999999</number>
-                  </property>
-                  <property name="value">
-                   <number>500</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QDoubleSpinBox" name="normalize_safety_SpinBox">
-                  <property name="maximum">
-                   <double>99999999.989999994635582</double>
-                  </property>
-                  <property name="value">
-                   <double>5.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QCheckBox" name="do_average_normalization_CheckBox">
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QPushButton" name="auto_analyzer_time_PushButton">
-                  <property name="text">
-                   <string>Auto</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="do_average_normalization_Label">
-                  <property name="text">
-                   <string>Do averaged normalization?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="max_offset_Label">
-                  <property name="text">
-                   <string>Max offset (bins)</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
               <item row="4" column="1">
                <widget class="PlotWidget" name="lasertrace_plot_ViewWidget">
                 <property name="autoFillBackground">
@@ -1520,22 +1443,7 @@ sel.</string>
                </layout>
               </item>
               <item row="0" column="0">
-               <layout class="QGridLayout" name="gridLayout_29">
-                <item row="0" column="0">
-                 <widget class="QRadioButton" name="analysis1_RadioButton_3">
-                  <property name="text">
-                   <string>Analysis1</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QRadioButton" name="analysis2_RadioButton">
-                  <property name="text">
-                   <string>Analysis 2</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
+               <layout class="QGridLayout" name="gridLayout_29"/>
               </item>
              </layout>
             </item>
@@ -1576,6 +1484,21 @@ sel.</string>
    <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>true</bool>
+   </attribute>
+   <addaction name="actionAction_run_stop"/>
+   <addaction name="actionAction_idle"/>
+   <addaction name="actionActioncontinue"/>
+   <addaction name="actionActionpause"/>
+  </widget>
   <action name="actionSettings_Sequence">
    <property name="text">
     <string>Settings: Analysis</string>
@@ -1594,6 +1517,50 @@ sel.</string>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
+   </property>
+  </action>
+  <action name="actionTest">
+   <property name="text">
+    <string>test</string>
+   </property>
+   <property name="toolTip">
+    <string>Test</string>
+   </property>
+  </action>
+  <action name="actionAction_run_stop">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</iconset>
+   </property>
+   <property name="text">
+    <string>action_run_stop</string>
+   </property>
+  </action>
+  <action name="actionAction_idle">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</iconset>
+   </property>
+   <property name="text">
+    <string>action_idle</string>
+   </property>
+  </action>
+  <action name="actionActioncontinue">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
+   </property>
+   <property name="text">
+    <string>actioncontinue</string>
+   </property>
+  </action>
+  <action name="actionActionpause">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/utilities-terminal.png</normaloff>../../artwork/icons/qudiTheme/22x22/utilities-terminal.png</iconset>
+   </property>
+   <property name="text">
+    <string>actionpause</string>
    </property>
   </action>
  </widget>
