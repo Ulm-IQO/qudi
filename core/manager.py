@@ -99,6 +99,7 @@ class Manager(QtCore.QObject):
         self.tree['loaded']['logic'] = OrderedDict()
         
         self.tree['global'] = OrderedDict()
+        self.tree['global']['startup'] = list()
 
         self.hasGui = True
         self.currentDir = None
@@ -202,22 +203,22 @@ class Manager(QtCore.QObject):
                 printExc('\n: Error while acting on command line options: '
                          '(but continuing on anyway..)')
             # Load startup things from config here
-            if self.hasGui:
-                for key in self.tree['start']['gui']:
-                    try:
-                        # class_name is the last part of the config entry
-                        class_name = re.split('\.', self.tree['start']['gui'][key]['module.Class'])[-1]
-                        # module_name is the whole line without this last part (and with the trailing dot removed also)
-                        module_name = re.sub('.'+class_name+'$', '', self.tree['start']['gui'][key]['module.Class'])
-
-                        modObj = self.importModule('gui', module_name)
-                        self.configureModule(modObj, 'gui', class_name, key, self.tree['start']['gui'][key])
-                    
-                        self.activateModule('gui', key)
-                    except:
-                        raise
-                # Configuration has changed with activation
-                self.sigModulesChanged.emit()
+            print(self.tree['global'])
+            if 'startup' in self.tree['global']:
+                print(self.tree['global']['startup'])
+                # walk throug the list of loadable modules to be loaded on startup and load them if appropriate
+                for key in self.tree['global']['startup']:
+                    if key in self.tree['defined']['hardware']:
+                        self.startModule('hardware', key)
+                        self.sigModulesChanged.emit()
+                    elif key in self.tree['defined']['logic']:
+                        self.startModule('logic', key)
+                        self.sigModulesChanged.emit()
+                    elif self.hasGui and key in self.tree['defined']['gui']:
+                        self.startModule('gui', key)
+                        self.sigModulesChanged.emit()
+                    else:
+                        self.logger.logMsg('Loading startup module {} failed, not defined anywhere.'.format(key), msgType='error')
         except:
             printExc("Error while configuring Manager:")
         finally:
@@ -334,24 +335,14 @@ class Manager(QtCore.QObject):
 
                 # Load on startup
                 elif key == 'startup':
-                    for skey in cfg['startup']:
-                        if skey == 'gui' and self.hasGui:
-                            for m in cfg['startup']['gui']:
-                                if 'module.Class' in cfg['startup']['gui'][m]:
-                                    self.tree['start']['gui'][m] = cfg['startup']['gui'][m]
-                                else:
-                                    self.logger.print_logMsg("    --> Ignoring startup logic {0} -- no module specified".format(m) )
-                        elif skey == 'logic':
-                            for m in cfg['startup']['logic']:
-                                if 'module.Class' in cfg['startup']['logic'][m]:
-                                    self.tree['start']['logic'][m] = cfg['startup']['logic'][m]
-                                else:
-                                    self.logger.print_logMsg("    --> Ignoring startup GUI {0} -- no module specified".format(m) )
+                    self.logger.print_logMsg("Old style startup loading not supported. {}".format(m) )
 
                 # global config
                 elif key == 'global':
                     for m in cfg['global']:
-                        if m == 'useOpenGL' and self.hasGui:
+                        if m == 'startup':
+                            self.tree['global']['startup'] = cfg['global']['startup']
+                        elif m == 'useOpenGL' and self.hasGui:
                             # use accelerated drawing
                             pg.setConfigOption('useOpenGL', cfg['global']['useOpenGl'])
                             self.tree['global']['useOpenGL'] = cfg['global']['useOpenGL']
