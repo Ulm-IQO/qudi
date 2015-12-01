@@ -134,10 +134,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
                     self.sigNextTaskStep.emit()
             else:
                 self.finish()
+                self.sigDoFinish.emit()
         except Exception as e:
             self.runner.logExc('Exception during task step {}. {}'.format(self.name, e), msgType='error')
             self.result.update(None, False)
             self.finish()
+            self.sigDoFinish.emit()
                 
     def _pause(self, e):
         pass
@@ -168,7 +170,6 @@ class InterruptableTask(QtCore.QObject, Fysom):
         pass
 
     def _doFinish(self):
-        self.result.update(self._result, self.success)
         self.cleanupTask()
         self.finishingFinished()
         self.sigFinished.emit()

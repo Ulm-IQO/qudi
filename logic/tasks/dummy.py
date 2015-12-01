@@ -16,10 +16,10 @@ class Task(InterruptableTask):
 
     def runTaskStep(self):
         time.sleep(0.1)
-        print('one task step')
+        print('one task step', self.ctr)
         self.ctr += 1
         self._result = '{} lines printed!'.format(self.ctr)
-        return True
+        return self.ctr < 50
 
     def pauseTask(self):
         time.sleep(1)

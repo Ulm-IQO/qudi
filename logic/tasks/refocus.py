@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from logic.generic_task import InterruptableTask
+import time
 
 class Task(InterruptableTask):
 
@@ -9,10 +10,12 @@ class Task(InterruptableTask):
         print('Task {} added!'.format(self.name))
 
     def startTask(self):
-        self.ref['optimizer'].start_refocus(self.config['initial'], 'task')
+        pos = self.ref['optimizer']._scanning_device.get_scanner_position()
+        self.ref['optimizer'].start_refocus(pos, 'task')
 
     def runTaskStep(self):
-        pass
+        time.sleep(0.1)
+        return self.ref['optimizer'].isstate('locked')
 
     def pauseTask(self):
         pass
@@ -21,4 +24,13 @@ class Task(InterruptableTask):
         pass
 
     def cleanupTask(self):
-        pass
+        print("cleanup")
+
+    def checkExtraStartPrerequisites(self):
+        print('things neede for task to start')
+        return not self.ref['optimizer'].isstate('locked')
+
+    def checkExtraPausePrerequisites(self):
+        print('things neede for task to pause')
+        return True
+
