@@ -278,13 +278,14 @@ Go, play.
           @param str base: module category to fill
         """
         for module in self._manager.tree['defined'][base]:
-            widget = ModuleListItem(self._manager, base, module)
-            self.modlist.append(widget)
-            layout.addWidget(widget)
-            widget.sigLoadThis.connect(self.sigStartModule)
-            widget.sigReloadThis.connect(self.sigReloadModule)
-            widget.sigDeactivateThis.connect(self.sigStopModule)
-            self.checkTimer.timeout.connect(widget.checkModuleState)
+            if not module in self._manager.tree['global']['startup']:
+                widget = ModuleListItem(self._manager, base, module)
+                self.modlist.append(widget)
+                layout.addWidget(widget)
+                widget.sigLoadThis.connect(self.sigStartModule)
+                widget.sigReloadThis.connect(self.sigReloadModule)
+                widget.sigDeactivateThis.connect(self.sigStopModule)
+                self.checkTimer.timeout.connect(widget.checkModuleState)
 
     def fillTreeItem(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
