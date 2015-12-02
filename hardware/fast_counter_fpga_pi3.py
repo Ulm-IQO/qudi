@@ -3,12 +3,12 @@
 from hardware.fast_counter_interface import FastCounterInterface
 import numpy as np
 from collections import OrderedDict
-import TimeTagger as tt
+import thirtparty.stuttgart_counter.TimeTagger as tt
 from core.base import Base
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 
-class fastcounterfpgapi3(Base, FastCounterInterface):
+class FastCounterFPGAPi3(Base, FastCounterInterface):
     _modclass = 'fastcounterfpgapi3'
     _modtype = 'hardware'
 

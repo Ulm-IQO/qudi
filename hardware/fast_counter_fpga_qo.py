@@ -5,10 +5,10 @@ from hardware.fast_counter_interface import FastCounterInterface
 from collections import OrderedDict
 from core.base import Base
 import numpy as np
-import ok
+import thirdparty.opal_kelly as ok
 import struct
 
-class fastcounterfpgaqo(Base, FastCounterInterface):
+class FastCounterFPGAQO(Base, FastCounterInterface):
     """ unstable: Nikolas Tomek
         This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA based fast counter.
     """    
