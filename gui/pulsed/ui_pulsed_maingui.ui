@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1192</width>
+    <width>1351</width>
     <height>812</height>
    </rect>
   </property>
@@ -27,444 +27,488 @@
           <string>Analysis</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_6">
-          <item row="1" column="0">
-           <widget class="PlotWidget" name="signal_plot_ViewWidget">
-            <property name="autoFillBackground">
-             <bool>false</bool>
-            </property>
+          <item row="0" column="1">
+           <widget class="QWidget" name="widget" native="true">
+            <widget class="QWidget" name="widget_2" native="true">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>861</width>
+               <height>131</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="layoutWidget_2">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>10</y>
+                <width>841</width>
+                <height>108</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_30">
+               <item row="3" column="5">
+                <widget class="QCheckBox" name="show_fft_plot_CheckBox">
+                 <property name="text">
+                  <string>Show FFT plot?</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="8">
+                <widget class="QLineEdit" name="refocus_interval_LineEdit"/>
+               </item>
+               <item row="0" column="3">
+                <layout class="QGridLayout" name="gridLayout_39">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="number_of_pulses_Label">
+                   <property name="text">
+                    <string>Number of laser pulses:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="numlaser_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="2" column="8">
+                <widget class="QLabel" name="odmr_refocus_interval_Label">
+                 <property name="text">
+                  <string>ODMR refocus interval (s):</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="5">
+                <layout class="QGridLayout" name="gridLayout_40">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="tau_start_Label">
+                   <property name="text">
+                    <string>Tau start:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="tau_start_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="0" column="5">
+                <widget class="QCheckBox" name="tau_defined_in_sequence_CheckBox">
+                 <property name="text">
+                  <string>Tau defined in sequence?</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="3">
+                <widget class="QCheckBox" name="ignore_first_laser_CheckBox">
+                 <property name="text">
+                  <string>Ignore first laser?</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="4">
+                <spacer name="horizontalSpacer_10">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="8">
+                <widget class="QLabel" name="refocus_interval_Label">
+                 <property name="text">
+                  <string>Refocus interval (s):</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="5">
+                <layout class="QGridLayout" name="gridLayout_41">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="tau_increment_Label">
+                   <property name="text">
+                    <string>Tau increment:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="tau_increment_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="2" column="3">
+                <widget class="QCheckBox" name="ignore_last_laser_CheckBox">
+                 <property name="text">
+                  <string>Ignore last laser?</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="3">
+                <widget class="QCheckBox" name="alternating_sequence_CheckBox">
+                 <property name="text">
+                  <string>Alternating sequence?</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="8">
+                <widget class="QLineEdit" name="odmr_refocus_interval_LineEdit"/>
+               </item>
+               <item row="0" column="6">
+                <spacer name="horizontalSpacer_11">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="2">
+                <spacer name="horizontalSpacer_12">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="0">
+                <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBox">
+                 <property name="text">
+                  <string>Turn off external MW source?</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <layout class="QGridLayout" name="gridLayout_31">
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="mw_power_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>50</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="mw_power_Label">
+                   <property name="text">
+                    <string>MW Power [dBm] :</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="3" column="0">
+                <layout class="QGridLayout" name="gridLayout_28">
+                 <item row="0" column="2">
+                  <widget class="QComboBox" name="binning_comboBox"/>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="label_16">
+                   <property name="text">
+                    <string>Fast counter binning [ns] :</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="1" column="0">
+                <layout class="QGridLayout" name="gridLayout_32">
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="mw_frequency_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="mw_frequency_Label">
+                   <property name="text">
+                    <string>MW Frequency [MHz] :</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+            <widget class="QWidget" name="widget_3" native="true">
+             <property name="geometry">
+              <rect>
+               <x>860</x>
+               <y>0</y>
+               <width>431</width>
+               <height>111</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="gridLayoutWidget_4">
+              <property name="geometry">
+               <rect>
+                <x>9</x>
+                <y>9</y>
+                <width>411</width>
+                <height>102</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_18">
+               <item row="1" column="2">
+                <widget class="QTextBrowser" name="fit_result_TextBrowser">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="baseSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>12</pointsize>
+                  </font>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="fit_results_Label">
+                 <property name="text">
+                  <string>Fit results:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QComboBox" name="fit_function_ComboBox"/>
+               </item>
+               <item row="0" column="1">
+                <widget class="QPushButton" name="fit_PushButton">
+                 <property name="text">
+                  <string>Fit</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+            <widget class="QWidget" name="widget_4" native="true">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>130</y>
+               <width>1311</width>
+               <height>541</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="gridLayoutWidget_3">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>10</y>
+                <width>1281</width>
+                <height>521</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_19">
+               <item row="1" column="0">
+                <widget class="PlotWidget" name="fft_PlotWidget"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="PlotWidget" name="signal_plot_ViewWidget">
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <layout class="QGridLayout" name="gridLayout_26">
+                 <item row="0" column="0">
+                  <layout class="QGridLayout" name="gridLayout_33">
+                   <item row="1" column="1">
+                    <widget class="QLabel" name="expected_duration_TimeLabel">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="text">
+                      <string>00:00:00:00</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="expected_duration_Label">
+                     <property name="text">
+                      <string>Expected duration:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QLabel" name="elapsed_time_Label">
+                     <property name="text">
+                      <string>Elapsed time [s]:</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QLabel" name="elapsed_time_label">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="text">
+                      <string>00:00:00:00</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QRadioButton" name="idle_RadioButton">
+                     <property name="text">
+                      <string>Idle</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QRadioButton" name="run_RadioButton">
+                     <property name="text">
+                      <string>Run</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="2">
+                    <widget class="QRadioButton" name="pause_RadioButton">
+                     <property name="text">
+                      <string>Pause</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="3">
+                    <widget class="QRadioButton" name="continue_RadioButton">
+                     <property name="text">
+                      <string>Continue</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="elapsed_sweeps_Label">
+                     <property name="text">
+                      <string>Elapsed sweeps:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QLCDNumber" name="elapsed_sweeps_LCDNumber"/>
+                   </item>
+                   <item row="2" column="2">
+                    <widget class="QLabel" name="analysis_period_Label">
+                     <property name="text">
+                      <string>Analysis period (s):</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="3">
+                    <widget class="QLineEdit" name="analysis_period_InputWidget">
+                     <property name="maximumSize">
+                      <size>
+                       <width>75</width>
+                       <height>16777215</height>
+                      </size>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="0" column="2">
+                  <layout class="QGridLayout" name="gridLayout_42">
+                   <item row="0" column="0">
+                    <widget class="QPushButton" name="pull_data_pushButton">
+                     <property name="text">
+                      <string>Pull data</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="fit_function_Label">
+                   <property name="text">
+                    <string>Fit function:</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
            </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="PlotWidget" name="fft_PlotWidget"/>
-          </item>
-          <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_4">
-            <item row="0" column="0">
-             <layout class="QGridLayout" name="gridLayout_18">
-              <item row="0" column="1">
-               <widget class="QLabel" name="fit_function_Label">
-                <property name="text">
-                 <string>Fit function:</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="fit_results_Label">
-                <property name="text">
-                 <string>Fit results:</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QTextBrowser" name="fit_result_TextBrowser">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="baseSize">
-                 <size>
-                  <width>1000</width>
-                  <height>1000</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="2">
-               <layout class="QGridLayout" name="gridLayout_19">
-                <item row="0" column="0">
-                 <widget class="QComboBox" name="fit_function_ComboBox"/>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QPushButton" name="fit_PushButton">
-                  <property name="text">
-                   <string>Fit</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="1" column="0">
-               <layout class="QGridLayout" name="gridLayout_20">
-                <item row="3" column="3">
-                 <widget class="QLineEdit" name="analysis_period_InputWidget">
-                  <property name="maximumSize">
-                   <size>
-                    <width>75</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="3">
-                 <widget class="QLabel" name="elapsed_time_label">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="text">
-                   <string>00:00:00:00</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="10">
-                 <widget class="QLineEdit" name="refocus_interval_LineEdit"/>
-                </item>
-                <item row="2" column="9">
-                 <widget class="QLabel" name="odmr_refocus_interval_Label">
-                  <property name="text">
-                   <string>ODMR refocus interval (s):</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="5">
-                 <widget class="QCheckBox" name="ignore_last_laser_CheckBox">
-                  <property name="text">
-                   <string>Ignore last laser?</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QLabel" name="elapsed_sweeps_Label">
-                  <property name="text">
-                   <string>Elapsed sweeps:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QLabel" name="label_24">
-                  <property name="text">
-                   <string>Elapsed time:</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="2">
-                 <widget class="QLabel" name="expected_duration_Label">
-                  <property name="text">
-                   <string>Expected duration:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="2">
-                 <widget class="QLabel" name="analysis_period_Label">
-                  <property name="text">
-                   <string>Analysis period (s):</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="5">
-                 <widget class="QCheckBox" name="ignore_first_laser_CheckBox">
-                  <property name="text">
-                   <string>Ignore first laser?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="7">
-                 <widget class="QCheckBox" name="tau_defined_in_sequence_CheckBox">
-                  <property name="text">
-                   <string>Tau defined in sequence?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="10">
-                 <widget class="QLineEdit" name="odmr_refocus_interval_LineEdit"/>
-                </item>
-                <item row="3" column="5">
-                 <widget class="QCheckBox" name="alternating_sequence_CheckBox">
-                  <property name="text">
-                   <string>Alternating sequence?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="9">
-                 <widget class="QLabel" name="refocus_interval_Label">
-                  <property name="text">
-                   <string>Refocus interval (s):</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="7">
-                 <layout class="QGridLayout" name="gridLayout_33">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="tau_increment_Label">
-                    <property name="text">
-                     <string>Tau increment:</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="tau_increment_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="4">
-                 <spacer name="horizontalSpacer_3">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="2" column="3">
-                 <widget class="QLCDNumber" name="elapsed_sweeps_LCDNumber"/>
-                </item>
-                <item row="0" column="5">
-                 <layout class="QGridLayout" name="gridLayout_27">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_17">
-                    <property name="text">
-                     <string>Number of laser pulses:</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="numlaser_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="1">
-                 <spacer name="horizontalSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeType">
-                   <enum>QSizePolicy::Expanding</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>0</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="1" column="7">
-                 <layout class="QGridLayout" name="gridLayout_32">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="tau_start_Label">
-                    <property name="text">
-                     <string>Tau start:</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="tau_start_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="8">
-                 <spacer name="horizontalSpacer_6">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="0" column="6">
-                 <spacer name="horizontalSpacer_4">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="0" column="3">
-                 <widget class="QLabel" name="expected_duration_TimeLabel">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="text">
-                   <string>00:00:00:00</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="9">
-                 <widget class="QPushButton" name="laser_on_PushButton">
-                  <property name="text">
-                   <string>Laser on</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="7">
-                 <widget class="QCheckBox" name="show_fft_plot_CheckBox">
-                  <property name="text">
-                   <string>Show FFT plot?</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0">
-                 <layout class="QGridLayout" name="gridLayout_28">
-                  <item row="0" column="2">
-                   <widget class="QComboBox" name="binning_comboBox"/>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLabel" name="label_16">
-                    <property name="text">
-                     <string>Fast counter binning [ns] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBox">
-                  <property name="text">
-                   <string>Turn off external MW source?</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <layout class="QGridLayout" name="gridLayout_30">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="mw_frequency_Label">
-                    <property name="text">
-                     <string>MW Frequency [MHz] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="mw_frequency_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="3" column="0">
-                 <layout class="QGridLayout" name="gridLayout_31">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="mw_power_Label">
-                    <property name="text">
-                     <string>MW Power [dBm] :</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QLineEdit" name="mw_power_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>50</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="9">
-                 <widget class="QPushButton" name="pull_data_pushButton">
-                  <property name="text">
-                   <string>Pull data</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="0" column="0">
-               <layout class="QGridLayout" name="gridLayout_26">
-                <item row="0" column="0">
-                 <widget class="QRadioButton" name="idle_radioButton">
-                  <property name="text">
-                   <string>Idle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="3">
-                 <widget class="QRadioButton" name="continue_RadiButton">
-                  <property name="text">
-                   <string>Continue</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QRadioButton" name="run_radioButton">
-                  <property name="text">
-                   <string>Run</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="2">
-                 <widget class="QRadioButton" name="radioButton">
-                  <property name="text">
-                   <string>Pause</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-             </layout>
-            </item>
-           </layout>
           </item>
          </layout>
         </widget>
@@ -1280,7 +1324,7 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1144</width>
+                 <width>1303</width>
                  <height>669</height>
                 </rect>
                </property>
@@ -1298,156 +1342,180 @@ sel.</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_15">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_12">
-            <item row="0" column="0">
-             <layout class="QGridLayout" name="gridLayout_22">
-              <item row="1" column="1">
-               <widget class="PlotWidget" name="signal_to__ratio_PlotWidget"/>
-              </item>
-              <item row="4" column="1">
-               <widget class="PlotWidget" name="lasertrace_plot_ViewWidget">
-                <property name="autoFillBackground">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <layout class="QGridLayout" name="gridLayout_21">
-                <item row="4" column="0">
-                 <spacer name="verticalSpacer_9">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QComboBox" name="aser_to_show_ComboBox"/>
-                </item>
-                <item row="1" column="0">
-                 <layout class="QGridLayout" name="gridLayout_24">
-                  <item row="0" column="1">
-                   <widget class="QLabel" name="Start_bin_Label_2">
-                    <property name="text">
-                     <string>Start [bin]</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="2">
-                   <widget class="QLineEdit" name="signal_length_InputWidget">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="Reference_green_Label_2">
-                    <property name="text">
-                     <string>Reference (green):</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="signal_red_Label_2">
-                    <property name="text">
-                     <string>Signal (red):</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QLineEdit" name="signal_start_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="2">
-                   <widget class="QLabel" name="length_bin_Label_2">
-                    <property name="text">
-                     <string>Length [bin]</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="2">
-                   <widget class="QLineEdit" name="reference_length_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QLineEdit" name="reference_start_InputWidget">
-                    <property name="maximumSize">
-                     <size>
-                      <width>75</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="3">
-                   <spacer name="horizontalSpacer_5">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </item>
-                <item row="3" column="0">
-                 <layout class="QGridLayout" name="gridLayout_25">
-                  <item row="0" column="1">
-                   <widget class="QSpinBox" name="lasertoshow_spinBox"/>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="laser_to_show_Label">
-                    <property name="text">
-                     <string>Laser to show:</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </item>
-              <item row="0" column="0">
-               <layout class="QGridLayout" name="gridLayout_29"/>
-              </item>
-             </layout>
-            </item>
-           </layout>
+           <widget class="QWidget" name="widget_5" native="true">
+            <widget class="QWidget" name="widget_6" native="true">
+             <property name="geometry">
+              <rect>
+               <x>570</x>
+               <y>0</y>
+               <width>741</width>
+               <height>91</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="gridLayoutWidget_6">
+              <property name="geometry">
+               <rect>
+                <x>570</x>
+                <y>0</y>
+                <width>160</width>
+                <height>80</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_21">
+               <item row="1" column="0">
+                <widget class="QSpinBox" name="lasertoshow_spinBox"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="laser_to_show_Label">
+                 <property name="text">
+                  <string>Laser to show:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QComboBox" name="aser_to_show_ComboBox"/>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+            <widget class="QWidget" name="widget_7" native="true">
+             <property name="geometry">
+              <rect>
+               <x>-10</x>
+               <y>90</y>
+               <width>1321</width>
+               <height>591</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="gridLayoutWidget_7">
+              <property name="geometry">
+               <rect>
+                <x>20</x>
+                <y>30</y>
+                <width>1291</width>
+                <height>551</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_22">
+               <item row="0" column="0">
+                <widget class="PlotWidget" name="lasertrace_plot_ViewWidget">
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="PlotWidget" name="signal_to__ratio_PlotWidget"/>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+            <widget class="QWidget" name="widget_8" native="true">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>571</width>
+               <height>91</height>
+              </rect>
+             </property>
+             <widget class="QWidget" name="gridLayoutWidget_5">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>231</width>
+                <height>81</height>
+               </rect>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_20">
+               <item row="2" column="2">
+                <widget class="QLineEdit" name="reference_length_InputWidget">
+                 <property name="maximumSize">
+                  <size>
+                   <width>75</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <widget class="QLineEdit" name="signal_length_InputWidget">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>75</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLineEdit" name="signal_start_InputWidget">
+                 <property name="maximumSize">
+                  <size>
+                   <width>75</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="Reference_green_Label">
+                 <property name="text">
+                  <string>Reference (green):</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="signal_red_Label">
+                 <property name="text">
+                  <string>Signal (red):</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLineEdit" name="reference_start_InputWidget">
+                 <property name="maximumSize">
+                  <size>
+                   <width>75</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="Start_bin_Label">
+                 <property name="text">
+                  <string>Start [bin]</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QLabel" name="length_bin_Label">
+                 <property name="text">
+                  <string>Length [bin]</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -1462,7 +1530,7 @@ sel.</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1192</width>
+     <width>1351</width>
      <height>21</height>
     </rect>
    </property>
@@ -1484,7 +1552,7 @@ sel.</string>
    <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="analysis_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -1492,12 +1560,14 @@ sel.</string>
     <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
-    <bool>true</bool>
+    <bool>false</bool>
    </attribute>
    <addaction name="actionAction_run_stop"/>
    <addaction name="actionAction_idle"/>
    <addaction name="actionActioncontinue"/>
    <addaction name="actionActionpause"/>
+   <addaction name="actionAction_save"/>
+   <addaction name="actionPull_data"/>
   </widget>
   <action name="actionSettings_Sequence">
    <property name="text">
@@ -1519,18 +1589,10 @@ sel.</string>
     <string>Save</string>
    </property>
   </action>
-  <action name="actionTest">
-   <property name="text">
-    <string>test</string>
-   </property>
-   <property name="toolTip">
-    <string>Test</string>
-   </property>
-  </action>
   <action name="actionAction_run_stop">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
    </property>
    <property name="text">
     <string>action_run_stop</string>
@@ -1539,7 +1601,7 @@ sel.</string>
   <action name="actionAction_idle">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</iconset>
    </property>
    <property name="text">
     <string>action_idle</string>
@@ -1557,10 +1619,28 @@ sel.</string>
   <action name="actionActionpause">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/utilities-terminal.png</normaloff>../../artwork/icons/qudiTheme/22x22/utilities-terminal.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</normaloff>../../artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</iconset>
    </property>
    <property name="text">
     <string>actionpause</string>
+   </property>
+  </action>
+  <action name="actionAction_save">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>action_save</string>
+   </property>
+  </action>
+  <action name="actionPull_data">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>
+   </property>
+   <property name="text">
+    <string>pull data</string>
    </property>
   </action>
  </widget>

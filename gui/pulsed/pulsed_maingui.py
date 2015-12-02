@@ -1795,6 +1795,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         
+        
+        # Initialize  what is visible and what not
         self._mw.mw_frequency_Label.setVisible(False)
         self._mw.mw_frequency_InputWidget.setVisible(False)
         self._mw.mw_power_Label.setVisible(False)
@@ -1806,9 +1808,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tau_increment_InputWidget.setVisible(False)
         
         self._mw.fft_PlotWidget.setVisible(False)
+        
+        self._mw.pull_data_pushButton.setEnabled(False)
 
         # Set the state button as ready button as default setting.
-        self._mw.idle_radioButton.click()
+        self._mw.idle_RadioButton.click()
 
         # Configuration of the comboWidget
         self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
@@ -1864,11 +1868,13 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect the RadioButtons and connect to the events if they are clicked:
         # pulsed measurement tab
-        self._mw.idle_radioButton.toggled.connect(self.idle_clicked)
-        self._mw.run_radioButton.toggled.connect(self.run_clicked)
+        self._mw.idle_RadioButton.toggled.connect(self.idle_clicked)
+        self._mw.run_RadioButton.toggled.connect(self.run_clicked)
+        self._mw.pause_RadioButton.toggled.connect(self.pause_clicked)
+        self._mw.continue_RadioButton.toggled.connect(self.continue_clicked)
 
         self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
-        self._mw.pull_data_pushButton.setEnabled(False)
+        
 
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
@@ -1909,8 +1915,8 @@ class PulsedMeasurementGui(GUIBase):
         self.idle_clicked()
 
         # disconnect signals
-        self._mw.idle_radioButton.toggled.disconnect()
-        self._mw.run_radioButton.toggled.disconnect()
+        self._mw.idle_RadioButton.toggled.disconnect()
+        self._mw.run_RadioButton.toggled.disconnect()
         self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
         self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
         self._mw.numlaser_InputWidget.editingFinished.disconnect()
@@ -1939,6 +1945,14 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.binning_comboBox.setEnabled(False)
             self._mw.pull_data_pushButton.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
+            
+    def pause_clicked(self):
+        """ Pause the measurement. """
+        pass 
+        
+    def continue_clicked(self):
+        """ Continues the measurement. """
+        pass
 
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
