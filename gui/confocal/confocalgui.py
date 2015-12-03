@@ -636,6 +636,21 @@ class ConfocalGui(GUIBase):
         self._osd.rejected.connect(self.keep_former_optimizer_settings)
         self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
 
+        ########### TEST ##################
+        widgets = {}
+        form = QtGui.QFormLayout()
+        for name in self._optimizer_logic.z_params:
+            widgets[name] = widget = {}
+            widget['spinbox'] = spinbox = QtGui.QSpinBox()
+            if not self._optimizer_logic.z_params[str(name)].value == None:
+                spinbox.setValue(self._optimizer_logic.z_params[str(name)].value)
+            form.addRow(name, spinbox)
+
+        fit_tab = QtGui.QWidget()
+        fit_tab.setLayout(form)
+        self._osd.settings_tabWidget.addTab(fit_tab,"Fit Params")
+        ###################################
+
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
