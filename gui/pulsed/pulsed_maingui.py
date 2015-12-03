@@ -898,6 +898,9 @@ class PulsedMeasurementGui(GUIBase):
         #self._seq_gen_logic.table_config
 
 
+
+
+
         self.insert_parameters(0)
         channel_config = self.get_hardware_constraints()['channel_config'][-1]
         self._set_channels(num_d_ch=channel_config[1], num_a_ch=channel_config[0])
@@ -1779,7 +1782,9 @@ class PulsedMeasurementGui(GUIBase):
         # Get the image from the logic
         # pulsed measurement tab
         self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.fid_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
+        self.signal_to_noise_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
@@ -1788,11 +1793,14 @@ class PulsedMeasurementGui(GUIBase):
 #        # Add the display item to the xy VieWidget, which was defined in
 #        # the UI file.
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
+        self._mw.fft_PlotWidget.addItem(self.fid_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+        
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
+        self._mw.signal_to_noise_PlotWidget.addItem(self.signal_to_noise_image)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         
         
@@ -1813,6 +1821,11 @@ class PulsedMeasurementGui(GUIBase):
 
         # Set the state button as ready button as default setting.
         self._mw.idle_RadioButton.click()
+        self._mw.action_idle.setEnabled(False)
+        self._mw.action_pause.setEnabled(False)
+        self._mw.action_continue.setEnabled(False)
+        
+        self._mw.action_pull_data.setEnabled(False)
 
         # Configuration of the comboWidget
         self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
@@ -1855,12 +1868,23 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.expected_duration_TimeLabel.setText('00:00:00:00')
         self._mw.elapsed_time_label.setText('00:00:00:00')
         self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
-        self._mw.analysis_period_InputWidget.setText(str(5))
-        self._mw.refocus_interval_LineEdit.setText(str(5))
-        self._mw.odmr_refocus_interval_LineEdit.setText(str(5))
+        self._mw.analysis_period_InputWidget.setText(str(50))
+        self._mw.refocus_interval_LineEdit.setText(str(500))
+        self._mw.odmr_refocus_interval_LineEdit.setText(str(500))
 
-
-
+    
+        # Configuration of the fit ComboBox
+    
+        self._mw.fit_function_ComboBox.addItem('No Fit')
+        self._mw.fit_function_ComboBox.addItem('Rabi Decay')
+        self._mw.fit_function_ComboBox.addItem('Lorentian (neg)')
+        self._mw.fit_function_ComboBox.addItem('Lorentian (pos)')
+        self._mw.fit_function_ComboBox.addItem('N14')
+        self._mw.fit_function_ComboBox.addItem('N15')
+        self._mw.fit_function_ComboBox.addItem('Stretched Exponential')
+        self._mw.fit_function_ComboBox.addItem('Exponential')
+        self._mw.fit_function_ComboBox.addItem('XY8')
+        
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1872,8 +1896,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.run_RadioButton.toggled.connect(self.run_clicked)
         self._mw.pause_RadioButton.toggled.connect(self.pause_clicked)
         self._mw.continue_RadioButton.toggled.connect(self.continue_clicked)
-
+        
+        self._mw.action_run_stop.toggled.connect(self.run_clicked)
+        self._mw.action_idle.toggled.connect(self.idle_clicked)
+        self._mw.action_continue.toggled.connect(self.continue_clicked)
+        self._mw.action_pause.toggled.connect(self.pause_clicked)
+        
+        self._mw.action_save.toggled.connect(self.save_clicked)        
+        
         self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
+        self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
         
 
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
@@ -1904,6 +1936,8 @@ class PulsedMeasurementGui(GUIBase):
         self.analysis_parameters_changed()
 #
 #        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
+        
+        self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
 
     def _deactivate_analysis_ui(self, e):
@@ -1945,31 +1979,66 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.binning_comboBox.setEnabled(False)
             self._mw.pull_data_pushButton.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
+        
+        self._mw.action_run_stop.setEnabled(False)
+        self._mw.action_idle.setEnabled(True)
+        self._mw.action_pause.setEnabled(True)
             
     def pause_clicked(self):
         """ Pause the measurement. """
-        pass 
+        self._mw.action_pause.setEnabled(False)
+        self._mw.action_continue.setEnabled(True)
         
     def continue_clicked(self):
         """ Continues the measurement. """
-        pass
+        self._mw.action_continue.setEnabled(False)
+        self._mw.action_idle.setEnabled(True)
+        self._mw.action_pause.setEnabled(True)
 
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
+        
+    def save_clicked(self):
+        self._pulsed_measurement_logic._save_data()
+        return    
+        
+    def fit_clicked(self):
+        self._mw.fit_result_TextBrowser.clear()
+        self._mw.fit_result_TextBrowser.setPlainText("testing")
+        
+        if self._mw.fit_function_TextBrowser.currentText()=='No Fit':
+            self._mw.fit_result_TextBrowser.setPlainText("No Fit")
+            
+        if self._mw.fit_function_TextBrowser.currentText()=='Rabi Decay':
+            self._mw.fit_result_TextBrowser.setPlainText("Rabi Decay")
+            
+        if self._mw.fit_function_TextBrowser.currentText()=='Lorentian (neg)':
+            self._mw.fit_result_TextBrowser.setPlainText("Lorentian (neg)")
+            
+        if self._mw.fit_function_TextBrowser.currentText()=='Lorentian (pos)':
+            self._mw.fit_result_TextBrowser.setPlainText("Lorentian (pos)")
+            
+        if self._mw.fit_function_TextBrowser.currentText()=='N14':
+            self._mw.fit_result_TextBrowser.setPlainText("N14")
+            
+        if self._mw.fit_function_TextBrowser.currentText()=='N15':
+            self._mw.fit_result_TextBrowser.setPlainText("N15")    
 
-    def generate_rabi_clicked(self):
-        # calculate parameters in terms of timebins/samples
-        samplerate = float(self._mw.pg_timebase_InputWidget.text())
-        mw_freq = np.round(float(self._mw.rabi_mwfreq_InputWidget.text()) * 10e9 * samplerate)
-        mw_power = np.round(float(self._mw.rabi_mwpower_InputWidget.text()) * 10e9 * samplerate)
-        waittime = np.round(float(self._mw.rabi_waittime_InputWidget.text()) * 10e9 * samplerate)
-        lasertime = np.round(float(self._mw.rabi_waittime_InputWidget.text()) * 10e9 * samplerate)
-        tau_start = np.round(float(self._mw.rabi_taustart_InputWidget.text()) * 10e9 * samplerate)
-        tau_end = np.round(float(self._mw.rabi_tauend_InputWidget.text()) * 10e9 * samplerate)
-        tau_incr = np.round(float(self._mw.rabi_tauincrement_InputWidget.text()) * 10e9 * samplerate)
-        # generate sequence
-        self._sequence_generator_logic.generate_rabi(mw_freq, mw_power, waittime, lasertime, tau_start, tau_end, tau_incr)
+        if self._mw.fit_function_TextBrowser.currentText()=='Stretched Exponential':
+            self._mw.fit_result_TextBrowser.setPlainText("Stretched Exponential")  
 
+        if self._mw.fit_function_TextBrowser.currentText()=='Exponential':
+            self._mw.fit_result_TextBrowser.setPlainText("Exponential")  
+
+        if self._mw.fit_function_TextBrowser.currentText()=='XY8':
+            self._mw.fit_result_TextBrowser.setPlainText("XY8")              
+        
+        
+        
+
+    
+        
+        
 
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
@@ -2029,6 +2098,11 @@ class PulsedMeasurementGui(GUIBase):
         if (laser_show > laser_num):
             self._mw.lasertoshow_spinBox.setValue(0)
             laser_show = self._mw.lasertoshow_spinBox.value()
+            
+        self._mw.laser_to_show_ComboBox.addItem('all')    
+        for ii in range(laser_num):
+            self._mw.laser_to_show_ComboBox.addItem('#' + str(ii))
+            
         tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
         self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
         self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
@@ -2063,9 +2137,7 @@ class PulsedMeasurementGui(GUIBase):
         pass
 
 
-    def save_clicked(self):
-        self._pulsed_measurement_logic._save_data()
-        return
+
 
 
     def current_sequence_changed(self):
