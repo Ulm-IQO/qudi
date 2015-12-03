@@ -120,6 +120,11 @@ class OptimizerLogic(GenericLogic):
 
         self._max_offset = 3.
 
+        ############ Fit Params and Settings ################
+        model,params = self._fit_logic.make_gaussian_model()
+        self.z_params = params
+        #####################################################
+
         # Initialization of internal counter for scanning
         self._xy_scan_line_count = 0
 
