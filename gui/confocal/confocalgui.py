@@ -636,7 +636,7 @@ class ConfocalGui(GUIBase):
         self._osd.rejected.connect(self.keep_former_optimizer_settings)
         self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
 
-        ########### TEST ##################
+        ########### Generation of the fit params tab ##################
         widgets = {}
         form = QtGui.QFormLayout()
         for name in self._optimizer_logic.z_params:
