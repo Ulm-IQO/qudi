@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1351</width>
+    <width>1455</width>
     <height>812</height>
    </rect>
   </property>
@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -368,67 +368,17 @@
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_19">
-               <item row="1" column="0">
-                <widget class="PlotWidget" name="fft_PlotWidget"/>
-               </item>
-               <item row="0" column="0">
-                <widget class="PlotWidget" name="signal_plot_ViewWidget">
-                 <property name="autoFillBackground">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
                <item row="2" column="0">
                 <layout class="QGridLayout" name="gridLayout_26">
+                 <item row="0" column="1">
+                  <layout class="QGridLayout" name="gridLayout_42"/>
+                 </item>
                  <item row="0" column="0">
                   <layout class="QGridLayout" name="gridLayout_33">
-                   <item row="1" column="1">
-                    <widget class="QLabel" name="expected_duration_TimeLabel">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
+                   <item row="0" column="2">
+                    <widget class="QRadioButton" name="pause_RadioButton">
                      <property name="text">
-                      <string>00:00:00:00</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="expected_duration_Label">
-                     <property name="text">
-                      <string>Expected duration:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QLabel" name="elapsed_time_Label">
-                     <property name="text">
-                      <string>Elapsed time [s]:</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QLabel" name="elapsed_time_label">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="text">
-                      <string>00:00:00:00</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QRadioButton" name="idle_RadioButton">
-                     <property name="text">
-                      <string>Idle</string>
+                      <string>Pause</string>
                      </property>
                     </widget>
                    </item>
@@ -439,13 +389,6 @@
                      </property>
                     </widget>
                    </item>
-                   <item row="0" column="2">
-                    <widget class="QRadioButton" name="pause_RadioButton">
-                     <property name="text">
-                      <string>Pause</string>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="0" column="3">
                     <widget class="QRadioButton" name="continue_RadioButton">
                      <property name="text">
@@ -453,57 +396,122 @@
                      </property>
                     </widget>
                    </item>
-                   <item row="2" column="0">
-                    <widget class="QLabel" name="elapsed_sweeps_Label">
-                     <property name="text">
-                      <string>Elapsed sweeps:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QLCDNumber" name="elapsed_sweeps_LCDNumber"/>
-                   </item>
-                   <item row="2" column="2">
-                    <widget class="QLabel" name="analysis_period_Label">
-                     <property name="text">
-                      <string>Analysis period (s):</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignCenter</set>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="3">
-                    <widget class="QLineEdit" name="analysis_period_InputWidget">
-                     <property name="maximumSize">
-                      <size>
-                       <width>75</width>
-                       <height>16777215</height>
-                      </size>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="0" column="2">
-                  <layout class="QGridLayout" name="gridLayout_42">
                    <item row="0" column="0">
-                    <widget class="QPushButton" name="pull_data_pushButton">
+                    <widget class="QRadioButton" name="idle_RadioButton">
                      <property name="text">
-                      <string>Pull data</string>
+                      <string>Idle</string>
                      </property>
                     </widget>
                    </item>
+                   <item row="1" column="0">
+                    <layout class="QGridLayout" name="gridLayout_12">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="expected_duration_Label">
+                       <property name="text">
+                        <string>Expected duration:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLabel" name="expected_duration_TimeLabel">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="text">
+                        <string>00:00:00:00</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="1">
+                    <layout class="QGridLayout" name="gridLayout_23">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="elapsed_time_Label">
+                       <property name="text">
+                        <string>Elapsed time [s]:</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLabel" name="elapsed_time_label">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="text">
+                        <string>00:00:00:00</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="2">
+                    <layout class="QGridLayout" name="gridLayout_24">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="elapsed_sweeps_Label">
+                       <property name="text">
+                        <string>Elapsed sweeps:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLCDNumber" name="elapsed_sweeps_LCDNumber"/>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="3">
+                    <layout class="QGridLayout" name="gridLayout_25">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="analysis_period_Label">
+                       <property name="text">
+                        <string>Analysis period (s):</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLineEdit" name="analysis_period_InputWidget">
+                       <property name="maximumSize">
+                        <size>
+                         <width>75</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
                   </layout>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLabel" name="fit_function_Label">
-                   <property name="text">
-                    <string>Fit function:</string>
-                   </property>
-                  </widget>
                  </item>
                 </layout>
+               </item>
+               <item row="0" column="0">
+                <widget class="PlotWidget" name="signal_plot_ViewWidget">
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="PlotWidget" name="fft_PlotWidget"/>
+               </item>
+               <item row="3" column="0">
+                <widget class="QPushButton" name="pull_data_pushButton">
+                 <property name="text">
+                  <string>Pull data</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -1324,7 +1332,7 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1303</width>
+                 <width>1407</width>
                  <height>669</height>
                 </rect>
                </property>
@@ -1373,7 +1381,7 @@ sel.</string>
                 </widget>
                </item>
                <item row="2" column="0">
-                <widget class="QComboBox" name="aser_to_show_ComboBox"/>
+                <widget class="QComboBox" name="laser_to_show_ComboBox"/>
                </item>
               </layout>
              </widget>
@@ -1405,7 +1413,7 @@ sel.</string>
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="PlotWidget" name="signal_to__ratio_PlotWidget"/>
+                <widget class="PlotWidget" name="signal_to_noise_PlotWidget"/>
                </item>
               </layout>
              </widget>
@@ -1530,7 +1538,7 @@ sel.</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1351</width>
+     <width>1455</width>
      <height>21</height>
     </rect>
    </property>
@@ -1562,12 +1570,12 @@ sel.</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionAction_run_stop"/>
-   <addaction name="actionAction_idle"/>
-   <addaction name="actionActioncontinue"/>
-   <addaction name="actionActionpause"/>
-   <addaction name="actionAction_save"/>
-   <addaction name="actionPull_data"/>
+   <addaction name="action_run_stop"/>
+   <addaction name="action_idle"/>
+   <addaction name="action_continue"/>
+   <addaction name="action_pause"/>
+   <addaction name="action_pull_data"/>
+   <addaction name="action_save"/>
   </widget>
   <action name="actionSettings_Sequence">
    <property name="text">
@@ -1589,7 +1597,7 @@ sel.</string>
     <string>Save</string>
    </property>
   </action>
-  <action name="actionAction_run_stop">
+  <action name="action_run_stop">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
@@ -1598,7 +1606,7 @@ sel.</string>
     <string>action_run_stop</string>
    </property>
   </action>
-  <action name="actionAction_idle">
+  <action name="action_idle">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</iconset>
@@ -1607,7 +1615,7 @@ sel.</string>
     <string>action_idle</string>
    </property>
   </action>
-  <action name="actionActioncontinue">
+  <action name="action_continue">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
@@ -1616,7 +1624,7 @@ sel.</string>
     <string>actioncontinue</string>
    </property>
   </action>
-  <action name="actionActionpause">
+  <action name="action_pause">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</normaloff>../../artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</iconset>
@@ -1625,7 +1633,7 @@ sel.</string>
     <string>actionpause</string>
    </property>
   </action>
-  <action name="actionAction_save">
+  <action name="action_save">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</iconset>
@@ -1634,7 +1642,7 @@ sel.</string>
     <string>action_save</string>
    </property>
   </action>
-  <action name="actionPull_data">
+  <action name="action_pull_data">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>
