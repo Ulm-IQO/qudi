@@ -28,7 +28,7 @@ class Task(InterruptableTask):
 
     def checkExtraStartPrerequisites(self):
         print('things neede for task to start')
-        return not self.ref['optimizer'].isstate('locked')
+        return not self.ref['optimizer']._scanning_device.isstate('locked') and not self.ref['optimizer'].isstate('locked') 
 
     def checkExtraPausePrerequisites(self):
         print('things neede for task to pause')
