@@ -852,7 +852,7 @@ class Manager(QtCore.QObject):
             self.logger.logMsg('{0} module {1}: connect is not a dictionary'.format(base, key), msgType='error')            
             return None
         connections = self.tree['defined'][base][key]['connect']
-        deplist = list()
+        deplist = set()
         for c in connections:
             if not isinstance(connections[c], str):
                 self.logger.logMsg('value for class key is not a string', msgType='error')
@@ -878,14 +878,14 @@ class Manager(QtCore.QObject):
                                    'to it.'.format(connections[c], key),
                                    msgType='error')
                 return None
-            deplist.append(destmod)
+            deplist.add(destmod)
             subdeps = self.getRecursiveModuleDependencies(destbase, destmod)
             if subdeps is not None:
                 deps.update(subdeps)
             else:
                 return None
         if len(deplist) > 0:
-            deps.update({key: deplist})
+            deps.update({key: list(deplist)})
         return deps
 
     @QtCore.pyqtSlot(str, str)
@@ -1119,9 +1119,8 @@ class Manager(QtCore.QObject):
             
             # If no nodes are ready, then there must be a cycle in the graph
             if len(ready) == 0:
-                print(deps)
-                raise Exception('Cannot resolve requested device '
-                                'configure/start order.')
+                print(deps, deps0)
+                raise Exception('Cannot resolve requested device configure/start order.')
             
             # sort by branch cost
             if key is not None:
