@@ -68,6 +68,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.start_time = 0
         self.elapsed_time = 0
         self.elapsed_time_str = '00:00:00:00'
+        self.elapsed_sweeps = 0
         
         # analyze windows for laser pulses
         self.signal_start_bin = None
@@ -171,6 +172,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
             self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
+            self.elapsed_sweeps = self.elapsed_time/3
             # emit signals
             self.signal_signal_plot_updated.emit() 
             self.signal_laser_plot_updated.emit() 
@@ -387,4 +389,19 @@ class PulsedMeasurementLogic(GenericLogic):
 #        if fit_function == None:
 #            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
 #            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
+        
+        ####Signal to Noise calculation
+        """The signal-to-noiuse ratio is defined as the ratio between 
+        singal amplitude and its standard deviation"""
+        
+    def calculate_signal_to_noise_ratio(xdata,ydata):
+        pass
+    
+    def calculate_standard_deviation(xdata,ydata):
+        pass
+        
+#        standard_deviation[i]= np.sqrt()
+#        return np.sqrt()
+        
+        
             
