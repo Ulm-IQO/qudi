@@ -7,11 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>1455</width>
-    <height>812</height>
+    <height>1047</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>qudi: pulsed measurement</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
@@ -44,7 +44,7 @@
                 <x>10</x>
                 <y>10</y>
                 <width>841</width>
-                <height>108</height>
+                <height>156</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_30">
@@ -301,7 +301,7 @@
                 <x>9</x>
                 <y>9</y>
                 <width>411</width>
-                <height>102</height>
+                <height>116</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_18">
@@ -1307,8 +1307,8 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1407</width>
-                 <height>669</height>
+                 <width>96</width>
+                 <height>26</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -1341,7 +1341,7 @@ sel.</string>
                 <x>570</x>
                 <y>0</y>
                 <width>160</width>
-                <height>80</height>
+                <height>96</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_21">
@@ -1407,8 +1407,8 @@ sel.</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>231</width>
-                <height>81</height>
+                <width>254</width>
+                <height>96</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_20">
@@ -1514,18 +1514,18 @@ sel.</string>
      <x>0</x>
      <y>0</y>
      <width>1455</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>Fi&amp;le</string>
     </property>
     <addaction name="actionSave"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
-     <string>Settings</string>
+     <string>Se&amp;ttings</string>
     </property>
     <addaction name="actionSettings_Sequence"/>
     <addaction name="action_Settings_Block_Generation"/>
@@ -1552,22 +1552,22 @@ sel.</string>
   </widget>
   <action name="actionSettings_Sequence">
    <property name="text">
-    <string>Settings: Analysis</string>
+    <string>&amp;Settings: Analysis</string>
    </property>
   </action>
   <action name="action_Settings_Block_Generation">
    <property name="text">
-    <string>Settings: Block Generation</string>
+    <string>Settings: &amp;Block Generation</string>
    </property>
   </action>
   <action name="actionSettings_Sequence_Editor">
    <property name="text">
-    <string>Settings: Sequence Editor</string>
+    <string>Settings: Sequence &amp;Editor</string>
    </property>
   </action>
   <action name="actionSave">
    <property name="text">
-    <string>Save</string>
+    <string>&amp;Save</string>
    </property>
   </action>
   <action name="action_run_stop">

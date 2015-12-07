@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Slow Counter</string>
+   <string>qudi: Slow Counter</string>
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
@@ -20,16 +20,16 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>20</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
     <widget class="QMenu" name="menuToolbars">
      <property name="title">
-      <string>Toolbars</string>
+      <string>&amp;Toolbars</string>
      </property>
      <addaction name="counting_controls_view_Action"/>
     </widget>
@@ -45,7 +45,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="counter_trace_DockWidget">
    <property name="windowTitle">
-    <string>Slow counter</string>
+    <string>Slow &amp;counter</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
@@ -83,7 +83,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>Slow counter control</string>
+    <string>S&amp;low counter control</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -220,7 +220,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Slow counter</string>
+    <string>&amp;Slow counter</string>
    </property>
    <property name="toolTip">
     <string>Show the Slow counter</string>
@@ -231,7 +231,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Slow counter parameters</string>
+    <string>Slow &amp;counter parameters</string>
    </property>
    <property name="toolTip">
     <string>Show Slow counter parameters</string>
@@ -239,12 +239,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   </action>
   <action name="restore_default_view_Action">
    <property name="text">
-    <string>Restore default</string>
+    <string>&amp;Restore default</string>
    </property>
   </action>
   <action name="counting_controls_view_Action">
    <property name="text">
-    <string>Counting controls</string>
+    <string>&amp;Counting controls</string>
    </property>
   </action>
  </widget>
@@ -348,8 +348,8 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
      <y>41</y>
     </hint>
     <hint type="destinationlabel">
-     <x>399</x>
-     <y>455</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>

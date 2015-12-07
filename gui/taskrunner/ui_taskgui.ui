@@ -10,8 +10,11 @@
     <height>600</height>
    </rect>
   </property>
+  <property name="acceptDrops">
+   <bool>false</bool>
+  </property>
   <property name="windowTitle">
-   <string>QuDi: Task runner</string>
+   <string>qudi: task runner</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -26,7 +29,7 @@
      <x>0</x>
      <y>0</y>
      <width>730</width>
-     <height>19</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTaskrunner">
@@ -73,8 +76,7 @@
   <action name="actionClose">
    <property name="icon">
     <iconset theme="application-exit">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
