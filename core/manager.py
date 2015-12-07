@@ -203,9 +203,7 @@ class Manager(QtCore.QObject):
                 printExc('\n: Error while acting on command line options: '
                          '(but continuing on anyway..)')
             # Load startup things from config here
-            print(self.tree['global'])
             if 'startup' in self.tree['global']:
-                print(self.tree['global']['startup'])
                 # walk throug the list of loadable modules to be loaded on startup and load them if appropriate
                 for key in self.tree['global']['startup']:
                     if key in self.tree['defined']['hardware']:
