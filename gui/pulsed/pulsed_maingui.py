@@ -1802,6 +1802,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
         self._mw.signal_to_noise_PlotWidget.addItem(self.signal_to_noise_image)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.fft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.signal_to_noise_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        
         
         
         # Initialize  what is visible and what not
@@ -1817,13 +1820,10 @@ class PulsedMeasurementGui(GUIBase):
         
         self._mw.fft_PlotWidget.setVisible(False)
         
-        self._mw.pull_data_pushButton.setEnabled(False)
-
+        
         # Set the state button as ready button as default setting.
-        self._mw.idle_RadioButton.click()
-        self._mw.action_idle.setEnabled(False)
-        self._mw.action_pause.setEnabled(False)
-        self._mw.action_continue.setEnabled(False)
+                
+        self._mw.action_continue_pause.setEnabled(False)
         
         self._mw.action_pull_data.setEnabled(False)
 
@@ -1865,10 +1865,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_length_InputWidget.setText(str(200))
         self._mw.reference_start_InputWidget.setText(str(500))
         self._mw.reference_length_InputWidget.setText(str(200))
-        self._mw.expected_duration_TimeLabel.setText('00:00:00:00')
+        self._mw.expected_duration_TimeLabel.setText('00:00:00:03')
         self._mw.elapsed_time_label.setText('00:00:00:00')
-        self._mw.elapsed_sweeps_LCDNumber.setDigitCount(0)
-        self._mw.analysis_period_InputWidget.setText(str(50))
+        self._mw.elapsed_sweeps_LCDNumber.display(0)
+        self._mw.analysis_period_InputWidget.setText(str(2))
         self._mw.refocus_interval_LineEdit.setText(str(500))
         self._mw.odmr_refocus_interval_LineEdit.setText(str(500))
 
@@ -1892,25 +1892,25 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect the RadioButtons and connect to the events if they are clicked:
         # pulsed measurement tab
-        self._mw.idle_RadioButton.toggled.connect(self.idle_clicked)
-        self._mw.run_RadioButton.toggled.connect(self.run_clicked)
-        self._mw.pause_RadioButton.toggled.connect(self.pause_clicked)
-        self._mw.continue_RadioButton.toggled.connect(self.continue_clicked)
+        #self._mw.idle_RadioButton.toggled.connect(self.idle_clicked)
+        #self._mw.run_RadioButton.toggled.connect(self.run_clicked)
+#        self._mw.pause_RadioButton.toggled.connect(self.pause_clicked)
+#        self._mw.continue_RadioButton.toggled.connect(self.continue_clicked)
         
-        self._mw.action_run_stop.toggled.connect(self.run_clicked)
-        self._mw.action_idle.toggled.connect(self.idle_clicked)
-        self._mw.action_continue.toggled.connect(self.continue_clicked)
-        self._mw.action_pause.toggled.connect(self.pause_clicked)
+        self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
         
+        self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
+                
         self._mw.action_save.toggled.connect(self.save_clicked)        
         
-        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
+#        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
         
 
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+        
         # sequence generator tab
 
         # Connect the CheckBoxes
@@ -1946,54 +1946,70 @@ class PulsedMeasurementGui(GUIBase):
         @param Fysom.event e: Event Object of Fysom
         """
 
-        self.idle_clicked()
+        self.run_stop_clicked(False)
 
         # disconnect signals
-        self._mw.idle_RadioButton.toggled.disconnect()
-        self._mw.run_RadioButton.toggled.disconnect()
+#        self._mw.idle_RadioButton.toggled.disconnect()
+#        self._mw.run_RadioButton.toggled.disconnect()
         self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
         self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
         self._mw.numlaser_InputWidget.editingFinished.disconnect()
         self._mw.lasertoshow_spinBox.valueChanged.disconnect()
 
-    def idle_clicked(self):
-        """ Stopp the scan if the state has switched to idle. """
-        self._pulsed_measurement_logic.stop_pulsed_measurement()
-        self._mw.mw_frequency_InputWidget.setEnabled(True)
-        self._mw.mw_power_InputWidget.setEnabled(True)
-        self._mw.binning_comboBox.setEnabled(True)
-        self._mw.pull_data_pushButton.setEnabled(False)
+#    def idle_clicked(self):
+#        """ Stopp the scan if the state has switched to idle. """
+#        self._pulsed_measurement_logic.stop_pulsed_measurement()
+#        self._mw.mw_frequency_InputWidget.setEnabled(True)
+#        self._mw.mw_power_InputWidget.setEnabled(True)
+#        self._mw.binning_comboBox.setEnabled(True)
+#        self._mw.pull_data_pushButton.setEnabled(False)
 
-    def run_clicked(self, enabled):
-        """ Manages what happens if pulsed measurement is started.
+    def run_stop_clicked(self,isChecked):
+        """ Manages what happens if pulsed measurement is started or stopped.
 
         @param bool enabled: start scan if that is possible
         """
-
+        
         #Firstly stop any scan that might be in progress
         self._pulsed_measurement_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
-        if enabled:
+        
+        if isChecked:
+            #self._mw.signal_plot_ViewWidget.clear()
             self._mw.mw_frequency_InputWidget.setEnabled(False)
             self._mw.mw_power_InputWidget.setEnabled(False)
             self._mw.binning_comboBox.setEnabled(False)
-            self._mw.pull_data_pushButton.setEnabled(True)
+            self._mw.action_pull_data.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
-        
-        self._mw.action_run_stop.setEnabled(False)
-        self._mw.action_idle.setEnabled(True)
-        self._mw.action_pause.setEnabled(True)
+            self._mw.action_continue_pause.setEnabled(True)
+            if not self._mw.action_continue_pause.isChecked():
+                self._mw.action_continue_pause.toggle()
             
-    def pause_clicked(self):
-        """ Pause the measurement. """
-        self._mw.action_pause.setEnabled(False)
-        self._mw.action_continue.setEnabled(True)
+        else:
+            self._pulsed_measurement_logic.stop_pulsed_measurement()
+            self._mw.mw_frequency_InputWidget.setEnabled(True)
+            self._mw.mw_power_InputWidget.setEnabled(True)
+            self._mw.binning_comboBox.setEnabled(True)
+            self._mw.action_pull_data.setEnabled(False)
+            self._mw.action_continue_pause.setEnabled(False)
+            
+            
         
-    def continue_clicked(self):
-        """ Continues the measurement. """
-        self._mw.action_continue.setEnabled(False)
-        self._mw.action_idle.setEnabled(True)
-        self._mw.action_pause.setEnabled(True)
+    def continue_pause_clicked(self,isChecked):
+        """ Continues and pauses the measurement. """
+        
+        if isChecked:
+            #self._mw.action_continue_pause.toggle()
+            
+            self._mw.action_run_stop.setChecked(True)
+            
+        
+        else:
+            #self._mw.action_continue_pause.toggle
+            
+            self._mw.action_run_stop.setChecked(False)
+            
+
 
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
@@ -2006,31 +2022,31 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.fit_result_TextBrowser.clear()
         self._mw.fit_result_TextBrowser.setPlainText("testing")
         
-        if self._mw.fit_function_TextBrowser.currentText()=='No Fit':
+        if self._mw.fit_function_ComboBox.currentText()=='No Fit':
             self._mw.fit_result_TextBrowser.setPlainText("No Fit")
             
-        if self._mw.fit_function_TextBrowser.currentText()=='Rabi Decay':
+        if self._mw.fit_function_ComboBox.currentText()=='Rabi Decay':
             self._mw.fit_result_TextBrowser.setPlainText("Rabi Decay")
             
-        if self._mw.fit_function_TextBrowser.currentText()=='Lorentian (neg)':
+        if self._mw.fit_function_ComboBox.currentText()=='Lorentian (neg)':
             self._mw.fit_result_TextBrowser.setPlainText("Lorentian (neg)")
             
-        if self._mw.fit_function_TextBrowser.currentText()=='Lorentian (pos)':
+        if self._mw.fit_function_ComboBox.currentText()=='Lorentian (pos)':
             self._mw.fit_result_TextBrowser.setPlainText("Lorentian (pos)")
             
-        if self._mw.fit_function_TextBrowser.currentText()=='N14':
+        if self._mw.fit_function_ComboBox.currentText()=='N14':
             self._mw.fit_result_TextBrowser.setPlainText("N14")
             
-        if self._mw.fit_function_TextBrowser.currentText()=='N15':
+        if self._mw.fit_function_ComboBox.currentText()=='N15':
             self._mw.fit_result_TextBrowser.setPlainText("N15")    
 
-        if self._mw.fit_function_TextBrowser.currentText()=='Stretched Exponential':
+        if self._mw.fit_function_ComboBox.currentText()=='Stretched Exponential':
             self._mw.fit_result_TextBrowser.setPlainText("Stretched Exponential")  
 
-        if self._mw.fit_function_TextBrowser.currentText()=='Exponential':
+        if self._mw.fit_function_ComboBox.currentText()=='Exponential':
             self._mw.fit_result_TextBrowser.setPlainText("Exponential")  
 
-        if self._mw.fit_function_TextBrowser.currentText()=='XY8':
+        if self._mw.fit_function_ComboBox.currentText()=='XY8':
             self._mw.fit_result_TextBrowser.setPlainText("XY8")              
         
         
@@ -2051,9 +2067,13 @@ class PulsedMeasurementGui(GUIBase):
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
 
     def refresh_elapsed_time(self):
-        ''' This method refreshes the elapsed time of the measurement
+        ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
         self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
+        self._mw.elapsed_sweeps_LCDNumber.display(self._pulsed_measurement_logic.elapsed_sweeps)
+        
+
+        
     
     def show_external_mw_source_checked(self):
         if self._mw.turn_off_external_mw_source_CheckBox.isChecked():
@@ -2099,9 +2119,9 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.lasertoshow_spinBox.setValue(0)
             laser_show = self._mw.lasertoshow_spinBox.value()
             
-        self._mw.laser_to_show_ComboBox.addItem('all')    
+        self._mw.laser_to_show_ComboBox.addItem('sum')    
         for ii in range(laser_num):
-            self._mw.laser_to_show_ComboBox.addItem('#' + str(ii))
+            self._mw.laser_to_show_ComboBox.addItem('#' + str(1+ii))
             
         tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
         self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
