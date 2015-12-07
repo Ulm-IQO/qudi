@@ -3,7 +3,7 @@
 from hardware.fast_counter_interface import FastCounterInterface
 import numpy as np
 from collections import OrderedDict
-import thirtparty.stuttgart_counter.TimeTagger as tt
+import thirdparty.stuttgart_counter.TimeTagger as tt
 from core.base import Base
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
@@ -18,19 +18,17 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
     signal_get_data_next = QtCore.Signal()
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        
-        Base.__init__(self, manager, name, 
-                      configuation=config, callback_dict = {})
-        
+        callback_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        Base.__init__(self, manager, name, config, callback_dict)
+
+    def activation(self, e):
+        config = self.getConfiguration()
         if 'fpgacounter_serial' in config.keys():
             self._fpgacounter_serial=config['fpgacounter_serial']
         else:
-            self.logMsg('No serial number defined for fpga counter',
-                        msgType='warning')
+            self.logMsg('No serial number defined for fpga counter', msgType='warning')
                         
-        self.fastcounter = tt
-                        
-        self.fastcounter._Tagger_setSerial(self.fpgacounter_serial)
+        tt._Tagger_setSerial(self._fpgacounter_serial)
         
         self._binwidth = 1
         self._record_length = 4000
@@ -44,8 +42,11 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         self.threadlock = Mutex()
         
         self.stopRequested = False
-        
-    def configure(self,N_read,record_length,bin_width):
+
+    def deactivation(self, e):
+        self.stopRequested = True
+
+    def configure(self, N_read, record_length, bin_width):
         
         self._N_read = N_read
         self._record_length = record_length
@@ -54,17 +55,20 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
         self.signal_get_data_next.connect(self.get_single_data_trace, QtCore.Qt.QueuedConnection)
     
-        self.pulsed = self.fastcounter.Pulsed(self.n_bins, int(np.round(self._bin_width*1000)), self._N_read, self.channel_apd_0, self.channel_detect, self.channel_sequence)
+        self.pulsed = tt.Pulsed(
+            self.n_bins,
+            int(np.round(self._bin_width*1000)),
+            self._N_read,
+            self.channel_apd_0,
+            self.channel_detect,
+            self.channel_sequence
+        )
         
-        self.count_data = np.zeros((2,2)) 
+        self.count_data = np.zeros((2, 2))
         
     def start_measure(self):
-        
-        self.count_data = np.zeros((2,2)) 
-        
+        self.count_data = np.zeros((2, 2))
         self.lock()
-        
-        self.signal_start_scanning.emit()
         
     def get_single_data_trace(self):
         
@@ -80,7 +84,6 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
         
     def stop_measure(self):
-        
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
@@ -94,9 +97,7 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         return 0
         
     def continue_measure(self):
-        
         self.lock()
-        
         self.signal_get_data_next.emit()
         
     def is_gated(self):
