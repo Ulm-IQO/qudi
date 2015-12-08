@@ -32,7 +32,7 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
     _modtype = 'hardware'
 
     ## declare connectors
-    _out = {'counter': 'FastCounterInterface'}
+    _out = {'fastcounter': 'FastCounterInterface'}
     
     signal_get_data_next = QtCore.Signal()
     
@@ -56,8 +56,8 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         self.channel_apd_1 = int(1) 
         self.channel_apd_0 = int(1) 
         self.channel_detect = int(2)
-        self.channel_sequence = int(6) 
-        self.configure()
+        self.channel_sequence = int(6)
+        self.configure(1,1000,1)
         
     def deactivation(self, e):
         pass
@@ -66,7 +66,7 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
         self._N_read = N_read
         self._record_length = record_length
-        self._binwidth = bin_width
+        self._bin_width = bin_width
         self.n_bins = int(self._record_length / self._bin_width)
         
         self.pulsed = tt.Pulsed(
@@ -101,4 +101,7 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
     def get_data_trace(self):
         return self.pulsed.getData() 
-                
+
+    def get_status(self):
+        ready = self.pulsed.ready()
+        return {'binwidth_ns': self._bin_width*1000, 'is_gated': True, 'is_ready': ready}
