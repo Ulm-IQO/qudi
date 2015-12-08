@@ -158,7 +158,6 @@ class FitLogic(GenericLogic):
                                                            substituted parameters
                     
             """
-            
             for para in update_parameters:
                 #store value because when max,min is set the value is overwritten
                 store_value=parameters[para].value
