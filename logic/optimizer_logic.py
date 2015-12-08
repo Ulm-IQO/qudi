@@ -123,6 +123,7 @@ class OptimizerLogic(GenericLogic):
         ############ Fit Params and Settings ################
         model,params = self._fit_logic.make_gaussian_model()
         self.z_params = params
+        self.use_custom_params = False
         #####################################################
 
         # Initialization of internal counter for scanning
@@ -385,7 +386,6 @@ class OptimizerLogic(GenericLogic):
     def do_z_optimization(self):
         """ Do the z axis optimisation
         """
-
         # z scaning
         self._scan_z_line()
 
@@ -399,8 +399,12 @@ class OptimizerLogic(GenericLogic):
             adjusted_param.add('c', 1, True, -self.z_refocus_line.max(), self.z_refocus_line.max(), None)
             result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
         else:
-            result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
+            if self.use_custom_params:
+                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line,add_parameters=self.z_params)
+            else:
+                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
         print(result.fit_report())
+        self.z_params = result.params
 
         if result.success is False:
             self.logMsg('error in 1D Gaussian Fit.',
