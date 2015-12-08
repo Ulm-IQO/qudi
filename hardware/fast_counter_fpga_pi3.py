@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+"""
+A hardware module for acessing the Measurement Systems TSYS01 temperature
+sensor chip via SPI.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder <jan.binder@uni-ulm.de>
+"""
 
 from hardware.fast_counter_interface import FastCounterInterface
 import numpy as np
@@ -35,16 +54,13 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         self._N_read = 1
         
         self.channel_apd_1 = int(1) 
-        self.channel_apd_0 = int(-1) 
+        self.channel_apd_0 = int(1) 
         self.channel_detect = int(2)
         self.channel_sequence = int(6) 
+        self.configure()
         
-        self.threadlock = Mutex()
-        
-        self.stopRequested = False
-
     def deactivation(self, e):
-        self.stopRequested = True
+        pass
 
     def configure(self, N_read, record_length, bin_width):
         
@@ -53,8 +69,6 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         self._binwidth = bin_width
         self.n_bins = int(self._record_length / self._bin_width)
         
-        self.signal_get_data_next.connect(self.get_single_data_trace, QtCore.Qt.QueuedConnection)
-    
         self.pulsed = tt.Pulsed(
             self.n_bins,
             int(np.round(self._bin_width*1000)),
@@ -64,48 +78,27 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
             self.channel_sequence
         )
         
-        self.count_data = np.zeros((2, 2))
-        
     def start_measure(self):
-        self.count_data = np.zeros((2, 2))
         self.lock()
-        
-    def get_single_data_trace(self):
-        
-        if self.stopRequested:
-            with self.threadlock:
-                self.stopRequested = False
-                self.unlock()
-                return
-        
-        self.count_data = self.count_data + self.pulsed.getData()
-        
-        self.signal_get_data_next.emit()
-        
+        self.pulsed.start()
+        return 0
         
     def stop_measure(self):
-        with self.threadlock:
-            if self.getState() == 'locked':
-                self.stopRequested = True
-            
+        self.pulsed.stop()
+        self.unlock()
         return 0
         
     def pause_measure(self):
-        
         self.stop_measure()
-            
         return 0
         
     def continue_measure(self):
-        self.lock()
-        self.signal_get_data_next.emit()
+        self.start_measure()
+        return 0
         
     def is_gated(self):
-        
-        return 1
+        return True
         
     def get_data_trace(self):
-        
-        return self.count_data
+        return self.pulsed.getData() 
                 
-        
