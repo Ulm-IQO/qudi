@@ -13,7 +13,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA based fast counter.
     """    
     ## declare connectors
-    _out = {'counter': 'FastCounterInterface'}
+    _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, manager, name, config = {}, **kwargs):
         

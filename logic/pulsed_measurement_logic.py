@@ -63,7 +63,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # timer for data analysis
         self.timer = None
         self.odmrtimer = None
-        self.odmrtimer_interval = .5 # in seconds
+        self.odmrtimer_interval = 0.5 # in seconds
         self.timer_interval = 5 # in seconds
         self.start_time = 0
         self.elapsed_time = 0
