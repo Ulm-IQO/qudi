@@ -26,6 +26,10 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+import scipy
+import scipy.ndimage as ndimage
+import scipy.ndimage.filters as filters
+import math
 import datetime
 import time
 
@@ -207,8 +211,6 @@ class PoiManagerLogic(GenericLogic):
         # locking for thread safety
         self.threadlock = Mutex()
 
-        # A POI is active if the scanner is at that POI
-        self.active_poi = None
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -237,6 +239,12 @@ class PoiManagerLogic(GenericLogic):
         self._confocal_logic.signal_change_position.connect(self.user_move_deactivates_poi)
 
         self.testing()
+        
+        # Initialise the roi_map_data (xy confocal image)
+        self.roi_map_data = self._confocal_logic.xy_image
+
+        # A POI is active if the scanner is at that POI
+        self.active_poi = None
 
     def user_move_deactivates_poi(self, tag):
         if tag != 'optimizer':
@@ -280,6 +288,12 @@ class PoiManagerLogic(GenericLogic):
 
     def deactivation(self, e):
         return
+
+    def get_confocal_image_data(self):
+        """ Get the current confocal xy scan data to hold as image of ROI"""
+
+        # get the roi_map_data (xy confocal image)
+        self.roi_map_data = self._confocal_logic.xy_image
 
     def get_all_pois(self, abc_sort=False):
         """ Returns a list of the names of all existing trackpoints.
@@ -848,3 +862,39 @@ class PoiManagerLogic(GenericLogic):
                 new_coords = self.triangulate(old_coords, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos)
 
                 self.move_coords(poikey=poikey, point=new_coords)
+
+    def autofind_pois(self, neighborhood_size = 1, min_threshold = 10000, max_threshold = 1e6):
+        """Automatically search the xy scan image for POIs.
+
+        @param neighborhood_size: size in microns.  Only the brightest POI per neighborhood will be found.
+
+        @param min_threshold: POIs must have c/s above this threshold.
+
+        @param max_threshold: POIs must have c/s below this threshold.
+        """
+
+        # Calculate the neighborhood size in pixels from the image range and resolution
+        x_range_microns = np.max(self.roi_map_data[:, :, 0]) - np.min(self.roi_map_data[:, :, 0])
+        y_range_microns = np.max(self.roi_map_data[:, :, 1]) - np.min(self.roi_map_data[:, :, 1])
+        y_pixels = len(self.roi_map_data)
+        x_pixels = len(self.roi_map_data[1,:])
+
+        pixels_per_micron = max([x_pixels, y_pixels]) / max([x_range_microns, y_range_microns])
+        # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
+        neighborhood_pix = np.max([math.ceil(pixels_per_micron * neighborhood_size), 5])
+        print(neighborhood_pix)
+        
+        data = self.roi_map_data[:, :, 3]
+        
+        data_max = filters.maximum_filter(data, 5)
+        maxima = (data == data_max)
+        data_min = filters.minimum_filter(data, 5)
+        diff = ((data_max - data_min) > min_threshold)
+        maxima[diff == False] = 0
+
+        labeled, num_objects = ndimage.label(maxima)
+        xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects+1)))
+        
+        for index in xy:
+            poi_pos = self.roi_map_data[index[0], index[1], :][0:3]
+            this_poi_key = self.add_poi(position = poi_pos)

@@ -281,10 +281,10 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Get the image for the display from the logic:
-        self.roi_map_data = self._confocal_logic.xy_image[:, :, 3].transpose()
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
 
         # Load the image in the display:
-        self.roi_map_image = pg.ImageItem(self.roi_map_data)
+        self.roi_map_image = pg.ImageItem(self.roi_xy_image_data)
         self.roi_map_image.setRect(QtCore.QRectF(self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[0], self._confocal_logic.image_x_range[
                                    1] - self._confocal_logic.image_x_range[0], self._confocal_logic.image_y_range[1] - self._confocal_logic.image_y_range[0]))
 
@@ -440,25 +440,23 @@ class PoiManagerGui(GUIBase):
         self._mw.raise_()
 
     def get_confocal_image(self):
-        """Get the current confocal xy scan and import as an image of the ROI
+        """Update the roi_map_data in poi manager logic, and use this updated data to redraw an image of the ROI
         """
-        # TODO: The data (roi_map_data) should be held in PoiManager Logic, not GUI.
 
-        # Get the image data and hold it locally, so that new xy scans can be
-        # done in Confocal without interferring with redrawing the ROI map (such as
-        # when the colorscale changes).
-        self.roi_map_data = self._confocal_logic.xy_image[:, :, 3].transpose()
+        self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
 
         # Also get the x and y range limits and hold them locally
-        self.roi_map_xmin = self._confocal_logic.image_x_range[0]
-        self.roi_map_xmax = self._confocal_logic.image_x_range[1]
-        self.roi_map_ymin = self._confocal_logic.image_y_range[0]
-        self.roi_map_ymax = self._confocal_logic.image_y_range[1]
+        self.roi_map_xmin = np.min(self._poi_manager_logic.roi_map_data[:, :, 0])
+        self.roi_map_xmax = np.max(self._poi_manager_logic.roi_map_data[:, :, 0])
+        self.roi_map_ymin = np.min(self._poi_manager_logic.roi_map_data[:, :, 1])
+        self.roi_map_ymax = np.max(self._poi_manager_logic.roi_map_data[:, :, 1])
 
         self.roi_map_image.getViewBox().enableAutoRange()
-        self.roi_map_image.setRect(QtCore.QRectF(self.roi_map_xmin, self.roi_map_ymin,
-                                                 self.roi_map_xmax - self.roi_map_xmin, self.roi_map_ymax - self.roi_map_ymin))
-        self.roi_map_image.setImage(image=self.roi_map_data, autoLevels=True)
+        self.roi_map_image.setRect(QtCore.QRectF(self.roi_map_xmin,
+                                                 self.roi_map_ymin,
+                                                 self.roi_map_xmax - self.roi_map_xmin,
+                                                 self.roi_map_ymax - self.roi_map_ymin))
+        self.roi_map_image.setImage(image=self.roi_xy_image_data, autoLevels=True)
 
     def shortcut_to_roi_cb_manual(self):
         self._mw.roi_cb_manual_RadioButton.setChecked(True)
@@ -483,16 +481,16 @@ class PoiManagerGui(GUIBase):
             low_centile = self._mw.roi_cb_low_centile_SpinBox.value()
             high_centile = self._mw.roi_cb_high_centile_SpinBox.value()
 
-            cb_min = np.percentile(self.roi_map_data, low_centile)
-            cb_max = np.percentile(self.roi_map_data, high_centile)
+            cb_min = np.percentile(self.roi_xy_image_data, low_centile)
+            cb_max = np.percentile(self.roi_xy_image_data, high_centile)
 
-            self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max))
+            self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
 
         else:
             cb_min = self._mw.roi_cb_min_SpinBox.value()
             cb_max = self._mw.roi_cb_max_SpinBox.value()
 
-            self.roi_map_image.setImage(image=self.roi_map_data, levels=(cb_min, cb_max))
+            self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
 
         self.roi_cb.refresh_colorbar(cb_min, cb_max)
         self._mw.roi_cb_ViewWidget.update()
