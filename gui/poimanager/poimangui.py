@@ -443,6 +443,10 @@ class PoiManagerGui(GUIBase):
         """Update the roi_map_data in poi manager logic, and use this updated data to redraw an image of the ROI
         """
 
+        # Make poi manager logic get the confocal data
+        self._poi_manager_logic.get_confocal_image_data()
+
+        # the image data is the fluorescence part, transposed for appropriate plotting
         self.roi_xy_image_data = self._poi_manager_logic.roi_map_data[:, :, 3].transpose()
 
         # Also get the x and y range limits and hold them locally

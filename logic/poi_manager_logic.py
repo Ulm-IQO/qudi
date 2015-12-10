@@ -26,7 +26,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-import scipy
+import re
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
 import math
@@ -307,13 +307,18 @@ class PoiManagerLogic(GenericLogic):
 
         elif abc_sort is True:
             # First create a dictionary with poikeys indexed against names
-            poinames = dict()
-            for poikey in self.track_point_list.keys():
+            poinames = [''] * len(self.track_point_list.keys())
+            for i, poikey in enumerate(self.track_point_list.keys()):
                 poiname = self.track_point_list[poikey].get_name()
-                poinames[poiname] = poikey
+                poinames[i] = [poiname, poikey]
 
+            # Sort names in the way that humans expect (site1, site2, site11, etc)
+
+            # Regular expressions to make sorting key
+            convert = lambda text: int(text) if text.isdigit() else text
+            alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key[0]) ]
             # Now we can sort poinames by name and return keys in that order
-            return [value for (key, value) in sorted(poinames.items())]
+            return [key for [name, key] in sorted(poinames, key = alphanum_key)]
 
         else:
             # TODO: produce sensible error about unknown value of abc_sort.
@@ -469,7 +474,7 @@ class PoiManagerLogic(GenericLogic):
         """
 
         if poikey is not None and name is not None and poikey in self.track_point_list.keys():
-            self.signal_poi_updated.emit()
+            #self.signal_poi_updated.emit()
 
             success = self.track_point_list[poikey].set_name(name=name)
 
@@ -895,6 +900,7 @@ class PoiManagerLogic(GenericLogic):
         labeled, num_objects = ndimage.label(maxima)
         xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects+1)))
         
-        for index in xy:
-            poi_pos = self.roi_map_data[index[0], index[1], :][0:3]
+        for count, pix_pos in enumerate(xy):
+            poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
             this_poi_key = self.add_poi(position = poi_pos)
+            self.rename_poi(poikey=this_poi_key, name='spot'+str(count))
