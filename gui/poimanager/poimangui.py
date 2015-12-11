@@ -244,6 +244,8 @@ class PoiManagerGui(GUIBase):
         the event argument from fysom to these methods.
         """
 
+        self.selected_poi_key = None
+
         # Connectors
         self._poi_manager_logic = self.connector['in']['poimanagerlogic1']['object']
         self._confocal_logic = self.connector['in']['confocallogic1']['object']
@@ -253,6 +255,12 @@ class PoiManagerGui(GUIBase):
         # Initializing the GUIs
         self.initMainUI(e)
         self.initReorientRoiDialogUI(e)
+
+        # There could be POIs created in the logic already, so update lists and map
+        self.populate_poi_list()
+        self._redraw_sample_shift()
+        self._redraw_poi_markers()
+
 
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the POI Manager GUI.
@@ -363,7 +371,10 @@ class PoiManagerGui(GUIBase):
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
 
         self._mw.periodic_refind_CheckBox.stateChanged.connect(self.toggle_periodic_refind)
-        self._mw.active_poi_ComboBox.currentIndexChanged.connect(self._redraw_poi_markers)
+
+        # This needs to be activated so that it only listens to user input, and ignores
+        # algorithmic index changes
+        self._mw.active_poi_ComboBox.activated.connect(self.handle_active_poi_ComboBox_index_change)
         self._mw.refind_method_ComboBox.currentIndexChanged.connect(self.change_refind_method)
 
         # Connect the buttons and inputs for the colorbar
@@ -386,6 +397,8 @@ class PoiManagerGui(GUIBase):
             self._update_timer, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_poi_updated.connect(
             self._redraw_sample_shift, QtCore.Qt.QueuedConnection)
+        self._poi_manager_logic.signal_poi_updated.connect(
+            self.populate_poi_list, QtCore.Qt.QueuedConnection)
         self._poi_manager_logic.signal_poi_updated.connect(
             self._redraw_poi_markers, QtCore.Qt.QueuedConnection)
 
@@ -505,29 +518,21 @@ class PoiManagerGui(GUIBase):
         '''
         key = self._poi_manager_logic.add_poi()
 
-        print('new poi ' + key)
-#        print(self._poi_manager_logic.get_all_pois())
-#        print(self._poi_manager_logic.get_last_point(poikey=key))
-
-        self.populate_poi_list()
-
         # Set the newly added poi as the selected poi to manage.
-        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
+        self.selected_poi_key = key
 
-        self._redraw_sample_shift()
-        self._redraw_poi_markers()
+#        self.populate_poi_list()
 
     def delete_last_point(self):
         ''' This method deletes the last track position of a chosen poi
         '''
 
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-        self._poi_manager_logic.delete_last_point(poikey=key)
+        self._poi_manager_logic.delete_last_point(poikey=self.selected_poi_key)
 
     def delete_poi(self):
         '''This method deletes a poi from the list of managed points
         '''
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
+        key = self.selected_poi_key
 
         self._markers[key].delete_from_viewwidget()
         del self._markers[key]
@@ -540,23 +545,19 @@ class PoiManagerGui(GUIBase):
         """ Manually adds a point to the trace of a given poi without refocussing, and uses that information to update sample position.
         """
 
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-
-        self._poi_manager_logic.set_new_position(poikey=key)
+        self._poi_manager_logic.set_new_position(poikey=self.selected_poi_key)
 
     def move_poi(self):
         """Manually move a POI to a new location in the sample map, but WITHOUT changing the sample position.  This moves a POI relative to all the others.
         """
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
 
-        self._poi_manager_logic.move_coords(poikey=key)
+        self._poi_manager_logic.move_coords(poikey=self.selected_poi_key)
 
     def toggle_periodic_refind(self):
         if self._poi_manager_logic.timer is None:
-            key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
             period = self._mw.track_period_SpinBox.value()
 
-            self._poi_manager_logic.start_periodic_refocus(duration=period, poikey=key)
+            self._poi_manager_logic.start_periodic_refocus(duration=period, poikey=self.selected_poi_key)
 
         else:
             self._poi_manager_logic.stop_periodic_refocus()
@@ -565,15 +566,14 @@ class PoiManagerGui(GUIBase):
         ''' Go to the last known position of poi <key>
         '''
 
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-
-        self._poi_manager_logic.go_to_poi(poikey=key)
+        self._poi_manager_logic.go_to_poi(poikey=self.selected_poi_key)
 
 #        print(self._poi_manager_logic.get_last_point(poikey=key))
 
     def populate_poi_list(self):
         ''' Populate the dropdown box for selecting a poi
         '''
+        print('started populate_poi_list at ', time.time())
         self._mw.active_poi_ComboBox.clear()
         self._mw.offset_anchor_ComboBox.clear()
         self._rrd.ref_a_poi_ComboBox.clear()
@@ -592,6 +592,11 @@ class PoiManagerGui(GUIBase):
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
                 self._rrd.ref_c_poi_ComboBox.addItem(
                     self._poi_manager_logic.track_point_list[key].get_name(), key)
+
+        # Set the selected POI in the combobox
+        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(self.selected_poi_key))
+
+        print('finished populating at ', time.time())
 
     def change_refind_method(self):
         ''' Make appropriate changes in the GUI to reflect the newly chosen refind method.
@@ -615,39 +620,50 @@ class PoiManagerGui(GUIBase):
         '''Change the name of a poi
         '''
 
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-
         newname = self._mw.poi_name_LineEdit.text()
 
-        self._poi_manager_logic.rename_poi(poikey=key, name=newname)
-
-        self.populate_poi_list()
-
-        # Keep the renamed POI as the selected POI to manage.
-        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(key))
+        self._poi_manager_logic.rename_poi(poikey=self.selected_poi_key, name=newname)
 
         # After POI name is changed, empty name field
         self._mw.poi_name_LineEdit.setText('')
+
+    def handle_active_poi_ComboBox_index_change(self):
+        """Handle the change of index in the active POI combobox"""
+        
+        print('poi CB index changed to ', self._mw.active_poi_ComboBox.currentIndex())
+
+        # This combobox gets emptied for repopulating, in which case do not change selected POI
+        if self._mw.active_poi_ComboBox.currentIndex() == -1:
+            return
+
+        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
+        
+        # If this key is not the selected key, then update selected key and redraw POI markers
+        if key != self.selected_poi_key:
+            self.selected_poi_key = key
+
+            self._redraw_poi_markers()
 
     def select_poi_from_marker(self, poikey=None):
         '''Process the selection of a POI from click on POImark
         '''
 
+        # Keep track of selected POI
+        self.selected_poi_key = poikey
+
+        # Set the selected POI in the combobox
         self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(poikey))
-        print("hello")
-        self._redraw_sample_shift()
+        self._redraw_poi_markers()
 
     def update_poi_pos(self):
 
-        key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-
         if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
-            self._poi_manager_logic.optimise_poi(poikey=key)
+            self._poi_manager_logic.optimise_poi(poikey=self.selected_poi_key)
 
         elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
             anchor_key = self._mw.offset_anchor_ComboBox.itemData(
                 self._mw.offset_anchor_ComboBox.currentIndex())
-            self._poi_manager_logic.optimise_poi(poikey=key, anchorkey=anchor_key)
+            self._poi_manager_logic.optimise_poi(poikey=self.selected_poi_key, anchorkey=anchor_key)
 
     def toggle_follow(self):
         if self._mw.goto_poi_after_update_checkBox.isChecked():
@@ -765,8 +781,8 @@ class PoiManagerGui(GUIBase):
         self._redraw_clocktime_ticks()
 
     def _redraw_poi_markers(self):
-
-        curkey = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
+        
+        print('starting redraw_poi_markers', time.time())
 
         for key in self._poi_manager_logic.get_all_pois():
             if key is not 'crosshair' and key is not 'sample':
@@ -789,11 +805,12 @@ class PoiManagerGui(GUIBase):
                     marker.add_to_viewwidget(self._mw.roi_map_ViewWidget)
                     self._markers[key] = marker
 
-                if key == curkey:
+                if key == self.selected_poi_key:
                     self._markers[key].select()
-                    cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=curkey)
+                    cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self.selected_poi_key)
                     self._mw.poi_coords_label.setText(
                         '({0:.2f}, {1:.2f}, {2:.2f})'.format(cur_poi_pos[0], cur_poi_pos[1], cur_poi_pos[2]))
+        print('finished redraw at ', time.time())
 
     def make_new_roi(self):
         '''Start new ROI by removing all POIs and resetting the sample history.
