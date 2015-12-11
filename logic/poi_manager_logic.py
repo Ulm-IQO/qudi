@@ -254,7 +254,7 @@ class PoiManagerLogic(GenericLogic):
         """ Debug function for testing. """
         pass
 
-    def add_poi(self, position=None, key=None):
+    def add_poi(self, position=None, key=None, emit_change=True):
         """ Creates a new poi and adds it to the list.
 
         @return int: key of this new poi
@@ -283,6 +283,9 @@ class PoiManagerLogic(GenericLogic):
         # Since POI was created at current scanner position, it automatically
         # becomes the active POI.
         self.set_active_poi(poi=new_track_point)
+
+        if emit_change:
+            self.signal_poi_updated.emit()
 
         return new_track_point.get_key()
 
@@ -464,7 +467,7 @@ class PoiManagerLogic(GenericLogic):
                     msgType='error')
         return -1
 
-    def rename_poi(self, poikey=None, name=None):
+    def rename_poi(self, poikey=None, name=None, emit_change=True):
         """ Sets the name of the given poi.
 
         @param string poikey: the key of the poi
@@ -474,13 +477,15 @@ class PoiManagerLogic(GenericLogic):
         """
 
         if poikey is not None and name is not None and poikey in self.track_point_list.keys():
-            #self.signal_poi_updated.emit()
 
             success = self.track_point_list[poikey].set_name(name=name)
 
             # if this is the active POI then we need to update poi tag in savelogic
             if self.track_point_list[poikey] == self.active_poi:
                 self.update_poi_tag_in_savelogic()
+
+            if emit_change:
+                self.signal_poi_updated.emit()
 
             return success
 
@@ -745,10 +750,13 @@ class PoiManagerLogic(GenericLogic):
                 saved_poi_coords = [
                     float(line.split()[2]), float(line.split()[3]), float(line.split()[4])]
 
-                this_poi_key = self.add_poi(position=saved_poi_coords, key=saved_poi_key)
-                self.rename_poi(poikey=this_poi_key, name=saved_poi_name)
+                this_poi_key = self.add_poi(position=saved_poi_coords, key=saved_poi_key, emit_change=False)
+                self.rename_poi(poikey=this_poi_key, name=saved_poi_name, emit_change=False)
 
         roifile.close()
+        
+        # Now that all the POIs are created, emit the signal for other things (ie gui) to update
+        self.signal_poi_updated.emit()
 
         return 0
 
@@ -902,5 +910,8 @@ class PoiManagerLogic(GenericLogic):
         
         for count, pix_pos in enumerate(xy):
             poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
-            this_poi_key = self.add_poi(position = poi_pos)
-            self.rename_poi(poikey=this_poi_key, name='spot'+str(count))
+            this_poi_key = self.add_poi(position = poi_pos, emit_change=False)
+            self.rename_poi(poikey=this_poi_key, name='spot'+str(count), emit_change=False)
+
+        # Now that all the POIs are created, emit the signal for other things (ie gui) to update
+        self.signal_poi_updated.emit()
