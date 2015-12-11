@@ -354,6 +354,8 @@ class PoiManagerGui(GUIBase):
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
         self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
+        self._mw.autofind_pois_Action.triggered.connect(self.do_autofind_poi_procedure)
+
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
@@ -492,6 +494,17 @@ class PoiManagerGui(GUIBase):
         invert the colorbar if the lower border is bigger then the higher one.
         """
 
+
+        cb_min, cb_max = self.determine_cb_range()
+        
+        self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
+
+        self.roi_cb.refresh_colorbar(cb_min, cb_max)
+        self._mw.roi_cb_ViewWidget.update()
+
+    def determine_cb_range(self):
+        """ Process UI input to determine color bar range"""
+
         # If "Centiles" is checked, adjust colour scaling automatically to centiles.
         # Otherwise, take user-defined values.
         if self._mw.roi_cb_centiles_RadioButton.isChecked():
@@ -501,16 +514,11 @@ class PoiManagerGui(GUIBase):
             cb_min = np.percentile(self.roi_xy_image_data, low_centile)
             cb_max = np.percentile(self.roi_xy_image_data, high_centile)
 
-            self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
-
         else:
             cb_min = self._mw.roi_cb_min_SpinBox.value()
             cb_max = self._mw.roi_cb_max_SpinBox.value()
 
-            self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
-
-        self.roi_cb.refresh_colorbar(cb_min, cb_max)
-        self._mw.roi_cb_ViewWidget.update()
+        return cb_min, cb_max
 
     def set_new_poi(self):
         ''' This method sets a new poi from the current crosshair position
@@ -630,12 +638,6 @@ class PoiManagerGui(GUIBase):
     def handle_active_poi_ComboBox_index_change(self):
         """Handle the change of index in the active POI combobox"""
         
-        print('poi CB index changed to ', self._mw.active_poi_ComboBox.currentIndex())
-
-        # This combobox gets emptied for repopulating, in which case do not change selected POI
-        if self._mw.active_poi_ComboBox.currentIndex() == -1:
-            return
-
         key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
         
         # If this key is not the selected key, then update selected key and redraw POI markers
@@ -940,3 +942,14 @@ class PoiManagerGui(GUIBase):
         self._rrd.length_difference_ab_Label.setText(str(delta_ab))
         self._rrd.length_difference_bc_Label.setText(str(delta_bc))
         self._rrd.length_difference_ca_Label.setText(str(delta_ca))
+
+    def do_autofind_poi_procedure(self):
+        """Run the autofind_pois procedure in the POI Manager Logic to get all the POIs in the current ROI image."""
+
+        # Get the thresholds from the user-chosen color bar range
+        cb_min, cb_max = self.determine_cb_range()
+
+        this_min_threshold = cb_min + 0.3*(cb_max - cb_min)
+        this_max_threshold = cb_max
+
+        self._poi_manager_logic.autofind_pois(neighborhood_size=1, min_threshold=this_min_threshold, max_threshold=this_max_threshold)

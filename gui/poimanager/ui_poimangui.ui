@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>677</width>
-    <height>747</height>
+    <width>683</width>
+    <height>803</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,8 +30,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>677</width>
-     <height>20</height>
+     <width>683</width>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -80,6 +80,8 @@
    <addaction name="save_roi_Action"/>
    <addaction name="new_roi_Action"/>
    <addaction name="separator"/>
+   <addaction name="autofind_pois_Action"/>
+   <addaction name="optimize_roi_Action"/>
   </widget>
   <widget class="QDockWidget" name="poi_editor_dockWidget">
    <property name="windowTitle">
@@ -776,9 +778,8 @@
   </action>
   <action name="save_roi_Action">
    <property name="icon">
-    <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>Save ROI</string>
@@ -932,6 +933,22 @@
   <action name="reorient_roi_Action">
    <property name="text">
     <string>Reorient ROI</string>
+   </property>
+  </action>
+  <action name="autofind_pois_Action">
+   <property name="text">
+    <string>Find POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>Automatically search the image for POIs</string>
+   </property>
+  </action>
+  <action name="optimize_roi_Action">
+   <property name="text">
+    <string>Optimize ROI</string>
+   </property>
+   <property name="toolTip">
+    <string>Optimize ROI by refinding and moving all POIs to their optimal positions.  This procedure makes the ROI map fully internally consistent.</string>
    </property>
   </action>
  </widget>

@@ -892,16 +892,15 @@ class PoiManagerLogic(GenericLogic):
         y_pixels = len(self.roi_map_data)
         x_pixels = len(self.roi_map_data[1,:])
 
-        pixels_per_micron = max([x_pixels, y_pixels]) / max([x_range_microns, y_range_microns])
+        pixels_per_micron = np.max([x_pixels, y_pixels]) / np.max([x_range_microns, y_range_microns])
         # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
-        neighborhood_pix = np.max([math.ceil(pixels_per_micron * neighborhood_size), 5])
-        print(neighborhood_pix)
+        neighborhood_pix = int(np.max([math.ceil(pixels_per_micron * neighborhood_size), 1]))
         
         data = self.roi_map_data[:, :, 3]
         
-        data_max = filters.maximum_filter(data, 5)
+        data_max = filters.maximum_filter(data, neighborhood_pix)
         maxima = (data == data_max)
-        data_min = filters.minimum_filter(data, 5)
+        data_min = filters.minimum_filter(data, 3*neighborhood_pix)
         diff = ((data_max - data_min) > min_threshold)
         maxima[diff == False] = 0
 
