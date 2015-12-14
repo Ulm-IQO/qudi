@@ -115,13 +115,13 @@ class TaskRunner(GenericLogic):
             t['ok'] = False
             t['object'] = None
             t['name'] = task
-            print('tsk:', task)
+            # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
                 self.logMsg('No module given for task {}'.format(task), msgType='error')
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
-                print('mod:', config['tasks'][task]['module'])
+                # print('mod:', config['tasks'][task]['module'])
             if 'preposttasks' in config['tasks'][task]:
                 t['preposttasks'] = config['tasks'][task]['preposttasks']
             else:
@@ -144,10 +144,10 @@ class TaskRunner(GenericLogic):
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
                         self._manager.startModule('logic', mod)
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
-                print('Attempting to import: logic.tasks.{}'.format(t['module']))
+                # print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
-                print('loaded:', mod)
-                print('dir:', dir(mod))
+                # print('loaded:', mod)
+                # print('dir:', dir(mod))
                 t['object'] = mod.Task(t['name'], self, ref, t['config'])
                 if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
                     self.model.append(t)
@@ -224,22 +224,23 @@ class TaskRunner(GenericLogic):
                     self._manager.startModule('logic', mod)
                 if mod in self._manager.tree['loaded']['logic'] and not self._manager.tree['loaded']['logic'][mod].isstate('deactivated'):
                     modok = True
-            print(task['name'], ppok, pok, modok)
+            # print(task['name'], ppok, pok, modok)
             task['ok'] = ppok and pok and modok
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
-        print('Inserted into task list: {} {}'.format(first, last))
+        # print('Inserted into task list: {} {}'.format(first, last))
+        pass
 
     def startTask(self, index):
-        print('runner', QtCore.QThread.currentThreadId())
+        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if not task['ok']:
             self.logMsg('Task {} did not pass all its checks for required tasks and modules and cannot be run'.format(task['name']), msgType='error')
             return
         if task['object'].can('run'):
             for pptask in task['preposttasks']:
-                print(pptask)
+                #print(pptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == pptask:
@@ -254,7 +255,7 @@ class TaskRunner(GenericLogic):
                     self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
                     return
             for ptask in task['pausetasks']:
-                print(ptask)
+                #print(ptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == ptask:
@@ -272,7 +273,7 @@ class TaskRunner(GenericLogic):
 
         elif task['object'].can('resume'):
             for pptask in task['preposttasks']:
-                print(pptask)
+                # print(pptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == pptask:
@@ -293,11 +294,11 @@ class TaskRunner(GenericLogic):
             self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
 
     def pauseTask(self, index):
-        print('runner', QtCore.QThread.currentThreadId())
+        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('pause'):
             for pptask in task['preposttasks']:
-                print(pptask)
+                # print(pptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == pptask:
@@ -314,11 +315,11 @@ class TaskRunner(GenericLogic):
             self.logMsg('This thing cannot be paused:  {}'.format(task['name']), msgType='error')
 
     def stopTask(self, index):
-        print('runner', QtCore.QThread.currentThreadId())
+        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('finish'):
             for pptask in task['preposttasks']:
-                print(pptask)
+                # print(pptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == pptask:
@@ -331,7 +332,7 @@ class TaskRunner(GenericLogic):
                     self.logExc('This preposttask {} failed while preparingpause in: {}'.format(pptask, task['name']), msgType='error')
                     return
             for ptask in task['pausetasks']:
-                print(ptask)
+                # print(ptask)
                 try:
                     for t in self.model.storage:
                         if t['name'] == ptask:
