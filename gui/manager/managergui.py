@@ -20,7 +20,10 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.d
 
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from IPython.qt.inprocess import QtInProcessKernelManager
+try:
+    from qtconsole.inprocess import QtInProcessKernelManager
+except ImportError:
+    from IPython.qt.inprocess import QtInProcessKernelManager
 from collections import OrderedDict
 from .errordialog import ErrorDialog
 import svn.local

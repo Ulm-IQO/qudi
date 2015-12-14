@@ -197,7 +197,7 @@
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="RichIPythonWidget" name="consolewidget"/>
+   <widget class="RichJupyterWidget" name="consolewidget"/>
   </widget>
   <widget class="QDockWidget" name="logDockWidget">
    <property name="windowTitle">
@@ -383,9 +383,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>RichIPythonWidget</class>
+   <class>RichJupyterWidget</class>
    <extends>QWidget</extends>
-   <header>IPython.qt.console.rich_ipython_widget</header>
+   <header>qtconsole.rich_jupyter_widget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
