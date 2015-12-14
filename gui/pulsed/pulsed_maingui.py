@@ -1784,7 +1784,7 @@ class PulsedMeasurementGui(GUIBase):
         self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.fid_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
-        self.signal_to_noise_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.measuring_error_image = pg.PlotDataItem(self._pulsed_measurement_logic.measuring_error_plot_x, self._pulsed_measurement_logic.measuring_error_plot_y*1000)
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
@@ -1800,10 +1800,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
-        self._mw.signal_to_noise_PlotWidget.addItem(self.signal_to_noise_image)
+        self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.fft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.signal_to_noise_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
         
         
         
@@ -1909,6 +1909,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
+        self._pulsed_measurement_logic.measuring_error_plot_updated.connect(self.refresh_measuring_error_plot)
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         
         # sequence generator tab
@@ -1953,6 +1954,7 @@ class PulsedMeasurementGui(GUIBase):
 #        self._mw.run_RadioButton.toggled.disconnect()
         self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
         self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
+        self._pulsed_measurement_logic.measuring_error_plot_updated.disconnect()
         self._mw.numlaser_InputWidget.editingFinished.disconnect()
         self._mw.lasertoshow_spinBox.valueChanged.disconnect()
 
@@ -2065,6 +2067,12 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the xy-matrix image
         '''
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        
+    def refresh_measuring_error_plot(self):
+        
+        #print(self._pulsed_measurement_logic.measuring_error)
+        
+        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement

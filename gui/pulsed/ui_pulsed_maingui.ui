@@ -1388,7 +1388,7 @@ sel.</string>
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="PlotWidget" name="signal_to_noise_PlotWidget"/>
+                <widget class="PlotWidget" name="measuring_error_PlotWidget"/>
                </item>
               </layout>
              </widget>
