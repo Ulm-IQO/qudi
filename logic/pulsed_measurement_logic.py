@@ -33,6 +33,7 @@ class PulsedMeasurementLogic(GenericLogic):
     signal_time_updated = QtCore.Signal()
     signal_laser_plot_updated = QtCore.Signal()
     signal_signal_plot_updated = QtCore.Signal()
+    measuring_error_plot_updated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -104,6 +105,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
+        self._initialize_measuring_error_plot()
 
 
     def deactivation(self, e):
@@ -156,7 +158,7 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
             # analyze pulses and get data points for signal plot
-            self.signal_plot_y, self.laser_data, self.raw_data = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.running_sequence_parameters['number_of_lasers'])
+            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.running_sequence_parameters['number_of_lasers'])
             # set x-axis of signal plot
             self.signal_plot_x = self.running_sequence_parameters['tau_vector']
             # set laser plot
@@ -175,7 +177,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_sweeps = self.elapsed_time/3
             # emit signals
             self.signal_signal_plot_updated.emit() 
-            self.signal_laser_plot_updated.emit() 
+            self.signal_laser_plot_updated.emit()
+            self.measuring_error_plot_updated.emit()
             self.signal_time_updated.emit()
             
     
@@ -194,6 +197,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_off()
                 self.signal_signal_plot_updated.emit() 
                 self.signal_laser_plot_updated.emit()
+                self.measuring_error_plot_updated.emit()
                 self.unlock()
         return 0  
         
@@ -236,6 +240,12 @@ class PulsedMeasurementLogic(GenericLogic):
         '''
         self.laser_plot_x = self.fast_counter_status['binwidth_ns'] * np.arange(1, 3001, dtype=int)
         self.laser_plot_y = np.zeros(3000, dtype=int)
+        
+    def _initialize_measuring_error_plot(self):
+        '''Initializing the plot of the laser timetrace.
+        '''
+        self.measuring_error_plot_x = self.running_sequence_parameters['tau_vector']
+        self.measuring_error_plot_y =  np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
 
 
     def _save_data(self):
@@ -394,14 +404,9 @@ class PulsedMeasurementLogic(GenericLogic):
         """The signal-to-noiuse ratio is defined as the ratio between 
         singal amplitude and its standard deviation"""
         
-    def calculate_signal_to_noise_ratio(xdata,ydata):
-        pass
-    
-    def calculate_standard_deviation(xdata,ydata):
-        pass
+
         
-#        standard_deviation[i]= np.sqrt()
-#        return np.sqrt()
+
         
         
             
