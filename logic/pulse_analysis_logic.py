@@ -50,25 +50,44 @@ class PulseAnalysisLogic(GenericLogic):
         # acquire data from the pulse extraction logic 
         laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
         # Initialize the signal and normalization mean data arrays
-        norm_mean = np.zeros(num_of_lasers, dtype=float)
+        reference_mean = np.zeros(num_of_lasers, dtype=float)
         signal_mean = np.zeros(num_of_lasers, dtype=float)
+        signal_area = np.zeros(num_of_lasers, dtype=float)
+        reference_area = np.zeros(num_of_lasers, dtype=float)
+        measuring_error = np.zeros(num_of_lasers, dtype=float)
         # initialize data arrays
         signal_data = np.empty(num_of_lasers, dtype=float)
         # loop over all laser pulses and analyze them
-        for i in range(num_of_lasers):
+        for ii in range(num_of_lasers):
             # calculate the mean of the data in the normalization window
-            norm_mean[i] = laser_data[i][norm_start_bin:norm_end_bin].mean()
+            reference_mean[ii] = laser_data[ii][norm_start_bin:norm_end_bin].mean()
             # calculate the mean of the data in the signal window
-            signal_mean[i] = (laser_data[i][signal_start_bin:signal_end_bin] - norm_mean[i]).mean()
+            signal_mean[ii] = (laser_data[ii][signal_start_bin:signal_end_bin] - reference_mean[ii]).mean()
             # update the signal plot y-data
-            signal_data[i] = 1. + (signal_mean[i]/norm_mean[i])
+            signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
+            
+            
+        for jj in range(num_of_lasers):
+            
+            signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
+            reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
+            
+            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj],reference_area[jj])
+            print(measuring_error[jj])
+            
         #return data
-        return signal_data, laser_data, raw_data
+            
+        return signal_data, laser_data, raw_data, measuring_error
         
      
     def do_fit(self):
         return
-     
+
+    def calculate_measuring_error(self,signal_area,reference_area):
+                
+        measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
+        
+        return measuring_error     
         
 #    def get_tau_list(self):
 #        """Get the list containing all tau values in ns for the current measurement.
