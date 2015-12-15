@@ -1782,9 +1782,12 @@ class PulsedMeasurementGui(GUIBase):
         # Get the image from the logic
         # pulsed measurement tab
         self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        self.fid_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.fft_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
         self.measuring_error_image = pg.PlotDataItem(self._pulsed_measurement_logic.measuring_error_plot_x, self._pulsed_measurement_logic.measuring_error_plot_y*1000)
+        
+        self.fit_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
@@ -1793,7 +1796,8 @@ class PulsedMeasurementGui(GUIBase):
 #        # Add the display item to the xy VieWidget, which was defined in
 #        # the UI file.
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.fft_PlotWidget.addItem(self.fid_image)
+        self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
+        self._mw.fft_PlotWidget.addItem(self.fft_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
         
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
@@ -1803,6 +1807,12 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.fft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.signal_plot_ViewWidget.setLabel('left', 'Intensity', units='a.u.')
+        self._mw.signal_plot_ViewWidget.setLabel('left', 'Counts')
+        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'tau', units='ns')
+        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'bins')
+        self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
+        self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
         
         
@@ -1857,10 +1867,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.numlaser_InputWidget.setText(str(50))
         self._mw.tau_start_InputWidget.setText(str(1))
         self._mw.tau_increment_InputWidget.setText(str(1))
-        self._mw.lasertoshow_spinBox.setRange(0, 50)
-        self._mw.lasertoshow_spinBox.setPrefix("#")
-        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
-        self._mw.lasertoshow_spinBox.setValue(0)
+#        self._mw.lasertoshow_spinBox.setRange(0, 50)
+#        self._mw.lasertoshow_spinBox.setPrefix("#")
+#        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
+#        self._mw.lasertoshow_spinBox.setValue(0)
+        
+        self._mw.laser_to_show_ComboBox.clear()
+        self._mw.laser_to_show_ComboBox.addItem('sum')    
+        for ii in range(50):
+            self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
+            
         self._mw.signal_start_InputWidget.setText(str(5))
         self._mw.signal_length_InputWidget.setText(str(200))
         self._mw.reference_start_InputWidget.setText(str(500))
@@ -1923,8 +1939,9 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect InputWidgets to events
         # pulsed measurement tab
-        self._mw.numlaser_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
+        self._mw.numlaser_InputWidget.editingFinished.connect(self.lasernum_changed)
+        #self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
+        self._mw.laser_to_show_ComboBox.activated.connect(self.seq_parameters_changed)
         self._mw.tau_start_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.tau_increment_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
@@ -1956,7 +1973,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
         self._pulsed_measurement_logic.measuring_error_plot_updated.disconnect()
         self._mw.numlaser_InputWidget.editingFinished.disconnect()
-        self._mw.lasertoshow_spinBox.valueChanged.disconnect()
+        #self._mw.lasertoshow_spinBox.valueChanged.disconnect()
+        self._mw.laser_to_show_ComboBox.activated.disconnect()
 
 #    def idle_clicked(self):
 #        """ Stopp the scan if the state has switched to idle. """
@@ -2015,6 +2033,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
+        return
         
     def save_clicked(self):
         self._pulsed_measurement_logic._save_data()
@@ -2022,40 +2041,22 @@ class PulsedMeasurementGui(GUIBase):
         
     def fit_clicked(self):
         self._mw.fit_result_TextBrowser.clear()
-        self._mw.fit_result_TextBrowser.setPlainText("testing")
         
-        if self._mw.fit_function_ComboBox.currentText()=='No Fit':
-            self._mw.fit_result_TextBrowser.setPlainText("No Fit")
-            
-        if self._mw.fit_function_ComboBox.currentText()=='Rabi Decay':
-            self._mw.fit_result_TextBrowser.setPlainText("Rabi Decay")
-            
-        if self._mw.fit_function_ComboBox.currentText()=='Lorentian (neg)':
-            self._mw.fit_result_TextBrowser.setPlainText("Lorentian (neg)")
-            
-        if self._mw.fit_function_ComboBox.currentText()=='Lorentian (pos)':
-            self._mw.fit_result_TextBrowser.setPlainText("Lorentian (pos)")
-            
-        if self._mw.fit_function_ComboBox.currentText()=='N14':
-            self._mw.fit_result_TextBrowser.setPlainText("N14")
-            
-        if self._mw.fit_function_ComboBox.currentText()=='N15':
-            self._mw.fit_result_TextBrowser.setPlainText("N15")    
-
-        if self._mw.fit_function_ComboBox.currentText()=='Stretched Exponential':
-            self._mw.fit_result_TextBrowser.setPlainText("Stretched Exponential")  
-
-        if self._mw.fit_function_ComboBox.currentText()=='Exponential':
-            self._mw.fit_result_TextBrowser.setPlainText("Exponential")  
-
-        if self._mw.fit_function_ComboBox.currentText()=='XY8':
-            self._mw.fit_result_TextBrowser.setPlainText("XY8")              
+        current_fit_function = self._mw.fit_function_ComboBox.currentText()
         
         
         
-
-    
+        fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
         
+        self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
+        
+        self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
+        
+        self._mw.fit_result_TextBrowser.setPlainText(fit_result)
+        
+        return
+        
+   
         
 
     def refresh_lasertrace_plot(self):
@@ -2067,6 +2068,10 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the xy-matrix image
         '''
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        
+       
+        
         
     def refresh_measuring_error_plot(self):
         
@@ -2113,7 +2118,15 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.show_fft_plot_CheckBox.isChecked():
             self._mw.fft_PlotWidget.setVisible(True)   
         else:
-            self._mw.fft_PlotWidget.setVisible(False)  
+            self._mw.fft_PlotWidget.setVisible(False)
+            
+    def lasernum_changed(self):
+        self._mw.laser_to_show_ComboBox.clear()
+        self._mw.laser_to_show_ComboBox.addItem('sum')    
+        for ii in range(int(self._mw.numlaser_InputWidget.text())):
+            self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
+        print (self._mw.laser_to_show_ComboBox.currentText())
+        #self.seq_parameters_changed()   
     
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
@@ -2121,15 +2134,30 @@ class PulsedMeasurementGui(GUIBase):
         tau_incr = int(self._mw.tau_increment_InputWidget.text())
         mw_frequency = float(self._mw.mw_frequency_InputWidget.text())
         mw_power = float(self._mw.mw_power_InputWidget.text())
-        self._mw.lasertoshow_spinBox.setRange(0, laser_num)
-        laser_show = self._mw.lasertoshow_spinBox.value()
-        if (laser_show > laser_num):
-            self._mw.lasertoshow_spinBox.setValue(0)
-            laser_show = self._mw.lasertoshow_spinBox.value()
+        #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
+        
+        current_laser = self._mw.laser_to_show_ComboBox.currentText()
+
+        print('tet')
+        print (current_laser)
             
-        self._mw.laser_to_show_ComboBox.addItem('sum')    
-        for ii in range(laser_num):
-            self._mw.laser_to_show_ComboBox.addItem('#' + str(1+ii))
+        if current_laser == 'sum':
+            print ('here')
+            laser_show = 0
+
+        
+        else:
+            print (self._mw.laser_to_show_ComboBox.currentText())
+            laser_show = int(current_laser)
+            #laser_show=5
+           
+            
+        if (laser_show > laser_num):
+            print ('warning. Number too high')
+            self._mw.laser_to_show_ComboBox.setEditText('sum')
+            laser_show = 0
+            
+
             
         tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
         self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
