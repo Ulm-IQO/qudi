@@ -21,7 +21,7 @@ class PulseExtractionLogic(GenericLogic):
     _modtype = 'logic'
     ## declare connectors
     _in = {'fastcounter': 'FastCounterInterface'}
-    _out ={'pulseextractionlogic': 'PulseExtractionLogic'}
+    _out = {'pulseextractionlogic': 'PulseExtractionLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions

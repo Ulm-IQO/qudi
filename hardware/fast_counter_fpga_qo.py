@@ -11,59 +11,63 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     """ unstable: Nikolas Tomek
         This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA based fast counter.
     """    
-    ## declare connectors
+    # declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, manager, name, config = {}, **kwargs):
         callback_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, callback_dict)
-        
+
+    def activation(self, e):
         if 'fpgacounter_serial' in config.keys():
-            self._fpga_serial=config['fpgacounter_serial']
+            self._serial=config['fpgacounter_serial']
         else:
             self.logMsg('No serial number defined for fpga counter', msgType='warning')
 
-    def activation(self, e):
         # create an instance of the Opal Kelly FrontPanel
         self._fpga = ok.FrontPanel()
-        # fast counter parameters to be configured
+        # fast counter state
+        self.statusvar = -1
+        # fast counter parameters to be configured. Default values.
         self._binwidth = 1              # number of elementary bins to be put together in one bigger bin
         self._gate_length_bins = 8192   # number of bins in one gate (max 8192)
         self._number_of_gates = 1       # number of gates in the pulse sequence (max 2048)
-        self._histogram_size = 3000     # histogram size in bins to tell the FPGA (integer multiple of 8192)
+        self._histogram_size = 1*8192     # histogram size in bins to tell the FPGA (integer multiple of 8192)
 
         self._old_data = None           # histogram to be added to the current data, i.e. after an overflow on the FPGA.
         self._overflown = False         # overflow indicator
         self.count_data = None
         # connect to the FPGA module
-        self._connect()
-        self.configure(1, 1000, 10)
+        self._connect()     
 
     def deactivation(self, e):
-        pass
+        self.stop_measure()
+        self.statusvar = 0
 
     def _connect(self):
         """ This method connects this host PC to the FPGA module with the specified serial number
         """
         # check if a FPGA is connected to this host PC
         if not self._fpga.GetDeviceCount():
-            self.logMsg('No FPGA connected to host PC', msgType='error')
+            self.logMsg('No FPGA connected to host PC or FrontPanel.exe is running', msgType='error')
             return -1
         # open a connection to the FPGA with the specified serial number
-        self._fpga.OpenBySerial(self._fpga_serial)
+        self._fpga.OpenBySerial(self._serial)
         # upload the fast counter configuration bitfile to the FPGA
         self._fpga.ConfigureFPGA('fastcounter_top.bit')
         # check if the upload was successful and the Opal Kelly FrontPanel is enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
-            self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA', msgType='warning')
+            self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA', msgType='error')
+            self.statusvar = -1
             return -1
         else:
             # put the fast counter logic and its clock into reset mode
             self._fpga.SetWireInValue(0x00, 0xC0000000)
             self._fpga.UpdateWireIns()
+            self.statusvar = 0
         return 0
 
-    def configure(self, gate_length_ns, number_of_gates, bin_width_ns):
+    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
         """ This method configures the fast counter
           @param float gate_length_ns: length of the gates in nanoseconds
           @param int number_of_gates: total number of gates in the sequence
@@ -71,7 +75,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         """
         # set class variables
         self._binwidth = int(np.rint(bin_width_ns * 950 / 1000))
-        self._gate_length_bins = int(np.rint(gate_length_ns / bin_width_ns))
+        self._gate_length_bins = int(np.rint(record_length_ns / bin_width_ns))
         self._number_of_gates = number_of_gates
         self._histogram_size = number_of_gates * 8192
         # reset overflow indicator
@@ -80,6 +84,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # set histogram size in the hardware
         self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
         self._fpga.UpdateWireIns()
+        self.statusvar = 1
         return 0
         
     def start_measure(self):
@@ -92,6 +97,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # release all reset states and start the counter. Keep the histogram size.
         self._fpga.SetWireInValue(0x00, self._histogram_size)
         self._fpga.UpdateWireIns()
+        self.statusvar = 2
         return 0
         
     def get_data_trace(self):
@@ -130,24 +136,25 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if self._overflown:
             self.count_data = np.add(self.count_data, self._old_data)
         return self.count_data
-        
-        
+
     def stop_measure(self):
         """ This method stops the fast counting hardware
         """
         # put the fast counter logic into reset state
-        self._fpga.SetWireInValue(0x00,0x40000000 + self._histogram_size)
+        self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
         self._fpga.UpdateWireIns()
         # reset overflow indicator
         self._overflown = False
+        self.statusvar = 1
         return 0
         
     def pause_measure(self):
         """ This method pauses the fast counting
         """
         # set the pause state in the FPGA
-        self._fpga.SetWireInValue(0x00,0x10000000 + self._histogram_size)
+        self._fpga.SetWireInValue(0x00, 0x10000000 + self._histogram_size)
         self._fpga.UpdateWireIns()
+        self.statusvar = 3
         return 0
         
     def continue_measure(self):
@@ -156,6 +163,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # exit the pause state in the FPGA
         self._fpga.SetWireInValue(0x00, self._histogram_size)
         self._fpga.UpdateWireIns()
+        self.statusvar = 2
         return 0
         
     def is_gated(self):
