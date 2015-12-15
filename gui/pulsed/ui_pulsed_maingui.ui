@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -44,14 +44,14 @@
                 <x>10</x>
                 <y>10</y>
                 <width>841</width>
-                <height>156</height>
+                <height>111</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_30">
                <item row="3" column="5">
                 <widget class="QCheckBox" name="show_fft_plot_CheckBox">
                  <property name="text">
-                  <string>Show FFT plot?</string>
+                  <string>Show second plot?</string>
                  </property>
                 </widget>
                </item>
@@ -292,7 +292,7 @@
                <x>860</x>
                <y>0</y>
                <width>431</width>
-               <height>111</height>
+               <height>131</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_4">
@@ -324,7 +324,7 @@
                  </property>
                  <property name="font">
                   <font>
-                   <pointsize>12</pointsize>
+                   <pointsize>10</pointsize>
                   </font>
                  </property>
                 </widget>
@@ -428,7 +428,7 @@
                    </item>
                    <item row="0" column="3">
                     <layout class="QGridLayout" name="gridLayout_25">
-                     <item row="0" column="0">
+                     <item row="0" column="1">
                       <widget class="QLabel" name="analysis_period_Label">
                        <property name="text">
                         <string>Analysis period (s):</string>
@@ -438,7 +438,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="0" column="1">
+                     <item row="0" column="2">
                       <widget class="QLineEdit" name="analysis_period_InputWidget">
                        <property name="maximumSize">
                         <size>
@@ -447,6 +447,19 @@
                         </size>
                        </property>
                       </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <spacer name="horizontalSpacer">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                     </layout>
                    </item>
@@ -1307,8 +1320,8 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>96</width>
-                 <height>26</height>
+                 <width>1407</width>
+                 <height>904</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -1332,7 +1345,7 @@ sel.</string>
                <x>570</x>
                <y>0</y>
                <width>741</width>
-               <height>91</height>
+               <height>101</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_6">
@@ -1341,13 +1354,10 @@ sel.</string>
                 <x>570</x>
                 <y>0</y>
                 <width>160</width>
-                <height>96</height>
+                <height>51</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_21">
-               <item row="1" column="0">
-                <widget class="QSpinBox" name="lasertoshow_spinBox"/>
-               </item>
                <item row="0" column="0">
                 <widget class="QLabel" name="laser_to_show_Label">
                  <property name="text">
@@ -1355,8 +1365,12 @@ sel.</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="0">
-                <widget class="QComboBox" name="laser_to_show_ComboBox"/>
+               <item row="1" column="0">
+                <widget class="QComboBox" name="laser_to_show_ComboBox">
+                 <property name="editable">
+                  <bool>true</bool>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -1365,9 +1379,9 @@ sel.</string>
              <property name="geometry">
               <rect>
                <x>-10</x>
-               <y>90</y>
+               <y>100</y>
                <width>1321</width>
-               <height>591</height>
+               <height>581</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_7">
@@ -1399,7 +1413,7 @@ sel.</string>
                <x>0</x>
                <y>0</y>
                <width>571</width>
-               <height>91</height>
+               <height>101</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_5">
@@ -1408,7 +1422,7 @@ sel.</string>
                 <x>0</x>
                 <y>0</y>
                 <width>254</width>
-                <height>96</height>
+                <height>71</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_20">
@@ -1514,7 +1528,7 @@ sel.</string>
      <x>0</x>
      <y>0</y>
      <width>1455</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
