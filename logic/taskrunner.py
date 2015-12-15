@@ -239,52 +239,8 @@ class TaskRunner(GenericLogic):
             self.logMsg('Task {} did not pass all its checks for required tasks and modules and cannot be run'.format(task['name']), msgType='error')
             return
         if task['object'].can('run'):
-            for pptask in task['preposttasks']:
-                #print(pptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == pptask:
-                            if t['object'].can('prerun'):
-                                t['object'].prerun()
-                            elif  t['object'].isstate('paused'):
-                                pass
-                            else:
-                                self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
-                    return
-            for ptask in task['pausetasks']:
-                #print(ptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == ptask:
-                            if t['object'].can('pause'):
-                                t['object'].pause()
-                            elif t['object'].isstate('stopped') or t['object'].isstate('paused'):
-                                pass
-                            else:
-                                self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
-                    return
             task['object'].run()
-
         elif task['object'].can('resume'):
-            for pptask in task['preposttasks']:
-                # print(pptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == pptask:
-                            if t['object'].can('prerun'):
-                                t['object'].prerun()
-                            else:
-                                self.logMsg('This preposttask {} failed while preparing resume in: {}'.format(pptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This preposttask {} failed while preparing resume in: {}'.format(pptask, task['name']), msgType='error')
-                    return
             task['object'].resume()
         elif task['object'].can('prerun'):
             task['object'].prerun()
@@ -297,19 +253,6 @@ class TaskRunner(GenericLogic):
         # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('pause'):
-            for pptask in task['preposttasks']:
-                # print(pptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == pptask:
-                            if t['object'].can('postrun'):
-                                t['object'].postrun()
-                            else:
-                                self.logMsg('This preposttask {} failed while preparing pause in: {}'.format(pptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This preposttask {} failed while preparingpause in: {}'.format(pptask, task['name']), msgType='error')
-                    return
             task['object'].pause()
         else:
             self.logMsg('This thing cannot be paused:  {}'.format(task['name']), msgType='error')
@@ -318,34 +261,6 @@ class TaskRunner(GenericLogic):
         # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('finish'):
-            for pptask in task['preposttasks']:
-                # print(pptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == pptask:
-                            if t['object'].can('postrun'):
-                                t['object'].postrun()
-                            else:
-                                self.logMsg('This preposttask {} failed while preparing pause in: {}'.format(pptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This preposttask {} failed while preparingpause in: {}'.format(pptask, task['name']), msgType='error')
-                    return
-            for ptask in task['pausetasks']:
-                # print(ptask)
-                try:
-                    for t in self.model.storage:
-                        if t['name'] == ptask:
-                            if t['object'].can('resume'):
-                                t['object'].resume()
-                            elif t['object'].isstate('stopped'):
-                                pass
-                            else:
-                                self.logMsg('This pausetask {} failed while resuming after stop: {}'.format(ptask, task['name']), msgType='error')
-                                return
-                except:
-                    self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
-                    return
             task['object'].finish()
         else:
             self.logMsg('This thing cannot be stopped:  {}'.format(task['name']), msgType='error')
@@ -356,10 +271,97 @@ class TaskRunner(GenericLogic):
                 return task
         raise KeyError(taskname)
 
+    def getTaskByReference(self, ref):
+        for task in self.model.storage:
+            if task['object'] is ref:
+                return task
+        raise KeyError(ref)
+
     def getModule(self, taskname, modname):
         task = self.getTaskByName(taskname)
         if modname in task['needsmodules']:
             return self._manager.tree['loaded']['logic'][modname]
         else:
             raise KeyError(modname)
+
+    def resumePauseTasks(self, ref):
+        return self._resumePauseTasks(self.getTaskByReference(ref))
+
+    def _resumePauseTasks(self, task):
+        for ptask in task['pausetasks']:
+            # print(ptask)
+            try:
+                for t in self.model.storage:
+                    if t['name'] == ptask:
+                        if t['object'].can('resume'):
+                            t['object'].resume()
+                        elif t['object'].isstate('stopped'):
+                            pass
+                        else:
+                            self.logMsg('This pausetask {} failed while resuming after stop: {}'.format(ptask, task['name']), msgType='error')
+                            return False
+            except:
+                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                return False
+        return True
+
+    def postRunPPTasks(self, ref):
+        return self._postRunPPTasks(self.getTaskByReference(ref))
+
+    def _postRunPPTasks(self, task):
+        for pptask in task['preposttasks']:
+            # print(pptask)
+            try:
+                for t in self.model.storage:
+                    if t['name'] == pptask:
+                        if t['object'].can('postrun'):
+                            t['object'].postrun()
+                        else:
+                            self.logMsg('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
+                            return False
+            except:
+                self.logExc('This preposttask {} failed while postrunning in: {}'.format(pptask, task['name']), msgType='error')
+                return False
+        return True
+
+    def preRunPPTasks(self, ref):
+        return self._preRunPPTasks(self.getTaskByReference(ref))
+
+    def _preRunPPTasks(self, task):
+        for pptask in task['preposttasks']:
+            #print(pptask)
+            try:
+                for t in self.model.storage:
+                    if t['name'] == pptask:
+                        if t['object'].can('prerun'):
+                            t['object'].prerun()
+                        elif  t['object'].isstate('paused'):
+                            pass
+                        else:
+                            self.logMsg('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                            return False
+            except:
+                self.logExc('This preposttask {} failed while preparing: {}'.format(pptask, task['name']), msgType='error')
+                return False
+
+    def pausePauseTasks(self, ref):
+        return self._pausePauseTasks(self.getTaskByReference(ref))
+
+    def _pausePauseTasks(self, task):
+        for ptask in task['pausetasks']:
+            #print(ptask)
+            try:
+                for t in self.model.storage:
+                    if t['name'] == ptask:
+                        if t['object'].can('pause'):
+                            t['object'].pause()
+                        elif t['object'].isstate('stopped') or t['object'].isstate('paused'):
+                            pass
+                        else:
+                            self.logMsg('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                            return False
+            except:
+                self.logExc('This pausetask {} failed while preparing: {}'.format(ptask, task['name']), msgType='error')
+                return False
+        return True
 
