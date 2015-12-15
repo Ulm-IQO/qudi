@@ -71,7 +71,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
                 {'name': 'finishingFinished',   'src': 'finishing', 'dst': 'stopped'},
                 {'name': 'resume',              'src': 'paused',    'dst': 'resuming'},
                 {'name': 'resumingFinished',    'src': 'resuming',  'dst': 'running'},
-                {'name': 'abort',               'src': 'pausing',   'dst': 'stopped'}
+                {'name': 'abort',               'src': 'pausing',   'dst': 'stopped'},
+                {'name': 'abort',               'src': 'starting',  'dst': 'stopped'},
+                {'name': 'abort',               'src': 'resuming',  'dst': 'stopped'}
             ],
             'callbacks': default_callbacks
         }
@@ -110,11 +112,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
     def _doStart(self):
         try:
             print('dostart', QtCore.QThread.currentThreadId(), self.current)
-            for task in self.prePostTasks:
-                self.prePostTasks[task].prerun()
-            for task in self.pauseTasks:
-                if not self.pauseTasks[task].isstate('stopped') and self.pauseTasks[task].can('pause'):
-                    self.pauseTasks[task].pause()
+            self.runner.pausePauseTasks(self)
+            self.runner.preRunPPTasks(self)
             self.startTask()
             self.startingFinished()
             self.sigStarted.emit()
@@ -147,6 +146,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
     def _doPause(self):
         try:
             self.pauseTask()
+            self.runner.postRunPPTasks(self)
             self.pausingFinished()
             self.sigPaused.emit()
         except Exception as e:
@@ -158,6 +158,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
 
     def _doResume(self):
         try:
+            self.runner.preRunPPTasks(self)
             self.resumeTask()
             self.resumingFinished()
             self.sigResumed.emit()
@@ -171,6 +172,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
 
     def _doFinish(self):
         self.cleanupTask()
+        self.runner.resumePauseTasks(self)
+        self.runner.postRunPPTasks(self)
         self.finishingFinished()
         self.sigFinished.emit()
 
