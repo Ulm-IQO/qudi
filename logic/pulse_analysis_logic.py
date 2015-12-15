@@ -73,7 +73,7 @@ class PulseAnalysisLogic(GenericLogic):
             reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
             
             measuring_error[jj] = self.calculate_measuring_error(signal_area[jj],reference_area[jj])
-            print(measuring_error[jj])
+            #print(measuring_error[jj])
             
         #return data
             

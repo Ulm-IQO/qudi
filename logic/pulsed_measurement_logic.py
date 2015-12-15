@@ -10,6 +10,7 @@ from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
+from lmfit import Parameters
 import numpy as np
 import time
 import datetime
@@ -25,6 +26,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _in = { 'fastcounter': 'FastCounterInterface',
             #'pulsegenerator': 'PulserInterfaceDummy',
             'pulseanalysislogic': 'PulseAnalysisLogic',
+            'fitlogic': 'FitLogic',
             'savelogic': 'SaveLogic',
             'mykrowave': 'mykrowave'
             }
@@ -77,7 +79,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.norm_start_bin = None
         self.norm_width_bin = None
         
-        self.fit_result = ([])
+
         
         # threading
         self.threadlock = Mutex()
@@ -100,6 +102,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
+        self._fit_logic = self.connector['in']['fitlogic']['object']
         #self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
         self.update_fast_counter_status()
@@ -107,6 +110,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_laser_plot()
         self._initialize_measuring_error_plot()
 
+        
 
     def deactivation(self, e):
         with self.threadlock:
@@ -186,7 +190,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
-        print ("test")
+        #print ("test")
         with self.threadlock:
             if self.getState() == 'locked':
                 self.timer.stop()
@@ -224,8 +228,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         
      
-    def do_fit(self):
-        return
      
     
     def _initialize_signal_plot(self):
@@ -391,22 +393,116 @@ class PulsedMeasurementLogic(GenericLogic):
     def mykrowave_off(self):
         self._mycrowave_source_device.off()
         return
-#    def do_fit(self, fit_function = None):
-#        '''Performs the chosen fit on the measured data.
-#        
-#        @param string fit_function: name of the chosen fit function
-#        '''
-#        if fit_function == None:
-#            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
-#            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
-        
-        ####Signal to Noise calculation
-        """The signal-to-noiuse ratio is defined as the ratio between 
-        singal amplitude and its standard deviation"""
-        
 
         
+     
+        
+    def do_fit(self,fit_function):
+        """Performs the chosen fit on the measured data.
+
+        @param string fit_function: name of the chosen fit function
+        """
+        pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0],self.signal_plot_x[-1],1000) 
+        
+        if fit_function == 'No Fit':
+            pulsed_fit_y = np.zeros(pulsed_fit_x.shape)
+            fit_result = 'No Fit'
+            return pulsed_fit_x, pulsed_fit_y, fit_result
+            
+        elif fit_function == 'Rabi Decay':
+            result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            ##### get the rabi fit parameters
+            rabi_amp = result[0].values['amplitude']                                                      
+            rabi_freq = result[0].values['omega']
+            rabi_offset = result[0].values['offset']
+            rabi_decay = result[0].values['decay']
+            rabi_shift = result[0].values['shift']
+            
+            pulsed_fit_y = rabi_amp * np.sin(pulsed_fit_x/rabi_freq*2*np.pi+rabi_shift)*np.exp(-pulsed_fit_x*rabi_decay)+rabi_offset        
+            
+            fit_result = str('Amplitude: ' + 2 * str(rabi_amp) + "\n" + 
+                             'Frequency: ' + str(rabi_freq) + "\n" +
+                             'Offset: ' + str(rabi_offset) + "\n" +
+                             'Decay: ' + str(rabi_decay) + "\n" +
+                             'Shift: ' + str(rabi_shift))
+                            
+            return pulsed_fit_x, pulsed_fit_y, fit_result
+        
+
+                    
+        elif fit_function == 'Lorentian (neg)':
+            result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            pulsed_fit_y = lorentzian.eval(x=self.signal_plot_x, params=result.params)
+            fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
+            return pulsed_fit_x, pulsed_fit_y, fit_result
+                         
+        
+        elif fit_function == 'Lorentian (pos)':
+            result = self._fit_logic.make_lorentzian_peak_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            pulsed_fit_y = lorentzian.eval(x=self.signal_plot_x, params=result.params)
+            fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
+            return pulsed_fit_x, pulsed_fit_y, fit_result
+        
+        elif fit_function =='N14':
+            result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            self.signal_plot_y = fitted_funciton.eval(x=self.signal_plot_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz2_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )        
 
         
+        elif fit_function =='N15':
+            result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            self.signal_plot_y = fitted_funciton.eval(x=self.signal_plot_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                )
         
+        elif fit_function =='Stretched Exponential':
+            fit_result = ('Stretched Exponential not yet implemented')
+            return pulsed_fit_x,pulsed_fit_x, fit_result
+            
+        elif fit_function =='Exponential':
+            fit_result = ('Exponential not yet implemented')
+            return pulsed_fit_x, pulsed_fit_x, fit_result
+        
+        elif fit_function =='XY8':
+            fit_result = ('XY8 not yet implemented')
+            return pulsed_fit_x, pulsed_fit_x, fit_result 
+            
+            
+    def compute_x_for_fit(self, x_start, x_end, number_of_points):
+            
+        step = (x_end-x_start)/(number_of_points-1)
+        
+        print (x_start)
+        print (x_end)
+        print (step)
+            
+        x_for_fit = np.arange(x_start,x_end,step)
+            
+        return x_for_fit
             
