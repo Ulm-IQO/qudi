@@ -638,7 +638,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ana_channels = ensemble.analogue_channels
         dig_channels = ensemble.digital_channels
 
-        sample_arr = np.empty([ana_channels, arr_len])
+        sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
         marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
 
         entry = 0
@@ -653,8 +653,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 if ensemble.rotating_frame:
                     bin_offset = entry
         # slice the sample array to cut off uninitialized entrys at the end
-        self.analogue_samples = sample_arr[:, :entry]
-        self.digital_samples = marker_arr[:, :entry]
         return sample_arr[:, :entry], marker_arr[:, :entry]
 
 
@@ -672,7 +670,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         dig_channels = block.digital_channels
         block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
         arr_len = np.round(block_length_bins*1.01)
-        sample_arr = np.empty([ana_channels, arr_len])
+        sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
         marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
         entry = 0
         bin_offset_temp = bin_offset
@@ -706,14 +704,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         pulse_function = block_element.pulse_function
 
         element_length_bins = init_length_bins + (iteration_no*increment_bins)
-        sample_arr = np.empty([ana_channels, element_length_bins])
+        sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
         marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
         time_arr = (bin_offset + np.arange(element_length_bins)) / self.sampling_freq
 
         for i, state in enumerate(markers_on):
             marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
         for i, func_name in enumerate(pulse_function):
-            sample_arr[i] = self._math_func[func_name](time_arr, parameters[i])
+            sample_arr[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
 
         return sample_arr, marker_arr
 #-------------------------------------------------------------------------------
