@@ -46,6 +46,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     def deactivation(self, e):
         self.stop_measure()
         self.statusvar = 0
+        del self._fpga
 
     def _connect(self):
         """ This method connects this host PC to the FPGA module with the specified serial number
@@ -57,7 +58,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # open a connection to the FPGA with the specified serial number
         self._fpga.OpenBySerial(self._serial)
         # upload the fast counter configuration bitfile to the FPGA
-        self._fpga.ConfigureFPGA('C:\\software\\qudi\\trunk\\hardware\\fastcounter_top.bit')
+        self._fpga.ConfigureFPGA('C:\\software\\qudi\\trunk\\hardware\\fpga_fastcounter\\fastcounter_top.bit')
         # check if the upload was successful and the Opal Kelly FrontPanel is enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
             self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA', msgType='error')
@@ -188,7 +189,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         """
         returns the width of a single timebin in the timetrace in seconds
         """
-        width_in_seconds = self._binwidth * 1e6/950
+        width_in_seconds = self._binwidth * 1e-6/950
         return width_in_seconds
 
     def get_status(self):
