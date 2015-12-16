@@ -83,6 +83,13 @@ class FastCounterInterface():
         """
         raise InterfaceImplementationError('FastCounterInterface>is_gated')
         return -1
+
+    def get_binwidth(self):
+        """
+        returns the width of a single timebin in the timetrace in seconds
+        """
+        raise InterfaceImplementationError('FastCounterInterface>get_binwidth')
+        return -1
    
     def get_data_trace(self):
         """
@@ -94,3 +101,4 @@ class FastCounterInterface():
         """
         raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
         return -1
+

@@ -10,15 +10,18 @@ import struct
 class FastCounterFPGAQO(Base, FastCounterInterface):
     """ unstable: Nikolas Tomek
         This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA based fast counter.
-    """    
+    """
+    _modclass = 'fastcounter_fpga_qo'
+    _modtype = 'hardware'
     # declare connectors
     _out = {'fastcounter': 'FastCounterInterface'}
 
     def __init__(self, manager, name, config = {}, **kwargs):
         callback_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, callback_dict)
+        Base.__init__(self, manager, name, config, callback_dict, **kwargs)
 
     def activation(self, e):
+        config = self.getConfiguration()
         if 'fpgacounter_serial' in config.keys():
             self._serial=config['fpgacounter_serial']
         else:
@@ -54,7 +57,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # open a connection to the FPGA with the specified serial number
         self._fpga.OpenBySerial(self._serial)
         # upload the fast counter configuration bitfile to the FPGA
-        self._fpga.ConfigureFPGA('fastcounter_top.bit')
+        self._fpga.ConfigureFPGA('C:\\software\\qudi\\trunk\\hardware\\fastcounter_top.bit')
         # check if the upload was successful and the Opal Kelly FrontPanel is enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
             self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA', msgType='error')
@@ -68,10 +71,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
 
     def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
-        """ This method configures the fast counter
-          @param float gate_length_ns: length of the gates in nanoseconds
-          @param int number_of_gates: total number of gates in the sequence
-          @param float bin_width_ns: bin width in nanoseconds
+        """
+        Configuration of the fast counter.
+        bin_width_ns: Length of a single time bin in the time trace histogram in nanoseconds.
+        record_length_ns: Total length of the timetrace/each single gate in nanoseconds.
+        number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
         """
         # set class variables
         self._binwidth = int(np.rint(bin_width_ns * 950 / 1000))
@@ -88,7 +92,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
         
     def start_measure(self):
-        """ This method starts the fast counting hardware
+        """
+        Starts the fast counter.
         """
         # initialize the data array
         self.count_data = np.zeros([self._number_of_gates, self._gate_length_bins])
@@ -101,8 +106,12 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
         
     def get_data_trace(self):
-        """ This method reads the count data from the FPGA and returns it
-          @return: 2D numpy.ndarray: count data timetrace (dimensions 0: gate number, 1: time bin)
+        """
+        Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
+        The binning specified by calling configure() must be taken care of in this hardware class.
+        A possible overflow of the histogram bins must be caught here and taken care of.
+        If the counter is UNgated it will return a 1D-numpy-array with returnarray[timebin_index]
+        If the counter is gated it will return a 2D-numpy-array with returnarray[gate_index, timebin_index]
         """
         # initialize the read buffer for the USB transfer.
         # one timebin of the data to read is 32 bit wide and the data is transfered in bytes
@@ -138,7 +147,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return self.count_data
 
     def stop_measure(self):
-        """ This method stops the fast counting hardware
+        """
+        Stops the fast counter.
         """
         # put the fast counter logic into reset state
         self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
@@ -149,7 +159,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
         
     def pause_measure(self):
-        """ This method pauses the fast counting
+        """
+        Pauses the current measurement if the fast counter is in running state.
         """
         # set the pause state in the FPGA
         self._fpga.SetWireInValue(0x00, 0x10000000 + self._histogram_size)
@@ -158,7 +169,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
         
     def continue_measure(self):
-        """ This method continues the fast counting
+        """
+        Continues the current measurement if the fast counter is in pause state.
         """
         # exit the pause state in the FPGA
         self._fpga.SetWireInValue(0x00, self._histogram_size)
@@ -167,9 +179,25 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         return 0
         
     def is_gated(self):
-        """ This method returns if the fast counter is gated
+        """
+        Boolean return value indicates if the fast counter is a gated counter (TRUE) or not (FALSE).
         """
         return True
 
+    def get_binwidth(self):
+        """
+        returns the width of a single timebin in the timetrace in seconds
+        """
+        width_in_seconds = self._binwidth * 1e6/950
+        return width_in_seconds
+
     def get_status(self):
-        return {'binwidth_ns': self._binwidth, 'is_gated': True}
+        """
+        Receives the current status of the Fast Counter and outputs it as return value.
+        0 = unconfigured
+        1 = idle
+        2 = running
+        3 = paused
+        -1 = error state
+        """
+        return self.statusvar
