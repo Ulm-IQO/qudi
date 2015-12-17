@@ -10,13 +10,27 @@ class Task(PrePostTask):
 
     def preExecute(self):
         if ('switchlogic' in self.ref
-            and 'config' in self.ref
             and 'sequence' in self.config):
-                logic = self.runner.getModule(self.name, self.kwargs['modules']['switchlogic'])
+                logic = self.ref['switchlogic']
                 for element in self.config['sequence']:
-                    logic.switches[element[0]][element[1]].getSwitchState()
+                    if element[2]:
+                        logic.switches[element[0]][element[1]].switchOn(element[1])
+                    else:
+                        logic.switches[element[0]][element[1]].switchOff(element[1])
         else:
             self.runner.logMsg('No switching sequence configured for pre/post task {}'.format(self.name), msgType='error')
 
+
     def postExecute(self):
-        pass
+        if ('switchlogic' in self.ref
+            and 'sequence' in self.config):
+                logic = self.ref['switchlogic']
+                for element in reversed(self.config['sequence']):
+                    if element[2]:
+                        logic.switches[element[0]][element[1]].switchOff(element[1])
+                    else:
+                        logic.switches[element[0]][element[1]].switchOn(element[1])
+        else:
+            self.runner.logMsg('No switching sequence configured for pre/post task {}'.format(self.name), msgType='error')
+
+

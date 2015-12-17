@@ -102,16 +102,16 @@ class InterruptableTask(QtCore.QObject, Fysom):
     def _start(self, e):
         self.result = TaskResult()
         if self.checkStartPrerequisites():
-            print('_run', QtCore.QThread.currentThreadId(), self.current)
+            #print('_run', QtCore.QThread.currentThreadId(), self.current)
             self.sigDoStart.emit()
-            print('_runemit', QtCore.QThread.currentThreadId(), self.current)
+            #print('_runemit', QtCore.QThread.currentThreadId(), self.current)
             return True
         else:
             return False
 
     def _doStart(self):
         try:
-            print('dostart', QtCore.QThread.currentThreadId(), self.current)
+            #print('dostart', QtCore.QThread.currentThreadId(), self.current)
             self.runner.pausePauseTasks(self)
             self.runner.preRunPPTasks(self)
             self.startTask()
