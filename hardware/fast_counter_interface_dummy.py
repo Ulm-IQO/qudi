@@ -80,6 +80,9 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         status['is_gated'] = self.gated
         time.sleep(0.2)
         return status
+
+    def get_binwidth(self):
+        return 1000./950.
     
     def start_measure(self):
         time.sleep(1)
