@@ -35,13 +35,5 @@ if '%errorlevel%' NEQ '0' (
     CD /D "%~dp0"
 :--------------------------------------
 
-
-
-pip install fysom
-pip install pyqtgraph
-pip install pyvisa
-pip install pydaqmx
-pip install svn
-pip install lmfit
-pip install rpyc
+conda env create -f "%~dp0\conda-env.yml"
 pause
