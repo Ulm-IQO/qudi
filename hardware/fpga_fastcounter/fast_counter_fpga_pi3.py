@@ -105,3 +105,6 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
     def get_status(self):
         ready = self.pulsed.ready()
         return {'binwidth_ns': self._bin_width*1000, 'is_gated': True, 'is_ready': ready}
+
+    def get_binwidth(self):
+        return self._binwidth
