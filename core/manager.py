@@ -182,7 +182,7 @@ class Manager(QtCore.QObject):
                     remotePort = self.tree['global']['remoteport']
                 else:
                     remotePort = 12345
-                self.rm = RemoteObjectManager(self.tm, self.logger)
+                self.rm = RemoteObjectManager(self)
                 self.rm.createServer(remotePort)
             except:
                 self.remoteServer = False
