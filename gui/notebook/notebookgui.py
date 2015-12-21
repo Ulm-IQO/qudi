@@ -50,11 +50,19 @@ class NotebookMainWindow(QtGui.QMainWindow):
         super().__init__()
         uic.loadUi(ui_file, self)
 
+        self.tabWidget.setTabsClosable(True)
+        self.tabWidget.tabCloseRequested.connect(self.closeTab)
+        self.tabWidget.currentChanged.connect(lambda index: self.setWindowTitle(self.tabWidget.tabText(index)))
+
     def newTab(self):
         tw = TabbedWebView(tabmanager=self)
         tabindex = self.tabWidget.addTab(tw, 'New')
         tw.titleChanged.connect(lambda title: self.tabWidget.setTabText(tabindex, 'qudi Notebook: ' + title))
         return tw
+
+    def closeTab(self, index):
+        if index > 0:
+            self.tabWidget.removeTab(index)
 
 class TabbedWebView(QtWebKit.QWebView):
 

@@ -84,7 +84,6 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
 
-from IPython.kernel.inprocess import InProcessKernelManager
 
 #-----------------------------------------------------------------------------
 # The QuDi logic module
@@ -130,29 +129,6 @@ class NotebookLogic(GenericLogic):
 
     def startServer(self):
         NotebookApp.launch_instance()
-
-    def startIPython(self):
-        """ Create an IPython kernel manager and kernel.
-            Add modules to its namespace.
-        """
-        self.logMsg('IPy activation in thread {0}'.format(threading.get_ident()), msgType='thread')
-        self.kernel_manager = InProcessKernelManager()
-        self.kernel_manager.start_kernel()
-        self.kernel = self.kernel_manager.kernel
-        self.namespace = self.kernel.shell.user_ns
-        self.namespace.update({
-            'config': self._manager.tree['defined'],
-            'manager': self._manager
-            })
-        self.kernel.gui = 'qt4'
-        self.logMsg('IPython has kernel {0}'.format(self.kernel_manager.has_kernel))
-        self.logMsg('IPython kernel alive {0}'.format(self.kernel_manager.is_alive()))
-
-    def stopIPython(self):
-        """ Stop the IPython kernel.
-        """
-        self.logMsg('IPy deactivation'.format(threading.get_ident()), msgType='thread')
-        self.kernel_manager.shutdown_kernel()
 
 #-----------------------------------------------------------------------------
 # Module globals
