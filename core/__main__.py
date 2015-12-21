@@ -191,21 +191,23 @@ else:
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
     elif not man.hasGui:
-        from IPython.qt.inprocess import QtInProcessKernelManager
-        from IPython.terminal.interactiveshell import TerminalInteractiveShell
+        from ipykernel.kernelapp import IPKernelApp
         import numpy as np
-        m = QtInProcessKernelManager()
-        m.start_kernel()
-        namespace = m.kernel.shell.user_ns
+
+        kernelapp = IPKernelApp.instance()
+        arg = ['--matplotlib=qt']
+        kernelapp.initialize(arg)
+        namespace = kernelapp.kernel.shell.user_ns
         namespace.update({
             'pg': pg,
             'np': np,
             'config': man.tree['defined'],
             'manager': man
             })
-        client = m.client()
-        client.start_channels()
-        shell = TerminalInteractiveShell(manager=m, client=client)
+        kernelapp.start()
+        #client = m.client()
+        #client.start_channels()
+        #shell = TerminalInteractiveShell(manager=m, client=client)
         # shell.mainloop()
         app.exec_()
         helpers.exit(watchdog.exitcode)
