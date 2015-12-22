@@ -32,16 +32,19 @@ else:
 from pyqtgraph.Qt import QtCore
 
 from .manager import Manager
+from .parentpoller import ParentPollerWindows, ParentPollerUnix
 import numpy as np
 import pyqtgraph as pg
 import core.util.helpers as helpers
 import sys
+import os
 
 
 class AppWatchdog(QtCore.QObject):
     """This class periodically runs a function for debugging and handles
       application exit.
     """
+    sigDoQuit = QtCore.Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -53,6 +56,7 @@ class AppWatchdog(QtCore.QObject):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.donothing)
         self.timer.start(1000)
+        self.sigDoQuit.connect(self.quitApplication)
 
     def donothing(self):
         """This function does nothing for debugging purposes.
@@ -61,6 +65,20 @@ class AppWatchdog(QtCore.QObject):
         x = 0
         for i in range(0, 100):
             x += i
+
+    def setupParentPoller(self, manager):
+        self.parent_handle = int(os.environ.get('QUDI_PARENT_PID') or 0)
+        self.interrupt = int(os.environ.get('QUDI_INTERRUPT_EVENT') or 0)
+        if sys.platform == 'win32':
+            if self.interrupt or self.parent_handle:
+                self.poller = ParentPollerWindows(lambda: self.quitProxy(manager), self.interrupt, self.parent_handle)
+        elif self.parent_handle:
+            self.poller = ParentPollerUnix(lambda: self.quitProxy(manager))
+        self.poller.start()
+
+    def quitProxy(self, obj):
+        print('Parent process is daed, committing sudoku...')
+        self.sigDoQuit.emit(obj)
 
     def quitApplication(self, manager, restart = False):
         """Clean up threads and windows, quit application.
@@ -141,6 +159,7 @@ gc = GarbageCollector(interval=1.0, debug=False)
 # are passed to the main device handler, the Manager.
 watchdog = AppWatchdog()
 man = Manager(argv=sys.argv[1:])
+watchdog.setupParentPoller(man)
 man.sigManagerQuit.connect(watchdog.quitApplication)
 
 ## for debugging with pdb
@@ -191,24 +210,22 @@ else:
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
     elif not man.hasGui:
-        from ipykernel.kernelapp import IPKernelApp
+        from core.zmq_kernel import IPKernelApp
         import numpy as np
 
         kernelapp = IPKernelApp.instance()
-        arg = ['--matplotlib=qt']
+        arg = ['']
         kernelapp.initialize(arg)
         namespace = kernelapp.kernel.shell.user_ns
         namespace.update({
             'pg': pg,
             'np': np,
             'config': man.tree['defined'],
+            'modules': man.tree['loaded'],
             'manager': man
             })
+        #kernelapp.kernel.app.setQuitOnLastWindowClosed = lambda x: None
         kernelapp.start()
-        #client = m.client()
-        #client.start_channels()
-        #shell = TerminalInteractiveShell(manager=m, client=client)
-        # shell.mainloop()
         app.exec_()
         helpers.exit(watchdog.exitcode)
     else:
