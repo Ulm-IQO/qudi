@@ -2,6 +2,10 @@
 
 The child needs to explicitly listen for this - see
 ipykernel.parentpoller.ParentPollerWindows for a Python implementation.
+
+Copyright (c) IPython Development Team.
+See documentation/BSDLicense_IPython.md for details.
+Distributed under the terms of the Modified BSD License.
 """
 
 import ctypes

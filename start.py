@@ -17,6 +17,10 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+
+Contains code that used to be distributed under the terms of the Modified BSD License.
+See documentation/BSDLicense_IPython.md for details.
+Copyright (c) 2015, IPython Development Team
 """
 
 import subprocess
