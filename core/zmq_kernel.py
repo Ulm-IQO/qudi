@@ -1,5 +1,6 @@
 
 # Copyright (c) IPython Development Team.
+# See documentation/BSDLicense_IPython.md for details.
 # Distributed under the terms of the Modified BSD License.
 
 import os
