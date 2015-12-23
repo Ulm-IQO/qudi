@@ -27,8 +27,8 @@ class GUIBase(Base):
     _modclass = 'GUIBase'
     _modtype = 'Gui'
     
-    def __init__(self, manager, name, configuation = {}, callbacks = {}, **kwargs):
-        Base.__init__(self, manager, name, configuation, callbacks, **kwargs)
+    def __init__(self, manager, name, configuration = {}, callbacks = {}, **kwargs):
+        Base.__init__(self, manager, name, configuration, callbacks, **kwargs)
 
     def show(self):
         self.logMsg('Every GUI module needs to reimplement the show() function!', msgType='error')

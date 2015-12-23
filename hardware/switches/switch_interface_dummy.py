@@ -34,7 +34,7 @@ class SwitchInterfaceDummy(Base, SwitchInterface):
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
+        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
 
         self.switchState = [False, False, False]
         self.switchCalibration = dict()

@@ -37,7 +37,7 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict)
+        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
 
     def activation(self, e):
         data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'copper.dat'))

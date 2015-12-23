@@ -135,7 +135,7 @@ class FastComtecP7887(Base,FastCounterInterface):
     _out = {'counter': 'FastCounterInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
-        Base.__init__(self, manager, name, configuation=config)
+        Base.__init__(self, manager, name, configuration=config)
         
         self.logMsg('The following configuration was found.', 
                     msgType='status')

@@ -83,7 +83,7 @@ class TaskRunner(GenericLogic):
     sigLoadTasks = QtCore.Signal()
     sigCheckTasks = QtCore.Signal()
 
-    def __init__(self, manager, name, configuation, **kwargs):
+    def __init__(self, manager, name, configuration, **kwargs):
         """ Initialzize a logic module.
 
           @param object manager: Manager object that has instantiated this object
@@ -92,7 +92,7 @@ class TaskRunner(GenericLogic):
           @param dict kwargs: dict of additional arguments
         """
         callbacks = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        super().__init__(manager, name, configuation, callbacks, **kwargs)
+        super().__init__(manager, name, configuration, callbacks, **kwargs)
 
     def activation(self, e):
         self.model = TaskListTableModel()

@@ -177,7 +177,7 @@ class Base(QtCore.QObject, Fysom):
     def getConfigDirectory(self):
         """ Return the configuration directory for the manager this module belongs to.
 
-          @return str: path of configuation directory
+          @return str: path of configuration directory
 
         """
         return self._manager.configDir
