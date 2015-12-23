@@ -35,7 +35,7 @@ class PiPWM(Base, ProcessControlInterface):
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict, **kwargs)
+        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
         
         #locking for thread safety
         self.threadlock = Mutex()
@@ -78,7 +78,7 @@ class PiPWM(Base, ProcessControlInterface):
         self.startPWM()
 
     def deactivation(self, e):
-        stopPWM(self):
+        self.stopPWM()
 
     def setupPins(self):
         GPIO.setmode(GPIO.BCM)

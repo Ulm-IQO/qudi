@@ -45,13 +45,14 @@ class TSYS01SPI(Base, ProcessInterface):
     
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuation=config, callbacks = c_dict, **kwargs)
+        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict, **kwargs)
         
         #locking for thread safety
         self.threadlock = Mutex()
         
     def activation(self, e):
         config = self.getConfiguration()
+        print(config)
         self.bus = config['bus']
         self.device = config['device']
         self.rom = []

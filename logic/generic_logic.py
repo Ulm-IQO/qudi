@@ -31,7 +31,7 @@ class GenericLogic(Base):
     _modtype = 'Logic'
     _tasks = DictTableModel()
     
-    def __init__(self, manager, name, configuation, callbacks, **kwargs):
+    def __init__(self, manager, name, configuration, callbacks, **kwargs):
         """ Initialzize a logic module.
 
           @param object manager: Manager object that has instantiated this object
@@ -40,7 +40,7 @@ class GenericLogic(Base):
           @param dict callbacks: dict of callback functions for Fysom state machine
           @param dict kwargs: dict of additional arguments
         """
-        super().__init__(manager, name, configuation, callbacks, **kwargs)
+        super().__init__(manager, name, configuration, callbacks, **kwargs)
         self.taskLock = Mutex()
         
     def getModuleThread(self):
