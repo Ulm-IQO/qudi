@@ -81,7 +81,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
     _modtype = 'hardware'
 
     ## declare connectors
-    _out = {'highhinessewavemeter': 'WavemeterInterface'}
+    _out = {'highfinessewavemeter': 'WavemeterInterface'}
     
     sig_handle_timer = QtCore.Signal(bool)
     
