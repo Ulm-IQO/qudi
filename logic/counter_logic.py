@@ -83,8 +83,10 @@ class CounterLogic(GenericLogic):
           @param object e: Fysom state change event
         """
         self.countdata = np.zeros((self._count_length,))
-        self.countdata_smoothed=np.zeros((self._count_length,))
-        self.rawdata=np.zeros((self._counting_samples,))
+        self.countdata_smoothed = np.zeros((self._count_length,))
+        self.countdata2 = np.zeros((self._count_length,))
+        self.countdata_smoothed2 = np.zeros((self._count_length,))
+        self.rawdata = np.zeros([2, self._counting_samples])
 
         self.running = False
         self.stopRequested = False
@@ -225,9 +227,9 @@ class CounterLogic(GenericLogic):
         """
 
         if not resume:
-            self._data_to_save=[]
-            self._saving_start_time=time.time()
-        self._saving=True
+            self._data_to_save = []
+            self._saving_start_time = time.time()
+        self._saving = True
 
         # If the counter is not running, then it should start running so there is data to save
         if self.isstate('idle'):
@@ -240,8 +242,8 @@ class CounterLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._saving=False
-        self._saving_stop_time=time.time()
+        self._saving = False
+        self._saving_stop_time = time.time()
 
         if save:
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
@@ -254,7 +256,9 @@ class CounterLogic(GenericLogic):
 
             # prepare the data in a dict or in an OrderedDict:
             data = OrderedDict()
-            data = {'Time (s),Signal (counts/s)':self._data_to_save}
+            data = {'Time (s),Signal (counts/s)': self._data_to_save}
+            if self._counting_device._photon_source2 is not None:
+                data = {'Time (s),Signal 1 (counts/s),Signal 2 (counts/s)': self._data_to_save}
 
             # write the parameters:
             parameters = OrderedDict()
@@ -264,12 +268,10 @@ class CounterLogic(GenericLogic):
             parameters['Oversampling (Samples)'] = self._counting_samples
             parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
 
-            self._save_logic.save_data(data, filepath, parameters=parameters,
-                                       filelabel=filelabel, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+            self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+            #, as_xml=False, precision=None, delimiter=None)
 
-            self.logMsg('Counter Trace saved to:\n{0}'.format(filepath),
-                        msgType='status', importance=3)
-
+            self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
         return 0
 
     def set_counting_mode(self, mode='continuous'):
@@ -278,7 +280,6 @@ class CounterLogic(GenericLogic):
         'continuous'
         'gated'
         """
-
         self._counting_mode = mode
 
     def startCount(self):
@@ -293,9 +294,7 @@ class CounterLogic(GenericLogic):
 
     def _startCount_continuous(self):
         """Prepare to start counting change state and start counting 'loop'."""
-
         # setting up the counter
-
         # set a lock, to signify the measurment is running
         self.lock()
 
@@ -312,10 +311,15 @@ class CounterLogic(GenericLogic):
             return
 
         # initialising the data arrays
-        self.countdata=np.zeros((self._count_length,))
-        self.countdata_smoothed=np.zeros((self._count_length,))
-        self.rawdata=np.zeros((self._counting_samples,))
-        self._sampling_data=np.empty((self._counting_samples,2))
+        self.rawdata = np.zeros([2, self._counting_samples])
+        self.countdata = np.zeros((self._count_length,))
+        self.countdata_smoothed = np.zeros((self._count_length,))
+        self._sampling_data = np.empty((self._counting_samples, 2))
+
+        if self._counting_device._photon_source2 is not None:
+            self.countdata2 = np.zeros((self._count_length,))
+            self.countdata_smoothed2 = np.zeros((self._count_length,))
+            self._sampling_data2 = np.empty((self._counting_samples, 2))
 
         self.sigCountContinuousNext.emit()
 
@@ -325,8 +329,6 @@ class CounterLogic(GenericLogic):
         #eventually:
         #self.sigCountGatedNext.emit()
         pass
-
-
 
     def stopCount(self):
         """ Set a flag to request stopping counting.
@@ -349,7 +351,7 @@ class CounterLogic(GenericLogic):
                     self._counting_device.close_counter()
                     self._counting_device.close_clock()
                 except Exception as e:
-                    self.logMsg('Could not even close the hardware, giving up.', msgType='error')
+                    self.logExc('Could not even close the hardware, giving up.', msgType='error')
                     raise e
                 finally:
                     # switch the state variable off again
@@ -369,26 +371,54 @@ class CounterLogic(GenericLogic):
             raise e
 
         # remember the new count data in circular array
-        self.countdata[0] = np.average(self.rawdata)
+        self.countdata[0] = np.average(self.rawdata[0])
         # move the array to the left to make space for the new data
-        self.countdata=np.roll(self.countdata, -1)
+        self.countdata = np.roll(self.countdata, -1)
         # also move the smoothing array
         self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
         # calculate the median and save it
         self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
 
+        if self._counting_device._photon_source2 is not None:
+            self.countdata2[0] = np.average(self.rawdata[1])
+            # move the array to the left to make space for the new data
+            self.countdata2 = np.roll(self.countdata2, -1)
+            # also move the smoothing array
+            self.countdata_smoothed2 = np.roll(self.countdata_smoothed2, -1)
+            # calculate the median and save it
+            self.countdata_smoothed2[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata[-self._smooth_window_length:])
+
         # save the data if necessary
         if self._saving:
              # if oversampling is necessary
             if self._counting_samples > 1:
-                self._sampling_data=np.empty((self._counting_samples,2))
-                self._sampling_data[:,0]=time.time()-self._saving_start_time
-                self._sampling_data[:,1]=self.rawdata
+                if self._counting_device._photon_source2 is not None:
+                    self._sampling_data = np.empty([self._counting_samples, 3])
+                    self._sampling_data[:, 0] = time.time() - self._saving_start_time
+                    self._sampling_data[:, 1] = self.rawdata[0]
+                    self._sampling_data[:, 2] = self.rawdata[1]
+                else:
+                    self._sampling_data = np.empty([self._counting_samples, 2])
+                    self._sampling_data[:, 0] = time.time() - self._saving_start_time
+                    self._sampling_data[:, 1] = self.rawdata[0]
+
                 self._data_to_save.extend(list(self._sampling_data))
             # if we don't want to use oversampling
             else:
                 # append tuple to data stream (timestamp, average counts)
-                self._data_to_save.append(np.array((time.time()-self._saving_start_time, self.countdata[-1])))
+                if self._counting_device._photon_source2 is not None:
+                    self._data_to_save.append(
+                        np.array(
+                            (time.time() - self._saving_start_time,
+                             self.countdata[-1],
+                             self.countdata2[-1]
+                             )))
+                else:
+                    self._data_to_save.append(
+                        np.array(
+                            (time.time() - self._saving_start_time,
+                             self.countdata[-1]
+                             )))
         # call this again from event loop
         self.sigCounterUpdated.emit()
         self.sigCountContinuousNext.emit()
@@ -429,7 +459,7 @@ class CounterLogic(GenericLogic):
             raise e
 
         # remember the new count data in circular array
-        self.countdata[0] = np.average(self.rawdata)
+        self.countdata[0] = np.average(self.rawdata[0])
         # move the array to the left to make space for the new data
         self.countdata=np.roll(self.countdata, -1)
         # also move the smoothing array
@@ -442,8 +472,8 @@ class CounterLogic(GenericLogic):
              # if oversampling is necessary
             if self._counting_samples > 1:
                 self._sampling_data=np.empty((self._counting_samples,2))
-                self._sampling_data[:,0]=time.time()-self._saving_start_time
-                self._sampling_data[:,1]=self.rawdata
+                self._sampling_data[:, 0] = time.time()-self._saving_start_time
+                self._sampling_data[:, 1] = self.rawdata[0]
                 self._data_to_save.extend(list(self._sampling_data))
             # if we don't want to use oversampling
             else:

@@ -21,7 +21,11 @@ class SlowCounterInterface():
         raise InterfaceImplementationError('SlowCounterInterface>set_up_clock')
         return -1
 
-    def set_up_counter(self, counter_channel = None, photon_source = None,
+    def set_up_counter(self,
+                       counter_channel=None,
+                       photon_source=None,
+                       counter_channel2=None,
+                       photon_source2=None,
                        clock_channel = None):
         """ Configures the actual counter with a given clock.
 
@@ -43,7 +47,7 @@ class SlowCounterInterface():
 
         @param int samples: if defined, number of samples to read in one go
 
-        @return float: the photon counts per second
+        @return array(uint32): the photon counts per second
         """
 
         raise InterfaceImplementationError('SlowCounterInterface>get_counter')

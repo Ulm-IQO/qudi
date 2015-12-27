@@ -187,6 +187,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         else:
             self.logMsg('No counter_channel configured.', msgType='error')
 
+        if 'counter_channel2' in config.keys():
+            self._counter_channel2 = config['counter_channel2']
+        else:
+            self._counter_channel2 = None
+            self.logMsg('No counter_channel2 configured.', msgType='status')
+
         if 'scanner_clock_channel' in config.keys():
             self._scanner_clock_channel=config['scanner_clock_channel']
         else:
@@ -201,6 +207,12 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             self._photon_source=config['photon_source']
         else:
             self.logMsg('No photon_source configured.', msgType='error')
+
+        if 'photon_source2' in config.keys():
+            self._photon_source2 = config['photon_source2']
+        else:
+            self._photon_source2 = None
+            self.logMsg('No photon_source2 configured.', msgType='status')
 
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
@@ -450,7 +462,11 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                            
         return 0
     
-    def set_up_counter(self, counter_channel = None, photon_source = None,
+    def set_up_counter(self,
+                       counter_channel = None,
+                       photon_source = None,
+                       counter_channel2 = None,
+                       photon_source2 = None,
                        clock_channel = None):
         """ Configures the actual counter with a given clock. 
         
@@ -464,28 +480,32 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         @return int: error code (0:OK, -1:error)
         """
         
-        if self._clock_daq_task is None and clock_channel is None:            
+        if self._clock_daq_task is None and clock_channel is None:
             self.logMsg('No clock running, call set_up_clock before starting '
                         'the counter.', msgType='error')
             return -1
-        if self._counter_daq_task is not None:            
+        if self._counter_daq_task is not None:
             self.logMsg('Another counter is already running, close this one '
                         'first.', msgType='error')
             return -1
             
-        # This task will count photons with binning defined by the clock_channel
-        self._counter_daq_task = daq.TaskHandle()   # Initialize a Task
-        
+
         if counter_channel is not None:
             self._counter_channel = counter_channel
+        if counter_channel2 is not None:
+            self._counter_channel2 = counter_channel2
         if photon_source is not None:
             self._photon_source = photon_source
-        
+        if photon_source2 is not None:
+            self._photon_source2 = photon_source2
         if clock_channel is not None:
             my_clock_channel = clock_channel
-        else: 
+        else:
             my_clock_channel = self._clock_channel
-        
+
+        # This task will count photons with binning defined by the clock_channel
+        self._counter_daq_task = daq.TaskHandle()   # Initialize a Task
+
         # Create task for the counter
         daq.DAQmxCreateTask('', daq.byref(self._counter_daq_task))  
         
@@ -497,58 +517,45 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         #    transitions of a digital signal and adds the channel to the task 
         #    you choose)
         daq.DAQmxCreateCISemiPeriodChan(#
-                self._counter_daq_task, # define to which task to connect 
-                                        # this function
+                self._counter_daq_task, # define to which task to connect this function
                 self._counter_channel,  # use this counter channel
                 'Counting Procedure',    # name to assing to it
                 0,                      # expected minimum count value
-                self._max_counts/2./self._clock_frequency,  # Expected maximum
-                                                            # count value
-                daq.DAQmx_Val_Ticks,    # units of width measurement,
-                                        # here photon ticks
-                '')   
+                self._max_counts/2./self._clock_frequency,  # Expected maximum count value
+                daq.DAQmx_Val_Ticks,    # units of width measurement, here photon ticks
+                '') # empty extra argument
         
         # Set the Counter Input to a Semi Period input Terminal.
         # Connect the pulses from the counter clock to the counter channel
         daq.DAQmxSetCISemiPeriodTerm(       #
-                self._counter_daq_task,     # The task to which to add 
-                                            # the counter channel.
+                self._counter_daq_task,     # The task to which to add the counter channel.
                 self._counter_channel,      # use this counter channel
                 my_clock_channel+'InternalOutput')  # assign a name Terminal
-                                                    # Name
 
-                                    
         # Set a Counter Input Control Timebase Source.
         # Specify the terminal of the timebase which is used for the counter:
         # Define the source of ticks for the counter as self._photon_source for
         # the Scanner Task. 
         daq.DAQmxSetCICtrTimebaseSrc(   #
-                self._counter_daq_task, # define to which task to connect 
-                                        # this function
+                self._counter_daq_task, # define to which task to connect this function
                 self._counter_channel,  # counterchannel
-                self._photon_source )   # counter channel to ouput the counting
-                                        #  results
+                self._photon_source )   # counter channel to ouput the counting results
         
         # Configure Implicit Timing.
         # Set timing to continuous, i.e. set only the number of samples to 
         # acquire or generate without specifying timing:
         daq.DAQmxCfgImplicitTiming( 
-                self._counter_daq_task, # define to which task to connect 
-                                        # this function
-                daq.DAQmx_Val_ContSamps,# Sample Mode: Acquire or generate 
-                                        # samples until you stop the task.
-                1000)                   # buffer length which stores 
-                                        # temporarily the number of generated 
+                self._counter_daq_task, # define to which task to connect this function
+                daq.DAQmx_Val_ContSamps,# Sample Mode: Acquire or generate samples until you stop the task.
+                1000)                   # buffer length which stores  temporarily the number of generated
                                         # samples
                 
         # Set the Read point Relative To an operation.
         # Specifies the point in the buffer at which to begin a read operation.
         # Here we read most recent recorded samples:
         daq.DAQmxSetReadRelativeTo(
-                self._counter_daq_task,     # define to which task to connect 
-                                            # this function
-                daq.DAQmx_Val_CurrReadPos)  # Start reading samples relative to
-                                            # the last sample returned by the
+                self._counter_daq_task,     # define to which task to connect this function
+                daq.DAQmx_Val_CurrReadPos)  # Start reading samples relative to the last sample returned by the
                                             # previous read.
         # Set the Read Offset.
         # Specifies an offset in samples per channel at which to begin a read 
@@ -559,9 +566,78 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # Set Read OverWrite Mode.
         # Specifies whether to overwrite samples in the buffer that you have 
         # not yet read. Unread data in buffer will be overwritten:
-        daq.DAQmxSetReadOverWrite(self._counter_daq_task, 
-                                  daq.DAQmx_Val_DoNotOverwriteUnreadSamps) 
-        
+        daq.DAQmxSetReadOverWrite(self._counter_daq_task, daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+
+        ############################
+        #   photon source 2
+        ############################
+        if self._photon_source2 is not None:
+            # This task will count photons with binning defined by the clock_channel
+            self._counter_daq_task2 = daq.TaskHandle()   # Initialize a Task
+            # Create task for the counter
+            daq.DAQmxCreateTask('', daq.byref(self._counter_daq_task2))
+
+            # Create a Counter Input which samples with Semi Perides the Channel.
+            # set up semi period width measurement in photon ticks, i.e. the width
+            # of each pulse (high and low) generated by pulse_out_task is measured
+            # in photon ticks.
+            #   (this task creates a channel to measure the time between state
+            #    transitions of a digital signal and adds the channel to the task
+            #    you choose)
+            daq.DAQmxCreateCISemiPeriodChan(
+                    self._counter_daq_task2,  # define to which task to connect this function
+                    self._counter_channel2,   # use this counter channel
+                    'Counting Procedure2',    # name to assign to it
+                    0,                        # expected minimum count value
+                    self._max_counts/2./self._clock_frequency,  # Expected maximum count value
+                    daq.DAQmx_Val_Ticks,      # units of width measurement, here photon ticks
+                    '')                       # empty extra argument
+
+            # Set the Counter Input to a Semi Period input Terminal.
+            # Connect the pulses from the counter clock to the counter channel
+            daq.DAQmxSetCISemiPeriodTerm(
+                    self._counter_daq_task2,     # The task to which to add the counter channel.
+                    self._counter_channel2,      # use this counter channel
+                    my_clock_channel+'InternalOutput')  # assign a name Terminal
+
+            # Set a Counter Input Control Timebase Source.
+            # Specify the terminal of the timebase which is used for the counter:
+            # Define the source of ticks for the counter as self._photon_source for
+            # the Scanner Task.
+            daq.DAQmxSetCICtrTimebaseSrc(
+                    self._counter_daq_task2,  # define to which task to connect this function
+                    self._counter_channel2,   # counterchannel
+                    self._photon_source2)     # counter channel to ouput the counting results
+
+            # Configure Implicit Timing.
+            # Set timing to continuous, i.e. set only the number of samples to
+            # acquire or generate without specifying timing:
+            daq.DAQmxCfgImplicitTiming(
+                    self._counter_daq_task2,   # define to which task to connect this function
+                    daq.DAQmx_Val_ContSamps,  # Sample Mode: Acquire or generate samples until you stop the task.
+                    1000)                     # buffer length which stores  temporarily the number of generated samples
+
+            # Set the Read point Relative To an operation.
+            # Specifies the point in the buffer at which to begin a read operation.
+            # Here we read most recent recorded samples:
+            daq.DAQmxSetReadRelativeTo(
+                    self._counter_daq_task2,     # define to which task to connect this function
+                    daq.DAQmx_Val_CurrReadPos)  # Start reading samples relative to the last sample returned by the
+                                                # previous read.
+            # Set the Read Offset.
+            # Specifies an offset in samples per channel at which to begin a read
+            # operation. This offset is relative to the location you specify with
+            # RelativeTo. Here we set the Offset to 0 for multiple samples:
+            daq.DAQmxSetReadOffset(self._counter_daq_task2, 0)
+
+            # Set Read OverWrite Mode.
+            # Specifies whether to overwrite samples in the buffer that you have
+            # not yet read. Unread data in buffer will be overwritten:
+            daq.DAQmxSetReadOverWrite(self._counter_daq_task2, daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+
+            # Actually start the preconfigured counter task
+            daq.DAQmxStartTask(self._counter_daq_task2)
+
         # Actually start the preconfigured counter task
         daq.DAQmxStartTask(self._counter_daq_task) 
         
@@ -590,7 +666,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             samples = int(samples)
         
         # count data will be written here in the NumPy array of length samples
-        count_data = np.empty((samples,), dtype=np.uint32) 
+        count_data = np.empty([2, samples], dtype=np.uint32)
         
         # number of samples which were actually read, will be stored here
         n_read_samples = daq.int32() 
@@ -598,17 +674,32 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # read the counter value: This function is blocking and waits for the
         # counts to be all filled:
         daq.DAQmxReadCounterU32(        
-                self._counter_daq_task, # read from this task
-                samples,                # number of samples to read
-                self._RWTimeout,        # maximal timeout for the read process
-                count_data,             # write the readout into this array 
-                samples,                # length of array to write into
+                self._counter_daq_task,  # read from this task
+                samples,                 # number of samples to read
+                self._RWTimeout,         # maximal timeout for the read process
+                count_data[0],           # write the readout into this array
+                samples,                 # length of array to write into
                 daq.byref(n_read_samples),  # number of samples which were read
-                None)                   # Reserved for future use. Pass NULL
-                                        # (here None) to this parameter
-        
+                None)                    # Reserved for future use. Pass NULL (here None) to this parameter
+
+        if self._photon_source2 is not None:
+            # number of samples which were actually read, will be stored here
+            n_read_samples2 = daq.int32()
+
+            # read the counter value: This function is blocking and waits for the
+            # counts to be all filled:
+
+            daq.DAQmxReadCounterU32(
+                    self._counter_daq_task2, # read from this task
+                    samples,                # number of samples to read
+                    self._RWTimeout,        # maximal timeout for the read process
+                    count_data[1],             # write the readout into this array
+                    samples,                # length of array to write into
+                    daq.byref(n_read_samples2),  # number of samples which were read
+                    None)                   # Reserved for future use. Pass NULL (here None) to this parameter
+
         # normalize to counts per second and return data
-        return count_data * self._clock_frequency 
+        return count_data * self._clock_frequency
     
     def close_counter(self, scanner=False):
         #FIXME: scanner: True means for scanner and False counter
@@ -624,24 +715,29 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         @return int: error code (0:OK, -1:error)
         """
-        
         if scanner:
-            my_task=self._scanner_counter_daq_task
-        else:
-            my_task=self._counter_daq_task
-        
-        # stop the counter task
-        daq.DAQmxStopTask(my_task)
-        
-        # after stopping delete all the configuration of the counter
-        daq.DAQmxClearTask(my_task)
-        
-        # set the task handle to None as a safety
-        if scanner:
+            # stop the counter task
+            daq.DAQmxStopTask(self._scanner_counter_daq_task)
+            # after stopping delete all the configuration of the counter
+            daq.DAQmxClearTask(self._scanner_counter_daq_task)
+            # set the task handle to None as a safety
             self._scanner_counter_daq_task = None
         else:
-            self._counter_daq_task=None
-        
+            # stop the counter task
+            daq.DAQmxStopTask(self._counter_daq_task)
+            # after stopping delete all the configuration of the counter
+            daq.DAQmxClearTask(self._counter_daq_task)
+            # set the task handle to None as a safety
+            self._counter_daq_task = None
+
+            if self._photon_source2 is not None:
+                # stop the second counter task
+                daq.DAQmxStopTask(self._counter_daq_task2)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(self._counter_daq_task2)
+                # set the task handle to None as a safety
+                self._counter_daq_task2 = None
+
         return 0
         
     def close_clock(self, scanner=False):
