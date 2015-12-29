@@ -29,6 +29,8 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
             self.logMsg('{}: {}'.format(key,config[key]), 
                         msgType='status')
     
+    def activation(self, e):
+        config = self.getConfiguration()
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
@@ -43,8 +45,10 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
             self.logMsg('No samples_number configured taking 10 instead.', \
             msgType='warning')
 
-    def activation(self, e):
-        pass
+        if 'photon_source2' in config.keys():
+            self._photon_source2 = 1
+        else:
+            self._photon_source2 = None
 
     def deactivation(self, e):
         pass
@@ -103,10 +107,14 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         else:
             samples = int(samples)
         
-        count_data = np.empty((samples,), dtype=np.uint32) # count data will be written here in the NumPy array
+        count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
         
         for i in range(samples):
-            count_data[i] = random.uniform(0, 1e6)
+            count_data[0][i] = random.uniform(0, 1e6)
+        
+        if self._photon_source2 is not None:
+            for i in range(samples):
+                count_data[1][i] = random.uniform(0, 1e5)
             
         time.sleep(1./self._clock_frequency*samples)
         
