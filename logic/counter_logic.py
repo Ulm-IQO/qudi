@@ -386,7 +386,7 @@ class CounterLogic(GenericLogic):
             # also move the smoothing array
             self.countdata_smoothed2 = np.roll(self.countdata_smoothed2, -1)
             # calculate the median and save it
-            self.countdata_smoothed2[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata[-self._smooth_window_length:])
+            self.countdata_smoothed2[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata2[-self._smooth_window_length:])
 
         # save the data if necessary
         if self._saving:
