@@ -29,6 +29,12 @@ import os
 
 class OkFpgaPulser(Base, PulserInterface):
     """Methods to control Pulse Generator running on OK FPGA.
+
+    Chan   PIN
+    ----------
+    Ch1    A3
+    Ch2    C5
+    Ch3    D6
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
