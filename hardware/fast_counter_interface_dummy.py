@@ -23,7 +23,7 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 from core.base import Base
 from hardware.fast_counter_interface import FastCounterInterface
 import time
-
+import os
 import numpy as np
 
 
@@ -149,7 +149,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
 #                data[i*gate_length:(i+1)*gate_length] = trace
 #        data = np.loadtxt('141222_Rabi_old_NV_-11.04dbm_01.asc')
 #        data = np.loadtxt('20150701_binning4.asc')
-        data = np.loadtxt('FastComTec_demo_timetrace.asc')
+        data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
         
