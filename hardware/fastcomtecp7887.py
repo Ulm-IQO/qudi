@@ -21,19 +21,13 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
-#TODO: Missing: set binwidth, set length,
-
 #TODO: start stop works but pause does not work, i guess gui/logic problem
 #TODO: What does get status do or need as return?
-#TODO: Is the method get frequency really needed
-#TODO: Where is the conversion from bins to ns
+#TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
 #Not written modules:
 #TODO: configure
 #TODO: get_status
-#TODO: get_binwidth
-#TODO: is_trace_extractable
-
 
 from core.base import Base
 from hardware.fast_counter_interface import FastCounterInterface
@@ -49,7 +43,9 @@ class InterfaceImplementationError(Exception):
         return repr(self.value)
 
 class FastComtec(Base, FastCounterInterface):
-    """This is the Interface class to define the controls for the simple 
+    """
+    unstable: Jochen Scheuer
+    This is the Interface class to define the controls for the simple
     microwave hardware.
     """
     _modclass = 'fastcounterinterface'
@@ -77,6 +73,15 @@ class FastComtec(Base, FastCounterInterface):
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
 
+        self._minimal_binwidth = None
+        config = self.getConfiguration()
+        if 'minimal_binwidth' in config.keys():
+            self._minimal_binwidth=config['minimal_binwidth']
+        else:
+            self.logMsg('No minimal binwidth defined in config file of fastcomtec!',
+                        msgType='error')
+            self._minimal_binwidth=0.25
+
         return
 
     def deactivation(self, e):
@@ -89,7 +94,40 @@ class FastComtec(Base, FastCounterInterface):
         
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1
-        
+
+    def get_bitshift(self):
+        """Get bitshift from Fastcomtec."""
+        settings = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(settings), 0)
+        return int(settings.bitshift)
+
+    def get_binwidth(self):
+        """The binwidth is defined as 2**bitshift*minimal_binwidth"""
+        return self._minimal_binwidth*(2**int(self.get_bitshift()))
+
+    def set_bitshift(self, bitshift):
+        cmd='BITSHIFT=%i'%bitshift
+        self.dll.RunCmd(0,bytes(cmd,'ascii'))
+        return self.get_bitshift()
+
+    def set_binwidth(self,binwidth):
+        bitshift=np.log2(binwidth/self._minimal_binwidth)
+        new_bitshift=self.set_bitshift(bitshift)
+        return self._minimal_binwidth*(2**int(new_bitshift))
+
+#TODO: Check such that only possible lengths are set.
+    def set_length(self, N):
+        cmd='RANGE=%i'%N
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        cmd='roimax=%i'%N
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return self.get_length()
+
+    def get_length(self):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return int(setting.range)
+
 
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
@@ -120,9 +158,6 @@ class FastComtec(Base, FastCounterInterface):
     #         self.logMsg('There is an unknown status from FastComtec. The status message was %s'%(str(status.started)), msgType='error')
     #         return -1
 
-    def get_binwidth(self):
-        return 1000./950.
-    
     def start_measure(self):
         self.dll.Start(0)
         return 0
@@ -138,11 +173,6 @@ class FastComtec(Base, FastCounterInterface):
     def continue_measure(self):
         self.dll.Continue(0)
         return 0
-
-    def is_trace_extractable(self):
-        
-        raise InterfaceImplementationError('FastCounterInterface>is_trace_extractable')
-        return -1
 
     def get_data_trace(self):
         """
@@ -167,24 +197,7 @@ class FastComtec(Base, FastCounterInterface):
         
     def is_gated(self):
         return self.gated
-        
-    def get_frequency(self):
-        freq = 950.
-        time.sleep(0.5)
-        return freq
 
-        
-#    def save_raw_trace(self,path):
-#        """A fast way of saving the raw data directly."""
-#        
-#        raise InterfaceImplementationError('FastCounterInterface>save_raw_trace')
-#        return -1
-#        
-#    def save_raw_laserpulses(self,path):
-#        """A fast way of saving the raw data directly."""
-#        
-#        raise InterfaceImplementationError('FastCounterInterface>save_raw_laserpulses')
-#        return -1
 
 
 class AcqStatus(ctypes.Structure):
