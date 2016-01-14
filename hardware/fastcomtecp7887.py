@@ -22,8 +22,18 @@ Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 #TODO: Missing: set binwidth, set length,
+
 #TODO: start stop works but pause does not work, i guess gui/logic problem
 #TODO: What does get status do or need as return?
+#TODO: Is the method get frequency really needed
+#TODO: Where is the conversion from bins to ns
+
+#Not written modules:
+#TODO: configure
+#TODO: get_status
+#TODO: get_binwidth
+#TODO: is_trace_extractable
+
 
 from core.base import Base
 from hardware.fast_counter_interface import FastCounterInterface
@@ -134,76 +144,28 @@ class FastComtec(Base, FastCounterInterface):
         raise InterfaceImplementationError('FastCounterInterface>is_trace_extractable')
         return -1
 
-#this has to be substituted by the next function where everything is converted
     def get_data_trace(self):
+        """
+        Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
+        The binning specified by calling configure() must be taken care of in this hardware class.
+        A possible overflow of the histogram bins must be caught here and taken care of.
+        If the counter is UNgated it will return a 1D-numpy-array with returnarray[timebin_index]
+        If the counter is gated it will return a 2D-numpy-array with returnarray[gate_index, timebin_index]
+        """
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         N = setting.range
-        data = np.empty((N,), dtype=np.int64)
+        data = np.empty((N,), dtype=np.uint32)
         self.dll.LVGetDat(data.ctypes.data, 0)
+        return np.int64(data)
+
+    def get_data_testfile(self):
+        ''' Load data test file '''
+        data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
+        time.sleep(0.5)
         return data
-
-#TODO: How do I get the bins and lenght
-    def get_data_convert(self, bins, length):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        N = setting.range
-        data = np.empty((N,), dtype=np.int64)
-        self.dll.LVGetDat(data.ctypes.data, 0)
-        data2 = []
-        for bin in bins:
-            data2.append(data[bin:bin+length])
-        return np.array(data2)
-
-#     def get_data_trace(self):
-#         ''' params '''
-# #        num_of_lasers = 100
-# #        polarized_count = 200
-# #        ground_noise = 50
-# #        laser_length = 3000
-# #        rise_length = 30
-# #        tail_length = 1000
-# #
-# #        rising_edge = np.arctan(np.linspace(-10, 10, rise_length))
-# #        rising_edge = rising_edge - rising_edge.min()
-# #        falling_edge = np.flipud(rising_edge)
-# #        low_count = np.full([tail_length], rising_edge.min())
-# #        high_count = np.full([laser_length], rising_edge.max())
-# #
-# #        gate_length = laser_length + 2*(rise_length + tail_length)
-# #        trace_length = num_of_lasers * gate_length
-# #
-# #        if self.gated:
-# #            data = np.empty([num_of_lasers, gate_length], int)
-# #        else:
-# #            data = np.empty([trace_length], int)
-# #
-# #        for i in range(num_of_lasers):
-# #            gauss = signal.gaussian(500,120) / (1 + 3*np.random.random())
-# #            gauss = np.append(gauss, np.zeros([laser_length-500]))
-# #            trace = np.concatenate((low_count, rising_edge, high_count+gauss, falling_edge, low_count))
-# #            trace = polarized_count * (trace / rising_edge.max())
-# #            trace = np.array(np.rint(trace), int)
-# #            trace = trace + np.random.randint(-ground_noise, ground_noise, trace.size)
-# #            for j in range(trace.size):
-# #                if trace[j] <= 0:
-# #                    trace[j] = 0
-# #                else:
-# #                    trace[j] = trace[j] + np.random.randint(-np.sqrt(trace[j]), np.sqrt(trace[j]))
-# #                    if trace[j] < 0:
-# #                        trace[j] = 0
-# #            if self.gated:
-# #                data[i] = trace
-# #            else:
-# #                data[i*gate_length:(i+1)*gate_length] = trace
-# #        data = np.loadtxt('141222_Rabi_old_NV_-11.04dbm_01.asc')
-# #        data = np.loadtxt('20150701_binning4.asc')
-#         data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
-#         time.sleep(0.5)
-#         return data
         
     def is_gated(self):
-#        return True
         return self.gated
         
     def get_frequency(self):
