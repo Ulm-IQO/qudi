@@ -80,10 +80,11 @@ class CounterGui(GUIBase):
         self._curve2 = self._pw.plot()
         self._curve2.setPen('r', width=4)
 
-        self._curve3 = self._pw.plot()
-        self._curve3.setPen('b')
-        self._curve4 = self._pw.plot()
-        self._curve4.setPen('b', width=4)
+        if self._counting_logic._counting_device._photon_source2 is not None:
+            self._curve3 = self._pw.plot()
+            self._curve3.setPen('b')
+            self._curve4 = self._pw.plot()
+            self._curve4.setPen('b', width=4)
         
         # setting the x axis length correctly
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
@@ -132,8 +133,20 @@ class CounterGui(GUIBase):
             self._mw.count_value_Label.setText('{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1]))
             self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
             self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
-            self._curve3.setData(y=self._counting_logic.countdata2, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
-            self._curve4.setData(y=self._counting_logic.countdata_smoothed2, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
+
+            if self._counting_logic._counting_device._photon_source2 is not None:
+                self._curve3.setData(
+                                y=self._counting_logic.countdata2,
+                                x=np.arange(
+                                    0,
+                                    self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
+                                )
+                self._curve4.setData(
+                                y=self._counting_logic.countdata_smoothed2,
+                                x=np.arange(
+                                    0,
+                                    self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
+                                )
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
