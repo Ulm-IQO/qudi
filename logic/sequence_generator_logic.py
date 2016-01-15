@@ -718,48 +718,50 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, mw_freq_Hz, mw_amp_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, tau_incr_bins):
+    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
         # create parameter dictionary list for MW signal
-        params = {}
-        params['frequency1'] = mw_freq_Hz
-        params['amplitude1'] = mw_amp_V
-        params['phase1'] = 0
-        params = [params]
-        for i in range(self.analogue_channels-1):
-            params.append({})
-        # create pulse_function lists
-        idle_func = ['Idle']
-        sin_func = ['Sin']
-        for i in range(self.analogue_channels-1):
-            idle_func.append('Idle')
-            sin_func.append('Idle')
-        # create marker lists
-        laser_markers = [False]*self.digital_channels
-        laser_markers[0] = True
-        idle_markers = [False]*self.digital_channels
+        mw_params = [{},{}]
+        mw_params[0]['frequency1'] = mw_freq_Hz
+        mw_params[0]['amplitude1'] = mw_amp_V
+        mw_params[0]['phase1'] = 0
+        laser_params = [{},{}]
+        idle_params = [{},{}]
+        laser_markers = [True, True, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, True, False]
+
+        # create tau list
+        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
         
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, self.analogue_channels, self.digital_channels, 0, idle_func, laser_markers, params)
-        waiting_element = Pulse_Block_Element(waiting_time_bins, self.analogue_channels, self.digital_channels, 0, idle_func, idle_markers, params)
-        mw_element = Pulse_Block_Element(tau_start_bins, self.analogue_channels, self.digital_channels, tau_incr_bins, sin_func, idle_markers, params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, laser_params)
+        waiting_element = Pulse_Block_Element(waiting_time_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, idle_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, idle_params)
         # put elements in a list to create the block
-        element_list = [laser_element, waiting_element, mw_element]
+        element_list = []
+        for tau in tau_list:
+            mw_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, mw_params)
+            element_list.append(laser_element)
+            element_list.append(waiting_element)
+            element_list.append(mw_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
         # create block
-        block = Pulse_Block('Rabi_block', element_list)
-        # create tau_array
-        tau_array = np.arange(tau_start_bins, tau_end_bins+1, tau_incr_bins)
-        # put block(s) in a list with repetitions to create the sequence
-        repetitions = len(tau_array)-1
-        block_list = [(block, repetitions),]
-        # create sequence out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble('Rabi', block_list, tau_array, 0, False)
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, 0, False)
         # save block
-        self.save_block('Rabi_block', block)
+        # self.save_block(name, block)
         # save ensemble
-        self.save_ensemble('Rabi', block_ensemble)
+        self.save_ensemble(name, block_ensemble)
         # set current block
         self.current_block = block
         # set current block ensemble
         self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
         return
 
