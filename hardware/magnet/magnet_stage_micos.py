@@ -86,24 +86,24 @@ class MagnetStageMicos(Base, MagnetStageInterface):
             self.MICOSA.term_chars = config['magnet_term_chars_xy']
         else:
             self.MICOSA.term_chars = '\n'
-            self.logMsg('No magnet_term_chars_xy configured taking '\\n' instead.', msgType='warning')
+            self.logMsg('No magnet_term_chars_xy configured taking LF instead.', msgType='warning')
         if 'magnet_term_chars_zphi' in config.keys():
             self.MICOSA.term_chars = config['magnet_term_chars_zphi']
         else:
             self.MICOSB.term_chars = '\n'
-            self.logMsg('No magnet_term_chars_zphi configured taking '\\n' instead.', msgType='warning')
+            self.logMsg('No magnet_term_chars_zphi configured taking LF instead.', msgType='warning')
             
         # here the variables for the baud rate are read in
         if 'magnet_baud_rate_xy' in config.keys():
             MICOSA.baud_rate = config['magnet_baud_rate_xy']
         else:
             self.MICOSA.baud_rate = 57600
-            self.logMsg('No magnet_baud_rate_xy configured taking '57600' instead.', msgType='warning')
+            self.logMsg('No magnet_baud_rate_xy configured, taking 57600 instead.', msgType='warning')
         if 'magnet_baud_rate_zphi' in config.keys():
             self.MICOSB.baud_rate = config['magnet_baud_rate_zphi']
         else:
             self.MICOSB.baud_rate = 57600
-            self.logMsg('No magnet_baud_rate_zphi configured taking '57600' instead.', msgType='warning')
+            self.logMsg('No magnet_baud_rate_zphi configured, taking 57600 instead.', msgType='warning')
 
     def deactivation(self, e):
         self.MICOSA.close()
@@ -177,14 +177,14 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         try:
             x = float(self.MICOSA.ask('pos').split()[0])
             y = float(self.MICOSA.ask('pos').split()[1])
-               z  = float(self.MICOSB.ask('pos').split()[0])
-               phi  = float(self.MICOSB.ask('pos').split()[1])  
+            z  = float(self.MICOSB.ask('pos').split()[0])
+            phi  = float(self.MICOSB.ask('pos').split()[1])  
             self.x_store = x
             self.y_store = y
             self.z_store = z
             self.phi_store = phi
         except:
-            print 'It was not possible to get the position of the magnet!'
+            print('It was not possible to get the position of the magnet!')
             pass
         return self.x_store, self.y_store, self.z_store, self.phi_store
         
@@ -199,8 +199,8 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         except:
             statusA =-1
             statusB = -1
-        return (statusA,statusB)
-            return 0
+            return (statusA,statusB)
+        return 0
             
     def move(self, x = 0., y = 0., z = 0., phi = 0.):
         """Moves stage to absolute position
@@ -235,9 +235,9 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-       self.MICOSA.write('1 1 setaxis')
-       self.MICOSA.write('4 2 setaxis')
-       self.MICOSA.write('cal')
+        self.MICOSA.write('1 1 setaxis')
+        self.MICOSA.write('4 2 setaxis')
+        self.MICOSA.write('cal')
         return 0
             
     def calibrate_y(self):
@@ -246,9 +246,9 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-       self.MICOSA.write('4 1 setaxis')
-       self.MICOSA.write('1 2 setaxis')
-       self.MICOSA.write('cal')
+        self.MICOSA.write('4 1 setaxis')
+        self.MICOSA.write('1 2 setaxis')
+        self.MICOSA.write('cal')
         return 0
             
     def calibrate_z(self):
@@ -257,9 +257,9 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-       self.MICOSB.write('1 1 setaxis')
-       self.MICOSB.write('4 2 setaxis')
-       self.MICOSB.write('cal')
+        self.MICOSB.write('1 1 setaxis')
+        self.MICOSB.write('4 2 setaxis')
+        self.MICOSB.write('cal')
         return 0
     
     def calibrate_phi(self):
@@ -268,9 +268,9 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-       self.MICOSB.write('4 1 setaxis')
-       self.MICOSB.write('1 2 setaxis')
-       self.MICOSB.write('cal')
+        self.MICOSB.write('4 1 setaxis')
+        self.MICOSB.write('1 2 setaxis')
+        self.MICOSB.write('cal')
         return 0
     
     def get_velocity(self, dimension = 'x'):
@@ -282,16 +282,16 @@ class MagnetStageMicos(Base, MagnetStageInterface):
         """
         if dimension == 'x':
             vel=float(self.MICOSA.ask('getvel').split()[0])  
-        print("The velocity of the magnet in dimension x and y is set on ",vel) 
+            print("The velocity of the magnet in dimension x and y is set on ", vel) 
         elif dimension == 'y':
             vel=float(self.MICOSA.ask('getvel').split()[0]) 
-        print("The velocity of the magnet in dimension x and y is set on ",vel)   
+            print("The velocity of the magnet in dimension x and y is set on ", vel)   
         elif dimension == 'z':
             vel=float(self.MICOSB.ask('getvel').split()[0]) 
-        print("The velocity of the magnet in dimension z and phi is set on ",vel)        
+            print("The velocity of the magnet in dimension z and phi is set on ", vel)        
         elif dimension == 'phi':
             vel=float(self.MICOSB.ask('getvel').split()[0])
-        print("The velocity of the magnet in dimension z and phi is set on ",vel)           
+            print("The velocity of the magnet in dimension z and phi is set on ", vel)           
         return vel
         
     def set_velocity(self, dimension = 'x', vel = 0.):
