@@ -314,7 +314,7 @@ class MagnetStagePI(Base, MagnetStageInterface):
         q = z1+z2*256+z3*256**2+z4*256**3
         
         if y == 255:
-            print ('error nr. ' + str(q))            
+            print(('error nr. ' + str(q)))            
         return q
         
     
@@ -389,52 +389,52 @@ class MagnetStagePI(Base, MagnetStageInterface):
             
         [a,b,c] = in_movement()
         while a != 0 or b != 0 or c !=0 :
-            print 'moving to the corner...'
+            print('moving to the corner...')
             [a,b,c] = in_movement()
-            print 'moving on x-Axis: ', a
-            print 'moving on y-Axis: ', b
-            print 'moving on z-Axis: ', c,'\n'
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
             time.sleep(0.5)
         ##############################################
-        print 'in edge' 
+        print('in edge') 
         test_open()
         ser.write('123DH\n')       
         ser.write('123MA900000\n')
         time.sleep(.1)
-        print str(ser.read(17))     
-        print 'define the tmps'                                           
+        print(str(ser.read(17)))     
+        print('define the tmps')                                           
         ser.close()
         ###############################################
         [a,b,c] = in_movement()
         while a != 0 or b != 0 or c != 0:
-            print 'moving next to the centerposition...'
+            print('moving next to the centerposition...')
             [a,b,c] = in_movement()
-            print 'moving on x-Axis: ', a
-            print 'moving on y-Axis: ', b
-            print 'moving on z-Axis: ', c,'\n'
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
             time.sleep(.5)
         ####################################################
-        print 'fast movement finished'
+        print('fast movement finished')
             
         time.sleep(0.1)
         test_open()
         ser.write('13FE1\n')    
-        print ser.read(6) 
+        print(ser.read(6)) 
         ser.close()
         [a,b,c] = in_movement()                                   
         while a != 0 or b != 0 or c != 0:
-            print 'find centerposition...'
+            print('find centerposition...')
             [a,b,c] = in_movement()
-            print 'moving on x-Axis: ', a
-            print 'moving on y-Axis: ', b
-            print 'moving on z-Axis: ', c,'\n'
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
             time.sleep(.5)
         test_open()
         ser.write('123DH\n')
         ser.close()
         del [a,b,c]
         #######################################################
-        print 'calibration finished'
+        print('calibration finished')
         GetPos()
             
     
