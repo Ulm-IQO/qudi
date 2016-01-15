@@ -1137,6 +1137,15 @@ class Manager(QtCore.QObject):
         return order
         
     def registerTaskRunner(self, reference):
+        """ Register/deregister/replace a task runner object.
+
+        @param object reference: reference to a task runner or null class
+
+        If a reference is passed that is not None, it is kept and passed out as the task runner instance.
+        If a None is passed, the reference is discarded.
+        Id another reference is passed, the current one is replaced.
+
+        """
         with self.lock:
             if self.tr is None and reference is not None:
                 self.tr = reference

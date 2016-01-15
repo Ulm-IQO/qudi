@@ -160,8 +160,8 @@ class mwsourcegigatronics(Base, MWInterface):
             FreqString += '{:f},'.format(f)
         FreqString += '{:f}'.freq(-1)
         self._gpib_connection.write(':LIST:FREQ' + FreqString)
-        self._gpib_connection.write(':LIST:POW'  +  (' {:f},'.format(power * len(freq))[:-1])
-        self._gpib_connection.write(':LIST:DWEL' +  (' {:f},'.format(0.3 * len(freq))[:-1]))
+        self._gpib_connection.write(':LIST:POW'  + (' {:f},'.format(power * len(freq[:-1]))))
+        self._gpib_connection.write(':LIST:DWEL' + (' {:f},'.format(0.3 * len(freq[:-1]))))
         # ask crashes on Gigatronics, so we have to omit the sanity check
         self._gpib_connection.write(':LIST:PREC 1')
         self._gpib_connection.write(':LIST:REP STEP')
