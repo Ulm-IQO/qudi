@@ -123,7 +123,8 @@ class PulsedMeasurementLogic(GenericLogic):
     def update_fast_counter_status(self):
         ''' This method captures the fast counter status and updates the corresponding class variables
         '''
-        self.fast_counter_status = self._fast_counter_device.get_status()
+        # self.fast_counter_status = self._fast_counter_device.get_status()
+        self.fast_counter_status = {'binwidth_ns':1000/950}
         self.fast_counter_gated = self._fast_counter_device.is_gated()
         self.fast_counter_binwidth = self._fast_counter_device.get_binwidth()
         return

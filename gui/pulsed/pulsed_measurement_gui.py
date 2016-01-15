@@ -80,6 +80,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Add the display item to the xy VieWidget, which was defined in
         # the UI file.
+        self._mw.signal_plot_ViewWidget.clear()
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
