@@ -4,8 +4,9 @@
 from hardware.fast_counter_interface import FastCounterInterface
 from core.base import Base
 import numpy as np
-import thirdparty.opal_kelly as ok
+import thirdparty.opal_kelly32 as ok
 import struct
+import os
 
 class FastCounterFPGAQO(Base, FastCounterInterface):
     """ unstable: Nikolas Tomek
@@ -58,7 +59,8 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # open a connection to the FPGA with the specified serial number
         self._fpga.OpenBySerial(self._serial)
         # upload the fast counter configuration bitfile to the FPGA
-        self._fpga.ConfigureFPGA('C:\\software\\qudi\\trunk\\hardware\\fpga_fastcounter\\fastcounter_top.bit')
+        # self._fpga.ConfigureFPGA('C:\\software\\qudi\\trunk\\hardware\\fpga_fastcounter\\fastcounter_top.bit')
+        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware', 'fpga_fastcounter','fastcounter_top.bit'))
         # check if the upload was successful and the Opal Kelly FrontPanel is enabled on the FPGA
         if not self._fpga.IsFrontPanelEnabled():
             self.logMsg('Opal Kelly FrontPanel is not enabled in FPGA', msgType='error')
@@ -142,10 +144,35 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if self._binwidth != 1:
             buffer_encode = buffer_encode[:(buffer_encode.size // self._binwidth) * self._binwidth].reshape(-1, self._binwidth).sum(axis=1)
         # reshape the data array into the 2D output array    
-        self.count_data = buffer_encode.reshape(-1, self._number_of_gates)[:, 0:self._gate_length_bins]
+        self.count_data = buffer_encode.reshape(self._number_of_gates, -1)[:, 0:self._gate_length_bins]
         if self._overflown:
             self.count_data = np.add(self.count_data, self._old_data)
         return self.count_data
+
+    def test_method(self):
+        data_buffer = bytearray(self._histogram_size*4)
+        # check if the timetagger had an overflow.
+        self._fpga.UpdateWireOuts()
+        flags = self._fpga.GetWireOutValue(0x20)
+        if flags != 0:
+            # send acknowledge signal to FPGA
+            self._fpga.SetWireInValue(0x00, 0x8000000 + self._histogram_size)
+            self._fpga.UpdateWireIns()
+            self._fpga.SetWireInValue(0x00, self._histogram_size)
+            self._fpga.UpdateWireIns()
+            # save latest count data into a new class variable to preserve it
+            self._old_data = self.count_data.copy()
+            self._overflown = True
+        # trigger the data read in the FPGA
+        self._fpga.SetWireInValue(0x00, 0x20000000 + self._histogram_size)
+        self._fpga.UpdateWireIns()
+        self._fpga.SetWireInValue(0x00, self._histogram_size)
+        self._fpga.UpdateWireIns()
+        # read data from the FPGA
+        self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
+        # encode the bytearray data into 32-bit integers
+        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size, data_buffer))
+        return buffer_encode
 
     def stop_measure(self):
         """
