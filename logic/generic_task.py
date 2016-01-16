@@ -50,7 +50,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
 
     prePostTasks = {}
     pauseTasks = {}
-    requiredModules = {}
+    requiredModules = []
 
     def __init__(self, name, runner, references, config):
         QtCore.QObject.__init__(self)
@@ -233,6 +233,8 @@ class PrePostTask(QtCore.QObject, Fysom):
     sigPostExecStart = QtCore.Signal()
     sigPostExecFinish = QtCore.Signal()
     sigStateChanged = QtCore.Signal(object)
+
+    requiredModules = []
 
     def __init__(self, name, runner, references, config):
         QtCore.QObject.__init__(self)

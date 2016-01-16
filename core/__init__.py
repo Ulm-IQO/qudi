@@ -69,7 +69,7 @@ import pyqtgraph as pg
 pg.setConfigOptions(useWeave=False)
 
 # Make icons work on non-X11 platforms, import a custom theme
-print('Platform is', sys.platform)
+#print('Platform is', sys.platform)
 if sys.platform == 'win32':
     try:
         import ctypes
