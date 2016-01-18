@@ -131,6 +131,10 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         # <Windows>/System32/
         self._dll = ctypes.cdll.LoadLibrary('phlib64')
 
+        # Just some default values:
+        self._bin_width_ns = 3000
+        self._record_length_ns = 100 *1e9
+
 
 
     def activation(self, fysom_e=None):
@@ -216,7 +220,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         self.BINSTEPSMAX = 8
         self.HISTCHAN = 65536    # number of histogram channels
-        self.TTREADMAX = 131072  # 128K event records
+        self.TTREADMAX = 256000  # 256K event records
 
         # in Hz:
         self.COUNTFREQ = 10
@@ -290,7 +294,6 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     def initialize(self, mode):
         """ Initialize the device with one of the three possible modes.
 
-        @param int deviceID: a divice index from 0 to 7.
         @param int mode:    0: histogramming
                             2: T2
                             3: T3
@@ -298,10 +301,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         mode = int(mode)    # for safety reasons, convert to integer
         if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
                 (mode != self.MODE_T3)):
-            print(mode)
             self.logMsg('Picoharp: Mode for the device could not be set. It '
                         'must be {0}=Histogram-Mode, {1}=T2-Mode or '
-                        '{2}=T3-Mode, but the mode {3} was '
+                        '{2}=T3-Mode, but a parameter {3} was '
                         'passed.'.format(self.MODE_HIST, self.MODE_T2,
                                          self.MODE_T3, mode),
                         msgType='error')
@@ -552,7 +554,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """ Stop the measurement."""
         self.check(self._dll.PH_StopMeas(self._deviceID))
 
-    def get_status(self):
+    def _get_status(self):
         """ Check the status of the device.
 
         @return int:  = 0: acquisition time still running
@@ -684,7 +686,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     # To check whether you can use the TTTR mode (must be purchased in
     # addition) you can call PH_GetFeatures to check.
 
-    def tttr_read_fifo(self, num_counts):
+    def tttr_read_fifo(self):#, num_counts):
         """ Read out the buffer of the FIFO.
 
         @param int num_counts: number of TTTR records to be fetched. Maximal
@@ -705,13 +707,44 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         data could be fetched. Return value indicates how many records were
         fetched. Buffer must not be accessed until the function returns!
         """
+
+        # if type(num_counts) is not int:
+        #     num_counts = self.TTREADMAX
+        # elif (num_counts<0) or (num_counts>self.TTREADMAX):
+        #     self.logMsg('PicoHarp: num_counts were expected to within the '
+        #                 'interval [0,{0}], but a value of {1} was '
+        #                 'passed'.format(self.TTREADMAX, num_counts),
+        #                 msgType='error')
+        #     num_counts = self.TTREADMAX
+
+        # PicoHarp T3 Format (for analysis and interpretation):
+        # The bit allocation in the record for the 32bit event is, starting
+        # from the MSB:
+        #       channel:     4 bit
+        #       dtime:      12 bit
+        #       nsync:      16 bit
+        # The channel code 15 (all bits ones) marks a special record.
+        # Special records can be overflows or external markers. To
+        # differentiate this, dtime must be checked:
+        #
+        #     If it is zero, the record marks an overflow.
+        #     If it is >=1 the individual bits are external markers.
+
+        num_counts = self.TTREADMAX
+
+        # c_float_p = ctypes.POINTER(ctypes.c_float)
+
         buffer = np.zeros(num_counts, dtype=np.uint32)
+        # buffer_p = ctypes.POINTER(ctypes.c_uint32)
         actual_num_counts = ctypes.c_int32()
         # counts.ctypes.data is the reference to the array in the memory.
-        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data,
-                                            num_counts, ctypes.byref(actual_num_counts)))
+        # self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data_as(buffer_p),
+        #                                  num_counts, ctypes.byref(actual_num_counts)))
 
-        return (buffer, actual_num_counts)
+        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data_as(ctypes.c_void_p),
+                                         num_counts, ctypes.byref(actual_num_counts)))
+
+        return (buffer, actual_num_counts.value)
 
     def tttr_set_marker_edges(self, me0, me1, me2, me3):
         """ Set the marker edges
@@ -1018,3 +1051,95 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     # =========================================================================
 
     #FIXME: The interface connection to the fast counter must be established!
+
+    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
+        """
+        Configuration of the fast counter.
+        bin_width_ns: Length of a single time bin in the time trace histogram
+                      in nanoseconds.
+        record_length_ns: Total length of the timetrace/each single gate in
+                          nanoseconds.
+        number_of_gates: Number of gates in the pulse sequence. Ignore for
+                         ungated counter.
+        """
+        self.initialize(mode=3)
+        self._bin_width_ns = bin_width_ns
+        self._record_length_ns = record_length_ns
+        return
+
+    def get_status(self):
+        """
+        Receives the current status of the Fast Counter and outputs it as
+        return value.
+        0 = unconfigured
+        1 = idle
+        2 = running
+        3 = paused
+        -1 = error state
+        """
+        if not self.connected_to_device:
+            return -1
+        else:
+            returnvalue = self._get_status()
+            if returnvalue == 0:
+                return 2
+            else:
+                return 1
+
+    def start_measure(self):
+        """
+        Starts the fast counter.
+        """
+        self.start(self._record_length_ns/1e6)
+
+    def pause_measure(self):
+        """
+        Pauses the current measurement if the fast counter is in running state.
+        """
+        self.stop_measure()
+
+    def continue_measure(self):
+        """
+        Continues the current measurement if the fast counter is in pause state.
+        """
+        self.start(self._record_length_ns/1e6)
+
+    def is_gated(self):
+        """
+        Boolean return value indicates if the fast counter is a gated counter
+        (TRUE) or not (FALSE).
+        """
+        return False
+
+    def get_binwidth(self):
+        """
+        returns the width of a single timebin in the timetrace in seconds
+        """
+        #FIXME: Must be implemented
+        return 2e-9
+
+    def get_data_trace(self):
+        """
+        Polls the current timetrace data from the fast counter and returns it
+        as a numpy array (dtype = int64). The binning specified by calling
+        configure() must be taken care of in this hardware class. A possible
+        overflow of the histogram bins must be caught here and taken care of.
+          - If the counter is UNgated it will return a 1D-numpy-array with
+            returnarray[timebin_index].
+          - If the counter is gated it will return a 2D-numpy-array with
+            returnarray[gate_index, timebin_index]
+        """
+
+        buffer, actual_counts = self.tttr_read_fifo()
+        return buffer
+
+    def test(self):
+
+        self.configure(3000, 10*1e9)
+        self.tttr_set_marker_enable(1, 1, 0, 0)
+        self.start_measure()
+        time.sleep(1)
+        buffer = self.get_data_trace()
+
+        self.stop_measure()
+        return buffer
