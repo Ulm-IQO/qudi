@@ -55,56 +55,72 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
                         msgType='status')
                         
         self.gated = False
-         
         
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
+        self.statusvar = 0
+        self._binwidth = 1
+        self._gate_length_bins = 8192
         return
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
         """
+        self.statusvar = -1
         return
 
-    def configure(self):
-        """Configures the Fast Counter."""
-        
-        raise InterfaceImplementationError('FastCounterInterface>configure')
-        return -1
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+        """
+        Configuration of the fast counter.
+        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
+        record_length_s: Total length of the timetrace/each single gate in seconds.
+        number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
+        Returns the actually set values as tuple
+        """
+        self._binwidth = int(np.rint(bin_width_s * 1e9 * 950 / 1000))
+        self._gate_length_bins = int(np.rint(record_length_s / bin_width_s))
+        actual_binwidth = self._binwidth * 1000 / 950e9
+        actual_length = self._gate_length_bins * actual_binwidth
+        self.statusvar = 1
+        return (actual_binwidth, actual_length, number_of_gates)
         
     
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
-        status = {'binwidth_ns': 1000./950.}
-        status['is_gated'] = self.gated
-        time.sleep(0.2)
-        return status
+        return self.statusvar
 
     def get_binwidth(self):
         return 1000./950.
     
     def start_measure(self):
         time.sleep(1)
+        self.statusvar = 2
         return 0
     
     def pause_measure(self):
         time.sleep(1)
+        self.statusvar = 3
         return 0
         
     def stop_measure(self):
         time.sleep(1)
+        self.statusvar = 1
         return 0
     
     def continue_measure(self):
-        
-        raise InterfaceImplementationError('FastCounterInterface>continue_measure')
-        return -1
+        self.statusvar = 2
+        return 0
 
-    def is_trace_extractable(self):
-        
-        raise InterfaceImplementationError('FastCounterInterface>is_trace_extractable')
-        return -1
+    def is_gated(self):
+        return self.gated
+
+    def get_binwidth(self):
+        """
+        returns the width of a single timebin in the timetrace in seconds
+        """
+        width_in_seconds = self._binwidth * 1e-6/950
+        return width_in_seconds
       
     def get_data_trace(self):
         ''' params '''
@@ -152,25 +168,9 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
-        
-    def is_gated(self):
-#        return True
-        return self.gated
+
         
     def get_frequency(self):
         freq = 950.
         time.sleep(0.5)
         return freq
-
-        
-#    def save_raw_trace(self,path):
-#        """A fast way of saving the raw data directly."""
-#        
-#        raise InterfaceImplementationError('FastCounterInterface>save_raw_trace')
-#        return -1
-#        
-#    def save_raw_laserpulses(self,path):
-#        """A fast way of saving the raw data directly."""
-#        
-#        raise InterfaceImplementationError('FastCounterInterface>save_raw_laserpulses')
-#        return -1

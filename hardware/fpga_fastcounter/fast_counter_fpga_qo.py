@@ -4,7 +4,7 @@
 from hardware.fast_counter_interface import FastCounterInterface
 from core.base import Base
 import numpy as np
-import thirdparty.opal_kelly32 as ok
+import thirdparty.opal_kelly as ok
 import struct
 import os
 
@@ -73,16 +73,18 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self.statusvar = 0
         return 0
 
-    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
         """
         Configuration of the fast counter.
-        bin_width_ns: Length of a single time bin in the time trace histogram in nanoseconds.
-        record_length_ns: Total length of the timetrace/each single gate in nanoseconds.
+        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
+        record_length_s: Total length of the timetrace/each single gate in seconds.
         number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
         """
         # set class variables
-        self._binwidth = int(np.rint(bin_width_ns * 950 / 1000))
-        self._gate_length_bins = int(np.rint(record_length_ns / bin_width_ns))
+        self._binwidth = int(np.rint(bin_width_s * 1e9 * 950 / 1000))
+        binwidth_s = self._binwidth * 1000 / 950e9
+        self._gate_length_bins = int(np.rint(record_length_s / bin_width_s))
+        gate_length_s = self._gate_length_bins * binwidth_s
         self._number_of_gates = number_of_gates
         self._histogram_size = number_of_gates * 8192
         # reset overflow indicator
@@ -92,7 +94,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         self._fpga.SetWireInValue(0x00, 0x40000000 + self._histogram_size)
         self._fpga.UpdateWireIns()
         self.statusvar = 1
-        return 0
+        return (binwidth_s, gate_length_s, number_of_gates)
         
     def start_measure(self):
         """
@@ -148,31 +150,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         if self._overflown:
             self.count_data = np.add(self.count_data, self._old_data)
         return self.count_data
-
-    def test_method(self):
-        data_buffer = bytearray(self._histogram_size*4)
-        # check if the timetagger had an overflow.
-        self._fpga.UpdateWireOuts()
-        flags = self._fpga.GetWireOutValue(0x20)
-        if flags != 0:
-            # send acknowledge signal to FPGA
-            self._fpga.SetWireInValue(0x00, 0x8000000 + self._histogram_size)
-            self._fpga.UpdateWireIns()
-            self._fpga.SetWireInValue(0x00, self._histogram_size)
-            self._fpga.UpdateWireIns()
-            # save latest count data into a new class variable to preserve it
-            self._old_data = self.count_data.copy()
-            self._overflown = True
-        # trigger the data read in the FPGA
-        self._fpga.SetWireInValue(0x00, 0x20000000 + self._histogram_size)
-        self._fpga.UpdateWireIns()
-        self._fpga.SetWireInValue(0x00, self._histogram_size)
-        self._fpga.UpdateWireIns()
-        # read data from the FPGA
-        self._fpga.ReadFromBlockPipeOut(0xA0, 1024, data_buffer)
-        # encode the bytearray data into 32-bit integers
-        buffer_encode = np.array(struct.unpack("<"+"L"*self._histogram_size, data_buffer))
-        return buffer_encode
 
     def stop_measure(self):
         """

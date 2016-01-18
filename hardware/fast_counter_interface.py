@@ -27,15 +27,16 @@ class FastCounterInterface():
     Interface class to define the controls for fast counting devices.
     """
 
-    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
         """
         Configuration of the fast counter.
-        bin_width_ns: Length of a single time bin in the time trace histogram in nanoseconds.
-        record_length_ns: Total length of the timetrace/each single gate in nanoseconds.
+        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
+        record_length_s: Total length of the timetrace/each single gate in seconds.
         number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
+        Returns the actually set values as tuple
         """
         raise InterfaceImplementationError('FastCounterInterface>configure')
-        return -1
+        return (1e-9, 4000e-9, 0)
 
     def get_status(self):
         """

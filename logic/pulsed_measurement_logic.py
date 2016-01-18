@@ -56,11 +56,14 @@ class PulsedMeasurementLogic(GenericLogic):
         # fast counter status variables
         self.fast_counter_status = None     # 0=unconfigured, 1=idle, 2=running, 3=paused, -1=error
         self.fast_counter_gated = None      # gated=True, ungated=False
-        self.fast_counter_binwidth = None   # in seconds
-        # dictionary containing the parameters of the currently running sequence
-        self.running_sequence_parameters = {}
-        self.running_sequence_parameters['tau_vector'] = np.array(range(50))
-        self.running_sequence_parameters['number_of_lasers'] = 50
+        self.fast_counter_binwidth = 1e-9   # in seconds
+        # parameters of the currently running sequence
+        self.tau_vector = np.array(range(50))
+        self.number_of_lasers = 50
+        self.sequence_length_s = 100e-6
+        # setup parameters
+        self.aom_delay_s = 0.7e-6
+        self.laser_length_s = 3.e-6
         # index of the laser pulse to be displayed in the GUI (starting from 1).
         # A value of 0 corresponds to the sum of all laser pulses
         self.display_pulse_no = 0
@@ -107,6 +110,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fit_logic = self.connector['in']['fitlogic']['object']
         #self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
+        self.fast_counter_gated = self._fast_counter_device.is_gated()
         self.update_fast_counter_status()
         self._initialize_signal_plot()
         self._initialize_laser_plot()
@@ -123,12 +127,21 @@ class PulsedMeasurementLogic(GenericLogic):
     def update_fast_counter_status(self):
         ''' This method captures the fast counter status and updates the corresponding class variables
         '''
-        # self.fast_counter_status = self._fast_counter_device.get_status()
-        self.fast_counter_status = {'binwidth_ns':1000/950}
-        self.fast_counter_gated = self._fast_counter_device.is_gated()
-        self.fast_counter_binwidth = self._fast_counter_device.get_binwidth()
+        self.fast_counter_status = self._fast_counter_device.get_status()
         return
-    
+
+    def configure_fast_counter(self):
+        ''' This method configures the fast counter and updates the actually set values in the class variables.
+        '''
+        if self.fast_counter_gated:
+            record_length_s = self.aom_delay_s + self.laser_length_s
+            number_of_gates = self.number_of_lasers
+        elif not self.fast_counter_gated:
+            record_length_s = self.aom_delay_s + self.sequence_length_s
+            number_of_gates = 0
+        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth, record_length_s, number_of_gates)
+        self.fast_counter_binwidth = actual_binwidth_s
+        return
     
     def start_pulsed_measurement(self):
         '''Start the analysis thread.
@@ -167,9 +180,9 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
             # analyze pulses and get data points for signal plot
-            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.running_sequence_parameters['number_of_lasers'])
+            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.number_of_lasers)
             # set x-axis of signal plot
-            self.signal_plot_x = self.running_sequence_parameters['tau_vector']
+            self.signal_plot_x = self.tau_vector
             # set laser plot
             if self.display_pulse_no > 0:
                 self.laser_plot_y = self.laser_data[self.display_pulse_no-1]
@@ -238,8 +251,8 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
-        self.signal_plot_x = self.running_sequence_parameters['tau_vector']
-        self.signal_plot_y = np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
+        self.signal_plot_x = self.tau_vector
+        self.signal_plot_y = np.zeros(self.number_of_lasers, dtype=float)
     
     
     def _initialize_laser_plot(self):
@@ -251,8 +264,8 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_measuring_error_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.measuring_error_plot_x = self.running_sequence_parameters['tau_vector']
-        self.measuring_error_plot_y =  np.zeros(self.running_sequence_parameters['number_of_lasers'], dtype=float)
+        self.measuring_error_plot_x = self.tau_vector
+        self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
 
 
     def _save_data(self):
@@ -291,7 +304,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
-        parameters['Number of laser pulses'] = self.running_sequence_parameters['number_of_lasers']
+        parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['Signal start (bin)'] = self.signal_start_bin
         parameters['Signal width (bins)'] = self.signal_width_bin
         parameters['Normalization start (bin)'] = self.norm_start_bin
@@ -315,10 +328,10 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Is counter gated?'] = self.fast_counter_gated
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
-        parameters['Number of laser pulses'] = self.running_sequence_parameters['number_of_lasers']
+        parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
-        parameters['Tau start'] = self.running_sequence_parameters['tau_vector'][0]
-        parameters['Tau increment'] = self.running_sequence_parameters['tau_vector'][1] - self.running_sequence_parameters['tau_vector'][0]
+        parameters['Tau start'] = self.tau_vector[0]
+        parameters['Tau increment'] = self.tau_vector[1] - self.tau_vector[0]
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,

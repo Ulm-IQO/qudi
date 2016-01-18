@@ -134,8 +134,10 @@ class PulsedMeasurementGui(GUIBase):
 
         @param Fysom.event e: Event Object of Fysom
         """
-        # connect the signal for a change of the sample frequency
+        # connect the signals upon changes of the LineEdits and Spinboxes
         self._mw.sample_freq_DSpinBox.editingFinished.connect(self.sample_frequency_changed)
+        self._mw.gen_aomdelay_LineEdit.editingFinished.connect(self.aom_delay_changed)
+        self._mw.gen_laserlength_LineEdit.editingFinished.connect(self.laser_length_changed)
 
         # connect the signals for the predefined sequence buttons
         self._mw.gen_rabi_PushButton.clicked.connect(self.generate_rabi_clicked)
@@ -166,7 +168,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_rabi_taustart_LineEdit.setText(str(1))
         self._mw.gen_rabi_tauend_LineEdit.setText(str(100))
         self._mw.gen_rabi_points_LineEdit.setText(str(100))
-        self._mw.gen_aomdelay_LineEdit.setText(str(500))
+        self._mw.gen_aomdelay_LineEdit.setText(str(700))
         self._mw.gen_laserlength_LineEdit.setText(str(3000))
 
         # initialize the lists of available blocks, ensembles and sequences
@@ -236,6 +238,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.upload_ensemble_ComboBox.addItems(new_list)
         return
 
+    def laser_length_changed(self):
+        length_s = float(self._mw.gen_laserlength_LineEdit.text())/1e9
+        self._pulsed_measurement_logic.laser_length_s = length_s
+        self._pulsed_measurement_logic.configure_fast_counter()
+
+    def aom_delay_changed(self):
+        aomdelay_s = float(self._mw.gen_aomdelay_LineEdit.text())/1e9
+        self._pulsed_measurement_logic.aom_delay_s = aomdelay_s
+        self._pulsed_measurement_logic.configure_fast_counter()
+
     def generate_rabi_clicked(self):
         freq = 1e6*float(self._mw.gen_rabi_freq_LineEdit.text())
         amp = 1e6*float(self._mw.gen_rabi_amp_LineEdit.text())
@@ -251,6 +263,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def generate_xy8_clicked(self):
         return
+
+
 
 
     ###########################################################################
@@ -301,8 +315,9 @@ class PulsedMeasurementGui(GUIBase):
 #
 #        # Add the display item to the xy VieWidget, which was defined in
 #        # the UI file.
+        #self._mw.signal_plot_ViewWidget.clear()
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
+        #self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
         self._mw.fft_PlotWidget.addItem(self.fft_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
         
@@ -342,12 +357,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_continue_pause.setEnabled(False)
         
         self._mw.action_pull_data.setEnabled(False)
-
-        # Configuration of the comboWidget
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
-        # set up the types of the columns and create a pattern based on
-        # the desired settings:
 
 #        # Add Validators to InputWidgets
         validator = QtGui.QDoubleValidator()
@@ -446,7 +455,7 @@ class PulsedMeasurementGui(GUIBase):
         # Connect InputWidgets to events
         # pulsed measurement tab
         self._mw.numlaser_InputWidget.editingFinished.connect(self.lasernum_changed)
-        #self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
+        self._mw.binning_doubleSpinBox.editingFinished.connect(self.binning_changed)
         self._mw.laser_to_show_ComboBox.activated.connect(self.seq_parameters_changed)
         self._mw.tau_start_InputWidget.editingFinished.connect(self.seq_parameters_changed)
         self._mw.tau_increment_InputWidget.editingFinished.connect(self.seq_parameters_changed)
@@ -487,7 +496,7 @@ class PulsedMeasurementGui(GUIBase):
 #        self._pulsed_measurement_logic.stop_pulsed_measurement()
 #        self._mw.mw_frequency_InputWidget.setEnabled(True)
 #        self._mw.mw_power_InputWidget.setEnabled(True)
-#        self._mw.binning_comboBox.setEnabled(True)
+#        self._mw.binning_doubleSpinBox.setEnabled(True)
 #        self._mw.pull_data_pushButton.setEnabled(False)
 
     def run_stop_clicked(self,isChecked):
@@ -504,7 +513,7 @@ class PulsedMeasurementGui(GUIBase):
             #self._mw.signal_plot_ViewWidget.clear()
             self._mw.mw_frequency_InputWidget.setEnabled(False)
             self._mw.mw_power_InputWidget.setEnabled(False)
-            self._mw.binning_comboBox.setEnabled(False)
+            self._mw.binning_doubleSpinBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -515,7 +524,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pulsed_measurement_logic.stop_pulsed_measurement()
             self._mw.mw_frequency_InputWidget.setEnabled(True)
             self._mw.mw_power_InputWidget.setEnabled(True)
-            self._mw.binning_comboBox.setEnabled(True)
+            self._mw.binning_doubleSpinBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
             
@@ -625,14 +634,22 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.fft_PlotWidget.setVisible(True)   
         else:
             self._mw.fft_PlotWidget.setVisible(False)
-            
+
+    def binning_changed(self):
+        binning_s = self._mw.binning_doubleSpinBox.value()/1e9
+        self._pulsed_measurement_logic.fast_counter_binwidth = binning_s
+        self._pulsed_measurement_logic.configure_fast_counter()
+        self._mw.binning_doubleSpinBox.setValue(self._pulsed_measurement_logic.fast_counter_binwidth*1e9)
+
     def lasernum_changed(self):
         self._mw.laser_to_show_ComboBox.clear()
         self._mw.laser_to_show_ComboBox.addItem('sum')    
         for ii in range(int(self._mw.numlaser_InputWidget.text())):
             self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
-        print (self._mw.laser_to_show_ComboBox.currentText())
-        #self.seq_parameters_changed()   
+        laser_num = int(self._mw.numlaser_InputWidget.text())
+        self._pulsed_measurement_logic.number_of_lasers = laser_num
+        self._pulsed_measurement_logic.configure_fast_counter()
+        self.seq_parameters_changed()
     
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
@@ -644,30 +661,18 @@ class PulsedMeasurementGui(GUIBase):
         
         current_laser = self._mw.laser_to_show_ComboBox.currentText()
 
-        print('tet')
-        print (current_laser)
-            
         if current_laser == 'sum':
-            print ('here')
             laser_show = 0
-
-        
         else:
-            print (self._mw.laser_to_show_ComboBox.currentText())
             laser_show = int(current_laser)
-            #laser_show=5
-           
-            
+
         if (laser_show > laser_num):
-            print ('warning. Number too high')
             self._mw.laser_to_show_ComboBox.setEditText('sum')
             laser_show = 0
-            
 
-            
         tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
-        self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
-        self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
+        self._pulsed_measurement_logic.tau_vector = tau_vector
+        self._pulsed_measurement_logic.number_of_lasers = laser_num
         self._pulsed_measurement_logic.display_pulse_no = laser_show
         self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
         self._pulsed_measurement_logic.mykrowave_power = mw_power
