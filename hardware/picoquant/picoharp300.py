@@ -220,7 +220,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         self.BINSTEPSMAX = 8
         self.HISTCHAN = 65536    # number of histogram channels
-        self.TTREADMAX = 256000  # 256K event records
+        self.TTREADMAX = 131072  # 256K event records
 
         # in Hz:
         self.COUNTFREQ = 10
@@ -548,7 +548,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                         'passed.'.format(self.ACQTMIN, self.ACQTMAX, acq_time),
                          msgType='error')
         else:
-            self.check(self._dll.PH_StartMeas(self._deviceID, acq_time))
+            self.check(self._dll.PH_StartMeas(self._deviceID, int(acq_time)))
 
     def stop_measure(self):
         """ Stop the measurement."""
@@ -734,15 +734,22 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         # c_float_p = ctypes.POINTER(ctypes.c_float)
 
-        buffer = np.zeros(num_counts, dtype=np.uint32)
-        # buffer_p = ctypes.POINTER(ctypes.c_uint32)
+        buffer = np.zeros((num_counts,), dtype=np.uint32)
+#        buffer_p = ctypes.POINTER(ctypes.c_uint32)
         actual_num_counts = ctypes.c_int32()
         # counts.ctypes.data is the reference to the array in the memory.
-        # self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data_as(buffer_p),
-        #                                  num_counts, ctypes.byref(actual_num_counts)))
+#        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data_as(buffer_p),
+#                                          num_counts, ctypes.byref(actual_num_counts)))
 
-        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data_as(ctypes.c_void_p),
+        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.data,
                                          num_counts, ctypes.byref(actual_num_counts)))
+                                         
+#        self.check(self._dll.PH_ReadFiFo(self._deviceID, buffer.ctypes.strides_as(ctypes.c_longlong),
+#                                         num_counts, ctypes.byref(actual_num_counts)))
+                                         
+#        chcount = np.zeros((self.HISTCHAN,), dtype=np.uint32)
+        # buf.ctypes.data is the reference to the array in the memory.
+#        self.check(self._dll.PH_GetHistogram(self._deviceID, chcount.ctypes.data, block))
 
         return (buffer, actual_num_counts.value)
 
@@ -781,18 +788,18 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         three markers. Default after Initialize is all rising, i.e. set to 1.
         """
 
-        if (me0 != 0) or (me0 != 1) or (me1 != 0) or (me1 != 1) or \
-           (me2 != 0) or (me2 != 1) or (me3 != 0) or (me3 != 1):
-
-            self.logMsg('PicoHarp: Could not set marker enable.\n'
-                        'All the marker options must be either 0 or 1, but '
-                        'the current marker settings were passed:\n'
-                        'me0={0}, me1={1}, '
-                        'me2={2}, me3={3},'.format(me0, me1, me2, me3),
-                         msgType='error')
-            return
-        else:
-            self.check(self._dll.PH_TTSetMarkerEnable(self._deviceID, me0,
+#        if ((me0 != 0) or (me0 != 1)) or ((me1 != 0) or (me1 != 1)) or \
+#           ((me2 != 0) or (me2 != 1)) or ((me3 != 0) or (me3 != 1)):
+#
+#            self.logMsg('PicoHarp: Could not set marker enable.\n'
+#                        'All the marker options must be either 0 or 1, but '
+#                        'the current marker settings were passed:\n'
+#                        'me0={0}, me1={1}, '
+#                        'me2={2}, me3={3},'.format(me0, me1, me2, me3),
+#                         msgType='error')
+#            return
+#        else:
+        self.check(self._dll.PH_SetMarkerEnable(self._deviceID, me0,
                                                        me1, me2, me3))
 
     def tttr_set_marker_holdofftime(self, holfofftime):
@@ -831,7 +838,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         routing_channels = ctypes.c_int32()
         self.check(self._dll.PH_GetRoutingChannels(self._deviceID,
-                                                   ctypes.byref(elapsed)))
+                                                   ctypes.byref(routing_channels)))
 
         return routing_channels.value
 
@@ -1062,7 +1069,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         number_of_gates: Number of gates in the pulse sequence. Ignore for
                          ungated counter.
         """
-        self.initialize(mode=3)
+#        self.initialize(mode=3)
         self._bin_width_ns = bin_width_ns
         self._record_length_ns = record_length_ns
         return
@@ -1090,7 +1097,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         Starts the fast counter.
         """
-        self.start(self._record_length_ns/1e6)
+        self.start(int(self._record_length_ns/1e6))
 
     def pause_measure(self):
         """
@@ -1134,12 +1141,18 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         return buffer
 
     def test(self):
-
-        self.configure(3000, 10*1e9)
-        self.tttr_set_marker_enable(1, 1, 0, 0)
+        self.initialize(3)
+        meas_time = 10
+        self.configure(int(meas_time*1000), meas_time*1e9)
+        print(self._record_length_ns)
+        self.tttr_set_marker_enable(0, 0, 0, 0)
         self.start_measure()
-        time.sleep(1)
-        buffer = self.get_data_trace()
+        buffer = [0]*10
+        for i in range(10):
+            buffer[i]= self.get_data_trace()
+        
+#        buffer = self.get_data_trace()
+#        buffer = self.get_histogram()
 
         self.stop_measure()
         return buffer
