@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -233,7 +233,7 @@
                   <widget class="QLineEdit" name="mw_power_InputWidget">
                    <property name="maximumSize">
                     <size>
-                     <width>50</width>
+                     <width>75</width>
                      <height>16777215</height>
                     </size>
                    </property>
@@ -250,13 +250,38 @@
                </item>
                <item row="3" column="0">
                 <layout class="QGridLayout" name="gridLayout_28">
-                 <item row="0" column="2">
-                  <widget class="QComboBox" name="binning_comboBox"/>
-                 </item>
                  <item row="0" column="1">
                   <widget class="QLabel" name="label_16">
                    <property name="text">
                     <string>Fast counter binning [ns] :</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QDoubleSpinBox" name="binning_doubleSpinBox">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>75</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="minimum">
+                    <double>0.100000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>1000.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>0.100000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>1.000000000000000</double>
                    </property>
                   </widget>
                  </item>
