@@ -45,8 +45,8 @@ class InterfaceImplementationError(Exception):
 class FastComtec(Base, FastCounterInterface):
     """
     unstable: Jochen Scheuer
-    This is the Interface class to define the controls for the simple
-    microwave hardware.
+
+    Hardware Class for the FastComtec Card.
     """
     _modclass = 'fastcounterinterface'
     _modtype = 'hardware'
@@ -89,41 +89,76 @@ class FastComtec(Base, FastCounterInterface):
         """
         return
 
-    def configure(self):
-        """Configures the Fast Counter."""
+#FIXME: Change return to return of functions/if they worked
+    def configure(self, duration, binwidth):
+        """Configures the Fast Counter.
         
-        raise InterfaceImplementationError('FastCounterInterface>configure')
-        return -1
+          @param int duration: Duration of the expected measurement
+          @param int binwidth: Set binwidth for measurement 
+        """
+        
+		self.set_binwidth(binwidth)
+		self.set_length(duration)
+
+        return 0
 
     def get_bitshift(self):
-        """Get bitshift from Fastcomtec."""
+        """Get bitshift from Fastcomtec.
+
+		@return int settings.bitshift: the red out bitshift 		
+		"""
+		
         settings = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(settings), 0)
         return int(settings.bitshift)
 
     def get_binwidth(self):
-        """The binwidth is defined as 2**bitshift*minimal_binwidth"""
+        """The binwidth is defined as 2**bitshift*minimal_binwidth
+
+		@return float: Red out bitshift converted to binwidth
+		"""
         return self._minimal_binwidth*(2**int(self.get_bitshift()))
 
     def set_bitshift(self, bitshift):
+        """ Sets the bitshift properly for this card.
+        
+          @param int bitshift
+          
+          @return int: asks the actual bitshift and returns the red out value
+          """
+
         cmd='BITSHIFT=%i'%bitshift
         self.dll.RunCmd(0,bytes(cmd,'ascii'))
         return self.get_bitshift()
 
     def set_binwidth(self,binwidth):
+        """Set defined binwidth in Card. Therefore the binwidth is converted into to 			appropiate bitshift defined as 2**bitshift*minimal_binwidth.
+
+		@return float: Red out bitshift converted to binwidth
+		"""
         bitshift=np.log2(binwidth/self._minimal_binwidth)
         new_bitshift=self.set_bitshift(bitshift)
         return self._minimal_binwidth*(2**int(new_bitshift))
 
 #TODO: Check such that only possible lengths are set.
     def set_length(self, N):
-        cmd='RANGE=%i'%N
+        """Sets the length of the length of the actual measurement.
+        
+          @param int N: Length of the measurement  
+
+		  @return float: Red out length of measurement     
+          """
+        cmd='RANGE=%i'%int(N)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd='roimax=%i'%N
+        cmd='roimax=%i'%int(N)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_length()
 
     def get_length(self):
+        """ Get the length of the current measurement.
+        
+          @return int: length of the current measurement
+        """
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.range)
@@ -159,18 +194,22 @@ class FastComtec(Base, FastCounterInterface):
     #         return -1
 
     def start_measure(self):
+        """Start the measurement. """
         self.dll.Start(0)
         return 0
 
     def pause_measure(self):
+        """Make a pause in the measurement, which can be continued. """
         self.dll.Halt(0)
         return 0
         
     def stop_measure(self):
+        """Stop the measurement. """
         self.dll.Halt(0)
         return 0
     
     def continue_measure(self):
+        """Continue a paused measurement. """
         self.dll.Continue(0)
         return 0
 
@@ -181,6 +220,8 @@ class FastComtec(Base, FastCounterInterface):
         A possible overflow of the histogram bins must be caught here and taken care of.
         If the counter is UNgated it will return a 1D-numpy-array with returnarray[timebin_index]
         If the counter is gated it will return a 2D-numpy-array with returnarray[gate_index, timebin_index]
+
+		  @return arrray: Time trace.
         """
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
@@ -196,6 +237,9 @@ class FastComtec(Base, FastCounterInterface):
         return data
         
     def is_gated(self):
+        """
+        Boolean return value indicates if the fast counter is a gated counter (TRUE) or not (FALSE).
+        """
         return self.gated
 
 
