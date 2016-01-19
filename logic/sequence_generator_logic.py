@@ -223,6 +223,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = None
         self.current_ensemble = None
         self.current_sequence = None
+        self.loaded_sequence_length = 100e-6
         self.saved_blocks = []
         self.saved_ensembles = []
         self.saved_sequences = []
@@ -718,7 +719,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
+    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, aom_delay, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
         mw_params[0]['frequency1'] = mw_freq_Hz
@@ -727,6 +728,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         laser_params = [{},{}]
         idle_params = [{},{}]
         laser_markers = [True, True, False, False]
+        gate_markers = [False, True, False, False]
         idle_markers = [False, False, False, False]
         seqtrig_markers = [False, False, True, False]
 
@@ -735,13 +737,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, laser_params)
-        waiting_element = Pulse_Block_Element(waiting_time_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, idle_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay, 2, 4, 0, ['Idle', 'Idle'], gate_markers, idle_params)
+        waiting_element = Pulse_Block_Element(1000-aom_delay, 2, 4, 0, ['Idle', 'Idle'], idle_markers, idle_params)
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, idle_params)
         # put elements in a list to create the block
         element_list = []
         for tau in tau_list:
             mw_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, mw_params)
             element_list.append(laser_element)
+            element_list.append(aomdelay_element)
             element_list.append(waiting_element)
             element_list.append(mw_element)
         if use_seqtrig:

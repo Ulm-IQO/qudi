@@ -258,7 +258,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, 3001, dtype=int)
+        self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, 3001, dtype=float)
         self.laser_plot_y = np.zeros(3000, dtype=int)
         
     def _initialize_measuring_error_plot(self):
