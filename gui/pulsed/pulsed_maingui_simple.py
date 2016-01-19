@@ -163,6 +163,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_laserlength_LineEdit.setValidator(validator)
 
         # fill in default values
+        self._mw.sample_freq_DSpinBox.setValue(25000)
         self._mw.gen_rabi_freq_LineEdit.setText(str(2870))
         self._mw.gen_rabi_amp_LineEdit.setText(str(0.25))
         self._mw.gen_rabi_taustart_LineEdit.setText(str(1))
@@ -173,6 +174,10 @@ class PulsedMeasurementGui(GUIBase):
 
         # initialize the lists of available blocks, ensembles and sequences
         self.update_ensemble_list()
+
+        self.lasernum_changed()
+        self.aom_delay_changed()
+        self.laser_length_changed()
 
     def _deactivate_pulse_generator_ui(self, e):
         """ Disconnects the configuration for 'Pulse Generator Tab.
@@ -467,6 +472,8 @@ class PulsedMeasurementGui(GUIBase):
 
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
+        self.binning_changed()
+
 #
 #        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
         
@@ -689,10 +696,10 @@ class PulsedMeasurementGui(GUIBase):
         self.signal_width_bins = sig_length
         self.norm_start_bin = ref_start
         self.norm_width_bins = ref_length
-        self.sig_start_line.setValue(sig_start)
-        self.sig_end_line.setValue(sig_start+sig_length)
-        self.ref_start_line.setValue(ref_start)
-        self.ref_end_line.setValue(ref_start+ref_length)
+        self.sig_start_line.setValue(sig_start*self._pulsed_measurement_logic.fast_counter_binwidth)
+        self.sig_end_line.setValue((sig_start+sig_length)*self._pulsed_measurement_logic.fast_counter_binwidth)
+        self.ref_start_line.setValue(ref_start*self._pulsed_measurement_logic.fast_counter_binwidth)
+        self.ref_end_line.setValue((ref_start+ref_length)*self._pulsed_measurement_logic.fast_counter_binwidth)
         self._pulsed_measurement_logic.signal_start_bin = sig_start
         self._pulsed_measurement_logic.signal_width_bin = sig_length
         self._pulsed_measurement_logic.norm_start_bin = ref_start
