@@ -39,6 +39,7 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
     def __init__(self, manager, name, config = {}, **kwargs):
         callback_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, callback_dict)
+        
 
     def activation(self, e):
         config = self.getConfiguration()
@@ -51,13 +52,21 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
         self._binwidth = 1
         self._record_length = 4000
-        self._N_read = 1
+        self._N_read = 100
         
         self.channel_apd_1 = int(1) 
         self.channel_apd_0 = int(1) 
         self.channel_detect = int(2)
         self.channel_sequence = int(6)
         self.configure(1,1000,1)
+        
+        self.count_data = None
+        
+        self.stopRequested = False
+        
+        self.threadlock = Mutex()
+        
+        self.signal_get_data_next.connect(self._get_data_next, QtCore.Qt.QueuedConnection)
         
     def deactivation(self, e):
         pass
@@ -78,12 +87,27 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
             self.channel_sequence
         )
         
+    def _get_data_next(self):
+        if self.stopRequested:
+            with self.threadlock:
+                self.kill_scanner()
+                self.stopRequested = False
+                self.unlock()
+                return
+        self.count_data = self.count_data + self.pulsed.getData()
+        self.signal_get_data_next.emit()
+        
     def start_measure(self):
         self.lock()
+        self.count_data = np.zeros((self._N_read,self._record_length))
         self.pulsed.start()
+        self.signal_get_data_next.emit()
         return 0
         
     def stop_measure(self):
+        with self.threadlock:
+            if self.getState() == 'locked':
+                self.stopRequested = True
         self.pulsed.stop()
         self.unlock()
         return 0
@@ -93,14 +117,14 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         return 0
         
     def continue_measure(self):
-        self.start_measure()
+        self.signal_get_data_next.emit()
         return 0
         
     def is_gated(self):
         return True
         
     def get_data_trace(self):
-        return self.pulsed.getData() 
+        return self.count_data
 
     def get_status(self):
         ready = self.pulsed.ready()
