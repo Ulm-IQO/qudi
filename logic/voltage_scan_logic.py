@@ -194,6 +194,11 @@ class VoltageScanningLogic(GenericLogic):
             # scan of a single line
             line_up_counts = self._scanning_device.scan_line(line_up)
 
+            self.unlock()
+
+            self._scanning_device.close_scanner()
+            self._scanning_device.close_scanner_clock()
+            self._scanning_device.unlock()
 
         except Exception as e:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
