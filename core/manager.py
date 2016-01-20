@@ -333,7 +333,7 @@ class Manager(QtCore.QObject):
 
                 # Load on startup
                 elif key == 'startup':
-                    self.logger.print_logMsg("Old style startup loading not supported. {}".format(m) )
+                    self.logger.print_logMsg("Old style startup loading not supported.  Please update your config file.")
 
                 # global config
                 elif key == 'global':
