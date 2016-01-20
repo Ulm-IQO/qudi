@@ -49,6 +49,8 @@ class VoltageScanningLogic(GenericLogic):
             }
     _out = {'voltagescanninglogic': 'VoltageScanningLogic'}
 
+    signal_change_voltage = QtCore.Signal()
+
     def __init__(self, manager, name, config, **kwargs):
         """ Create VoltageScanningLogic object with connectors.
 
@@ -91,7 +93,7 @@ class VoltageScanningLogic(GenericLogic):
         """
         pass
 
-    def set_voltage(self, tag, a = None):
+    def set_voltage(self, a = None):
         """Forwarding the desired output voltage to the scanning device.
 
         @param string tag: TODO
@@ -109,20 +111,16 @@ class VoltageScanningLogic(GenericLogic):
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
         else:
-            self.signal_change_voltage.emit(tag)
+            self.signal_change_voltage.emit()
             return 0
 
-    def _change_voltage(self, tag):
+    def _change_voltage(self):
         """ Threaded method to change the hardware position.
 
         @return int: error code (0:OK, -1:error)
         """
         self._scanning_device.scanner_set_position(a = self._current_a)
         return 0
-
-
-
-
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
