@@ -41,7 +41,7 @@ class PIDLogic(GenericLogic):
         'control': 'ProcessControlInterface',
         'savelogic': 'SaveLogic'
         }
-    _out = {'pidlogic': 'ODMRLogic'}
+    _out = {'pidlogic': 'PIDLogic'}
 
     sigNextStep = QtCore.Signal()
     sigNewValue = QtCore.Signal(float)
@@ -101,9 +101,14 @@ class PIDLogic(GenericLogic):
             self.enable = self._statusVariables['enable']
         else:
             self.enable = False
-
+        if 'bufferLength' in self._statusVariables:
+            self.bufferLength = self._statusVariables['bufferLength']
+        else:
+            self.bufferLength = 100
         self.sigNextStep.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
         self.sigNewValue.connect(self._control.setControlValue)
+        self.history = np.zeros([3, self.bufferLength])
+
         self.sigNextStep.emit()
 
     def deactivation(self, e):
@@ -115,6 +120,7 @@ class PIDLogic(GenericLogic):
         self._statusVariables['kD'] = self.kD
         self._statusVariables['setpoint'] = self.setpoint
         self._statusVariables['enable'] = self.enable
+        self._statusVariables['bufferLength'] = self.bufferLength
 
     def _calcNextStep(self):
         """ This function implements the Takahashi Type C PID
@@ -146,6 +152,10 @@ class PIDLogic(GenericLogic):
             if (self.cv < limits[0]):
                 self.cv = limits[0]
 
+            self.history = np.roll(self.history, -1, axis=1)
+            self.history[0, -1] = pv
+            self.history[1, -1] = self.cv
+            self.history[2, -1] = self.setpoint
             self.sigNewValue.emit(self.cv)
 
         else:
@@ -158,3 +168,5 @@ class PIDLogic(GenericLogic):
         time.sleep(self.timestep)
         self.sigNextStep.emit()
 
+    def getBufferLength(self):
+        return bufferLength
