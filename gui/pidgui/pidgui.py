@@ -33,8 +33,8 @@ class PIDGui(GUIBase):
     ## declare connectors
     _in = {'pidlogic': 'PIDLogic'}
 
-    sigStartCounter = QtCore.Signal()
-    sigStopCounter = QtCore.Signal()
+    sigStart = QtCore.Signal()
+    sigStop = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions

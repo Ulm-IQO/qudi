@@ -158,15 +158,14 @@ class PIDLogic(GenericLogic):
             self.history[2, -1] = self.setpoint
             self.sigNewValue.emit(self.cv)
 
-        else:
-            self.cv = 0.0
-            self.P = 0.0
-            self.I = 0.0
-            self.D = 0.0
-            self.previous = [0, 0]
-
         time.sleep(self.timestep)
         self.sigNextStep.emit()
 
     def getBufferLength(self):
-        return bufferLength
+        return self.bufferLength
+
+    def startLoop(self):
+        self.countdown = 2
+
+    def stopLoop(self):
+        self.enable = False
