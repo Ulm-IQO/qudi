@@ -72,8 +72,12 @@ class VoltageScanningLogic(GenericLogic):
           @param object e: Fysom state change event
         """
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
-
         self._save_logic = self.connector['in']['savelogic']['object']
+
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
+        self._clock_frequency = 1000.
+        self.return_slowness = 50
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
@@ -121,6 +125,79 @@ class VoltageScanningLogic(GenericLogic):
         """
         self._scanning_device.scanner_set_position(a = self._current_a)
         return 0
+
+    def set_clock_frequency(self, clock_frequency):
+        """Sets the frequency of the clock
+
+        @param int clock_frequency: desired frequency of the clock
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._clock_frequency = int(clock_frequency)
+        #checks if scanner is still running
+        if self.getState() == 'locked':
+            return -1
+        else:
+            return 0
+
+    def start_scanner(self):
+        """Setting up the scanner device and starts the scanning procedure
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self.lock()
+        self._scanning_device.lock()
+
+        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        if returnvalue < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return
+
+        returnvalue = self._scanning_device.set_up_scanner()
+        if returnvalue < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return
+
+        #self.signal_scan_lines_next.emit()
+        return 0
+
+
+    def _scan_line(self, start, end):
+        """scanning an image in either depth or xy
+
+        """
+        current_position = self._scanning_device.get_scanner_position()
+
+        try:
+            # defines trace of positions for single line scan
+            start_line = np.vstack((
+                np.linspace(current_position[0], current_position[0], self.return_slowness),
+                np.linspace(current_position[1], current_position[1], self.return_slowness),
+                np.linspace(current_position[2], current_position[2], self.return_slowness),
+                np.linspace(current_position[3], start, self.return_slowness)
+                ))
+            # scan of a single line
+            start_line_counts = self._scanning_device.scan_line(start_line)
+
+            # defines trace of positions for a single line scan
+            line_up = np.vstack((
+                np.linspace(current_position[0], current_position[0], self.return_slowness),
+                np.linspace(current_position[1], current_position[1], self.return_slowness),
+                np.linspace(current_position[2], current_position[2], self.return_slowness),
+                np.linspace(start, end, self.return_slowness)
+                ))
+            # scan of a single line
+            line_up_counts = self._scanning_device.scan_line(line_up)
+
+
+        except Exception as e:
+            self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            raise e
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
