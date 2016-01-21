@@ -141,7 +141,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect the signals for the predefined sequence buttons
         self._mw.gen_rabi_PushButton.clicked.connect(self.generate_rabi_clicked)
-        # self._mw.gen_xy8_PushButton.clicked.connect(self.generate_xy8_clicked)
+        self._mw.gen_xy8_PushButton.clicked.connect(self.generate_xy8_clicked)
 
         # connect the signals for the "Upload on device" section
         # self._mw.upload_on_ch1_PushButton.clicked.connect(self.upload_on_ch1_clicked)
@@ -161,6 +161,14 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_rabi_points_LineEdit.setValidator(validator2)
         self._mw.gen_aomdelay_LineEdit.setValidator(validator)
         self._mw.gen_laserlength_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_freq_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_amp_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_taustart_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_tauend_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_points_LineEdit.setValidator(validator2)
+        self._mw.gen_xy8_pihalf_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_pi_LineEdit.setValidator(validator)
+        self._mw.gen_xy8_N_LineEdit.setValidator(validator2)
 
         # fill in default values
         self._mw.sample_freq_DSpinBox.setValue(25000)
@@ -169,6 +177,14 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_rabi_taustart_LineEdit.setText(str(1))
         self._mw.gen_rabi_tauend_LineEdit.setText(str(100))
         self._mw.gen_rabi_points_LineEdit.setText(str(100))
+        self._mw.gen_xy8_freq_LineEdit.setText(str(2870))
+        self._mw.gen_xy8_amp_LineEdit.setText(str(0.25))
+        self._mw.gen_xy8_taustart_LineEdit.setText(str(1))
+        self._mw.gen_xy8_tauend_LineEdit.setText(str(100))
+        self._mw.gen_xy8_points_LineEdit.setText(str(100))
+        self._mw.gen_xy8_pihalf_LineEdit.setText(str(25))
+        self._mw.gen_xy8_pi_LineEdit.setText(str(50))
+        self._mw.gen_xy8_N_LineEdit.setText(str(64))
         self._mw.gen_aomdelay_LineEdit.setText(str(700))
         self._mw.gen_laserlength_LineEdit.setText(str(3000))
 
@@ -267,6 +283,18 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def generate_xy8_clicked(self):
+        freq = 1e6*float(self._mw.gen_xy8_freq_LineEdit.text())
+        amp = 1e6*float(self._mw.gen_xy8_amp_LineEdit.text())
+        tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_taustart_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_tauend_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        number_of_taus = int(self._mw.gen_xy8_points_LineEdit.text())
+        N = int(self._mw.gen_xy8_N_LineEdit.text())
+        pihalf_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pihalf_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pi_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        name = self._mw.gen_xy8_name_LineEdit.text()
+        self._seq_gen_logic.generate_xy8(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, pihalf_bins, pi_bins, N, True)
         return
 
 
@@ -333,12 +361,12 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
         self._mw.fft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.signal_plot_ViewWidget.setLabel('left', 'Intensity', units='a.u.')
-        self._mw.signal_plot_ViewWidget.setLabel('left', 'Counts')
-        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'tau', units='ns')
-        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'bins')
+        self._mw.signal_plot_ViewWidget.setLabel('left', 'Signal', units='a.u.')
+        self._mw.signal_plot_ViewWidget.setLabel('bottom', 'tau', units='s')
+        self._mw.lasertrace_plot_ViewWidget.setLabel('left', 'Counts')
+        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'time', units='s')
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
-        self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
+        self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau')
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
         
         

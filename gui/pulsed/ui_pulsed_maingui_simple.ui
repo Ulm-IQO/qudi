@@ -599,18 +599,11 @@
                 <item row="4" column="1">
                  <widget class="QPushButton" name="gen_xy8_PushButton">
                   <property name="text">
-                   <string>Generate Rabi</string>
+                   <string>Generate XY8-N</string>
                   </property>
                  </widget>
                 </item>
                 <item row="0" column="12">
-                 <widget class="QLabel" name="label_10">
-                  <property name="text">
-                   <string>3pi/2-pulse (ns):</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="14">
                  <spacer name="horizontalSpacer_8">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -706,16 +699,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="13">
-                 <widget class="QLineEdit" name="gen_xy8_3pihalf_LineEdit">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                 </widget>
-                </item>
                 <item row="0" column="11">
                  <spacer name="horizontalSpacer_9">
                   <property name="orientation">
@@ -789,6 +772,13 @@
                   </property>
                  </widget>
                 </item>
+                <item row="1" column="3">
+                 <widget class="QLabel" name="label_18">
+                  <property name="text">
+                   <string>Tau start (ns):</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="1" column="1">
                  <widget class="QLineEdit" name="gen_xy8_N_LineEdit">
                   <property name="sizePolicy">
@@ -815,10 +805,20 @@
                   </property>
                  </spacer>
                 </item>
-                <item row="1" column="3">
-                 <widget class="QLabel" name="label_18">
+                <item row="1" column="9">
+                 <widget class="QLabel" name="label_20">
                   <property name="text">
-                   <string>Tau start (ns):</string>
+                   <string>Number of points:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="10">
+                 <widget class="QLineEdit" name="gen_xy8_points_LineEdit">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
                  </widget>
                 </item>
@@ -846,23 +846,6 @@
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="10">
-                 <widget class="QLineEdit" name="gen_xy8_points_LineEdit">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="9">
-                 <widget class="QLabel" name="label_20">
-                  <property name="text">
-                   <string>Number of points:</string>
                   </property>
                  </widget>
                 </item>
