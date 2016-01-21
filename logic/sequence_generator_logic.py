@@ -719,14 +719,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, aom_delay, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
+    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, aom_delay_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
         mw_params[0]['frequency1'] = mw_freq_Hz
         mw_params[0]['amplitude1'] = mw_amp_V
         mw_params[0]['phase1'] = 0
-        laser_params = [{},{}]
-        idle_params = [{},{}]
+        no_analogue_params = [{},{}]
         laser_markers = [True, True, False, False]
         gate_markers = [False, True, False, False]
         idle_markers = [False, False, False, False]
@@ -736,10 +735,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
         
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, laser_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay, 2, 4, 0, ['Idle', 'Idle'], gate_markers, idle_params)
-        waiting_element = Pulse_Block_Element(1000-aom_delay, 2, 4, 0, ['Idle', 'Idle'], idle_markers, idle_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, idle_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
         # put elements in a list to create the block
         element_list = []
         for tau in tau_list:
@@ -768,4 +767,101 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # update ensemble list
         self.refresh_ensemble_list()
         return
+
+    def generate_xy8(self, name, mw_freq_Hz, mw_amp_V, aom_delay_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, pihalf_bins, pi_bins, N, use_seqtrig = True):
+        pihalf_pix_params = [{},{}]
+        pihalf_pix_params[0]['frequency1'] = mw_freq_Hz
+        pihalf_pix_params[0]['amplitude1'] = mw_amp_V
+        pihalf_pix_params[0]['phase1'] = 0
+        piy_params = [{},{}]
+        piy_params[0]['frequency1'] = mw_freq_Hz
+        piy_params[0]['amplitude1'] = mw_amp_V
+        piy_params[0]['phase1'] = 90
+        no_analogue_params = [{},{}]
+        laser_markers = [True, True, False, False]
+        gate_markers = [False, True, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, True, False]
+
+        # create tau lists
+        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus)
+        tauhalf_list = tau_list/2
+        # correct taus for nonzero-length pi- and pi/2-pulses
+        tau_list_corr = tau_list - pi_bins
+        tauhalf_list_corr = tauhalf_list - (pi_bins/2) - (pihalf_bins/2)
+        # round lists to nearest integers
+        tau_list_corr = np.array(np.rint(tau_list), dtype=int)
+        tauhalf_list_corr = np.array(np.rint(tauhalf_list), dtype=int)
+        tau_list = np.array(np.rint(tau_list), dtype=int)
+        tauhalf_list = np.array(np.rint(tauhalf_list), dtype=int)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
+        pi_x_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
+        pi_y_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, piy_params)
+
+        # generate block list
+        blocks = []
+        for tau_ind in range(len(tau_list_corr)):
+            # create tau and tauhalf elements
+            tau_element = Pulse_Block_Element(tau_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+            tauhalf_element = Pulse_Block_Element(tauhalf_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+
+            # actual XY8-N sequence
+            # generate element list
+            elements = []
+            elements.append(pihalf_element)
+            elements.append(tauhalf_element)
+            # repeat xy8 N times
+            for i in range(N):
+                elements.append(pi_x_element)
+                elements.append(tau_element)
+                elements.append(pi_y_element)
+                elements.append(tau_element)
+                elements.append(pi_x_element)
+                elements.append(tau_element)
+                elements.append(pi_y_element)
+                elements.append(tau_element)
+                elements.append(pi_y_element)
+                elements.append(tau_element)
+                elements.append(pi_x_element)
+                elements.append(tau_element)
+                elements.append(pi_y_element)
+                elements.append(tau_element)
+                elements.append(pi_x_element)
+                elements.append(tau_element)
+            # remove last tau waiting time and replace it with readout
+            del elements[-1]
+            elements.append(tauhalf_element)
+            elements.append(pihalf_element)
+            elements.append(laser_element)
+            elements.append(aomdelay_element)
+            elements.append(waiting_element)
+
+            # create a new block for this XY8-N sequence with fixed tau and add it to the block list
+            blocks.append(Pulse_Block('XY8_' + str(N) + '_taubins_' + str(tau_list[tau_ind]), elements))
+
+        # seqeunce trigger for FPGA counter
+        tail_elements = [seqtrig_element]
+        blocks.append(Pulse_Block('XY8_' + str(N) + '_tail', tail_elements))
+
+        # generate block ensemble (the actual whole measurement sequence)
+        block_list = []
+        for block in blocks:
+            block_list.append((block, 0))
+        # name = 'XY8_' + str(N) + '_taustart_' + str(tau_list[0]) + '_tauend_' + str(tau_list[-1]) + '_numtaus_' + str(len(tau_list))
+        XY8_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, 0, True)
+        # save ensemble
+        self.save_ensemble(name, XY8_ensemble)
+        # set current block ensemble
+        self.current_ensemble = XY8_ensemble
+        # set first XY8-N tau block as current block
+        self.current_block = blocks[0]
+        # update ensemble list
+        self.refresh_ensemble_list()
+
 
