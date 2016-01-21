@@ -335,6 +335,7 @@ class PulsedMeasurementGui(GUIBase):
         # Get the image from the logic
         # pulsed measurement tab
         self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error_plot_y, bottom=self._pulsed_measurement_logic.measuring_error_plot_y,pen='b')
         self.fft_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
         self.measuring_error_image = pg.PlotDataItem(self._pulsed_measurement_logic.measuring_error_plot_x, self._pulsed_measurement_logic.measuring_error_plot_y*1000)
@@ -350,6 +351,7 @@ class PulsedMeasurementGui(GUIBase):
 #        # the UI file.
         #self._mw.signal_plot_ViewWidget.clear()
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
+        self._mw.signal_plot_ViewWidget.addItem(self.signal_image_error_bars)
         #self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
         self._mw.fft_PlotWidget.addItem(self.fft_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
@@ -618,6 +620,7 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the xy-matrix image
         '''
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=1)
         self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         
        
@@ -627,7 +630,7 @@ class PulsedMeasurementGui(GUIBase):
         
         #print(self._pulsed_measurement_logic.measuring_error)
         
-        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error*1000)
+        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error)
 
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement

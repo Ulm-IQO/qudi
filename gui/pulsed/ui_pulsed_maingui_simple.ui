@@ -20,7 +20,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -1498,8 +1498,9 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>
-     <activeon>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/36x36/stop_36x36.png</activeon>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normalon>
+     <activeon>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/36x36/stop_36x36.png</activeon>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
    </property>
    <property name="text">
     <string>Starts a new measurment or stops a measurement</string>
@@ -1511,8 +1512,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>
-     <normalon>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</normalon>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/dev/momentum_glossy_icons/pause_36x36.png</normalon>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
    </property>
    <property name="text">
     <string>Pauses or continues a measurement</string>
@@ -1524,7 +1525,7 @@
   <action name="action_save">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/document-save.png</normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/document-save.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</iconset>
    </property>
    <property name="text">
     <string>Save the current measurement data</string>
@@ -1533,7 +1534,7 @@
   <action name="action_pull_data">
    <property name="icon">
     <iconset>
-     <normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../../../../Users/s_ntomek/artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/dev/ultimate_gnome/1443028343_go-jump.png</normaloff>../../artwork/icons/qudiTheme/dev/ultimate_gnome/1443028343_go-jump.png</iconset>
    </property>
    <property name="text">
     <string>Pull and analyze data</string>
