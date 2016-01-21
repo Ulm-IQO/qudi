@@ -213,11 +213,14 @@ class VoltageScanningLogic(GenericLogic):
 
         # stops scanning
         if self.stopRequested:
+            if self.upwards_scan:
+                ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
+            else:
+                ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
             with self.threadlock:
                 self.kill_scanner()
                 self.stopRequested = False
                 self.unlock()
-                #TODO: return to the voltage value we had before the scan started.
                 return
 
         if self._scan_counter == 0:
