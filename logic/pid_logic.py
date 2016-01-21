@@ -70,7 +70,7 @@ class PIDLogic(GenericLogic):
         self._control = self.connector['in']['control']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-        self.previous = [0, 0]
+        self.previousdelta = 0
         self.cv = self._control.getControlValue()
 
         config = self.getConfiguration()
@@ -97,10 +97,10 @@ class PIDLogic(GenericLogic):
             self.setpoint = self._statusVariables['setpoint']
         else:
             self.setpoint = 273.15
-        if 'enable' in self._statusVariables:
-            self.enable = self._statusVariables['enable']
-        else:
-            self.enable = False
+        #if 'enable' in self._statusVariables:
+        #    self.enable = self._statusVariables['enable']
+        #else:
+        #    self.enable = False
         if 'bufferLength' in self._statusVariables:
             self.bufferLength = self._statusVariables['bufferLength']
         else:
@@ -108,6 +108,10 @@ class PIDLogic(GenericLogic):
         self.sigNextStep.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
         self.sigNewValue.connect(self._control.setControlValue)
         self.history = np.zeros([3, self.bufferLength])
+        self.savingState = False
+        self.enable = False
+        self.integrated = 0
+        self.countdown = 2
 
         self.sigNextStep.emit()
 
@@ -130,20 +134,26 @@ class PIDLogic(GenericLogic):
              This function should be called once every TS seconds.
         """
         pv = self._process.getProcessValue()
+
+        if self.countdown > 0:
+            self.countdown -= 1
+            self.previousdelta = self.setpoint - pv
+            print('Countdown: ', self.countdown)
+        elif self.countdown == 0:
+            self.countdown = -1
+            self.integrated = 0
+            self.enable = True
         
         if (self.enable):
-            # calculate e[k] = SP[k] - PV[k]
             delta = self.setpoint - pv
+            self.integrated += delta 
             ## Calculate PID controller:
-            ## y[k] = y[k-1] + kc * (PV[k-1] - PV[k] + Ts*e[k]/Ti + Td/Ts * (2*PV[k-1] - PV[k] - PV[k-2]))
-
-            self.P = self.kP / self.timestep * (self.previous[0] - pv)
-            self.I = self.kI / self.timestep * delta
-            self.D = self.kD / self.timestep * (2.0 * self.previous[0] - self.previous[1] - pv)
+            self.P = self.kP * delta
+            self.I = self.kI * self.timestep * self.integrated
+            self.D = self.kD / self.timestep * (delta - self.previousdelta)
 
             self.cv += self.P + self.I + self.D
-            self.previous[1] = self.previous[0]
-            self.previous[0] = pv
+            self.previousdelta = delta
 
             ## limit contol output to maximum permissible limits
             limits = self._control.getControlLimits()
@@ -169,3 +179,12 @@ class PIDLogic(GenericLogic):
 
     def stopLoop(self):
         self.enable = False
+
+    def getSavingState(self):
+        return self.savingState
+
+    def startSaving(self):
+        pass
+
+    def saveData(self):
+        pass
