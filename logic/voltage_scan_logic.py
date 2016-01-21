@@ -50,6 +50,7 @@ class VoltageScanningLogic(GenericLogic):
     _out = {'voltagescanninglogic': 'VoltageScanningLogic'}
 
     signal_change_voltage = QtCore.Signal()
+    signal_scan_next_line = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         """ Create VoltageScanningLogic object with connectors.
@@ -65,6 +66,8 @@ class VoltageScanningLogic(GenericLogic):
 
         #locking for thread safety
         self.threadlock = Mutex()
+
+        self.stopRequested = False
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -83,11 +86,24 @@ class VoltageScanningLogic(GenericLogic):
         # micrometer!
         self.a_range = self._scanning_device.get_position_range()[3]
 
+        # Initialise the current position of all four scanner channels.
+        self.current_position = self._scanning_device.get_scanner_position()
+
+        # initialise the range for scanning
+        self.scan_range = [self.a_range[0]/10, self.a_range[1]/10]
+
         # Sets the current position to the center of the maximal scanning range
         self._current_a = (self.a_range[0] + self.a_range[1]) / 2.
 
         # Sets connections between signals and functions
         self.signal_change_voltage.connect(self._change_voltage, QtCore.Qt.QueuedConnection)
+        self.signal_scan_next_line.connect(self._do_next_line, QtCore.Qt.QueuedConnection)
+
+        # Initialization of internal counter for scanning
+        self._scan_counter = 0
+
+        # Keep track of scan direction
+        self.upwards_scan = True
 
 
     def deactivation(self, e):
@@ -140,14 +156,26 @@ class VoltageScanningLogic(GenericLogic):
         else:
             return 0
 
-    def start_scanner(self):
+    def start_scanning(self, v_min = None, v_max = None):
         """Setting up the scanner device and starts the scanning procedure
 
         @return int: error code (0:OK, -1:error)
         """
 
+        if v_min != None:
+            self.scan_range[0] = v_min
+        if v_max != None:
+            self.scan_range[1] = v_max
+
+        self._scan_counter = 0
+        self.upwards_scan = True
+
+        self.current_position = self._scanning_device.get_scanner_position()
+
         self.lock()
         self._scanning_device.lock()
+
+
 
         returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
         if returnvalue < 0:
@@ -163,46 +191,90 @@ class VoltageScanningLogic(GenericLogic):
             self.set_position('scanner')
             return
 
-        #self.signal_scan_lines_next.emit()
+        self.signal_scan_next_line.emit()
+        return 0
+
+    def stop_scanning(self):
+        """Stops the scan
+
+        @return int: error code (0:OK, -1:error)
+        """
+        with self.threadlock:
+            if self.getState() == 'locked':
+                self.stopRequested = True
+
         return 0
 
 
-    def _scan_line(self, start, end):
-        """scanning an image in either depth or xy
+    def _do_next_line(self):
+        """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
 
         """
-        current_position = self._scanning_device.get_scanner_position()
 
+        # stops scanning
+        if self.stopRequested:
+            with self.threadlock:
+                self.kill_scanner()
+                self.stopRequested = False
+                self.unlock()
+                #TODO: return to the voltage value we had before the scan started.
+                return
+
+        if self._scan_counter == 0:
+            # move from current voltage to start of scan range.
+            ignored_counts = self._scan_line(self.current_position[3], self.scan_range[0])
+
+        if self.upwards_scan:
+            counts = self._scan_line(self.scan_range[0], self.scan_range[1])
+            self.upwards_scan = False
+        else:
+            counts = self._scan_line(self.scan_range[1], self.scan_range[0])
+            self.upwards_scan = True
+
+        self._scan_counter += 1
+        self.signal_scan_next_line.emit()
+
+
+    def _scan_line(self, voltage1, voltage2):
+        """do a single voltage scan from voltage1 to voltage2
+
+        """
         try:
             # defines trace of positions for single line scan
-            start_line = np.vstack((
-                np.linspace(current_position[0], current_position[0], self.return_slowness),
-                np.linspace(current_position[1], current_position[1], self.return_slowness),
-                np.linspace(current_position[2], current_position[2], self.return_slowness),
-                np.linspace(current_position[3], start, self.return_slowness)
+            scan_line = np.vstack((
+                np.linspace(self.current_position[0], self.current_position[0], self.return_slowness),
+                np.linspace(self.current_position[1], self.current_position[1], self.return_slowness),
+                np.linspace(self.current_position[2], self.current_position[2], self.return_slowness),
+                np.linspace(voltage1, voltage2, self.return_slowness)
                 ))
             # scan of a single line
-            start_line_counts = self._scanning_device.scan_line(start_line)
+            counts_on_scan_line = self._scanning_device.scan_line(scan_line)
 
-            # defines trace of positions for a single line scan
-            line_up = np.vstack((
-                np.linspace(current_position[0], current_position[0], self.return_slowness),
-                np.linspace(current_position[1], current_position[1], self.return_slowness),
-                np.linspace(current_position[2], current_position[2], self.return_slowness),
-                np.linspace(start, end, self.return_slowness)
-                ))
-            # scan of a single line
-            line_up_counts = self._scanning_device.scan_line(line_up)
-
-            self.unlock()
-
-            self._scanning_device.close_scanner()
-            self._scanning_device.close_scanner_clock()
-            self._scanning_device.unlock()
+            return counts_on_scan_line
 
         except Exception as e:
             self.logMsg('The scan went wrong, killing the scanner.', msgType='error')
+            self.stop_scanning()
+            self.signal_scan_next_line.emit()
             raise e
+
+    def kill_scanner(self):
+        """Closing the scanner device.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            self._scanning_device.close_scanner()
+            self._scanning_device.close_scanner_clock()
+        except Exception as e:
+            self.logExc('Could not even close the scanner, giving up.', msgType='error')
+            raise e
+        try:
+            self._scanning_device.unlock()
+        except Exception as e:
+            self.logExc('Could not unlock scanning device.', msgType='error')
+
+        return 0
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
