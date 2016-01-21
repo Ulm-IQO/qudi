@@ -83,22 +83,25 @@ class PIDGui(GUIBase):
         self._curve3.setPen('b', width=2)
 
         # setting the x axis length correctly
-        self._pw.setXRange(0, self._pid_logic.getBufferLength()/self._pid_logic.timestep)
+        self._pw.setXRange(0, self._pid_logic.getBufferLength()*self._pid_logic.timestep)
         
         #####################
         # Setting default parameters
-        self._mw.P_SpinBox.setValue( self._pid_logic.kP )
-        self._mw.I_SpinBox.setValue( self._pid_logic.kI )
-        self._mw.D_SpinBox.setValue( self._pid_logic.kD )
+        self._mw.P_DoubleSpinBox.setValue( self._pid_logic.kP )
+        self._mw.I_DoubleSpinBox.setValue( self._pid_logic.kI )
+        self._mw.D_DoubleSpinBox.setValue( self._pid_logic.kD )
+
+        # make correct button state
+        self._mw.start_control_Action.setChecked(self._pid_logic.enable or self._pid_logic.countdown >= 0)
 
         #####################
         # Connecting user interactions
         self._mw.start_control_Action.triggered.connect(self.start_clicked)
         self._mw.record_control_Action.triggered.connect(self.save_clicked)
 
-        self._mw.P_SpinBox.valueChanged.connect( self.kPChanged )
-        self._mw.I_SpinBox.valueChanged.connect( self.kIChanged )
-        self._mw.D_SpinBox.valueChanged.connect( self.kDChanged )
+        self._mw.P_DoubleSpinBox.valueChanged.connect( self.kPChanged )
+        self._mw.I_DoubleSpinBox.valueChanged.connect( self.kIChanged )
+        self._mw.D_DoubleSpinBox.valueChanged.connect( self.kDChanged )
             
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -108,7 +111,7 @@ class PIDGui(GUIBase):
         self.sigStart.connect(self._pid_logic.startLoop)
         self.sigStop.connect(self._pid_logic.stopLoop)
 
-        self._pid_logic.sigNewData.connect(self.updateData)
+        self._pid_logic.sigNewValue.connect(self.updateData)
         
     def show(self):
         """Make window visible and put it above all other windows.
@@ -121,24 +124,24 @@ class PIDGui(GUIBase):
         # FIXME: !
         self._mw.close()
 
-    def updateData(self):
+    def updateData(self, value):
         """ The function that grabs the data and sends it to the plot.
         """
             
-        if self._pid_logic.getState() == 'running':
-            self._mw.process_value_Label.setText('{0:,.0f}'.format(self._pid_logic.history[0, -1]))
-            self._mw.control_value_Label.setText('{0:,.0f}'.format(self._pid_logic.history[1, -1]))
-            self._mw.setpoint_value_Label.setText('{0:,.0f}'.format(self._pid_logic.history[2, -1]))
+        if self._pid_logic.enable:
+            self._mw.process_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[0, -1]))
+            self._mw.control_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[1, -1]))
+            self._mw.setpoint_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[2, -1]))
             self._curve1.setData(y=self._pid_logic.history[0], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
             self._curve2.setData(y=self._pid_logic.history[1], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
             self._curve3.setData(y=self._pid_logic.history[2], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
 
-        if self._pid_logic.get_saving_state():
+        if self._pid_logic.getSavingState():
             self._mw.record_control_Action.setText('Save')
         else:
             self._mw.record_control_Action.setText('Start Saving Data')
             
-        if self._pid_logic.getState() == 'running':
+        if self._pid_logic.enable:
             self._mw.start_control_Action.setText('Stop')
         else:            
             self._mw.start_control_Action.setText('Start')
@@ -147,7 +150,7 @@ class PIDGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._pid_logic.getState() == 'running':
+        if self._pid_logic.enable:
             self._mw.start_control_Action.setText('Start')
             self.sigStop.emit()
         else:
@@ -157,25 +160,21 @@ class PIDGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        if self._pid_logic.get_saving_state():
+        if self._pid_logic.getSavingState():
             self._mw.record_counts_Action.setText('Start Saving Data')
-            self._mw.count_freq_SpinBox.setEnabled(True)
-            self._mw.oversampling_SpinBox.setEnabled(True)
-            self._pid_logic.save_data()
+            self._pid_logic.saveData()
         else:
             self._mw.record_counts_Action.setText('Save')
-            self._mw.count_freq_SpinBox.setEnabled(False)
-            self._mw.oversampling_SpinBox.setEnabled(False)
-            self._pid_logic.start_saving()
+            self._pid_logic.startSaving()
     
     def kPChanged(self):
-        self._pid_logic.kP = self._mw.P_SpinBox.value()
+        self._pid_logic.kP = self._mw.P_DoubleSpinBox.value()
 
     def kIChanged(self):
-        self._pid_logic.kI = self._mw.I_SpinBox.value()
+        self._pid_logic.kI = self._mw.I_DoubleSpinBox.value()
 
     def kDChanged(self):
-        self._pid_logic.kD = self._mw.D_SpinBox.value()
+        self._pid_logic.kD = self._mw.D_DoubleSpinBox.value()
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default

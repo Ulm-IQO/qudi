@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>844</height>
+    <width>762</width>
+    <height>686</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qudi: Slow Counter</string>
+   <string>qudi: PID Control</string>
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>762</width>
      <height>30</height>
     </rect>
    </property>
@@ -52,6 +52,43 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="4">
+      <widget class="QLabel" name="control_value_Label">
+       <property name="font">
+        <font>
+         <pointsize>60</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="setpoint_value_Label">
+       <property name="font">
+        <font>
+         <pointsize>60</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="5">
+      <widget class="PlotWidget" name="trace_PlotWidget"/>
+     </item>
      <item row="0" column="0">
       <widget class="QLabel" name="process_value_Label">
        <property name="font">
@@ -69,42 +106,37 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0" colspan="3">
-      <widget class="PlotWidget" name="trace_PlotWidget"/>
-     </item>
-     <item row="0" column="2">
-      <widget class="QLabel" name="control_value_Label">
-       <property name="font">
-        <font>
-         <pointsize>60</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>0</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
      <item row="0" column="1">
-      <widget class="QLabel" name="setpoint_value_Label">
-       <property name="font">
-        <font>
-         <pointsize>60</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <property name="text">
-        <string>0</string>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
        </property>
-      </widget>
+      </spacer>
+     </item>
+     <item row="0" column="3">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </widget>
@@ -137,42 +169,10 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QSpinBox" name="P_SpinBox">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>1000000</number>
-       </property>
-       <property name="singleStep">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>300</number>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="labelI">
        <property name="text">
         <string>I</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QSpinBox" name="I_SpinBox">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>1000000</number>
-       </property>
-       <property name="singleStep">
-        <number>10</number>
-       </property>
-       <property name="value">
-        <number>50</number>
        </property>
       </widget>
      </item>
@@ -188,21 +188,18 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
+     <item row="0" column="1">
+      <widget class="QDoubleSpinBox" name="P_DoubleSpinBox"/>
+     </item>
+     <item row="1" column="1">
+      <widget class="QDoubleSpinBox" name="I_DoubleSpinBox"/>
+     </item>
      <item row="2" column="1">
-      <widget class="QSpinBox" name="D_SpinBox">
+      <widget class="QDoubleSpinBox" name="D_DoubleSpinBox">
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
 Use for extremely fast counting, since all the raw data is saved. 
 Timestamps in oversampling interval are all equal to the averaging time.</string>
-       </property>
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>10000</number>
-       </property>
-       <property name="value">
-        <number>1</number>
        </property>
       </widget>
      </item>
@@ -210,8 +207,11 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </widget>
   </widget>
   <widget class="QToolBar" name="pid_control_ToolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
-    <string>Counting Controls</string>
+    <string>PID Controls</string>
    </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -244,12 +244,15 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</iconset>
    </property>
    <property name="text">
-    <string>Record counts</string>
+    <string>Record</string>
    </property>
    <property name="toolTip">
     <string>Save count trace to file</string>
@@ -260,7 +263,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Slow counter</string>
+    <string>&amp;PID display</string>
    </property>
    <property name="toolTip">
     <string>Show the Slow counter</string>
@@ -271,7 +274,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Slow &amp;counter parameters</string>
+    <string>P&amp;ID parameters</string>
    </property>
    <property name="toolTip">
     <string>Show Slow counter parameters</string>
