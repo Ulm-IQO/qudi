@@ -429,17 +429,18 @@ class PulsedMeasurementLogic(GenericLogic):
             
         elif fit_function == 'Rabi Decay':
             result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+
             ##### get the rabi fit parameters
-            rabi_amp = result[0].values['amplitude']                                                      
-            rabi_freq = result[0].values['omega']
-            rabi_offset = result[0].values['offset']
-            rabi_decay = result[0].values['decay']
-            rabi_shift = result[0].values['shift']
+            rabi_amp = result[0].params['amplitude'].value
+            rabi_freq = result[0].params['omega'].value
+            rabi_offset = result[0].params['offset'].value
+            rabi_decay = result[0].params['decay'].value
+            rabi_shift = result[0].params['shift'].value
             
-            pulsed_fit_y = rabi_amp * np.sin(pulsed_fit_x/rabi_freq*2*np.pi+rabi_shift)*np.exp(-pulsed_fit_x*rabi_decay)+rabi_offset        
+            pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
             
-            fit_result = str('Amplitude: ' + 2 * str(rabi_amp) + "\n" + 
-                             'Frequency: ' + str(rabi_freq) + "\n" +
+            fit_result = str('Contrast: ' + str(2*rabi_amp) + "\n" +
+                             'Period: ' + str(rabi_freq) + "\n" +
                              'Offset: ' + str(rabi_offset) + "\n" +
                              'Decay: ' + str(rabi_decay) + "\n" +
                              'Shift: ' + str(rabi_shift))
