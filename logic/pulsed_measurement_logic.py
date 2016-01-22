@@ -58,7 +58,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_gated = None      # gated=True, ungated=False
         self.fast_counter_binwidth = 1e-9   # in seconds
         # parameters of the currently running sequence
-        self.tau_vector = np.array(range(50))
+        self.tau_array = np.array(range(50))
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
         # setup parameters
@@ -182,7 +182,7 @@ class PulsedMeasurementLogic(GenericLogic):
             # analyze pulses and get data points for signal plot
             self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.number_of_lasers)
             # set x-axis of signal plot
-            self.signal_plot_x = self.tau_vector
+            self.signal_plot_x = self.tau_array
             # set laser plot
             if self.display_pulse_no > 0:
                 self.laser_plot_y = self.laser_data[self.display_pulse_no-1]
@@ -251,7 +251,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
-        self.signal_plot_x = self.tau_vector
+        self.signal_plot_x = self.tau_array
         self.signal_plot_y = np.zeros(self.number_of_lasers, dtype=float)
     
     
@@ -264,7 +264,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_measuring_error_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.measuring_error_plot_x = self.tau_vector
+        self.measuring_error_plot_x = self.tau_array
         self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
 
 
@@ -330,8 +330,8 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
-        parameters['Tau start'] = self.tau_vector[0]
-        parameters['Tau increment'] = self.tau_vector[1] - self.tau_vector[0]
+        parameters['Tau start'] = self.tau_array[0]
+        parameters['Tau increment'] = self.tau_array[1] - self.tau_array[0]
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
@@ -519,10 +519,6 @@ class PulsedMeasurementLogic(GenericLogic):
     def compute_x_for_fit(self, x_start, x_end, number_of_points):
             
         step = (x_end-x_start)/(number_of_points-1)
-        
-        print (x_start)
-        print (x_end)
-        print (step)
             
         x_for_fit = np.arange(x_start,x_end,step)
             

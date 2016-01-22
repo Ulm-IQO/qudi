@@ -56,8 +56,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.connected = False
         self.amplitude = 0.25
         self.sample_rate = 10.0e6
-        self.uploaded_sequence_list = []
-        self.current_loaded_file = None
+        self.uploaded_asset_list = []
+        self.current_loaded_asset = None
         self.is_output_enabled = True
 
         # settings for remote access on the AWG PC
@@ -139,7 +139,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.current_status = 0
         return self.current_status
 
-    def download_sequence(self, waveform, write_to_file = True):
+    def download_waveform(self, waveform, write_to_file = True):
         """ Convert the pre-sampled numpy array to a specific hardware file.
 
         @param Waveform() waveform: The raw sampled pulse sequence.
@@ -156,8 +156,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         """
 
         # append to the loaded sequence list.
-        if waveform.name not in self.loaded_sequence:
-            self.uploaded_sequence_list.append(waveform.name)
+        if waveform.name not in self.uploaded_asset_list:
+            self.uploaded_asset_list.append(waveform.name)
         return 0
 
     def send_file(self, filepath):
@@ -174,10 +174,10 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         return 0
 
-    def load_sequence(self, seq_name, channel=None):
-        """ Loads a sequence to the specified channel of the pulsing device.
+    def load_asset(self, asset_name, channel=None):
+        """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
-        @param str seq_name: The name of the sequence to be loaded
+        @param str asset_name: The name of the asset to be loaded
         @param int channel: The channel for the sequence to be loaded into if
                             not already specified in the sequence itself
 
@@ -186,8 +186,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if seq_name in self.uploaded_sequence_list:
-            self.current_loaded_file = seq_name
+        if asset_name in self.uploaded_asset_list:
+            self.current_loaded_asset = asset_name
         return 0
 
     def clear_all(self):
@@ -242,7 +242,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
 
         @param int channel: The channel to be reconfigured
-        @param float amplitude: The peak-to-peak amplitude the channel should be set to (in V)
+        @param float voltage: The peak-to-peak amplitude the channel should be set to (in V)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -289,7 +289,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        return self.uploaded_sequence_list
+        return self.uploaded_asset_list
 
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
@@ -302,8 +302,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        if seq_name in self.uploaded_sequence_list:
-            self.uploaded_sequence_list.remove(seq_name)
+        if seq_name in self.uploaded_asset_list:
+            self.uploaded_asset_list.remove(seq_name)
             if seq_name == self.current_loaded_file:
                 self.clear_channel()
         return 0
@@ -358,7 +358,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
     def tell(self, command):
         """ Sends a command string to the device.
 
-        @param string question: string containing the command
+        @param string command: string containing the command
 
         @return int: error code (0:OK, -1:error)
         """

@@ -79,7 +79,7 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def download_sequence(self, waveform, write_to_file = True):
+    def download_waveform(self, waveform, write_to_file = True):
         """ Convert the pre-sampled numpy array to a specific hardware file.
 
         @param Waveform() waveform: The raw sampled pulse sequence.
@@ -111,10 +111,10 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>send_file')
         return -1
 
-    def load_sequence(self, seq_name, channel=None):
-        """ Loads a sequence to the specified channel of the pulsing device.
+    def load_asset(self, asset_name, channel=None):
+        """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
-        @param str seq_name: The name of the sequence to be loaded
+        @param str asset_name: The name of the asset to be loaded
         @param int channel: The channel for the sequence to be loaded into if
                             not already specified in the sequence itself
 
@@ -178,7 +178,7 @@ class PulserInterface():
         Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
 
         @param int channel: The channel to be reconfigured
-        @param float amplitude: The peak-to-peak amplitude the channel should be set to (in V)
+        @param float voltage: The peak-to-peak amplitude the channel should be set to (in V)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -293,7 +293,7 @@ class PulserInterface():
     def tell(self, command):
         """ Sends a command string to the device.
 
-        @param string question: string containing the command
+        @param string command: string containing the command
 
         @return int: error code (0:OK, -1:error)
         """
