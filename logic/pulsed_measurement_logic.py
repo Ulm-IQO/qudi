@@ -451,11 +451,13 @@ class PulsedMeasurementLogic(GenericLogic):
                     
         elif fit_function == 'Lorentian (neg)':
             result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            pulsed_fit_y = lorentzian.eval(x=self.signal_plot_x, params=result.params)
-            fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['center'].stderr,2)) + ' [MHz]' + '\n'
+            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
+
+            fit_result = (   'Minimum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
                                 + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [MHz]' + '\n'
+                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
                                 + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
             return pulsed_fit_x, pulsed_fit_y, fit_result
@@ -463,11 +465,12 @@ class PulsedMeasurementLogic(GenericLogic):
         
         elif fit_function == 'Lorentian (pos)':
             result = self._fit_logic.make_lorentzian_peak_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            pulsed_fit_y = lorentzian.eval(x=self.signal_plot_x, params=result.params)
-            fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['center'].stderr,2)) + ' [MHz]' + '\n'
+            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
+            fit_result = (   'Maximum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+                                + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
                                 + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [MHz]' + '\n'
+                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
                                 + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
             return pulsed_fit_x, pulsed_fit_y, fit_result
