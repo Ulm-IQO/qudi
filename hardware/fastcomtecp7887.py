@@ -72,15 +72,7 @@ class FastComtec(Base, FastCounterInterface):
         """ Initialisation performed during activation of the module.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
-
-        self._minimal_binwidth = None
-        config = self.getConfiguration()
-        if 'minimal_binwidth' in config.keys():
-            self._minimal_binwidth=config['minimal_binwidth']
-        else:
-            self.logMsg('No minimal binwidth defined in config file of fastcomtec!',
-                        msgType='error')
-            self._minimal_binwidth=0.25
+        self._minimal_binwidth=0.25
 
         return
 
@@ -89,18 +81,20 @@ class FastComtec(Base, FastCounterInterface):
         """
         return
 
-#FIXME: Change return to return of functions/if they worked
-    def configure(self, duration, binwidth):
-        """Configures the Fast Counter.
-        
-          @param int duration: Duration of the expected measurement
-          @param int binwidth: Set binwidth for measurement 
-        """
-        
-		self.set_binwidth(binwidth)
-		self.set_length(duration)
 
-        return 0
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+        """
+        Configuration of the fast counter.
+        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
+        record_length_s: Total length of the timetrace/each single gate in seconds.
+        number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
+        Returns the actually set values as tuple
+        """
+
+        #self.set_binwidth(binwidth)
+		#self.set_length(duration)
+
+        return (self.get_binwidth()/1e9, 4000e-9, 0)
 
     def get_bitshift(self):
         """Get bitshift from Fastcomtec.
@@ -166,10 +160,7 @@ class FastComtec(Base, FastCounterInterface):
 
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
-        status = {'binwidth_ns': 1000./950.}
-        status['is_gated'] = self.gated
-        time.sleep(0.2)
-        return status
+        return 2
 
 #    TODO: What should the status be it asks for something with binwidth but in the interface there is only the status of
     #card if running or halt or stopped ...
