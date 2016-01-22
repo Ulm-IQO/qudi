@@ -87,11 +87,11 @@ class Pulse_Block_Ensemble(object):
     Needs name and block_list (=[(Pulse_Block, repetitions), ...]) for initialization
     This instance describes the content of a waveform (no sequenced triggered/conditional stuff).
     """
-    def __init__(self, name, block_list, tau_array, analyse_laser_ind, rotating_frame = True):
+    def __init__(self, name, block_list, tau_array, number_of_lasers, rotating_frame = True):
         self.name = name                        # block name
         self.block_list = block_list        # List of AWG_Block objects with repetition number
         self.tau_array = tau_array
-        self.analyse_laser_ind = analyse_laser_ind
+        self.number_of_lasers = number_of_lasers
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
 
@@ -338,6 +338,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         Samples and downloads a saved Pulse_Block_Ensemble with name "ensemble_name" into the pulse generator internal memory.
         """
         ensemble = self.get_ensemble(ensemble_name)
+        self.current_ensemble = ensemble
         waveform = self.generate_waveform(ensemble)
         self._pulse_generator_device.download_waveform(waveform)
         return 0
@@ -345,7 +346,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def load_asset(self, name, channel = None):
         assets_on_device = self._pulse_generator_device.get_sequence_names()
         if name in assets_on_device:
-            self._pulse_generator_device.load_sequence(name, channel)
+            self._pulse_generator_device.load_asset(name, channel)
         
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -737,7 +738,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
         aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
         # put elements in a list to create the block
         element_list = []
@@ -755,7 +756,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, 0, False)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, False)
         # save block
         # self.save_block(name, block)
         # save ensemble
@@ -785,7 +786,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
         aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
         # put elements in a list to create the block
         element_list = []
@@ -808,7 +809,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, 0, False)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, number_of_points, False)
         # save block
         # self.save_block(name, block)
         # save ensemble
@@ -851,7 +852,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
         aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
         pi_x_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
@@ -908,7 +909,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         for block in blocks:
             block_list.append((block, 0))
         # name = 'XY8_' + str(N) + '_taustart_' + str(tau_list[0]) + '_tauend_' + str(tau_list[-1]) + '_numtaus_' + str(len(tau_list))
-        XY8_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, 0, True)
+        XY8_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, True)
         # save ensemble
         self.save_ensemble(name, XY8_ensemble)
         # set current block ensemble

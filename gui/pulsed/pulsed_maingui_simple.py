@@ -259,6 +259,13 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.download_ensemble(ensemble_name)
         # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
         self._seq_gen_logic.load_asset(ensemble_name, 1)
+        # retrieve important sequence parameters from the sequence_generator_logic and pass it to the pulsed_measurement_logic
+        self._pulsed_measurement_logic.sequence_length_s = self._seq_gen_logic.current_ensemble.length_bins / self._seq_gen_logic.sampling_freq
+        self._pulsed_measurement_logic.number_of_lasers = self._seq_gen_logic.current_ensemble.number_of_lasers
+        self._pulsed_measurement_logic.tau_array = self._seq_gen_logic.current_ensemble.tau_array/self._seq_gen_logic.sampling_freq
+        # update the number of lasers in the analysis tab
+        self._mw.numlaser_InputWidget.setText(str(self._seq_gen_logic.current_ensemble.number_of_lasers))
+        self.lasernum_changed()
         return
 
     def update_ensemble_list(self):
@@ -286,11 +293,11 @@ class PulsedMeasurementGui(GUIBase):
     def generate_rabi_clicked(self):
         freq = 1e6*float(self._mw.gen_rabi_freq_LineEdit.text())
         amp = float(self._mw.gen_rabi_amp_LineEdit.text())
-        tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_taustart_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_tauend_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_taustart_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_tauend_LineEdit.text())*self._seq_gen_logic.sampling_freq))
         number_of_taus = int(self._mw.gen_rabi_points_LineEdit.text())
-        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())*self._seq_gen_logic.sampling_freq))
         name = self._mw.gen_rabi_name_LineEdit.text()
         self._seq_gen_logic.generate_rabi(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, True)
         return
@@ -298,14 +305,14 @@ class PulsedMeasurementGui(GUIBase):
     def generate_xy8_clicked(self):
         freq = 1e6*float(self._mw.gen_xy8_freq_LineEdit.text())
         amp = float(self._mw.gen_xy8_amp_LineEdit.text())
-        tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_taustart_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_tauend_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_taustart_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_tauend_LineEdit.text())*self._seq_gen_logic.sampling_freq))
         number_of_taus = int(self._mw.gen_xy8_points_LineEdit.text())
         N = int(self._mw.gen_xy8_N_LineEdit.text())
-        pihalf_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pihalf_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pi_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        pihalf_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pihalf_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_pi_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())*self._seq_gen_logic.sampling_freq))
         name = self._mw.gen_xy8_name_LineEdit.text()
         self._seq_gen_logic.generate_xy8(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, pihalf_bins, pi_bins, N, True)
         return
@@ -315,9 +322,9 @@ class PulsedMeasurementGui(GUIBase):
         stop_freq = 1e6*float(self._mw.gen_pulsedodmr_stopfreq_LineEdit.text())
         number_of_points = int(self._mw.gen_pulsedodmr_points_LineEdit.text())
         amp = float(self._mw.gen_pulsedodmr_amp_LineEdit.text())
-        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_pulsedodmr_pi_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())/self._seq_gen_logic.sampling_freq))
-        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_pulsedodmr_pi_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())*self._seq_gen_logic.sampling_freq))
+        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())*self._seq_gen_logic.sampling_freq))
         name = self._mw.gen_pulsedodmr_name_LineEdit.text()
         self._seq_gen_logic.generate_pulsedodmr(name, start_freq, stop_freq, number_of_points, amp, pi_bins, waiting_time_bins, laser_time_bins, True)
         return
@@ -650,7 +657,15 @@ class PulsedMeasurementGui(GUIBase):
 
         #### dealing with the error bars
         if self._mw.show_errorbars_CheckBox.isChecked():
-            self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=1)
+            # calculate optimal beam width for the error bars
+            beamwidth = 1e99
+            for i in range(len(self._pulsed_measurement_logic.tau_array)-1):
+                width = self._pulsed_measurement_logic.tau_array[i+1] - self._pulsed_measurement_logic.tau_array[i]
+                width = width/10
+                if width <= beamwidth:
+                    beamwidth = width
+            # create ErrorBarItem
+            self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=beamwidth)
             if not self.errorbars_present:
                 #print ('add erro')
                 self._mw.signal_plot_ViewWidget.addItem(self.signal_image_error_bars)
@@ -681,10 +696,7 @@ class PulsedMeasurementGui(GUIBase):
         '''
         self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
         self._mw.elapsed_sweeps_LCDNumber.display(self._pulsed_measurement_logic.elapsed_sweeps)
-        
 
-        
-    
     def show_external_mw_source_checked(self):
         if self._mw.turn_off_external_mw_source_CheckBox.isChecked():
 
@@ -701,15 +713,15 @@ class PulsedMeasurementGui(GUIBase):
             
     def show_tau_editor(self):
         if self._mw.tau_defined_in_sequence_CheckBox.isChecked():
-            self._mw.tau_start_Label.setVisible(True)
-            self._mw.tau_start_InputWidget.setVisible(True)
-            self._mw.tau_increment_Label.setVisible(True)
-            self._mw.tau_increment_InputWidget.setVisible(True)   
-        else:
             self._mw.tau_start_Label.setVisible(False)
             self._mw.tau_start_InputWidget.setVisible(False)
             self._mw.tau_increment_Label.setVisible(False)
-            self._mw.tau_increment_InputWidget.setVisible(False)              
+            self._mw.tau_increment_InputWidget.setVisible(False)
+        else:
+            self._mw.tau_start_Label.setVisible(True)
+            self._mw.tau_start_InputWidget.setVisible(True)
+            self._mw.tau_increment_Label.setVisible(True)
+            self._mw.tau_increment_InputWidget.setVisible(True)
         
     def show_fft_plot(self):
         if self._mw.show_fft_plot_CheckBox.isChecked():

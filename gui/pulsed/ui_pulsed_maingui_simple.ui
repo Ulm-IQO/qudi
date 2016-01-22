@@ -61,7 +61,7 @@
                   <string>Ignore last laser?</string>
                  </property>
                  <property name="checked">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                 </widget>
                </item>
@@ -204,6 +204,9 @@
                 <widget class="QCheckBox" name="tau_defined_in_sequence_CheckBox">
                  <property name="text">
                   <string>Tau defined in sequence?</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
