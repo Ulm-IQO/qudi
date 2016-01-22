@@ -351,7 +351,8 @@ class PulsedMeasurementGui(GUIBase):
 #        # the UI file.
         #self._mw.signal_plot_ViewWidget.clear()
         self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.signal_plot_ViewWidget.addItem(self.signal_image_error_bars)
+
+        #self._mw.signal_plot_ViewWidget.addItem(self.signal_image_error_bars)
         #self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
         self._mw.fft_PlotWidget.addItem(self.fft_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
@@ -370,8 +371,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau')
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        
-        
+
+
+        ##### is needed for the errorbars, but there has to be a better solution
+        self.errorbars_present=False
         
         # Initialize  what is visible and what not
         self._mw.mw_frequency_Label.setVisible(False)
@@ -619,8 +622,24 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_signal_plot(self):
         ''' This method refreshes the xy-matrix image
         '''
+
+        #### dealing with the error bars
+        if self._mw.show_errorbars_CheckBox.isChecked():
+            self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=1)
+            if not self.errorbars_present:
+                #print ('add erro')
+                self._mw.signal_plot_ViewWidget.addItem(self.signal_image_error_bars)
+                self.errorbars_present = True
+        else:
+            if self.errorbars_present:
+                #print ('remove eror')
+                self._mw.signal_plot_ViewWidget.removeItem(self.signal_image_error_bars)
+                self.errorbars_present = False
+            else:
+                pass
+
+
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=1)
         self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         
        

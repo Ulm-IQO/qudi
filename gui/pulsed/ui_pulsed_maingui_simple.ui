@@ -35,7 +35,7 @@
                <x>0</x>
                <y>0</y>
                <width>861</width>
-               <height>131</height>
+               <height>151</height>
               </rect>
              </property>
              <widget class="QWidget" name="layoutWidget_2">
@@ -44,19 +44,123 @@
                 <x>10</x>
                 <y>10</y>
                 <width>841</width>
-                <height>111</height>
+                <height>141</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_30">
-               <item row="3" column="5">
-                <widget class="QCheckBox" name="show_fft_plot_CheckBox">
+               <item row="0" column="8">
+                <widget class="QLabel" name="refocus_interval_Label">
                  <property name="text">
-                  <string>Show second plot?</string>
+                  <string>Refocus interval (s):</string>
                  </property>
                 </widget>
                </item>
+               <item row="2" column="3">
+                <widget class="QCheckBox" name="ignore_last_laser_CheckBox">
+                 <property name="text">
+                  <string>Ignore last laser?</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="3">
+                <widget class="QCheckBox" name="alternating_sequence_CheckBox">
+                 <property name="text">
+                  <string>Alternating sequence?</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="6">
+                <spacer name="horizontalSpacer_11">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
                <item row="1" column="8">
                 <widget class="QLineEdit" name="refocus_interval_LineEdit"/>
+               </item>
+               <item row="0" column="4">
+                <spacer name="horizontalSpacer_10">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="3" column="8">
+                <widget class="QLineEdit" name="odmr_refocus_interval_LineEdit"/>
+               </item>
+               <item row="1" column="5">
+                <layout class="QGridLayout" name="gridLayout_40">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="tau_start_Label">
+                   <property name="text">
+                    <string>Tau start:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="tau_start_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="0" column="0">
+                <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBox">
+                 <property name="text">
+                  <string>Turn off external MW source?</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="5">
+                <layout class="QGridLayout" name="gridLayout_41">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="tau_increment_Label">
+                   <property name="text">
+                    <string>Tau increment:</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="tau_increment_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </item>
                <item row="0" column="3">
                 <layout class="QGridLayout" name="gridLayout_39">
@@ -89,37 +193,6 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="5">
-                <layout class="QGridLayout" name="gridLayout_40">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="tau_start_Label">
-                   <property name="text">
-                    <string>Tau start:</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="tau_start_InputWidget">
-                   <property name="maximumSize">
-                    <size>
-                     <width>75</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="5">
-                <widget class="QCheckBox" name="tau_defined_in_sequence_CheckBox">
-                 <property name="text">
-                  <string>Tau defined in sequence?</string>
-                 </property>
-                </widget>
-               </item>
                <item row="1" column="3">
                 <widget class="QCheckBox" name="ignore_first_laser_CheckBox">
                  <property name="text">
@@ -127,82 +200,12 @@
                  </property>
                 </widget>
                </item>
-               <item row="0" column="4">
-                <spacer name="horizontalSpacer_10">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="8">
-                <widget class="QLabel" name="refocus_interval_Label">
+               <item row="0" column="5">
+                <widget class="QCheckBox" name="tau_defined_in_sequence_CheckBox">
                  <property name="text">
-                  <string>Refocus interval (s):</string>
+                  <string>Tau defined in sequence?</string>
                  </property>
                 </widget>
-               </item>
-               <item row="2" column="5">
-                <layout class="QGridLayout" name="gridLayout_41">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="tau_increment_Label">
-                   <property name="text">
-                    <string>Tau increment:</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="tau_increment_InputWidget">
-                   <property name="maximumSize">
-                    <size>
-                     <width>75</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="2" column="3">
-                <widget class="QCheckBox" name="ignore_last_laser_CheckBox">
-                 <property name="text">
-                  <string>Ignore last laser?</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="3">
-                <widget class="QCheckBox" name="alternating_sequence_CheckBox">
-                 <property name="text">
-                  <string>Alternating sequence?</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="8">
-                <widget class="QLineEdit" name="odmr_refocus_interval_LineEdit"/>
-               </item>
-               <item row="0" column="6">
-                <spacer name="horizontalSpacer_11">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
                </item>
                <item row="0" column="2">
                 <spacer name="horizontalSpacer_12">
@@ -217,36 +220,12 @@
                  </property>
                 </spacer>
                </item>
-               <item row="0" column="0">
-                <widget class="QCheckBox" name="turn_off_external_mw_source_CheckBox">
+               <item row="3" column="5">
+                <widget class="QCheckBox" name="show_fft_plot_CheckBox">
                  <property name="text">
-                  <string>Turn off external MW source?</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
+                  <string>Show second plot?</string>
                  </property>
                 </widget>
-               </item>
-               <item row="2" column="0">
-                <layout class="QGridLayout" name="gridLayout_31">
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="mw_power_InputWidget">
-                   <property name="maximumSize">
-                    <size>
-                     <width>75</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="mw_power_Label">
-                   <property name="text">
-                    <string>MW Power [dBm] :</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
                </item>
                <item row="3" column="0">
                 <layout class="QGridLayout" name="gridLayout_28">
@@ -308,6 +287,52 @@
                  </item>
                 </layout>
                </item>
+               <item row="2" column="0">
+                <layout class="QGridLayout" name="gridLayout_31">
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="mw_power_InputWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>75</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="mw_power_Label">
+                   <property name="text">
+                    <string>MW Power [dBm] :</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="4" column="5">
+                <widget class="QCheckBox" name="show_errorbars_CheckBox">
+                 <property name="toolTip">
+                  <string>computes the errorbars just based on photon shot noise and propagation of uncertainty</string>
+                 </property>
+                 <property name="statusTip">
+                  <string comment="computes the errorbars just based on photon shot noise and propagation of uncertainty" extracomment="computes the errorbars just based on photon shot noise and propagation of uncertainty"/>
+                 </property>
+                 <property name="whatsThis">
+                  <string/>
+                 </property>
+                 <property name="accessibleName">
+                  <string/>
+                 </property>
+                 <property name="accessibleDescription">
+                  <string/>
+                 </property>
+                 <property name="text">
+                  <string>Show errorbars</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </widget>
             </widget>
@@ -317,7 +342,7 @@
                <x>860</x>
                <y>0</y>
                <width>431</width>
-               <height>131</height>
+               <height>151</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_4">
@@ -378,9 +403,9 @@
              <property name="geometry">
               <rect>
                <x>0</x>
-               <y>130</y>
+               <y>190</y>
                <width>1311</width>
-               <height>541</height>
+               <height>701</height>
               </rect>
              </property>
              <widget class="QWidget" name="gridLayoutWidget_3">
@@ -389,7 +414,7 @@
                 <x>10</x>
                 <y>10</y>
                 <width>1281</width>
-                <height>521</height>
+                <height>651</height>
                </rect>
               </property>
               <layout class="QGridLayout" name="gridLayout_19">
