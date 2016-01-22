@@ -113,7 +113,7 @@ class ManagerGui(GUIBase):
         self._mw.threadWidget.threadListView.setModel(self._manager.tm)
         # remote widget
         self._mw.remoteWidget.hostLabel.setText('URL:')
-        self._mw.remoteWidget.portLabel.setText('rpyc://{0}:{1}/'.format(self._manager.rm.hostname, self._manager.rm.server1.port))
+        self._mw.remoteWidget.portLabel.setText('rpyc://{0}:{1}/'.format(self._manager.rm.hostname, self._manager.rm.server.port))
         self._mw.remoteWidget.remoteModuleListView.setModel(self._manager.rm.remoteModules)
         self._mw.remoteWidget.sharedModuleListView.setModel(self._manager.rm.sharedModules)
 

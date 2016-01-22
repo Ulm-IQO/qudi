@@ -84,36 +84,6 @@ class RemoteObjectManager(QtCore.QObject):
                     return None
         return RemoteModuleService
 
-    def makeRemoteInternalAccess(self):
-        """ A function that returns a class containing a module list hat can be manipulated from the host.
-        """
-        class RemoteInternalService(rpyc.Service):
-            """ An RPyC service that has a module list.
-            """
-            manager = self.manager
-            logMsg = self.logger.logMsg
-
-            @staticmethod
-            def get_service_name():
-                return 'InternalAccess'
-
-            def on_connect(self):
-                """ code that runs when a connection is created
-                    (to init the service, if needed)
-                """
-                self.logMsg('Client connected!')
-
-            def on_disconnect(self):
-                """ code that runs when the connection has already closed
-                    (to finalize the service, if needed)
-                """
-                self.logMsg('Client disconnected!')
-
-            def exposed_getInternal(self):
-                return self.manager
-
-        return RemoteInternalService
-
     def refresNameserver(self):
         """ Find name server
         """
@@ -125,28 +95,19 @@ class RemoteObjectManager(QtCore.QObject):
 
           @param int port: port where the server should be running
         """
-        thread1 = self.tm.newThread('rpyc-server')
-        self.server1 = RPyCServer(self.makeRemoteService(), port)
-        self.server1.moveToThread(thread1)
-        thread1.started.connect(self.server1.run)
-        thread1.start()
+        thread = self.tm.newThread('rpyc-server')
+        self.server = RPyCServer(self.makeRemoteService(), port)
+        self.server.moveToThread(thread)
+        thread.started.connect(self.server.run)
+        thread.start()
         #self.nameserver.register('{0}-{1}'.format(self.hostname, name), server.uri)
         self.logger.logMsg('Started module server at {0} on port {1}'.format(self.hostname, port), msgType='status')
-
-        thread2 = self.tm.newThread('rpyc-internal')
-        self.server2 = RPyCServer(self.makeRemoteInternalAccess(), port+1)
-        self.server2.moveToThread(thread2)
-        thread2.started.connect(self.server2.run)
-        thread2.start()
-
 
     def stopServer(self):
         """ Stop the remote module server.
         """
-        if hasattr(self, 'server1'):
-            self.server1.close()
-        if hasattr(self, 'server2´'):
-            self.server2.close()
+        if hasattr(self, 'server'):
+            self.server.close()
 
     def shareModule(self, name, obj):
         """ Add a module to the list of modules that can be accessed remotely.

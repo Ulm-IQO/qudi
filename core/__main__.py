@@ -198,8 +198,18 @@ if interactive:
     atexit.register(save_history)
 else:
     if profile:
-        import cProfile
-        cProfile.run('app.exec_()', sort='cumulative')  
+        import cProfile, pstats
+        from io import StringIO
+        pr = cProfile.Profile()
+        pr.enable()
+        # ... do something ...
+        app.exec_() 
+        pr.disable()
+        s = StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
         # helpers.exit() causes python to exit before Qt has
         # a chance to clean up.
         # This avoids otherwise irritating exit crashes.
@@ -210,22 +220,6 @@ else:
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
     elif not man.hasGui:
-        from core.zmq_kernel import IPKernelApp
-        import numpy as np
-
-        kernelapp = IPKernelApp.instance()
-        arg = ['']
-        kernelapp.initialize(arg)
-        namespace = kernelapp.kernel.shell.user_ns
-        namespace.update({
-            'pg': pg,
-            'np': np,
-            'config': man.tree['defined'],
-            'modules': man.tree['loaded'],
-            'manager': man
-            })
-        #kernelapp.kernel.app.setQuitOnLastWindowClosed = lambda x: None
-        kernelapp.start()
         app.exec_()
         helpers.exit(watchdog.exitcode)
     else:
