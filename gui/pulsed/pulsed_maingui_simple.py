@@ -142,6 +142,7 @@ class PulsedMeasurementGui(GUIBase):
         # connect the signals for the predefined sequence buttons
         self._mw.gen_rabi_PushButton.clicked.connect(self.generate_rabi_clicked)
         self._mw.gen_xy8_PushButton.clicked.connect(self.generate_xy8_clicked)
+        self._mw.gen_pulsedodmr_PushButton.clicked.connect(self.generate_pulsedodmr_clicked)
 
         # connect the signals for the "Upload on device" section
         # self._mw.upload_on_ch1_PushButton.clicked.connect(self.upload_on_ch1_clicked)
@@ -169,6 +170,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_xy8_pihalf_LineEdit.setValidator(validator)
         self._mw.gen_xy8_pi_LineEdit.setValidator(validator)
         self._mw.gen_xy8_N_LineEdit.setValidator(validator2)
+        self._mw.gen_pulsedodmr_startfreq_LineEdit.setValidator(validator)
+        self._mw.gen_pulsedodmr_stopfreq_LineEdit.setValidator(validator)
+        self._mw.gen_pulsedodmr_points_LineEdit.setValidator(validator2)
+        self._mw.gen_pulsedodmr_amp_LineEdit.setValidator(validator)
+        self._mw.gen_pulsedodmr_pi_LineEdit.setValidator(validator2)
 
         # fill in default values
         self._mw.sample_freq_DSpinBox.setValue(25000)
@@ -177,6 +183,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_rabi_taustart_LineEdit.setText(str(1))
         self._mw.gen_rabi_tauend_LineEdit.setText(str(100))
         self._mw.gen_rabi_points_LineEdit.setText(str(100))
+        self._mw.gen_rabi_name_LineEdit.setText('Rabi')
         self._mw.gen_xy8_freq_LineEdit.setText(str(2870))
         self._mw.gen_xy8_amp_LineEdit.setText(str(0.25))
         self._mw.gen_xy8_taustart_LineEdit.setText(str(1))
@@ -185,8 +192,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_xy8_pihalf_LineEdit.setText(str(25))
         self._mw.gen_xy8_pi_LineEdit.setText(str(50))
         self._mw.gen_xy8_N_LineEdit.setText(str(64))
+        self._mw.gen_xy8_name_LineEdit.setText('XY8')
+        self._mw.gen_pulsedodmr_startfreq_LineEdit.setText(str(2000))
+        self._mw.gen_pulsedodmr_stopfreq_LineEdit.setText(str(3000))
+        self._mw.gen_pulsedodmr_points_LineEdit.setText(str(100))
+        self._mw.gen_pulsedodmr_amp_LineEdit.setText(str(0.25))
+        self._mw.gen_pulsedodmr_pi_LineEdit.setText(str(50))
         self._mw.gen_aomdelay_LineEdit.setText(str(700))
         self._mw.gen_laserlength_LineEdit.setText(str(3000))
+        self._mw.gen_pulsedodmr_name_LineEdit.setText('PulsedODMR')
 
         # initialize the lists of available blocks, ensembles and sequences
         self.update_ensemble_list()
@@ -271,7 +285,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def generate_rabi_clicked(self):
         freq = 1e6*float(self._mw.gen_rabi_freq_LineEdit.text())
-        amp = 1e6*float(self._mw.gen_rabi_amp_LineEdit.text())
+        amp = float(self._mw.gen_rabi_amp_LineEdit.text())
         tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_taustart_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_rabi_tauend_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         number_of_taus = int(self._mw.gen_rabi_points_LineEdit.text())
@@ -279,12 +293,11 @@ class PulsedMeasurementGui(GUIBase):
         waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         name = self._mw.gen_rabi_name_LineEdit.text()
         self._seq_gen_logic.generate_rabi(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, True)
-
         return
 
     def generate_xy8_clicked(self):
         freq = 1e6*float(self._mw.gen_xy8_freq_LineEdit.text())
-        amp = 1e6*float(self._mw.gen_xy8_amp_LineEdit.text())
+        amp = float(self._mw.gen_xy8_amp_LineEdit.text())
         tau_start_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_taustart_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         tau_end_bins = np.int(np.rint((1e-9)*float(self._mw.gen_xy8_tauend_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         number_of_taus = int(self._mw.gen_xy8_points_LineEdit.text())
@@ -295,6 +308,18 @@ class PulsedMeasurementGui(GUIBase):
         waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
         name = self._mw.gen_xy8_name_LineEdit.text()
         self._seq_gen_logic.generate_xy8(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, pihalf_bins, pi_bins, N, True)
+        return
+
+    def generate_pulsedodmr_clicked(self):
+        start_freq = 1e6*float(self._mw.gen_pulsedodmr_startfreq_LineEdit.text())
+        stop_freq = 1e6*float(self._mw.gen_pulsedodmr_stopfreq_LineEdit.text())
+        number_of_points = int(self._mw.gen_pulsedodmr_points_LineEdit.text())
+        amp = float(self._mw.gen_pulsedodmr_amp_LineEdit.text())
+        pi_bins = np.int(np.rint((1e-9)*float(self._mw.gen_pulsedodmr_pi_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())/self._seq_gen_logic.sampling_freq))
+        name = self._mw.gen_pulsedodmr_name_LineEdit.text()
+        self._seq_gen_logic.generate_pulsedodmr(name, start_freq, stop_freq, number_of_points, amp, pi_bins, waiting_time_bins, laser_time_bins, True)
         return
 
 

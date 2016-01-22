@@ -768,6 +768,59 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
+    def generate_pulsedodmr(self, name, start_freq, stop_freq, number_of_points, amp_V, pi_bins, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+        # create parameter dictionary list for MW signal
+        mw_params = [{},{}]
+        mw_params[0]['amplitude1'] = amp_V
+        mw_params[0]['phase1'] = 0
+        no_analogue_params = [{},{}]
+        laser_markers = [True, True, False, False]
+        gate_markers = [False, True, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, True, False]
+
+        # create frequency list
+        freq_list = np.linspace(start_freq, stop_freq, number_of_points)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element(1000-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        # put elements in a list to create the block
+        element_list = []
+        for freq in freq_list:
+            # create copy of parameter dict to use for this frequency
+            temp_params = [mw_params[0].copy(),{}]
+            temp_params[0]['frequency1'] = freq
+            # create actual pi-pulse element
+            pi_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, temp_params)
+            # create measurement elements for this frequency
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pi_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
+        # create block
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, 0, False)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
+
     def generate_xy8(self, name, mw_freq_Hz, mw_amp_V, aom_delay_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, pihalf_bins, pi_bins, N, use_seqtrig = True):
         pihalf_pix_params = [{},{}]
         pihalf_pix_params[0]['frequency1'] = mw_freq_Hz
@@ -846,8 +899,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             blocks.append(Pulse_Block('XY8_' + str(N) + '_taubins_' + str(tau_list[tau_ind]), elements))
 
         # seqeunce trigger for FPGA counter
-        tail_elements = [seqtrig_element]
-        blocks.append(Pulse_Block('XY8_' + str(N) + '_tail', tail_elements))
+        if use_seqtrig:
+            tail_elements = [seqtrig_element]
+            blocks.append(Pulse_Block('XY8_' + str(N) + '_tail', tail_elements))
 
         # generate block ensemble (the actual whole measurement sequence)
         block_list = []
