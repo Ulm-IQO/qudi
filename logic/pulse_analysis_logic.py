@@ -65,14 +65,13 @@ class PulseAnalysisLogic(GenericLogic):
             signal_mean[ii] = (laser_data[ii][signal_start_bin:signal_end_bin] - reference_mean[ii]).mean()
             # update the signal plot y-data
             signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
-            
+
             
         for jj in range(num_of_lasers):
-            
             signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
             reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
             
-            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj],reference_area[jj])
+            measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj])
             #print(measuring_error[jj])
             
         #return data

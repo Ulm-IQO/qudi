@@ -180,7 +180,7 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
             # analyze pulses and get data points for signal plot
-            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(sig_start, sig_end, norm_start, norm_end, self.number_of_lasers)
+            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(norm_start, norm_end, sig_start, sig_end, self.number_of_lasers)
             # set x-axis of signal plot
             self.signal_plot_x = self.tau_array
             # set laser plot

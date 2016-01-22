@@ -688,9 +688,7 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_measuring_error_plot(self):
         
         #print(self._pulsed_measurement_logic.measuring_error)
-        
-        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error)
-
+        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.measuring_error)
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
@@ -764,8 +762,8 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.laser_to_show_ComboBox.setEditText('sum')
             laser_show = 0
 
-        tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
-        self._pulsed_measurement_logic.tau_vector = tau_vector
+        tau_array = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
+        self._pulsed_measurement_logic.tau_array = tau_array
         self._pulsed_measurement_logic.number_of_lasers = laser_num
         self._pulsed_measurement_logic.display_pulse_no = laser_show
         self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
