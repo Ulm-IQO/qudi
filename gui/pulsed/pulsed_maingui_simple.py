@@ -608,7 +608,6 @@ class PulsedMeasurementGui(GUIBase):
             #self._mw.action_continue_pause.toggle
             
             self._mw.action_run_stop.setChecked(False)
-            
 
 
     def pull_data_clicked(self):
@@ -620,24 +619,25 @@ class PulsedMeasurementGui(GUIBase):
         return    
         
     def fit_clicked(self):
+        # clear old fit results in the text box
         self._mw.fit_result_TextBrowser.clear()
-        
+        # remove old fit from the graph
+        self._mw.signal_plot_ViewWidget.removeItem(self.fit_image)
+        # get selected fit function from the ComboBox
         current_fit_function = self._mw.fit_function_ComboBox.currentText()
-        
-        
-        
-        fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
-        
-        self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
-        
-        self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
-        
-        self._mw.fit_result_TextBrowser.setPlainText(fit_result)
-        
-        return
-        
-   
-        
+        # check if the selected fit function is "No Fit". In case it is, do nothing else.
+        if current_fit_function == 'No Fit':
+            return
+        else:
+            # do the fit
+            fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
+            # create new fit graph
+            self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
+            # add new fit graph to the signal graph
+            self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
+            # write new fit results in the text box
+            self._mw.fit_result_TextBrowser.setPlainText(fit_result)
+            return
 
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
