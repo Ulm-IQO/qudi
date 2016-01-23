@@ -8,7 +8,7 @@
 """
 
 from core.base import Base
-from hardware.spectrometer_interface import SpectrometerInterface
+from hardware.spectrometer.spectrometer_interface import SpectrometerInterface
 from collections import OrderedDict
 from core.util.mutex import Mutex
 
