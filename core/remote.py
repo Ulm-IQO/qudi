@@ -53,6 +53,7 @@ class RemoteObjectManager(QtCore.QObject):
             """
             modules = self.sharedModules
             logMsg = self.logger.logMsg
+            _manager = self.manager
 
             @staticmethod
             def get_service_name():
@@ -77,11 +78,20 @@ class RemoteObjectManager(QtCore.QObject):
 
                   @return object: reference to the module
                 """
+                name = str(name)
                 if name in self.modules.storage:
                     return self.modules.storage[name]
                 else:
-                    self.logMsg('Client requested a module that is not shared.', msgType='error')
-                    return None
+                    for base in ['hardware', 'logic', 'gui']:
+                        print('remotesearch:', name)
+                        if name in self._manager.tree['defined'][base] and 'remoteaccess' in self._manager.tree['defined'][base][name]:
+                            self._manager.startModule(base, name)
+                            print('remoteload:', base, name)
+                    if name in self.modules.storage:
+                        return self.modules.storage[name]
+                    else:
+                        self.logMsg('Client requested a module that is not shared.', msgType='error')
+                        return None
         return RemoteModuleService
 
     def refresNameserver(self):
