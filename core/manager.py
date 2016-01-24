@@ -178,10 +178,12 @@ class Manager(QtCore.QObject):
             
             # Create remote module server
             try:
-                if 'remoteport' in self.tree['global']:
-                    remotePort = self.tree['global']['remoteport']
+                if 'serverport' in self.tree['global']:
+                    remotePort = self.tree['global']['serverport']
+                    print('Remote port is configured to ', remotePort)
                 else:
                     remotePort = 12345
+                    print('Remote port is the standard ', remotePort)
                 self.rm = RemoteObjectManager(self)
                 self.rm.createServer(remotePort)
             except:
@@ -355,7 +357,8 @@ class Manager(QtCore.QObject):
                             stylesheet = stylesheetfile.read()
                             stylesheetfile.close()
                             self.gui.setStyleSheet(stylesheet)
-
+                        else:
+                            self.tree['global'][m] = cfg['global'][m]
                 
                 # Copy in any other configurations.
                 # dicts are extended, all others are overwritten.
