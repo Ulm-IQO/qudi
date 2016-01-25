@@ -106,7 +106,7 @@ class PIDLogic(GenericLogic):
         if 'bufferLength' in self._statusVariables:
             self.bufferLength = self._statusVariables['bufferLength']
         else:
-            self.bufferLength = 100
+            self.bufferLength = 1000
         self.sigNextStep.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
         self.sigNewValue.connect(self._control.setControlValue)
         self.history = np.zeros([3, self.bufferLength])
