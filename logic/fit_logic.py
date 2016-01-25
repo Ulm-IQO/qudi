@@ -631,7 +631,7 @@ class FitLogic(GenericLogic):
             data_max=data_level.max()
 
             #estimate sigma
-            numerical_integral=np.sum(data_level) * (x_axis[-1] - x_axis[0]) / len(x_axis)
+            numerical_integral=np.sum(data_level) * (abs(x_axis[-1] - x_axis[0])) / len(x_axis)
 
             if data_max>abs(data_min):
                 try:
@@ -674,11 +674,22 @@ class FitLogic(GenericLogic):
 
 #            TODO: Make sigma amplitude and x_zero better            
             #Defining standard parameters
+
+            if axis[1]-axis[0]>0:
+                #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
+                params.add_many(('amplitude',amplitude, True,         None,                    -1e-12,                    None),
+                              (  'sigma',    sigma,    True,     (axis[1]-axis[0])/2 ,     (axis[-1]-axis[0])*10,   None),
+                             (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
+                             (    'c',      offset,   True,        None,                    None,                  None))
+
+
+            if axis[0]-axis[1]>0:
+
             #                  (Name,       Value,  Vary,         Min,                    Max,                    Expr)
-            params.add_many(('amplitude',amplitude, True,         None,                    -1e-12,                    None),
-                           (  'sigma',    sigma,    True,     (axis[1]-axis[0])/2 ,     (axis[-1]-axis[0])*10,   None),
-                           (  'center',  x_zero,    True,(axis[0])-n_steps*stepsize,(axis[-1])+n_steps*stepsize, None),
-                           (    'c',      offset,   True,        None,                    None,                  None))
+                params.add_many(('amplitude',amplitude, True,         None,                    -1e-12,                    None),
+                                (  'sigma',    sigma,    True,     (axis[0]-axis[1])/2 ,     (axis[0]-axis[1])*10,   None),
+                               (  'center',  x_zero,    True,      (axis[-1])       ,         (axis[0])            , None),
+                               (    'c',      offset,   True,        None,                    None,                  None))
 
 #TODO: Add logmessage when value is changed            
             #redefine values of additional parameters

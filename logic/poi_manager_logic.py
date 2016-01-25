@@ -363,8 +363,7 @@ class PoiManagerLogic(GenericLogic):
         """
 
         if poikey is not None and poikey in self.track_point_list.keys():
-            self.track_point_list['crosshair'].add_position_to_trace(
-                position=self._confocal_logic.get_position())
+            self.track_point_list['crosshair'].add_position_to_trace(position=self._confocal_logic.get_position())
             self._current_poi_key = poikey
             self._optimizer_logic.start_refocus(initial_pos=self.get_poi_position(poikey=poikey), caller_tag='poimanager')
             return 0
