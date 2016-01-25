@@ -70,7 +70,7 @@ class PiPWM(Base, ProcessControlInterface):
             self.fanpin = 13
 
         if 'frequency' in config:
-            self.freq = config['freqency']
+            self.freq = config['frequency']
         else:
             self.freq = 100
             self.logMsg('Frequency not set, using 100Hz.', msgType='warning')
