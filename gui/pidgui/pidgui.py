@@ -83,8 +83,8 @@ class PIDGui(GUIBase):
         self._curve3.setPen('b', width=2)
 
         # setting the x axis length correctly
-        self._pw.setXRange(0, self._pid_logic.getBufferLength()*self._pid_logic.timestep)
-        
+        self._pw.setXRange(0, self._pid_logic.getBufferLength() * self._pid_logic.timestep)
+
         #####################
         # Setting default parameters
         self._mw.P_DoubleSpinBox.setValue( self._pid_logic.kP )

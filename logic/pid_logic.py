@@ -212,8 +212,8 @@ class PIDLogic(GenericLogic):
     def setManualValue(self, newManualValue):
         self.manualvalue = newManualValue
         limits = self._control.getControlLimits()
-            if (self.manualvalue > limits[1]):
-                self.manualvalue = limits[1]
-            if (self.manualvalue < limits[0]):
-                self.manualvalue = limits[0]
+        if (self.manualvalue > limits[1]):
+            self.manualvalue = limits[1]
+        if (self.manualvalue < limits[0]):
+            self.manualvalue = limits[0]
 
