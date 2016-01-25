@@ -1,3 +1,4 @@
+pyqtgraph
 jupyter
 rpyc
 spidev
