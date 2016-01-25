@@ -90,6 +90,8 @@ class PIDGui(GUIBase):
         self._mw.P_DoubleSpinBox.setValue( self._pid_logic.kP )
         self._mw.I_DoubleSpinBox.setValue( self._pid_logic.kI )
         self._mw.D_DoubleSpinBox.setValue( self._pid_logic.kD )
+        self._mw.setpointDoubleSpinBox.setValue( self._pid_logic.setpoint )
+        self._mw.manualDoubleSpinBox.setValue( self._pid_logic.manualvalue )
 
         # make correct button state
         self._mw.start_control_Action.setChecked(self._pid_logic.enable or self._pid_logic.countdown >= 0)
