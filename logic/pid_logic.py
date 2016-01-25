@@ -2,7 +2,7 @@
 # unstable: Christoph Müller
 
 """
-This file contains the QuDi Logic module base class.
+A module for controlling processes via PID regulation.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,8 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Christoph Müller christoph-2.mueller@uni-ulm.de
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015 - 2016 Jan M. Binder  <jan.binder@uni-ulm.de>
 """
 
 from logic.generic_logic import GenericLogic
@@ -56,8 +55,7 @@ class PIDLogic(GenericLogic):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
 
         #number of lines in the matrix plot
         self.NumberOfSecondsLog = 100
@@ -101,6 +99,10 @@ class PIDLogic(GenericLogic):
         #    self.enable = self._statusVariables['enable']
         #else:
         #    self.enable = False
+        if 'manualvalue' in self._statusVariables:
+            self.manualvalue = self._statusVariables['manualvalue']
+        else:
+            self.manualvalue = 0
         if 'bufferLength' in self._statusVariables:
             self.bufferLength = self._statusVariables['bufferLength']
         else:
@@ -167,6 +169,14 @@ class PIDLogic(GenericLogic):
             self.history[1, -1] = self.cv
             self.history[2, -1] = self.setpoint
             self.sigNewValue.emit(self.cv)
+        else:
+            self.cv = self.manualvalue
+            limits = self._control.getControlLimits()
+            if (self.cv > limits[1]):
+                self.cv = limits[1]
+            if (self.cv < limits[0]):
+                self.cv = limits[0]
+            self.sigNewValue.emit(self.cv)
 
         time.sleep(self.timestep)
         self.sigNextStep.emit()
@@ -188,3 +198,22 @@ class PIDLogic(GenericLogic):
 
     def saveData(self):
         pass
+
+    def getControlLimits(self):
+        return self._control.getControlLimits()
+
+    def setSetpoint(self, newSetpoint):
+        self.setpoint = newSetpoint
+
+    def setBufferLength(self, newBufferLength):
+        self.bufferLength = newBufferLength
+        self.history = np.zeros([3, self.bufferLength])
+
+    def setManualValue(self, newManualValue):
+        self.manualvalue = newManualValue
+        limits = self._control.getControlLimits()
+            if (self.manualvalue > limits[1]):
+                self.manualvalue = limits[1]
+            if (self.manualvalue < limits[0]):
+                self.manualvalue = limits[0]
+
