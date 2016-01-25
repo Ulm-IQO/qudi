@@ -1,0 +1,9 @@
+jupyter
+rpyc
+spidev
+i2cdev
+pyvisa
+pyvisa-py
+svn
+pydaqmx
+hdf5storage
