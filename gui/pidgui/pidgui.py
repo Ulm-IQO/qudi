@@ -106,7 +106,7 @@ class PIDGui(GUIBase):
         self._mw.D_DoubleSpinBox.valueChanged.connect( self.kDChanged )
 
         self._mw.setpointDoubleSpinBox.valueChanged.connect( self._pid_logic.setSetpoint )
-        self._mw.manualDoubleSpinBox.valueChanged.connect( self.setManualValue )
+        self._mw.manualDoubleSpinBox.valueChanged.connect( self._pid_logic.setManualValue )
             
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
