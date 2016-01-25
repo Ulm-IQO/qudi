@@ -15,6 +15,7 @@ from core.util.mutex import Mutex
 import numpy as np
 import hdf5storage
 from hardware.pulser_interface import PulserInterface
+from WFMX_header import WFMX_header
 
 class AWG70K(Base, PulserInterface):
     """ UNSTABLE: Nikolas
@@ -43,6 +44,11 @@ class AWG70K(Base, PulserInterface):
         else:
             self.logMsg('This is AWG: Did not find >>awg_port<< in '
                         'configuration.', msgType='error')
+
+        if 'use_matlab_format' in config.keys():
+            self.use_matlab_format = config['use_matlab_format']
+        else:
+            self.use_matlab_format = False
         
         self.sample_rate = 25e9
         self.pp_voltage = 0.5
@@ -135,36 +141,65 @@ class AWG70K(Base, PulserInterface):
         return constraints
     
     def _write_to_file(self, name, ana_samples, digi_samples, sampling_rate, pp_voltage):
-        matcontent = {}
-        
-        matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
-        matcontent[u'Waveform_Data_1'] = ana_samples[0]
-        matcontent[u'Waveform_Sampling_Rate_1'] = sampling_rate
-        matcontent[u'Waveform_Amplitude_1'] = pp_voltage
-        
-        if ana_samples.shape[0] == 2:
-            matcontent[u'Waveform_Name_1'] = name + '_Ch1'
-            matcontent[u'Waveform_Name_2'] = name + '_Ch2'
-            matcontent[u'Waveform_Data_2'] = ana_samples[1]
-            matcontent[u'Waveform_Sampling_Rate_2'] = sampling_rate
-            matcontent[u'Waveform_Amplitude_2'] = pp_voltage
-        
-        if digi_samples.shape[0] >= 1:
-            matcontent[u'Waveform_M1_1'] = digi_samples[0]
-        if digi_samples.shape[0] >= 2:
-            matcontent[u'Waveform_M2_1'] = digi_samples[1]
-        if digi_samples.shape[0] >= 3:
-            matcontent[u'Waveform_M1_2'] = digi_samples[2]
-        if digi_samples.shape[0] >= 4:
-            matcontent[u'Waveform_M2_2'] = digi_samples[3]
-        
-        # create file in current directory
-        filename = name +'.mat'
-        hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
-        # check if file already exists and overwrite it
-        if os.path.isfile(self.host_waveform_directory + filename):
-            os.remove(self.host_waveform_directory + filename)
-        os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
+        if self.use_matlab_format:
+            matcontent = {}
+            matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
+            matcontent[u'Waveform_Data_1'] = ana_samples[0]
+            matcontent[u'Waveform_Sampling_Rate_1'] = sampling_rate
+            matcontent[u'Waveform_Amplitude_1'] = pp_voltage
+
+            if ana_samples.shape[0] == 2:
+                matcontent[u'Waveform_Name_1'] = name + '_Ch1'
+                matcontent[u'Waveform_Name_2'] = name + '_Ch2'
+                matcontent[u'Waveform_Data_2'] = ana_samples[1]
+                matcontent[u'Waveform_Sampling_Rate_2'] = sampling_rate
+                matcontent[u'Waveform_Amplitude_2'] = pp_voltage
+
+            if digi_samples.shape[0] >= 1:
+                matcontent[u'Waveform_M1_1'] = digi_samples[0]
+            if digi_samples.shape[0] >= 2:
+                matcontent[u'Waveform_M2_1'] = digi_samples[1]
+            if digi_samples.shape[0] >= 3:
+                matcontent[u'Waveform_M1_2'] = digi_samples[2]
+            if digi_samples.shape[0] >= 4:
+                matcontent[u'Waveform_M2_2'] = digi_samples[3]
+
+            # create file in current directory
+            filename = name +'.mat'
+            hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
+            # check if file already exists and overwrite it
+            if os.path.isfile(self.host_waveform_directory + filename):
+                os.remove(self.host_waveform_directory + filename)
+            os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
+        else:
+            # create WFMX header
+            header_obj = WFMX_header(sampling_rate, pp_voltage, 0, len(digi_samples))
+            header_obj.create_xml_file()
+
+            header=open('header.xml','r')
+            for channel_number in range(ana_samples.shape[0]):
+                # create .WFMX-file for each channel and write the header to it.
+                file = open(self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX', 'wb')
+                for line in header:
+                    file.write(bytes(line, 'UTF-8'))
+                # append analogue samples in binary format. One sample is 4 bytes (np.float32).
+                file.write(bytes(ana_samples[0]))
+                # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
+                if digi_samples.shape[0] == (2*channel_number + 1):
+                    temp_markers = digi_samples[2*channel_number + 1]
+                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    file.write(bytes(temp_markers))
+                if digi_samples.shape[0] == (2*channel_number + 2):
+                    temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2].astype('uint8'),1), digi_samples[2*channel_number + 1])
+                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    file.write(bytes(temp_markers))
+
+            header.close()
+            os.remove('header.xml')
+
+
+
+            file.close()
         return
 
 
@@ -207,7 +242,10 @@ class AWG70K(Base, PulserInterface):
             self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_freq, waveform.pp_voltage)
             
             # TODO: Download waveform to AWG and load it into channels
-            self.send_file(self.host_waveform_directory + waveform.name + '.mat')
+            if self.use_matlab_format:
+                self.send_file(self.host_waveform_directory + waveform.name + '.mat')
+            else:
+                self.send_file(self.host_waveform_directory + waveform.name + '.WFMX')
             self.load_sequence(waveform.name)
         return 0
 
