@@ -15,8 +15,6 @@ python3-sip
 python3-tornado
 python3-pygments
 python3-openssl
-python3-pyvisa
-python3-pyvisa-py
 build-essential
 devscripts
 subversion
