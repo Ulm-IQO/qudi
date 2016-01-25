@@ -115,6 +115,7 @@ class TSYS01SPI(Base, ProcessInterface):
 
     def getProcessValue(self):
         with self.threadlock:
+            self.startADC()
             return self.temperatureKelvin(self.readADC())
 
     def getProcessUnit(self):
