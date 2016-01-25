@@ -25,6 +25,8 @@ class PulsedMeasurementLogic(GenericLogic):
     ## declare connectors
     _in = { 'fastcounter': 'FastCounterInterface',
             #'pulsegenerator': 'PulserInterfaceDummy',
+            'optimizer1': 'OptimizerLogic',
+            'scannerlogic': 'ConfocalLogic',
             'pulseanalysislogic': 'PulseAnalysisLogic',
             'fitlogic': 'FitLogic',
             'savelogic': 'SaveLogic',
@@ -36,6 +38,9 @@ class PulsedMeasurementLogic(GenericLogic):
     signal_laser_plot_updated = QtCore.Signal()
     signal_signal_plot_updated = QtCore.Signal()
     measuring_error_plot_updated = QtCore.Signal()
+    signal_refocus_finished = QtCore.Signal()
+    signal_odmr_refocus_finished = QtCore.Signal()
+
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -70,9 +75,13 @@ class PulsedMeasurementLogic(GenericLogic):
         
         # timer for data analysis
         self.timer = None
-        self.odmrtimer = None
-        self.odmrtimer_interval = 0.5 # in seconds
+        self.refocus_timer = None
+        self.odmr_refocus_timer = None
         self.timer_interval = 5 # in seconds
+        self.refocus_timer_interval= 11 # in seconds
+        self.odmr_refocus_timer_interval = 0.5 # in seconds
+
+        #timer for time
         self.start_time = 0
         self.elapsed_time = 0
         self.elapsed_time_str = '00:00:00:00'
@@ -108,8 +117,13 @@ class PulsedMeasurementLogic(GenericLogic):
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
+        self._optimizer_logic = self.connector['in']['optimizer1']['object']
+        self._confocal_logic = self.connector['in']['scannerlogic']['object']
+
+        print("Confocal Logic is", self._confocal_logic)
         #self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
+
         self.fast_counter_gated = self._fast_counter_device.is_gated()
         self.update_fast_counter_status()
         self._initialize_signal_plot()
@@ -149,6 +163,8 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'idle':
                 self.update_fast_counter_status()
+
+                #self._do_refocus()
                 # initialize plots
                 self._initialize_signal_plot()
                 self._initialize_laser_plot()
@@ -164,9 +180,22 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.timer.setInterval(int(1000. * self.timer_interval))
                 self.timer.timeout.connect(self._pulsed_analysis_loop)
                 # start analysis loop and set lock to indicate a running measurement
+                self.refocus_timer = QtCore.QTimer()
+                self.refocus_timer.setSingleShot(False)
+                self.refocus_timer.setInterval(int(1000. * self.refocus_timer_interval))
+                self.refocus_timer.timeout.connect(self._do_refocus)
+
+                self.odmr_refocus_timer = QtCore.QTimer()
+                self.odmr_refocus_timer.setSingleShot(False)
+                self.refocus_timer.setInterval(int(1000. * self.odmr_refocus_timer_interval))
+                self.refocus_timer.timeout.connect(self._do_odmr_refocus)
+
+
                 self.lock()
                 self.start_time = time.time()
                 self.timer.start()
+                self.refocus_timer.start()
+                self.odmr_refocus_timer.start()
         return
         
         
@@ -196,6 +225,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time)//3600).zfill(2) + ':' # hours
             self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
+            # has to be changed. just for testing purposes
             self.elapsed_sweeps = self.elapsed_time/3
             # emit signals
             self.signal_signal_plot_updated.emit() 
@@ -230,13 +260,22 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.timer != None:
                 self.timer.setInterval(int(1000. * self.timer_interval))
         return
-        
-    
-    def change_odmrtimer_interval(self, interval):
+
+    def change_refocus_timer_interval(self, interval):
         with self.threadlock:
-            self.odmrtimer_interval = interval
-            if self.odmrtimer != None:
-                self.odmrtimer.setInterval(1000. * self.timer_interval)
+            self.refocus_timer_interval = interval
+            if self.refocus_timer != None:
+                print ('changing refocus timer')
+                self.refocus_timer.setInterval(int(1000. * self.refocus_timer_interval))
+            else:
+                print('never mind')
+        return
+    
+    def change_odmr_refocus_timer_interval(self, interval):
+        with self.threadlock:
+            self.odmr_refocus_timer_interval = interval
+            if self.odmr_refocus_timer != None:
+                self.odmr_refocus_timer.setInterval(1000. * self.odmr_refocus_timer_interval)
         return
     
 
@@ -423,7 +462,8 @@ class PulsedMeasurementLogic(GenericLogic):
         pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0],self.signal_plot_x[-1],1000) 
         
         if fit_function == 'No Fit':
-            pulsed_fit_y = np.zeros(pulsed_fit_x.shape)
+            pulsed_fit_x=[]
+            pulsed_fit_y = []
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
             
@@ -432,18 +472,23 @@ class PulsedMeasurementLogic(GenericLogic):
 
             ##### get the rabi fit parameters
             rabi_amp = result[0].params['amplitude'].value
+            rabi_amp_error= result[0].params['amplitude'].stderr
             rabi_freq = result[0].params['omega'].value
+            rabi_freq_error = result[0].params['omega'].stderr
             rabi_offset = result[0].params['offset'].value
+            rabi_offset_error = result[0].params['offset'].stderr
             rabi_decay = result[0].params['decay'].value
+            rabi_decay_error = result[0].params['decay'].stderr
             rabi_shift = result[0].params['shift'].value
+            rabi_shift_error = result[0].params['shift'].stderr
             
             pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
             
-            fit_result = str('Contrast: ' + str(2*rabi_amp) + "\n" +
-                             'Period: ' + str(rabi_freq) + "\n" +
-                             'Offset: ' + str(rabi_offset) + "\n" +
-                             'Decay: ' + str(rabi_decay) + "\n" +
-                             'Shift: ' + str(rabi_shift))
+            fit_result = str('Contrast: ' + str(np.abs(2*rabi_amp)) + " + " + str(rabi_amp_error) + "\n" +
+                             'Period [ns]: ' + str(rabi_freq) + " + " + str(rabi_freq_error) + "\n" +
+                             'Offset: ' + str(rabi_offset) + " + " + str(rabi_offset_error) + "\n" +
+                             'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
+                             'Shift [rad]: ' + str(rabi_shift) + " + " + str(rabi_shift_error) + "\n")
                             
             return pulsed_fit_x, pulsed_fit_y, fit_result
         
@@ -471,14 +516,14 @@ class PulsedMeasurementLogic(GenericLogic):
                                 + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
                                 + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
                                 + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
-                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+                                + 'contrast : ' + str(np.abs(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3))*100) + '[%]'
                                 )
             return pulsed_fit_x, pulsed_fit_y, fit_result
         
         elif fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
-            self.signal_plot_y = fitted_funciton.eval(x=self.signal_plot_x, params=result.params)
+            fitted_function,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            self.signal_plot_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
             self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
@@ -493,8 +538,8 @@ class PulsedMeasurementLogic(GenericLogic):
         
         elif fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
-            self.signal_plot_y = fitted_funciton.eval(x=self.signal_plot_x, params=result.params)
+            fitted_function,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            self.signal_plot_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
             self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
@@ -523,4 +568,20 @@ class PulsedMeasurementLogic(GenericLogic):
         x_for_fit = np.arange(x_start,x_end,step)
             
         return x_for_fit
-            
+
+    def _do_refocus(self):
+        """ Does a refocus.
+
+        """
+        print ('refocussing')
+        position=self._confocal_logic.get_position()
+        self._optimizer_logic.start_refocus(position, caller_tag='poimanager')
+
+
+    def _do_odmr_refocus(self):
+        """ Does a refocus.
+
+        """
+        print ('here the odmr refocus has to be implemented')
+
+
