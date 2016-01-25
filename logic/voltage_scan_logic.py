@@ -106,6 +106,21 @@ class VoltageScanningLogic(GenericLogic):
         self.upwards_scan = True
 
 
+
+        #############################
+        # Configurable parameters
+
+        self.number_of_repeats = 10
+
+        # TODO: allow configuration with respect to measurement duration
+        self.acquire_time = 20  # seconds
+
+        ##############################
+
+        # Initialie data matrix
+        self._initialise_data_matrix()
+
+
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
@@ -156,6 +171,11 @@ class VoltageScanningLogic(GenericLogic):
         else:
             return 0
 
+    def _initialise_data_matrix(self):
+        """ Initializing the ODMR matrix plot. """
+
+        self.scan_matrix = np.zeros( (self.number_of_repeats, self.return_slowness) )
+
     def start_scanning(self, v_min = None, v_max = None):
         """Setting up the scanner device and starts the scanning procedure
 
@@ -169,6 +189,7 @@ class VoltageScanningLogic(GenericLogic):
 
         self._scan_counter = 0
         self.upwards_scan = True
+        self._initialise_data_matrix()
 
         self.current_position = self._scanning_device.get_scanner_position()
 
@@ -212,7 +233,7 @@ class VoltageScanningLogic(GenericLogic):
         """
 
         # stops scanning
-        if self.stopRequested:
+        if self.stopRequested or self._scan_counter == self.number_of_repeats:
             if self.upwards_scan:
                 ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
             else:
@@ -233,6 +254,8 @@ class VoltageScanningLogic(GenericLogic):
         else:
             counts = self._scan_line(self.scan_range[1], self.scan_range[0])
             self.upwards_scan = True
+
+        self.scan_matrix[self._scan_counter] = counts
 
         self._scan_counter += 1
         self.signal_scan_next_line.emit()
