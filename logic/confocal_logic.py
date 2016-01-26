@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-# unstable: Christoph Müller
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
+from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
 import numpy as np
 import time
@@ -167,10 +167,21 @@ class ConfocalLogic(GenericLogic):
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
+
+        # prepare images
         self.initialize_image()
+        if 'xy_image' in self._statusVariables:
+            temp_xy_image = numpy_from_b(self._statusVariables['xy_image'])['image']
+            if temp_xy_image.shape == self.xy_image.shape:
+                self.xy_image = temp_xy_image
+
         self._zscan = True
         self.difference_scan = False #TODO: should this be here or in the init?
         self.initialize_image()
+        if 'depth_image' in self._statusVariables:
+            temp_depth_image = numpy_from_b(self._statusVariables['depth_image'])['image']
+            if temp_depth_image.shape == self.depth_image.shape:
+                self.depth_image = temp_depth_image
         self._zscan = False
 
 
@@ -195,6 +206,8 @@ class ConfocalLogic(GenericLogic):
         self._statusVariables['tilt_point3'] = self.point3
         self._statusVariables['tilt_reference'] = [self._tiltreference_x, self._tiltreference_y]
         self._statusVariables['tilt_slope'] = [self._tilt_variable_ax, self._tilt_variable_ay]
+        self._statusVariables['xy_image'] = numpy_to_b(image=self.xy_image)
+        self._statusVariables['depth_image'] = numpy_to_b(image=self.depth_image)
         self._scanning_device.reset_hardware()
         return 0
 
