@@ -183,15 +183,32 @@ class AWG70K(Base, PulserInterface):
                 for line in header:
                     file.write(bytes(line, 'UTF-8'))
                 # append analogue samples in binary format. One sample is 4 bytes (np.float32).
-                file.write(bytes(ana_samples[0]))
+                # write in chunks if array is very big to avoid large temporary copys in memory
+                number_of_full_chunks = len(ana_samples[channel_number])//1e6
+                for i in range(number_of_full_chunks):
+                    start_ind = i*1e6
+                    stop_ind = (i+1)*1e6
+                    file.write(bytes(ana_samples[channel_number][start_ind:stop_ind]))
+                # write rest
+                file.write(bytes(ana_samples[channel_number][stop_ind:]))
                 # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
                 if digi_samples.shape[0] == (2*channel_number + 1):
-                    temp_markers = digi_samples[2*channel_number + 1]
-                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    for i in range(number_of_full_chunks):
+                        start_ind = i*1e6
+                        stop_ind = (i+1)*1e6
+                        temp_markers = digi_samples[2*channel_number + 1][start_ind:stop_ind]
+                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                        file.write(bytes(temp_markers))
+                    temp_markers = digi_samples[2*channel_number + 1][stop_ind:]
                     file.write(bytes(temp_markers))
                 if digi_samples.shape[0] == (2*channel_number + 2):
-                    temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2].astype('uint8'),1), digi_samples[2*channel_number + 1])
-                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    for i in range(number_of_full_chunks):
+                        start_ind = i*1e6
+                        stop_ind = (i+1)*1e6
+                        temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2][start_ind:stop_ind].astype('uint8'),1), digi_samples[2*channel_number + 1][start_ind:stop_ind])
+                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                        file.write(bytes(temp_markers))
+                    temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2][stop_ind:].astype('uint8'),1), digi_samples[2*channel_number + 1][stop_ind:])
                     file.write(bytes(temp_markers))
 
             header.close()
@@ -461,6 +478,8 @@ class AWG70K(Base, PulserInterface):
                 pass
             else:
                 saved_sequences.append(name)
+
+
         return saved_sequences
 
     def delete_sequence(self, seq_name):
