@@ -69,18 +69,30 @@ class PIDGui(GUIBase):
                 
         # Plot labels.
         self._pw = self._mw.trace_PlotWidget
+        
+        self.plot1 = self._pw.plotItem
+        self.plot1.setLabel('left', 'Process Value', units='unit', color='#00ff00')
+        self.plot1.setLabel('bottom', 'Time', units='s')
+        self.plot1.showAxis('right')
+        self.plot1.getAxis('right').setLabel('Control Value', units='unit', color='#ff0000')
 
-        self._pw.setLabel('left', 'Process Value', units='unit')
-        self._pw.setLabel('right', 'Conteol Value', units='unit')
-        self._pw.setLabel('bottom', 'Time', units='s')
+        self.plot2 = pg.ViewBox()
+        self.plot1.scene().addItem(self.plot2)
+        self.plot1.getAxis('right').linkToView(self.plot2)
+        self.plot2.setXLink(self.plot1)
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
+        self._curve1 = self.plot1.plot()
         self._curve1.setPen('g')
-        self._curve2 = self._pw.plot()
-        self._curve2.setPen('r', width=4)
-        self._curve3 = self._pw.plot()
+        self._curve3 = self.plot1.plot()
         self._curve3.setPen('b', width=2)
+
+        self._curve2 = pg.PlotCurveItem()
+        self._curve2.setPen('r', width=4)
+        self.plot2.addItem(self._curve2)
+
+        self.updateViews()
+        self.plot1.vb.sigResized.connect(self.updateViews)
 
         # setting the x axis length correctly
         self._pw.setXRange(0, self._pid_logic.getBufferLength() * self._pid_logic.timestep)
@@ -140,9 +152,18 @@ class PIDGui(GUIBase):
             self._mw.labelkP.setText('{0:,.6f}'.format(self._pid_logic.P))
             self._mw.labelkI.setText('{0:,.6f}'.format(self._pid_logic.I))
             self._mw.labelkD.setText('{0:,.6f}'.format(self._pid_logic.D))
-            self._curve1.setData(y=self._pid_logic.history[0], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
-            self._curve2.setData(y=self._pid_logic.history[1], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
-            self._curve3.setData(y=self._pid_logic.history[2], x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep)
+            self._curve1.setData(
+                y=self._pid_logic.history[0],
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                )
+            self._curve2.setData(
+                y=self._pid_logic.history[1],
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                )
+            self._curve3.setData(
+                y=self._pid_logic.history[2],
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                )
 
         if self._pid_logic.getSavingState():
             self._mw.record_control_Action.setText('Save')
@@ -153,7 +174,15 @@ class PIDGui(GUIBase):
             self._mw.start_control_Action.setText('Stop')
         else:            
             self._mw.start_control_Action.setText('Start')
-            
+
+    def updateViews(self):
+    ## view has resized; update auxiliary views to match
+        self.plot2.setGeometry(self.plot1.vb.sceneBoundingRect())
+    
+        ## need to re-update linked axes since this was called
+        ## incorrectly while views had different shapes.
+        ## (probably this should be handled in ViewBox.resizeEvent)
+        self.plot2.linkedViewChanged(self.plot1.vb, self.plot2.XAxis)
             
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
