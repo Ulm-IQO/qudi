@@ -30,18 +30,19 @@ from core.util.mutex import Mutex
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
+#FIXME: Display the Pulse
 #FIXME: incoorporate the passed hardware constraints from the logic.
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
 #FIXME: choose as default value the minimal sampling rate
 #FIXME: insert warning text in choice of channels
-#FIXME: pass the posibile channels over to laser channel select
+#FIXME: pass the possible channels over to laser channel select
 #FIXME: count laser pulses
 #FIXME: calculate total length of the sequence
 #FIXME: insert checkbox (or something else) for removing the inital table
 #FIXME: remove repeat and inc from the initial table
 #FIXME: save the pattern of the table to a file. Think about possibilities to read in from file if number of channels is different. Therefore make also a load function.
-#FIXME: give general access to specific element in the column and let it be changable by this function
+#FIXME: give general access to specific element in the column and let it be changeable by this function
 #FIXME: return the whole table as a matrix
 #FIXME: Make the minimum and the maximum values of the sampling frequency be dependent on the used hardware file.
 #FIXME: make a generate button and insert a name for the pattern. The generate button will pass the values to the logic.
@@ -453,8 +454,8 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
 
         self.unit_list = {'p':1e-12, 'n':1e-9, 'micro':1e-6, 'm':1e-3, 'k':1e3, 'M':1e6, 'G':1e9, 'T':1e12}
 
-        if 'disp_unit' in self.items_list.keys():
-            self.norm = self.unit_list[self.items_list['disp_unit']]
+        if 'unit_prefix' in self.items_list.keys():
+            self.norm = self.unit_list[self.items_list['unit_prefix']]
         else:
             self.norm = 1.0
 
@@ -764,6 +765,8 @@ class PulsedMeasurementGui(GUIBase):
 
         if ch_settings in channel_config:
             self._set_channels(num_d_ch=ch_settings[1], num_a_ch=ch_settings[0])
+            self._seq_gen_logic.set_active_channels(digital=ch_settings[1],
+                                                analogue=ch_settings[0])
         else:
             self.logMsg('Desired channel configuration (analog, digital) as '
                         '{0} not possible, since the hardware does not '
@@ -778,6 +781,8 @@ class PulsedMeasurementGui(GUIBase):
 
         self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
         self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
+        self._seq_gen_logic.set_active_channels(digital=self._num_d_ch,
+                                                analogue=self._num_a_ch)
 
     def get_current_function_list(self):
         """ Retrieve the functions, which are chosen by the user.
@@ -838,14 +843,14 @@ class PulsedMeasurementGui(GUIBase):
         """
         # connect the signal for a change of the sample frequency
         self._mw.sample_freq_DSpinBox.editingFinished.connect(self.sample_frequency_changed)
-        
+
         # connect the signals for the block editor:
         self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
         self._mw.block_del_last_PushButton.clicked.connect(self.block_editor_delete_row_last)
         self._mw.block_add_sel_PushButton.clicked.connect(self.block_editor_add_row_before_selected)
         self._mw.block_del_sel_PushButton.clicked.connect(self.block_editor_delete_row_selected)
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
-        
+
         self._mw.curr_block_save_PushButton.clicked.connect(self.block_editor_save_clicked)
         self._mw.curr_block_del_PushButton.clicked.connect(self.block_editor_delete_clicked)
 
@@ -866,12 +871,12 @@ class PulsedMeasurementGui(GUIBase):
         # emit a trigger event when for all mouse click and keyboard click events:
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
-        
+
         # connect update signals of the sequence_generator_logic
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
-        
+
         #FIXME: Make the analog channel parameter chooseable in the settings.
 
 
@@ -967,7 +972,7 @@ class PulsedMeasurementGui(GUIBase):
         @return: list[] with string entries as function names.
         """
         return list(self._seq_gen_logic.get_func_config())
-        
+
     def sample_frequency_changed(self):
         """
         This method is called when the user enters a new sample frequency in the SpinBox
@@ -975,7 +980,7 @@ class PulsedMeasurementGui(GUIBase):
         freq = 1e6*self._mw.sample_freq_DSpinBox.value()
         self._seq_gen_logic.set_sampling_freq(freq)
         return
-        
+
     def upload_on_ch1_clicked(self):
         """
         This method is called when the user clicks on "Upload on Ch1"
@@ -987,7 +992,7 @@ class PulsedMeasurementGui(GUIBase):
         # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
         self._seq_gen_logic.load_asset(ensemble_name, 1)
         return
-        
+
     def upload_on_ch2_clicked(self):
         """
         This method is called when the user clicks on "Upload on Ch2"
@@ -999,7 +1004,7 @@ class PulsedMeasurementGui(GUIBase):
         # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
         self._seq_gen_logic.load_asset(ensemble_name, 2)
         return
-    
+
     def update_block_list(self):
         """
         This method is called upon signal_block_list_updated emit of the sequence_generator_logic.
@@ -1011,7 +1016,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.saved_blocks_ComboBox.clear()
         self._mw.saved_blocks_ComboBox.addItems(new_list)
         return
-    
+
     def update_ensemble_list(self):
         """
         This method is called upon signal_ensemble_list_updated emit of the sequence_generator_logic.
@@ -1026,7 +1031,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.saved_ensembles_ComboBox.clear()
         self._mw.saved_ensembles_ComboBox.addItems(new_list)
         return
-        
+
     def update_sequence_list(self):
         """
         This method is called upon signal_sequence_list_updated emit of the sequence_generator_logic.
@@ -1035,7 +1040,7 @@ class PulsedMeasurementGui(GUIBase):
         # updated list of all generated sequences
         new_list = self._seq_gen_logic.saved_sequences
         return
-        
+
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
     # -------------------------------------------------------------------------
@@ -1252,8 +1257,10 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                self.logMsg('Type definition not found in the table. Include '
-                            'that type!', msgType='error')
+                self.logMsg('Type definition not found in the table. Type is '
+                            'neither a string, integer or float. Include '
+                            'that type in the get_block_table method!',
+                            msgType='error')
 
         # remove the last two elements since these are a comma and a space:
         structure = structure[:-2]
@@ -1308,7 +1315,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.setRowCount(1)
         self._mw.block_editor_TableWidget.clearContents()
         self.initialize_row_init_block(0)
-        
+
     def block_editor_save_clicked(self):
         """
         Actions to perform when the save button in the block editor is clicked
@@ -1317,7 +1324,7 @@ class PulsedMeasurementGui(GUIBase):
         table_struct = self.get_block_table()
         self._seq_gen_logic.generate_block(name, table_struct)
         return
-        
+
     def block_editor_delete_clicked(self):
         """
         Actions to perform when the delete button in the block editor is clicked
@@ -1337,7 +1344,8 @@ class PulsedMeasurementGui(GUIBase):
         selected_row = self._mw.block_organizer_TableWidget.currentRow()
 
         self._mw.block_organizer_TableWidget.insertRow(selected_row)
-        self.initialize_row_init_block(selected_row)
+
+        self.initialize_row_block_organizer(selected_row)
 
 
     def block_organizer_add_row_after_last(self):
@@ -1345,7 +1353,8 @@ class PulsedMeasurementGui(GUIBase):
 
         number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
         self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+1)
-        self.initialize_row_init_block(number_of_rows)
+
+        self.initialize_row_block_organizer(number_of_rows)
 
     def block_organizer_delete_row_selected(self):
         """ Delete row of selected element. """
@@ -1368,8 +1377,9 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.block_organizer_TableWidget.setRowCount(1)
         self._mw.block_organizer_TableWidget.clearContents()
-        self.initialize_row_init_block(0)
-        
+
+        self.initialize_row_block_organizer(0)
+
     def block_organizer_delete_clicked(self):
         """
         Actions to perform when the delete button in the block organizer is clicked
@@ -1388,8 +1398,8 @@ class PulsedMeasurementGui(GUIBase):
             # add the new properties to the whole column through delegate:
             items_list = self.get_param_config()[parameter]
 
-            if 'disp_unit' in items_list.keys():
-                unit_text = items_list['disp_unit'] + items_list['unit']
+            if 'unit_prefix' in items_list.keys():
+                unit_text = items_list['unit_prefix'] + items_list['unit']
             else:
                 unit_text = items_list['unit']
 
@@ -1415,36 +1425,6 @@ class PulsedMeasurementGui(GUIBase):
                 model.setData(index, ini_values[0], ini_values[1])
 
 
-
-            # add the new properties to the whole column through delegate:
-            items_list = self.get_param_config()[parameter]
-
-            if 'disp_unit' in items_list.keys():
-                unit_text = items_list['disp_unit'] + items_list['unit']
-            else:
-                unit_text = items_list['unit']
-
-            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
-            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
-
-            # extract the classname from the _param_block list to be able to deligate:
-            delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, [items_list])
-            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self._mw.block_organizer_TableWidget.rowCount()):
-                # get the model, here are the data stored:
-                model = self._mw.block_organizer_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, insert_at_col_pos+column)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
     def count_digital_channels(self):
         """ Get the number of currently displayed digital channels.
 
@@ -1452,9 +1432,7 @@ class PulsedMeasurementGui(GUIBase):
 
         The number of digital channal are counted and return and additionally
         the internal counter variable _num_d_ch is updated. The counting
-        procedure is based on the block_editor_TableWidget since it is assumed
-        that all operation on the block_editor_TableWidget is also applied on
-        block_organizer_TableWidget.
+        procedure is based on the block_editor_TableWidget.
         """
         count_dch = 0
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
@@ -1512,7 +1490,7 @@ class PulsedMeasurementGui(GUIBase):
         @return list with column configuration
 
         """
-        table_config = {}
+        table_config = OrderedDict()
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
             text = self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text()
             split_text = text.split()
@@ -1529,10 +1507,13 @@ class PulsedMeasurementGui(GUIBase):
     def _set_channels(self, num_d_ch=None, num_a_ch=None):
         """ General function which creates the needed columns.
 
-        @param num_d_ch:
-        @param num_a_ch:
+        @param num_d_ch: int, desired number of digital channels
+        @param num_a_ch: int, desired numbe of analogue channels
 
-        If no argument is passed, the table is simply renewed.
+        If no argument is passed, the table is simply renewed. Otherwise the
+        desired number of channels are created.
+        Every time this function is executed all the table entries are erased
+        and created again to prevent wrong delegation.
         """
 
         if num_d_ch is None:
@@ -1541,24 +1522,23 @@ class PulsedMeasurementGui(GUIBase):
         if num_a_ch is None:
             num_a_ch = self._num_a_ch
 
+        # Determine the function with the most parameters. Use also that
+        # function as a construction plan to create all the needed columns for
+        # the parameters.
         (num_max_param, biggest_func) = self._determine_needed_parameters()
 
         # Erase the delegate from the column:
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(column,None)
-            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column,None)
 
         # clear the number of columns:
         self._mw.block_editor_TableWidget.setColumnCount(0)
-        self._mw.block_organizer_TableWidget.setColumnCount(0)
 
-#        num_a_d_ch =  num_a_ch*len(self._param_a_ch) + num_d_ch*len(self._param_d_ch)
-        # +1 for the displayed function
+        # total number of analogue and digital channels:
         num_a_d_ch =  num_a_ch*(num_max_param +1) + num_d_ch
 
 
         self._mw.block_editor_TableWidget.setColumnCount(num_a_d_ch)
-        self._mw.block_organizer_TableWidget.setColumnCount(num_a_d_ch)
 
         num_a_to_create = num_a_ch
         num_d_to_create = num_d_ch
@@ -1578,16 +1558,6 @@ class PulsedMeasurementGui(GUIBase):
                 items_list = self._param_d_ch['CheckBox'][1:]
                 checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
-
-
-
-                self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create) )
-                self._mw.block_organizer_TableWidget.setColumnWidth(column, 40)
-
-                items_list = self._param_d_ch['CheckBox'][1:]
-                checkDelegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
-                self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
 
                 if not d_created and num_d_to_create != 1:
@@ -1613,27 +1583,15 @@ class PulsedMeasurementGui(GUIBase):
                 delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
 
-
-
-
-                self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nfunction'.format(num_a_ch-num_a_to_create))
-                self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos, 70)
-
-                items_list = [self.get_current_function_list]
-
-                delegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
-                self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
-
-
+                # create here all
                 for param_pos, parameter in enumerate(self.get_func_config()[biggest_func]):
 
                     # initial block:
 
                     items_list = self.get_func_config()[biggest_func][parameter]
 
-                    if 'disp_unit' in items_list.keys():
-                        unit_text = items_list['disp_unit'] + items_list['unit']
+                    if 'unit_prefix' in items_list.keys():
+                        unit_text = items_list['unit_prefix'] + items_list['unit']
                     else:
                         unit_text = items_list['unit']
 
@@ -1643,24 +1601,9 @@ class PulsedMeasurementGui(GUIBase):
 
                     # add the new properties to the whole column through delegate:
 
-
                     # extract the classname from the _param_a_ch list to be able to deligate:
                     delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, [items_list])
                     self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
-
-
-
-
-                    self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column+param_pos+1, QtGui.QTableWidgetItem())
-                    self._mw.block_organizer_TableWidget.horizontalHeaderItem(column+param_pos+1).setText('ACh{0:d}\n{1} ({2})'.format(num_a_ch-num_a_to_create, parameter, unit_text))
-                    self._mw.block_organizer_TableWidget.setColumnWidth(column+param_pos+1, 100)
-
-                    # add the new properties to the whole column through delegate:
-
-
-                    # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, [items_list])
-                    self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
 
                 column = column + (num_max_param +1)
                 num_a_to_create = num_a_to_create - 1
@@ -1672,33 +1615,40 @@ class PulsedMeasurementGui(GUIBase):
         self.insert_parameters(num_a_d_ch)
 
         self.initialize_row_init_block(0,self._mw.block_editor_TableWidget.rowCount())
-        self.initialize_row_repeat_block(0,self._mw.block_organizer_TableWidget.rowCount())
         self.update_current_table_config()
+
 
     def initialize_row_init_block(self, start_row, stop_row=None):
         """
 
-        @param start_row:
-        @param stop_row:
+        @param start_row: int, the index of the row, where the initialization
+                          should start
+        @param stop_row: int, the index of the row, where the initalization
+                         should end.
+
+        With this function it is possible to reinitialize specific elements or
+        part of a row or even the whole row. If start_row is set to 0 the whole
+        row is going to be initialzed to the default value.
 
         """
-        if stop_row is None:
-            stop_row = start_row +1
+        raise IOError
+        # if stop_row is None:
+        #     stop_row = start_row +1
+        #
+        # for col_num in range(self._mw.block_editor_TableWidget.columnCount()):
+        #
+        #     for row_num in range(start_row,stop_row):
+        #         # get the model, here are the data stored:
+        #         model = self._mw.block_editor_TableWidget.model()
+        #         # get the corresponding index of the current element:
+        #         index = model.index(row_num, col_num)
+        #         # get the initial values of the delegate class which was
+        #         # uses for this column:
+        #         ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+        #         # set initial values:
+        #         model.setData(index, ini_values[0], ini_values[1])
 
-        for col_num in range(self._mw.block_editor_TableWidget.columnCount()):
-
-            for row_num in range(start_row,stop_row):
-                # get the model, here are the data stored:
-                model = self._mw.block_editor_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
-    def initialize_row_repeat_block(self, start_row, stop_row=None):
+    def initialize_row_block_organizer(self, start_row, stop_row=None):
         """
         @param start_row:
         @param stop_row:
@@ -1745,7 +1695,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._num_a_ch = count_a_ch
         return self._num_a_ch
-        
+
 
     ###########################################################################
     ###        Methods related to Settings for the 'Analysis' Tab:          ###
@@ -1785,9 +1735,9 @@ class PulsedMeasurementGui(GUIBase):
         self.fft_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
         self.measuring_error_image = pg.PlotDataItem(self._pulsed_measurement_logic.measuring_error_plot_x, self._pulsed_measurement_logic.measuring_error_plot_y*1000)
-        
+
         self.fit_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        
+
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)))
         self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)))
@@ -1799,7 +1749,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
         self._mw.fft_PlotWidget.addItem(self.fft_image)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
-        
+
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
         self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
@@ -1814,32 +1764,32 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        
-        
-        
+
+
+
         # Initialize  what is visible and what not
         self._mw.mw_frequency_Label.setVisible(False)
         self._mw.mw_frequency_InputWidget.setVisible(False)
         self._mw.mw_power_Label.setVisible(False)
         self._mw.mw_power_InputWidget.setVisible(False)
-        
+
         self._mw.tau_start_Label.setVisible(False)
         self._mw.tau_start_InputWidget.setVisible(False)
         self._mw.tau_increment_Label.setVisible(False)
         self._mw.tau_increment_InputWidget.setVisible(False)
-        
+
         self._mw.fft_PlotWidget.setVisible(False)
-        
-        
+
+
         # Set the state button as ready button as default setting.
-                
+
         self._mw.action_continue_pause.setEnabled(False)
-        
+
         self._mw.action_pull_data.setEnabled(False)
 
         # Configuration of the comboWidget
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
-        self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
+        # self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
+        # self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
         # set up the types of the columns and create a pattern based on
         # the desired settings:
 
@@ -1871,12 +1821,12 @@ class PulsedMeasurementGui(GUIBase):
 #        self._mw.lasertoshow_spinBox.setPrefix("#")
 #        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
 #        self._mw.lasertoshow_spinBox.setValue(0)
-        
+
         self._mw.laser_to_show_ComboBox.clear()
-        self._mw.laser_to_show_ComboBox.addItem('sum')    
+        self._mw.laser_to_show_ComboBox.addItem('sum')
         for ii in range(50):
             self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
-            
+
         self._mw.signal_start_InputWidget.setText(str(5))
         self._mw.signal_length_InputWidget.setText(str(200))
         self._mw.reference_start_InputWidget.setText(str(500))
@@ -1888,9 +1838,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.refocus_interval_LineEdit.setText(str(500))
         self._mw.odmr_refocus_interval_LineEdit.setText(str(500))
 
-    
+
         # Configuration of the fit ComboBox
-    
+
         self._mw.fit_function_ComboBox.addItem('No Fit')
         self._mw.fit_function_ComboBox.addItem('Rabi Decay')
         self._mw.fit_function_ComboBox.addItem('Lorentian (neg)')
@@ -1900,7 +1850,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.fit_function_ComboBox.addItem('Stretched Exponential')
         self._mw.fit_function_ComboBox.addItem('Exponential')
         self._mw.fit_function_ComboBox.addItem('XY8')
-        
+
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -1912,22 +1862,22 @@ class PulsedMeasurementGui(GUIBase):
         #self._mw.run_RadioButton.toggled.connect(self.run_clicked)
 #        self._mw.pause_RadioButton.toggled.connect(self.pause_clicked)
 #        self._mw.continue_RadioButton.toggled.connect(self.continue_clicked)
-        
+
         self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
-        
+
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
-                
-        self._mw.action_save.toggled.connect(self.save_clicked)        
-        
+
+        self._mw.action_save.toggled.connect(self.save_clicked)
+
 #        self._mw.pull_data_pushButton.clicked.connect(self.pull_data_clicked)
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
-        
+
 
         self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
         self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
         self._pulsed_measurement_logic.measuring_error_plot_updated.connect(self.refresh_measuring_error_plot)
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
-        
+
         # sequence generator tab
 
         # Connect the CheckBoxes
@@ -1954,7 +1904,7 @@ class PulsedMeasurementGui(GUIBase):
         self.analysis_parameters_changed()
 #
 #        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
-        
+
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
 
@@ -1989,11 +1939,11 @@ class PulsedMeasurementGui(GUIBase):
 
         @param bool enabled: start scan if that is possible
         """
-        
+
         #Firstly stop any scan that might be in progress
         self._pulsed_measurement_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
-        
+
         if isChecked:
             #self._mw.signal_plot_ViewWidget.clear()
             self._mw.mw_frequency_InputWidget.setEnabled(False)
@@ -2004,7 +1954,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_continue_pause.setEnabled(True)
             if not self._mw.action_continue_pause.isChecked():
                 self._mw.action_continue_pause.toggle()
-            
+
         else:
             self._pulsed_measurement_logic.stop_pulsed_measurement()
             self._mw.mw_frequency_InputWidget.setEnabled(True)
@@ -2012,52 +1962,52 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.binning_comboBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
-            
-            
-        
+
+
+
     def continue_pause_clicked(self,isChecked):
         """ Continues and pauses the measurement. """
-        
+
         if isChecked:
             #self._mw.action_continue_pause.toggle()
-            
+
             self._mw.action_run_stop.setChecked(True)
-            
-        
+
+
         else:
             #self._mw.action_continue_pause.toggle
-            
+
             self._mw.action_run_stop.setChecked(False)
-            
+
 
 
     def pull_data_clicked(self):
         self._pulsed_measurement_logic.manually_pull_data()
         return
-        
+
     def save_clicked(self):
         self._pulsed_measurement_logic._save_data()
-        return    
-        
+        return
+
     def fit_clicked(self):
         self._mw.fit_result_TextBrowser.clear()
-        
+
         current_fit_function = self._mw.fit_function_ComboBox.currentText()
-        
-        
-        
+
+
+
         fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
-        
+
         self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
-        
+
         self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
-        
+
         self._mw.fit_result_TextBrowser.setPlainText(fit_result)
-        
+
         return
-        
-   
-        
+
+
+
 
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
@@ -2069,14 +2019,14 @@ class PulsedMeasurementGui(GUIBase):
         '''
         self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
         self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        
-       
-        
-        
+
+
+
+
     def refresh_measuring_error_plot(self):
-        
+
         #print(self._pulsed_measurement_logic.measuring_error)
-        
+
         self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
@@ -2084,10 +2034,10 @@ class PulsedMeasurementGui(GUIBase):
         '''
         self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
         self._mw.elapsed_sweeps_LCDNumber.display(self._pulsed_measurement_logic.elapsed_sweeps)
-        
 
-        
-    
+
+
+
     def show_external_mw_source_checked(self):
         if self._mw.turn_off_external_mw_source_CheckBox.isChecked():
 
@@ -2101,33 +2051,33 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.mw_power_Label.setVisible(True)
             self._mw.mw_power_InputWidget.setVisible(True)
 
-            
+
     def show_tau_editor(self):
         if self._mw.tau_defined_in_sequence_CheckBox.isChecked():
             self._mw.tau_start_Label.setVisible(True)
             self._mw.tau_start_InputWidget.setVisible(True)
             self._mw.tau_increment_Label.setVisible(True)
-            self._mw.tau_increment_InputWidget.setVisible(True)   
+            self._mw.tau_increment_InputWidget.setVisible(True)
         else:
             self._mw.tau_start_Label.setVisible(False)
             self._mw.tau_start_InputWidget.setVisible(False)
             self._mw.tau_increment_Label.setVisible(False)
-            self._mw.tau_increment_InputWidget.setVisible(False)              
-        
+            self._mw.tau_increment_InputWidget.setVisible(False)
+
     def show_fft_plot(self):
         if self._mw.show_fft_plot_CheckBox.isChecked():
-            self._mw.fft_PlotWidget.setVisible(True)   
+            self._mw.fft_PlotWidget.setVisible(True)
         else:
             self._mw.fft_PlotWidget.setVisible(False)
-            
+
     def lasernum_changed(self):
         self._mw.laser_to_show_ComboBox.clear()
-        self._mw.laser_to_show_ComboBox.addItem('sum')    
+        self._mw.laser_to_show_ComboBox.addItem('sum')
         for ii in range(int(self._mw.numlaser_InputWidget.text())):
             self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
         print (self._mw.laser_to_show_ComboBox.currentText())
-        #self.seq_parameters_changed()   
-    
+        #self.seq_parameters_changed()
+
     def seq_parameters_changed(self):
         laser_num = int(self._mw.numlaser_InputWidget.text())
         tau_start = int(self._mw.tau_start_InputWidget.text())
@@ -2135,33 +2085,33 @@ class PulsedMeasurementGui(GUIBase):
         mw_frequency = float(self._mw.mw_frequency_InputWidget.text())
         mw_power = float(self._mw.mw_power_InputWidget.text())
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
-        
+
         current_laser = self._mw.laser_to_show_ComboBox.currentText()
 
         print('tet')
         print (current_laser)
-            
+
         if current_laser == 'sum':
             print ('here')
             laser_show = 0
 
-        
+
         else:
             print (self._mw.laser_to_show_ComboBox.currentText())
             laser_show = int(current_laser)
             #laser_show=5
-           
-            
+
+
         if (laser_show > laser_num):
             print ('warning. Number too high')
             self._mw.laser_to_show_ComboBox.setEditText('sum')
             laser_show = 0
-            
 
-            
+
+
         tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
-        self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
-        self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
+        # self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
+        # self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
         self._pulsed_measurement_logic.display_pulse_no = laser_show
         self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
         self._pulsed_measurement_logic.mykrowave_power = mw_power

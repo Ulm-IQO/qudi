@@ -19,10 +19,42 @@ import glob
 import os
 
 class Pulse_Block_Element(object):
-    """ Object representing a single atomic element of an AWG sequence, i.e. a
-        waiting time, a sine wave, etc.
+    """ Object representing a single atomic element in a pulse block.
+
+    This class can build waiting times, sine waves, etc. The pulse block may
+    contain many Pulse_Block_Element Objects. These objects can be displayed in
+    a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_bins, analogue_channels, digital_channels, increment_bins = 0, pulse_function = None, marker_active = None, parameters={}):
+    def __init__(self, init_length_bins, analogue_channels, digital_channels,
+                 increment_bins = 0, pulse_function = None,
+                 marker_active = None, parameters={}):
+        """ The constructor for a Pulse_Block_Element needs to have:
+
+        @param init_length_bins: int, an initial length of a bins, this
+                                 parameters should not be zero but must have a
+                                 finite value.
+        @param analogue_channels: int, number of analogue channels
+        @param digital_channels: int, number of digital channels
+        @param increment_bins: int, the number which will be incremented during
+                               each repetition of this object
+        @param pulse_function: sting, name of the sampling function how to
+                               alter the points, the name of the function will
+                               be one of the sampling functions
+        @param marker_active: list of digital channels, which are for the
+                              length of this Pulse_Block_Element are set either
+                              to True (high) or to False (low). The length of
+                              the marker list depends on the number of (active)
+                              digital channels. For 4 digital channel it may
+                              look like:
+                              [True, False, False, False]
+        @param parameters: a list of dictionaries. The number of dictionaries
+                           depends on the number of analogue channels. The
+                           number of entries within a dictionary depends on the
+                           chosen sampling function. The key words of the
+                           dictionary for the parameters will be those of the
+                           sampling functions. 
+        """
+
         self.pulse_function = pulse_function
         self.init_length_bins = init_length_bins
         self.markers_on = marker_active
@@ -31,23 +63,38 @@ class Pulse_Block_Element(object):
         self.analogue_channels = analogue_channels
         self.digital_channels = digital_channels
 
+    def get_pulse_block_element_attributes(self):
+        """ Output of a list of attributes, which describes that object.
+
+        @return: a list of strings
+        """
+
 
 class Pulse_Block(object):
-    """ Represents one sequence block in the AWG.
-
-    Needs name and element_list
-    (=[Pulse_Block_Element, Pulse_Block_Element, ...]) for initialization.
+    """ Represents one collection of Pulse_Block_Elements which is called a
+        Pulse_Block.
     """
 
     def __init__(self, name, element_list):
-        self.name = name                        # block name
-        self.element_list = element_list        # List of AWG_Block_Element objects
+        """ The constructor for a Pulse_Block needs to have:
+
+        @param name: str, chosen name for the Pulse_Block
+        @param element_list: list, which contains the Pulse_Block_Element
+                             Objects forming a Pulse_Block, e.g.
+                             [Pulse_Block_Element, Pulse_Block_Element, ...]
+        """
+        self.name = name
+        self.element_list = element_list
         self.refresh_parameters()
 
     def refresh_parameters(self):
+        """ Initialize the parameters which describe this Pulse_Block object.
 
-        # Initialize at first all parameters, which are going to be initialized
-        # with a default value and then assign the value from the element_list.
+        The information is gained from all the Pulse_Block_Element objects,
+        which are attached in the element_list.
+        """
+
+        # the Pulse_Block parameter
         self.init_length_bins = 0
         self.increment_bins = 0
         self.analogue_channels = 0
@@ -60,7 +107,7 @@ class Pulse_Block(object):
                 self.analogue_channels = elem.analogue_channels
             if elem.digital_channels > self.digital_channels:
                 self.digital_channels = elem.digital_channels
-        return
+
 
     def replace_element(self, position, element):
         self.element_list[position] = element
@@ -82,12 +129,28 @@ class Pulse_Block(object):
 
 
 class Pulse_Block_Ensemble(object):
+    """ Represents a collection of Pulse_Block objects which is called a
+        Pulse_Block_Ensemble.
+
+    This object is used as a construction plan to create one sampled file.
     """
-    Represents an ensemble of pulse blocks.
-    Needs name and block_list (=[(Pulse_Block, repetitions), ...]) for initialization
-    This instance describes the content of a waveform (no sequenced triggered/conditional stuff).
-    """
-    def __init__(self, name, block_list, tau_array, number_of_lasers, rotating_frame = True):
+
+    def __init__(self, name, block_list, tau_array, number_of_lasers,
+                 rotating_frame=True):
+        """ The constructor for a Pulse_Block_Ensemble needs to have:
+
+        @param name: name: str, chosen name for the Pulse_Block_Ensemble
+        @param block_list: list, which contains the Pulse_Block Objects with
+                           their number of repetitions, e.g.
+                           [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
+        #FIXME: Here I am not quite sure about the description for the tau_array.
+        @param tau_array:
+        @param number_of_lasers: int, number of laser pulses
+        @param rotating_frame: bool, indicates whether the phase should be
+                               preserved for all the functions.
+        """
+
+
         self.name = name                        # block name
         self.block_list = block_list        # List of AWG_Block objects with repetition number
         self.tau_array = tau_array
@@ -173,11 +236,30 @@ class Pulse_Sequence(object):
 
 
 class Waveform(object):
-    """
+    """ Object which stores the Pulse_Block_Ensemble and its sampled output.
+
+    An external sequence generator will sample a Pulse_Block_Ensemble object
+    into numpy array of sampling points. The resulting array will be passed to
+    the analogue_samples and digital_samples attributes. The construction plan,
+    i.e. the Pulse_Block_Ensemble is saved in the block_ensemble attribute.
+
     Represents a sampled Pulse_Block_Ensemble() object.
     Holds analogue and digital samples and important parameters.
+
+    which can be e.g. a waveform, a bitfile, an ascii-table, ...
     """
-    def __init__(self, block_ensemble, sampling_freq, pp_voltage, analogue_samples, digital_samples):
+    def __init__(self, block_ensemble, sampling_freq, pp_voltage,
+                 analogue_samples, digital_samples):
+        """ The constructor for a Waveform object needs to have:
+
+        @param block_ensemble: the Pulse_Block_Ensemble object. This is the
+                               construction plan to create a sampled array.
+        @param sampling_freq: Sampling frequency in Hz
+        @param pp_voltage: Maximal peak to peak voltage in V.
+        @param analogue_samples: numpy array of analogue samples
+        @param digital_samples:  numpy array of digital samples
+        """
+
         self.name = block_ensemble.name
         self.sampling_freq = sampling_freq
         self.pp_voltage = pp_voltage
@@ -197,7 +279,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     _in = {'pulser':'PulserInterface'}
     _out = {'sequencegenerator': 'SequenceGeneratorLogic'}
 
-    
+
     # define signals
     signal_block_list_updated = QtCore.Signal()
     signal_ensemble_list_updated = QtCore.Signal()
@@ -234,7 +316,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # Definition of this parameter. See fore more explanation in file
         # sampling_functions.py
         length_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': +1e12,
-                      'view_stepsize': 1e-9, 'dec': 8, 'disp_unit': 'n'}
+                      'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n'}
 
         # make a parameter constraint dict
         self.param_config = OrderedDict()
@@ -314,7 +396,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._pulse_generator_device.set_sample_rate(freq_Hz)
         self.sampling_freq = freq_Hz
         return 0
-        
+
     def set_pp_voltage(self, voltage):
         """
         Sets the peak-to-peak output voltage of the pulse generator device and updates the corresponding value in this logic.
@@ -323,7 +405,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._pulse_generator_device.set_pp_voltage(voltage)
         self.pp_voltage = voltage
         return 0
-        
+
     def set_active_channels(self, digital, analogue):
         """
         Sets the number of active channels in the pulse generator device and updates the corresponding variables in this logic.
@@ -332,7 +414,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.analogue_channels = analogue
         self.digital_channels = digital
         return 0
-        
+
     def download_ensemble(self, ensemble_name):
         """
         Samples and downloads a saved Pulse_Block_Ensemble with name "ensemble_name" into the pulse generator internal memory.
@@ -342,12 +424,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         waveform = self.generate_waveform(ensemble)
         self._pulse_generator_device.download_waveform(waveform)
         return 0
-        
+
     def load_asset(self, name, channel = None):
         assets_on_device = self._pulse_generator_device.get_sequence_names()
         if name in assets_on_device:
             self._pulse_generator_device.load_asset(name, channel)
-        
+
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 #-------------------------------------------------------------------------------
@@ -373,7 +455,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No block with name "' + name + '" in saved blocks.')
         return
-        
+
     def get_block(self, name):
         """
         Returns the saved Pulse_Block object by name without setting it as current block
@@ -433,7 +515,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No ensemble with name "' + name + '" in saved ensembles.')
         return
-        
+
     def get_ensemble(self, name):
         """
         Returns the saved Pulse_Block_Ensemble object by name without setting it as current ensemble
@@ -493,7 +575,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # TODO: implement proper error
             print('Error: No sequence with name "' + name + '" in saved sequences.')
         return
-        
+
     def get_sequence(self, name):
         """
         Returns the saved Pulse_Sequence object by name without setting it as current sequence
@@ -540,8 +622,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         analogue_func = [None]*self.analogue_channels
         digital_flags = [None]*self.digital_channels
 
-        lengths = np.array([np.round(x/(1e9/self.sampling_freq)) for x in block_matrix['f'+str(self.table_config['length'])]])
-        increments = np.array([np.round(x/(1e9/self.sampling_freq)) for x in block_matrix['f'+str(self.table_config['increment'])]])
+        # make an array where the length of each Pulse_Block_Element will be
+        # converted to number of bins:
+        lengths = np.array( [ np.round(x/(1e9/self.sampling_freq))
+                              for x in block_matrix[self.table_config['length']]])
+
+        # make an array where the increment value of each Pulse_Block_Element
+        #  will be converted to number of bins:
+        increments = np.array( [ np.round(x/(1e9/self.sampling_freq))
+                               for x in block_matrix[self.table_config['increment']]])
 
         for chnl_num in range(self.analogue_channels):
             # Save all function names for channel number "chnl_num" in one column of "analogue_func"
@@ -734,7 +823,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # create tau list
         tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
-        
+
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
         aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)

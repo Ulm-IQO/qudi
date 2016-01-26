@@ -53,7 +53,7 @@ class SamplingFunctions():
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
-                    'view_stepsize': 1e3, 'dec': 8, 'disp_unit': 'M'}
+                    'view_stepsize': 1e3, 'dec': 8, 'unit_prefix': 'M'}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
                     'view_stepsize': 0.001, 'dec': 3}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -1e12, 'max': +1e12,
@@ -73,12 +73,13 @@ class SamplingFunctions():
         # 'hard_stepsize' : optional, the accepted value will be a multiple of
         #                   this. Normally, this will be dictate by hardware.
         # 'dec' : number of decimals to be used for representation, this will
-        #         be related to the parameter 'disp_unit'.
-        # 'disp_unit' : desired display of the value, string, one of the list:
+        #         be related to the parameter 'unit_prefix'.
+        # 'unit_prefix' : desired metric prefix of the value, string, one of the
+        #               list:
         #               [ 'p', 'n', 'micro', 'm', 'k', 'M', 'G', 'T']
         #               with the obvious meaning:
         #           ['pico','nano','micro','milli','kilo','Mega','Giga','Tera']
-        #               If disp_unit is not specified, then 'unit' is displayed
+        #            If unit_prefix is not specified, then 'unit' is displayed.
 
 
         # Configure also the parameter for the defined functions so that it is
