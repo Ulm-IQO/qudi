@@ -1,5 +1,23 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi GUI module base class.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
 
 import ctypes
 import platform
@@ -9,7 +27,7 @@ from collections import OrderedDict
 from core.base import Base
 from core.util.mutex import Mutex
 
-class PulseBlasterESRPRO(Base):
+class PulseBlasterESRPRO(Base, PulserInterface):
     """ UNSTABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.

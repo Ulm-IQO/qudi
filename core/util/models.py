@@ -186,7 +186,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
-        
+
           @param int section: number of the column to get header data for
           @param Qt.Orientation: orientation of header (horizontal or vertical)
           @param ItemDataRole: role for which to get data
@@ -208,7 +208,7 @@ class ListTableModel(QtCore.QAbstractTableModel):
                 self.beginInsertRows(QtCore.QModelIndex(), n, n)
                 self.storage.insert(n, data)
                 self.endInsertRows()
-    
+
     def append(self, data):
         with self.lock:
             n = len(self.storage)

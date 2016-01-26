@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file for AWG5000 Series.
+This file contains the QuDi hardware module for AWG5000 Series.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -109,7 +109,10 @@ class AWG5002C(Base, PulserInterface):
         Provides all the constraints (e.g. sample_rate, amplitude,
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
-        Each constraint is a tuple of the form (min_value, max_value, stepsize).
+        Each constraint is a tuple of the form
+            (min_value, max_value, stepsize)
+        and the key 'channel_map' indicates all possible combinations in usage
+        for this device.
         """
 
         constraints = {}
@@ -120,17 +123,19 @@ class AWG5002C(Base, PulserInterface):
         # (min, max, res, range_min, range_max)
         # min, max and res are in Volt, range_min and range_max in
         # Volt-peak-to-peak:
-        constraints['amplitude_digital'] = (-1.0, 2.7, 0.01, 0.1, 3.7)
+        constraints['amplitude_digital'] = (-2.0, 5.4, 0.01, 0.2, 7.4)
         # (min, max, granularity) in samples for one waveform:
         constraints['waveform_length'] = (1, 32400000, 1)
         # (min, max, inc) in number of waveforms in system
         constraints['waveform_number'] = (1, 32000, 1)
         # (min, max, inc) number of subsequences within a sequence:
         constraints['subsequence_number'] = (1, 8000, 1)
+        # number of possible elements within a sequence
+        constraints['sequence_elements'] = (1, 4000, 1)
         # (min, max, incr) in Samples:
-        constraints['total_length_bins'] = (0, 32e6, 0)
+        constraints['total_length_bins'] = (1, 32e6, 1)
         # (analogue, digital) possible combination in given channels:
-        constraints['channel_config'] = [(1,0), (1,1), (1,2), (2,0), (2,1), (2,2), (2,3), (2,4)]
+        constraints['channel_config'] = ((1,2), (2,4))
         return constraints
 
     def pulser_on(self):
