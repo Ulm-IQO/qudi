@@ -47,11 +47,6 @@ class ConfocalLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
-        self._clock_frequency = 1000.
-        self.return_slowness = 50
-
         self._zscan = False
         self._depth_line_pos = 0
         self._xy_line_pos = 0
@@ -75,27 +70,57 @@ class ConfocalLogic(GenericLogic):
         self._save_logic = self.connector['in']['savelogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic1']['object']
 
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
+        if 'clock_frequency' in self._statusVariables:
+            self._clock_frequency = self._statusVariables['clock_frequency']
+        else:
+            self._clock_frequency = 1000.
+        if 'return_slowness' in self._statusVariables:
+            self.return_slowness = self._statusVariables['return_slowness']
+        else:
+            self.return_slowness = 50
 
-        # Reads in the maximal scanning range. The unit of that scan range is
-        # micrometer!
+        # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
 
-        # Sets the current position to the center of the maximal scanning range
-        self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
-        self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
-        self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
-        self._current_a = 0.0
+        if 'focus_position' in self._statusVariables and len(self._statusVariables['focus_position']) == 4:
+            self._current_x = self._statusVariables['focus_position'][0]
+            self._current_y = self._statusVariables['focus_position'][1]
+            self._current_z = self._statusVariables['focus_position'][2]
+            self._current_a = self._statusVariables['focus_position'][3]
+        else:
+            # Sets the current position to the center of the maximal scanning range
+            self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
+            self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
+            self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
+            self._current_a = 0.0
 
         # Sets the size of the image to the maximal scanning range
-        self.image_x_range = self.x_range
-        self.image_y_range = self.y_range
-        self.image_z_range = self.z_range
+        if 'x_range' in self._statusVariables and len(self._statusVariables['x_range']) == 2:
+            self.image_x_range = self._statusVariables['x_range']
+        else:
+            self.image_x_range = self.x_range
+        if 'y_range' in self._statusVariables and len(self._statusVariables['y_range']) == 2:
+            self.image_y_range = self._statusVariables['y_range']
+        else:
+            self.image_y_range = self.y_range
+        if 'z_range' in self._statusVariables and len(self._statusVariables['z_range']) == 2:
+            self.image_z_range = self._statusVariables['z_range']
+        else:
+            self.image_z_range = self.z_range
 
         # Default values for the resolution of the scan
-        self.xy_resolution = 100
-        self.z_resolution = 50
+        if 'xy_resolution' in self._statusVariables:
+            self.xy_resolution = self._statusVariables['xy_resolution']
+        else:
+            self.xy_resolution = 100
+        if 'z_resolution' in self._statusVariables:
+            self.z_resolution = self._statusVariables['z_resolution']
+        else:
+            self.z_resolution = 50
 
         # Initialization of internal counter for scanning
         self._scan_counter = 0
@@ -133,6 +158,14 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        self._statusVariables['clock_frequency'] = self._clock_frequency
+        self._statusVariables['return_slowness'] = self.return_slowness
+        self._statusVariables['focus_position'] = [self._current_x, self._current_y, self._current_z, self._current_a,]
+        self._statusVariables['x_range'] = self.image_x_range
+        self._statusVariables['y_range'] = self.image_y_range
+        self._statusVariables['z_range'] = self.image_z_range
+        self._statusVariables['xy_resolution'] = self.xy_resolution
+        self._statusVariables['z_resolution'] = self.z_resolution
         self._scanning_device.reset_hardware()
         return 0
 
