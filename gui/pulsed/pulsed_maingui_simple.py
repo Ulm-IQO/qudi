@@ -534,6 +534,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
         self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.refocus_interval_LineEdit.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.odmr_refocus_interval_LineEdit.editingFinished.connect(self.analysis_parameters_changed)
 
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
@@ -626,26 +628,24 @@ class PulsedMeasurementGui(GUIBase):
         return    
         
     def fit_clicked(self):
-        # clear old fit results in the text box
-        self._mw.fit_result_TextBrowser.clear()
+		# clear old fit results in the text box        self._mw.fit_result_TextBrowser.clear()
         # remove old fit from the graph
         self._mw.signal_plot_ViewWidget.removeItem(self.fit_image)
         # get selected fit function from the ComboBox
         current_fit_function = self._mw.fit_function_ComboBox.currentText()
-        # check if the selected fit function is "No Fit". In case it is, do nothing else.
-        if current_fit_function == 'No Fit':
-            return
-        else:
-            # do the fit
-            fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
-            # create new fit graph
-            self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
-            # add new fit graph to the signal graph
-            self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
-            # write new fit results in the text box
-            self._mw.fit_result_TextBrowser.setPlainText(fit_result)
-            return
+         
+        fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
 
+        # plot the fit only if there is data available
+
+        if fit_x != [] and fit_x != []:
+        
+            self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
+            self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
+        
+        self._mw.fit_result_TextBrowser.setPlainText(fit_result)
+        
+        return
     def refresh_lasertrace_plot(self):
         ''' This method refreshes the xy-plot image
         '''
@@ -777,6 +777,8 @@ class PulsedMeasurementGui(GUIBase):
         ref_start = int(self._mw.reference_start_InputWidget.text())
         ref_length = int(self._mw.reference_length_InputWidget.text())
         timer_interval = float(self._mw.analysis_period_InputWidget.text())
+        refocus_timer_interval = float(self._mw.refocus_interval_LineEdit.text())
+        odmr_refocus_timer_interval = float(self._mw.odmr_refocus_interval_LineEdit.text())
         self.signal_start_bin = sig_start
         self.signal_width_bins = sig_length
         self.norm_start_bin = ref_start
@@ -790,6 +792,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.norm_start_bin = ref_start
         self._pulsed_measurement_logic.norm_width_bin = ref_length
         self._pulsed_measurement_logic.change_timer_interval(timer_interval)
+        self._pulsed_measurement_logic.change_refocus_timer_interval(refocus_timer_interval)
+        self._pulsed_measurement_logic.change_odmr_refocus_timer_interval(odmr_refocus_timer_interval)
         return
 
     def check_input_with_samplerate(self):
