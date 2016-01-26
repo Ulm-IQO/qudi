@@ -31,10 +31,12 @@ class QuDi(object):
 
     def stopKernel(self):
         print('Shutting down: ', self.kernelthread)
+        sys.stdout.flush()
         m = self.getModule('rkernel')
         if self.kernelthread is not None:
             m.stopKernel(self.kernelthread)
             print('Down!')
+            sys.stdout.flush()
 
     def initSignal(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -57,5 +59,7 @@ if __name__ == '__main__':
     print('Sleeping.')
     q.poller.run()
     print('Quitting.')
-    q.stopKernel()
+    sys.stdout.flush()
+    #q.stopKernel()
+    #q.connection.close()
     
