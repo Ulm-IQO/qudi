@@ -487,6 +487,21 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
+        # Get initial tilt correction values
+        self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
+
+        self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
+        self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
+        self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
+
+        self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
+        self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
+        self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
+
+        self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
+        self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
+        self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
+
         # Connect tiltcorrection stuff
         self._mw.action_Tiltcorrection.triggered.connect(self.use_tiltcorrection_clicked)
         self._mw.tilt_set_01_pushButton.clicked.connect(self.set_tiltpoint_01_clicked)

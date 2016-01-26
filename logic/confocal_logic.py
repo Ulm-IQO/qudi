@@ -130,14 +130,37 @@ class ConfocalLogic(GenericLogic):
         self._zscan_continuable = False
 
         #tilt correction stuff:
-        self.TiltCorrection = False
-        self._tiltreference_x = 0.5 * (self.x_range[0] + self.x_range[1])
-        self._tiltreference_y = 0.5 * (self.y_range[0] + self.y_range[1])
-        self._tilt_variable_ax = 0.
-        self._tilt_variable_ay = 0.
-        self.point1 = np.array((0, 0, 0))
-        self.point2 = np.array((0, 0, 0))
-        self.point3 = np.array((0, 0, 0))
+        if 'tilt_correction' in self._statusVariables:
+            self.TiltCorrection = self._statusVariables['tilt_correction']
+        else:
+            self.TiltCorrection = False
+
+        if 'tilt_reference' in self._statusVariables and len(self._statusVariables['tilt_reference']) == 2:
+            self._tiltreference_x = self._statusVariables['tilt_reference'][0]
+            self._tiltreference_y = self._statusVariables['tilt_reference'][1]
+        else:
+            self._tiltreference_x = 0.5 * (self.x_range[0] + self.x_range[1])
+            self._tiltreference_y = 0.5 * (self.y_range[0] + self.y_range[1])
+
+        if 'tilt_slope' in self._statusVariables and len(self._statusVariables['tilt_slope']) == 2:
+            self._tilt_variable_ax = self._statusVariables['tilt_slope'][0]
+            self._tilt_variable_ay = self._statusVariables['tilt_slope'][1]
+        else:
+            self._tilt_variable_ax = 0
+            self._tilt_variable_ay = 0
+
+        if 'tilt_point1' in self._statusVariables and len(self._statusVariables['tilt_point1'] ) == 3:
+            self.point1 = np.array(self._statusVariables['tilt_point1'])
+        else:
+            self.point1 = np.array((0, 0, 0))
+        if 'tilt_point2' in self._statusVariables and len(self._statusVariables['tilt_point2'] ) == 3:
+            self.point2 = np.array(self._statusVariables['tilt_point2'])
+        else:
+            self.point2 = np.array((0, 0, 0))
+        if 'tilt_point3' in self._statusVariables and len(self._statusVariables['tilt_point3'] ) == 3:
+            self.point3 = np.array(self._statusVariables['tilt_point3'])
+        else:
+            self.point3 = np.array((0, 0, 0))
 
         # Sets connections between signals and functions
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
@@ -166,6 +189,12 @@ class ConfocalLogic(GenericLogic):
         self._statusVariables['z_range'] = self.image_z_range
         self._statusVariables['xy_resolution'] = self.xy_resolution
         self._statusVariables['z_resolution'] = self.z_resolution
+        self._statusVariables['tilt_correction'] = self.TiltCorrection
+        self._statusVariables['tilt_point1'] = self.point1
+        self._statusVariables['tilt_point2'] = self.point2
+        self._statusVariables['tilt_point3'] = self.point3
+        self._statusVariables['tilt_reference'] = [self._tiltreference_x, self._tiltreference_y]
+        self._statusVariables['tilt_slope'] = [self._tilt_variable_ax, self._tilt_variable_ay]
         self._scanning_device.reset_hardware()
         return 0
 
