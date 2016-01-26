@@ -2,7 +2,7 @@
 """
 This file contains the QuDi logic class for optimizing scanner position.
 
-QuDi is free software: you can redistribute it and/or modify
+QuDi is free software: you can redistribute it and/or modify24,91
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
@@ -68,11 +68,6 @@ class OptimizerLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
-        # default values for clock frequency and slowness
-        # slowness: steps during retrace line
-        self._clock_frequency = 50
-        self.return_slowness = 20
-
         # setting standard parameter for refocus
         self.refocus_XY_size = 0.6
         self.optimizer_XY_res = 10
@@ -106,6 +101,17 @@ class OptimizerLogic(GenericLogic):
 #        print("Scanning device is", self._scanning_device)
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
+
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
+        if 'clock_frequency' in self._statusVariables:
+            self._clock_frequency = self._statusVariables['clock_frequency']
+        else:
+            self._clock_frequency = 50
+        if 'return_slowness' in self._statusVariables:
+            self.return_slowness = self._statusVariables['return_slowness']
+        else:
+            self.return_slowness = 20
 
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
@@ -152,6 +158,8 @@ class OptimizerLogic(GenericLogic):
         @param e: error code
         @return int: error code (0:OK, -1:error)
         """
+        self._statusVariables['clock_frequency'] = self._clock_frequency
+        self._statusVariables['return_slowness'] = self.return_slowness
         return 0
 
     def testing(self):
