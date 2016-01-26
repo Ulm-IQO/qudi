@@ -217,13 +217,22 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>get_active_channels')
         return (-1, -1)
 
-    def get_sequence_names(self):
+    def get_downloaded_sequence_names(self):
         """ Retrieve the names of all downloaded sequences on the device.
 
         @return list: List of sequence name strings
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
+        """
+        names = []
+        raise InterfaceImplementationError('PulserInterface>get_sequence_names')
+        return names
+
+    def get_saved_sequence_names(self):
+        """ Retrieve the names of all sampled and saved sequences on the host PC.
+
+        @return list: List of sequence name strings
         """
         names = []
         raise InterfaceImplementationError('PulserInterface>get_sequence_names')

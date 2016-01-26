@@ -82,7 +82,7 @@ class AWG70K(Base, PulserInterface):
         
         self.connected = True
         
-        self.update_sequence_list()
+        self.update_downloaded_sequence_list()
         
     
     def deactivation(self, e):
@@ -414,7 +414,7 @@ class AWG70K(Base, PulserInterface):
         """
         return self.active_channel
 
-    def get_sequence_names(self):
+    def get_downloaded_sequence_names(self):
         """ Retrieve the names of all downloaded sequences on the device.
 
         @return list: List of sequence name strings
@@ -436,13 +436,32 @@ class AWG70K(Base, PulserInterface):
                     file_list.append(line.rsplit(None, 1)[1][:-4])
         return file_list
         
-    def update_sequence_list(self):
+    def update_downloaded_sequence_list(self):
         """
         Updates uploaded_sequence_list 
         """
         self.uploaded_sequence_list = self.get_sequence_names()
         return 0
-        
+
+    def get_saved_sequence_names(self):
+        """ Retrieve the names of all sampled and saved sequences on the host PC.
+
+        @return list: List of sequence name strings
+        """
+        # list of all files in the waveform directory ending with .mat or .WFMX
+        file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat'))]
+        # list of only the names without the file extension
+        file_names = [file.split('.')[0] for file in file_list]
+        # exclude the channel specifier for multiple analogue channels and create return list
+        saved_sequences = []
+        for name in file_names:
+            if name.endswith('_Ch1'):
+                saved_sequences.append(name[0:-4])
+            elif name.endswith('_Ch2'):
+                pass
+            else:
+                saved_sequences.append(name)
+        return saved_sequences
 
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
