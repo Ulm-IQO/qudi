@@ -149,6 +149,10 @@ class PIDLogic(GenericLogic):
         if (self.enable):
             delta = self.setpoint - pv
             self.integrated += delta 
+            if self.integrated > 100:
+                self.integrated = 100
+            if self.integrated < -100:
+                self.integrated = -100
             ## Calculate PID controller:
             self.P = self.kP * delta
             self.I = self.kI * self.timestep * self.integrated
