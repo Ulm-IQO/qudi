@@ -172,51 +172,60 @@ class AWG70K(Base, PulserInterface):
                 os.remove(self.host_waveform_directory + filename)
             os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
         else:
-            # create WFMX header
-            header_obj = WFMX_header(sampling_rate, pp_voltage, 0, len(digi_samples))
+            # create WFMX header and save each line of text in a list. Delete the temporary .xml file afterwards.
+            header_obj = WFMX_header(sampling_rate, pp_voltage, 0, digi_samples.shape[1])
             header_obj.create_xml_file()
-
-            header=open('header.xml','r')
-            for channel_number in range(ana_samples.shape[0]):
-                # create .WFMX-file for each channel and write the header to it.
-                file = open(self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX', 'wb')
-                for line in header:
-                    file.write(bytes(line, 'UTF-8'))
-                # append analogue samples in binary format. One sample is 4 bytes (np.float32).
-                # write in chunks if array is very big to avoid large temporary copys in memory
-                number_of_full_chunks = len(ana_samples[channel_number])//1e6
-                for i in range(number_of_full_chunks):
-                    start_ind = i*1e6
-                    stop_ind = (i+1)*1e6
-                    file.write(bytes(ana_samples[channel_number][start_ind:stop_ind]))
-                # write rest
-                file.write(bytes(ana_samples[channel_number][stop_ind:]))
-                # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
-                if digi_samples.shape[0] == (2*channel_number + 1):
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        temp_markers = digi_samples[2*channel_number + 1][start_ind:stop_ind]
-                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
-                        file.write(bytes(temp_markers))
-                    temp_markers = digi_samples[2*channel_number + 1][stop_ind:]
-                    file.write(bytes(temp_markers))
-                if digi_samples.shape[0] == (2*channel_number + 2):
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2][start_ind:stop_ind].astype('uint8'),1), digi_samples[2*channel_number + 1][start_ind:stop_ind])
-                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
-                        file.write(bytes(temp_markers))
-                    temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 2][stop_ind:].astype('uint8'),1), digi_samples[2*channel_number + 1][stop_ind:])
-                    file.write(bytes(temp_markers))
-
-            header.close()
+            with open('header.xml','r') as header:
+                header_lines = header.readlines()
             os.remove('header.xml')
 
-
-
-            file.close()
+            for channel_number in range(ana_samples.shape[0]):
+                # create .WFMX-file for each channel.
+                filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
+                with open(filepath, 'wb') as wfmxfile:
+                    # write header
+                    for line in header_lines:
+                        wfmxfile.write(bytes(line, 'UTF-8'))
+                    # append analogue samples in binary format. One sample is 4 bytes (np.float32).
+                    # write in chunks if array is very big to avoid large temporary copys in memory
+                    print(ana_samples.shape[1]//1e6)
+                    number_of_full_chunks = int(ana_samples.shape[1]//1e6)
+                    print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
+                    for i in range(number_of_full_chunks):
+                        start_ind = i*1e6
+                        stop_ind = (i+1)*1e6
+                        wfmxfile.write(bytes(ana_samples[channel_number][start_ind:stop_ind]))
+                    # write rest
+                    rest_start_ind = number_of_full_chunks*1e6
+                    print('rest size: ' + str(ana_samples.shape[1]-rest_start_ind))
+                    wfmxfile.write(bytes(ana_samples[channel_number][rest_start_ind:]))
+                    # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
+                    print('number of digital channels: ' + str(digi_samples.shape[0]))
+                    if digi_samples.shape[0] <= (2*channel_number):
+                        # no digital channels to write for this analogue channel
+                        pass
+                    elif digi_samples.shape[0] == (2*channel_number + 1):
+                        # one digital channels to write for this analogue channel
+                        for i in range(number_of_full_chunks):
+                            start_ind = i*1e6
+                            stop_ind = (i+1)*1e6
+                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                            wfmxfile.write(bytes(digi_samples[2*channel_number][start_ind:stop_ind]))
+                        # write rest of digital samples
+                        rest_start_ind = number_of_full_chunks*1e6
+                        wfmxfile.write(bytes(digi_samples[2*channel_number][rest_start_ind:]))
+                    elif digi_samples.shape[0] >= (2*channel_number + 2):
+                        # two digital channels to write for this analogue channel
+                        for i in range(number_of_full_chunks):
+                            start_ind = i*1e6
+                            stop_ind = (i+1)*1e6
+                            temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digi_samples[2*channel_number][start_ind:stop_ind])
+                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                            wfmxfile.write(bytes(temp_markers))
+                        # write rest of digital samples
+                        rest_start_ind = number_of_full_chunks*1e6
+                        temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digi_samples[2*channel_number][rest_start_ind:])
+                        wfmxfile.write(bytes(temp_markers))
         return
 
 

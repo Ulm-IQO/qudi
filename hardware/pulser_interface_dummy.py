@@ -21,6 +21,10 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 
 from core.base import Base
 from hardware.pulser_interface import PulserInterface
+import os
+import numpy as np
+import hdf5storage
+from WFMX_header import WFMX_header
 
 class PulserInterfaceDummy(Base, PulserInterface):
     """ UNSTABLE: Alex Stark
@@ -53,6 +57,9 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.logMsg('Dummy Pulser: I will simulate an AWG :) !',
                     msgType='status')
 
+        self.use_matlab_format = False
+        self.awg_waveform_directory = '/waves'
+        self.host_waveform_directory = 'C:/software/qudi/trunk/waveforms/'
         self.connected = False
         self.amplitude = 0.25
         self.sample_rate = 10.0e6
@@ -65,7 +72,6 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         # AWG5002C has possibility for sequence output
         self.use_sequencer = True
-        self.sequence_directory = '/waves'
 
         self.active_channel = (2,4)
         self.interleave = False
@@ -139,6 +145,94 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.current_status = 0
         return self.current_status
 
+    def _write_to_file(self, name, ana_samples, digi_samples, sampling_rate, pp_voltage):
+        if self.use_matlab_format:
+            matcontent = {}
+            matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
+            matcontent[u'Waveform_Data_1'] = ana_samples[0]
+            matcontent[u'Waveform_Sampling_Rate_1'] = sampling_rate
+            matcontent[u'Waveform_Amplitude_1'] = pp_voltage
+
+            if ana_samples.shape[0] == 2:
+                matcontent[u'Waveform_Name_1'] = name + '_Ch1'
+                matcontent[u'Waveform_Name_2'] = name + '_Ch2'
+                matcontent[u'Waveform_Data_2'] = ana_samples[1]
+                matcontent[u'Waveform_Sampling_Rate_2'] = sampling_rate
+                matcontent[u'Waveform_Amplitude_2'] = pp_voltage
+
+            if digi_samples.shape[0] >= 1:
+                matcontent[u'Waveform_M1_1'] = digi_samples[0]
+            if digi_samples.shape[0] >= 2:
+                matcontent[u'Waveform_M2_1'] = digi_samples[1]
+            if digi_samples.shape[0] >= 3:
+                matcontent[u'Waveform_M1_2'] = digi_samples[2]
+            if digi_samples.shape[0] >= 4:
+                matcontent[u'Waveform_M2_2'] = digi_samples[3]
+
+            # create file in current directory
+            filename = name +'.mat'
+            hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
+            # check if file already exists and overwrite it
+            if os.path.isfile(self.host_waveform_directory + filename):
+                os.remove(self.host_waveform_directory + filename)
+            os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
+        else:
+            # create WFMX header and save each line of text in a list. Delete the temporary .xml file afterwards.
+            header_obj = WFMX_header(sampling_rate, pp_voltage, 0, digi_samples.shape[1])
+            header_obj.create_xml_file()
+            with open('header.xml','r') as header:
+                header_lines = header.readlines()
+            os.remove('header.xml')
+
+            for channel_number in range(ana_samples.shape[0]):
+                # create .WFMX-file for each channel.
+                filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
+                with open(filepath, 'wb') as wfmxfile:
+                    # write header
+                    for line in header_lines:
+                        wfmxfile.write(bytes(line, 'UTF-8'))
+                    # append analogue samples in binary format. One sample is 4 bytes (np.float32).
+                    # write in chunks if array is very big to avoid large temporary copys in memory
+                    print(ana_samples.shape[1]//1e6)
+                    number_of_full_chunks = int(ana_samples.shape[1]//1e6)
+                    print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
+                    for i in range(number_of_full_chunks):
+                        start_ind = i*1e6
+                        stop_ind = (i+1)*1e6
+                        wfmxfile.write(bytes(ana_samples[channel_number][start_ind:stop_ind]))
+                    # write rest
+                    rest_start_ind = number_of_full_chunks*1e6
+                    print('rest size: ' + str(ana_samples.shape[1]-rest_start_ind))
+                    wfmxfile.write(bytes(ana_samples[channel_number][rest_start_ind:]))
+                    # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
+                    print('number of digital channels: ' + str(digi_samples.shape[0]))
+                    if digi_samples.shape[0] <= (2*channel_number):
+                        # no digital channels to write for this analogue channel
+                        pass
+                    elif digi_samples.shape[0] == (2*channel_number + 1):
+                        # one digital channels to write for this analogue channel
+                        for i in range(number_of_full_chunks):
+                            start_ind = i*1e6
+                            stop_ind = (i+1)*1e6
+                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                            wfmxfile.write(bytes(digi_samples[2*channel_number][start_ind:stop_ind]))
+                        # write rest of digital samples
+                        rest_start_ind = number_of_full_chunks*1e6
+                        wfmxfile.write(bytes(digi_samples[2*channel_number][rest_start_ind:]))
+                    elif digi_samples.shape[0] >= (2*channel_number + 2):
+                        # two digital channels to write for this analogue channel
+                        for i in range(number_of_full_chunks):
+                            start_ind = i*1e6
+                            stop_ind = (i+1)*1e6
+                            temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digi_samples[2*channel_number][start_ind:stop_ind])
+                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                            wfmxfile.write(bytes(temp_markers))
+                        # write rest of digital samples
+                        rest_start_ind = number_of_full_chunks*1e6
+                        temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digi_samples[2*channel_number][rest_start_ind:])
+                        wfmxfile.write(bytes(temp_markers))
+        return
+
     def download_waveform(self, waveform, write_to_file = True):
         """ Convert the pre-sampled numpy array to a specific hardware file.
 
@@ -156,6 +250,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         """
 
         # append to the loaded sequence list.
+        self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_freq, waveform.pp_voltage)
         if waveform.name not in self.uploaded_asset_list:
             self.uploaded_asset_list.append(waveform.name)
         return 0
