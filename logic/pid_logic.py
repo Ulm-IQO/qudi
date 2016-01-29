@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# unstable: Christoph Müller
 
 """
 A module for controlling processes via PID regulation.
@@ -27,6 +26,7 @@ from collections import OrderedDict
 import numpy as np
 import time
 import datetime
+import statistics
 
 class PIDLogic(GenericLogic):
     """
@@ -70,6 +70,7 @@ class PIDLogic(GenericLogic):
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()
+        self.smoothpv = np.zeros(5)
 
         config = self.getConfiguration()
         if 'timestep' in config:
@@ -113,7 +114,7 @@ class PIDLogic(GenericLogic):
         self.savingState = False
         self.enable = False
         self.integrated = 0
-        self.countdown = 2
+        self.countdown = 5
 
         self.sigNextStep.emit()
 
@@ -135,7 +136,9 @@ class PIDLogic(GenericLogic):
              The D term is NOT low-pass filtered.
              This function should be called once every TS seconds.
         """
-        pv = self._process.getProcessValue()
+        self.smoothpv = np.roll(self.smoothpv, -1)
+        self.smoothpv[-1] = self._process.getProcessValue()
+        pv = statistics.mean(self.smoothpv)
 
         if self.countdown > 0:
             self.countdown -= 1
