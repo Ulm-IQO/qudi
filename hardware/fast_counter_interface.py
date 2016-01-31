@@ -27,16 +27,23 @@ class FastCounterInterface():
     Interface class to define the controls for fast counting devices.
     """
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
         """
         Configuration of the fast counter.
         bin_width_s: Length of a single time bin in the time trace histogram in seconds.
         record_length_s: Total length of the timetrace/each single gate in seconds.
         number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
         Returns the actually set values as tuple
+        bin_width_ns: Length of a single time bin in the time trace histogram
+                      in nanoseconds.
+        record_length_ns: Total length of the timetrace/each single gate in
+                          nanoseconds.
+        number_of_gates: Number of gates in the pulse sequence. Ignore for
+                         ungated counter.
+        Returns the actually set values as tuple
         """
         raise InterfaceImplementationError('FastCounterInterface>configure')
-        return (1e-9, 4000e-9, 0)
+        return -1
 
     def get_status(self):
         """
@@ -49,28 +56,28 @@ class FastCounterInterface():
         """
         raise InterfaceImplementationError('FastCounterInterface>get_status')
         return -1
-    
+
     def start_measure(self):
         """
         Starts the fast counter.
         """
         raise InterfaceImplementationError('FastCounterInterface>start')
         return -1
-        
+
     def stop_measure(self):
         """
         Stops the fast counter.
         """
         raise InterfaceImplementationError('FastCounterInterface>stop')
         return -1
-    
+
     def pause_measure(self):
         """
         Pauses the current measurement if the fast counter is in running state.
         """
         raise InterfaceImplementationError('FastCounterInterface>pause_measure')
         return -1
-    
+
     def continue_measure(self):
         """
         Continues the current measurement if the fast counter is in pause state.
@@ -91,7 +98,7 @@ class FastCounterInterface():
         """
         raise InterfaceImplementationError('FastCounterInterface>get_binwidth')
         return -1
-   
+
     def get_data_trace(self):
         """
         Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
