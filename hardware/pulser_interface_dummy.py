@@ -128,7 +128,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         # (min, max, incr) in Samples:
         constraints['total_length_bins'] = (1, 32e6, 1)
         # (analogue, digital) possible combination in given channels:
-        constraints['channel_config'] = [(0,4), (1,2), (2,4)]
+        constraints['channel_config'] = [(0,1), (0,2), (0,3), (0,4), (0,5),
+                                         (0,6), (0,7), (0,8), (1,2), (2,4)]
         return constraints
 
     def pulser_on(self):

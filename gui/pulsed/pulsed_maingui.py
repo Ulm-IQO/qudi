@@ -31,21 +31,14 @@ from core.util.mutex import Mutex
 # Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 #FIXME: Display the Pulse
-#FIXME: incoorporate the passed hardware constraints from the logic.
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
-#FIXME: choose as default value the minimal sampling rate
 #FIXME: insert warning text in choice of channels
 #FIXME: pass the possible channels over to laser channel select
 #FIXME: count laser pulses
-#FIXME: calculate total length of the sequence
-#FIXME: insert checkbox (or something else) for removing the inital table
+#FIXME: calculate total length of the Pulse_Block objects
 #FIXME: remove repeat and inc from the initial table
 #FIXME: save the pattern of the table to a file. Think about possibilities to read in from file if number of channels is different. Therefore make also a load function.
-#FIXME: give general access to specific element in the column and let it be changeable by this function
-#FIXME: return the whole table as a matrix
-#FIXME: Make the minimum and the maximum values of the sampling frequency be dependent on the used hardware file.
-#FIXME: make a generate button and insert a name for the pattern. The generate button will pass the values to the logic.
 #FIXME: connect the current default value of length of the dspinbox with
 #       the minimal sequence length and the sampling rate.
 #FIXME: Later that should be able to round up the values directly within
@@ -94,13 +87,15 @@ from core.util.mutex import Mutex
 
 class ComboBoxDelegate(QtGui.QStyledItemDelegate):
 
-    def __init__(self, parent, get_func_config_list):
+    def __init__(self, parent, items_list):
         # Use the constructor of the inherited class.
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.get_func_config_list = get_func_config_list[0]  # pass to the object a
+        self.items_list = items_list  # pass to the object a
                                                 # reference to the calling
                                                 # function, so that it can
                                                 # check every time the value
+
+        self.get_list = self.items_list['get_list_method']
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.DisplayRole
@@ -115,7 +110,13 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
                          list items_list and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
-        return [self.get_func_config_list()[0], self.model_data_access]
+
+        if len(self.get_list()) == 0:
+            ini_val = ''
+        else:
+            ini_val = self.get_list()[0]
+
+        return [ini_val, self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -142,7 +143,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         needed any longer.
         """
         editor = QtGui.QComboBox(parent)    # Editor is Combobox
-        editor.addItems(self.get_func_config_list())
+        editor.addItems(self.get_list())
         editor.setCurrentIndex(0)
         editor.installEventFilter(self)
         return editor
@@ -158,7 +159,10 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         # just for safety, block any signal which might change the values of
         # the editor during the access.
         value = index.data(self.model_data_access)
-        num = self.get_func_config_list().index(value)
+        if value == '':
+            num = 0
+        else:
+            num = self.get_list().index(value)
         # num = self.items_list.index(value)
         editor.setCurrentIndex(num)
 
@@ -199,7 +203,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         # not clear whether this will be useful or not. That will be found out.
         editor.clear()
 
-        editor.addItems(self.get_func_config_list())
+        editor.addItems(self.get_list())
         # editor.addItems(self.items_list)
         editor.setGeometry(option.rect)
 
@@ -236,7 +240,8 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
-        return [self.items_list[0], self.model_data_access]
+
+        return [self.items_list['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -265,10 +270,11 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         """
         editor = QtGui.QSpinBox(parent)
         self.editor = editor
-        editor.setMinimum(self.items_list[1])
-        editor.setMaximum(self.items_list[2])
+        editor.setMinimum(self.items_list['min'])
+        editor.setMaximum(self.items_list['max'])
+        editor.setSingleStep(self.items_list['view_stepsize'])
         editor.installEventFilter(self)
-        editor.setValue(self.items_list[0])
+        editor.setValue(self.items_list['init_val'])
         return editor
 
     def setEditorData(self, editor, index):
@@ -285,7 +291,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = index.data(self.model_data_access)
 
         if not isinstance(value, int):
-            value = self.items_list[0]
+            value = self.items_list['init_val']
         editor.setValue(value)
 
     def setModelData(self, spinBox, model, index):
@@ -360,7 +366,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, value, QtCore.Qt.CheckStateRole)
         """
-        return [self.items_list[0], self.model_data_access]
+        return [self.items_list['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -389,7 +395,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         """
 
         editor = QtGui.QCheckBox(parent)
-        editor.setCheckState(self.items_list[0])
+        editor.setCheckState(self.items_list['init_val'])
         editor.installEventFilter(self)
         return editor
 
@@ -450,7 +456,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
 
         """
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list[0]
+        self.items_list = items_list
 
         self.unit_list = {'p':1e-12, 'n':1e-9, 'micro':1e-6, 'm':1e-3, 'k':1e3, 'M':1e6, 'G':1e9, 'T':1e12}
 
@@ -764,7 +770,9 @@ class PulsedMeasurementGui(GUIBase):
         ch_settings = (self._bs.analog_channels_SpinBox.value(), self._bs.digital_channels_SpinBox.value())
 
         if ch_settings in channel_config:
-            self._set_channels(num_d_ch=ch_settings[1], num_a_ch=ch_settings[0])
+
+            self._set_block_editor_columns(num_d_ch=ch_settings[1], num_a_ch=ch_settings[0])
+
             self._seq_gen_logic.set_active_channels(digital=ch_settings[1],
                                                 analogue=ch_settings[0])
         else:
@@ -788,7 +796,8 @@ class PulsedMeasurementGui(GUIBase):
         """ Retrieve the functions, which are chosen by the user.
 
         @return: list[] with strings of the used functions. Names are based on
-                 the passed func_config dict from the logic.
+                 the passed func_config dict from the logic. Depending on the
+                 settings, a current function list is generated.
         """
 
         current_functions = []
@@ -842,7 +851,18 @@ class PulsedMeasurementGui(GUIBase):
         @param Fysom.event e: Event Object of Fysom
         """
         # connect the signal for a change of the sample frequency
-        self._mw.sample_freq_DSpinBox.editingFinished.connect(self.sample_frequency_changed)
+        self._mw.sample_freq_DSpinBox.editingFinished.connect(self.update_sample_rate)
+
+        sample_min, sample_max, sample_step = self.get_hardware_constraints()['sample_rate']
+        self._mw.sample_freq_DSpinBox.setMinimum(sample_min/1e6)
+        self._mw.sample_freq_DSpinBox.setMaximum(sample_max/1e6)
+        self._mw.sample_freq_DSpinBox.setSingleStep(sample_step/1e6)
+        self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step/1e6)* -1) )
+        self.set_sample_rate(sample_max)
+
+
+        self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
+
 
         # connect the signals for the block editor:
         self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
@@ -877,38 +897,8 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
 
-        #FIXME: Make the analog channel parameter chooseable in the settings.
-
-
-        # the attributes are assigned to function an the desired argument one
-        # wants to pass to these functions.
-        self._param_a_ch = OrderedDict()
-        self._param_a_ch['Function'] = self._get_settings_combobox()
-        self._param_a_ch['Freq (GHz)'] = self._get_settings_dspinbox_freq()
-        self._param_a_ch['Ampl. (V)'] = self._get_settings_dspinbox_amp()
-        self._param_a_ch['Phase(°)'] = self._get_settings_dspinbox_phase()
-
-        self._param_d_ch = OrderedDict()
-        self._param_d_ch['CheckBox'] = self._get_settings_checkbox()
-
-        self._param_block = OrderedDict()
-        self._param_block['Length (ns)'] = self._get_settings_dspinbox_length()
-        self._param_block['Inc. (ns)'] = self._get_settings_dspinbox_inc()
-#        self._param_block['Repeat?'] = self._get_settings_checkbox()
-#        self._param_block['Use as tau?'] = self._get_settings_checkbox()
-
-        # a dictionary containing the names and indices of the GUI block
-        # generator table. Should be set and updated by the GUI:
-
-        #self._seq_gen_logic.table_config
-
-
-
-
-
-        self.insert_parameters(0)
         channel_config = self.get_hardware_constraints()['channel_config'][-1]
-        self._set_channels(num_d_ch=channel_config[1], num_a_ch=channel_config[0])
+        self._set_block_editor_columns(num_d_ch=channel_config[1], num_a_ch=channel_config[0])
 
         self.keep_former_block_settings()
         # A dictionary containing the mathematical function names to choose
@@ -921,6 +911,12 @@ class PulsedMeasurementGui(GUIBase):
         self.update_ensemble_list()
         self.update_sequence_list()
 
+        self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block)
+
+        self.set_cfg_param_pbe()
+        self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block_length)
+
+        self._set_organizer_columns()
 
         # =====================================================================
         #              Explanation of the usage of QTableWidget
@@ -973,13 +969,41 @@ class PulsedMeasurementGui(GUIBase):
         """
         return list(self._seq_gen_logic.get_func_config())
 
-    def sample_frequency_changed(self):
+
+    def get_current_pb_list(self):
+        """ Retrieve the available Pulse_Block objects from the logic.
+
+        @return: list[] with strings descriping the available Pulse_Block
+                        objects.
         """
-        This method is called when the user enters a new sample frequency in the SpinBox
+
+        return self._seq_gen_logic.saved_pulse_blocks
+
+
+    def update_sample_rate(self):
+        """Updates the current sample rate in the logic"""
+        sample_rate = self._mw.sample_freq_DSpinBox.value()
+        self._seq_gen_logic.set_sample_rate(sample_rate*1e6)
+        self._update_current_pulse_block_length()
+
+    def set_sample_rate(self, sample_rate):
+        """ Set the current sample rate in the spin_box and in the logic.
+
+        @param float sample_rate: sample rate in Hz
         """
-        freq = 1e6*self._mw.sample_freq_DSpinBox.value()
-        self._seq_gen_logic.set_sampling_freq(freq)
-        return
+
+        self._mw.sample_freq_DSpinBox.setValue(sample_rate/1e6)
+        self._seq_gen_logic.set_sample_rate(sample_rate)
+
+
+    def get_sample_rate(self):
+        """ Retrieve the current sample rate
+
+        @return: float, sample_rate in Hz
+        """
+        return self._mw.sample_freq_DSpinBox.value()*1e6
+
+
 
     def upload_on_ch1_clicked(self):
         """
@@ -1011,7 +1035,7 @@ class PulsedMeasurementGui(GUIBase):
         Updates all ComboBoxes showing generated blocks.
         """
         # updated list of all generated blocks
-        new_list = self._seq_gen_logic.saved_blocks
+        new_list = self._seq_gen_logic.saved_pulse_blocks
         # update saved_blocks_ComboBox items
         self._mw.saved_blocks_ComboBox.clear()
         self._mw.saved_blocks_ComboBox.addItems(new_list)
@@ -1023,7 +1047,7 @@ class PulsedMeasurementGui(GUIBase):
         Updates all ComboBoxes showing generated block_ensembles.
         """
         # updated list of all generated ensembles
-        new_list = self._seq_gen_logic.saved_ensembles
+        new_list = self._seq_gen_logic.saved_pulse_block_ensembles
         # update upload_ensemble_ComboBox items
         self._mw.upload_ensemble_ComboBox.clear()
         self._mw.upload_ensemble_ComboBox.addItems(new_list)
@@ -1044,146 +1068,6 @@ class PulsedMeasurementGui(GUIBase):
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
     # -------------------------------------------------------------------------
-
-    def _get_settings_combobox(self):
-        """ Get the custom setting for a general ComboBox object.
-
-        @return list[N]: A list with pulse functions.
-
-        This return object must coincide with the according delegate class.
-        """
-        return [ComboBoxDelegate, self.get_current_function_list]
-        # return [ComboBoxDelegate,'Idle','Sin','Cos','DC','Sin-Gauss']
-
-    def _get_settings_checkbox(self):
-        """ Get the custom setting for a general CheckBox object.
-
-        @return list[1]: A list with
-                        [class, default_val]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [CheckBoxDelegate,QtCore.Qt.Unchecked]
-
-    def _get_settings_spinbox(self):
-        """ Get the custom setting for a general SpinBox object.
-
-        @return list[3]: A list with
-                        [default_val, min_val, max_val]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [2,0,1000000]
-
-    def _get_settings_dspinbox_phase(self):
-        """ Get the custom setting for a general phase DoubleSpinBox object.
-
-        @return list[5]: A list with
-                        [class, default_val, min_val, max_val, step_size, digits]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [DoubleSpinBoxDelegate, 0.0, -1000000.0, 1000000.0, 0.1, 5]
-
-    def _get_settings_dspinbox_freq(self):
-        """ Get the custom setting for a general frequency DoubleSpinBox object.
-
-        @return list[5]: A list with
-                        [class, default_val, min_val, max_val, step_size, digits]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [DoubleSpinBoxDelegate, 2.8, 0.0, 1000000.0, 0.01, 5]
-
-    def _get_settings_dspinbox_amp(self):
-        """ Get the custom setting for a general amplitude DoubleSpinBox object.
-
-        @return list[5]: A list with
-                        [class, default_val, min_val, max_val, step_size, digits]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [DoubleSpinBoxDelegate, 1.0, 0.0, 2.0, 0.01, 5]
-
-    def _get_settings_dspinbox_length(self):
-        """ Get the custom setting for a general length DoubleSpinBox object.
-
-        @return list[5]: A list with
-                        [class, default_val, min_val, max_val, step_size, digits]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [DoubleSpinBoxDelegate, {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 100000.0,
-                    'view_stepsize': 0.001, 'dec': 3}]
-
-
-    def _get_settings_dspinbox_inc(self):
-        """ Get the custom setting for a general increment DoubleSpinBox object.
-
-        @return list[5]: A list with
-                        [class, default_val, min_val, max_val, step_size, digits]
-
-        This return object must coincide with the according delegate class.
-        """
-        return [DoubleSpinBoxDelegate, {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 100000.0,
-                    'view_stepsize': 0.001, 'dec': 3}]
-
-
-
-    def _get_itemlist_combobox(self):
-        """ Pass needed itemlist to specific delegate class ComboBoxDelegate.
-
-        @return: list with the entries:
-                 [initial value, reference to ask the available function list]
-
-        This is a special functions, which passes the needed itemlist for the
-        specific delegate class, here for ComboBoxDelegate. That information is
-        necessary to construct properly the ViewWidget.
-        """
-
-        return [self.get_current_function_list()[0],
-                self.get_current_function_list]
-
-
-    def _get_itemlist_spinbox(self):
-        """ Pass needed itemlist to specific delegate class SpinBoxDelegate.
-
-        @return: list with the entries:
-                 [initial value, min_value, max_value,
-                  desired stepsize in ViewWidget, displayed decimals (int),
-                  reference to ask current sample rate]
-
-        This is a special function, which passes the needed itemlist for the
-        specific delegate class, here for SpinBoxDelegate. That information is
-        necessary to construct properly the ViewWidget.
-        """
-        pass
-
-    def _get_itemlist_dspinbox(self):
-        """ Pass needed itemlist to specific delegate class DoubleSpinBoxDelegate.
-
-        @return: list with the entries:
-                 [initial value, min_value, max_value,
-                  desired stepsize in ViewWidget]
-
-        This is a special function, which passes the needed itemlist for the
-        specific delegate class, here for DoubleSpinBoxDelegate. That
-        information is necessary to construct properly the ViewWidget.
-        """
-        pass
-
-    def _get_itemlist_checkbox(self):
-        """ Pass needed itemlist to specific delegate class CheckBoxDelegate.
-
-        @return: list: with the entries:
-                 [initial value]
-
-        This is a special function, which passes the needed itemlist for the
-        specific delegate class, here for CheckBoxDelegate. That information is
-        necessary to construct properly the ViewWidget.
-        """
-
-        pass
 
 
     def get_current_channels(self):
@@ -1216,10 +1100,10 @@ class PulsedMeasurementGui(GUIBase):
 
     def get_element_in_block_table(self, row, column):
         """ Simplified wrapper function to get the data from a specific cell
-            in the init table.
+            in the block table.
 
-        @param int column: column index
         @param int row: row index
+        @param int column: column index
         @return: the value of the corresponding cell, which can be a string, a
                  float or an integer. Remember that the checkbox state
                  unchecked corresponds to 0 and check to 2. That is Qt
@@ -1235,6 +1119,59 @@ class PulsedMeasurementGui(GUIBase):
         access = tab.itemDelegateForColumn(column).model_data_access
         data = tab.model().index(row, column).data(access)
         return data
+
+    def set_element_in_block_table(self, row, column, value):
+        """ Simplified wrapper function to set the data to a specific cell
+            in the block table.
+
+        @param int row: row index
+        @param int column: column index
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        A type check will be performed for the passed value argument. If the
+        type does not correspond to the delegate, then the value will not be
+        changed. You have to ensure that
+        """
+
+        tab = self._mw.block_editor_TableWidget
+        model = tab.model()
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+        if type(data) == type(value):
+            model.setData(model.index(row,column), value, access)
+        else:
+            self.logMsg('The cell ({0},{1}) in block table could not be '
+                        'assigned with the value="{2}", since the type differs'
+                        'from the delegated type.\nPrevious value will be '
+                        'kept.', msgType='warning')
+
+
+
+    def test_func(self):
+
+
+        self.logMsg('Item changed.', msgType='warning')
+
+
+    def _update_current_pulse_block_length(self):
+
+        length = 0.0 # in ns
+        bin_length = 0
+        col_ind = self._cfg_param_pbe['length']
+
+
+        for row_ind in range(self._mw.block_editor_TableWidget.rowCount()):
+            curr_length = self.get_element_in_block_table(row_ind, col_ind)
+            curr_bin_length = int(np.round(curr_length*(self.get_sample_rate()/1e9)))
+            length = length + curr_length
+            bin_length = bin_length + curr_bin_length
+
+        self._mw.curr_block_length_DSpinBox.setValue(length/1000.0) # in microns
+        self._mw.curr_block_bins_SpinBox.setValue(bin_length)
+
+
+
 
     def get_block_table(self):
         """ Convert initial table data to numpy array.
@@ -1280,18 +1217,26 @@ class PulsedMeasurementGui(GUIBase):
     def block_editor_add_row_before_selected(self):
         """ Add row before selected element. """
 
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
         selected_row = self._mw.block_editor_TableWidget.currentRow()
 
         self._mw.block_editor_TableWidget.insertRow(selected_row)
-        self.initialize_row_init_block(selected_row)
+        self.initialize_cells_block_editor(selected_row)
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
 
 
     def block_editor_add_row_after_last(self):
         """ Add row after last row in the block editor. """
 
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
         number_of_rows = self._mw.block_editor_TableWidget.rowCount()
         self._mw.block_editor_TableWidget.setRowCount(number_of_rows+1)
-        self.initialize_row_init_block(number_of_rows)
+        self.initialize_cells_block_editor(number_of_rows)
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
 
     def block_editor_delete_row_selected(self):
         """ Delete row of selected element. """
@@ -1312,9 +1257,13 @@ class PulsedMeasurementGui(GUIBase):
     def block_editor_clear_table(self):
         """ Delete all rows in the block editor table. """
 
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
         self._mw.block_editor_TableWidget.setRowCount(1)
         self._mw.block_editor_TableWidget.clearContents()
-        self.initialize_row_init_block(0)
+
+        self.initialize_cells_block_editor(start_row=0)
+        self._mw.block_editor_TableWidget.blockSignals(False)
 
     def block_editor_save_clicked(self):
         """
@@ -1322,7 +1271,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         name = self._mw.curr_block_name_LineEdit.text()
         table_struct = self.get_block_table()
-        self._seq_gen_logic.generate_block(name, table_struct)
+        self._seq_gen_logic.generate_block_object(name, table_struct)
         return
 
     def block_editor_delete_clicked(self):
@@ -1331,12 +1280,47 @@ class PulsedMeasurementGui(GUIBase):
         """
         name = self._mw.saved_blocks_ComboBox.currentText()
         self._seq_gen_logic.delete_block(name)
+        self.update_block_organizer_list()
         return
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
     # -------------------------------------------------------------------------
 
+    def update_block_organizer_list(self):
+        """ If a Pulse_Block object has been deleted, update the list in
+            organizer.
+        """
+
+        column = 0
+        for row in range(self._mw.block_organizer_TableWidget.rowCount()):
+            data = self.get_element_in_organizer_table(row, column)
+            if data not in self._seq_gen_logic.saved_pulse_blocks:
+                self.initialize_cells_block_organizer(start_row=row, stop_row=row+1,
+                                                      start_col=column,stop_col=column+1)
+
+
+    def get_element_in_organizer_table(self, row, column):
+        """ Simplified wrapper function to get the data from a specific cell
+            in the organizer table.
+
+        @param int row: row index
+        @param int column: column index
+        @return: the value of the corresponding cell, which can be a string, a
+                 float or an integer. Remember that the checkbox state
+                 unchecked corresponds to 0 and check to 2. That is Qt
+                 convention.
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        """
+
+        tab = self._mw.block_organizer_TableWidget
+
+        # Get from the corresponding delegate the data access model
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+        return data
 
     def block_organizer_add_row_before_selected(self):
         """ Add row before selected element. """
@@ -1345,7 +1329,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.block_organizer_TableWidget.insertRow(selected_row)
 
-        self.initialize_row_block_organizer(selected_row)
+        self.initialize_cells_block_organizer(start_row=selected_row)
 
 
     def block_organizer_add_row_after_last(self):
@@ -1354,7 +1338,7 @@ class PulsedMeasurementGui(GUIBase):
         number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
         self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+1)
 
-        self.initialize_row_block_organizer(number_of_rows)
+        self.initialize_cells_block_organizer(start_row=number_of_rows)
 
     def block_organizer_delete_row_selected(self):
         """ Delete row of selected element. """
@@ -1378,7 +1362,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setRowCount(1)
         self._mw.block_organizer_TableWidget.clearContents()
 
-        self.initialize_row_block_organizer(0)
+        self.initialize_cells_block_organizer(start_row=0)
 
     def block_organizer_delete_clicked(self):
         """
@@ -1408,8 +1392,11 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
             self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
-            # extract the classname from the _param_block list to be able to deligate:
-            delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, [items_list])
+            # Use only DoubleSpinBox  as delegate:
+            if items_list['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+            else:
+                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, items_list)
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
@@ -1442,21 +1429,19 @@ class PulsedMeasurementGui(GUIBase):
         self._num_d_ch = count_dch
         return count_dch
 
-    def set_d_ch(self, num_d_ch):
-        """
+    def set_a_d_ch(self, num_d_ch=None, num_a_ch=None):
+        """ Set amount of analog or/and digital channels.
 
-        @param num_d_ch: number of digital channels.
-        """
-        self._set_channels(num_d_ch=num_d_ch)
+        @param num_d_ch: int, optional, number of digital channels.
+        @param num_a_ch: int, optional, number of analog channels.
 
-    def set_a_ch(self, num_a_ch):
+        This function wraps basically around the function
+        _set_block_editor_columns. It is more intuitive to set the number of
+        channels then the number of columns.
+        If no arguments are passed, the table is simple reinitialized to
+        default values.
         """
-
-        @param num_a_ch: number of analog channels.
-        @return:
-        """
-        self._set_channels(num_a_ch=num_a_ch)
-
+        self._set_block_editor_columns(num_d_ch=num_d_ch, num_a_ch=num_a_ch)
 
     def _determine_needed_parameters(self):
         """ Determine the maximal number of needed parameters for desired functions.
@@ -1484,28 +1469,19 @@ class PulsedMeasurementGui(GUIBase):
 
         return (num_max_param, biggest_func)
 
-    def update_current_table_config(self):
-        """ Updates the current table configuration in the logic.
 
-        @return list with column configuration
+    def generate_pulse_block(self):
+        """ Generate a Pulse_Block object."""
 
-        """
-        table_config = OrderedDict()
-        for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            text = self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text()
-            split_text = text.split()
-            if 'DCh' in split_text[0]:
-                table_config['digital_' + split_text[0][3]] = column
-            elif 'ACh' in split_text[0]:
-                table_config[split_text[1] + '_' + split_text[0][3]] = column
-            else:
-                table_config[split_text[0]] = column
-        self._seq_gen_logic.table_config = table_config
-        return
+        objectname = self._mw.curr_block_name_LineEdit.text()
+        self._seq_gen_logic.generate_block_object(objectname,self.get_block_table())
 
 
-    def _set_channels(self, num_d_ch=None, num_a_ch=None):
-        """ General function which creates the needed columns.
+
+
+    def _set_block_editor_columns(self, num_d_ch=None, num_a_ch=None):
+        """ General function which creates the needed columns in Pulse Block
+            Editor.
 
         @param num_d_ch: int, desired number of digital channels
         @param num_a_ch: int, desired numbe of analogue channels
@@ -1515,6 +1491,8 @@ class PulsedMeasurementGui(GUIBase):
         Every time this function is executed all the table entries are erased
         and created again to prevent wrong delegation.
         """
+
+        self._mw.block_editor_TableWidget.blockSignals(True)
 
         if num_d_ch is None:
             num_d_ch = self._num_d_ch
@@ -1527,7 +1505,7 @@ class PulsedMeasurementGui(GUIBase):
         # the parameters.
         (num_max_param, biggest_func) = self._determine_needed_parameters()
 
-        # Erase the delegate from the column:
+        # Erase the delegate from the column, pass a None reference:
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(column,None)
 
@@ -1543,6 +1521,8 @@ class PulsedMeasurementGui(GUIBase):
         num_a_to_create = num_a_ch
         num_d_to_create = num_d_ch
 
+        channel_map = []
+
         a_created = False
         d_created = False
 
@@ -1555,7 +1535,11 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.block_editor_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create))
                 self._mw.block_editor_TableWidget.setColumnWidth(column, 40)
 
-                items_list = self._param_d_ch['CheckBox'][1:]
+                channel_map.append('DCh{:d}'.format(num_d_ch-num_d_to_create))
+
+                # itemlist for checkbox
+                items_list = {}
+                items_list['init_val'] = QtCore.Qt.Unchecked
                 checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
@@ -1578,7 +1562,10 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nfunction'.format(num_a_ch-num_a_to_create))
                 self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
 
-                items_list = [self.get_current_function_list]
+                channel_map.append('ACh{0:d}'.format(num_a_ch-num_a_to_create))
+
+                items_list = {}
+                items_list['get_list_method'] = self.get_current_function_list
 
                 delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
@@ -1602,7 +1589,7 @@ class PulsedMeasurementGui(GUIBase):
                     # add the new properties to the whole column through delegate:
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, [items_list])
+                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, items_list)
                     self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
 
                 column = column + (num_max_param +1)
@@ -1614,50 +1601,205 @@ class PulsedMeasurementGui(GUIBase):
 
         self.insert_parameters(num_a_d_ch)
 
-        self.initialize_row_init_block(0,self._mw.block_editor_TableWidget.rowCount())
-        self.update_current_table_config()
+
+        self.initialize_cells_block_editor(0,self._mw.block_editor_TableWidget.rowCount())
+        self._mw.block_editor_TableWidget.blockSignals(False)
+        self.set_cfg_param_pbe()
+        self._update_current_pulse_block_length()
+
+        self.set_channel_map(channel_map)
 
 
-    def initialize_row_init_block(self, start_row, stop_row=None):
+    def set_channel_map(self, channel_map):
+        """ Set the possible channels
+
+        @param channel_map:
+        """
+        self._mw.laserchannel_ComboBox.clear()
+        self._mw.laserchannel_ComboBox.addItems(channel_map)
+        self._channel_map = channel_map
+
+
+
+    def get_channel_map(self):
         """
 
-        @param start_row: int, the index of the row, where the initialization
+        @return: list, with string entries denoting the current channel config.
+        """
+        self._channel_map
+
+    def get_cfg_param_pbe(self):
+        """ Get the current parameter configuration of Pulse Block Element.
+
+        @return dict: An abstract dictionary, which tells the logic the
+                      configuration of a Pulse_Block_Element, i.e. how many
+                      parameters are used for a Pulse_Block_Element (pbe)
+                      object. Keys describing the names of the column (as
+                      string) and the items denoting the column number (int).
+        """
+        return self._cfg_param_pbe
+
+
+    def set_cfg_param_pbe(self):
+        """ Set the parameter configuration of the Pulse_Block_Elements
+        according to the current table configuration and updates the dict in
+        the logic.
+        """
+
+        cfg_param_pbe = OrderedDict()
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            text = self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text()
+            split_text = text.split()
+            if 'DCh' in split_text[0]:
+                cfg_param_pbe['digital_' + split_text[0][3]] = column
+            elif 'ACh' in split_text[0]:
+                cfg_param_pbe[split_text[1] + '_' + split_text[0][3]] = column
+            else:
+                cfg_param_pbe[split_text[0]] = column
+
+        self._cfg_param_pbe = cfg_param_pbe
+        self._seq_gen_logic.cfg_param_pbe = cfg_param_pbe
+
+    def get_cfg_param_pb(self):
+        """ Ask for the current configuration of the
+
+        @return dict: An abstract dictionary, which tells the logic the
+                      configuration of a Pulse_Block, i.e. how many parameters
+                      are used for a Pulse_Block (pb) object. Keys describing
+                      the names of the column (as string) and the items
+                      denoting the column number (int).
+        """
+        return self._org_table_config
+
+    def set_cfg_param_pb(self):
+        """ Set the parameter configuration of the Pulse_Block according to the
+        current table configuration and updates the dict in the logic.
+        """
+
+        cfg_param_pb = OrderedDict()
+
+        for column in range(self._mw.block_organizer_TableWidget.columnCount()):
+            text = self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).text()
+            # split_text = text.split()
+            if 'Pulse Block' in text:
+                cfg_param_pb['pulse_block'] = column
+            elif 'length' in text:
+                cfg_param_pb['length'] = column
+            elif 'Reps' in text:
+                cfg_param_pb['repetition'] = column
+            else:
+                print('text:',text)
+                raise NotImplementedError
+        self._cfg_param_pb = cfg_param_pb
+        self._seq_gen_logic.cfg_param_pb = cfg_param_pb
+
+    def _set_organizer_columns(self):
+
+        # Erase the delegate from the column, pass a None reference:
+        for column in range(self._mw.block_organizer_TableWidget.columnCount()):
+            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, None)
+
+        # clear the number of columns:
+        self._mw.block_organizer_TableWidget.setColumnCount(0)
+
+        # total number columns in block organizer:
+        num_column = 2
+        self._mw.block_organizer_TableWidget.setColumnCount(num_column)
+
+        column = 0
+        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+        self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Pulse Block')
+        self._mw.block_organizer_TableWidget.setColumnWidth(column, 100)
+
+        items_list = {}
+        items_list['get_list_method'] = self.get_current_pb_list
+
+        comboDelegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+        self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, comboDelegate)
+
+        column = 1
+        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+        self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Reps')
+        self._mw.block_organizer_TableWidget.setColumnWidth(column, 60)
+
+        items_list = self.get_param_config()['repetition']
+
+        spinDelegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+        self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, spinDelegate)
+
+        self.initialize_cells_block_organizer(0, self._mw.block_organizer_TableWidget.rowCount())
+
+        self.set_cfg_param_pb()
+
+    def initialize_cells_block_editor(self, start_row, stop_row=None,
+                                    start_col=None, stop_col=None):
+        """ Initialize the desired cells in the block editor table.
+
+        @param start_row: int, index of the row, where the initialization
                           should start
-        @param stop_row: int, the index of the row, where the initalization
-                         should end.
+        @param stop_row: int, optional, index of the row, where the
+                         initalization should end.
+        @param start_col: int, optional, index of the column where the
+                          initialization should start
+        @param stop_col: int, optional, index of the column, where the
+                         initalization should end.
 
         With this function it is possible to reinitialize specific elements or
         part of a row or even the whole row. If start_row is set to 0 the whole
         row is going to be initialzed to the default value.
-
         """
-        raise IOError
-        # if stop_row is None:
-        #     stop_row = start_row +1
-        #
-        # for col_num in range(self._mw.block_editor_TableWidget.columnCount()):
-        #
-        #     for row_num in range(start_row,stop_row):
-        #         # get the model, here are the data stored:
-        #         model = self._mw.block_editor_TableWidget.model()
-        #         # get the corresponding index of the current element:
-        #         index = model.index(row_num, col_num)
-        #         # get the initial values of the delegate class which was
-        #         # uses for this column:
-        #         ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
-        #         # set initial values:
-        #         model.setData(index, ini_values[0], ini_values[1])
 
-    def initialize_row_block_organizer(self, start_row, stop_row=None):
-        """
-        @param start_row:
-        @param stop_row:
-
-        """
         if stop_row is None:
             stop_row = start_row +1
 
-        for col_num in range(self._mw.block_organizer_TableWidget.columnCount()):
+        if start_col is None:
+            start_col = 0
+
+        if stop_col is None:
+            stop_col= self._mw.block_editor_TableWidget.columnCount()
+
+        for col_num in range(start_col, stop_col):
+
+            for row_num in range(start_row,stop_row):
+                # get the model, here are the data stored:
+                model = self._mw.block_editor_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
+
+    def initialize_cells_block_organizer(self, start_row, stop_row=None,
+                                    start_col=None, stop_col=None):
+        """ Initialize the desired cells in the block organizer table.
+
+        @param start_row: int, index of the row, where the initialization
+                          should start
+        @param stop_row: int, optional, index of the row, where the
+                         initalization should end.
+        @param start_col: int, optional, index of the column where the
+                          initialization should start
+        @param stop_col: int, optional, index of the column, where the
+                         initalization should end.
+
+        With this function it is possible to reinitialize specific elements or
+        part of a row or even the whole row. If start_row is set to 0 the whole
+        row is going to be initialzed to the default value.
+        """
+
+        if stop_row is None:
+            stop_row = start_row +1
+
+        if start_col is None:
+            start_col = 0
+
+        if stop_col is None:
+            stop_col = self._mw.block_organizer_TableWidget.columnCount()
+
+        for col_num in range(start_col, stop_col):
 
             for row_num in range(start_row,stop_row):
                 # get the model, here are the data stored:
@@ -2075,7 +2217,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.laser_to_show_ComboBox.addItem('sum')
         for ii in range(int(self._mw.numlaser_InputWidget.text())):
             self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
-        print (self._mw.laser_to_show_ComboBox.currentText())
+        # print (self._mw.laser_to_show_ComboBox.currentText())
         #self.seq_parameters_changed()
 
     def seq_parameters_changed(self):
@@ -2088,16 +2230,16 @@ class PulsedMeasurementGui(GUIBase):
 
         current_laser = self._mw.laser_to_show_ComboBox.currentText()
 
-        print('tet')
-        print (current_laser)
+
+        # print (current_laser)
 
         if current_laser == 'sum':
-            print ('here')
+
             laser_show = 0
 
 
         else:
-            print (self._mw.laser_to_show_ComboBox.currentText())
+            # print (self._mw.laser_to_show_ComboBox.currentText())
             laser_show = int(current_laser)
             #laser_show=5
 
