@@ -691,8 +691,7 @@ class Manager(QtCore.QObject):
                             self.tree['loaded'][base][key] = instance
                             self.sigModulesChanged.emit()
                         else:
-                            raise Exception('You are trying to cheat the '
-                                'system with some category {0}'.format(base) )
+                            raise Exception('You are trying to cheat the system with some category {0}'.format(base))
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
             else:
@@ -727,7 +726,25 @@ class Manager(QtCore.QObject):
           @param string key: module which is going to be loaded
           
         """
-        if key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
+        if 'remote' in self.tree['defined'][base][key]:
+            if not self.remoteServer:
+               self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
+               return
+            if not isinstance(self.tree['defined'][base][key]['remote'], str):
+                self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
+                return
+            try:
+                instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
+                self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
+                with self.lock:
+                    if base in ['hardware', 'logic', 'gui']:
+                        self.tree['loaded'][base][key] = instance
+                        self.sigModulesChanged.emit()
+                    else:
+                        raise Exception('You are trying to cheat the system with some category {0}'.format(base))
+            except:
+                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+        elif key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
             try:
                 # state machine: deactivate
                 self.deactivateModule(base, key)
