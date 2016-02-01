@@ -488,6 +488,11 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
+        # history actions
+        self._mw.actionForward.triggered.connect(self._scanning_logic.history_forward)
+        self._mw.actionBack.triggered.connect(self._scanning_logic.history_back)
+        self._scanning_logic.signal_history_event.connect(lambda: self.set_history_actions(True))
+
         # Get initial tilt correction values
         self._mw.action_Tiltcorrection.setChecked(self._scanning_logic.TiltCorrection)
 
@@ -830,6 +835,8 @@ class ConfocalGui(GUIBase):
         self._mw.action_zoom.setChecked(False)
         self._mw.action_zoom.setEnabled(False)
 
+        self.set_history_actions(False)
+
     def enable_scan_actions(self):
         """ Reset the scan action buttons to the default active
         state when the system is idle.
@@ -859,26 +866,29 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_zoom.setEnabled(True)
 
+        self.set_history_actions(True)
+
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
 
         if self._scanning_logic._zscan_continuable == True:
           self._mw.action_scan_depth_resume.setEnabled(True)
-
         else:
           self._mw.action_scan_depth_resume.setEnabled(False)
 
-
         if self._scanning_logic._xyscan_continuable == True:
           self._mw.action_scan_xy_resume.setEnabled(True)
-
         else:
           self._mw.action_scan_xy_resume.setEnabled(False)
 
-
     def _refocus_finished_wrapper(self, caller_tag, optimal_pos):
-        """ Re-enable the scan buttons in the GUI.  Also, if the refocus was initiated here in confocalgui then we need to handle the "returned" optimal position.
+        """ Re-enable the scan buttons in the GUI.
+          @param str caller_tag: tag showing the origin of the action
+          @param array optimal_pos: optimal focus position determined by optimizer
+
+        Also, if the refocus was initiated here in confocalgui then we need to handle the
+        "returned" optimal position.
         """
 
         self.enable_scan_actions()
@@ -891,7 +901,17 @@ class ConfocalGui(GUIBase):
                 z=optimal_pos[2],
                 a=0.0
                 )
-
+    
+    def set_history_actions(self, enable):
+        """ Enable or disable history arrows taking history state into account. """
+        if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
+            self._mw.actionForward.setEnabled(True)
+        else:
+            self._mw.actionForward.setEnabled(False)
+        if enable and self._scanning_logic.history_index > 0:
+            self._mw.actionBack.setEnabled(True)
+        else:
+            self._mw.actionBack.setEnabled(False)
 
     def menu_settings(self):
         """ This method opens the settings menu. """
@@ -969,8 +989,6 @@ class ConfocalGui(GUIBase):
 
         self._osd.checkbox_01.setChecked(self._optimizer_logic.use_custom_params)
         ######################################################################
-
-
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
