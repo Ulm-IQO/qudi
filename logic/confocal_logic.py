@@ -8,6 +8,188 @@ from collections import OrderedDict
 import numpy as np
 import time
 
+class ConfocalHistoryEntry(QtCore.QObject):
+    """ This class contains all relevant parameters of a Confocal scan.
+        It provides methods to extract, restore and serialize this data.
+    """
+
+    def __init__(self, confocal):
+        """ Make a confocal data setting with default values. """
+        super().__init__()
+
+        self.xy_line_pos = 0
+        self.depth_line_pos = 0
+
+        # Reads in the maximal scanning range. The unit of that scan range is micrometer!
+        self.x_range = confocal._scanning_device.get_position_range()[0]
+        self.y_range = confocal._scanning_device.get_position_range()[1]
+        self.z_range = confocal._scanning_device.get_position_range()[2]
+
+        # Sets the current position to the center of the maximal scanning range
+        self.current_x = (self.x_range[0] + self.x_range[1]) / 2
+        self.current_y = (self.y_range[0] + self.y_range[1]) / 2
+        self.current_z = (self.z_range[0] + self.z_range[1]) / 2
+        self.current_a = 0.0
+
+        # Sets the size of the image to the maximal scanning range
+        self.image_x_range = self.x_range
+        self.image_y_range = self.y_range
+        self.image_z_range = self.z_range
+
+        # Default values for the resolution of the scan
+        self.xy_resolution = 100
+        self.z_resolution = 50
+
+        # Initialization of internal counter for scanning
+        self.xy_line_position = 0
+        self.depth_line_position = 0
+
+        # Variable to check if a scan is continuable
+        self.xy_scan_continuable = False
+        self.depth_scan_continuable = False
+
+        # tilt correction stuff:
+        self.tilt_correction = False
+
+        self.tilt_reference_x = 0.5 * (self.x_range[0] + self.x_range[1])
+        self.tilt_reference_y = 0.5 * (self.y_range[0] + self.y_range[1])
+
+        self.tilt_slope_x = 0
+        self.tilt_slope_y = 0
+
+        self.point1 = np.array((0, 0, 0))
+        self.point2 = np.array((0, 0, 0))
+        self.point3 = np.array((0, 0, 0))
+
+
+    def restore(self, confocal):
+        """ Write data back into confocal logic and pull all the necessary strings """
+        confocal._current_x = self.current_x
+        confocal._current_y = self.current_y
+        confocal._current_z = self.current_z
+        confocal._current_a = self.current_a
+        confocal.image_x_range = self.image_x_range
+        confocal.image_y_range = self.image_y_range
+        confocal.image_z_range = self.image_z_range
+        confocal.xy_resolution = self.xy_resolution
+        confocal.z_resolution = self.z_resolution
+        confocal._xy_line_pos = self.xy_line_position
+        confocal._depth_line_pos = self.depth_line_position
+        confocal._xyscan_continuable = self.xy_scan_continuable
+        confocal._zscan_continuable = self.depth_scan_continuable
+        confocal.TiltCorrection = self.tilt_correction
+        confocal.point1 = self.point1
+        confocal.point2 = self.point2
+        confocal.point3 = self.point3
+        confocal._tiltreference_x = self.tilt_reference_x
+        confocal._tiltreference_y = self.tilt_reference_y
+        confocal._tilt_variable_ax = self.tilt_slope_x
+        confocal._tilt_variable_ay = self.tilt_slope_y
+
+        confocal.initialize_image()
+        try:
+            if confocal.xy_image.shape == self.xy_image.shape:
+                confocal.xy_image = self.xy_image
+        except AttributeError:
+            self.xy_image = confocal.xy_image
+
+        confocal._zscan = True
+        confocal.initialize_image()
+        try:
+            if confocal.depth_image.shape == self.depth_image.shape:
+                confocal.depth_image = self.depth_image
+        except AttributeError:
+            self.depth_image = confocal.depth_image
+        confocal._zscan = False
+
+    def snapshot(self, confocal):
+        """ Extract all necessary data from a confocal logic and keep it for later use """
+        self.current_x = confocal._current_x
+        self.current_y = confocal._current_y
+        self.current_z = confocal._current_z
+        self.current_a = confocal._current_a
+        self.image_x_range = confocal.image_x_range
+        self.image_y_range = confocal.image_y_range
+        self.image_z_range = confocal.image_z_range
+        self.xy_resolution = confocal.xy_resolution
+        self.z_resolution = confocal.z_resolution
+        self.xy_line_position = confocal._xy_line_pos
+        self.depth_line_position = confocal._depth_line_pos
+        self.xy_scan_continuable = confocal._xyscan_continuable
+        self.depth_scan_continuable = confocal._zscan_continuable
+        self.tilt_correction = confocal.TiltCorrection
+        self.point1 = confocal.point1
+        self.point2 = confocal.point2
+        self.point3 = confocal.point3
+        self.tilt_reference_x = confocal._tiltreference_x
+        self.tilt_reference_y = confocal._tiltreference_y
+        self.tilt_slope_x = confocal._tilt_variable_ax
+        self.tile_slope_y = confocal._tilt_variable_ay
+        self.xy_image = confocal.xy_image
+        self.depth_image = confocal.depth_image
+       
+
+    def serialize(self):
+        """ Give out a dictionary that can be saved via the usual means """
+        serialized = dict()
+        serialized['focus_position'] = [self.current_x, self.current_y, self.current_z, self.current_a]
+        serialized['x_range'] = self.image_x_range
+        serialized['y_range'] = self.image_y_range
+        serialized['z_range'] = self.image_z_range
+        serialized['xy_resolution'] = self.xy_resolution
+        serialized['z_resolution'] = self.z_resolution
+        serialized['xy_line_position'] = self.xy_line_position
+        serialized['depth_linne_position'] = self.depth_line_position
+        serialized['xy_scan_cont'] = self.xy_scan_continuable
+        serialized['depth_scan_cont'] = self.depth_scan_continuable
+        serialized['tilt_correction'] = self.tilt_correction
+        serialized['tilt_point1'] = self.point1
+        serialized['tilt_point2'] = self.point2
+        serialized['tilt_point3'] = self.point3
+        serialized['tilt_reference'] = [self.tilt_reference_x, self.tilt_reference_y]
+        serialized['tilt_slope'] = [self.tilt_slope_x, self.tilt_slope_y]
+        serialized['xy_image'] = numpy_to_b(image=self.xy_image)
+        serialized['depth_image'] = numpy_to_b(image=self.depth_image)
+        return serialized
+        
+
+    def deserialize(self, serialized):
+        """ Restore Confocal history object from a dict """
+        if 'focus_position' in serialized and len(serialized['focus_position']) == 4:
+            self.current_x = serialized['focus_position'][0]
+            self.current_y = serialized['focus_position'][1]
+            self.current_z = serialized['focus_position'][2]
+            self.current_a = serialized['focus_position'][3]
+        if 'x_range' in serialized and len(serialized['x_range']) == 2:
+            self.image_x_range = serialized['x_range']
+        if 'y_range' in serialized and len(serialized['y_range']) == 2:
+            self.image_y_range = serialized['y_range']
+        if 'z_range' in serialized and len(serialized['z_range']) == 2:
+            self.image_z_range = serialized['z_range']
+        if 'xy_resolution' in serialized:
+            self.xy_resolution = serialized['xy_resolution']
+        if 'z_resolution' in serialized:
+            self.z_resolution = serialized['z_resolution']
+        if 'tilt_correction' in serialized:
+            self.tilt_correction = serialized['tilt_correction']
+        if 'tilt_reference' in serialized and len(serialized['tilt_reference']) == 2:
+            self.tilt_reference_x = serialized['tilt_reference'][0]
+            self.tilt_reference_y = serialized['tilt_reference'][1]
+        if 'tilt_slope' in serialized and len(serialized['tilt_slope']) == 2:
+            self.tilt_slope_x = serialized['tilt_slope'][0]
+            self.tilt_slope_y = serialized['tilt_slope'][1]
+        if 'tilt_point1' in serialized and len(serialized['tilt_point1'] ) == 3:
+            self.point1 = np.array(serialized['tilt_point1'])
+        if 'tilt_point2' in serialized and len(serialized['tilt_point2'] ) == 3:
+            self.point2 = np.array(serialized['tilt_point2'])
+        if 'tilt_point3' in serialized and len(serialized['tilt_point3'] ) == 3:
+            self.point3 = np.array(serialized['tilt_point3'])
+        if 'xy_image' in serialized:
+            self.xy_image = numpy_from_b(serialized['xy_image'])['image']
+        if 'depth_image' in serialized:
+            self.depth_image = numpy_from_b(serialized['depth_image'])['image']
+
+
 class ConfocalLogic(GenericLogic):
     """unstable: Christoph Müller
     This is the Logic class for confocal scanning.
@@ -33,8 +215,6 @@ class ConfocalLogic(GenericLogic):
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
 
-    # counter for scan_image
-    _scan_counter = 0
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -47,16 +227,17 @@ class ConfocalLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key, config[key]), msgType='status')
 
-        self._zscan = False
-        self._depth_line_pos = 0
-        self._xy_line_pos = 0
 
         #locking for thread safety
         self.threadlock = Mutex()
 
+        # counter for scan_image
+        self._scan_counter = 0
+        self._zscan = False
         self.stopRequested = False
         self.yz_instead_of_xz_scan = False
         self.permanent_scan = False
+        self.difference_scan = False
 
 
     def activation(self, e):
@@ -86,103 +267,35 @@ class ConfocalLogic(GenericLogic):
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
 
-        if 'focus_position' in self._statusVariables and len(self._statusVariables['focus_position']) == 4:
-            self._current_x = self._statusVariables['focus_position'][0]
-            self._current_y = self._statusVariables['focus_position'][1]
-            self._current_z = self._statusVariables['focus_position'][2]
-            self._current_a = self._statusVariables['focus_position'][3]
-        else:
-            # Sets the current position to the center of the maximal scanning range
-            self._current_x = (self.x_range[0] + self.x_range[1]) / 2.
-            self._current_y = (self.y_range[0] + self.y_range[1]) / 2.
-            self._current_z = (self.z_range[0] + self.z_range[1]) / 2.
-            self._current_a = 0.0
+        # restore here ...
+        self.history = []
+        try:
+            new_state = ConfocalHistoryEntry(self)
+            new_state.deserialize(self._statusVariables['history_0'])
+            new_state.restore(self)
+        except:
+            new_state = ConfocalHistoryEntry(self)
+            new_state.restore(self)
+        finally:
+            self.history.append(new_state)
 
-        # Sets the size of the image to the maximal scanning range
-        if 'x_range' in self._statusVariables and len(self._statusVariables['x_range']) == 2:
-            self.image_x_range = self._statusVariables['x_range']
+        if 'max_history_length' in self._statusVariables:
+                self.max_history_length = self._statusVariables ['max_history_length']
+                for i in range(1, self.max_history_length):
+                    try:
+                        new_history_item = ConfocalHistoryEntry(self)
+                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
+                        self.history.append(new_history_item)
+                    except:
+                        pass
         else:
-            self.image_x_range = self.x_range
-        if 'y_range' in self._statusVariables and len(self._statusVariables['y_range']) == 2:
-            self.image_y_range = self._statusVariables['y_range']
-        else:
-            self.image_y_range = self.y_range
-        if 'z_range' in self._statusVariables and len(self._statusVariables['z_range']) == 2:
-            self.image_z_range = self._statusVariables['z_range']
-        else:
-            self.image_z_range = self.z_range
-
-        # Default values for the resolution of the scan
-        if 'xy_resolution' in self._statusVariables:
-            self.xy_resolution = self._statusVariables['xy_resolution']
-        else:
-            self.xy_resolution = 100
-        if 'z_resolution' in self._statusVariables:
-            self.z_resolution = self._statusVariables['z_resolution']
-        else:
-            self.z_resolution = 50
-
-        # Initialization of internal counter for scanning
-        self._scan_counter = 0
-
-        # Variable to check if a scan is continuable
-        self._xyscan_continuable = False
-        self._zscan_continuable = False
-
-        #tilt correction stuff:
-        if 'tilt_correction' in self._statusVariables:
-            self.TiltCorrection = self._statusVariables['tilt_correction']
-        else:
-            self.TiltCorrection = False
-
-        if 'tilt_reference' in self._statusVariables and len(self._statusVariables['tilt_reference']) == 2:
-            self._tiltreference_x = self._statusVariables['tilt_reference'][0]
-            self._tiltreference_y = self._statusVariables['tilt_reference'][1]
-        else:
-            self._tiltreference_x = 0.5 * (self.x_range[0] + self.x_range[1])
-            self._tiltreference_y = 0.5 * (self.y_range[0] + self.y_range[1])
-
-        if 'tilt_slope' in self._statusVariables and len(self._statusVariables['tilt_slope']) == 2:
-            self._tilt_variable_ax = self._statusVariables['tilt_slope'][0]
-            self._tilt_variable_ay = self._statusVariables['tilt_slope'][1]
-        else:
-            self._tilt_variable_ax = 0
-            self._tilt_variable_ay = 0
-
-        if 'tilt_point1' in self._statusVariables and len(self._statusVariables['tilt_point1'] ) == 3:
-            self.point1 = np.array(self._statusVariables['tilt_point1'])
-        else:
-            self.point1 = np.array((0, 0, 0))
-        if 'tilt_point2' in self._statusVariables and len(self._statusVariables['tilt_point2'] ) == 3:
-            self.point2 = np.array(self._statusVariables['tilt_point2'])
-        else:
-            self.point2 = np.array((0, 0, 0))
-        if 'tilt_point3' in self._statusVariables and len(self._statusVariables['tilt_point3'] ) == 3:
-            self.point3 = np.array(self._statusVariables['tilt_point3'])
-        else:
-            self.point3 = np.array((0, 0, 0))
+            self.max_history_length = 10
 
         # Sets connections between signals and functions
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
         self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
-
-        # prepare images
-        self.initialize_image()
-        if 'xy_image' in self._statusVariables:
-            temp_xy_image = numpy_from_b(self._statusVariables['xy_image'])['image']
-            if temp_xy_image.shape == self.xy_image.shape:
-                self.xy_image = temp_xy_image
-
-        self._zscan = True
-        self.difference_scan = False #TODO: should this be here or in the init?
-        self.initialize_image()
-        if 'depth_image' in self._statusVariables:
-            temp_depth_image = numpy_from_b(self._statusVariables['depth_image'])['image']
-            if temp_depth_image.shape == self.depth_image.shape:
-                self.depth_image = temp_depth_image
-        self._zscan = False
 
 
     def deactivation(self, e):
@@ -194,20 +307,16 @@ class ConfocalLogic(GenericLogic):
         """
         self._statusVariables['clock_frequency'] = self._clock_frequency
         self._statusVariables['return_slowness'] = self.return_slowness
-        self._statusVariables['focus_position'] = [self._current_x, self._current_y, self._current_z, self._current_a,]
-        self._statusVariables['x_range'] = self.image_x_range
-        self._statusVariables['y_range'] = self.image_y_range
-        self._statusVariables['z_range'] = self.image_z_range
-        self._statusVariables['xy_resolution'] = self.xy_resolution
-        self._statusVariables['z_resolution'] = self.z_resolution
-        self._statusVariables['tilt_correction'] = self.TiltCorrection
-        self._statusVariables['tilt_point1'] = self.point1
-        self._statusVariables['tilt_point2'] = self.point2
-        self._statusVariables['tilt_point3'] = self.point3
-        self._statusVariables['tilt_reference'] = [self._tiltreference_x, self._tiltreference_y]
-        self._statusVariables['tilt_slope'] = [self._tilt_variable_ax, self._tilt_variable_ay]
-        self._statusVariables['xy_image'] = numpy_to_b(image=self.xy_image)
-        self._statusVariables['depth_image'] = numpy_to_b(image=self.depth_image)
+        self._statusVariables['max_history_length'] = self.max_history_length
+        closing_state = ConfocalHistoryEntry(self)
+        closing_state.snapshot(self)
+        self.history.append(closing_state)
+        histindex = len(self.history) - 1 
+        for state in self.history:
+            self._statusVariables['history_{}'.format(histindex)] = state.serialize()
+            histindex -= 1
+
+
         self._scanning_device.reset_hardware()
         return 0
 
@@ -602,8 +711,6 @@ class ConfocalLogic(GenericLogic):
                         self._zscan_continuable=False
                     else:
                         self._xyscan_continuable=False
-
-
                 else:
                     self._scan_counter = 0
 
