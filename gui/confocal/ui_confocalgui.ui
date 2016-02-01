@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1348</width>
-    <height>1115</height>
+    <height>1129</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>29</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -45,7 +45,7 @@
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
-     <string>&amp;Options</string>
+     <string>Option&amp;s</string>
     </property>
     <addaction name="action_Settings"/>
     <addaction name="action_optimizer_settings"/>
@@ -1854,6 +1854,25 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="historyToolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionBack"/>
+   <addaction name="actionForward"/>
+  </widget>
   <action name="actionSave_XY_Scan">
    <property name="icon">
     <iconset theme="document-save">
@@ -1869,7 +1888,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Save &amp;configuration</string>
+    <string>Save co&amp;nfiguration</string>
    </property>
   </action>
   <action name="action_Settings">
@@ -1878,7 +1897,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>&amp;Settings</string>
+    <string>Se&amp;ttings</string>
    </property>
   </action>
   <action name="actionClose">
@@ -1911,7 +1930,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>&amp;Optimizer Settings</string>
+    <string>O&amp;ptimizer Settings</string>
    </property>
   </action>
   <action name="actionSave_XY_Image_Data">
@@ -1983,9 +2002,6 @@
    <property name="text">
     <string>&amp;Scan parameters</string>
    </property>
-   <property name="shortcut">
-    <string>Alt+C</string>
-   </property>
   </action>
   <action name="actionOptimizer_view">
    <property name="checkable">
@@ -2055,10 +2071,13 @@
      <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</iconset>
    </property>
    <property name="text">
-    <string>Optimize position</string>
+    <string>&amp;Optimize position</string>
    </property>
    <property name="toolTip">
-    <string>Optimize position of crosshair</string>
+    <string>&amp;Optimize position of crosshair</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+O</string>
    </property>
   </action>
   <action name="action_stop_scanning">
@@ -2124,7 +2143,7 @@
      <selectedon>../../artwork/icons/qudiTheme/32x32/y_depth.png</selectedon>../../artwork/icons/qudiTheme/32x32/x_depth.png</iconset>
    </property>
    <property name="text">
-    <string>depth direction</string>
+    <string>&amp;Depth Scan Direction</string>
    </property>
    <property name="toolTip">
     <string>Switch between x- and y- depth scan</string>
@@ -2169,6 +2188,36 @@
    </property>
    <property name="text">
     <string>&amp;Tilt correction</string>
+   </property>
+  </action>
+  <action name="actionForward">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="go-next">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Forward</string>
+   </property>
+   <property name="toolTip">
+    <string>Go forward in scan history</string>
+   </property>
+  </action>
+  <action name="actionBack">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="go-previous">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Back</string>
+   </property>
+   <property name="toolTip">
+    <string>Go back in scan history</string>
    </property>
   </action>
  </widget>

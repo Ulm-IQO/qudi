@@ -293,14 +293,15 @@ class ConfocalGui(GUIBase):
                 self._optimizer_logic.refocus_XY_size
                 )
             )
+        #print('LEN ', [[self._optimizer_logic._zimage_Z_values[i] , self._optimizer_logic.z_refocus_line[i]]  for i in range(len(self._optimizer_logic._zimage_Z_values)) ] )
         self.depth_refocus_image = pg.ScatterPlotItem(
-            self._optimizer_logic._zimage_Z_values,
-            self._optimizer_logic.z_refocus_line,
+            x=self._optimizer_logic._zimage_Z_values,
+            y=self._optimizer_logic.z_refocus_line,
             symbol='o'
             )
         self.depth_refocus_fit_image = pg.PlotDataItem(
-            self._optimizer_logic._fit_zimage_Z_values,
-            self._optimizer_logic.z_fit_data,
+            x=self._optimizer_logic._fit_zimage_Z_values,
+            y=self._optimizer_logic.z_fit_data,
             pen=QtGui.QPen(QtGui.QColor(255, 0, 255, 255))
             )
 

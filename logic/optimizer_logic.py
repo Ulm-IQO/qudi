@@ -38,8 +38,7 @@ class OptimizerLogic(GenericLogic):
 
     # declare connectors
     _in = {'confocalscanner1': 'ConfocalScannerInterface',
-           'fitlogic': 'FitLogic',
-           'scannerlogic': 'ConfocalLogic'
+           'fitlogic': 'FitLogic'
            }
     _out = {'optimizerlogic': 'OptimizerLogic'}
 
@@ -100,7 +99,6 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
 #        print("Scanning device is", self._scanning_device)
         self._fit_logic = self.connector['in']['fitlogic']['object']
-        self._confocal_logic = self.connector['in']['scannerlogic']['object']
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -260,12 +258,10 @@ class OptimizerLogic(GenericLogic):
         self._return_A_values = np.zeros(self._return_X_values.shape)
 
         self.xy_refocus_image = np.zeros((len(self._Y_values), len(self._X_values), 4))
-        self.xy_refocus_image[:, :, 0] = np.full(
-            (len(self._Y_values), len(self._X_values)), self._X_values)
+        self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_refocus_image[:, :, 2] = self._initial_pos_z * \
-            np.ones((len(self._Y_values), len(self._X_values)))
+        self.xy_refocus_image[:, :, 2] = self._initial_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image
