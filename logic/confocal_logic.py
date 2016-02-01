@@ -68,9 +68,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._current_y = self.current_y
         confocal._current_z = self.current_z
         confocal._current_a = self.current_a
-        confocal.image_x_range = self.image_x_range
-        confocal.image_y_range = self.image_y_range
-        confocal.image_z_range = self.image_z_range
+        confocal.image_x_range = np.copy(self.image_x_range)
+        confocal.image_y_range = np.copy(self.image_y_range)
+        confocal.image_z_range = np.copy(self.image_z_range)
         confocal.xy_resolution = self.xy_resolution
         confocal.z_resolution = self.z_resolution
         confocal._xy_line_pos = self.xy_line_position
@@ -78,9 +78,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._xyscan_continuable = self.xy_scan_continuable
         confocal._zscan_continuable = self.depth_scan_continuable
         confocal.TiltCorrection = self.tilt_correction
-        confocal.point1 = self.point1
-        confocal.point2 = self.point2
-        confocal.point3 = self.point3
+        confocal.point1 = np.copy(self.point1)
+        confocal.point2 = np.copy(self.point2)
+        confocal.point3 = np.copy(self.point3)
         confocal._tiltreference_x = self.tilt_reference_x
         confocal._tiltreference_y = self.tilt_reference_y
         confocal._tilt_variable_ax = self.tilt_slope_x
@@ -89,17 +89,17 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal.initialize_image()
         try:
             if confocal.xy_image.shape == self.xy_image.shape:
-                confocal.xy_image = self.xy_image
+                confocal.xy_image = np.copy(self.xy_image)
         except AttributeError:
-            self.xy_image = confocal.xy_image
+            self.xy_image = np.copy(confocal.xy_image)
 
         confocal._zscan = True
         confocal.initialize_image()
         try:
             if confocal.depth_image.shape == self.depth_image.shape:
-                confocal.depth_image = self.depth_image
+                confocal.depth_image = np.copy(self.depth_image)
         except AttributeError:
-            self.depth_image = confocal.depth_image
+            self.depth_image = np.copy(confocal.depth_image)
         confocal._zscan = False
 
     def snapshot(self, confocal):
@@ -108,9 +108,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_y = confocal._current_y
         self.current_z = confocal._current_z
         self.current_a = confocal._current_a
-        self.image_x_range = confocal.image_x_range
-        self.image_y_range = confocal.image_y_range
-        self.image_z_range = confocal.image_z_range
+        self.image_x_range = np.copy(confocal.image_x_range)
+        self.image_y_range = np.copy(confocal.image_y_range)
+        self.image_z_range = np.copy(confocal.image_z_range)
         self.xy_resolution = confocal.xy_resolution
         self.z_resolution = confocal.z_resolution
         self.xy_line_position = confocal._xy_line_pos
@@ -118,15 +118,15 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.xy_scan_continuable = confocal._xyscan_continuable
         self.depth_scan_continuable = confocal._zscan_continuable
         self.tilt_correction = confocal.TiltCorrection
-        self.point1 = confocal.point1
-        self.point2 = confocal.point2
-        self.point3 = confocal.point3
+        self.point1 = np.copy(confocal.point1)
+        self.point2 = np.copy(confocal.point2)
+        self.point3 = np.copy(confocal.point3)
         self.tilt_reference_x = confocal._tiltreference_x
         self.tilt_reference_y = confocal._tiltreference_y
         self.tilt_slope_x = confocal._tilt_variable_ax
         self.tile_slope_y = confocal._tilt_variable_ay
-        self.xy_image = confocal.xy_image
-        self.depth_image = confocal.depth_image
+        self.xy_image = np.copy(confocal.xy_image)
+        self.depth_image = np.copy(confocal.depth_image)
        
 
     def serialize(self):
@@ -215,6 +215,7 @@ class ConfocalLogic(GenericLogic):
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
 
+    signal_history_event = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -269,6 +270,17 @@ class ConfocalLogic(GenericLogic):
 
         # restore here ...
         self.history = []
+        if 'max_history_length' in self._statusVariables:
+                self.max_history_length = self._statusVariables ['max_history_length']
+                for i in reversed(range(1, self.max_history_length)):
+                    try:
+                        new_history_item = ConfocalHistoryEntry(self)
+                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
+                        self.history.append(new_history_item)
+                    except:
+                        pass
+        else:
+            self.max_history_length = 10
         try:
             new_state = ConfocalHistoryEntry(self)
             new_state.deserialize(self._statusVariables['history_0'])
@@ -279,17 +291,7 @@ class ConfocalLogic(GenericLogic):
         finally:
             self.history.append(new_state)
 
-        if 'max_history_length' in self._statusVariables:
-                self.max_history_length = self._statusVariables ['max_history_length']
-                for i in range(1, self.max_history_length):
-                    try:
-                        new_history_item = ConfocalHistoryEntry(self)
-                        new_history_item.deserialize(self._statusVariables['history_{}'.format(i)])
-                        self.history.append(new_history_item)
-                    except:
-                        pass
-        else:
-            self.max_history_length = 10
+        self.history_index = len(self.history) - 1
 
         # Sets connections between signals and functions
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
@@ -311,12 +313,10 @@ class ConfocalLogic(GenericLogic):
         closing_state = ConfocalHistoryEntry(self)
         closing_state.snapshot(self)
         self.history.append(closing_state)
-        histindex = len(self.history) - 1 
-        for state in self.history:
+        histindex = 0
+        for state in reversed(self.history):
             self._statusVariables['history_{}'.format(histindex)] = state.serialize()
-            histindex -= 1
-
-
+            histindex += 1
         self._scanning_device.reset_hardware()
         return 0
 
@@ -402,7 +402,6 @@ class ConfocalLogic(GenericLogic):
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
-
         return 0
 
 
@@ -634,6 +633,13 @@ class ConfocalLogic(GenericLogic):
                     self._depth_line_pos = self._scan_counter
                 else:
                     self._xy_line_pos = self._scan_counter
+                # add new history entry
+                new_history = ConfocalHistoryEntry(self)
+                new_history.snapshot(self)
+                self.history.append(new_history)
+                if len(self.history) > self.max_history_length:
+                    self.history.pop(0)
+                self.history_index = len(self.history) - 1
                 return
 
         if self._zscan:
@@ -872,7 +878,7 @@ class ConfocalLogic(GenericLogic):
             a[1]*b[2] - a[2]*b[1],
             a[2]*b[0] - a[0]*b[2],
             a[0]*b[1] - a[1]*b[0]
-            ))
+             ))
         self._tilt_variable_ax = n[0] / n[2]
         self._tilt_variable_ay = n[1] / n[2]
 
@@ -886,3 +892,23 @@ class ConfocalLogic(GenericLogic):
         else:
             dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
             return dz
+
+    def history_forward(self):
+        if self.history_index < len(self.history) - 1:
+            self.history_index += 1
+            self.history[self.history_index].restore(self)
+            self.signal_xy_image_updated.emit()
+            self.signal_depth_image_updated.emit()
+            self._change_position('history')
+            self.signal_change_position.emit('history')
+            self.signal_history_event.emit()
+
+    def history_back(self):
+        if self.history_index > 0:
+            self.history_index -= 1
+            self.history[self.history_index].restore(self)
+            self.signal_xy_image_updated.emit()
+            self.signal_depth_image_updated.emit()
+            self._change_position('history')
+            self.signal_change_position.emit('history')
+            self.signal_history_event.emit()
