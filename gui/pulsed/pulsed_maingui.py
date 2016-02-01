@@ -20,11 +20,12 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from PyQt4 import QtGui, QtCore, uic
-
 import numpy as np
 import os
 from collections import OrderedDict
 import pyqtgraph as pg
+import re
+
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 
@@ -765,6 +766,8 @@ class PulsedMeasurementGui(GUIBase):
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
 
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
         channel_config = self.get_hardware_constraints()['channel_config']
 
         ch_settings = (self._bs.analog_channels_SpinBox.value(), self._bs.digital_channels_SpinBox.value())
@@ -782,6 +785,8 @@ class PulsedMeasurementGui(GUIBase):
                         'Restore previous configuration.'.format(ch_settings),
                         msgType='warning')
             self.keep_former_block_settings()
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
 
 
     def keep_former_block_settings(self):
@@ -862,7 +867,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
         self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
-
+        self._mw.curr_block_laserpulses_SpinBox.setMaximum(2**31 -1)
+        self._mw.curr_ensemble_bins_SpinBox.setMaximum(2**31 -1)
 
         # connect the signals for the block editor:
         self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
@@ -913,10 +919,19 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block)
 
+        self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble)
+
         self.set_cfg_param_pbe()
-        self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block_length)
+        self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
+        self._mw.laserchannel_ComboBox.currentIndexChanged.connect(self._update_current_pulse_block)
+
+        self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_pulse_block_ensemble_list)
 
         self._set_organizer_columns()
+
+        self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
+
+        self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
 
         # =====================================================================
         #              Explanation of the usage of QTableWidget
@@ -984,7 +999,8 @@ class PulsedMeasurementGui(GUIBase):
         """Updates the current sample rate in the logic"""
         sample_rate = self._mw.sample_freq_DSpinBox.value()
         self._seq_gen_logic.set_sample_rate(sample_rate*1e6)
-        self._update_current_pulse_block_length()
+        self._update_current_pulse_block()
+        self._update_current_pulse_block_ensemble()
 
     def set_sample_rate(self, sample_rate):
         """ Set the current sample rate in the spin_box and in the logic.
@@ -1090,12 +1106,21 @@ class PulsedMeasurementGui(GUIBase):
         return self._seq_gen_logic.get_hardware_constraints()
 
 
-    def get_param_config(self):
-        """ Retrieve the parameter configuration from Logic.
+    def get_add_pbe_param(self):
+        """ Retrieve the additional parameter configuration for the
+        Pulse_Block_Element objects from the logic.
 
         @return: dict with the configurations for the additional parameters.
         """
-        return self._seq_gen_logic.get_param_config()
+        return self._seq_gen_logic.get_add_pbe_param()
+
+    def get_add_pb_param(self):
+        """ Retrieve the additional parameter configuration for the
+        Pulse_Block objects from the logic.
+
+        @return: dict with the configurations for the additional parameters.
+        """
+        return self._seq_gen_logic.get_add_pb_param()
 
 
     def get_element_in_block_table(self, row, column):
@@ -1148,18 +1173,32 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def test_func(self):
+    def test_func(self, arg=None):
 
 
-        self.logMsg('Item changed.', msgType='warning')
+        self.logMsg('Item changed. {0}'.format(arg), msgType='warning')
 
 
-    def _update_current_pulse_block_length(self):
+    def _update_current_pulse_block(self):
 
         length = 0.0 # in ns
         bin_length = 0
         col_ind = self._cfg_param_pbe['length']
 
+        laser_channel = self._mw.laserchannel_ComboBox.currentText()
+        num_laser_ch = 0
+
+        # Simple search routine:
+        if 'A' in laser_channel:
+            # extract with regular expression module the number from the
+            # string:
+            num = re.findall('\d+', laser_channel)
+            laser_column = self._cfg_param_pbe['function_'+str(num[0])]
+        elif 'D' in laser_channel:
+            num = re.findall('\d+', laser_channel)
+            laser_column = self._cfg_param_pbe['digital_'+str(num[0])]
+        else:
+            return
 
         for row_ind in range(self._mw.block_editor_TableWidget.rowCount()):
             curr_length = self.get_element_in_block_table(row_ind, col_ind)
@@ -1167,14 +1206,51 @@ class PulsedMeasurementGui(GUIBase):
             length = length + curr_length
             bin_length = bin_length + curr_bin_length
 
+            laser_val =self.get_element_in_block_table(row_ind, laser_column)
+            if (laser_val=='DC') or (laser_val==2):
+                num_laser_ch = num_laser_ch +1
+
+
         self._mw.curr_block_length_DSpinBox.setValue(length/1000.0) # in microns
         self._mw.curr_block_bins_SpinBox.setValue(bin_length)
+        self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
+
+
+    def _update_current_pulse_block_ensemble(self):
+
+        length_mu = 0.0 # in microseconds
+        length_bin = 0
+        num_laser_pulses = 0
+        pulse_block_col = self._cfg_param_pb['pulse_block']
+
+        reps_col = self._cfg_param_pb['repetition']
+
+        if len(self._seq_gen_logic.saved_pulse_blocks) > 0:
+            for row_ind in range(self._mw.block_organizer_TableWidget.rowCount()):
+                pulse_block_name = self.get_element_in_organizer_table(row_ind, pulse_block_col)
+
+                block_obj = self._seq_gen_logic.get_block(pulse_block_name)
 
 
 
+                reps = self.get_element_in_organizer_table(row_ind, reps_col)
+
+                # Calculate the length via the gaussian summation formula:
+                length_bin = int(length_bin + block_obj.init_length_bins*reps + (reps*(reps+1)/2)*block_obj.increment_bins)
+
+                num_laser_pulses = num_laser_pulses + block_obj.num_laser_pulses * reps
+
+
+            length_mu = (length_bin/self.get_sample_rate())*1e6 # in microns
+
+        self._mw.curr_ensemble_length_DSpinBox.setValue(length_mu)
+
+        self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
+
+        self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
 
     def get_block_table(self):
-        """ Convert initial table data to numpy array.
+        """ Convert block table data to numpy array.
 
         @return: np.array[rows][columns] which has a structure, i.e. strings
                  integer and float values are represented by this array.
@@ -1194,9 +1270,9 @@ class PulsedMeasurementGui(GUIBase):
             elif type(elem) is float:
                 structure = structure + '|f4, '
             else:
-                self.logMsg('Type definition not found in the table. Type is '
-                            'neither a string, integer or float. Include '
-                            'that type in the get_block_table method!',
+                self.logMsg('Type definition not found in the block table.'
+                            '\nType is neither a string, integer or float. '
+                            'Include that type in the get_block_table method!',
                             msgType='error')
 
         # remove the last two elements since these are a comma and a space:
@@ -1283,6 +1359,16 @@ class PulsedMeasurementGui(GUIBase):
         self.update_block_organizer_list()
         return
 
+    def generate_pulse_block(self):
+        """ Generate a Pulse_Block object."""
+
+        objectname = self._mw.curr_block_name_LineEdit.text()
+        num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
+        self._seq_gen_logic.generate_block_object(objectname,
+                                                  self.get_block_table(),
+                                                  num_laser_pulses)
+
+
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
     # -------------------------------------------------------------------------
@@ -1322,23 +1408,67 @@ class PulsedMeasurementGui(GUIBase):
         data = tab.model().index(row, column).data(access)
         return data
 
+    def get_organizer_table(self):
+        """ Convert organizer table data to numpy array.
+
+        @return: np.array[rows][columns] which has a structure, i.e. strings
+                 integer and float values are represented by this array.
+                 The structure was taken according to the init table itself.
+        """
+
+        tab = self._mw.block_organizer_TableWidget
+
+        # create a structure for the output numpy array:
+        structure = ''
+        for column in range(tab.columnCount()):
+            elem = self.get_element_in_organizer_table(0,column)
+            if type(elem) is str:
+                structure = structure + '|S20, '
+            elif type(elem) is int:
+                structure = structure + '|i4, '
+            elif type(elem) is float:
+                structure = structure + '|f4, '
+            else:
+                self.logMsg('Type definition not found in the organizer table.'
+                            '\nType is neither a string, integer or float. '
+                            'Include that type in the get_block_table method!',
+                            msgType='error')
+
+        # remove the last two elements since these are a comma and a space:
+        structure = structure[:-2]
+        table = np.zeros(tab.rowCount(), dtype=structure)
+
+        # fill the table:
+        for column in range(tab.columnCount()):
+            for row in range(tab.rowCount()):
+                # self.logMsg(, msgType='status')
+                table[row][column] = self.get_element_in_organizer_table(row, column)
+
+        return table
+
+
     def block_organizer_add_row_before_selected(self):
         """ Add row before selected element. """
-
+        self._mw.block_organizer_TableWidget.blockSignals(True)
         selected_row = self._mw.block_organizer_TableWidget.currentRow()
 
         self._mw.block_organizer_TableWidget.insertRow(selected_row)
 
         self.initialize_cells_block_organizer(start_row=selected_row)
+        self._mw.block_organizer_TableWidget.blockSignals(False)
+        self._update_current_pulse_block_ensemble()
 
 
     def block_organizer_add_row_after_last(self):
         """ Add row after last row in the block editor. """
+        self._mw.block_organizer_TableWidget.blockSignals(True)
 
         number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
         self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+1)
 
         self.initialize_cells_block_organizer(start_row=number_of_rows)
+        self._mw.block_organizer_TableWidget.blockSignals(False)
+        self._update_current_pulse_block_ensemble()
 
     def block_organizer_delete_row_selected(self):
         """ Delete row of selected element. """
@@ -1347,6 +1477,7 @@ class PulsedMeasurementGui(GUIBase):
         # lowest selected row
         row_to_remove = self._mw.block_organizer_TableWidget.currentRow()
         self._mw.block_organizer_TableWidget.removeRow(row_to_remove)
+        self._update_current_pulse_block_ensemble()
 
     def block_organizer_delete_row_last(self):
         """ Delete the last row in the block editor. """
@@ -1355,14 +1486,19 @@ class PulsedMeasurementGui(GUIBase):
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
         self._mw.block_organizer_TableWidget.removeRow(number_of_rows-1)
+        self._update_current_pulse_block_ensemble()
 
     def block_organizer_clear_table(self):
         """ Delete all rows in the block editor table. """
 
+
+        self._mw.block_organizer_TableWidget.blockSignals(True)
         self._mw.block_organizer_TableWidget.setRowCount(1)
         self._mw.block_organizer_TableWidget.clearContents()
 
         self.initialize_cells_block_organizer(start_row=0)
+        self._mw.block_organizer_TableWidget.blockSignals(False)
+        self._update_current_pulse_block_ensemble()
 
     def block_organizer_delete_clicked(self):
         """
@@ -1372,15 +1508,30 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.delete_ensemble(name)
         return
 
+    def generate_pulse_block_ensemble(self):
+        """ Generate a Pulse_Block_ensemble object."""
+
+        objectname = self._mw.curr_ensemble_name_LineEdit.text()
+        rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
+        self._seq_gen_logic.generate_block_ensemble(objectname,
+                                                    self.get_organizer_table(),
+                                                    rotating_frame)
+
+
+    def update_pulse_block_ensemble_list(self):
+        """ Update the Pulse Block Ensemble list.  """
+        self._mw.upload_ensemble_ComboBox.clear()
+        self._mw.upload_ensemble_ComboBox.addItems(self._seq_gen_logic.saved_pulse_block_ensembles)
+
 
     def insert_parameters(self, column):
 
         # insert parameter:
         insert_at_col_pos = column
-        for column, parameter in enumerate(self.get_param_config()):
+        for column, parameter in enumerate(self.get_add_pbe_param()):
 
             # add the new properties to the whole column through delegate:
-            items_list = self.get_param_config()[parameter]
+            items_list = self.get_add_pbe_param()[parameter]
 
             if 'unit_prefix' in items_list.keys():
                 unit_text = items_list['unit_prefix'] + items_list['unit']
@@ -1468,14 +1619,6 @@ class PulsedMeasurementGui(GUIBase):
                 biggest_func = func
 
         return (num_max_param, biggest_func)
-
-
-    def generate_pulse_block(self):
-        """ Generate a Pulse_Block object."""
-
-        objectname = self._mw.curr_block_name_LineEdit.text()
-        self._seq_gen_logic.generate_block_object(objectname,self.get_block_table())
-
 
 
 
@@ -1603,11 +1746,11 @@ class PulsedMeasurementGui(GUIBase):
 
 
         self.initialize_cells_block_editor(0,self._mw.block_editor_TableWidget.rowCount())
-        self._mw.block_editor_TableWidget.blockSignals(False)
-        self.set_cfg_param_pbe()
-        self._update_current_pulse_block_length()
 
+        self.set_cfg_param_pbe()
+        self._mw.block_editor_TableWidget.blockSignals(False)
         self.set_channel_map(channel_map)
+        self._update_current_pulse_block()
 
 
     def set_channel_map(self, channel_map):
@@ -1671,6 +1814,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         return self._org_table_config
 
+
     def set_cfg_param_pb(self):
         """ Set the parameter configuration of the Pulse_Block according to the
         current table configuration and updates the dict in the logic.
@@ -1685,7 +1829,7 @@ class PulsedMeasurementGui(GUIBase):
                 cfg_param_pb['pulse_block'] = column
             elif 'length' in text:
                 cfg_param_pb['length'] = column
-            elif 'Reps' in text:
+            elif 'repetition' in text:
                 cfg_param_pb['repetition'] = column
             else:
                 print('text:',text)
@@ -1703,7 +1847,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setColumnCount(0)
 
         # total number columns in block organizer:
-        num_column = 2
+        num_column = 1
         self._mw.block_organizer_TableWidget.setColumnCount(num_column)
 
         column = 0
@@ -1718,18 +1862,38 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, comboDelegate)
 
         column = 1
-        self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-        self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Reps')
-        self._mw.block_organizer_TableWidget.setColumnWidth(column, 60)
+        insert_at_col_pos = column
+        for column, parameter in enumerate(self.get_add_pb_param()):
 
-        items_list = self.get_param_config()['repetition']
+            # add the new properties to the whole column through delegate:
+            items_list = self.get_add_pb_param()[parameter]
 
-        spinDelegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
-        self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, spinDelegate)
+            if 'unit_prefix' in items_list.keys():
+                unit_text = items_list['unit_prefix'] + items_list['unit']
+            else:
+                unit_text = items_list['unit']
+
+            print('insert_at_col_pos',insert_at_col_pos)
+            print('column',column)
+            self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
+            self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
+            self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
+            self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
+
+            # Use only DoubleSpinBox  as delegate:
+            if items_list['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+            elif parameter == 'repetition':
+                delegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+            else:
+                delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+            self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
         self.initialize_cells_block_organizer(0, self._mw.block_organizer_TableWidget.rowCount())
 
         self.set_cfg_param_pb()
+        self._update_current_pulse_block_ensemble()
+
 
     def initialize_cells_block_editor(self, start_row, stop_row=None,
                                     start_col=None, stop_col=None):

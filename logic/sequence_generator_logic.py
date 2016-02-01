@@ -1,13 +1,25 @@
 # -*- coding: utf-8 -*-
+
 """
-Created on Fri Oct 23 16:00:38 2015
+This file contains the QuDi hardware interface dummy for pulsing devices.
 
-@author: s_ntomek
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-# unstable: Nikolas Tomek
-
-#from core.util.mutex import Mutex
 import numpy as np
 import pickle
 import glob
@@ -28,7 +40,7 @@ class Pulse_Block_Element(object):
     """
     def __init__(self, init_length_bins, analogue_channels, digital_channels,
                  increment_bins = 0, pulse_function = None,
-                 marker_active = None, parameters={}):
+                 marker_active = None, parameters={}, use_as_tau=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
         @param init_length_bins: int, an initial length of a bins, this
@@ -54,6 +66,9 @@ class Pulse_Block_Element(object):
                            chosen sampling function. The key words of the
                            dictionary for the parameters will be those of the
                            sampling functions.
+        @param use_as_tau: bool, indicates, whether the set length should
+                           be used as tau (i.e. the parameter for the x axis)
+                           for the later plot in the analysis.
         """
 
 
@@ -64,13 +79,7 @@ class Pulse_Block_Element(object):
         self.pulse_function     = pulse_function
         self.markers_on         = marker_active
         self.parameters         = parameters
-
-
-    def get_pulse_block_element_attributes(self):
-        """ Output of a list of attributes, which describes that object.
-
-        @return: a list of strings
-        """
+        self.use_as_tau         = use_as_tau
 
 
 class Pulse_Block(object):
@@ -78,7 +87,7 @@ class Pulse_Block(object):
         Pulse_Block.
     """
 
-    def __init__(self, name, element_list):
+    def __init__(self, name, element_list, num_laser_pulses=None):
         """ The constructor for a Pulse_Block needs to have:
 
         @param name: str, chosen name for the Pulse_Block
@@ -88,6 +97,7 @@ class Pulse_Block(object):
         """
         self.name = name
         self.element_list = element_list
+        self.num_laser_pulses = num_laser_pulses
         self.refresh_parameters()
 
     def refresh_parameters(self):
@@ -103,14 +113,28 @@ class Pulse_Block(object):
         self.analogue_channels = 0
         self.digital_channels = 0
 
+
+        # calculate the tau value for the whole block. Basically sum all the
+        # init_length_bins which have the use_as_tau attribute set to True.
+        self.block_tau = 0
+
+        # make the same thing for the increment, to obtain the total increment
+        # number for the block. This facilitates in calculating the tau list.
+        self.block_tau_increment = 0
+
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
             self.increment_bins += elem.increment_bins
+
+            if elem.use_as_tau:
+                self.block_tau = self.block_tau + elem.init_length_bins
+                self.block_tau_increment = self.block_tau_increment + elem.increment_bins
 
             if elem.analogue_channels > self.analogue_channels:
                 self.analogue_channels = elem.analogue_channels
             if elem.digital_channels > self.digital_channels:
                 self.digital_channels = elem.digital_channels
+
 
 
     def replace_element(self, position, element):
@@ -337,6 +361,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.ensemble_dir = ''
         self.sequence_dir = ''
 
+
+        # =============== Setting the additional parameters ==================
+
+        #FIXME: For now on, this settings will be done here, but a better
+        #       and more intuitive solution has to be found for the future!
+
         # Definition of this parameter. See fore more explanation in file
         # sampling_functions.py
         length_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
@@ -346,15 +376,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                    'view_stepsize': 1, 'dec': 0}
         bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
                    'view_stepsize': 1, 'dec': 0}
-        # make a parameter constraint dict
-        self._param_config = OrderedDict()
-        self._param_config['length'] = length_def
-        self._param_config['increment'] = length_def
-        self._param_config['use as tau?'] = bool_def
-        self._param_config['repeat?'] = bool_def
 
-        self._param_config['repetition'] = rep_def
+        # make a parameter constraint dict for the additional parameters of the
+        # Pulse_Block_Ensemble objects:
+        self._add_pbe_param = OrderedDict()
+        self._add_pbe_param['length'] = length_def
+        self._add_pbe_param['increment'] = length_def
+        self._add_pbe_param['use as tau?'] = bool_def
+        # self._add_pbe_param['repeat?'] = bool_def
 
+
+        self._add_pb_param = OrderedDict()
+        self._add_pb_param['repetition'] = rep_def
+        # =====================================================================
 
         # An abstract dictionary, which tells the logic the configuration of a
         # Pulse_Block_Element, i.e. how many parameters are used for a
@@ -423,13 +457,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         return func_config
 
-    def get_param_config(self):
-        """ Return the param_config.
+    def get_add_pbe_param(self):
+        """ Return the additional parameters for Pulse_Block_Element objects.
 
         @return: dict with the configurations for the additional parameters.
         """
 
-        return self._param_config
+        return self._add_pbe_param
+
+    def get_add_pb_param(self):
+        """ Return the additional parameters for Pulse_Block objects.
+
+        @return: dict with the configurations for the additional parameters.
+        """
+
+        return self._add_pb_param
 
 
     def set_sample_rate(self, freq_Hz):
@@ -621,8 +663,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return
 
     def load_sequence(self, name):
-        ''' loads a sequence from a .seq-file into the sequence editor
-        '''
+        ''' loads a sequence from a .seq-file into the sequence editor '''
         if name in self.saved_sequences:
             with open(self.sequence_dir + name + '.seq', 'rb') as infile:
                 sequence = pickle.load(infile)
@@ -751,7 +792,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = block
         return
 
-    def generate_block_object(self, pb_name, block_matrix):
+    def generate_block_object(self, pb_name, block_matrix, num_laser_pulses):
         """
 
         @param pb_name: string, Name of the created Pulse_Block Object
@@ -760,7 +801,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                              are displayed as rows.
 
         Three internal dict where used, to get all the needed information about
-        how parameters, functions are defined (_param_config,func_config and
+        how parameters, functions are defined (_add_pbe_param,func_config and
         _unit_prefix).
         The dict cfg_param_pbe (configuration parameter declaration dict for
         Pulse_Block_Element) stores how the objects are appearing in the GUI.
@@ -782,14 +823,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             # check how length is displayed and convert it to bins:
             length_time= row[self.cfg_param_pbe['length']]
-            if 'unit_prefix' in self._param_config['length']:
-                length_time = length_time*self._unit_prefix[self._param_config['length']['unit_prefix']]
+            if 'unit_prefix' in self._add_pbe_param['length']:
+                length_time = length_time*self._unit_prefix[self._add_pbe_param['length']['unit_prefix']]
             init_length_bins=int(np.round(length_time*self.sample_rate))
 
             # check how increment is displayed and convert it to bins:
             increment_time=row[self.cfg_param_pbe['increment']]
-            if 'unit_prefix' in self._param_config['increment']:
-                increment_time = increment_time*self._unit_prefix[self._param_config['increment']['unit_prefix']]
+            if 'unit_prefix' in self._add_pbe_param['increment']:
+                increment_time = increment_time*self._unit_prefix[self._add_pbe_param['increment']['unit_prefix']]
             increment_bins= int(np.round(increment_time*self.sample_rate))
 
             # get the dict with all possible functions and their parameters:
@@ -833,17 +874,81 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         marker_active=marker_active,
                         parameters=parameters)
 
-        pb_obj = Pulse_Block(pb_name, pbe_obj_list)
+        pb_obj = Pulse_Block(pb_name, pbe_obj_list, num_laser_pulses)
         self.save_block(pb_name, pb_obj)
         self.current_block = pb_obj
 
 
-    def generate_block_ensemble(self, ensemble_matrix):
-        """
-        Generates a Pulse_Block_Ensemble object out of the corresponding editor table/matrix.
+    def generate_block_ensemble(self, ensemble_name, ensemble_matrix,
+                                rotating_frame=True):
         """
 
-        return
+        @param ensemble_name: string, Name of the created Pulse_Block_Ensemble
+                              Object
+        @param ensemble_matrix: structured np.array, matrix, in which the
+                                construction plan for Pulse_Block objects
+                                are displayed as rows.
+        @param rotating_frame: bool, optional, whether the phase preservation
+                               is mentained throughout the sequence.
+
+        Three internal dict where used, to get all the needed information about
+        how parameters, functions are defined (_add_pb_param)
+
+        The dict cfg_param_pb (configuration parameter declaration dict for
+        Pulse_Block) stores how the objects are appearing in the GUI.
+        This dict enables the proper access to the desired element in the GUI.
+        """
+
+
+        # list of all the pulse block element objects
+        pb_obj_list = [None]*len(ensemble_matrix)
+
+        #FIXME: Obtain the tau_list size before, and do not append to it.
+        # it is not easy to estimate the tau_list. Therefore follow the simple
+        # append to list approach. Later a nicer way can be implemented.
+        tau_list = []
+
+        # to make a resonable tau list, the last biggest tau value after all
+        # the repetitions of a block is used as the offset_time for the next
+        # block.
+        offset_tau_bin = 0
+        num_laser_pulse = 0
+
+        for row_index, row in enumerate(ensemble_matrix):
+
+            pulse_block_name = row[self.cfg_param_pb['pulse_block']].decode('UTF-8')
+            pulse_block_reps = row[self.cfg_param_pb['repetition']]
+
+            block = self.get_block(pulse_block_name)
+
+            for num in range(pulse_block_reps):
+                tau_list.append(offset_tau_bin + block.init_length_bins + num*block.increment_bins)
+
+            num_laser_pulse =  num_laser_pulse + block.num_laser_pulses*pulse_block_reps
+
+            # for the next block, add the biggest time as offset_tau_bin.
+            # Otherwise the tau_list will be a mess.
+            offset_tau_bin = offset_tau_bin + block.init_length_bins + (pulse_block_reps-1)*block.increment_bins
+            pb_obj_list[row_index] = (block, pulse_block_reps)
+
+
+
+
+        pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
+                                              block_list=pb_obj_list,
+                                              tau_array=tau_list,
+                                              number_of_lasers=num_laser_pulse,
+                                              rotating_frame=rotating_frame)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(ensemble_name, pulse_block_ensemble)
+        # set current block ensemble
+        self.current_ensemble = pulse_block_ensemble
+
+
+
+
 
     def generate_sequence(self, sequence_matrix):
         """
