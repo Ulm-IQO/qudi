@@ -689,6 +689,7 @@ class Manager(QtCore.QObject):
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][base][key] = instance
+                            self.sigModulesChanged.emit()
                         else:
                             raise Exception('You are trying to cheat the '
                                 'system with some category {0}'.format(base) )
