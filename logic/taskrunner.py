@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner.
+This file contains the QuDi task runner module.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -26,7 +26,8 @@ import logic.generic_task as gt
 import importlib
 
 class TaskListTableModel(ListTableModel):
-
+    """ An extension of the ListTableModel for keepting a task list in a TaskRunner.
+    """
     def __init__(self):
         super().__init__()
         self.headers = ['Task Name', 'Task State', 'Pre/Post actions', 'Pauses', 'Needs modules', 'is ok']
@@ -60,6 +61,9 @@ class TaskListTableModel(ListTableModel):
             return None
 
     def append(self, data):
+        """ Add a task to the end of the storage list and listen to its signals.
+          @param object data: PrePostTask or InterruptableTask to add to list.
+        """
         with self.lock:
             n = len(self.storage)
             self.beginInsertRows(QtCore.QModelIndex(), n, n)
@@ -74,7 +78,8 @@ class TaskListTableModel(ListTableModel):
                 )
     
 class TaskRunner(GenericLogic):
-    """A generic logic interface class.
+    """ This module keeps a collection of tasks that have varying preconditions, postconditions
+        and conflicts and executes these tasks as their given conditions allow.
     """
     _modclass = 'TaskRunner'
     _modtype = 'Logic'
@@ -95,6 +100,9 @@ class TaskRunner(GenericLogic):
         super().__init__(manager, name, configuration, callbacks, **kwargs)
 
     def activation(self, e):
+        """ Initialise task runner.
+          @param object e: Fysom state change notification
+        """
         self.model = TaskListTableModel()
         self.model.rowsInserted.connect(self.modelChanged)
         self.model.rowsRemoved.connect(self.modelChanged)
@@ -104,9 +112,15 @@ class TaskRunner(GenericLogic):
         self.sigLoadTasks.emit()
 
     def deactivation(self, e):
+        """ Shut down task runner.
+          @param object e: Fysom state change notification
+        """
         self._manager.registerTaskRunner(None)
 
     def loadTasks(self):
+        """ Load all tasks specified in the configuration.
+            Check dependencies and load necessary modules.
+        """
         config = self.getConfiguration()
         if not 'tasks' in config:
             return
@@ -158,7 +172,11 @@ class TaskRunner(GenericLogic):
         self.sigCheckTasks.emit()
 
     def registerTask(self, task):
-        """
+        """ Add a task from an external source (i.e. not loaded by task runner) to task runner.
+          @param dict task: dictionary describing a task to register
+
+          @return bool: whether registering tasks succeeded
+
         task: dict
             bool ok: loading checks passed
             obj object: refernece to task object
@@ -195,6 +213,8 @@ class TaskRunner(GenericLogic):
         return True
 
     def checkTasksInModel(self):
+        """ Check all loaded tasks for consistency and completeness of dependencies.
+        """
         for task in self.model.storage:
             ppok = False
             pok = True
@@ -229,10 +249,14 @@ class TaskRunner(GenericLogic):
 
     @QtCore.pyqtSlot(QtCore.QModelIndex, int, int)
     def modelChanged(self, parent, first, last):
+        """ React to model changes (right now debug only) """
         # print('Inserted into task list: {} {}'.format(first, last))
         pass
 
     def startTask(self, index):
+        """ Try starting a task identified by its list index.
+          @param int index: index of task in task list
+        """
         # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if not task['ok']:
@@ -250,6 +274,9 @@ class TaskRunner(GenericLogic):
             self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
 
     def pauseTask(self, index):
+        """ Try pausing a task identified by its list index.
+          @param int index: index of task in task list
+        """
         # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('pause'):
@@ -258,6 +285,9 @@ class TaskRunner(GenericLogic):
             self.logMsg('This thing cannot be paused:  {}'.format(task['name']), msgType='error')
 
     def stopTask(self, index):
+        """ Try stopping a task identified by its list index.
+          @param int index: index of task in task list
+        """
         # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
         if task['object'].can('finish'):
@@ -266,18 +296,34 @@ class TaskRunner(GenericLogic):
             self.logMsg('This thing cannot be stopped:  {}'.format(task['name']), msgType='error')
 
     def getTaskByName(self, taskname):
+        """ Get task dictionary for a given task name.
+          @param str name: name of the task
+
+          @return dict: task dictionary
+        """
         for task in self.model.storage:
             if task['name'] == taskname:
                 return task
         raise KeyError(taskname)
 
     def getTaskByReference(self, ref):
+        """ Get task dictionary by the identity of its task object.
+          @param str ref: task object
+
+          @return dict: task dictionary
+        """
         for task in self.model.storage:
             if task['object'] is ref:
                 return task
         raise KeyError(ref)
 
     def getModule(self, taskname, modname):
+        """ Get a reference to a module that is in a task's requied module list.
+          @param str taskname: name of task
+          @param str modname: name of module
+
+          @return object: module
+        """
         task = self.getTaskByName(taskname)
         if modname in task['needsmodules']:
             return self._manager.tree['loaded']['logic'][modname]
@@ -285,9 +331,19 @@ class TaskRunner(GenericLogic):
             raise KeyError(modname)
 
     def resumePauseTasks(self, ref):
+        """ Try resuming all tasks paused by the given task.
+          @param task ref: task object for which tasks should be resumed
+
+          @return bool: Whether resuming was sucessful
+        """
         return self._resumePauseTasks(self.getTaskByReference(ref))
 
     def _resumePauseTasks(self, task):
+        """ Try resuming all tasks paused by the given task.
+          @param dict task: dict for task that should be resumed
+
+          @return bool: whether resuming was successful
+        """
         for ptask in task['pausetasks']:
             # print(ptask)
             try:
@@ -306,9 +362,19 @@ class TaskRunner(GenericLogic):
         return True
 
     def postRunPPTasks(self, ref):
+        """ Try executing post action for preposttasks associated with a given task.
+          @param task ref: task object
+
+          @return bool: whether post actions were successful
+        """
         return self._postRunPPTasks(self.getTaskByReference(ref))
 
     def _postRunPPTasks(self, task):
+        """ Try executing post action for preposttasks associated with a given task.
+          @param dict task: task dictionary
+
+          @return bool: whether post actions were successful
+        """
         for pptask in task['preposttasks']:
             # print(pptask)
             try:
@@ -325,9 +391,19 @@ class TaskRunner(GenericLogic):
         return True
 
     def preRunPPTasks(self, ref):
+        """ Try running pre action of preposttask associated with given task.
+          @param task ref: task object
+
+          @return bool: whether pre tasks were successful
+        """
         return self._preRunPPTasks(self.getTaskByReference(ref))
 
     def _preRunPPTasks(self, task):
+        """ Try running pre action of preposttask associated with given task.
+          @param dict task: task dictionary
+
+          @return bool: whether pre tasks were successful
+        """
         for pptask in task['preposttasks']:
             #print(pptask)
             try:
@@ -345,9 +421,19 @@ class TaskRunner(GenericLogic):
                 return False
 
     def pausePauseTasks(self, ref):
+        """ Try pausing tasks required for starting a given task.
+          @param task ref: task object
+
+          @return bool: whether pausing tasks was successful
+        """
         return self._pausePauseTasks(self.getTaskByReference(ref))
 
     def _pausePauseTasks(self, task):
+        """ Try pausing tasks required for starting a given task.
+          @param dict task: task dictionary
+
+          @return bool: whether pausing tasks was successful
+        """
         for ptask in task['pausetasks']:
             #print(ptask)
             try:
