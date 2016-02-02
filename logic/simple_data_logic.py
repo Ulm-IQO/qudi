@@ -65,6 +65,7 @@ class SimpleDataLogic(GenericLogic):
 
     def startMeasure(self):
         self.buf = np.zeros(self.bufferLength)
+        self.lock()
         self.sigRepeat.emit()
 
     def stopMeasure(self):
@@ -73,10 +74,12 @@ class SimpleDataLogic(GenericLogic):
     def measureLoop(self):
         if self.stopRequest:
             self.stopRequest = False
+            self.unlock()
             return
 
-        data = self._data_logic.getData()
-        self.buf = np.roll(self.buf, -1)
-        self.buf[-1] = data
+        data = [i*self._data_logic.getData() for i in range(10)]
+
+        self.buf = np.roll(self.buf, -10)
+        self.buf[-11:-1] = data
         self.sigRepeat.emit()
 
