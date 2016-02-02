@@ -361,7 +361,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.ensemble_dir = ''
         self.sequence_dir = ''
 
-
         # =============== Setting the additional parameters ==================
 
         #FIXME: For now on, this settings will be done here, but a better
@@ -417,7 +416,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_sequence_list()
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
-        pass
+
+        self.set_pp_voltage(channel=0, voltage=self._pulse_generator_device.get_pp_voltage(channel=0))
+        self.set_pp_voltage(channel=1, voltage=self._pulse_generator_device.get_pp_voltage(channel=1))
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -484,7 +485,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.sample_rate = freq_Hz
         return 0
 
-    def set_pp_voltage(self, voltage):
+    def set_pp_voltage(self, channel, voltage):
         """ Sets the peak-to-peak output voltage of the pulse generator device.
 
         Additionally this value is updated in this logic. Only of importance
@@ -492,7 +493,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         peak-to-peak voltage.
         """
 
-        self._pulse_generator_device.set_pp_voltage(voltage)
+        self._pulse_generator_device.set_pp_voltage(channel, voltage)
         self.pp_voltage = voltage
         return 0
 
