@@ -57,18 +57,25 @@ class AWG5002C(Base, PulserInterface):
                         'the AWG5002C! Correct that!', msgType='error')
 
         if 'default_sample_rate' in config.keys():
-            self.samplingrate = config['default_sample_rate']
+            self.sample_rate = config['default_sample_rate']
         else:
             self.logMsg('No parameter "default_sample_rate" found in the '
                         'config for the AWG5002C! The maximum sample rate is '
                         'used instead.', msgType='warning')
-            self.samplingrate = self.get_constraints()['sample_rate'][1]
+            self.sample_rate = self.get_constraints()['sample_rate'][1]
 
         if 'awg_ftp_path' in config.keys():
             self.ftp_path = config['awg_ftp_path']
         else:
             self.logMsg('No parameter "awg_ftp_path" found in the config for '
                         'the AWG5002C! State the FTP folder of this device!',
+                        msgType='error')
+
+        if 'timeout' in config.keys():
+            self._timeout = config['timeout']
+        else:
+            self.logMsg('No parameter "timeout" found in the config for '
+                        'the AWG5002C! Take a default value of 10s.',
                         msgType='error')
 
 
@@ -89,7 +96,7 @@ class AWG5002C(Base, PulserInterface):
         self.connected = True
         # connect ethernet socket and FTP
         self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.settimeout(5)  # set the timeout to 5 seconds
+        self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
         self.soc.connect((self.ip_address, self.port))
         self.input_buffer = int(2 * 1024)   # buffer length for received text
 

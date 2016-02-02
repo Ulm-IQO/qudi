@@ -835,11 +835,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             # get the dict with all possible functions and their parameters:
             func_dict = self.get_func_config()
-            parameters ={}
+
 
             # get the proper pulse_functions and its parameters:
             pulse_function=[None]*self.analogue_channels
 
+            parameter_list =[None]*self.analogue_channels
 
             for num in range(self.analogue_channels):
                 pulse_function[num] = row[self.cfg_param_pbe['function_'+str(num)]].decode('UTF-8')
@@ -848,6 +849,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 # parameter with their names in list:
                 param_dict = func_dict[pulse_function[num]]
 
+                parameters = {}
                 for entry in list(param_dict):
 
                     # Obtain how the value is displayed in the table:
@@ -857,7 +859,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     if 'unit_prefix' in param_dict[entry]:
                         param_value = param_value*self._unit_prefix[param_dict[entry]['unit_prefix']]
                     parameters[entry] = param_value
-
+                parameter_list[num] = parameters
 
             marker_active = [None]*self.digital_channels
             for num in range(self.digital_channels):
@@ -872,7 +874,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         increment_bins=increment_bins,
                         pulse_function=pulse_function,
                         marker_active=marker_active,
-                        parameters=parameters)
+                        parameters=parameter_list)
 
         pb_obj = Pulse_Block(pb_name, pbe_obj_list, num_laser_pulses)
         self.save_block(pb_name, pb_obj)
