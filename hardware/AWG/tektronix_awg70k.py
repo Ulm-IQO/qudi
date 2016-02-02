@@ -46,10 +46,15 @@ class AWG70K(Base, PulserInterface):
                         'configuration.', msgType='error')
 
         if 'use_matlab_format' in config.keys():
-            self.use_matlab_format = config['use_matlab_format']
+            # self.use_matlab_format = config['use_matlab_format']
+            self.current_sample_mode = self.sample_mode['matlab']
         else:
-            self.use_matlab_format = False
+            # self.use_matlab_format = False
+            self.current_sample_mode = self.sample_mode['wfmx-file']
 
+
+        self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
+        # self.current_sample_mode = self.sample_mode['wfmx-file']
         self.sample_rate = 25e9
         self.pp_voltage = 0.5
         self.uploaded_sequence_list = []
@@ -141,7 +146,7 @@ class AWG70K(Base, PulserInterface):
         return constraints
 
     def _write_to_file(self, name, ana_samples, digi_samples, sampling_rate, pp_voltage):
-        if self.use_matlab_format:
+        if self.current_sample_mode == self.sample_mode['matlab']:
             matcontent = {}
             matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
             matcontent[u'Waveform_Data_1'] = ana_samples[0]
@@ -171,7 +176,7 @@ class AWG70K(Base, PulserInterface):
             if os.path.isfile(self.host_waveform_directory + filename):
                 os.remove(self.host_waveform_directory + filename)
             os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
-        else:
+        elif self.current_sample_mode == self.sample_mode['wfmx-file']:
             # create WFMX header and save each line of text in a list. Delete the temporary .xml file afterwards.
             header_obj = WFMX_header(sampling_rate, pp_voltage, 0, digi_samples.shape[1])
             header_obj.create_xml_file()
@@ -226,6 +231,11 @@ class AWG70K(Base, PulserInterface):
                         rest_start_ind = number_of_full_chunks*1e6
                         temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digi_samples[2*channel_number][rest_start_ind:])
                         wfmxfile.write(temp_markers)
+        else:
+            self.logMsg('Invalid sample mode for this device! Set a proper one'
+                        'for sampling the real data.',
+                        msgType='error')
+
         return 0
 
 
@@ -361,10 +371,14 @@ class AWG70K(Base, PulserInterface):
             self._write_to_file(waveform.name, waveform.analogue_samples, waveform.digital_samples, waveform.sampling_freq, waveform.pp_voltage)
 
             # TODO: Download waveform to AWG and load it into channels
-            if self.use_matlab_format:
+            if self.current_sample_mode == self.sample_mode['matlab']:
                 self.send_file(self.host_waveform_directory + waveform.name + '.mat')
-            else:
+            elif self.current_sample_mode == self.sample_mode['wfmx-file']:
                 self.send_file(self.host_waveform_directory + waveform.name + '.WFMX')
+            else:
+            self.logMsg('Invalid sample mode for this device! Set a proper one'
+                        'for sampling the real data.',
+                        msgType='error')
             self.load_sequence(waveform.name)
         return 0
 
