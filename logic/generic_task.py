@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi logic module base class.
+This file contains the QuDi task base classes.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.util.customexceptions import InterfaceImplementationError
@@ -36,6 +36,7 @@ class TaskResult(QtCore.QObject):
 class InterruptableTask(QtCore.QObject, Fysom):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
+        The task can also be paused, given that the preconditions for pausing are met.
     """
     sigDoStart = QtCore.Signal()
     sigStarted = QtCore.Signal()
@@ -53,6 +54,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
     requiredModules = []
 
     def __init__(self, name, runner, references, config):
+        """ Create an Interruptable task.
+          @param str name: unique task name
+          @param object runner: reference to the TaskRunner managing this task
+          @param dict references: a dictionary of all required modules
+          @param dict config: configuration dictionary
+        """
         QtCore.QObject.__init__(self)
         default_callbacks = {
                 'onrun': self._start,
