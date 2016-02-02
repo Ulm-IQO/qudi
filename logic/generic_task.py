@@ -107,6 +107,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def _start(self, e):
+        """ 
+        """
         self.result = TaskResult()
         if self.checkStartPrerequisites():
             #print('_run', QtCore.QThread.currentThreadId(), self.current)
@@ -234,6 +236,9 @@ class InterruptableTask(QtCore.QObject, Fysom):
         raise InterfaceImplementationError('cleanupTask needs to be implemented in subclasses!')
 
 class PrePostTask(QtCore.QObject, Fysom):
+    """ Represents a task that creates the necessary conditions for a different task
+        and reverses its own actions afterwards.
+    """
 
     sigPreExecStart = QtCore.Signal()
     sigPreExecFinish = QtCore.Signal()
@@ -244,6 +249,12 @@ class PrePostTask(QtCore.QObject, Fysom):
     requiredModules = []
 
     def __init__(self, name, runner, references, config):
+        """ Create a PrePostTask.
+          @param str name: unique name of the task
+          @param object runner: TaskRunner that manages this task
+          @param dict references: contains references to all required modules
+          @param dict config: configuration parameter dictionary
+        """
         QtCore.QObject.__init__(self)
         _default_callbacks = {'onprerun': self._pre, 'onpostrun': self._post}
         _stateList = {
@@ -262,9 +273,10 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.config = config
 
     def onchangestate(self, e):
-        """ Fysom callback for state transition.
-
+        """ Fysom callback for all state transitions.
           @param object e: Fysom state transition description
+
+          This just emits a signal so external components can react.
         """
         self.sigStateChanged.emit(e)
 
