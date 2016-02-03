@@ -24,10 +24,11 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 
 from core.base import Base
 from ctypes import c_long, c_buffer, c_float, windll, pointer
+from interface.motor_interface import MotorInterface
 import os
 
 
-class APTMotor(Base):
+class APTMotor(Base, MotorInterface):
 
     """Class to control Thorlabs APT motor.
 
@@ -234,7 +235,7 @@ class APTMotor(Base):
             print('getPos ', position.value)
         return position.value
 
-    def mRel(self, relDistance):
+    def move_rel(self, relDistance):
         '''
         Moves the motor a relative distance specified
         @param relDistance    float     Relative position desired
@@ -357,3 +358,7 @@ class APTMotor(Base):
         if self.verbose:
             print('APT cleaned up')
         self.Connected = False
+
+    def abort(self):
+        self.logMsg('The APT motor cannot abort.  Please wait for it to finish moving.',
+                    msgType='warning')
