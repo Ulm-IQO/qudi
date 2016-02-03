@@ -199,7 +199,6 @@ class ConfocalLogic(GenericLogic):
 
     # declare connectors
     _in = { 'confocalscanner1': 'ConfocalScannerInterface',
-            'odmrlogic1' : 'ODMRLogic',
             'savelogic': 'SaveLogic'
             }
     _out = {'scannerlogic': 'ConfocalLogic'}
@@ -238,7 +237,6 @@ class ConfocalLogic(GenericLogic):
         self.stopRequested = False
         self.yz_instead_of_xz_scan = False
         self.permanent_scan = False
-        self.difference_scan = False
 
 
     def activation(self, e):
@@ -250,7 +248,6 @@ class ConfocalLogic(GenericLogic):
 #        print("Scanning device is", self._scanning_device)
 
         self._save_logic = self.connector['in']['savelogic']['object']
-        self._odmr_logic = self.connector['in']['odmrlogic1']['object']
 
         #default values for clock frequency and slowness
         #slowness: steps during retrace line
@@ -664,18 +661,7 @@ class ConfocalLogic(GenericLogic):
                                image[self._scan_counter, :, 2],
                                self._AL) )
             # scan of a single line
-            if self.difference_scan:
-                self._odmr_logic.MW_on() # firstly with MW on
-                #time.sleep(2)
-                line_counts_mw_on = self._scanning_device.scan_line(line)
-
-                self._odmr_logic.MW_off() # then with MW off
-                #time.sleep(2)
-                line_counts_mw_off = self._scanning_device.scan_line(line)
-
-                line_counts = line_counts_mw_on / line_counts_mw_off
-            else:
-                line_counts = self._scanning_device.scan_line(line)
+            line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
             if not self.yz_instead_of_xz_scan:
                 return_line = np.vstack((
