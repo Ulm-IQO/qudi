@@ -1,5 +1,24 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains a gui to show data from a simple data source.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
+"""
+
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
 from collections import OrderedDict
@@ -7,7 +26,6 @@ import numpy as np
 import pyqtgraph as pg
 import os
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 class SimpleMainWindow(QtGui.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
@@ -67,10 +85,14 @@ class SimpleDataGui(GUIBase):
         self.plot1 = self._pw.plotItem
         self.plot1.setLabel('left', 'Some Value', units='some unit', color='#00ff00')
         self.plot1.setLabel('bottom', 'Number of values', units='some unit')
+        self.plot2 = self._pw.plotItem
+        self.plot2.setLabel('right', 'Smooth Value', units='some unit', color='#ff0000')
 
         ## Create an empty plot curve to be filled later, set its pen
         self._curve1 = self.plot1.plot()
         self._curve1.setPen('g')
+        self._curve2 = self.plot2.plot()
+        self._curve2.setPen('r', width=2)
 
         # make correct button state
         self._mw.startAction.setChecked(False)
@@ -102,8 +124,12 @@ class SimpleDataGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
         self._curve1.setData(
-            y=self._simple_logic.buf,
-            x=np.arange(0, len(self._simple_logic.buf))
+            y=self._simple_logic.buf[0:-11],
+            x=np.arange(0, len(self._simple_logic.buf[0:-11]))
+            )
+        self._curve2.setData(
+            y=self._simple_logic.smooth[24:-25-10],
+            x=np.arange(0, len(self._simple_logic.smooth[24:-25-10]))
             )
 
         if self._simple_logic.getState() == 'locked':
