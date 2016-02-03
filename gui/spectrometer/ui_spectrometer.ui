@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -61,6 +61,7 @@
    <addaction name="rec_single_spectrum_Action"/>
    <addaction name="start_diff_spec_Action"/>
    <addaction name="stop_diff_spec_Action"/>
+   <addaction name="resume_diff_spec_Action"/>
   </widget>
   <widget class="QToolBar" name="file_ToolBar">
    <property name="windowTitle">
@@ -110,6 +111,14 @@
   <action name="save_spectrum_Action">
    <property name="text">
     <string>Save spectrum</string>
+   </property>
+  </action>
+  <action name="resume_diff_spec_Action">
+   <property name="text">
+    <string>Resume differential</string>
+   </property>
+   <property name="toolTip">
+    <string>resume a differential spectrum which was stopped</string>
    </property>
   </action>
  </widget>

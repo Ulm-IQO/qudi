@@ -135,6 +135,15 @@ class SpectrumLogic(GenericLogic):
         # Starting the measurement loop
         self._loop_differential_spectrum()
 
+    def resume_differential_spectrum(self):
+        """Resume a differential spectrum acquisition.
+        """
+
+        self._continue_differential = True
+
+        # Starting the measurement loop
+        self._loop_differential_spectrum()
+
     def _loop_differential_spectrum(self):
         """ This loop toggles the modulation and iteratively records a differential spectrum.
         """
