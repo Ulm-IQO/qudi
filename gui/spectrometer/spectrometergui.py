@@ -51,6 +51,7 @@ class SpectrometerGui(GUIBase):
         self._mw = SpectrometerWindow()
 
         self._mw.stop_diff_spec_Action.setEnabled(False)
+        self._mw.resume_diff_spec_Action.setEnabled(False)
 
         # giving the plots names allows us to link their axes together
         self._pw = self._mw.plotWidget  # pg.PlotWidget(name='Counter1')
@@ -81,6 +82,8 @@ class SpectrometerGui(GUIBase):
         self._mw.rec_single_spectrum_Action.triggered.connect(self.record_single_spectrum)
         self._mw.start_diff_spec_Action.triggered.connect(self.start_differential_measurement)
         self._mw.stop_diff_spec_Action.triggered.connect(self.stop_differential_measurement)
+        self._mw.resume_diff_spec_Action.triggered.connect(self.resume_differential_measurement)
+
         self._mw.save_spectrum_Action.triggered.connect(self.save_spectrum_data)
 
         self._spectrum_logic.sig_specdata_updated.connect(self.updateData)
@@ -123,6 +126,7 @@ class SpectrometerGui(GUIBase):
         self._mw.stop_diff_spec_Action.setEnabled(True)
         self._mw.start_diff_spec_Action.setEnabled(False)
         self._mw.rec_single_spectrum_Action.setEnabled(False)
+        self._mw.resume_diff_spec_Action.setEnabled(False)
 
         self._spectrum_logic.start_differential_spectrum()
 
@@ -133,6 +137,16 @@ class SpectrometerGui(GUIBase):
         self._mw.stop_diff_spec_Action.setEnabled(False)
         self._mw.start_diff_spec_Action.setEnabled(True)
         self._mw.rec_single_spectrum_Action.setEnabled(True)
+        self._mw.resume_diff_spec_Action.setEnabled(True)
+
+    def resume_differential_measurement(self):
+        self._spectrum_logic.resume_differential_spectrum()
+
+        # Change enabling of GUI actions
+        self._mw.stop_diff_spec_Action.setEnabled(True)
+        self._mw.start_diff_spec_Action.setEnabled(False)
+        self._mw.rec_single_spectrum_Action.setEnabled(False)
+        self._mw.resume_diff_spec_Action.setEnabled(False)
 
     def save_spectrum_data(self):
         self._spectrum_logic.save_spectrum_data()
