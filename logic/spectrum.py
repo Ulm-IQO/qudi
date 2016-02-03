@@ -82,8 +82,23 @@ class SpectrumLogic(GenericLogic):
         if self.getState() != 'idle' and self.getState() != 'deactivated':
             pass
 
+    def replace_data_with_local_float64(self, data):
+        """When using spectrometer hardware on a remote Win32 platform,
+        the returned float64 data array is strangely incompatible with
+        numpy and pyqtgraph functions in the local win64 system.
+        This is a fix for now.
+        """
+
+        newdata = np.array([[0.0]*len(data[0,:])]*len(data))
+
+        for i in xrange(0,len(data)):
+            for j in xrange(0,len(data[0,:])):
+                newdata[i,j] = data[i,j]
+
+        return newdata
+
     def get_single_spectrum(self):
-        self.spectrum_data = self._spectrometer_device.recordSpectrum()
+        self.spectrum_data = self.replace_data_with_local_float64(self._spectrometer_device.recordSpectrum())
 
         # Clearing the differential spectra data arrays so that they do not get
         # saved with this single spectrum.
@@ -106,7 +121,7 @@ class SpectrumLogic(GenericLogic):
         self._continue_differential = True
 
         # Taking a demo spectrum gives us the wavelength values and the length of the spectrum data.
-        demo_data = self._spectrometer_device.recordSpectrum()
+        demo_data = self.replace_data_with_local_float64(self._spectrometer_device.recordSpectrum())
 
         wavelengths = demo_data[0, :]
         empty_signal = np.zeros(len(wavelengths))
@@ -133,12 +148,12 @@ class SpectrumLogic(GenericLogic):
 
         # Toggle on, take spectrum and add data to the mod_on data
         self.toggle_modulation(on=True)
-        these_data = self._spectrometer_device.recordSpectrum()
+        these_data = self.replace_data_with_local_float64(self._spectrometer_device.recordSpectrum())
         self.diff_spec_data_mod_on[1, :] += these_data[1, :]
 
         # Toggle off, take spectrum and add data to the mod_off data
         self.toggle_modulation(on=False)
-        these_data = self._spectrometer_device.recordSpectrum()
+        these_data = self.replace_data_with_local_float64(self._spectrometer_device.recordSpectrum())
         self.diff_spec_data_mod_off[1, :] += these_data[1, :]
 
         self.repetition_count += 1    # increment the loop count
