@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 This file contains the QuDi task base classes.
 
@@ -107,7 +108,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def _start(self, e):
-        """ 
+        """  
+          @param object e: Fysom state transition description
+
+          @return bool: True if task was started, False otherwise
         """
         self.result = TaskResult()
         if self.checkStartPrerequisites():
@@ -119,6 +123,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
             return False
 
     def _doStart(self):
+        """  
+        """
         try:
             #print('dostart', QtCore.QThread.currentThreadId(), self.current)
             self.runner.pausePauseTasks(self)
@@ -132,6 +138,8 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
     
     def _doTaskStep(self):
+        """  
+        """
         try:
             if self.runTaskStep():
                 if self.isstate('pausing') and self.checkPausePrerequisites():
@@ -150,9 +158,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigDoFinish.emit()
                 
     def _pause(self, e):
+        """  
+        """
         pass
 
     def _doPause(self):
+        """  
+        """
         try:
             self.pauseTask()
             self.runner.postRunPPTasks(self)
@@ -163,9 +175,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
         
     def _resume(self, e):
-            self.sigDoResume.emit()
+        """  
+        """
+        self.sigDoResume.emit()
 
     def _doResume(self):
+        """  
+        """
         try:
             self.runner.preRunPPTasks(self)
             self.resumeTask()
@@ -177,9 +193,13 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
 
     def _finish(self, e):
+        """  
+        """
         pass
 
     def _doFinish(self):
+        """  
+        """
         self.cleanupTask()
         self.runner.resumePauseTasks(self)
         self.runner.postRunPPTasks(self)
@@ -187,6 +207,11 @@ class InterruptableTask(QtCore.QObject, Fysom):
         self.sigFinished.emit()
 
     def checkStartPrerequisites(self):
+        """ Check whether this task can be started by checking if all tasks to be paused are either stopped or can be paused.
+            Also check custom prerequisites.
+
+          @return bool: True if task can be stated, False otherwise
+        """
         for task in self.prePostTasks:
             if not ( isinstance(self.prePostTasks[task], PrePostTask) and self.prePostTasks[task].can('prerun') ):
                 self.log('Cannot start task {} as pre/post task {} is not in a state to run.'.format(self.name, task), msgType='error')
@@ -204,9 +229,16 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkExtraStartPrerequisites(self):
+        """ If yout task has extra prerequisites that are not covered by checking if a certain task can be paused,
+            ovewrite this function when subclassing. 
+
+          @return bool: return True if task can be started, False otherwise
+        """
         return True
 
     def checkPausePrerequisites(self):
+        """  
+        """
         try:
             return self.checkExtraPausePrerequisites()
         except Exception as e:
@@ -214,6 +246,10 @@ class InterruptableTask(QtCore.QObject, Fysom):
             return False
 
     def checkExtraPausePrerequisites(self):
+        """ If yout task has prerequisites for pausing, overwrite this function when subclassing and put the check here.
+
+          @return bool: return True if task can be paused right now, False otherwise
+        """
         return True
 
     def canPause(self):
@@ -281,12 +317,22 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.sigStateChanged.emit(e)
 
     def preExecute(self):
+        """ This method contains any action that should be done before some task.
+            It needs to be overwritten in every subclass.
+        """
         raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
 
     def postExecute(self):
+        """ This method needs to undo any actions in preExecute() after a task has been finished.
+            It needs to be overwritten in every subclass.
+        """
         raise InterfaceImplementationError('preExecute may need to be implemented in subclasses!')
 
     def _pre(self, e):
+        """ Actually call preExecute with the appropriate safeguards amd emit singals before and afterwards.
+
+          @param object e: Fysom state transition description
+        """
         self.sigPreExecStart.emit()
         try:
             self.preExecute()
@@ -296,6 +342,10 @@ class PrePostTask(QtCore.QObject, Fysom):
         self.sigPreExecFinish.emit()
 
     def _post(self, e):
+        """ Actually call postExecute with the appropriate safeguards amd emit singals before and afterwards.
+
+          @param object e: Fysom state transition description
+        """
         self.sigPostExecStart.emit()
         try:
             self.postExecute()
