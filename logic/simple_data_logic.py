@@ -53,7 +53,7 @@ class SimpleDataLogic(GenericLogic):
         """
         self._data_logic = self.connector['in']['simpledata']['object']
         self.stopRequest = False
-        self.bufferLength = 100
+        self.bufferLength = 1000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
@@ -61,25 +61,34 @@ class SimpleDataLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
-        pass
+        self.stopMeasure()
 
     def startMeasure(self):
+        """ Start measurement: zero the buffer and call loop function."""
         self.buf = np.zeros(self.bufferLength)
+        self.smooth = np.zeros(self.bufferLength)
         self.lock()
         self.sigRepeat.emit()
 
     def stopMeasure(self):
+        """ Ask the measurement loop to stop. """
         self.stopRequest = True
 
     def measureLoop(self):
+        """ Measure 10 values, add them to buffer and remove the 10 oldest values.
+        """
         if self.stopRequest:
             self.stopRequest = False
             self.unlock()
             return
 
-        data = [i*self._data_logic.getData() for i in range(10)]
+        data = [self._data_logic.getData() for i in range(10)]
 
         self.buf = np.roll(self.buf, -10)
         self.buf[-11:-1] = data
+        window_len = 50
+        w = np.hanning(window_len)
+        s = np.r_[self.buf[window_len-1:0:-1], self.buf, self.buf[-1:-window_len:-1]]
+        self.smooth = np.convolve(w/w.sum(), s, mode='valid')
         self.sigRepeat.emit()
 
