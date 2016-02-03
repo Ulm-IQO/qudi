@@ -36,5 +36,7 @@ class SimpleAcq(Base, SimpleDataInterface):
 
 
     def getData(self):
-        return int(my_instrument.read_raw().decode('utf-8').rstrip())
-
+        try:
+            return int(self.my_instrument.read_raw().decode('utf-8').rstrip())
+        except:
+            return 0
