@@ -26,6 +26,7 @@ from core.base import Base
 from ctypes import c_long, c_buffer, c_float, windll, pointer
 from interface.motor_interface import MotorInterface
 import os
+import platform
 
 
 class APTMotor(Base, MotorInterface):
@@ -69,7 +70,13 @@ class APTMotor(Base, MotorInterface):
         self.blCorr = 0.10  # 100um backlash correction
 
         # Load DLL
-        self.aptdll = windll.LoadLibrary(os.path.join(self.get_main_dir(), 'thirdparty', 'thorlabs', 'APT.dll'))
+        if platform.architecture()[0] == '64bit':
+            self.aptdll = windll.LoadLibrary(os.path.join(self.get_main_dir(), 'thirdparty', 'thorlabs', 'win64', 'APT.dll'))
+        elif platform.architecture()[0] == '32bit':
+            self.aptdll = windll.LoadLibrary(os.path.join(self.get_main_dir(), 'thirdparty', 'thorlabs', 'win64', 'APT.dll'))
+        else:
+            self.logMsg('Unknown platform, cannot load the Thorlabs dll.', msgType='error')
+
         self.aptdll.EnableEventDlg(True)
         self.aptdll.APTInit()
 
