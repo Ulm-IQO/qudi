@@ -38,7 +38,20 @@ class InterruptableTask(QtCore.QObject, Fysom):
     """ This class represents a task in a module that can be safely executed by checking preconditions
         and pausing other tasks that are being executed as well.
         The task can also be paused, given that the preconditions for pausing are met.
-    """
+        
+        State diagram for InterruptableTask:
+
+        stopped -> starting -----------> running ---------> finishing -*
+           ^          |            _______|   ^_________               |
+           |<---------*            v                   |               |
+           |                   pausing -> paused -> resuming           |
+           |______________________|____________________|_______________|
+
+        Each state has a transition state that allow for checks, synchronizatuion and for parts of the task
+        to influence its own execution via signals.
+        This also allows the TaskRunner to be informed about what the task is doing and ensuring that a task
+        is executed in the correct thread.
+        """
     sigDoStart = QtCore.Signal()
     sigStarted = QtCore.Signal()
     sigNextTaskStep = QtCore.Signal()
@@ -123,7 +136,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             return False
 
     def _doStart(self):
-        """  
+        """ Starting prerequisites were met, now do the actual start action.
         """
         try:
             #print('dostart', QtCore.QThread.currentThreadId(), self.current)
@@ -138,7 +151,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
     
     def _doTaskStep(self):
-        """  
+        """ Check for state transitions to pause or stop and execute one step of the task work function.
         """
         try:
             if self.runTaskStep():
@@ -158,12 +171,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.sigDoFinish.emit()
                 
     def _pause(self, e):
-        """  
+        """ This does nothing, it is up to the TaskRunner to check that pausing is allowed and triger the next step. 
         """
         pass
 
     def _doPause(self):
-        """  
+        """ Prerequisites for pausing were checked by Task runner and met, so execute the actual pausing action.
         """
         try:
             self.pauseTask()
@@ -175,12 +188,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
         
     def _resume(self, e):
-        """  
+        """ Trigger resuming action.
         """
         self.sigDoResume.emit()
 
     def _doResume(self):
-        """  
+        """ Actually execute resuming action.
         """
         try:
             self.runner.preRunPPTasks(self)
@@ -193,12 +206,12 @@ class InterruptableTask(QtCore.QObject, Fysom):
             self.result.update(None, False)
 
     def _finish(self, e):
-        """  
+        """ Do nothing, it is up to the TaskRunner to trigger the next step.
         """
         pass
 
     def _doFinish(self):
-        """  
+        """ Actually finish execution.
         """
         self.cleanupTask()
         self.runner.resumePauseTasks(self)
@@ -237,7 +250,7 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkPausePrerequisites(self):
-        """  
+        """ Check if task is allowed to pause based on external state.
         """
         try:
             return self.checkExtraPausePrerequisites()
@@ -253,22 +266,36 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def canPause(self):
+        """ Check if task can pause based on its own state only.
+        """
         return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
 
     def startTask(self):
+        """ Implement the operation to start your task here.
+        """
         raise InterfaceImplementationError('startTask needs to be implemented in subclasses!')
 
     def runTaskStep(self):
+        """ Implement one work step of your task here.
+          @return bool: True if the task should continue running, False if it should finish.
+        """
         raise InterfaceImplementationError('runTaskStep needs to be implemented in subclasses!')
         return False
 
     def pauseTask(self):
+        """ Implement the operations necessary to pause your task here.
+        """
         raise InterfaceImplementationError('pauseTask may need to be implemented in subclasses!')
 
     def resumeTask(self):
+        """ Implement the operations necessary to resume your task from being paused here.
+        """
         raise InterfaceImplementationError('resumeTask may need to be implemented in subclasses!')
 
     def cleanupTask(self):
+        """ If your task leaves behind any undesired state, take care to remove it in this function.
+            It is called after a task has finished.
+        """
         raise InterfaceImplementationError('cleanupTask needs to be implemented in subclasses!')
 
 class PrePostTask(QtCore.QObject, Fysom):
