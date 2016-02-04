@@ -52,6 +52,8 @@ class APTMotor(Base, MotorInterface):
 
     _modclass = 'motorinterface'
     _modtype = 'hardware'
+
+    # connectors
     _out = {'aptmotor': 'MotorInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
