@@ -51,6 +51,12 @@ class GenericLogic(Base):
         return self._manager.tm._threads['mod-logic-' + self._name].thread
 
     def getTaskRunner(self):
+        """ Get a reference to the task runner module registered in the manager.
+
+          @return object: reference to task runner
+
+          If there isno registered task runner, an exception is raised.
+        """
         with self._manager.lock:
             if self._manager.tr is not None:
                 return self._manager.tr
