@@ -21,6 +21,8 @@ from win32com.client import constants
 from ctypes import byref, pointer, c_long, c_float, c_bool
 from time import strftime, localtime
 
+import datetime
+
 ctc.GetModule( ('{1A762221-D8BA-11CF-AFC2-508201C10000}', 3, 11) )
 import comtypes.gen.WINX32Lib as WinSpecLib
 
@@ -103,8 +105,9 @@ class WinSpec32(Base, SpectrometerInterface):
             return {'wavelength': [0], 'intensity': [0]}
 
     def saveSpectrum(self, path, postfix = ''):
+        savetime=datetime.datetime.now()
         w32c.pythoncom.CoInitialize()
-        timestr = strftime("%Y%m%d-%H%M-%S_", localtime())
+        timestr = savetime.strftime("%Y%m%d-%H%M-%S-%f_")
         self.WinspecDoc.SetParam(
             WinSpecLib.DM_FILENAME,
             str(path) + timestr + str(postfix) + ".spe"
