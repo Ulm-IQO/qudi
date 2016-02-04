@@ -250,29 +250,29 @@ class APTMotor(Base, MotorInterface):
         @param relDistance    float     Relative position desired
         '''
         if self.verbose:
-            print('mRel ', relDistance, c_float(relDistance))
+            print('move_rel ', relDistance, c_float(relDistance))
         if not self.Connected:
             # TODO: This should use our error message system
             print('Please connect first! Use initializeHardwareDevice')
         relativeDistance = c_float(relDistance)
         self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, True)
         if self.verbose:
-            print('mRel SUCESS')
+            print('move_rel SUCESS')
         return True
 
-    def mAbs(self, absPosition):
+    def move_abs(self, absPosition):
         '''
         Moves the motor to the Absolute position specified
         absPosition    float     Position desired
         '''
         if self.verbose:
-            print('mAbs ', absPosition, c_float(absPosition))
+            print('move_abs ', absPosition, c_float(absPosition))
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         absolutePosition = c_float(absPosition)
         self.aptdll.MOT_MoveAbsoluteEx(self.SerialNum, absolutePosition, True)
         if self.verbose:
-            print('mAbs SUCESS')
+            print('move_abs SUCESS')
         return True
 
     def mcRel(self, relDistance, moveVel=0.5):
@@ -289,7 +289,7 @@ class APTMotor(Base, MotorInterface):
         maxVel = self.getVels()
         # Set new desired max velocity
         self.setVel(moveVel)
-        self.mRel(relDistance)
+        self.move_rel(relDistance)
         self.setVel(maxVel)
         if self.verbose:
             print('mcRel SUCESS')
@@ -309,7 +309,7 @@ class APTMotor(Base, MotorInterface):
         minVel, acc, maxVel = self.getVelocityParameters()
         # Set new desired max velocity
         self.setVel(moveVel)
-        self.mAbs(absPosition)
+        self.move_rel(absPosition)
         self.setVel(maxVel)
         if self.verbose:
             print('mcAbs SUCESS')
@@ -325,8 +325,8 @@ class APTMotor(Base, MotorInterface):
         if not self.Connected:
             # TODO: This should use our error message system
             print('Please connect first! Use initializeHardwareDevice')
-        self.mRel(relDistance - self.blCorr)
-        self.mRel(self.blCorr)
+        self.move_rel(relDistance - self.blCorr)
+        self.move_rel(self.blCorr)
         if self.verbose:
             print('mbRel SUCESS')
         return True
@@ -342,9 +342,9 @@ class APTMotor(Base, MotorInterface):
             raise Exception('Please connect first! Use initializeHardwareDevice')
         if (absPosition < self.getPos()):
             if self.verbose:
-                print('backlash mAbs', absPosition - self.blCorr)
-            self.mAbs(absPosition - self.blCorr)
-        self.mAbs(absPosition)
+                print('backlash move_rel', absPosition - self.blCorr)
+            self.move_rel(absPosition - self.blCorr)
+        self.move_rel(absPosition)
         if self.verbose:
             print('mbAbs SUCESS')
         return True
