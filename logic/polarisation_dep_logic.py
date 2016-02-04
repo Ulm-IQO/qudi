@@ -36,7 +36,7 @@ class PolarisationDepLogic(GenericLogic):
     ## declare connectors
     _in = { 'counter1': 'SlowCounterInterface',
             'savelogic': 'SaveLogic',
-            'motor1':'MotorInterface'
+            'motor':'MotorInterface'
             }
     _out = {'polarisationdeplogic': 'PolarisationDepLogic'}
 
@@ -63,6 +63,8 @@ class PolarisationDepLogic(GenericLogic):
 
         self._save_logic = self.connector['in']['savelogic']['object']
 
+        self._hwpmotor = self.connector['in']['motor']['object']
+
 
 
     def deactivation(self, e):
@@ -73,4 +75,7 @@ class PolarisationDepLogic(GenericLogic):
         return
  
     def measure_polarisation_dependence(self):
-        pass
+        """Do a simple pol dep measurement.
+        """
+
+        self._hwpmotor.move_abs(0)
