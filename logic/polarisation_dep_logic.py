@@ -34,11 +34,13 @@ class PolarisationDepLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counter1': 'SlowCounterInterface',
+    _in = { 'countergui': 'CounterGui',
             'savelogic': 'SaveLogic',
             'motor':'MotorInterface'
             }
     _out = {'polarisationdeplogic': 'PolarisationDepLogic'}
+
+    signal_rotation_finished = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -58,13 +60,19 @@ class PolarisationDepLogic(GenericLogic):
           @param object e: Fysom state change event
         """
 
-        self._counting_device = self.connector['in']['counter1']['object']
+        self._counter_gui = self.connector['in']['counterlogic']['object']
 #        print("Counting device is", self._counting_device)
 
         self._save_logic = self.connector['in']['savelogic']['object']
 
         self._hwpmotor = self.connector['in']['motor']['object']
 
+        # Initialise measurement parameters
+        self.scan_length = 36
+        self.scan_speed = 10
+
+        # Connect signals
+        self.signal_rotation_finished.connet(self.finish_scan, QtCore.Qt.QueuedConnection)
 
 
     def deactivation(self, e):
@@ -78,4 +86,22 @@ class PolarisationDepLogic(GenericLogic):
         """Do a simple pol dep measurement.
         """
 
+        # Set up measurement
         self._hwpmotor.move_abs(0)
+
+        # configure the countergui
+
+
+
+
+
+        self._counter_gui.save_clicked()
+
+    def rotate_polarisation(self):
+        self._hwpmotor.move_rel(self.scan_length)
+
+        self.signal_rotation_finished.emit
+
+    def finish_scan(self):
+        self._counter_gui.save_clicked()
+        self._counter_gui.start_clicked()

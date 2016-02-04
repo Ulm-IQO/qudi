@@ -57,45 +57,16 @@ class MotorInterface():
         return -1
         
     #Why not calibrate all together using None    
-    def calibrate_x(self):
-        """Calibrates the x-direction of the stage. 
-        For this it moves to the point zero in x.
+    def calibrate(self):
+        """Calibrates the stage.
+        For this it moves to the point zero.
         
         @return int: error code (0:OK, -1:error)
         """
         raise InterfaceImplementationError('MagnetStageInterface>calibrate_x')
         return -1
             
-    
-    def calibrate_y(self):
-        """Calibrates the y-direction of the stage. 
-        For this it moves to the point zero in y.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate_y')
-        return -1
-            
-    
-    def calibrate_z(self):
-        """Calibrates the z-direction of the stage. 
-        For this it moves to the point zero in z.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate_z')
-        return -1
-    
-            
-    def calibrate_phi(self):
-        """Calibrates the phi-direction of the stage. 
-        For this it turns to the point zero in phi.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate_phi')
-        return -1
-    
+
     #FIXME: x as default value. See set_velocity below.
     #FIXME: Does returning an array with all velocities simplify this?
     def get_velocity(self, dimension = ''):
