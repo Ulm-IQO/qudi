@@ -79,36 +79,15 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def download_waveform(self, waveform, write_to_file=True):
-        """ Convert the pre-sampled numpy array to a specific hardware file.
+    def upload_asset(self, name):
+        """
+        Waveform or sequence with name "name" gets uploaded to the Hardware.
 
-        @param Waveform() waveform: The raw sampled pulse sequence.
-        @param bool write_to_file: Flag to indicate if the samples should be
-                                   written to a file (= True) or uploaded
-                                   directly to the pulse generator channels
-                                   (= False).
+        @param str name: The name of the sequence/waveform to be transfered
 
         @return int: error code (0:OK, -1:error)
-
-        Brings the numpy arrays containing the samples in the Waveform() object
-        into a format the hardware understands. Optionally this is then saved
-        in a file. Afterwards they get downloaded to the Hardware.
         """
-        raise InterfaceImplementationError('PulserInterface>download_sequence')
-        return -1
-
-    def send_file(self, filepath):
-        """ Sends an already hardware specific waveform file to the pulse
-            generators waveform directory.
-
-        @param string filepath: The file path of the source file
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
-        """
-        raise InterfaceImplementationError('PulserInterface>send_file')
+        raise InterfaceImplementationError('PulserInterface>upload_asset')
         return -1
 
     def load_asset(self, asset_name, channel=None):
@@ -123,7 +102,7 @@ class PulserInterface():
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>load_sequence')
+        raise InterfaceImplementationError('PulserInterface>load_asset')
         return -1
 
     def clear_all(self):
@@ -222,19 +201,19 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>get_active_channels')
         return (-1, -1)
 
-    def get_downloaded_sequence_names(self):
-        """ Retrieve the names of all downloaded sequences on the device.
+    def get_uploaded_assets_names(self):
+        """ Retrieve the names of all uploaded assets on the device.
 
-        @return list: List of sequence name strings
+        @return list: List of asset name strings
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
         names = []
-        raise InterfaceImplementationError('PulserInterface>get_sequence_names')
+        raise InterfaceImplementationError('PulserInterface>get_uploaded_assets_names')
         return names
 
-    def get_saved_sequence_names(self):
+    def get_saved_assets_names(self):
         """ Retrieve the names of all sampled and saved sequences on the host PC.
 
         @return list: List of sequence name strings
