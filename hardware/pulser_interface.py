@@ -79,7 +79,7 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def download_waveform(self, waveform, write_to_file = True):
+    def download_waveform(self, waveform, write_to_file=True):
         """ Convert the pre-sampled numpy array to a specific hardware file.
 
         @param Waveform() waveform: The raw sampled pulse sequence.
@@ -174,19 +174,24 @@ class PulserInterface():
         return -1
 
     def set_pp_voltage(self, channel, voltage):
-        """ Set the peak-to-peak voltage of the pulse generator hardware analogue channels.
-        Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
+        """ Set the peak-to-peak voltage of the pulse generator hardware
+        analogue channels.
 
         @param int channel: The channel to be reconfigured
-        @param float voltage: The peak-to-peak amplitude the channel should be set to (in V)
+        @param float voltage: The peak-to-peak amplitude the channel should be
+                              set to (in V)
 
         @return int: error code (0:OK, -1:error)
+
+        Unused for purely digital hardware without logic level setting
+        capability (DTG, FPGA, etc.).
         """
         raise InterfaceImplementationError('PulserInterface>set_pp_voltage')
         return -1
 
     def get_pp_voltage(self, channel):
-        """ Get the peak-to-peak voltage of the pulse generator hardware analogue channels.
+        """ Get the peak-to-peak voltage of the pulse generator hardware
+        analogue channels.
 
         @param int channel: The channel to be checked
 
@@ -278,7 +283,8 @@ class PulserInterface():
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
-        @param bool state: The state the interleave should be set to (True: ON, False: OFF)
+        @param bool state: The state the interleave should be set to
+                           (True: ON, False: OFF)
 
         @return int: error code (0:OK, -1:error)
 

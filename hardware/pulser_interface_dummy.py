@@ -63,7 +63,31 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.current_sample_mode = self.sample_mode['wfmx-file']
 
         self.awg_waveform_directory = '/waves'
-        self.host_waveform_directory = 'C:/software/qudi/trunk/waveforms/'
+
+        if 'pulsed_file_dir' in config.keys():
+            self.pulsed_file_dir = config['pulsed_file_dir']
+
+            if not os.path.exists(self.pulsed_file_dir):
+
+                homedir = self.get_home_dir()
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+                self.logMsg('The directort defined in "pulsed_file_dir" in the'
+                        'config for SequenceGeneratorLogic class does not '
+                        'exist!\nThe default home directory\n{0}\n will be '
+                        'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
+        else:
+            homedir = self.get_home_dir()
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+            self.logMsg('No directory with the attribute "pulsed_file_dir"'
+                        'is defined for the SequenceGeneratorLogic!\nThe '
+                        'default home directory\n{0}\n will be taken '
+                        'instead.'.format(self.pulsed_file_dir), msgType='warning')
+
+        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
+
+        # self.host_waveform_directory = 'C:\\Users\\astark\\Dropbox\\Doctorwork\\Software\\QuDi\\trunk\\waveforms\\'
+        # self.host_waveform_directory = 'C:\\'
+
         self.connected = False
         self.amplitude = 0.25
         self.sample_rate = 25e9
@@ -74,7 +98,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.pp_voltage = 0.25
 
         # settings for remote access on the AWG PC
-        self.sequence_directory = '/waves'
+        self.sequence_directory = '\\waves'
 
         # AWG5002C has possibility for sequence output
         self.use_sequencer = True
@@ -83,6 +107,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.interleave = False
 
         self.current_status =  0    # that means off, not running.
+
+        self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
 
     def activation(self, e):
         self.connected = True
@@ -290,8 +316,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
                     # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
                     wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
 
-                    marker1 = digi_samples[channel_index*2]
-                    marker2 = digi_samples[channel_index*2+1]
+                    # marker1 =
+                    # marker2 = digi_samples[channel_index*2+1]
 
                     # marker = np.zeros(len(marker1),dtype='c')
 
@@ -299,21 +325,26 @@ class PulserInterfaceDummy(Base, PulserInterface):
                     #       appending the marker array. A much nicer way
                     #       should be implemented!!!
 
-                    for index in range(len(marker1)):
-                        test_val = marker1[index] + marker2[index]
-                        if marker1[index] and marker2[index]:
-                            wavetmp[index,-1] = b'\x03'
-                        elif marker1[index] and not marker2[index]:
-                            wavetmp[index,-1] = b'\x01'
-                        elif not marker1[index] and marker2[index]:
-                            wavetmp[index,-1] = b'\x02'
-                        else:
-                            wavetmp[index,-1] = b'\x00'
+                    marker = digi_samples[channel_index*2] + digi_samples[channel_index*2+1]*2
 
-                    # marker = { 0:'\x00',1:'\x01', 2:'\x02', 3:'\x03'}[marker]
+                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
+                    # for index in range(len(marker1)):
+                    #     test_val = marker1[index] + marker2[index]
+                    #     if marker1[index] and marker2[index]:
+                    #         wavetmp[index,-1] = b'\x03'
+                    #     elif marker1[index] and not marker2[index]:
+                    #         wavetmp[index,-1] = b'\x01'
+                    #     elif not marker1[index] and marker2[index]:
+                    #         wavetmp[index,-1] = b'\x02'
+                    #     else:
+                    #         wavetmp[index,-1] = b'\x00'
+
+                    # [marker]
+
 
 
                     # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
+                    wavetmp[:,-1] = marker_byte
 
                     wfm_file.write(wavetmp.tobytes())
 
@@ -540,11 +571,13 @@ class PulserInterfaceDummy(Base, PulserInterface):
         return self.sample_rate
 
     def set_pp_voltage(self, channel, voltage):
-        """ Set the peak-to-peak voltage of the pulse generator hardware analogue channels.
-        Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
+        """ Set the peak-to-peak voltage of the pulse generator hardware
+        analogue channels. Unused for purely digital hardware without logic
+        level setting capability (DTG, FPGA, etc.).
 
         @param int channel: The channel to be reconfigured
-        @param float voltage: The peak-to-peak amplitude the channel should be set to (in V)
+        @param float voltage: The peak-to-peak amplitude the channel should be
+                              set to (in V)
 
         @return int: error code (0:OK, -1:error)
         """
@@ -552,7 +585,8 @@ class PulserInterfaceDummy(Base, PulserInterface):
         return 0
 
     def get_pp_voltage(self, channel):
-        """ Get the peak-to-peak voltage of the pulse generator hardware analogue channels.
+        """ Get the peak-to-peak voltage of the pulse generator hardware
+            analogue channels.
 
         @param int channel: The channel to be checked
 
@@ -694,3 +728,15 @@ class PulserInterfaceDummy(Base, PulserInterface):
         return 0
 
 
+    def _get_dir_for_name(self, name):
+        """ Get the path to the pulsed sub-directory 'name'.
+
+        @param name: string, name of the folder
+        @return: string, absolute path to the directory with folder 'name'.
+        """
+
+        path = self.pulsed_file_dir + name
+        if not os.path.exists(path):
+            os.makedirs(os.path.abspath(path))
+
+        return os.path.abspath(path) + '\\'

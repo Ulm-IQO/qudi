@@ -328,8 +328,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                    to set high. If 8 channels are addressable
                                    then their bit representation would be
                                        0b00000000   (in python).
-                                   where the very rigth one corresponds to ch1
-                                   and the very left one to ch8. If you want to
+                                   where the most right corresponds to ch1 and 
+                                   the most left to ch8. If you want to
                                    set channel 1,2,3 and 7 to be on, then the
                                    bit word must be
                                        0b01000111

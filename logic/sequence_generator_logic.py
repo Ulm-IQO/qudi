@@ -22,7 +22,6 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 
 import numpy as np
 import pickle
-import glob
 import os
 import sys
 
@@ -135,8 +134,6 @@ class Pulse_Block(object):
             if elem.digital_channels > self.digital_channels:
                 self.digital_channels = elem.digital_channels
 
-
-
     def replace_element(self, position, element):
         self.element_list[position] = element
         self.refresh_parameters()
@@ -190,6 +187,7 @@ class Pulse_Block_Ensemble(object):
         self.length_bins = 0
         self.analogue_channels = 0
         self.digital_channels = 0
+
         for block, reps in self.block_list:
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
             if block.analogue_channels > self.analogue_channels:
@@ -264,7 +262,8 @@ class Pulse_Sequence(object):
 
 
 class Waveform(object):
-    """ Object which stores the Pulse_Block_Ensemble and its sampled output.
+    """ Creates object which stores the Pulse_Block_Ensemble and its sampled
+        output.
 
     An external sequence generator will sample a Pulse_Block_Ensemble object
     into numpy array of sampling points. The resulting array will be passed to
@@ -338,7 +337,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
+
+        # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
+
         self.sample_rate = 25e9
         self.pp_voltage = 0.5
         self.analogue_channels = 2
@@ -358,10 +360,31 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # The string names of the created Sequence objects are saved here:
         self.saved_sequences = []
 
+        if 'pulsed_file_dir' in config.keys():
+            self.pulsed_file_dir = config['pulsed_file_dir']
 
-        self.block_dir = ''
-        self.ensemble_dir = ''
-        self.sequence_dir = ''
+            if not os.path.exists(self.pulsed_file_dir):
+
+                homedir = self.get_home_dir()
+                self.pulsed_file_dir =os.path.join(homedir, 'pulsed_files\\')
+                self.logMsg('The directort defined in "pulsed_file_dir" in the'
+                        'config for SequenceGeneratorLogic class does not '
+                        'exist!\nThe default home directory\n{0}\n will be '
+                        'taken instead.'.format(self.pulsed_file_dir),
+                        msgType='warning')
+        else:
+            homedir = self.get_home_dir()
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+            self.logMsg('No directory with the attribute "pulsed_file_dir"'
+                        'is defined for the SequenceGeneratorLogic!\nThe '
+                        'default home directory\n{0}\n will be taken '
+                        'instead.'.format(self.pulsed_file_dir),
+                        msgType='warning')
+
+
+        self.block_dir = self._get_dir_for_name('pulse_block_objects')
+        self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
+        self.sequence_dir = self._get_dir_for_name('sequence_objects')
 
         # =============== Setting the additional parameters ==================
 
@@ -373,7 +396,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         length_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
                       'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n'}
 
-        rep_def = {'unit': '#', 'init_val': 1, 'min': 1, 'max': (2**31 -1),
+        rep_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2**31 -1),
                    'view_stepsize': 1, 'dec': 0}
         bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
                    'view_stepsize': 1, 'dec': 0}
@@ -426,6 +449,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """ Deinitialisation performed during deactivation of the module.
         """
         pass
+
+    def _get_dir_for_name(self, name):
+        """ Get the path to the pulsed sub-directory 'name'.
+
+        @param name: string, name of the folder
+        @return: string, absolute path to the directory with folder 'name'.
+        """
+
+        path = self.pulsed_file_dir + name
+        if not os.path.exists(path):
+            os.makedirs(os.path.abspath(path))
+
+        return os.path.abspath(path) + '\\'
+
 
     def get_hardware_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
@@ -517,9 +554,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         The name 'download' was chosen since from the view of the Pulse
         Generator it downloads a file from the host PC.
 
-        #FIXME: We have definitely to think about this naming convenrion!
         Samples and downloads a saved Pulse_Block_Ensemble with name "ensemble_name" into the pulse generator internal memory.
         """
+        #FIXME: We have definitely to think about this naming convenrion!
+
         ensemble = self.get_ensemble(ensemble_name)
         self.current_ensemble = ensemble
         waveform = self.generate_waveform(ensemble)
@@ -531,60 +569,73 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if name in assets_on_device:
             self._pulse_generator_device.load_asset(name, channel)
 
-#-------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
-#-------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
     def save_block(self, name, block):
-        ''' saves a block generated by the block editor into a file
-        '''
+        """ Serialize a Pulse_Block object to a *.blk file.
+
+        @param name: string, name of the block to save
+        @param block: Pulse_Block object which will be serialized
+        """
+
         # TODO: Overwrite handling
         block.name = name
         with open(self.block_dir + name + '.blk', 'wb') as outfile:
             pickle.dump(block, outfile)
         self.refresh_block_list()
         self.current_block = block
+        self.logMsg('Pulse_Block object "{0}" serialized to harddisk in:\n'
+                    '{1}'.format(name, self.block_dir), msgType='status',
+                    importance=0)
         return
 
-    def load_block(self, name):
-        ''' loads a block from a .blk-file into the block editor
-        '''
-        if name in self.saved_pulse_blocks:
-            with open(self.block_dir + name + '.blk', 'rb') as infile:
-                block = pickle.load(infile)
-            self.current_block = block
-        else:
-            # TODO: implement proper error
-            print('Error: No block with name "' + name + '" in saved blocks.')
-        return
+    def get_block(self, name, set_as_current_block=False):
+        """ Deserialize a *.blk file into a Pulse_Block object.
 
-    def get_block(self, name):
+        @param name: string, name of the *.blk file.
+        @param set_as_current_ensemble: bool, set the retained Pulse_Block
+               object as the current ensemble.
+
+        @return: Pulse_Block object which belongs to the given name.
         """
-        Returns the saved Pulse_Block object by name without setting it as current block
-        """
+
         if name in self.saved_pulse_blocks:
             with open(self.block_dir + name + '.blk', 'rb') as infile:
                 block = pickle.load(infile)
         else:
+            self.logMsg('The Pulse_Block object with name "{0}" could not be '
+                        'found and serialized in:\n'
+                        '{1}'.format(name, self.block_dir), msgType='warning')
             block = None
-            # TODO: implement proper error
-            print('Error: No block with name "' + name + '" in saved blocks.')
+
+        if set_as_current_block:
+            self.current_block = block
         return block
 
     def delete_block(self, name):
-        ''' remove the block "name" from the block list and HDD
-        '''
+        """ Remove the serialized object "name" from the block list and HDD.
+
+        @param name: string, name of the Pulse_Block object to be removed.
+        """
+
         if name in self.saved_pulse_blocks:
             os.remove(self.block_dir + name + '.blk')
             self.refresh_block_list()
         else:
-            # TODO: implement proper error
-            print('Error: No block with name "' + name + '" in saved blocks.')
+            self.logMsg('Pulse_Block object with name "{0}" not found '
+                        'in\n{1}\nTherefore nothing is '
+                        'removed.'.format(name, self.block_dir),
+                        msgType='warning')
+
         return
 
     def refresh_block_list(self):
         ''' refresh the list of available (saved) blocks
         '''
-        block_files = glob.glob(self.block_dir + '*.blk')
+
+        block_files = [f for f in os.listdir(self.block_dir) if '.blk' in f]
         blocks = []
         for filename in block_files:
             blocks.append(filename[:-4])
@@ -599,42 +650,43 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         '''
         # TODO: Overwrite handling
         ensemble.name = name
-        with open(self.ensemble_dir + name + '.ben', 'wb') as outfile:
+        with open(self.ensemble_dir + name + '.ens', 'wb') as outfile:
             pickle.dump(ensemble, outfile)
         self.refresh_ensemble_list()
         self.current_ensemble = ensemble
         return
 
-    def load_ensemble(self, name):
-        ''' loads a block ensemble from a .ben-file into the block ensemble editor
-        '''
-        if name in self.saved_pulse_block_ensembles:
-            with open(self.ensemble_dir + name + '.ben', 'rb') as infile:
-                ensemble = pickle.load(infile)
-            self.current_ensemble = ensemble
-        else:
-            # TODO: implement proper error
-            print('Error: No ensemble with name "' + name + '" in saved ensembles.')
-        return
+    def get_ensemble(self, name, set_as_current_ensemble=False):
+        """ Deserialize a *.ens file into a Pulse_Block_Ensemble object.
 
-    def get_ensemble(self, name):
+        @param name: string, name of the *.ens file.
+        @param set_as_current_ensemble: bool, set the retained
+               Pulse_Block_Ensemble object as the current ensemble.
+
+        @return: Pulse_Block_Ensemble object which belongs to the given name.
         """
-        Returns the saved Pulse_Block_Ensemble object by name without setting it as current ensemble
-        """
+
         if name in self.saved_pulse_block_ensembles:
-            with open(self.ensemble_dir + name + '.ben', 'rb') as infile:
+            with open(self.ensemble_dir + name + '.ens', 'rb') as infile:
                 ensemble = pickle.load(infile)
         else:
+            self.logMsg('The Pulse_Block_Ensemble object with name "{0}" '
+                        'could not be found and serialized in:\n'
+                        '{1}'.format(name, self.ensemble_dir),
+                        msgType='warning')
+
             ensemble = None
-            # TODO: implement proper error
-            print('Error: No ensemble with name "' + name + '" in saved ensembles.')
+
+        if set_as_current_ensemble:
+            self.current_ensemble = ensemble
+
         return ensemble
 
     def delete_ensemble(self, name):
         ''' remove the ensemble "name" from the ensemble list and HDD
         '''
         if name in self.saved_pulse_block_ensembles:
-            os.remove(self.ensemble_dir + name + '.ben')
+            os.remove(self.ensemble_dir + name + '.ens')
             self.refresh_ensemble_list()
         else:
             # TODO: implement proper error
@@ -644,7 +696,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def refresh_ensemble_list(self):
         ''' Refresh the list of available (saved) ensembles.
         '''
-        ensemble_files = glob.glob(self.ensemble_dir + '*.ben')
+        ensemble_files = [f for f in os.listdir(self.ensemble_dir) if '.ens' in f]
         ensembles = []
         for filename in ensemble_files:
             ensembles.append(filename[:-4])
@@ -659,41 +711,42 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         '''
         # TODO: Overwrite handling
         sequence.name = name
-        with open(self.sequence_dir + name + '.seq', 'wb') as outfile:
+        with open(self.sequence_dir + name + '.se', 'wb') as outfile:
             pickle.dump(sequence, outfile)
         self.refresh_sequence_list()
         self.current_sequence = sequence
         return
 
-    def load_sequence(self, name):
-        ''' loads a sequence from a .seq-file into the sequence editor '''
-        if name in self.saved_sequences:
-            with open(self.sequence_dir + name + '.seq', 'rb') as infile:
-                sequence = pickle.load(infile)
-            self.current_sequence = sequence
-        else:
-            # TODO: implement proper error
-            print('Error: No sequence with name "' + name + '" in saved sequences.')
-        return
+    def get_sequence(self, name, set_as_current_sequence=False):
+        """ Deserialize a *.se file into a Sequence object.
 
-    def get_sequence(self, name):
+        @param name: string, name of the *.se file.
+        @param set_as_current_sequence: bool, set the retained
+               Sequence object as the current ensemble.
+
+        @return: Sequence object which belongs to the given name.
         """
-        Returns the saved Pulse_Sequence object by name without setting it as current sequence
-        """
+
         if name in self.saved_sequences:
-            with open(self.sequence_dir + name + '.seq', 'rb') as infile:
+            with open(self.sequence_dir + name + '.se', 'rb') as infile:
                 sequence = pickle.load(infile)
         else:
+            self.logMsg('The Sequence object with name "{0}" could not be '
+                        'found and serialized in:\n'
+                        '{1}'.format(name, self.sequence_dir),
+                        msgType='warning')
             sequence = None
-            # TODO: implement proper error
-            print('Error: No sequence with name "' + name + '" in saved sequences.')
+
+        if set_as_current_sequence:
+            self.current_sequence = sequence
+
         return sequence
 
     def delete_sequence(self, name):
         ''' remove the sequence "name" from the sequence list and HDD
         '''
         if name in self.saved_sequences:
-            os.remove(self.sequence_dir + name + '.seq')
+            os.remove(self.sequence_dir + name + '.se')
             self.refresh_sequence_list()
         else:
             # TODO: implement proper error
@@ -703,7 +756,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def refresh_sequence_list(self):
         ''' refresh the list of available (saved) sequences
         '''
-        sequence_files = glob.glob(self.sequence_dir + '*.seq')
+        sequence_files = [f for f in os.listdir(self.sequence_dir) if '.se' in f]
         sequences = []
         for filename in sequence_files:
             sequences.append(filename[:-4])
@@ -712,6 +765,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.signal_sequence_list_updated.emit()
         return
 
+
+    # =========================================================================
+    # Depricated method, will be remove soon.
 
     def generate_block(self, name, block_matrix):
         """
@@ -795,8 +851,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = block
         return
 
-    def generate_block_object(self, pb_name, block_matrix, num_laser_pulses):
+    # =========================================================================
+
+    def generate_pulse_block_object(self, pb_name, block_matrix, num_laser_pulses):
         """
+        Generates from an given table block_matrix a block_object.
 
         @param pb_name: string, Name of the created Pulse_Block Object
         @param block_matrix: structured np.array, matrix, in which the
@@ -884,9 +943,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = pb_obj
 
 
-    def generate_block_ensemble(self, ensemble_name, ensemble_matrix,
-                                rotating_frame=True):
+    def generate_pulse_block_ensemble(self, ensemble_name, ensemble_matrix,
+                                      rotating_frame=True):
         """
+        Generates from an given table ensemble_matrix a ensemble object.
 
         @param ensemble_name: string, Name of the created Pulse_Block_Ensemble
                               Object
@@ -926,14 +986,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             block = self.get_block(pulse_block_name)
 
-            for num in range(pulse_block_reps):
+            for num in range(pulse_block_reps+1):
                 tau_list.append(offset_tau_bin + block.init_length_bins + num*block.increment_bins)
 
-            num_laser_pulse =  num_laser_pulse + block.num_laser_pulses*pulse_block_reps
+            num_laser_pulse =  num_laser_pulse + block.num_laser_pulses*(pulse_block_reps+1)
 
             # for the next block, add the biggest time as offset_tau_bin.
             # Otherwise the tau_list will be a mess.
-            offset_tau_bin = offset_tau_bin + block.init_length_bins + (pulse_block_reps-1)*block.increment_bins
+            offset_tau_bin = offset_tau_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
             pb_obj_list[row_index] = (block, pulse_block_reps)
 
 

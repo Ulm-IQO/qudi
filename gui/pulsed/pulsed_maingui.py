@@ -869,6 +869,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
         self._mw.curr_block_laserpulses_SpinBox.setMaximum(2**31 -1)
         self._mw.curr_ensemble_bins_SpinBox.setMaximum(2**31 -1)
+        self._mw.curr_ensemble_length_DSpinBox.setMaximum(np.inf)
 
         # connect the signals for the block editor:
         self._mw.block_add_last_PushButton.clicked.connect(self.block_editor_add_row_after_last)
@@ -1236,9 +1237,9 @@ class PulsedMeasurementGui(GUIBase):
                 reps = self.get_element_in_organizer_table(row_ind, reps_col)
 
                 # Calculate the length via the gaussian summation formula:
-                length_bin = int(length_bin + block_obj.init_length_bins*reps + (reps*(reps+1)/2)*block_obj.increment_bins)
+                length_bin = int(length_bin + block_obj.init_length_bins*(reps+1) + ((reps+1)*((reps+1)+1)/2)*block_obj.increment_bins)
 
-                num_laser_pulses = num_laser_pulses + block_obj.num_laser_pulses * reps
+                num_laser_pulses = num_laser_pulses + block_obj.num_laser_pulses * (reps+1)
 
 
             length_mu = (length_bin/self.get_sample_rate())*1e6 # in microns
@@ -1345,9 +1346,12 @@ class PulsedMeasurementGui(GUIBase):
         """
         Actions to perform when the save button in the block editor is clicked
         """
-        name = self._mw.curr_block_name_LineEdit.text()
+        objectname = self._mw.curr_block_name_LineEdit.text()
         table_struct = self.get_block_table()
-        self._seq_gen_logic.generate_block_object(name, table_struct)
+        num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
+        self._seq_gen_logic.generate_pulse_block_object(objectname,
+                                                        table_struct,
+                                                        num_laser_pulses)
         return
 
     def block_editor_delete_clicked(self):
@@ -1364,7 +1368,7 @@ class PulsedMeasurementGui(GUIBase):
 
         objectname = self._mw.curr_block_name_LineEdit.text()
         num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
-        self._seq_gen_logic.generate_block_object(objectname,
+        self._seq_gen_logic.generate_pulse_block_object(objectname,
                                                   self.get_block_table(),
                                                   num_laser_pulses)
 
@@ -1513,7 +1517,7 @@ class PulsedMeasurementGui(GUIBase):
 
         objectname = self._mw.curr_ensemble_name_LineEdit.text()
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
-        self._seq_gen_logic.generate_block_ensemble(objectname,
+        self._seq_gen_logic.generate_pulse_block_ensemble(objectname,
                                                     self.get_organizer_table(),
                                                     rotating_frame)
 
