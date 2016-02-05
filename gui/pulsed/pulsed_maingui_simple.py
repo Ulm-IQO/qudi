@@ -299,7 +299,7 @@ class PulsedMeasurementGui(GUIBase):
         laser_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_laserlength_LineEdit.text())*self._seq_gen_logic.sample_rate))
         waiting_time_bins = np.int(np.rint((1e-9)*float(self._mw.gen_aomdelay_LineEdit.text())*self._seq_gen_logic.sample_rate))
         name = self._mw.gen_rabi_name_LineEdit.text()
-        self._seq_gen_logic.generate_rabi(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, True)
+        self._seq_gen_logic.generate_rabi_triple(name, freq, amp, waiting_time_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, True)
         return
 
     def generate_xy8_clicked(self):

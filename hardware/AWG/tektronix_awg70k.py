@@ -193,19 +193,15 @@ class AWG70K(Base, PulserInterface):
                         wfmxfile.write(bytes(line, 'UTF-8'))
                     # append analogue samples in binary format. One sample is 4 bytes (np.float32).
                     # write in chunks if array is very big to avoid large temporary copys in memory
-                    print(ana_samples.shape[1]//1e6)
                     number_of_full_chunks = int(ana_samples.shape[1]//1e6)
-                    print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
                     for i in range(number_of_full_chunks):
                         start_ind = i*1e6
                         stop_ind = (i+1)*1e6
                         wfmxfile.write(ana_samples[channel_number][start_ind:stop_ind])
                     # write rest
                     rest_start_ind = number_of_full_chunks*1e6
-                    print('rest size: ' + str(ana_samples.shape[1]-rest_start_ind))
                     wfmxfile.write(ana_samples[channel_number][rest_start_ind:])
                     # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
-                    print('number of digital channels: ' + str(digi_samples.shape[0]))
                     if digi_samples.shape[0] <= (2*channel_number):
                         # no digital channels to write for this analogue channel
                         pass
@@ -239,7 +235,7 @@ class AWG70K(Base, PulserInterface):
         return 0
 
 
-    def write_chunk_to_file(self, name, analogue_samples_chunk, digital_samples_chunk, is_first_chunk, is_last_chunk):
+    def write_chunk_to_file(self, name, analogue_samples_chunk, digital_samples_chunk, is_first_chunk, is_last_chunk, total_number_of_samples = 0):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file if it is the first chunk.
 
@@ -253,7 +249,7 @@ class AWG70K(Base, PulserInterface):
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
             # create header
-            header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0, digital_samples_chunk.shape[1])
+            header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0, total_number_of_samples)
             header_obj.create_xml_file()
             with open('header.xml','r') as header:
                 header_lines = header.readlines()
@@ -274,16 +270,17 @@ class AWG70K(Base, PulserInterface):
             with open(filepath, 'ab') as wfmxfile:
                 # append analogue samples in binary format. One sample is 4 bytes (np.float32).
                 # write in chunks if array is very big to avoid large temporary copys in memory
-                number_of_full_chunks = int(analogue_samples_chunk.shape[1]//1e6)
-                print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
-                for i in range(number_of_full_chunks):
-                    start_ind = i*1e6
-                    stop_ind = (i+1)*1e6
-                    wfmxfile.write(analogue_samples_chunk[channel_number][start_ind:stop_ind])
+                # number_of_full_chunks = int(analogue_samples_chunk.shape[1]//1e6)
+                # print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
+                # for i in range(number_of_full_chunks):
+                #     start_ind = i*1e6
+                #     stop_ind = (i+1)*1e6
+                #     wfmxfile.write(analogue_samples_chunk[channel_number][start_ind:stop_ind])
                 # write rest
-                rest_start_ind = number_of_full_chunks*1e6
-                print('rest size: ' + str(analogue_samples_chunk.shape[1]-rest_start_ind))
-                wfmxfile.write(analogue_samples_chunk[channel_number][rest_start_ind:])
+                # rest_start_ind = number_of_full_chunks*1e6
+                # print('rest size: ' + str(analogue_samples_chunk.shape[1]-rest_start_ind))
+                # wfmxfile.write(analogue_samples_chunk[channel_number][rest_start_ind:])
+                wfmxfile.write(analogue_samples_chunk[channel_number])
 
             # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
             # and write them into a temporary file
@@ -294,16 +291,18 @@ class AWG70K(Base, PulserInterface):
                     pass
                 elif digital_samples_chunk.shape[0] == (2*channel_number + 1):
                     # one digital channels to write for this analogue channel
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
-                        tmpfile.write(digital_samples_chunk[2*channel_number][start_ind:stop_ind])
-                    # write rest of digital samples
-                    rest_start_ind = number_of_full_chunks*1e6
-                    tmpfile.write(digital_samples_chunk[2*channel_number][rest_start_ind:])
+                    # for i in range(number_of_full_chunks):
+                    #     start_ind = i*1e6
+                    #     stop_ind = (i+1)*1e6
+                    #     # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    #     tmpfile.write(digital_samples_chunk[2*channel_number][start_ind:stop_ind])
+                    # # write rest of digital samples
+                    # rest_start_ind = number_of_full_chunks*1e6
+                    # tmpfile.write(digital_samples_chunk[2*channel_number][rest_start_ind:])
+                    tmpfile.write(digital_samples_chunk[2*channel_number])
                 elif digital_samples_chunk.shape[0] >= (2*channel_number + 2):
                     # two digital channels to write for this analogue channel
+                    number_of_full_chunks = int(digital_samples_chunk.shape[1]//1e6)
                     for i in range(number_of_full_chunks):
                         start_ind = i*1e6
                         stop_ind = (i+1)*1e6
@@ -376,7 +375,7 @@ class AWG70K(Base, PulserInterface):
             elif self.current_sample_mode == self.sample_mode['wfmx-file']:
                 self.send_file(self.host_waveform_directory + waveform.name + '.WFMX')
             else:
-            self.logMsg('Invalid sample mode for this device! Set a proper one'
+                self.logMsg('Invalid sample mode for this device! Set a proper one'
                         'for sampling the real data.',
                         msgType='error')
             self.load_sequence(waveform.name)
