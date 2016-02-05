@@ -27,6 +27,7 @@ import numpy as np
 import hdf5storage
 from hardware.WFMX_header import WFMX_header
 import struct
+import time
 
 class PulserInterfaceDummy(Base, PulserInterface):
     """
@@ -91,7 +92,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.connected = False
         self.amplitude = 0.25
         self.sample_rate = 25e9
-        self.uploaded_asset_list = []
+        self.uploaded_assets_list = []
         self.current_loaded_asset = None
         self.is_output_enabled = True
 
@@ -178,7 +179,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.current_status = 0
         return self.current_status
 
-    def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
+    def write_to_file(self, name, ana_samples, digi_samples, sample_rate,
                        pp_voltage):
         if self.current_sample_mode == self.sample_mode['matlab']:
             matcontent = {}
@@ -360,9 +361,10 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         return 0
 
+    #FIXME: Implement the below method for all possible file formats. Currently only WFMX is supported.
     def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, is_first_chunk,
-                            is_last_chunk):
+                            digital_samples_chunk, total_number_of_samples, is_first_chunk,
+                            is_last_chunk, sample_rate, pp_voltage):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -382,7 +384,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         if is_first_chunk:
             # create header
             header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0,
-                                     digital_samples_chunk.shape[1])
+                                     int(total_number_of_samples))
 
             header_obj.create_xml_file()
             with open('header.xml','r') as header:
@@ -406,14 +408,12 @@ class PulserInterfaceDummy(Base, PulserInterface):
                 # bytes (np.float32). Write in chunks if array is very big to
                 # avoid large temporary copys in memory
                 number_of_full_chunks = int(analogue_samples_chunk.shape[1]//1e6)
-                print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
                 for i in range(number_of_full_chunks):
                     start_ind = i*1e6
                     stop_ind = (i+1)*1e6
                     wfmxfile.write(analogue_samples_chunk[channel_number][start_ind:stop_ind])
                 # write rest
                 rest_start_ind = number_of_full_chunks*1e6
-                print('rest size: ' + str(analogue_samples_chunk.shape[1]-rest_start_ind))
                 wfmxfile.write(analogue_samples_chunk[channel_number][rest_start_ind:])
 
             # create the byte values corresponding to the marker states
@@ -468,43 +468,16 @@ class PulserInterfaceDummy(Base, PulserInterface):
                 os.remove(tmp_filepath)
         return 0
 
-    def download_waveform(self, waveform, write_to_file = True):
-        """ Convert the pre-sampled numpy array to a specific hardware file.
+    def upload_asset(self, name):
+        """
+        Waveform or sequence with name "name" gets uploaded to the Hardware.
 
-        @param Waveform() waveform: The raw sampled pulse sequence.
-        @param bool write_to_file: Flag to indicate if the samples should be
-                                   written to a file (= True) or uploaded
-                                   directly to the pulse generator channels
-                                   (= False).
+        @param str name: The name of the sequence/waveform to be transfered
 
         @return int: error code (0:OK, -1:error)
-
-        Brings the numpy arrays containing the samples in the Waveform() object
-        into a format the hardware understands. Optionally this is then saved
-        in a file. Afterwards they get downloaded to the Hardware.
         """
-
-        # append to the loaded sequence list.
-        self._write_to_file(waveform.name, waveform.analogue_samples,
-                            waveform.digital_samples, waveform.sample_rate,
-                            waveform.pp_voltage)
-
-        if waveform.name not in self.uploaded_asset_list:
-            self.uploaded_asset_list.append(waveform.name)
-        return 0
-
-    def send_file(self, filepath):
-        """ Sends an already hardware specific waveform file to the pulse
-            generators waveform directory.
-
-        @param string filepath: The file path of the source file
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
-        """
-
+        if name not in self.uploaded_assets_list:
+            self.uploaded_assets_list.append(name)
         return 0
 
     def load_asset(self, asset_name, channel=None):
@@ -519,7 +492,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if asset_name in self.uploaded_asset_list:
+        if asset_name in self.uploaded_assets_list:
             self.current_loaded_asset = asset_name
         return 0
 
@@ -531,7 +504,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
-        self.current_loaded_file = None
+        self.current_loaded_asset = None
 
         return
 
@@ -616,16 +589,16 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         return self.active_channel
 
-    def get_sequence_names(self):
-        """ Retrieve the names of all downloaded sequences on the device.
+    def get_uploaded_assets_names(self):
+        """ Retrieve the names of all uploaded assets on the device.
 
-        @return list: List of sequence name strings
+        @return list: List of asset name strings
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
 
-        return self.uploaded_asset_list
+        return self.uploaded_assets_list
 
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
@@ -638,9 +611,9 @@ class PulserInterfaceDummy(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        if seq_name in self.uploaded_asset_list:
-            self.uploaded_asset_list.remove(seq_name)
-            if seq_name == self.current_loaded_file:
+        if seq_name in self.uploaded_assets_list:
+            self.uploaded_assets_list.remove(seq_name)
+            if seq_name == self.current_loaded_asset:
                 self.clear_channel()
         return 0
 
