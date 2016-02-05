@@ -34,13 +34,14 @@ class PolarisationDepLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'countergui': 'CounterGui',
+    _in = { 'counterlogic': 'CounterLogic',
             'savelogic': 'SaveLogic',
             'motor':'MotorInterface'
             }
     _out = {'polarisationdeplogic': 'PolarisationDepLogic'}
 
     signal_rotation_finished = QtCore.Signal()
+    signal_start_rotation = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -54,13 +55,13 @@ class PolarisationDepLogic(GenericLogic):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-    def activation(self, e):
+    def activation(self,e):
         """ Initialisation performed during activation of the module.
 
           @param object e: Fysom state change event
         """
 
-        self._counter_gui = self.connector['in']['counterlogic']['object']
+        self._counter_logic = self.connector['in']['counterlogic']['object']
 #        print("Counting device is", self._counting_device)
 
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -68,11 +69,12 @@ class PolarisationDepLogic(GenericLogic):
         self._hwpmotor = self.connector['in']['motor']['object']
 
         # Initialise measurement parameters
-        self.scan_length = 36
-        self.scan_speed = 10
+        self.scan_length = 360
+        self.scan_speed = 10 #not yet used
 
         # Connect signals
-        self.signal_rotation_finished.connet(self.finish_scan, QtCore.Qt.QueuedConnection)
+        self.signal_rotation_finished.connect(self.finish_scan, QtCore.Qt.QueuedConnection)
+        self.signal_start_rotation.connect(self.rotate_polarisation, QtCore.Qt.QueuedConnection)
 
 
     def deactivation(self, e):
@@ -92,16 +94,14 @@ class PolarisationDepLogic(GenericLogic):
         # configure the countergui
 
 
-
-
-
-        self._counter_gui.save_clicked()
+        self._counter_logic.start_saving()
+        self.signal_start_rotation.emit()
 
     def rotate_polarisation(self):
         self._hwpmotor.move_rel(self.scan_length)
-
-        self.signal_rotation_finished.emit
+        self.logMsg('rotation finished, saving data', msgType='status', importance=5)
+        self.signal_rotation_finished.emit()
 
     def finish_scan(self):
-        self._counter_gui.save_clicked()
-        self._counter_gui.start_clicked()
+        self._counter_logic.save_data()
+#        self._counter_logic.stopCount()
