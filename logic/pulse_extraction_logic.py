@@ -12,7 +12,7 @@ from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
 from scipy import ndimage
-
+import copy
 class PulseExtractionLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the extraction of laser pulses.
@@ -145,7 +145,11 @@ class PulseExtractionLogic(GenericLogic):
           @return 1D/2D numpy.ndarray: The raw timetrace from the fast counter
         """
         # poll data from the fast countin device
-        raw_data = self._fast_counter_device.get_data_trace()
+        if "netref" in str(type(self._fast_counter_device)): #
+            raw_data = np.int64(copy.copy(self._fast_counter_device.get_data_trace()))
+        else:
+            raw_data = self._fast_counter_device.get_data_trace()
+
         # call appropriate laser extraction method depending on if the fast counter is gated or not.
         if self.is_counter_gated:
             laser_data = self._gated_extraction(raw_data)

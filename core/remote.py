@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 from rpyc.utils.server import ThreadedServer
 from .util.models import DictTableModel, ListTableModel
 import rpyc
+rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 import socket
 
 
