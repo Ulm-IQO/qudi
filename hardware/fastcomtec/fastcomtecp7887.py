@@ -219,7 +219,13 @@ class FastComtec(Base, FastCounterInterface):
         N = setting.range
         data = np.empty((N,), dtype=np.uint32)
         self.dll.LVGetDat(data.ctypes.data, 0)
-        return np.int64(data)
+
+        #the rpyc module has problems with numpy arrays therefore one has to convert to a list in case of remote access
+        if "remoteaccess" in self.getConfiguration():
+            return np.int64(data).tolist()
+        else:
+            return np.int64(data)
+
 
     def get_data_testfile(self):
         ''' Load data test file '''
