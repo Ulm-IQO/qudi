@@ -133,7 +133,7 @@ class Base(QtCore.QObject, Fysom):
     # Do not replace these in subclasses
     def onchangestate(self, e):
         """ Fysom callback for state transition.
-        
+
           @param object e: Fysom state transition description
         """
         self.sigStateChanged.emit(e)
@@ -198,14 +198,14 @@ class Base(QtCore.QObject, Fysom):
         Must be called within an except block, and should only be called if the
         exception is not re-raised.
         Unhandled exceptions, or exceptions that reach the top of the callstack
-        are automatically logged, so logging an exception that will be 
+        are automatically logged, so logging an exception that will be
         re-raised can cause the exception to be logged twice.
         Takes the same arguments as logMsg.
         """
         kwargs['exception'] = sys.exc_info()
         kwargs['traceback'] = traceback.format_stack()[:-2] + ["------- exception caught ---------->\n"]
         self.logMsg(*args, **kwargs)
- 
+
     @staticmethod
     def identify():
         """ Return module id.
@@ -225,3 +225,12 @@ class Base(QtCore.QObject, Fysom):
 
         return mainpath
  #            print("PAth of Managerfile: ", os.path.abspath(__file__))
+
+
+    def get_home_dir(self):
+        """ Returns the path to the home directory, which should definitely
+            exist.
+            @return string: absolute path to the home directory
+        """
+        # I find it good to have after the foldername the separator \\.
+        return os.path.abspath(os.path.expanduser('~'))+'\\'
