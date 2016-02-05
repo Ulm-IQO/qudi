@@ -22,10 +22,13 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 import time
 from ftplib import FTP
 from socket import socket, AF_INET, SOCK_STREAM
+import numpy as np
+import os
 
 
 from core.base import Base
 from hardware.pulser_interface import PulserInterface
+from core.util.customexceptions import InterfaceImplementationError
 
 class AWG5002C(Base, PulserInterface):
     """ Unstable and in contruction, Alex Stark    """
@@ -34,7 +37,8 @@ class AWG5002C(Base, PulserInterface):
     _modtype = 'hardware'
 
     # declare connectors
-    _out = {'awg5002c': 'PulserInterface'}
+    # _out = {'awg5002c': 'PulserInterface'}
+    _out = {'pulser': 'PulserInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
 
@@ -79,17 +83,44 @@ class AWG5002C(Base, PulserInterface):
                         msgType='error')
 
 
+        self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
+        self.current_sample_mode = self.sample_mode['wfm-file']
+
         self.connected = False
         self.amplitude = 0.25
         self.loaded_sequence = None
         self.is_output_enabled = True
 
         # settings for remote access on the AWG PC
-        self.sequence_directory = '/waves'
+        self.sequence_directory = '\\waves'
+        # self.host_waveform_directory = 'C:\\Users\\astark\\Dropbox\\Doctorwork\\Software\\QuDi\\trunk\\waveforms\\'
+
+        if 'pulsed_file_dir' in config.keys():
+            self.pulsed_file_dir = config['pulsed_file_dir']
+
+            if not os.path.exists(self.pulsed_file_dir):
+
+                homedir = self.get_home_dir()
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+                self.logMsg('The directort defined in "pulsed_file_dir" in the'
+                        'config for SequenceGeneratorLogic class does not '
+                        'exist!\nThe default home directory\n{0}\n will be '
+                        'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
+        else:
+            homedir = self.get_home_dir()
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+            self.logMsg('No directory with the attribute "pulsed_file_dir"'
+                        'is defined for the SequenceGeneratorLogic!\nThe '
+                        'default home directory\n{0}\n will be taken '
+                        'instead.'.format(self.pulsed_file_dir), msgType='warning')
+
+        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
+
 
         # AWG5002C has possibility for sequence output
         self.use_sequencer = True
 
+        self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
 
     def activation(self, e):
         """ Initialisation performed during activation of the module. """
@@ -168,14 +199,165 @@ class AWG5002C(Base, PulserInterface):
 
         return self.get_status()[0]
 
-    #FIXME: implement method: download_sequence
+    def download_waveform(self, waveform, write_to_file=True):
+        """ Convert the pre-sampled numpy array to a specific hardware file.
 
-    #FIXME: implement method: send_file
+        @param Waveform() waveform: The raw sampled pulse sequence.
+        @param bool write_to_file: Flag to indicate if the samples should be
+                                   written to a file (= True) or uploaded
+                                   directly to the pulse generator channels
+                                   (= False).
 
-    def load_sequence(self, seq_name, channel=None):
-        """ Loads a sequence to the specified channel of the pulsing device.
+        @return int: error code (0:OK, -1:error)
 
-        @param str seq_name: The name of the sequence to be loaded
+        Brings the numpy arrays containing the samples in the Waveform() object
+        into a format the hardware understands. Optionally this is then saved
+        in a file. Afterwards they get downloaded to the Hardware.
+        """
+
+        #FIXME: implement method: download_sequence
+
+        if write_to_file:
+            self._write_to_file(waveform.name, waveform.analogue_samples,
+                                waveform.digital_samples, waveform.sample_rate,
+                                waveform.pp_voltage)
+
+            # TODO: Download waveform to AWG and load it into channels
+            if self.current_sample_mode == self.sample_mode['wfm-file']:
+                if len(waveform.analogue_samples)> 1:
+                    self.send_file(self.host_waveform_directory + waveform.name + '_ch1.wfm')
+                    self.send_file(self.host_waveform_directory + waveform.name + '_ch2.wfm')
+                else:
+
+                    self.send_file(self.host_waveform_directory + waveform.name + '_ch1.wfm')
+            else:
+                self.logMsg('Error in file upload:\nInvalid sample mode for '
+                            'this device!\nSet a proper one for sample the '
+                            'real data.',
+                            msgType='error')
+            self.load_asset(waveform.name)
+        return 0
+
+    def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
+                       pp_voltage):
+
+        if self.current_sample_mode == self.sample_mode['wfm-file']:
+
+            # IMPORTANT: These numbers build the header in the wfm file. Needed
+            # by the device program to understand wfm file. If it is wrong,
+            # AWG will not be able to understand the written file.
+
+            # The pure waveform has the number 1000, idicating that it is a
+            # *.wfm file. For sequence mode e.g. the number would be 3001 or
+            # 3002, depending on the number of channels in the sequence mode.
+            # (The last number indicates the channel numbers).
+            # Next line after the header tells the number of bins of the
+            # waveform file.
+            # After this number a 14bit binary representation of the channel
+            # and the marker are followed.
+
+
+
+
+            for channel_index, channel_arr in enumerate(ana_samples):
+
+                filename = name+'_ch'+str(channel_index+1) + '.wfm'
+
+                with open(self.host_waveform_directory + filename, 'wb') as wfm_file:
+
+                    num_bytes = str(len(digi_samples[channel_index*2])*5)
+                    num_digits = str(len(num_bytes))
+                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
+
+                    wfm_file.write(header)
+
+                    # for value_index, value in enumerate(channel_arr):
+                    #     byte_val = struct.pack('f',value)   # convert float to byte
+                    #                                         # representation
+                    #
+                    #
+                    #
+                    #     marker1 = digi_samples[channel_index*2][value_index]
+                    #     [value_index]
+                    #
+                    #     byte_marker = struct.pack('f',marker1+marker2)
+                    #
+                    #     wfm_file.write(byte_marker+byte_val)
+
+                    shape_for_wavetmp = np.shape(channel_arr)[0]
+                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
+                    wavetmp = wavetmp.reshape((-1,5))
+                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
+                    wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+
+                    # marker1 =
+                    # marker2 = digi_samples[channel_index*2+1]
+
+                    # marker = np.zeros(len(marker1),dtype='c')
+
+                    #FIXME: This is a very very ugly and inefficient way of
+                    #       appending the marker array. A much nicer way
+                    #       should be implemented!!!
+
+                    marker = digi_samples[channel_index*2] + digi_samples[channel_index*2+1]*2
+
+                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
+                    # for index in range(len(marker1)):
+                    #     test_val = marker1[index] + marker2[index]
+                    #     if marker1[index] and marker2[index]:
+                    #         wavetmp[index,-1] = b'\x03'
+                    #     elif marker1[index] and not marker2[index]:
+                    #         wavetmp[index,-1] = b'\x01'
+                    #     elif not marker1[index] and marker2[index]:
+                    #         wavetmp[index,-1] = b'\x02'
+                    #     else:
+                    #         wavetmp[index,-1] = b'\x00'
+
+                    # [marker]
+
+
+
+                    # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
+                    wavetmp[:,-1] = marker_byte
+
+                    wfm_file.write(wavetmp.tobytes())
+
+                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
+                    wfm_file.write(footer)
+
+        else:
+            self.logMsg('Sample mode not defined for the given pulser hardware.'
+                        '\nEither the mode does not exist or the sample mode is'
+                        'not assigned properly. Correct that!', msgType='error')
+
+        return 0
+
+    def send_file(self, filepath):
+        """ Sends an already hardware specific waveform file to the pulse
+            generators waveform directory.
+
+        @param string filepath: The file path of the source file
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.sequence_directory)
+            with open(filepath, 'rb') as uploaded_file:
+                filename = filepath.rsplit('\\', 1)[1]
+                ftp.storbinary('STOR '+filename, uploaded_file)
+
+
+        pass
+
+    def load_asset(self, asset_name, channel=None):
+        """ Loads a sequence or waveform to the specified channel of the pulsing device.
+
+        @param str asset_name: The name of the asset to be loaded
         @param int channel: The channel for the sequence to be loaded into if
                             not already specified in the sequence itself
 
@@ -190,9 +372,9 @@ class AWG5002C(Base, PulserInterface):
         path = self.ftp_path + self.get_sequence_directory()
 
         if channel is None or channel == 1:
-            self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, seq_name))
+            self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
         elif channel == 2:
-            self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, seq_name))
+            self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
         else:
             self.logMsg('Channel number was expected to be 1 or 2 but a '
                         'parameter "{0}" was passed.'.format(channel),
@@ -201,25 +383,17 @@ class AWG5002C(Base, PulserInterface):
 
         return 0
 
-    def clear_channel(self, channel=None):
-        """ Clears the loaded waveform from the specified channel.
-
-        @param int channel: The channel to be cleared. If no channel is passed
-                            all the channels will be cleared.
+    def clear_all(self):
+        """ Clears the loaded waveform from the pulse generators RAM.
 
         @return int: error code (0:OK, -1:error)
 
         Delete all waveforms and sequences from Hardware memory and clear the
-        visual display.
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        visual display. Unused for digital pulse generators without sequence
+        storage capability (PulseBlaster, FPGA).
         """
-        self.logMsg('Right now there is no possibility in clearing specific '
-                    'channels in the AWG5000 Series. Therefore this command '
-                    'will clear all the channels at once.',
-                    msgType='warning')
 
-        # if channel is None:
+
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
         return
 
@@ -285,12 +459,13 @@ class AWG5002C(Base, PulserInterface):
         self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
         return self.sample_rate
 
-    def set_amplitude(self, channel, amplitude):
-        """ Set the output amplitude of the pulse generator hardware.
+    def set_pp_voltage(self, channel, voltage):
+        """ Set the peak-to-peak voltage of the pulse generator hardware
+        analogue channels.
 
         @param int channel: The channel to be reconfigured
-        @param float amplitude: The peak-to-peak amplitude the channel should
-                                be set to (in V)
+        @param float voltage: The peak-to-peak amplitude the channel should be
+                              set to (in V)
 
         @return int: error code (0:OK, -1:error)
 
@@ -299,11 +474,12 @@ class AWG5002C(Base, PulserInterface):
         """
 
         # TODO: Actually change the amplitude
-        self.amplitude = amplitude
+        self.amplitude = voltage
         return 0
 
-    def get_amplitude(self, channel):
-        """ Get the output amplitude of the pulse generator hardware.
+    def get_pp_voltage(self, channel):
+        """ Get the peak-to-peak voltage of the pulse generator hardware
+        analogue channels.
 
         @param int channel: The channel to be checked
 
@@ -372,7 +548,7 @@ class AWG5002C(Base, PulserInterface):
 
         return (analogue_channels, digital_channels)
 
-    def get_sequence_names(self):
+    def get_downloaded_sequence_names(self):
         """ Retrieve the names of all downloaded sequences on the device.
 
         @return list: List of sequence name strings
@@ -393,6 +569,29 @@ class AWG5002C(Base, PulserInterface):
                 if not '<DIR>' in line:
                     file_list.append(line.rsplit(None, 1)[1])
         return file_list
+
+
+    def get_sequence_names(self):
+        """ Retrieve the names of all sampled and saved sequences on the host PC.
+
+        @return list: List of sequence name strings
+        """
+        # list of all files in the waveform directory ending with .mat or .WFMX
+        file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfm'))]
+        # list of only the names without the file extension
+        file_names = [file.split('.')[0] for file in file_list]
+        # exclude the channel specifier for multiple analogue channels and create return list
+        saved_sequences = []
+        for name in file_names:
+            if name.endswith('_Ch1'):
+                saved_sequences.append(name[0:-4])
+            elif name.endswith('_Ch2'):
+                pass
+            else:
+                saved_sequences.append(name)
+
+
+        return saved_sequences
 
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
@@ -627,3 +826,16 @@ class AWG5002C(Base, PulserInterface):
     # Below all the higher level routines are situated which use the
     # wrapped routines as a basis to perform the desired task.
     # =========================================================================
+
+    def _get_dir_for_name(self, name):
+        """ Get the path to the pulsed sub-directory 'name'.
+
+        @param name: string, name of the folder
+        @return: string, absolute path to the directory with folder 'name'.
+        """
+
+        path = self.pulsed_file_dir + name
+        if not os.path.exists(path):
+            os.makedirs(os.path.abspath(path))
+
+        return os.path.abspath(path) + '\\'
