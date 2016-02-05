@@ -1022,23 +1022,23 @@
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_36">
                  <item row="1" column="3">
-                  <widget class="QPushButton" name="upload_on_ch2_PushButton">
+                  <widget class="QPushButton" name="upload_load_channel_PushButton">
                    <property name="text">
-                    <string>Upload on Ch2</string>
+                    <string>load to channel</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QPushButton" name="upload_del_ensemble_PushButton">
+                  <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
                    <property name="text">
-                    <string>Delete</string>
+                    <string>sample</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="2">
-                  <widget class="QPushButton" name="upload_on_ch1_PushButton">
+                  <widget class="QPushButton" name="upload_to_device_PushButton">
                    <property name="text">
-                    <string>Upload on Ch1</string>
+                    <string>upload to device</string>
                    </property>
                   </widget>
                  </item>
@@ -1358,7 +1358,7 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1247</width>
+                 <width>1522</width>
                  <height>904</height>
                 </rect>
                </property>

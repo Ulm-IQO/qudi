@@ -889,8 +889,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
 
         # connect the signals for the "Upload on device" section
-        self._mw.upload_on_ch1_PushButton.clicked.connect(self.upload_on_ch1_clicked)
-        self._mw.upload_on_ch2_PushButton.clicked.connect(self.upload_on_ch2_clicked)
+        self._mw.upload_sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
+        self._mw.upload_to_device_PushButton.clicked.connect(self.upload_to_device_clicked)
+        self._mw.upload_load_channel_PushButton.clicked.connect(self.load_into_channel_clicked)
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
@@ -1022,28 +1023,34 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def upload_on_ch1_clicked(self):
+    def sample_ensemble_clicked(self):
         """
-        This method is called when the user clicks on "Upload on Ch1"
+        This method is called when the user clicks on "sample"
         """
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
-        # Sample and upload the ensemble via logic module
-        self._seq_gen_logic.download_ensemble(ensemble_name)
-        # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
-        self._seq_gen_logic.load_asset(ensemble_name, 1)
+        # Sample the ensemble via logic module
+        self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
         return
 
-    def upload_on_ch2_clicked(self):
+    def upload_to_device_clicked(self):
         """
-        This method is called when the user clicks on "Upload on Ch2"
+        This method is called when the user clicks on "load to channel"
+        """
+        # Get the ensemble name to be uploaded from the ComboBox
+        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Upload the ensemble via logic module
+        self._seq_gen_logic.upload_file(ensemble_name)
+        return
+
+    def load_into_channel_clicked(self):
+        """
+        This method is called when the user clicks on "load to channel"
         """
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
         # Sample and upload the ensemble via logic module
-        self._seq_gen_logic.download_ensemble(ensemble_name)
-        # Load the ensemble/waveform into channel 1 (or multiple channels if specified in the ensemble)
-        self._seq_gen_logic.load_asset(ensemble_name, 2)
+        self._seq_gen_logic.load_asset(ensemble_name)
         return
 
     def update_block_list(self):
