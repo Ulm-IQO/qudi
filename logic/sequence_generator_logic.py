@@ -24,6 +24,7 @@ import numpy as np
 import pickle
 import os
 import sys
+import time
 
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
@@ -261,40 +262,6 @@ class Pulse_Sequence(object):
         return
 
 
-class Waveform(object):
-    """ Creates object which stores the Pulse_Block_Ensemble and its sampled
-        output.
-
-    An external sequence generator will sample a Pulse_Block_Ensemble object
-    into numpy array of sampling points. The resulting array will be passed to
-    the analogue_samples and digital_samples attributes. The construction plan,
-    i.e. the Pulse_Block_Ensemble is saved in the block_ensemble attribute.
-
-    Represents a sampled Pulse_Block_Ensemble() object.
-    Holds analogue and digital samples and important parameters.
-
-    which can be e.g. a waveform, a bitfile, an ascii-table, ...
-    """
-    def __init__(self, block_ensemble, sample_rate, pp_voltage,
-                 analogue_samples, digital_samples):
-        """ The constructor for a Waveform object needs to have:
-
-        @param block_ensemble: the Pulse_Block_Ensemble object. This is the
-                               construction plan to create a sampled array.
-        @param sample_rate: Sampling rate in Hz
-        @param pp_voltage: Maximal peak to peak voltage in V.
-        @param analogue_samples: numpy array of analogue samples
-        @param digital_samples:  numpy array of digital samples
-        """
-
-        self.name = block_ensemble.name
-        self.sample_rate = sample_rate
-        self.pp_voltage = pp_voltage
-        self.block_ensemble = block_ensemble
-        self.analogue_samples = analogue_samples
-        self.digital_samples = digital_samples
-
-
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse (sequence) generation.
@@ -348,9 +315,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = None
         self.current_ensemble = None
         self.current_sequence = None
-        self.loaded_sequence_length = 100e-6
-
-        self.direct_write = True
 
         # The string names of the created Pulse_Block objects are saved here:
         self.saved_pulse_blocks = []
@@ -442,8 +406,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
 
-        self.set_pp_voltage(channel=0, voltage=self._pulse_generator_device.get_pp_voltage(channel=0))
-        self.set_pp_voltage(channel=1, voltage=self._pulse_generator_device.get_pp_voltage(channel=1))
+        self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
+        self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -548,24 +512,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.digital_channels = digital
         return 0
 
-    def download_ensemble(self, ensemble_name):
-        """ Download an Pulse_Block_Ensemble object into the pulse generator.
-
-        The name 'download' was chosen since from the view of the Pulse
-        Generator it downloads a file from the host PC.
-
-        Samples and downloads a saved Pulse_Block_Ensemble with name "ensemble_name" into the pulse generator internal memory.
-        """
-        #FIXME: We have definitely to think about this naming convenrion!
-
-        ensemble = self.get_ensemble(ensemble_name)
-        self.current_ensemble = ensemble
-        waveform = self.generate_waveform(ensemble)
-        self._pulse_generator_device.download_waveform(waveform)
-        return 0
-
     def load_asset(self, name, channel = None):
-        assets_on_device = self._pulse_generator_device.get_sequence_names()
+        assets_on_device = self._pulse_generator_device.uploaded_assets_list
         if name in assets_on_device:
             self._pulse_generator_device.load_asset(name, channel)
 
@@ -1031,88 +979,52 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block sampling
 #-------------------------------------------------------------------------------
-    def generate_waveform(self, block_ensemble):
-        """
-        Samples a Pulse_Block_Ensemble() object and creates a Waveform().
-        The Waveform object can be really big so only create it if needed and
-        delete it from memory asap.
-
-        @param Pulse_Block_Ensemble block_ensemble: The block ensemble object
-                                                    to be sampled
-
-        @return Waveform: A Waveform object containing the samples and
-                          metadata (sample_rate etc)
-        """
-        analogue_samples, digital_samples = self._sample_ensemble(block_ensemble)
-        waveform_obj = Waveform(block_ensemble, self.sample_rate,
-                                self.pp_voltage, analogue_samples,
-                                digital_samples)
-        return waveform_obj
-
-    def write_waveform_file_chunkwise(self, block_ensemble):
-        """
-        Samples the block_ensemble in chunks and sends them sequentially to the hardware pulser module for writing to a file.
-
-        @param block_ensemble:
-        @return: error code (0: OK, -1: error)
-        """
-        arr_len = np.round(block_ensemble.length_bins*1.01)
-        ana_channels = block_ensemble.analogue_channels
-        dig_channels = block_ensemble.digital_channels
-
-        first_write = True
-        number_of_elements_per_block = []
-        repetitions_per_block = []
-        for block, reps in block_ensemble.block_list:
-            number_of_elements = len(block.element_list)
-            max_elementsize_bins = 0
-            for element in block.element_list:
-                if element.init_length_bins > max_elementsize_bins:
-                    max_elementsize_bins = element.init_length_bins
-            number_of_elements_per_block.append((number_of_elements, max_elementsize_bins))
-
-        entry = 0
-        bin_offset = 0
-
-
-
     def sample_sequence(self, sequence):
         """
         Samples the sequence to obtain the needed waveforms.
         """
         pass
 
-    def _sample_ensemble_direct_write(self, ensemble):
+    def sample_ensemble(self, ensemble_name, write_to_file = True, chunkwise = True):
         """
-        Calculates actual sample points given a Pulse_Block_Ensemble object and writes them directly into a file.
-        No temporary version of the entire sample array is residing inside memory.
-        This method is more memory efficient than _sample_ensemble() but also slower.
 
-        @param ensemble: Pulse_Block_Ensemble() object to be sampled and saved to file.
-        @return: number of samples
+        @param ensemble_name:
+        @param write_to_file:
+        @param chunkwise:
+        @return:
         """
+        start_time = time.time()
+        # get ensemble
+        ensemble = self.get_ensemble(ensemble_name)
+        # Ensemble parameters to determine the shape of sample arrays
         number_of_samples = ensemble.length_bins
         ana_channels = ensemble.analogue_channels
         dig_channels = ensemble.digital_channels
-        print('number of samples: ', number_of_samples)
 
-        number_of_elements = 0
-        for block, reps in ensemble.block_list:
-            number_of_elements += (reps+1)*len(block.element_list)
-        print('number of elements: ', number_of_elements)
-
+        # The time bin offset for each element to be sampled to preserve rotating frame.
         bin_offset = 0
-        is_first_chunk = True
-        is_last_chunk = False
-        element_count = 0
+
+        if chunkwise and write_to_file:
+            # Flags and counter for chunkwise writing
+            is_first_chunk = True
+            is_last_chunk = False
+            number_of_elements = 0
+            for block, reps in ensemble.block_list:
+                number_of_elements += (reps+1)*len(block.element_list)
+            element_count = 0
+        else:
+            # Allocate huge sample arrays if chunkwise writing is disabled.
+            analogue_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
+            digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
+            # Starting index for the sample array entrys
+            entry_ind = 0
+
+        # Iterate over all blocks within the Pulse_Block_Ensemble object
         for block, reps in ensemble.block_list:
+            # Iterate over all repertitions of the current block
             for rep_no in range(reps+1):
+                # Iterate over the Block_Elements inside the current block
                 for block_element in block.element_list:
-
-                    element_count += 1
-                    if element_count == number_of_elements:
-                        is_last_chunk = True
-
                     parameters = block_element.parameters
                     init_length_bins = block_element.init_length_bins
                     increment_bins = block_element.increment_bins
@@ -1120,122 +1032,205 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     pulse_function = block_element.pulse_function
                     element_length_bins = init_length_bins + (rep_no*increment_bins)
 
-                    sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
-                    marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
                     time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
 
-                    for i, state in enumerate(markers_on):
-                        marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
-                    for i, func_name in enumerate(pulse_function):
-                        sample_arr[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+                    if chunkwise and write_to_file:
+                        element_count += 1
+                        if element_count == number_of_elements:
+                            is_last_chunk = True
 
-                    self._pulse_generator_device.write_chunk_to_file(ensemble.name, sample_arr, marker_arr, is_first_chunk, is_last_chunk)
+                        analogue_samples = np.empty([ana_channels, element_length_bins], dtype = 'float32')
+                        digital_samples = np.empty([dig_channels, element_length_bins], dtype = bool)
+
+                        for i, state in enumerate(markers_on):
+                            digital_samples[i] = np.full(element_length_bins, state, dtype = bool)
+                        for i, func_name in enumerate(pulse_function):
+                            analogue_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+
+                        self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, self.pp_voltage)
+                        is_first_chunk = False
+                    else:
+                        for i, state in enumerate(markers_on):
+                            digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype = bool)
+                        for i, func_name in enumerate(pulse_function):
+                            analogue_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+
+                        entry_ind += element_length_bins
 
                     if ensemble.rotating_frame:
                         bin_offset += element_length_bins
 
-                    is_first_chunk = False
+        if not write_to_file:
+            print('Time needed for sampling only: ', time.time()-start_time, ' sec')
+            return analogue_samples, digital_samples
+        elif chunkwise:
+            print('Time needed for write chunkwise: ', time.time()-start_time, ' sec')
+            return
+        else:
+            self._pulse_generator_device.write_to_file(ensemble.name, analogue_samples, digital_samples, self.sample_rate, self.pp_voltage)
+            print('Time needed for write in whole: ', time.time()-start_time, ' sec')
+            return
 
 
+    def upload_file(self, name):
+        self._pulse_generator_device.upload_asset(name)
+        pass
 
+    # def _sample_ensemble(self, ensemble):
+    #     """
+    #     Calculates actual sample points given a Pulse_Block_Ensemble object.
+    #
+    #     @param Pulse_Block_Ensemble() ensemble: Block ensemble to be sampled.
+    #
+    #     @return numpy_ndarrays[channel, sample]: The sampled analogue and digital channels
+    #     """
+    #     arr_len = np.round(ensemble.length_bins*1.01)
+    #     ana_channels = ensemble.analogue_channels
+    #     dig_channels = ensemble.digital_channels
+    #
+    #     sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
+    #     marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
+    #
+    #     entry = 0
+    #     bin_offset = 0
+    #     for block, reps in ensemble.block_list:
+    #         for rep_no in range(reps+1):
+    #             temp_sample_arr, temp_marker_arr = self._sample_block(block, rep_no, bin_offset, ensemble.rotating_frame)
+    #             temp_len = temp_sample_arr.shape[1]
+    #             sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+    #             marker_arr[:, entry:temp_len+entry] = temp_marker_arr
+    #             entry += temp_len
+    #             if ensemble.rotating_frame:
+    #                 bin_offset = entry
+    #     # slice the sample array to cut off uninitialized entrys at the end
+    #     return sample_arr[:, :entry], marker_arr[:, :entry]
 
+    # def _sample_block(self, block, rotating_frame = True):
+    #     """
+    #     Calculates actual sample points given a Block.
+    #
+    #     @param Pulse_Block() block: Block to be sampled.
+    #     @return:
+    #     """
+    #     number_of_samples = block.init_length_bins
+    #     ana_channels = block.analogue_channels
+    #     dig_channels = block.digital_channels
+    #
+    #     # Allocate sample arrays
+    #     analogue_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
+    #     digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
+    #
+    #     bin_offset = 0
+    #     entry = 0
+    #     for block_element in block.element_list:
+    #         parameters = block_element.parameters
+    #         element_length_bins = block_element.init_length_bins
+    #         markers_on = block_element.markers_on
+    #         pulse_function = block_element.pulse_function
+    #
+    #         time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
+    #
+    #         for i, state in enumerate(markers_on):
+    #             digital_samples[i, entry:entry+element_length_bins] = np.full(element_length_bins, state, dtype = bool)
+    #         for i, func_name in enumerate(pulse_function):
+    #             analogue_samples[i, entry:entry+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+    #
+    #         entry += element_length_bins
+    #         if rotating_frame:
+    #             bin_offset = entry
+    #     return analogue_samples, digital_samples
 
+    # def _sample_block(self, block, iteration_no = 0, bin_offset = 0, rotating_frame = False):
+    #     """
+    #     Calculates actual sample points given a Block.
+    #
+    #     @param Pulse_Block block: Block to be sampled.
+    #     @param int iteration_no: Current number of repetition step.
+    #     @param int bin_offset: The time bin offset, i.e. the position of the
+    #                            block inside the whole sample array.
+    #
+    #     @return numpy_ndarrays[channel, sample]: The sampled analogue and
+    #                                              digital channels.
+    #     """
+    #     ana_channels = block.analogue_channels
+    #     dig_channels = block.digital_channels
+    #     block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
+    #     arr_len = np.round(block_length_bins*1.01)
+    #     sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
+    #     marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
+    #     entry = 0
+    #     bin_offset_temp = bin_offset
+    #     for block_element in block.element_list:
+    #         temp_sample_arr, temp_marker_arr = self._sample_block_element(block_element, iteration_no, bin_offset_temp)
+    #         temp_len = temp_sample_arr.shape[1]
+    #         sample_arr[:, entry:temp_len+entry] = temp_sample_arr
+    #         marker_arr[:, entry:temp_len+entry] = temp_marker_arr
+    #         entry += temp_len
+    #         if rotating_frame:
+    #             bin_offset_temp = bin_offset + entry
+    #     # slice the sample array to cut off uninitialized entrys at the end
+    #     return sample_arr[:, :entry], marker_arr[:, :entry]
 
-    def _sample_ensemble(self, ensemble):
-        """
-        Calculates actual sample points given a Pulse_Block_Ensemble object.
+    # def _sample_block_element(self, block_element):
+    #     """
+    #
+    #     @param block_element:
+    #     @return:
+    #     """
+    #     number_of_samples = block_element.init_length_bins
+    #     ana_channels = block_element.analogue_channels
+    #     dig_channels = block_element.digital_channels
+    #
+    #     # Allocate sample arrays
+    #     analogue_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
+    #     digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
+    #
+    #     parameters = block_element.parameters
+    #     markers_on = block_element.markers_on
+    #     pulse_function = block_element.pulse_function
+    #
+    #     time_arr = (np.arange(number_of_samples)) / self.sample_rate
+    #
+    #     for i, state in enumerate(markers_on):
+    #         digital_samples[i, :] = np.full(number_of_samples, state, dtype = bool)
+    #     for i, func_name in enumerate(pulse_function):
+    #         analogue_samples[i, :] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+    #
+    #     return analogue_samples, digital_samples
 
-        @param Pulse_Block_Ensemble() ensemble: Block ensemble to be sampled.
-
-        @return numpy_ndarrays[channel, sample]: The sampled analogue and digital channels
-        """
-        arr_len = np.round(ensemble.length_bins*1.01)
-        ana_channels = ensemble.analogue_channels
-        dig_channels = ensemble.digital_channels
-
-        sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
-        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
-
-        entry = 0
-        bin_offset = 0
-        for block, reps in ensemble.block_list:
-            for rep_no in range(reps+1):
-                temp_sample_arr, temp_marker_arr = self._sample_block(block, rep_no, bin_offset, ensemble.rotating_frame)
-                temp_len = temp_sample_arr.shape[1]
-                sample_arr[:, entry:temp_len+entry] = temp_sample_arr
-                marker_arr[:, entry:temp_len+entry] = temp_marker_arr
-                entry += temp_len
-                if ensemble.rotating_frame:
-                    bin_offset = entry
-        # slice the sample array to cut off uninitialized entrys at the end
-        return sample_arr[:, :entry], marker_arr[:, :entry]
-
-
-    def _sample_block(self, block, iteration_no = 0, bin_offset = 0, rotating_frame = False):
-        """
-        Calculates actual sample points given a Block.
-
-        @param Pulse_Block block: Block to be sampled.
-        @param int iteration_no: Current number of repetition step.
-        @param int bin_offset: The time bin offset, i.e. the position of the
-                               block inside the whole sample array.
-
-        @return numpy_ndarrays[channel, sample]: The sampled analogue and
-                                                 digital channels.
-        """
-        ana_channels = block.analogue_channels
-        dig_channels = block.digital_channels
-        block_length_bins = block.init_length_bins + (block.increment_bins * iteration_no)
-        arr_len = np.round(block_length_bins*1.01)
-        sample_arr = np.empty([ana_channels, arr_len], dtype = 'float32')
-        marker_arr = np.empty([dig_channels, arr_len], dtype = bool)
-        entry = 0
-        bin_offset_temp = bin_offset
-        for block_element in block.element_list:
-            temp_sample_arr, temp_marker_arr = self._sample_block_element(block_element, iteration_no, bin_offset_temp)
-            temp_len = temp_sample_arr.shape[1]
-            sample_arr[:, entry:temp_len+entry] = temp_sample_arr
-            marker_arr[:, entry:temp_len+entry] = temp_marker_arr
-            entry += temp_len
-            if rotating_frame:
-                bin_offset_temp = bin_offset + entry
-        # slice the sample array to cut off uninitialized entrys at the end
-        return sample_arr[:, :entry], marker_arr[:, :entry]
-
-
-    def _sample_block_element(self, block_element, iteration_no=0, bin_offset=0):
-        """
-        Calculates actual sample points given a Block_Element.
-
-        @param Pulse_Block_Element block_element: Block element to be sampled.
-        @param int iteration_no: Current number of repetition step.
-        @param int bin_offset: The time bin offset, i.e. the position of the
-                               block_element inside the whole sample array.
-
-        @return (numpy_ndarrays[channel, sample], numpy_ndarrays[channel, sample]):
-                The sampled analogue and digital channels
-        """
-        ana_channels = block_element.analogue_channels
-        dig_channels = block_element.digital_channels
-        parameters = block_element.parameters
-        init_length_bins = block_element.init_length_bins
-        increment_bins = block_element.increment_bins
-        markers_on = block_element.markers_on
-        pulse_function = block_element.pulse_function
-
-        element_length_bins = init_length_bins + (iteration_no*increment_bins)
-        sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
-        marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
-        time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
-        print(time_arr[0])
-        print(bin_offset)
-
-        for i, state in enumerate(markers_on):
-            marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
-        for i, func_name in enumerate(pulse_function):
-            sample_arr[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
-
-        return sample_arr, marker_arr
+    # def _sample_block_element(self, block_element, iteration_no=0, bin_offset=0):
+    #     """
+    #     Calculates actual sample points given a Block_Element.
+    #
+    #     @param Pulse_Block_Element block_element: Block element to be sampled.
+    #     @param int iteration_no: Current number of repetition step.
+    #     @param int bin_offset: The time bin offset, i.e. the position of the
+    #                            block_element inside the whole sample array.
+    #
+    #     @return (numpy_ndarrays[channel, sample], numpy_ndarrays[channel, sample]):
+    #             The sampled analogue and digital channels
+    #     """
+    #     ana_channels = block_element.analogue_channels
+    #     dig_channels = block_element.digital_channels
+    #     parameters = block_element.parameters
+    #     init_length_bins = block_element.init_length_bins
+    #     increment_bins = block_element.increment_bins
+    #     markers_on = block_element.markers_on
+    #     pulse_function = block_element.pulse_function
+    #
+    #     element_length_bins = init_length_bins + (iteration_no*increment_bins)
+    #     sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
+    #     marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
+    #     time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
+    #     print(time_arr[0])
+    #     print(bin_offset)
+    #
+    #     for i, state in enumerate(markers_on):
+    #         marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
+    #     for i, func_name in enumerate(pulse_function):
+    #         sample_arr[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+    #
+    #     return sample_arr, marker_arr
 
 #-------------------------------------------------------------------------------
 #                    END sequence/block sampling
