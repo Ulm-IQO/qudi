@@ -60,11 +60,10 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         # a dictionary with all the possible sample modes assigned to a number:
         self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
-        self.current_sample_mode = self.sample_mode['wfm-file']
+        self.current_sample_mode = self.sample_mode['wfmx-file']
 
         self.awg_waveform_directory = '/waves'
-        # self.host_waveform_directory = 'C:\\Users\\astark\\Dropbox\\Doctorwork\\Software\\QuDi\\trunk\\waveforms\\'
-        self.host_waveform_directory = 'C:\\'
+        self.host_waveform_directory = 'C:/software/qudi/trunk/waveforms/'
         self.connected = False
         self.amplitude = 0.25
         self.sample_rate = 25e9
@@ -194,6 +193,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
             os.remove('header.xml')
 
             for channel_number in range(ana_samples.shape[0]):
+                print(ana_samples.shape[0])
                 # create .WFMX-file for each channel.
                 filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
                 with open(filepath, 'wb') as wfmxfile:
@@ -358,7 +358,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
                 header_lines = header.readlines()
             os.remove('header.xml')
             # create .WFMX-file for each channel.
-            for channel_number in range(digital_samples_chunk.shape[0]):
+            for channel_number in range(analogue_samples_chunk.shape[0]):
                 filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
                 with open(filepath, 'wb') as wfmxfile:
                     # write header
@@ -367,8 +367,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
 
         # append analogue samples to the .WFMX files of each channel. Write
         # digital samples in temporary files.
-        for channel_number in range(digital_samples_chunk.shape[0]):
-
+        for channel_number in range(analogue_samples_chunk.shape[0]):
             # append analogue samples chunk to .WFMX file
             filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
             with open(filepath, 'ab') as wfmxfile:
@@ -422,7 +421,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         # append the digital sample tmp file to the .WFMX file and delete the
         # .tmp files if it was the last chunk to write.
         if is_last_chunk:
-            for channel_number in range(digital_samples_chunk.shape[0]):
+            for channel_number in range(analogue_samples_chunk.shape[0]):
                 tmp_filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp'
                 wfmx_filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
                 with open(wfmx_filepath, 'ab') as wfmxfile:

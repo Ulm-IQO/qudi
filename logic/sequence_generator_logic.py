@@ -348,6 +348,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_sequence = None
         self.loaded_sequence_length = 100e-6
 
+        self.direct_write = True
+
         # The string names of the created Pulse_Block objects are saved here:
         self.saved_pulse_blocks = []
         # The string names of the created Pulse_Block_Ensemble objects are
@@ -987,11 +989,97 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                                 digital_samples)
         return waveform_obj
 
+    def write_waveform_file_chunkwise(self, block_ensemble):
+        """
+        Samples the block_ensemble in chunks and sends them sequentially to the hardware pulser module for writing to a file.
+
+        @param block_ensemble:
+        @return: error code (0: OK, -1: error)
+        """
+        arr_len = np.round(block_ensemble.length_bins*1.01)
+        ana_channels = block_ensemble.analogue_channels
+        dig_channels = block_ensemble.digital_channels
+
+        first_write = True
+        number_of_elements_per_block = []
+        repetitions_per_block = []
+        for block, reps in block_ensemble.block_list:
+            number_of_elements = len(block.element_list)
+            max_elementsize_bins = 0
+            for element in block.element_list:
+                if element.init_length_bins > max_elementsize_bins:
+                    max_elementsize_bins = element.init_length_bins
+            number_of_elements_per_block.append((number_of_elements, max_elementsize_bins))
+
+        entry = 0
+        bin_offset = 0
+
+
+
     def sample_sequence(self, sequence):
         """
         Samples the sequence to obtain the needed waveforms.
         """
         pass
+
+    def _sample_ensemble_direct_write(self, ensemble):
+        """
+        Calculates actual sample points given a Pulse_Block_Ensemble object and writes them directly into a file.
+        No temporary version of the entire sample array is residing inside memory.
+        This method is more memory efficient than _sample_ensemble() but also slower.
+
+        @param ensemble: Pulse_Block_Ensemble() object to be sampled and saved to file.
+        @return: number of samples
+        """
+        number_of_samples = ensemble.length_bins
+        ana_channels = ensemble.analogue_channels
+        dig_channels = ensemble.digital_channels
+        print('number of samples: ', number_of_samples)
+
+        number_of_elements = 0
+        for block, reps in ensemble.block_list:
+            number_of_elements += (reps+1)*len(block.element_list)
+        print('number of elements: ', number_of_elements)
+
+        bin_offset = 0
+        is_first_chunk = True
+        is_last_chunk = False
+        element_count = 0
+        for block, reps in ensemble.block_list:
+            for rep_no in range(reps+1):
+                for block_element in block.element_list:
+
+                    element_count += 1
+                    if element_count == number_of_elements:
+                        is_last_chunk = True
+
+                    parameters = block_element.parameters
+                    init_length_bins = block_element.init_length_bins
+                    increment_bins = block_element.increment_bins
+                    markers_on = block_element.markers_on
+                    pulse_function = block_element.pulse_function
+                    element_length_bins = init_length_bins + (rep_no*increment_bins)
+
+                    sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
+                    marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
+                    time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
+
+                    for i, state in enumerate(markers_on):
+                        marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
+                    for i, func_name in enumerate(pulse_function):
+                        sample_arr[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+
+                    self._pulse_generator_device.write_chunk_to_file(ensemble.name, sample_arr, marker_arr, is_first_chunk, is_last_chunk)
+
+                    if ensemble.rotating_frame:
+                        bin_offset += element_length_bins
+
+                    is_first_chunk = False
+
+
+
+
+
 
     def _sample_ensemble(self, ensemble):
         """
@@ -1012,7 +1100,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         bin_offset = 0
         for block, reps in ensemble.block_list:
             for rep_no in range(reps+1):
-                temp_sample_arr, temp_marker_arr = self._sample_block(block, rep_no, bin_offset)
+                temp_sample_arr, temp_marker_arr = self._sample_block(block, rep_no, bin_offset, ensemble.rotating_frame)
                 temp_len = temp_sample_arr.shape[1]
                 sample_arr[:, entry:temp_len+entry] = temp_sample_arr
                 marker_arr[:, entry:temp_len+entry] = temp_marker_arr
@@ -1023,7 +1111,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return sample_arr[:, :entry], marker_arr[:, :entry]
 
 
-    def _sample_block(self, block, iteration_no = 0, bin_offset = 0):
+    def _sample_block(self, block, iteration_no = 0, bin_offset = 0, rotating_frame = False):
         """
         Calculates actual sample points given a Block.
 
@@ -1049,7 +1137,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             sample_arr[:, entry:temp_len+entry] = temp_sample_arr
             marker_arr[:, entry:temp_len+entry] = temp_marker_arr
             entry += temp_len
-            bin_offset_temp = bin_offset + entry
+            if rotating_frame:
+                bin_offset_temp = bin_offset + entry
         # slice the sample array to cut off uninitialized entrys at the end
         return sample_arr[:, :entry], marker_arr[:, :entry]
 
@@ -1078,6 +1167,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         sample_arr = np.empty([ana_channels, element_length_bins], dtype = 'float32')
         marker_arr = np.empty([dig_channels, element_length_bins], dtype = bool)
         time_arr = (bin_offset + np.arange(element_length_bins)) / self.sample_rate
+        print(time_arr[0])
+        print(bin_offset)
 
         for i, state in enumerate(markers_on):
             marker_arr[i] = np.full(element_length_bins, state, dtype = bool)
@@ -1316,4 +1407,251 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # update ensemble list
         self.refresh_ensemble_list()
 
+    def generate_HHamp_sweep(self, name, pihalf_V, pihalf_bins, pi3half_bins, spinlock_start_V, spinlock_stop_V, number_of_points, freq1, freq2, freq3, slphase_deg, spinlock_bins, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+        # create parameter dictionary list for MW signal
+        pihalf_params = [{},{}]
+        pihalf_params[0]['amplitude1'] = pihalf_V
+        pihalf_params[0]['frequency1'] = freq1
+        pihalf_params[0]['phase1'] = 0
+        spinlock_params = [{},{}]
+        spinlock_params[0]['frequency1'] = freq1
+        spinlock_params[0]['phase1'] = slphase_deg
+        no_analogue_params = [{},{}]
+        laser_markers = [False, False, True, False]
+        # gate_markers = [False, False, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, False, True]
 
+        # create amplitude list
+        amp_list = np.linspace(spinlock_start_V, spinlock_stop_V, number_of_points, dtype=int)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
+        pi3half_element = Pulse_Block_Element(pi3half_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
+        # put elements in a list to create the block
+        element_list = []
+        for voltage in amp_list:
+            # create copy of parameter dict to use for this amplitude
+            temp_params = [spinlock_params[0].copy(),{}]
+            temp_params[0]['amplitude1'] = voltage
+            # create actual spinlock-pulse element
+            spinlock_element = Pulse_Block_Element(spinlock_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, temp_params)
+            # create measurement elements for this frequency
+            # polarize in one direction
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pihalf_element)
+            element_list.append(spinlock_element)
+            element_list.append(pihalf_element)
+            # polarize in other direction
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pi3half_element)
+            element_list.append(spinlock_element)
+            element_list.append(pi3half_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
+        # create block
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, amp_list, number_of_points*2, True)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
+
+    def generate_HHtau_sweep(self, name, pihalf_V, pihalf_bins, pi3half_bins, spinlock_start_bins, spinlock_stop_bins, number_of_taus, freq1, freq2, freq3, slphase_deg, spinlock_V, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+        # create parameter dictionary list for MW signal
+        pihalf_params = [{},{}]
+        pihalf_params[0]['amplitude1'] = pihalf_V
+        pihalf_params[0]['frequency1'] = freq1
+        pihalf_params[0]['phase1'] = 0
+        spinlock_params = [{},{}]
+        spinlock_params[0]['frequency1'] = freq1
+        spinlock_params[0]['amplitude1'] = spinlock_V
+        spinlock_params[0]['phase1'] = slphase_deg
+        no_analogue_params = [{},{}]
+        laser_markers = [False, False, True, False]
+        # gate_markers = [False, False, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, False, True]
+
+        # create tau list
+        tau_list = np.linspace(spinlock_start_bins, spinlock_stop_bins, number_of_taus, dtype=int)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
+        pi3half_element = Pulse_Block_Element(pi3half_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
+        # put elements in a list to create the block
+        element_list = []
+        for tau in tau_list:
+            # create actual spinlock-pulse element
+            spinlock_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, spinlock_params)
+            # create measurement elements for this frequency
+            # polarize in one direction
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pihalf_element)
+            element_list.append(spinlock_element)
+            element_list.append(pihalf_element)
+            # polarize in other direction
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pi3half_element)
+            element_list.append(spinlock_element)
+            element_list.append(pi3half_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
+        # create block
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus*2, True)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
+
+    def generate_spinlock_N14(self, name, pihalfamp_V, pihalf_bins, spinlockamp_V, freq1, freq2, freq3, slphase_deg, tau_start_bins, tau_end_bins, number_of_taus, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+        # create parameter dictionary list for MW signal
+        pihalf_params = [{},{}]
+        pihalf_params[0]['amplitude1'] = pihalfamp_V
+        pihalf_params[0]['frequency1'] = freq1
+        pihalf_params[0]['phase1'] = 0
+        spinlock_params = [{},{}]
+        spinlock_params[0]['amplitude1'] = spinlockamp_V
+        spinlock_params[0]['frequency1'] = freq1
+        spinlock_params[0]['phase1'] = slphase_deg
+        no_analogue_params = [{},{}]
+        laser_markers = [False, False, True, False]
+        # gate_markers = [False, False, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, False, True]
+
+        # create tau list
+        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
+        # put elements in a list to create the block
+        element_list = []
+        for tau in tau_list:
+            # create actual spinlock-pulse element
+            spinlock_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, spinlock_params)
+            # create measurement elements for this frequency
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(pihalf_element)
+            element_list.append(spinlock_element)
+            element_list.append(pihalf_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
+        # create block
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, True)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
+
+    def generate_rabi_triple(self, name, mw_freq_Hz_1, mw_freq_Hz_2, mw_freq_Hz_3, mw_amp_V, aom_delay_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
+        # create parameter dictionary list for MW signal
+        mw_params = [{},{}]
+        mw_params[0]['frequency1'] = mw_freq_Hz_1
+        mw_params[0]['frequency2'] = mw_freq_Hz_2
+        mw_params[0]['frequency3'] = mw_freq_Hz_3
+        mw_params[0]['amplitude1'] = mw_amp_V
+        mw_params[0]['amplitude2'] = mw_amp_V
+        mw_params[0]['amplitude3'] = mw_amp_V
+        mw_params[0]['phase1'] = 0
+        mw_params[0]['phase2'] = 0
+        mw_params[0]['phase3'] = 0
+        no_analogue_params = [{},{}]
+        laser_markers = [False, False, True, False]
+        gate_markers = [False, False, False, False]
+        idle_markers = [False, False, False, False]
+        seqtrig_markers = [False, False, False, True]
+
+        # create tau list
+        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
+
+        # generate elements
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        # put elements in a list to create the block
+        element_list = []
+        for tau in tau_list:
+            mw_element = Pulse_Block_Element(tau, 2, 4, 0, ['TripleSin', 'Idle'], idle_markers, mw_params)
+            element_list.append(laser_element)
+            element_list.append(aomdelay_element)
+            element_list.append(waiting_element)
+            element_list.append(mw_element)
+        if use_seqtrig:
+            element_list.append(seqtrig_element)
+
+        # create block
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, False)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
