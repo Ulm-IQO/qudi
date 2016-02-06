@@ -1,23 +1,37 @@
 # -*- coding: utf-8 -*-
-# unstable: Christoph Müller
 
-from core.base import Base
-from hardware.magnet.magnet_stage_interface import MagnetStageInterface
-import visa
+"""
+This file contains the QuDi hardware interface for fast counting devices.
 
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-# calibrate x,y,z,    get status   und ask_rot   fehlen noch
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
+Copyright (C) 2015 Christoph Mueller christoph-1.mueller@uni-ulm.de
+"""
 
-class MagnetStagePI(Base, MagnetStageInterface):
+class MagnetStagePI(Base, MotorInterface):
     """unstable: Christoph Müller
     This is the Interface class to define the controls for the simple 
     microwave hardware.
     """
+    _modclass = 'MagnetStagePI'
+    _modtype = 'hardware'
+    # connectors
+    _out = {'magnet': 'MotorInterface'}
     
     def __init__(self, manager, name, config, **kwargs):
-        cb_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        cb_dict = {'onactivate': self.activation, 
+                   'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, cb_dict)
 
         #axis definition:
