@@ -1,20 +1,38 @@
 # -*- coding: utf-8 -*-
-# unstable: Jochen Scheuer
+
+"""
+This file contains the QuDi hardware interface for fast counting devices.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
+"""
 
 from core.base import Base
-from hardware.magnet.magnet_stage_interface import MagnetStageInterface
+from interface.motor_interface import MotorInterface
 from collections import OrderedDict
 
 import visa
 import time
 
-class MagnetStageMicos(Base, MagnetStageInterface):
+class MotorStageMicos(Base, MotorInterface):
     """unstable: Jochen Scheuer. This is the hardware class to define the controls for the Micos stage of PI.
     """
-    _modclass = 'MagnetStageInterface'
+    _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
     # connectors
-    _out = {'magnet': 'MagnetStageInterface'}
+    _out = {'magnet': 'MotorInterface'}
 
 #Questions:
 #    Are values put in the right way in config????
