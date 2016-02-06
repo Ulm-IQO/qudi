@@ -25,7 +25,7 @@ from hardware.pulser_interface import PulserInterface
 import os
 import numpy as np
 import hdf5storage
-from hardware.WFMX_header import WFMX_header
+from hardware.awg.WFMX_header import WFMX_header
 import struct
 import time
 

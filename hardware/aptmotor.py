@@ -2,10 +2,6 @@
 """
 APT Motor Controller for Thorlabs
 
-This module was developed from PyAPT, written originally by Michael Leung ( mcleung@stanford.edu ).
-    https://github.com/HaeffnerLab/Haeffner-Lab-LabRAD-Tools/blob/master/cdllservers/APTMotor/APTMotorServer.py
-APT.dll and APT.lib were provided to PyAPT thanks to SeanTanner@ThorLabs .
-
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -20,6 +16,13 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
+"""
+
+"""
+This module was developed from PyAPT, written originally by Michael Leung
+(mcleung@stanford.edu). Have a look in:
+    https://github.com/HaeffnerLab/Haeffner-Lab-LabRAD-Tools/blob/master/cdllservers/APTMotor/APTMotorServer.py
+APT.dll and APT.lib were provided to PyAPT thanks to SeanTanner@ThorLabs .
 """
 
 from core.base import Base
@@ -50,7 +53,7 @@ class APTMotor(Base, MotorInterface):
         HWTYPE_BBD10X		44	// 1/2/3 Ch benchtop brushless DC servo driver
     """
 
-    _modclass = 'motorinterface'
+    _modclass = 'APTMotor'
     _modtype = 'hardware'
 
     # connectors
@@ -61,8 +64,8 @@ class APTMotor(Base, MotorInterface):
         Base.__init__(self, manager, name, config, c_dict)
 
     def activation(self, e):
-        '''Initialize instance variables and connect to hardware as configured.
-        '''
+        """ Initialize instance variables and connect to hardware as configured.
+        """
         self.Connected = False
         self.verbose = False
 
@@ -88,18 +91,22 @@ class APTMotor(Base, MotorInterface):
         if 'motor_hw_type' in config.keys():
             self.HWType = c_long(config['motor_hw_type'])
         else:
-            self.logMsg('Motor HW Type not found in the configuration, searching for motors will not work', msgType='warning')
+            self.logMsg('Motor HW Type not found in the configuration, '
+                        'searching for motors will not work', msgType='error')
 
         if 'motor_serial_number' in config.keys():
             self.SerialNum = c_long(config['motor_serial_number'])
             self.initializeHardwareDevice()
             # TODO : Error reporting to know if initialisation went sucessfully or not.
         else:
-            self.logMsg('Motor serial number not found in the configuration.  This must be set manually (using set_serial_number(###)) and the hardware then needs to be initialized manually (using initialize_hardware_device).', msgType='warning')
+            self.logMsg('Motor serial number not found in the configuration.\n'
+                        'This number is essential, without it no proper '
+                        'communication can be established!\n'
+                        'The Serial number can be found at the back of the '
+                        'Step Motor controller.', msgType='error')
 
     def deactivation(self, e):
-        '''Disconnect from hardware and clean up
-        '''
+        """ Disconnect from hardware and clean up """
         self.cleanUpAPT()
 
     def getNumberOfHardwareUnits(self):
@@ -359,15 +366,16 @@ class APTMotor(Base, MotorInterface):
         return True
 
     def cleanUpAPT(self):
-        '''
-        Releases the APT object
-        Use when exiting the program
-        '''
+        """ Releases the APT object. Use when exiting the program.
+        """
         self.aptdll.APTCleanUp()
         if self.verbose:
             print('APT cleaned up')
         self.Connected = False
 
     def abort(self):
-        self.logMsg('The APT motor cannot abort.  Please wait for it to finish moving.',
+        """ Abort the movement. """
+
+        self.logMsg('The APT motor cannot abort!\n'
+                    'Please wait for it to finish moving.',
                     msgType='warning')
