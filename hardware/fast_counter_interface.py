@@ -23,31 +23,25 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 from core.util.customexceptions import InterfaceImplementationError
 
 class FastCounterInterface():
-    """
-    Interface class to define the controls for fast counting devices.
-    """
+    """ Interface class to define the controls for fast counting devices. """
 
-    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
-        """
-        Configuration of the fast counter.
-        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
-        record_length_s: Total length of the timetrace/each single gate in seconds.
-        number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
-        Returns the actually set values as tuple
-        bin_width_ns: Length of a single time bin in the time trace histogram
-                      in nanoseconds.
-        record_length_ns: Total length of the timetrace/each single gate in
-                          nanoseconds.
-        number_of_gates: Number of gates in the pulse sequence. Ignore for
-                         ungated counter.
-        Returns the actually set values as tuple
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+        """ Configuration of the fast counter.
+
+        @param float bin_width_s: Length of a single time bin in the time trace 
+                                  histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single 
+                                      gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse 
+                                    sequence. Ignore for not gated counter.
         """
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1
 
     def get_status(self):
-        """
-        Receives the current status of the Fast Counter and outputs it as return value.
+        """ Receives the current status of the Fast Counter and outputs it as 
+            return value.
+        
         0 = unconfigured
         1 = idle
         2 = running
@@ -58,54 +52,57 @@ class FastCounterInterface():
         return -1
 
     def start_measure(self):
-        """
-        Starts the fast counter.
-        """
+        """ Start the fast counter. """
         raise InterfaceImplementationError('FastCounterInterface>start')
         return -1
 
     def stop_measure(self):
-        """
-        Stops the fast counter.
-        """
+        """ Stop the fast counter. """
         raise InterfaceImplementationError('FastCounterInterface>stop')
         return -1
 
     def pause_measure(self):
-        """
-        Pauses the current measurement if the fast counter is in running state.
+        """ Pauses the current measurement.
+
+        Fast counter must be initially in the run state to make it pause.
         """
         raise InterfaceImplementationError('FastCounterInterface>pause_measure')
         return -1
 
     def continue_measure(self):
-        """
-        Continues the current measurement if the fast counter is in pause state.
+        """ Continues the current measurement.
+
+        If fast counter is in pause state, then fast counter will be continued.
         """
         raise InterfaceImplementationError('FastCounterInterface>continue_measure')
         return -1
 
     def is_gated(self):
-        """
-        Boolean return value indicates if the fast counter is a gated counter (TRUE) or not (FALSE).
+        """ Check the gated counting possibility.
+
+        Boolean return value indicates if the fast counter is a gated counter 
+        (TRUE) or not (FALSE).
         """
         raise InterfaceImplementationError('FastCounterInterface>is_gated')
         return -1
 
     def get_binwidth(self):
-        """
-        returns the width of a single timebin in the timetrace in seconds
+        """ Returns the width of a single timebin in the timetrace in seconds
         """
         raise InterfaceImplementationError('FastCounterInterface>get_binwidth')
         return -1
 
     def get_data_trace(self):
-        """
-        Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
-        The binning specified by calling configure() must be taken care of in this hardware class.
-        A possible overflow of the histogram bins must be caught here and taken care of.
-        If the counter is UNgated it will return a 1D-numpy-array with returnarray[timebin_index]
-        If the counter is gated it will return a 2D-numpy-array with returnarray[gate_index, timebin_index]
+        """ Polls the current timetrace data from the fast counter.
+
+        Return value is a numpy array (dtype = int64).
+        The binning, specified by calling configure() in forehand, must be taken
+        care of in this hardware class. A possible overflow of the histogram 
+        bins must be caught here and taken care of.
+        If the counter is NOT GATED it will return a 1D-numpy-array with 
+            returnarray[timebin_index]
+        If the counter is GATED it will return a 2D-numpy-array with 
+            returnarray[gate_index, timebin_index]
         """
         raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
         return -1
