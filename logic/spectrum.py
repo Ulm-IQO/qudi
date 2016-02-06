@@ -23,7 +23,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
-
+from core.util.network import netobtain
 
 class SpectrumLogic(GenericLogic):
 
@@ -98,7 +98,7 @@ class SpectrumLogic(GenericLogic):
         return newdata
 
     def get_single_spectrum(self):
-        self.spectrum_data = self.replace_data_with_local_float64(self._spectrometer_device.recordSpectrum())
+        self.spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
 
         # Clearing the differential spectra data arrays so that they do not get
         # saved with this single spectrum.
