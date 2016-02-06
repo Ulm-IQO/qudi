@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-A hardware module for acessing the Measurement Systems TSYS01 temperature
-sensor chip via SPI.
+A hardware module for communicating with the fast counter FPGA.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,7 +36,8 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
     signal_get_data_next = QtCore.Signal()
     
     def __init__(self, manager, name, config = {}, **kwargs):
-        callback_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        callback_dict = {'onactivate': self.activation, 
+                         'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, callback_dict)
         
 
@@ -46,7 +46,8 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         if 'fpgacounter_serial' in config.keys():
             self._fpgacounter_serial=config['fpgacounter_serial']
         else:
-            self.logMsg('No serial number defined for fpga counter', msgType='warning')
+            self.logMsg('No serial number defined for fpga counter', 
+                        msgType='warning')
                         
         tt._Tagger_setSerial(self._fpgacounter_serial)
         
@@ -66,7 +67,8 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         
         self.threadlock = Mutex()
         
-        self.signal_get_data_next.connect(self._get_data_next, QtCore.Qt.QueuedConnection)
+        self.signal_get_data_next.connect(self._get_data_next, 
+                                          QtCore.Qt.QueuedConnection)
         
     def deactivation(self, e):
         pass

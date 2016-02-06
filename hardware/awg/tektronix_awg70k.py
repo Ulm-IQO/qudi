@@ -15,7 +15,7 @@ from core.util.mutex import Mutex
 import numpy as np
 import hdf5storage
 from hardware.pulser_interface import PulserInterface
-from WFMX_header import WFMX_header
+from hardware.awg.WFMX_header import WFMX_header
 
 class AWG70K(Base, PulserInterface):
     """ UNSTABLE: Nikolas
