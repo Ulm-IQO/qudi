@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>762</width>
-    <height>686</height>
+    <width>439</width>
+    <height>563</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>762</width>
+     <width>439</width>
      <height>30</height>
     </rect>
    </property>
@@ -56,7 +56,7 @@
       <widget class="QLabel" name="control_value_Label">
        <property name="font">
         <font>
-         <pointsize>60</pointsize>
+         <pointsize>24</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -108,7 +108,7 @@
       <widget class="QLabel" name="process_value_Label">
        <property name="font">
         <font>
-         <pointsize>60</pointsize>
+         <pointsize>24</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -125,7 +125,7 @@
       <widget class="QLabel" name="setpoint_value_Label">
        <property name="font">
         <font>
-         <pointsize>60</pointsize>
+         <pointsize>24</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
