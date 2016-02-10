@@ -54,6 +54,7 @@ Confocal GUI
 
 Laser Scanning GUI
 ------------------
+
 | Action | key  |
 |  ???  |  ???  |
 |  ???  |  ???  |
