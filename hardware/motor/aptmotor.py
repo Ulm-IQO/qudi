@@ -216,6 +216,8 @@ class APTMotor(Base, MotorInterface):
         return True
 
     def setVel(self, maxVel):
+        """set the velocity
+        """
         if self.verbose:
             print('setVel', maxVel)
         minVel, acc, oldVel = self.getVelocityParameters()
