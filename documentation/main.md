@@ -6,7 +6,7 @@ Welcome to the Quantum Diamond Documentation                {#mainpage}
 * [Required packages](@ref required-python-packages)
 * [Keyboard shortcuts](@ref shortcuts)
 * GUI documentation
-  * [Manager GUI](@ref managerui)
-  * [Confocal GUI](@ref confocalui)
-  * [ODMR GUI](@ref odmrui)
+  * [Manager GUI](@ref managergui)
+  * [Confocal GUI](@ref confocalgui)
+  * [ODMR GUI](@ref odmrgui)
 
