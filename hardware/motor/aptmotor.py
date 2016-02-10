@@ -216,7 +216,7 @@ class APTMotor(Base, MotorInterface):
         return True
 
     def setVel(self, maxVel):
-        """set the velocity
+        """set the velocity for the motor movement
         """
         if self.verbose:
             print('setVel', maxVel)
@@ -327,9 +327,9 @@ class APTMotor(Base, MotorInterface):
             print('mcAbs SUCESS')
         return True
 
-    def mbRel(self, relDistance):
+    def move_bc_rel(self, relDistance):
         '''
-        Moves the motor a relative distance specified
+        Moves the motor a relative distance specified, correcting for backlash
         @param relDistance    float     Relative position desired
         '''
         if self.verbose:
