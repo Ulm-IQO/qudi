@@ -7,6 +7,7 @@ Here all key shortcuts of QuDi are listed.
 For all GUIs
 ------------
 
+| Action                 | Key
 | ---------------------- | ----- |
 |       Close GUI        |  ???  |
 |    Undo last action    |  ???  |
@@ -16,6 +17,7 @@ For all GUIs
 Manager GUI
 -----------
 
+| Action | key  |
 | ----- | ----- |
 |  ???  |  ???  |
 |  ???  |  ???  |
@@ -24,6 +26,7 @@ Manager GUI
 Counter GUI
 -----------
 
+| Action                | key   |
 | --------------------- | ----- |
 |  Start/Stop counting  |  ???  |
 |         Save          |  ???  |
@@ -31,6 +34,7 @@ Counter GUI
 Confocal GUI
 ------------
 
+| Action                        | key               | extras                                     |
 | ----------------------------- | ----------------- | ------------------------------------------ |
 |         Start XY scan         |        ???        |                                            |
 |        Resume XY scan         |        ???        |                                            |
@@ -50,14 +54,14 @@ Confocal GUI
 
 Laser Scanning GUI
 ------------------
-
+| Action | key  |
 |  ???  |  ???  |
 |  ???  |  ???  |
 
 
 Laser  Switch GUI
 -----------------
-
+| Action           | key   |
 |------------------|-------|
 |    Start new     |  ???  |
 |   Stop/Resume    |  ???  |
@@ -67,6 +71,7 @@ Laser  Switch GUI
 POI Manager GUI
 ---------------
 
+| Action        | key   |
 |---------------|-------|
 |  Set new POI  |  ???  |
 |  Delete POI   |  ???  |
@@ -77,6 +82,7 @@ POI Manager GUI
 ODMR GUI
 --------
 
+| Action     | key   |
 | ---------- | ----- |
 |  Run/Idle  |  ???  |
 |    Fit     |  ???  |
