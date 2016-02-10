@@ -18,16 +18,18 @@ Open the checked out folder in PyCharm and configure the project interpreter to 
 
 Configuring the project interpreter is described on this site: https://www.jetbrains.com/pycharm/help/configuring-python-interpreter-for-a-project.html .
 
-Now you can open `start.py` in the PyCharm project and execute it by right clicking the file tab anc choosing execute.
+Now you can open `start.py` in the PyCharm project and execute it by right clicking the file tab and choosing execute.
 
 Linux (Debian-based)
 --------------------
 
 Install subversion, do `svn co https://qosvn2.physik.uni-ulm.de/svn/qudi/trunk qudi` .
+
 Install all packages listed in the file `tools/debian-jessie-packages.txt`.
+
 Install all Python packages listed in the file `tools/debian-jessie-pip.txt` with pip3.
 
-You shpuld now be able to run `python3 start.py` in the qudi folder.
+You should now be able to run `python3 start.py` in the qudi folder.
 
 PyDAQmx fix
 -----------
