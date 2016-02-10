@@ -1,7 +1,0 @@
-The necessary base tools (Anaconda, etc) can be found on the fileserver at:
-QOall/Software/qudi_setup/
-
-If you are on Windows machine, run the file 'install-pyton-modules-windows.bat' that can be found in the 'tools' folder.
-That file will request administrator access on your PC and will install for you all needed
-packages python needs to run our program.
-
