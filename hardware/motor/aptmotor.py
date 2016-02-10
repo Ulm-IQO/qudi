@@ -190,6 +190,7 @@ class APTMotor(Base, MotorInterface):
         return hardwareLimitSwitches
 
     def getVelocityParameters(self):
+
         minimumVelocity = c_float()
         acceleration = c_float()
         maximumVelocity = c_float()
@@ -198,6 +199,8 @@ class APTMotor(Base, MotorInterface):
         return velocityParameters
 
     def getVel(self):
+        """ Get the current velocity setting
+        """
         if self.verbose:
             print('getVel probing...')
         minVel, acc, maxVel = self.getVelocityParameters()
