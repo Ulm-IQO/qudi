@@ -50,6 +50,10 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         else:
             self._photon_source2 = None
 
+        # parameters
+        self.mean_signal = 5e5
+        self.noise_amplitude = 5e4
+
     def deactivation(self, e):
         pass
     
@@ -115,7 +119,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
         
         for i in range(samples):
-            count_data[0][i] = random.uniform(0, 1e6)
+            count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
         
         if self._photon_source2 is not None:
             for i in range(samples):

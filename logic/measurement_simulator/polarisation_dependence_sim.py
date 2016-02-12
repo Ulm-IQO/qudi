@@ -21,6 +21,7 @@ Copyright (C) 2016 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 from core.base import Base
 from hardware.slow_counter_interface import SlowCounterInterface
 from interface.motor_interface import MotorInterface
+from pyqtgraph.Qt import QtCore
 import time
 import random
 import numpy as np
@@ -37,6 +38,8 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     _in = {'counter1': 'SlowCounterInterface'}
 
     _out = {'polarizationdependencesim': 'PolarizationDependenceSim'}
+
+    _move_signal = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -56,15 +59,23 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
         self.dipole_angle = random.uniform(0,360)
 
-        print('activated poldepsim')
+        self.velocity = 10
+        self.clock_frequency = 50
+        self.forwards_motion = True
+        self.moving = False
+
+        # Signals
+        self._move_signal.connect(self._move_step, QtCore.Qt.QueuedConnection)
 
     def deactivation(self,e):
-        pass
+        self._counter_hw.close_counter()
+        self._counter_hw.close_clock()
 
     # Wrapping the slow counter methods
     def set_up_clock(self, clock_frequency = None, clock_channel = None):
         """ Direct pass-through to the counter hardware module
         """
+        self.clock_frequency = clock_frequency
         return self._counter_hw.set_up_clock(clock_frequency = clock_frequency, clock_channel = clock_channel)
 
     def set_up_counter(self,
@@ -88,7 +99,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
         # modulate the counts with a polarisation dependence
         angle = np.radians(self.hwp_angle - self.dipole_angle)
-        count = raw_count * np.sin(angle) * np.sin(angle)
+        count = raw_count * np.sin(angle) * np.sin(angle) + random.uniform(-0.1, 0.1)
         return count
 
     def close_counter(self):
@@ -109,8 +120,17 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         if distance == None:
             #TODO warning
             pass
-        self.hwp_angle += distance
-        #TODO sleep
+
+        self.destination = self.hwp_angle + distance
+
+        # Keep track of the motion direction so we will know when we are past the destination
+        if distance > 0:
+            self.forwards_motion = True
+        else:
+            self.forwards_motion = False
+
+        self.moving = True
+        self._move_signal.emit()
         return 0
 
     def move_abs(self, axis=None, position=None):
@@ -119,11 +139,48 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         if position == None:
             #TODO warning
             pass
-        self.hwp_angle = position
-        #TODO sleep
+        self.destination = position
+
+        # Keep track of the motion direction so we will know when we are past the destination
+        if position > self.hwp_angle:
+            self.forwards_motion = True
+        else:
+            self.forwards_motion = False
+
+        self.moving = True
+        self._move_signal.emit()
         return 0
 
+    def _move_step(self):
+        """Make movement steps in a threaded loop
+        """
+
+        # if abort is requested, then stop moving
+        if not self.moving:
+            return
+
+        # If we have reached the destination then stop the movement
+        if self.forwards_motion:
+            if self.hwp_angle > self.destination:
+                return
+        else:
+            if self.hwp_angle < self.destination:
+                return
+
+        # Otherwise make a movement step
+
+        step_size = self.velocity / self.clock_frequency
+
+        if self.forwards_motion:
+            self.hwp_angle += step_size
+        else:
+            self.hwp_angle -= step_size
+
+        time.sleep(1./self.clock_frequency)
+        self._move_signal.emit()
+
     def abort(self):
+        self.moving = False
         return 0
 
     def get_pos(self, axis=None):
@@ -137,9 +194,8 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
         return 0
 
     def get_velocity(self, axis=None):
-        # TODO set a sleep duration
-        return 1
+        return self.velocity
 
     def set_velocity(self, axis=None, velocity=None):
-        # TODO set a sleep duration
+        self.velocity = velocity
         return 0
