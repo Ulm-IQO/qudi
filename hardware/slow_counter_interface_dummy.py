@@ -73,7 +73,12 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         return 0
     
     
-    def set_up_counter(self, counter_channel = None, photon_source = None, clock_channel = None):
+    def set_up_counter(self, 
+                       counter_channel = None, 
+                       photon_source = None, 
+                       counter_channel2=None,
+                       photon_source2=None,
+                       clock_channel = None):
         """ Configures the actual counter with a given clock. 
         
         @param string counter_channel: if defined, this is the physical channel of the counter
