@@ -30,10 +30,10 @@ class MotorAxisDummy(object):
         self.label = label
 
 
-class MotorInterfaceDummy(Base, MotorInterface):
+class MotorDummy(Base, MotorInterface):
     """ This is the dummy class to simulate a motorized stage. """
 
-    _modclass = 'MotorInterfaceDummy'
+    _modclass = 'MotorDummy'
     _modtype = 'hardware'
 
     # connectors
