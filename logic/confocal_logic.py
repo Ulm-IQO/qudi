@@ -879,6 +879,15 @@ class ConfocalLogic(GenericLogic):
             dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
             return dz
 
+    def clicked_TiltCorrection(self,e):
+        if e:
+            self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
+            self.depth_image[:,:,2] += self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
+        else:
+            self.xy_image[:,:,2] -= self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
+            self.depth_image[:,:,2] -= self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
+
+
     def history_forward(self):
         if self.history_index < len(self.history) - 1:
             self.history_index += 1
@@ -898,3 +907,5 @@ class ConfocalLogic(GenericLogic):
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
+
+
