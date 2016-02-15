@@ -116,7 +116,7 @@ class MotorDummy(Base, MotorInterface):
         axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min'] = 0
         axis0['pos_max'] = 100  # that is basically the traveling range
-        axis0['pos_step'] = 100
+        axis0['pos_step'] = 0.001
         axis0['vel_min'] = 0
         axis0['vel_max'] = 100
         axis0['vel_step'] = 0.01
@@ -130,7 +130,7 @@ class MotorDummy(Base, MotorInterface):
         axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min'] = 0
         axis1['pos_max'] = 100  # that is basically the traveling range
-        axis1['pos_step'] = 100
+        axis1['pos_step'] = 0.001
         axis1['vel_min'] = 0
         axis1['vel_max'] = 100
         axis1['vel_step'] = 0.01
@@ -144,7 +144,7 @@ class MotorDummy(Base, MotorInterface):
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min'] = 0
         axis2['pos_max'] = 100  # that is basically the traveling range
-        axis2['pos_step'] = 100
+        axis2['pos_step'] = 0.001
         axis2['vel_min'] = 0
         axis2['vel_max'] = 100
         axis2['vel_step'] = 0.01
@@ -158,7 +158,7 @@ class MotorDummy(Base, MotorInterface):
         axis3['ramp'] = ['Sinus','Trapez'] # a possible list of ramps
         axis3['pos_min'] = 0
         axis3['pos_max'] = 360  # that is basically the traveling range
-        axis3['pos_step'] = 100
+        axis3['pos_step'] = 0.1
         axis3['vel_min'] = 1
         axis3['vel_max'] = 20
         axis3['vel_step'] = 0.1
