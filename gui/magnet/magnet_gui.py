@@ -46,7 +46,7 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'magnetlogic': 'MagnetLogic'}
+    _in = {'magnetlogic1': 'MagnetLogic'}
 
 
     def __init__(self, manager, name, config, **kwargs):
@@ -67,7 +67,7 @@ class MagnetGui(GUIBase):
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
         """
-        # self._magnet_logic = self.connector['in']['magnetlogic']['object']
+        self._magnet_logic = self.connector['in']['magnetlogic1']['object']
 
         # self._magnet_logic.sigPosChanged.connect(self.update_pos)
 
@@ -114,15 +114,15 @@ class MagnetGui(GUIBase):
         Otherwise you will break the generality.
         """
 
-#        constraints = self._magnet_logic.get_hardware_constraints()
+        constraints = self._magnet_logic.get_hardware_constraints()
 
-        param = OrderedDict()
-        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
-        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-
-        constraints = param
+#        param = OrderedDict()
+#        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
+#        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#
+#        constraints = param
 
         # set the parameters in the curr_pos_DockWidget:
         for index, parameter in enumerate(constraints):
@@ -166,24 +166,26 @@ class MagnetGui(GUIBase):
         Otherwise you will break the generality.
         """
 
-#        constraints = self._magnet_logic.get_hardware_constraints()
+        constraints = self._magnet_logic.get_hardware_constraints()
 
-        param = OrderedDict()
-        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
-        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#        param = OrderedDict()
+#        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
+#        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+#        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
 
-        constraints = param
+#        constraints = param
 
         # set the parameters in the curr_pos_DockWidget:
         for index, parameter in enumerate(constraints):
 
             label_var_name = 'move_rel_axis_{0}_Label'.format(parameter)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_rel_DockWidgetContents))
-            label_var = getattr(self._mw, label_var_name)
+            label_var = getattr(self._mw, label_var_name) # get the reference
+            # set parameter for the label:
             label_var.setObjectName(label_var_name)
             label_var.setText(parameter)
+            # add the label to the grid:
             self._mw.move_rel_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
             # Set the QDoubleSpinBox according to the grid
@@ -199,20 +201,12 @@ class MagnetGui(GUIBase):
             dspinbox_var.setSingleStep(constraints[parameter]['pos_step'])
             self._mw.move_rel_GridLayout.addWidget(dspinbox_var, index, 1, 1, 1)
 
+
             # this is the name prototype for the relative movement minus button
-
-            # create a signal which should be emitted, when the minus button
-            # has been pressed.
-
-            # this method will pass further the minus button event in emitting
-            # the signal from above
-
-            # change the name of the method above:
-
             func_name = '_move_rel_axis_{0}_m'.format(parameter)
+            # create a method and assign it as attribute:
             setattr(self, func_name, self._function_builder(func_name,parameter,-1) )
-            move_rel_m_ref =  getattr(self, func_name)
-
+            move_rel_m_ref =  getattr(self, func_name)  # get the reference
 
             # the change of the PushButton is connected to the previous method.
             button_var_name = 'move_rel_axis_{0}_m_PushButton'.format(parameter)
@@ -223,12 +217,8 @@ class MagnetGui(GUIBase):
             button_var.clicked.connect(move_rel_m_ref)
             self._mw.move_rel_GridLayout.addWidget(button_var, index, 2, 1, 1)
 
+
             # this is the name prototype for the relative movement plus button
-
-            # create a signal which should be emitted, when the minus button
-            # has been pressed.
-
-
             func_name = '_move_rel_axis_{0}_p'.format(parameter)
             setattr(self, func_name, self._function_builder(func_name,parameter,1) )
             move_rel_p_ref =  getattr(self, func_name)
@@ -242,21 +232,6 @@ class MagnetGui(GUIBase):
             button_var.clicked.connect(move_rel_p_ref)
             self._mw.move_rel_GridLayout.addWidget(button_var, index, 3, 1, 1)
 
-        # create the signals for the push buttons and connect them to the move
-        # rel method in the Logic
-
-    def get_ref_curr_pos_DoubleSpinBox(self, label):
-        """ Get the reference to the double spin box for the passed label. """
-        dspinbox_name = 'curr_pos_axis_{0}_DoubleSpinBox'.format(label)
-        dspinbox_ref = getattr(self._mw, dspinbox_name)
-        return dspinbox_ref
-
-
-    def get_ref_move_rel_DoubleSpinBox(self, label):
-        """ Get the reference to the double spin box for the passed label. """
-        dspinbox_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(label)
-        dspinbox_ref = getattr(self._mw, dspinbox_name)
-        return dspinbox_ref
 
     def _function_builder(self, func_name, parameter, direction):
         def func_dummy_name():
@@ -265,12 +240,26 @@ class MagnetGui(GUIBase):
         func_dummy_name.__name__ = func_name
         return func_dummy_name
 
+        # create the signals for the push buttons and connect them to the move
+        # rel method in the Logic
 
     def move_rel(self, axis_label, direction):
 
         self.logMsg('Axislabel: {0}, direction: {1}'.format(axis_label,direction) ,msgType='status')
 
 
+
+    def get_ref_curr_pos_DoubleSpinBox(self, label):
+        """ Get the reference to the double spin box for the passed label. """
+        dspinbox_name = 'curr_pos_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_ref = getattr(self._mw, dspinbox_name)
+        return dspinbox_ref
+
+    def get_ref_move_rel_DoubleSpinBox(self, label):
+        """ Get the reference to the double spin box for the passed label. """
+        dspinbox_name = 'move_rel_axis_{0}_DoubleSpinBox'.format(label)
+        dspinbox_ref = getattr(self._mw, dspinbox_name)
+        return dspinbox_ref
 
     def update_pos(self, param_dict=None):
         """ Update the current position.
