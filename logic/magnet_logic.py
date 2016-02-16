@@ -66,3 +66,14 @@ class MagnetLogic(GenericLogic):
 
     def get_hardware_constraints(self):
         return self._magnet_device.get_constraints()
+
+    def move_rel(self, param_dict):
+
+        self._magnet_device.move_rel(param_dict)
+
+    def get_pos(self, param_list=None):
+        pos_dict = self._magnet_device.get_pos(param_list)
+        return pos_dict
+
+    def move_abs(self, param_dict):
+        self._magnet_device.move_abs(param_dict)
