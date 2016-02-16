@@ -32,7 +32,10 @@ class MotorInterface():
         If the hardware does not support the values for the constraints, then 
         insert just None. If you are not sure about the meaning, look in other 
         hardware files to get an impression.
-        """
+        
+        Example of how a return dict with constraints might look like:
+        ==============================================================
+
         constraints = {}
 
         axis0 = {}
@@ -66,6 +69,7 @@ class MotorInterface():
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1  
+        """
 
         raise InterfaceImplementationError('PulserInterface>get_constraints')
         return constraints
