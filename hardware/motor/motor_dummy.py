@@ -21,6 +21,8 @@ Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
+from collections import OrderedDict
+
 from core.base import Base
 from interface.motor_interface import MotorInterface
 
@@ -108,7 +110,7 @@ class MotorDummy(Base, MotorInterface):
         insert just None. If you are not sure about the meaning, look in other
         hardware files to get an impression.
         """
-        constraints = {}
+        constraints = OrderedDict()
 
         axis0 = {}
         axis0['label'] = self._x_axis.label # name is just as a sanity included

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
+Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 """
@@ -24,6 +25,8 @@ This module was developed from PyAPT, written originally by Michael Leung
     https://github.com/HaeffnerLab/Haeffner-Lab-LabRAD-Tools/blob/master/cdllservers/APTMotor/APTMotorServer.py
 APT.dll and APT.lib were provided to PyAPT thanks to SeanTanner@ThorLabs .
 """
+
+from collections import OrderedDict
 
 from core.base import Base
 from ctypes import c_long, c_buffer, c_float, windll, pointer
@@ -53,6 +56,10 @@ class APTMotor():
     hwtype_dict['HWTYPE_L490MZ'] = 43   # L490MZ Integrated Driver/Labjack
     hwtype_dict['HWTYPE_BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
 
+    error_code= {}
+    error_code[17581505] = 'An invalid parameter has been passed.'
+    error_code[19101610] = 'An APT Server internal error has occurred. Invalid device ident.'
+
     def __init__(self, path_dll, serialnumber, hwtype, label=''):
         """
         @param str path_dll: the absolute path to the dll of the current
@@ -72,6 +79,7 @@ class APTMotor():
         self.verbose = False
         self.label = label
         self.setSerialNumber(serialnumber)
+        self._wait_until_done = True
 
     def getNumberOfHardwareUnits(self):
         """ Returns the number of connected external hardware (HW) units that
@@ -287,7 +295,7 @@ class APTMotor():
             # TODO: This should use our error message system
             print('Please connect first! Use initializeHardwareDevice')
         relativeDistance = c_float(relDistance)
-        self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, True)
+        self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, self._wait_until_done)
         if self.verbose:
             print('move_rel SUCESS')
         return True
@@ -302,7 +310,7 @@ class APTMotor():
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
         absolutePosition = c_float(absPosition)
-        self.aptdll.MOT_MoveAbsoluteEx(self.SerialNum, absolutePosition, True)
+        self.aptdll.MOT_MoveAbsoluteEx(self.SerialNum, absolutePosition, self._wait_until_done)
         if self.verbose:
             print('move_abs SUCESS')
         return True
@@ -485,18 +493,24 @@ class APTOneAxisStage(Base, MotorInterface):
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
 
-        @return dict: dict with constraints for the sequence generation and GUI
+        @return dict: dict with constraints for the magnet hardware. These
+                      constraints will be passed via the logic to the GUI so
+                      that proper display elements with boundary conditions
+                      could be made.
 
-        Provides all the constraints for the motorized stage (like total
-        movement, velocity, ...)
-        Each constraint is a tuple of the form
-            (min_value, max_value, stepsize)
+        Provides all the constraints for each axis of a motorized stage
+        (like total travel distance, velocity, ...)
+        Each axis has its own dictionary, where the label is used as the
+        identifier throughout the whole module. The dictionaries for each axis
+        are again grouped together in a constraints dictionary in the form
 
-        The possible keys in the constraint are defined here in the interface
-        file. If the hardware does not support the values for the constraints,
-        then insert just None.
-        If you are not sure about the meaning, look in other hardware files
-        to get an impression.
+            {'<label_axis0>': axis0 }
+
+        where axis0 is again a dict with the possible values defined below. The
+        possible keys in the constraint are defined here in the interface file.
+        If the hardware does not support the values for the constraints, then
+        insert just None. If you are not sure about the meaning, look in other
+        hardware files to get an impression.
         """
         constraints = {}
 
@@ -802,6 +816,34 @@ class APTThreeAxisStage(Base, MotorInterface):
         self._z_axis = APTMotor(path_dll, self._serialnum_z_axis, self._HWType,label_z)
         self._z_axis.initializeHardwareDevice()
 
+        limits_dict = self.get_constraints()
+        self._x_axis.set_stage_axis_info(limits_dict[self._x_axis.label]['pos_min'],
+                                         limits_dict[self._x_axis.label]['pos_max'],
+                                         pitch=0.01)
+        self._y_axis.set_stage_axis_info(limits_dict[self._y_axis.label]['pos_min'],
+                                         limits_dict[self._y_axis.label]['pos_max'],
+                                         pitch=0.01)
+        self._z_axis.set_stage_axis_info(limits_dict[self._z_axis.label]['pos_min'],
+                                         limits_dict[self._z_axis.label]['pos_max'],
+                                         pitch=0.01)
+
+        self._x_axis.setVelocityParameters(limits_dict[self._x_axis.label]['vel_min'],
+                                           limits_dict[self._x_axis.label]['acc_max'],
+                                           limits_dict[self._x_axis.label]['vel_max'])
+        self._y_axis.setVelocityParameters(limits_dict[self._y_axis.label]['vel_min'],
+                                           limits_dict[self._y_axis.label]['acc_max'],
+                                           limits_dict[self._y_axis.label]['vel_max'])
+        self._z_axis.setVelocityParameters(limits_dict[self._z_axis.label]['vel_min'],
+                                           limits_dict[self._z_axis.label]['acc_max'],
+                                           limits_dict[self._z_axis.label]['vel_max'])
+
+        self._x_axis.setHardwareLimitSwitches(2,2)
+        self._y_axis.setHardwareLimitSwitches(2,2)
+        self._z_axis.setHardwareLimitSwitches(2,2)
+        self._x_axis._wait_until_done = False
+        self._y_axis._wait_until_done = False
+        self._z_axis._wait_until_done = False
+
     def deactivation(self, e):
         """ Disconnect from hardware and clean up """
         self._x_axis.cleanUpAPT()
@@ -811,20 +853,26 @@ class APTThreeAxisStage(Base, MotorInterface):
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
 
-        @return dict: dict with constraints for the sequence generation and GUI
+        @return dict: dict with constraints for the magnet hardware. These
+                      constraints will be passed via the logic to the GUI so
+                      that proper display elements with boundary conditions
+                      could be made.
 
-        Provides all the constraints for the motorized stage (like total
-        movement, velocity, ...)
-        Each constraint is a tuple of the form
-            (min_value, max_value, stepsize)
+        Provides all the constraints for each axis of a motorized stage
+        (like total travel distance, velocity, ...)
+        Each axis has its own dictionary, where the label is used as the
+        identifier throughout the whole module. The dictionaries for each axis
+        are again grouped together in a constraints dictionary in the form
 
-        The possible keys in the constraint are defined here in the interface
-        file. If the hardware does not support the values for the constraints,
-        then insert just None.
-        If you are not sure about the meaning, look in other hardware files
-        to get an impression.
+            {'<label_axis0>': axis0 }
+
+        where axis0 is again a dict with the possible values defined below. The
+        possible keys in the constraint are defined here in the interface file.
+        If the hardware does not support the values for the constraints, then
+        insert just None. If you are not sure about the meaning, look in other
+        hardware files to get an impression.
         """
-        constraints = {}
+        constraints = OrderedDict()
 
         # get the constraints for the x axis:
         label_x = self._x_axis.label
@@ -832,12 +880,15 @@ class APTThreeAxisStage(Base, MotorInterface):
         axis0['label'] = label_x        # name is just as a sanity included
         axis0['unit'] = 'm'        # the SI units
         axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis0['pos_min'] = 0
-        axis0['pos_max'] = 100  # that is basically the traveling range
-        axis0['pos_step'] = 100
+        axis0['pos_min'] = -0.65
+        axis0['pos_max'] = 0.65  # that is basically the traveling range
+        axis0['pos_step'] = 0.002   # in mm
         axis0['vel_min'] = 0
-        axis0['vel_max'] = 100
-        axis0['vel_step'] = 0.01
+        axis0['vel_max'] = 0.02   # in mm/s
+        axis0['vel_step'] = 0.0001    # that was an arbitraty number
+        axis0['acc_min'] = 0.0
+        axis0['acc_max'] = 0.005 # in mm/s^2
+        axis0['acc_step'] = 0.0001 # that was an arbitraty number
 
         # get the constraints for the x axis:
         label_y = self._y_axis.label
@@ -845,12 +896,15 @@ class APTThreeAxisStage(Base, MotorInterface):
         axis1['label'] = label_y        # name is just as a sanity included
         axis1['unit'] = 'm'        # the SI units
         axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis1['pos_min'] = 0
-        axis1['pos_max'] = 100  # that is basically the traveling range
-        axis1['pos_step'] = 100
+        axis1['pos_min'] = -0.65
+        axis1['pos_max'] = 0.65  # that is basically the traveling range
+        axis1['pos_step'] = 0.002   # in mm
         axis1['vel_min'] = 0
-        axis1['vel_max'] = 100
-        axis1['vel_step'] = 0.01
+        axis1['vel_max'] = 0.02   # in mm/s
+        axis1['vel_step'] = 0.0001 # that was an arbitraty number
+        axis1['acc_min'] = 0.0
+        axis1['acc_max'] = 0.005 # in mm/s^2
+        axis1['acc_step'] = 0.0001 # that was an arbitraty number
 
         # get the constraints for the x axis:
         label_z = self._z_axis.label
@@ -858,12 +912,15 @@ class APTThreeAxisStage(Base, MotorInterface):
         axis2['label'] = label_z        # name is just as a sanity included
         axis2['unit'] = 'm'        # the SI units
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis2['pos_min'] = 0
-        axis2['pos_max'] = 1000  # that is basically the traveling range
-        axis2['pos_step'] = 1      # right now unit is millimeter.
+        axis2['pos_min'] = -0.65
+        axis2['pos_max'] = 0.65  # that is basically the traveling range
+        axis2['pos_step'] = 0.002   # in mm
         axis2['vel_min'] = 0
-        axis2['vel_max'] = 100
-        axis2['vel_step'] = 0.01
+        axis2['vel_max'] = 0.02   # in mm/s
+        axis2['vel_step'] = 0.0001 # that was an arbitraty number
+        axis2['acc_min'] = 0.0
+        axis2['acc_max'] = 0.005 # in mm/s^2
+        axis2['acc_step'] = 0.0001 # that was an arbitraty number
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
@@ -1019,6 +1076,9 @@ class APTThreeAxisStage(Base, MotorInterface):
         self._x_axis.abort()
         self._y_axis.abort()
         self._z_axis.abort()
+
+        self.logMsg('Movement of all the axis aborted! Stage stopped.',
+                    msgType='warning')
 
 
     def get_pos(self, param_list=None):
