@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>393</width>
-    <height>227</height>
+    <width>470</width>
+    <height>175</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,10 +22,24 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>393</width>
+     <width>470</width>
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuMenu">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+    <addaction name="actionMagnet_Settings"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionDefault_View"/>
+   </widget>
+   <addaction name="menuMenu"/>
+   <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="curr_pos_DockWidget">
@@ -55,13 +69,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="curr_pos_axis1_Label">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="1">
         <widget class="QDoubleSpinBox" name="curr_pos_axis0_DoubleSpinBox">
          <property name="readOnly">
@@ -72,13 +79,22 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="curr_pos_axis1_DoubleSpinBox">
-         <property name="readOnly">
-          <bool>true</bool>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="curr_pos_get_pos_PushButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
-         <property name="buttonSymbols">
-          <enum>QAbstractSpinBox::NoButtons</enum>
+         <property name="maximumSize">
+          <size>
+           <width>60</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Get Pos</string>
          </property>
         </widget>
        </item>
@@ -98,25 +114,32 @@
     <layout class="QGridLayout" name="gridLayout_6">
      <item row="1" column="0">
       <layout class="QGridLayout" name="move_abs_GridLayout">
-       <item row="1" column="0">
-        <widget class="QSlider" name="move_abs_axis1_Slider">
+       <item row="0" column="1">
+        <widget class="QSlider" name="move_abs_axis0_Slider">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QDoubleSpinBox" name="move_abs_axis0_DoubleSpinBox"/>
+       </item>
+       <item row="0" column="3">
+        <widget class="QPushButton" name="move_abs_PushButton">
+         <property name="text">
+          <string>Move</string>
          </property>
         </widget>
        </item>
        <item row="0" column="0">
-        <widget class="QSlider" name="move_abs_axis0_Slider">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+        <widget class="QLabel" name="move_abs_axis0_Label">
+         <property name="text">
+          <string>TextLabel</string>
          </property>
         </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="move_abs_axis0_DoubleSpinBox"/>
-       </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="move_abs_axis1_DoubleSpinBox"/>
        </item>
       </layout>
      </item>
@@ -136,20 +159,16 @@
       <layout class="QGridLayout" name="move_rel_GridLayout">
        <item row="0" column="3">
         <widget class="QPushButton" name="move_rel_axis0_p_PushButton">
+         <property name="maximumSize">
+          <size>
+           <width>40</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
-          <string>PushButton</string>
+          <string>+</string>
          </property>
         </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="move_rel_axis1_m_PushButton">
-         <property name="text">
-          <string>PushButton</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="move_rel_axis1_DoubleSpinBox"/>
        </item>
        <item row="0" column="1">
         <widget class="QDoubleSpinBox" name="move_rel_axis0_DoubleSpinBox">
@@ -160,15 +179,14 @@
        </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="move_rel_axis0_m_PushButton">
-         <property name="text">
-          <string>PushButton</string>
+         <property name="maximumSize">
+          <size>
+           <width>40</width>
+           <height>16777215</height>
+          </size>
          </property>
-        </widget>
-       </item>
-       <item row="1" column="3">
-        <widget class="QPushButton" name="move_rel_axis1_p_PushButton">
          <property name="text">
-          <string>PushButton</string>
+          <string>-</string>
          </property>
         </widget>
        </item>
@@ -179,18 +197,21 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="move_rel_axis1_Label">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-        </widget>
-       </item>
       </layout>
      </item>
     </layout>
    </widget>
   </widget>
+  <action name="actionMagnet_Settings">
+   <property name="text">
+    <string>Magnet Settings</string>
+   </property>
+  </action>
+  <action name="actionDefault_View">
+   <property name="text">
+    <string>Default View</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
