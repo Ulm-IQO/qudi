@@ -174,6 +174,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.fast_counter_on()
                 # start pulse generator
                 self.pulse_generator_on()
+
                 # set timer
                 self.timer = QtCore.QTimer()
                 self.timer.setSingleShot(False)
@@ -187,8 +188,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 self.odmr_refocus_timer = QtCore.QTimer()
                 self.odmr_refocus_timer.setSingleShot(False)
-                self.refocus_timer.setInterval(int(1000. * self.odmr_refocus_timer_interval))
-                self.refocus_timer.timeout.connect(self._do_odmr_refocus)
+                self.odmr_refocus_timer.setInterval(int(1000. * self.odmr_refocus_timer_interval))
+                self.odmr_refocus_timer.timeout.connect(self._do_odmr_refocus)
 
 
                 self.lock()
@@ -202,6 +203,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def _pulsed_analysis_loop(self):
         '''Acquires laser pulses from fast counter, calculates fluorescence signal and creates plots.
         '''
+        print ('analyzing')
         with self.threadlock:
             # calculate analysis windows
             sig_start = self.signal_start_bin
@@ -238,12 +240,46 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)
         """
-        #print ("test")
         with self.threadlock:
             if self.getState() == 'locked':
+
+                #stopping and disconnecting all the timers
                 self.timer.stop()
                 self.timer.timeout.disconnect()
                 self.timer = None
+                self.refocus_timer.stop()
+                self.refocus_timer.timeout.disconnect()
+                self.refocus_timer = None
+                self.odmr_refocus_timer.stop()
+                self.odmr_refocus_timer.timeout.disconnect()
+                self.odmr_refocus_timer = None
+
+                self.fast_counter_off()
+                self.mykrowave_off()
+                self.pulse_generator_off()
+                self.signal_laser_plot_updated.emit()
+                self.measuring_error_plot_updated.emit()
+                self.unlock()
+
+    def pause_pulsed_measurement(self):
+        """ Pauses the measurement
+          @return int: error code (0:OK, -1:error)
+        """
+        with self.threadlock:
+            if self.getState() == 'locked':
+
+                #pausing all the timers
+                print (self.timer)
+                print (self.refocus_timer)
+                print (self.odmr_refocus_timer)
+                self.timer.stop()
+                self.refocus_timer.stop()
+                self.odmr_refocus_timer.stop()
+                print (self.timer)
+                print (self.refocus_timer)
+                print (self.odmr_refocus_timer)
+
+
                 self.fast_counter_off()
                 self.mykrowave_off()
                 self.pulse_generator_off()
@@ -253,8 +289,28 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.unlock()
         return 0
 
+    def continue_pulsed_measurement(self):
+        """ Continues the measurement
+          @return int: error code (0:OK, -1:error)
+        """
+        with self.threadlock:
+            #if self.getState() == 'pause':
+                self.update_fast_counter_status()
 
-    def change_timer_interval(self, interval):
+                #pausing all the timers
+                self.timer.start()
+                self.refocus_timer.start()
+                self.odmr_refocus_timer.start()
+
+                self.fast_counter_on()
+                self.mykrowave_on()
+                self.pulse_generator_on()
+#                self.signal_signal_plot_updated.emit()
+#                self.signal_laser_plot_updated.emit()
+#                self.measuring_error_plot_updated.emit()
+                self.lock()
+        return 0
+                def change_timer_interval(self, interval):
         with self.threadlock:
             self.timer_interval = interval
             if self.timer != None:
@@ -574,8 +630,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
         """
         print ('refocussing')
+        self.pause_pulsed_measurement()
         position=self._confocal_logic.get_position()
         self._optimizer_logic.start_refocus(position, caller_tag='poimanager')
+        self.continue_pulsed_measurement()
 
 
     def _do_odmr_refocus(self):
