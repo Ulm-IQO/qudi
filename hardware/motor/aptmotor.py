@@ -36,7 +36,9 @@ import platform
 
 
 class APTMotor():
-    """Class to control Thorlabs APT motor. """
+    """ Class to control Thorlabs APT motor. This class wrapps the low level
+        commands from a dll library in python methods.
+    """
 
     # all the possible hardware types that are available to be controlled by
     # the apt.dll
@@ -426,16 +428,16 @@ class APTMotor():
         #TODO: a proper home position has to be set, not just zero.
         self.move_abs(0.0)
 
+# ==============================================================================
 
-
-class APTOneAxisStage(Base, MotorInterface):
-    """ Control a one axis stage """
-
-    _modclass = 'APTOneAxisStage'
-    _modtype = 'hardware'
-
-    # connectors
-    _out = {'aptmotor': 'MotorInterface'}
+class APTStage(Base, MotorInterface):
+    """ Control class for an arbitrary collection of axis. Do not use this
+        Class directly but inherit this class to a new Class, where also the
+        method get_constraints() is specified for that specific set of a
+        hardware.
+        If it is really necessary to change an already existing interface
+        module, then overwrite it in the class, which inherited that class.
+     """
 
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
@@ -447,6 +449,8 @@ class APTOneAxisStage(Base, MotorInterface):
 
         self.blCorr = 0.10  # 100um backlash correction
 
+        # create the magnet dump folder
+        self._magnet_dump_folder = self._get_magnet_dump()
 
         # Load DLL
         if platform.architecture()[0] == '64bit':
@@ -467,28 +471,327 @@ class APTOneAxisStage(Base, MotorInterface):
         config = self.getConfiguration()
 
         if 'motor_hw_type' in config.keys():
-
             self._HWType = config['motor_hw_type']
+
         else:
             self.logMsg('Motor HW Type not found in the configuration, '
                         'searching for motors will not work', msgType='error')
 
-        if 'motor_serial_number' in config.keys():
-            self._serialnum_axis, label_axis = config['motor_serial_number']
+        if 'motor_serial_number_label' in config.keys():
+            self._serial_label = config['motor_serial_number_label']
         else:
-            self.logMsg('Motor serial number not found in the configuration.\n'
+            self.logMsg('Motor serial number and label for x axis not found '
+                        'in the configuration.\n'
                         'This number is essential, without it no proper '
                         'communication can be established!\n'
                         'The Serial number can be found at the back of the '
-                        'Step Motor controller.', msgType='error')
+                        'Step Motor controller and must be typed in like:\n'
+                        '[(<serial_num>,"<axis_label>"), (<serial_num>,"'
+                        '<axis_label>"), ...]\n'
+                        'and assigned to the attribute '
+                        'motor_serial_number_label.', msgType='error')
 
-        self._axis = APTMotor(path_dll, self._serialnum_axis, self._HWType,label_axis)
-        self._axis.initializeHardwareDevice()
+        self._axis_dict = OrderedDict()
+
+        limits_dict = self.get_constraints()
+
+        for (serialnummer, label) in self._serial_label:
+            if limits_dict.get(label) is not None:
+                self._axis_dict[label] = APTMotor(path_dll, serialnummer,
+                                                  self._HWType, label)
+                self._axis_dict[label].initializeHardwareDevice()
+
+            else:
+                self.logMsg('The following label "{0}" cannot be found in the '
+                            'constraints method!\nCheck whether label coincide '
+                            'with the label given in the config!\n'
+                            'Restart the program!', msgType='error')
 
 
     def deactivation(self, e):
         """ Disconnect from hardware and clean up """
-        self._axis.cleanUpAPT()
+        for label_axis in self._axis_dict:
+            self._axis_dict[label_axis].cleanUpAPT()
+
+    def move_rel(self,  param_dict):
+        """ Moves stage in given direction (relative movement)
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed.
+                                With get_constraints() you can obtain all
+                                possible parameters of that stage. According to
+                                this parameter set you have to pass a dictionary
+                                with keys that are called like the parameters
+                                from get_constraints() and assign a SI value to
+                                that. For a movement in x the dict should e.g.
+                                have the form:
+                                    dict = { 'x' : 23 }
+                                where the label 'x' corresponds to the chosen
+                                axis label.
+
+        A smart idea would be to ask the position after the movement.
+        """
+        curr_pos_dict = self.get_pos()
+        constraints = self.get_constraints()
+
+        for label_axis in self._axis_dict:
+
+            if param_dict.get(label_axis) is not None:
+                move = param_dict[label_axis]
+                curr_pos = curr_pos_dict[label_axis]
+
+                if  (curr_pos + move > constraints[label_axis]['pos_max'] ) or\
+                    (curr_pos + move < constraints[label_axis]['pos_min']):
+
+                    self.logMsg('Cannot make further relative movement of the '
+                                'axis "{0}" since the motor is at position '
+                                '{1} and with the step of {2} it would exceed '
+                                'the allowed border [{3},{4}]! Movement is '
+                                'ignored!'.format(
+                                        label_axis,
+                                        move,
+                                        curr_pos,
+                                        constraints[label_axis]['pos_min'],
+                                        constraints[label_axis]['pos_max']),
+                                msgType='warning')
+                else:
+                    self._save_pos({label_axis: curr_pos + move})
+                    self._axis_dict[label_axis].move_rel(move)
+
+    def move_abs(self, param_dict):
+        """ Moves stage to absolute position (absolute movement)
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <a-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+        A smart idea would be to ask the position after the movement.
+        """
+        constraints = self.get_constraints()
+
+        for label_axis in self._axis_dict:
+            if param_dict.get(label_axis) is not None:
+                desired_pos = param_dict[label_axis]
+
+
+                if  (desired_pos > constraints[label_axis]['pos_max'] ) or\
+                    (desired_pos < constraints[label_axis]['pos_min']):
+
+                    self.logMsg('Cannot make absolute movement of the axis'
+                                '"{0}" to position {1}, since it exceeds the '
+                                'limts [{2},{3}]. Movement is '
+                                'ignored!'.format(
+                                        label_axis,
+                                        curr_pos,
+                                        constraints[label_axis]['pos_min'],
+                                        constraints[label_axis]['pos_max']),
+                                msgType='warning')
+                else:
+                    self._save_pos({label_axis:desired_pos})
+                    self._axis_dict[label_axis].move_abs(desired_pos)
+
+
+    def abort(self):
+        """ Stops movement of the stage. """
+
+        for label_axis in self._axis_dict:
+            self._axis_dict[label_axis].abort()
+
+        self.logMsg('Movement of all the axis aborted! Stage stopped.',
+                    msgType='warning')
+
+    def get_pos(self, param_list=None):
+        """ Gets current position of the stage arms
+
+        @param list param_list: optional, if a specific position of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed as the param_list.
+                                If nothing is passed, then from each axis the
+                                position is asked.
+
+        @return dict: with keys being the axis labels and item the current
+                      position.
+        """
+        pos = {}
+
+
+        if param_list is not None:
+            for label_axis in param_list:
+                if label_axis in self._axis_dict:
+                    pos[label_axis] = self._axis_dict[label_axis].get_pos()
+        else:
+            for label_axis in self._axis_dict:
+                pos[label_axis] = self._axis_dict[label_axis].get_pos()
+
+        return pos
+
+
+    def get_status(self, param_list=None):
+        """ Get the status of the position
+
+        @param list param_list: optional, if a specific status of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed in the param_list.
+                                If nothing is passed, then from each axis the
+                                status is asked.
+
+        @return dict: with the axis label as key and the status number as item.
+        """
+
+        status = {}
+        if param_list is not None:
+            for label_axis in param_list:
+                if label_axis in self._axis_dict:
+                    status[label_axis] = self._axis_dict[label_axis].get_status()
+        else:
+            for label_axis in self._axis_dict:
+                status[label_axis] = self._axis_dict[label_axis].get_status()
+
+        return status
+
+    def calibrate(self, param_list=None):
+        """ Calibrates the stage.
+
+        @param dict param_list: param_list: optional, if a specific calibration
+                                of an axis is desired, then the labels of the
+                                needed axis should be passed in the param_list.
+                                If nothing is passed, then all connected axis
+                                will be calibrated.
+
+        @return int: error code (0:OK, -1:error)
+
+        After calibration the stage moves to home position which will be the
+        zero point for the passed axis. The calibration procedure will be
+        different for each stage.
+        """
+        raise InterfaceImplementationError('MagnetStageInterface>calibrate')
+
+        #TODO: read out a saved home position in file and compare that with the
+        #      last position saved also in file. The difference between these
+        #      values will determine the absolute home position.
+        #
+        if param_list is not None:
+            for label_axis in param_list:
+                if label_axis in self._axis_dict:
+                    self._axis_dict[label_axis].go_home()
+        else:
+            for label_axis in self._axis_dict:
+                self._axis_dict[label_axis].go_home()
+
+    def _save_pos(self, param_dict):
+        """ Save after each move the parameters to file, since the motor stage
+        looses any information if it is initialized. That might be a way to
+        store and retrieve the current position.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed.
+        """
+
+        for label_axis in param_dict:
+            if label_axis in self._axis_dict:
+                pos = param_dict[label_axis]
+                filename =  os.path.join(self._magnet_dump_folder,
+                                         label_axis + '.dat')
+                with open(filename, 'w') as f:
+                    f.write(str(pos))
+
+    def _get_magnet_dump(self):
+        """ Create the folder where the position file is saved, and check
+        whether it exists.
+
+        @return str: the path to the created folder."""
+
+        path = self.get_home_dir()
+        magnet_path = os.path.join(path, 'magnet')
+
+        if not os.path.exists(magnet_path):
+            os.makedirs(magnet_path)
+            self.logMsg('Magnet dump was created in:\n'
+                        '{}'.format(magnet_path), msgType='status',
+                        importance=1)
+        return magnet_path
+
+
+
+    def get_velocity(self, param_list=None):
+        """ Gets the current velocity for all connected axes.
+
+        @param dict param_list: optional, if a specific velocity of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed as the param_list.
+                                If nothing is passed, then from each axis the
+                                velocity is asked.
+
+        @return dict : with the axis label as key and the velocity as item.
+        """
+
+        vel = {}
+        if param_list is not None:
+            for label_axis in param_list:
+                if label_axis in self._axis_dict:
+                    vel[label_axis] = self._axis_dict[label_axis].get_velocity()
+        else:
+            for label_axis in self._axis_dict:
+                vel[label_axis] = self._axis_dict[label_axis].get_velocity()
+
+        return vel
+
+    def set_velocity(self, param_dict):
+        """ Write new value for velocity.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-velocity-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+        """
+        constraints = self.get_constraints()
+
+        for label_axis in param_dict:
+            if label_axis in self._axis_dict:
+                desired_vel = param_dict[label_axis]
+
+                if  (desired_vel > constraints[label_axis]['vel_max'] ) or\
+                    (desired_vel < constraints[label_axis]['vel_min']):
+
+                    self.logMsg('Cannot set velocity of the axis "{0}" to the'
+                                'desired velocity of "{1}", since it exceeds '
+                                'the limts [{2},{3}] ! Command is '
+                                'ignored!'.format(
+                                        label_axis,
+                                        desired_vel,
+                                        constraints[label_axis]['vel_min'],
+                                        constraints[label_axis]['vel_max']),
+                                msgType='warning')
+            else:
+                self._axis_dict[label_axis].set_velocity(desired_vel)
+
+
+
+class APTOneAxisStage(APTStage):
+
+    _modclass = 'APTOneAxis'
+    _modtype = 'hardware'
+
+    # connectors
+    _out = {'aptmotor': 'MotorInterface'}
+
+
+    def __init__(self, manager, name, config, **kwargs):
+        # pass the init to the inherited class APTStage and run its init:
+        super().__init__(manager, name, config, **kwargs)
+
+        for label_axis in self._axis_dict:
+            self._axis_dict[label].blCorr = 0.10    # set the backlach
+                                                    # correction since the
+                                                    # forward movement is
+                                                    # preciser than backwards
+
+        # remember to set the units to degree if you want to use it as a
+        # rotation stage, like that:
+        #   min_pos, max_pos, unit_read, pinch = self.get_stage_axis_info()
+        #   self._axis_dict[label].set_stage_axis_info(min_pos, max_pos, unit, pinch)
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -531,324 +834,40 @@ class APTOneAxisStage(Base, MotorInterface):
 
         return constraints
 
-    def move_rel(self,  param_dict):
-        """ Moves stage in given direction (relative movement)
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed.
-                                With get_constraints() you can obtain all
-                                possible parameters of that stage. According to
-                                this parameter set you have to pass a dictionary
-                                with keys that are called like the parameters
-                                from get_constraints() and assign a SI value to
-                                that. For a movement in x the dict should e.g.
-                                have the form:
-                                    dict = { 'x' : 23 }
-                                where the label 'x' corresponds to the chosen
-                                axis label.
-
-        A smart idea would be to ask the position after the movement.
-        """
-        curr_pos_dict = self.get_pos()
-        constraints = self.get_constraints()
-
-        if param_dict.get(self._axis.label) is not None:
-            move = param_dict[self._axis.label]
-            curr_pos = curr_pos_dict[self._axis.label]
-
-            if  (curr_pos + move > constraints[self._axis.label]['pos_max'] ) or\
-                (curr_pos + move < constraints[self._axis.label]['pos_min']):
-
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._axis.label, move,
-                                    constraints[self._axis.label]['pos_min'],
-                                    constraints[self._axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._axis.move_rel(move)
-
-    def move_abs(self, param_dict):
-        """ Moves stage to absolute position (absolute movement)
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <a-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-        A smart idea would be to ask the position after the movement.
-        """
-        constraints = self.get_constraints()
-
-        if param_dict.get(self._axis.label) is not None:
-            desired_pos = param_dict[self._axis.label]
-
-            if  (desired_pos > constraints[self._axis.label]['pos_max'] ) or\
-                (desired_pos < constraints[self._axis.label]['pos_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._axis.label, desired_pos,
-                                    constraints[self._axis.label]['pos_min'],
-                                    constraints[self._axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._axis.move_abs(desired_pos)
-
-    def abort(self):
-        """ Stops movement of the stage. """
-
-        self._axis.abort()
-
-    def get_pos(self, param_list=None):
-        """ Gets current position of the stage arms
-
-        @param list param_list: optional, if a specific position of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                position is asked.
-
-        @return dict: with keys being the axis labels and item the current
-                      position.
-        """
-        pos = {}
-        if param_list is not None:
-            if self._axis.label in param_list:
-                pos[self._axis.label] = self._axis.get_pos()
-
-        else:
-            pos[self._axis.label] = self._axis.get_pos()
 
 
-        return pos
+class APTThreeAxisStage(APTStage):
 
-    def get_status(self, param_list=None):
-        """ Get the status of the position
-
-        @param list param_list: optional, if a specific status of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed in the param_list.
-                                If nothing is passed, then from each axis the
-                                status is asked.
-
-        @return dict: with the axis label as key and the status number as item.
-        """
-
-        status = {}
-        if param_list is not None:
-            if self._axis.label in param_list:
-                status[self._axis.label] = self._axis.get_status()
-
-        else:
-            status[self._axis.label] = self._axis.get_status()
-
-        return status
-
-
-    def calibrate(self, param_list=None):
-        """ Calibrates the stage.
-
-        @param dict param_list: param_list: optional, if a specific calibration
-                                of an axis is desired, then the labels of the
-                                needed axis should be passed in the param_list.
-                                If nothing is passed, then all connected axis
-                                will be calibrated.
-
-        @return int: error code (0:OK, -1:error)
-
-        After calibration the stage moves to home position which will be the
-        zero point for the passed axis. The calibration procedure will be
-        different for each stage.
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate')
-
-        #TODO: read out a saved home position in file and compare that with the
-        #      last position saved also in file. The difference between these
-        #      values will determine the absolute home position.
-        #
-        if param_list is not None:
-            if self._axis.label in param_list:
-                self._axis.go_home()
-        else:
-            self._axis.go_home()
-
-    def get_velocity(self, param_list=None):
-        """ Gets the current velocity for all connected axes.
-
-        @param dict param_list: optional, if a specific velocity of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                velocity is asked.
-
-        @return dict : with the axis label as key and the velocity as item.
-        """
-        vel = {}
-        if param_list is not None:
-            if self._axis.label in param_list:
-                vel[self._axis.label] = self._axis.get_velocity()
-
-        else:
-            vel[self._axis.label] = self._axis.get_velocity()
-
-        return vel
-
-    def set_velocity(self, param_dict):
-        """ Write new value for velocity.
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <the-velocity-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-        """
-
-        if param_dict.get(self._axis.label) is not None:
-            desired_vel = param_dict[self._axis.label]
-
-            self._axis.set_velocity(desired_vel)
-
-
-# ==============================================================================
-
-class APTThreeAxisStage(Base, MotorInterface):
-    """ Control a three axis stage. Since the three axis stage can have only
-        one hardware controller type, we choose in the implementation of the
-        different axis directly the axis name like _x_axis, _y_axis, _z_axis.
-        In all other cases, where a possibility occurs that these three axis
-        might be assigned differently, one has to stick to neutral name like
-        axis0, axis1, axis2, because then all the axis can have arbitrary
-        directions of movement. In that special file there can only exist one
-        possible movement. """
-
-    _modclass = 'APTOneAxisStage'
+    _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
 
     # connectors
     _out = {'aptmotor': 'MotorInterface'}
 
+
     def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, config, c_dict)
-
-    def activation(self, e):
-        """ Initialize instance variables and connect to hardware as configured.
-        """
-
-        self.blCorr = 0.10  # 100um backlash correction
-
-        # create the magnet dump folder
-        self._magnet_dump_folder = self._get_magnet_dump()
-
-        # Load DLL
-        if platform.architecture()[0] == '64bit':
-            path_dll = os.path.join(self.get_main_dir(),  'thirdparty',
-                                                          'thorlabs',
-                                                          'win64',
-                                                          'APT.dll')
-        elif platform.architecture()[0] == '32bit':
-            path_dll = os.path.join(self.get_main_dir(),  'thirdparty',
-                                                          'thorlabs',
-                                                          'win64',
-                                                          'APT.dll')
-        else:
-            self.logMsg('Unknown platform, cannot load the Thorlabs dll.',
-                        msgType='error')
-
-        # Read HW from config
-        config = self.getConfiguration()
-
-        # actually there is only one supported hardware type. Just check it
-        # whether it coincide:
+        # pass the init to the inherited class APTStage and run its init:
+        super().__init__(manager, name, config, **kwargs)
 
 
-        if 'motor_hw_type' in config.keys():
-            self._HWType = config['motor_hw_type']
-#
-#            if HWType == 'HWTYPE_BBD10X':
-#                self._HWType = hwtype_dict['HWTYPE_BBD10X']
-#            else:
-#                self.logMsg('Motor HW Type cannot be used for that model!\n'
-#                            'Only the HW model "HWTYPE_BBD10X" is possible, '
-#                            'use that!', msgType='error')
+        # my specific settings for the stage:
 
-        else:
-            self.logMsg('Motor HW Type not found in the configuration, '
-                        'searching for motors will not work', msgType='error')
+        for label_axis in self._axis_dict:
+            self._axis_dict[label].set_stage_axis_info(
+                                                limits_dict[label]['pos_min'],
+                                                limits_dict[label]['pos_max'],
+                                                pitch=0.01)
+            self._axis_dict[label].setVelocityParameters(
+                                                limits_dict[label]['vel_min'],
+                                                limits_dict[label]['acc_max'],
+                                                limits_dict[label]['vel_max'])
+            self._axis_dict[label].setHardwareLimitSwitches(2,2)
+            self._axis_dict[label]._wait_until_done = False
+            self._axis_dict[label].blCorr = 0.10    # set the backlach
+                                                    # correction since the
+                                                    # forward movement is
+                                                    # preciser than backwards
 
-        if 'motor_serial_number_x_axis' in config.keys():
-            self._serialnum_x_axis, label_x = config['motor_serial_number_x_axis']
-        else:
-            self.logMsg('Motor serial number and label for x axis not found '
-                        'in the configuration.\n'
-                        'This number is essential, without it no proper '
-                        'communication can be established!\n'
-                        'The Serial number can be found at the back of the '
-                        'Step Motor controller.', msgType='error')
-
-        if 'motor_serial_number_y_axis' in config.keys():
-            self._serialnum_y_axis, label_y = config['motor_serial_number_y_axis']
-        else:
-            self.logMsg('Motor serial number and label for y axis not found '
-                        'in the configuration.\n'
-                        'This number is essential, without it no proper '
-                        'communication can be established!\n'
-                        'The Serial number can be found at the back of the '
-                        'Step Motor controller.', msgType='error')
-
-        if 'motor_serial_number_z_axis' in config.keys():
-            self._serialnum_z_axis, label_z = config['motor_serial_number_z_axis']
-        else:
-            self.logMsg('Motor serial number and label for z axis not found '
-                        'in the configuration.\n'
-                        'This number is essential, without it no proper '
-                        'communication can be established!\n'
-                        'The Serial number can be found at the back of the '
-                        'Step Motor controller.', msgType='error')
-
-        self._x_axis = APTMotor(path_dll, self._serialnum_x_axis, self._HWType,label_x)
-        self._x_axis.initializeHardwareDevice()
-        self._y_axis = APTMotor(path_dll, self._serialnum_y_axis, self._HWType,label_y)
-        self._y_axis.initializeHardwareDevice()
-        self._z_axis = APTMotor(path_dll, self._serialnum_z_axis, self._HWType,label_z)
-        self._z_axis.initializeHardwareDevice()
-
-        limits_dict = self.get_constraints()
-        self._x_axis.set_stage_axis_info(limits_dict[self._x_axis.label]['pos_min'],
-                                         limits_dict[self._x_axis.label]['pos_max'],
-                                         pitch=0.01)
-        self._y_axis.set_stage_axis_info(limits_dict[self._y_axis.label]['pos_min'],
-                                         limits_dict[self._y_axis.label]['pos_max'],
-                                         pitch=0.01)
-        self._z_axis.set_stage_axis_info(limits_dict[self._z_axis.label]['pos_min'],
-                                         limits_dict[self._z_axis.label]['pos_max'],
-                                         pitch=0.01)
-
-        self._x_axis.setVelocityParameters(limits_dict[self._x_axis.label]['vel_min'],
-                                           limits_dict[self._x_axis.label]['acc_max'],
-                                           limits_dict[self._x_axis.label]['vel_max'])
-        self._y_axis.setVelocityParameters(limits_dict[self._y_axis.label]['vel_min'],
-                                           limits_dict[self._y_axis.label]['acc_max'],
-                                           limits_dict[self._y_axis.label]['vel_max'])
-        self._z_axis.setVelocityParameters(limits_dict[self._z_axis.label]['vel_min'],
-                                           limits_dict[self._z_axis.label]['acc_max'],
-                                           limits_dict[self._z_axis.label]['vel_max'])
-
-        self._x_axis.setHardwareLimitSwitches(2,2)
-        self._y_axis.setHardwareLimitSwitches(2,2)
-        self._z_axis.setHardwareLimitSwitches(2,2)
-        self._x_axis._wait_until_done = False
-        self._y_axis._wait_until_done = False
-        self._z_axis._wait_until_done = False
-
-    def deactivation(self, e):
-        """ Disconnect from hardware and clean up """
-        self._x_axis.cleanUpAPT()
-        self._y_axis.cleanUpAPT()
-        self._z_axis.cleanUpAPT()
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -875,10 +894,10 @@ class APTThreeAxisStage(Base, MotorInterface):
         constraints = OrderedDict()
 
         # get the constraints for the x axis:
-        label_x = self._x_axis.label
+
         axis0 = {}
-        axis0['label'] = label_x        # name is just as a sanity included
-        axis0['unit'] = 'm'        # the SI units
+        axis0['label'] ='x'        # That name must coincide with the given name in the config
+        axis0['unit'] = 'm'        # the SI units, only possible m or degree
         axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min'] = -0.65
         axis0['pos_max'] = 0.65  # that is basically the traveling range
@@ -890,10 +909,9 @@ class APTThreeAxisStage(Base, MotorInterface):
         axis0['acc_max'] = 0.005 # in mm/s^2
         axis0['acc_step'] = 0.0001 # that was an arbitraty number
 
-        # get the constraints for the x axis:
-        label_y = self._y_axis.label
+        # get the constraints for the y axis:
         axis1 = {}
-        axis1['label'] = label_y        # name is just as a sanity included
+        axis1['label'] = 'y'       # name is just as a sanity included
         axis1['unit'] = 'm'        # the SI units
         axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min'] = -0.65
@@ -907,9 +925,8 @@ class APTThreeAxisStage(Base, MotorInterface):
         axis1['acc_step'] = 0.0001 # that was an arbitraty number
 
         # get the constraints for the x axis:
-        label_z = self._z_axis.label
         axis2 = {}
-        axis2['label'] = label_z        # name is just as a sanity included
+        axis2['label'] = 'z'        # name is just as a sanity included
         axis2['unit'] = 'm'        # the SI units
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min'] = -0.65
@@ -928,385 +945,3 @@ class APTThreeAxisStage(Base, MotorInterface):
         constraints[axis2['label']] = axis2
 
         return constraints
-
-    def move_rel(self,  param_dict):
-        """ Moves stage in given direction (relative movement)
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed.
-                                With get_constraints() you can obtain all
-                                possible parameters of that stage. According to
-                                this parameter set you have to pass a dictionary
-                                with keys that are called like the parameters
-                                from get_constraints() and assign a SI value to
-                                that. For a movement in x the dict should e.g.
-                                have the form:
-                                    dict = { 'x' : 23 }
-                                where the label 'x' corresponds to the chosen
-                                axis label.
-
-        A smart idea would be to ask the position after the movement.
-        """
-        curr_pos_dict = self.get_pos()
-        constraints = self.get_constraints()
-
-        if param_dict.get(self._x_axis.label) is not None:
-            move_x = param_dict[self._x_axis.label]
-            curr_pos_x = curr_pos_dict[self._x_axis.label]
-
-            if  (curr_pos_x + move_x > constraints[self._x_axis.label]['pos_max'] ) or\
-                (curr_pos_x + move_x < constraints[self._x_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._x_axis.label, move_x,
-                                    constraints[self._x_axis.label]['pos_min'],
-                                    constraints[self._x_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._x_axis.label: curr_pos_x + move_x})
-                self._x_axis.move_rel(move_x)
-
-        if param_dict.get(self._y_axis.label) is not None:
-            move_y = param_dict[self._y_axis.label]
-            curr_pos_y = curr_pos_dict[self._y_axis.label]
-
-            if  (curr_pos_y + move_y > constraints[self._y_axis.label]['pos_max'] ) or\
-                (curr_pos_y + move_y < constraints[self._y_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._y_axis.label, move_y,
-                                    constraints[self._y_axis.label]['pos_min'],
-                                    constraints[self._y_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._y_axis.label: curr_pos_y + move_y})
-                self._y_axis.move_rel(move_y)
-
-        if param_dict.get(self._z_axis.label) is not None:
-            move_z = param_dict[self._z_axis.label]
-            curr_pos_z = curr_pos_dict[self._z_axis.label]
-
-            if  (curr_pos_z + move_z > constraints[self._z_axis.label]['pos_max'] ) or\
-                (curr_pos_z + move_z < constraints[self._z_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make further movement of the axis "{0}"'
-                            'with the step {1}, since the border [{2},{3}] '
-                            'was reached! Ignore '
-                            'command!'.format(self._z_axis.label, move_z,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._z_axis.label: curr_pos_z + move_z})
-                self._z_axis.move_rel(move_z)
-
-    def move_abs(self, param_dict):
-        """ Moves stage to absolute position (absolute movement)
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <a-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-        A smart idea would be to ask the position after the movement.
-        """
-        constraints = self.get_constraints()
-
-        if param_dict.get(self._x_axis.label) is not None:
-            desired_pos = param_dict[self._x_axis.label]
-
-
-            if  (desired_pos > constraints[self._x_axis.label]['pos_max'] ) or\
-                (desired_pos < constraints[self._x_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._x_axis.label, desired_pos,
-                                    constraints[self._x_axis.label]['pos_min'],
-                                    constraints[self._x_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._x_axis.label:desired_pos})
-                self._x_axis.move_abs(desired_pos)
-
-        if param_dict.get(self._y_axis.label) is not None:
-            desired_pos = param_dict[self._y_axis.label]
-
-
-            if  (desired_pos > constraints[self._y_axis.label]['pos_max'] ) or\
-                (desired_pos < constraints[self._y_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._y_axis.label, desired_pos,
-                                    constraints[self._y_axis.label]['pos_min'],
-                                    constraints[self._y_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._y_axis.label:desired_pos})
-                self._y_axis.move_abs(desired_pos)
-
-        if param_dict.get(self._z_axis.label) is not None:
-            desired_pos = param_dict[self._z_axis.label]
-
-            if  (desired_pos > constraints[self._z_axis.label]['pos_max'] ) or\
-                (desired_pos < constraints[self._z_axis.label]['pos_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._z_axis.label, desired_pos,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._save_pos({self._z_axis.label:desired_pos})
-                self._z_axis.move_abs(desired_pos)
-
-
-    def abort(self):
-        """ Stops movement of the stage. """
-
-        self._x_axis.abort()
-        self._y_axis.abort()
-        self._z_axis.abort()
-
-        self.logMsg('Movement of all the axis aborted! Stage stopped.',
-                    msgType='warning')
-
-
-    def get_pos(self, param_list=None):
-        """ Gets current position of the stage arms
-
-        @param list param_list: optional, if a specific position of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                position is asked.
-
-        @return dict: with keys being the axis labels and item the current
-                      position.
-        """
-        pos = {}
-        if param_list is not None:
-            if self._x_axis.label in param_list:
-                pos[self._x_axis.label] = self._x_axis.get_pos()
-
-            if self._y_axis.label in param_list:
-                pos[self._y_axis.label] = self._y_axis.get_pos()
-
-            if self._z_axis.label in param_list:
-                pos[self._z_axis.label] = self._z_axis.get_pos()
-
-        else:
-            pos[self._x_axis.label] = self._x_axis.get_pos()
-            pos[self._y_axis.label] = self._y_axis.get_pos()
-            pos[self._z_axis.label] = self._z_axis.get_pos()
-
-        return pos
-
-
-    def get_status(self, param_list=None):
-        """ Get the status of the position
-
-        @param list param_list: optional, if a specific status of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed in the param_list.
-                                If nothing is passed, then from each axis the
-                                status is asked.
-
-        @return dict: with the axis label as key and the status number as item.
-        """
-
-        status = {}
-        if param_list is not None:
-            if self._x_axis.label in param_list:
-                status[self._x_axis.label] = self._x_axis.get_status()
-
-            if self._y_axis.label in param_list:
-                status[self._y_axis.label] = self._y_axis.get_status()
-
-            if self._z_axis.label in param_list:
-                status[self._z_axis.label] = self._z_axis.get_status()
-
-        else:
-            status[self._x_axis.label] = self._x_axis.get_status()
-            status[self._y_axis.label] = self._y_axis.get_status()
-            status[self._z_axis.label] = self._z_axis.get_status()
-
-        return status
-
-    def calibrate(self, param_list=None):
-        """ Calibrates the stage.
-
-        @param dict param_list: param_list: optional, if a specific calibration
-                                of an axis is desired, then the labels of the
-                                needed axis should be passed in the param_list.
-                                If nothing is passed, then all connected axis
-                                will be calibrated.
-
-        @return int: error code (0:OK, -1:error)
-
-        After calibration the stage moves to home position which will be the
-        zero point for the passed axis. The calibration procedure will be
-        different for each stage.
-        """
-        raise InterfaceImplementationError('MagnetStageInterface>calibrate')
-
-        #TODO: read out a saved home position in file and compare that with the
-        #      last position saved also in file. The difference between these
-        #      values will determine the absolute home position.
-        #
-        if param_list is not None:
-            if self._x_axis.label in param_list:
-                self._x_axis.go_home()
-            if self._y_axis.label in param_list:
-                self._y_axis.go_home()
-            if self._z_axis.label in param_list:
-                self._z_axis.go_home()
-        else:
-            self._x_axis.go_home()
-            self._y_axis.go_home()
-            self._z_axis.go_home()
-
-
-    def _save_pos(self, param_dict):
-        """ Save after each move the parameters to file, since the motor stage
-        looses any information if it is initialized. That might be a way to
-        store and retrieve the current position.
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed.
-        """
-
-        if param_dict.get(self._x_axis.label) is not None:
-            pos_x = param_dict[self._x_axis.label]
-            filename =  os.path.join(self._magnet_dump_folder, self._x_axis.label + '.dat')
-            with open(filename, 'w') as f:
-                f.write(str(pos_x))
-
-        if param_dict.get(self._y_axis.label) is not None:
-            pos_y = param_dict[self._y_axis.label]
-            filename =  os.path.join(self._magnet_dump_folder, self._y_axis.label + '.dat')
-            with open(filename, 'w') as f:
-                f.write(str(pos_y))
-
-        if param_dict.get(self._z_axis.label) is not None:
-            pos_z = param_dict[self._z_axis.label]
-            filename =  os.path.join(self._magnet_dump_folder, self._z_axis.label + '.dat')
-            with open(filename, 'w') as f:
-                f.write(str(pos_z))
-
-
-    def _get_magnet_dump(self):
-        """ Create the folder where the position file is saved, and check
-        whether it exists.
-
-        @return str: the path to the created folder."""
-
-        path = self.get_home_dir()
-        magnet_path = os.path.join(path, 'magnet')
-
-        if not os.path.exists(magnet_path):
-            os.makedirs(magnet_path)
-            self.logMsg('Magnet dump was created in:\n'
-                        '{}'.format(magnet_path), msgType='status',
-                        importance=1)
-        return magnet_path
-
-
-
-    def get_velocity(self, param_list=None):
-        """ Gets the current velocity for all connected axes.
-
-        @param dict param_list: optional, if a specific velocity of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                velocity is asked.
-
-        @return dict : with the axis label as key and the velocity as item.
-        """
-        vel = {}
-        if param_list is not None:
-            if self._x_axis.label in param_list:
-                vel[self._x_axis.label] = self._x_axis.get_velocity()
-            if self._y_axis.label in param_list:
-                vel[self._x_axis.label] = self._y_axis.get_velocity()
-            if self._z_axis.label in param_list:
-                vel[self._x_axis.label] = self._z_axis.get_velocity()
-
-        else:
-            vel[self._x_axis.label] = self._x_axis.get_velocity()
-            vel[self._y_axis.label] = self._y_axis.get_velocity()
-            vel[self._z_axis.label] = self._z_axis.get_velocity()
-
-        return vel
-
-    def set_velocity(self, param_dict):
-        """ Write new value for velocity.
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed. Usage:
-                                 {'axis_label': <the-velocity-value>}.
-                                 'axis_label' must correspond to a label given
-                                 to one of the axis.
-        """
-        constraints = self.get_constraints()
-
-        if param_dict.get(self._x_axis.label) is not None:
-            desired_vel = param_dict[self._x_axis.label]
-
-            if  (desired_vel > constraints[self._x_axis.label]['vel_max'] ) or\
-                (desired_vel < constraints[self._x_axis.label]['vel_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._x_axis.label, desired_vel,
-                                    constraints[self._x_axis.label]['vel_min'],
-                                    constraints[self._x_axis.label]['vel_max']),
-                            msgType='warning')
-            else:
-                self._x_axis.set_velocity(desired_vel)
-
-        if param_dict.get(self._y_axis.label) is not None:
-            desired_vel = param_dict[self._y_axis.label]
-
-            if  (desired_vel > constraints[self._y_axis.label]['vel_max'] ) or\
-                (desired_vel < constraints[self._y_axis.label]['vel_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._y_axis.label, desired_vel,
-                                    constraints[self._y_axis.label]['vel_min'],
-                                    constraints[self._y_axis.label]['vel_max']),
-                            msgType='warning')
-            else:
-                self._y_axis.set_velocity(desired_vel)
-
-        if param_dict.get(self._z_axis.label) is not None:
-            desired_vel = param_dict[self._z_axis.label]
-
-            if  (desired_vel > constraints[self._z_axis.label]['vel_max'] ) or\
-                (desired_vel < constraints[self._z_axis.label]['vel_min']):
-
-                self.logMsg('Cannot make absolute movement of the axis "{0}"'
-                            'to possition {1}, since it exceeds the limts '
-                            '[{2},{3}] ! Command is '
-                            'ignored!'.format(self._z_axis.label, desired_vel,
-                                    constraints[self._z_axis.label]['pos_min'],
-                                    constraints[self._z_axis.label]['pos_max']),
-                            msgType='warning')
-            else:
-                self._z_axis.set_velocity(desired_vel)
-
-
-
