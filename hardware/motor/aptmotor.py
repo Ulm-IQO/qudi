@@ -447,8 +447,6 @@ class APTStage(Base, MotorInterface):
         """ Initialize instance variables and connect to hardware as configured.
         """
 
-        self.blCorr = 0.10  # 100um backlash correction
-
         # create the magnet dump folder
         self._magnet_dump_folder = self._get_magnet_dump()
 
