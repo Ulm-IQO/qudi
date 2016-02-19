@@ -3,11 +3,11 @@ Licensing                {#license}
 
 Some of the base structure and library usage decisions of QuDi were ws taken from
 the ACQ4 project (http://acq4.org and [1]), which is distributed under the 
-[MIT Licens](@ref mitlicense).
+[MIT License](@ref mitlicense).
 
 Some functions in QuDi are adapted from or inspired by pi3diamond from the 
 3. Institut für Physik of Stuttgart University and there is definitive evidence
-that pi3diamond is mostly licensed under the _[GNU Public License Version 3](@ref gpl)_,
+that pi3diamond is mostly licensed under the [GNU Public License Version 3](@ref gpl),
 it is the easiest solution for each author to also license their contribution
 to this software as [GPLv3](@ref gpl).
 
