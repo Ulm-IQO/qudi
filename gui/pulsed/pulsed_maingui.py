@@ -35,10 +35,6 @@ from core.util.mutex import Mutex
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
 #FIXME: insert warning text in choice of channels
-#FIXME: pass the possible channels over to laser channel select
-#FIXME: count laser pulses
-#FIXME: calculate total length of the Pulse_Block objects
-#FIXME: remove repeat and inc from the initial table
 #FIXME: save the pattern of the table to a file. Think about possibilities to read in from file if number of channels is different. Therefore make also a load function.
 #FIXME: connect the current default value of length of the dspinbox with
 #       the minimal sequence length and the sampling rate.
@@ -1374,10 +1370,17 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Block object."""
 
         objectname = self._mw.curr_block_name_LineEdit.text()
+        if objectname == '':
+            self.logMsg('No Name for Pulse_Block specified. Generation '
+                        'aborted!', importance=7, msgType='warning')
+            return
         num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
         self._seq_gen_logic.generate_pulse_block_object(objectname,
                                                   self.get_block_table(),
                                                   num_laser_pulses)
+
+        self.update_block_organizer_list()
+
 
 
     # -------------------------------------------------------------------------
@@ -1523,6 +1526,10 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Block_ensemble object."""
 
         objectname = self._mw.curr_ensemble_name_LineEdit.text()
+        if objectname == '':
+            self.logMsg('No Name for Pulse_Block_Ensemble specified. '
+                        'Generation aborted!', importance=7, msgType='warning')
+            return
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
         self._seq_gen_logic.generate_pulse_block_ensemble(objectname,
                                                     self.get_organizer_table(),
@@ -2251,7 +2258,7 @@ class PulsedMeasurementGui(GUIBase):
 #        self._mw.binning_comboBox.setEnabled(True)
 #        self._mw.pull_data_pushButton.setEnabled(False)
 
-    def run_stop_clicked(self,isChecked):
+    def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
 
         @param bool enabled: start scan if that is possible
