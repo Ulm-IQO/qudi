@@ -24,6 +24,9 @@ This module was developed from PyAPT, written originally by Michael Leung
 (mcleung@stanford.edu). Have a look in:
     https://github.com/HaeffnerLab/Haeffner-Lab-LabRAD-Tools/blob/master/cdllservers/APTMotor/APTMotorServer.py
 APT.dll and APT.lib were provided to PyAPT thanks to SeanTanner@ThorLabs .
+All the specific error and status code are taken from:
+    https://github.com/UniNE-CHYN/thorpy
+
 """
 
 from collections import OrderedDict
@@ -59,8 +62,54 @@ class APTMotor():
     hwtype_dict['HWTYPE_BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
 
     error_code= {}
-    error_code[17581505] = 'An invalid parameter has been passed.'
-    error_code[19101610] = 'An APT Server internal error has occurred. Invalid device ident.'
+    error_code[10000] = 'Unknown error'
+    error_code[10001] = 'Internal error'
+    error_code[10002] = 'Call has failed'
+    error_code[10003] = 'Invalid or out-of-range parameter'
+    error_code[10051] = 'Error while accessing hard disk'
+    error_code[10052] = 'Error while accessing registry'
+    error_code[10053] = 'Internal memory allocation or de-allocation error'
+    error_code[10054] = 'COM system error'
+    error_code[10055] = 'USB communication error'
+    error_code[10100] = 'Unknown serial number'
+    error_code[10101] = 'Duplicate Serial Number'
+    error_code[10102] = 'Duplicate Device Identifier'
+    error_code[10103] = 'Invalid message source'
+    error_code[10104] = 'Message received with unknown identifier'
+    error_code[10106] = 'Invalid serial number'
+    error_code[10107] = 'Invalid message destination ident'
+    error_code[10108] = 'Invalid index'
+    error_code[10109] = 'Control is currently not communicating'
+    error_code[10110] = 'Hardware fault or illegal command or parameter has been sent to hardware'
+    error_code[10111] = 'Time out while waiting for hardware unit to respond'
+    error_code[10112] = 'Incorrect firmware version'
+    error_code[10115] = 'Your hardware is not compatible'
+    error_code[10150] = 'No stage has been assigned'
+    error_code[10151] = 'Internal error when using an encoded stage'
+    error_code[10152] = 'Internal error when using an encoded stage'
+    error_code[10153] = 'Call only applicable to encoded stages'
+
+    # The status is encodes in a 32bit word. Some bits in that word have no
+    # assigned meaning, or their meaning could not be deduced from the manual.
+    # The known status bits are stated below. The current status can also be a
+    # combination of status bits. Therefore you have to check with an AND
+    # bitwise comparison, which status your device has.
+    status_code = {}
+    status_code[1] = '0x00000001: forward hardware limit switch is active'
+    status_code[2] = '0x00000002: reverse hardware limit switch is active'
+    status_code[16] = '0x00000010: in motion, moving forward'
+    status_code[32] = '0x00000020: in motion, moving reverse'
+    status_code[64] = '0x00000040: in motion, jogging forward'
+    status_code[128] = '0x00000080: in motion, jogging reverse'
+    status_code[512] = '0x00000200: in motion, homing'
+    status_code[1024] = '0x00000400: homed (homing has been completed)'
+    status_code[4096] = '0x00001000: tracking'
+    status_code[8192] = '0x00002000: settled'
+    status_code[16384] = '0x00004000: motion error (excessive position error)'
+    status_code[16777216] = '0x01000000: motor current limit reached'
+    status_code[2147483648] = '0x80000000: channel is enabled'
+
+
 
     def __init__(self, path_dll, serialnumber, hwtype, label=''):
         """
@@ -175,9 +224,22 @@ class APTMotor():
         hardwareLimitSwitches = [reverseLimitSwitch.value, forwardLimitSwitch.value]
         return hardwareLimitSwitches
 
-    def setHardwareLimitSwitches(self, switchr, switchf):
-        reverseLimitSwitch = c_long(switchr)
-        forwardLimitSwitch = c_long(switchf)
+    def setHardwareLimitSwitches(self, switch_reverse, switch_forward):
+        """ Set the Switch Configuration of the axis.
+
+        @param int switch_reverse: sets the switch in reverse movement
+        @param int switch_forward: sets the switch in forward movement
+
+        The following values are allowed:
+        0x01 or 1: Ignore switch or switch not present.
+        0x02 or 2: Switch makes on contact.
+        0x03 or 3: Switch breaks on contact.
+        0x04 or 4: Switch makes on contact - only used for homes (e.g. limit switched rotation stages).
+        0x05 or 5: Switch breaks on contact - only used for homes (e.g. limit switched rotations stages).
+        0x06 or 6: For PMD based brushless servo controllers only - uses index mark for homing.
+        """
+        reverseLimitSwitch = c_long(switch_reverse)
+        forwardLimitSwitch = c_long(switch_forward)
         self.aptdll.MOT_SetHWLimSwitches(self.SerialNum, reverseLimitSwitch, forwardLimitSwitch)
         hardwareLimitSwitches = [reverseLimitSwitch.value, forwardLimitSwitch.value]
         return hardwareLimitSwitches
@@ -835,6 +897,8 @@ class APTOneAxisStage(APTStage):
 
 
 class APTThreeAxisStage(APTStage):
+    """ The module controlles three StepperStage56=NRT150 Enc Stage 150mm
+    """
 
     _modclass = 'APTThreeAxis'
     _modtype = 'hardware'
