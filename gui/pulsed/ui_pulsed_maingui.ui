@@ -6,12 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1174</width>
-    <height>898</height>
+    <width>1673</width>
+    <height>1030</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>qudi: pulsed measurement</string>
+  </property>
+  <property name="layoutDirection">
+   <enum>Qt::LeftToRight</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
@@ -20,7 +23,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -394,13 +397,13 @@
               </layout>
              </widget>
             </widget>
-            <widget class="QWidget" name="">
+            <widget class="QWidget" name="layoutWidget">
              <property name="geometry">
               <rect>
                <x>0</x>
                <y>720</y>
                <width>1279</width>
-               <height>29</height>
+               <height>45</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_26">
@@ -525,6 +528,10 @@
               </item>
              </layout>
             </widget>
+            <zorder>widget_3</zorder>
+            <zorder>widget_4</zorder>
+            <zorder>layoutWidget</zorder>
+            <zorder>widget_2</zorder>
            </widget>
           </item>
          </layout>
@@ -1379,8 +1386,8 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>1126</width>
-                 <height>755</height>
+                 <width>98</width>
+                 <height>28</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -1612,7 +1619,7 @@ sel.</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1174</width>
+     <width>1673</width>
      <height>21</height>
     </rect>
    </property>
@@ -1630,13 +1637,23 @@ sel.</string>
     <addaction name="action_Settings_Block_Generation"/>
     <addaction name="actionSettings_Sequence_Editor"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionOpen_Prepared_Methods"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
+   <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="analysis_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
+   </property>
+   <property name="layoutDirection">
+    <enum>Qt::LeftToRight</enum>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -1714,6 +1731,11 @@ sel.</string>
    </property>
    <property name="text">
     <string>Pull and analyze data</string>
+   </property>
+  </action>
+  <action name="actionOpen_Prepared_Methods">
+   <property name="text">
+    <string>Open Prepared Methods</string>
    </property>
   </action>
  </widget>
