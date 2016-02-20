@@ -25,6 +25,7 @@ import os
 from collections import OrderedDict
 import pyqtgraph as pg
 import re
+import inspect
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
@@ -595,6 +596,17 @@ class BlockSettingDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
+class PredefinedMethodsDialog(QtGui.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_predefined_methods.ui')
+
+        # Load it
+        super(PredefinedMethodsDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
 class PulsedMeasurementGui(GUIBase):
     """
     This is the GUI Class for pulsed measurements
@@ -710,6 +722,10 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
+        # create the Predefined methods Dialog
+        self._pm = PredefinedMethodsDialog()
+
+
         # Add in the settings menu within the groupbox widget all the available
         # math_functions, based on the list from the Logic. Right now, the GUI
         # objects are inserted the 'hard' way, like it is done in the
@@ -760,6 +776,11 @@ class PulsedMeasurementGui(GUIBase):
     def show_block_settings(self):
         """ Opens the block settings menue. """
         self._bs.exec_()
+
+
+    def show_prepared_methods(self):
+        """ Opens the prepared methods Window."""
+        self._pm.show()
 
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
@@ -894,6 +915,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
+        self._mw.actionOpen_Prepared_Methods.triggered.connect(self.show_prepared_methods)
 
         # emit a trigger event when for all mouse click and keyboard click events:
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
@@ -934,6 +956,9 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
 
+
+        self._create_control_for_prepared_methods()
+
         # =====================================================================
         #              Explanation of the usage of QTableWidget
         # =====================================================================
@@ -966,7 +991,7 @@ class PulsedMeasurementGui(GUIBase):
         @param Fysom.event e: Event Object of Fysom
         """
         #FIXME: implement a proper deactivation for that.
-        pass
+        self._pm.close()
 
     def get_func_config(self):
         """ Retrieve the function configuration from the Logic.
@@ -2121,6 +2146,219 @@ class PulsedMeasurementGui(GUIBase):
 
         self._num_a_ch = count_a_ch
         return self._num_a_ch
+
+
+    def _create_control_for_prepared_methods(self):
+        """ Create the Control Elements in the Predefined Windows, depending
+            on the methods of the logic.
+
+        The following procedure was chosen:
+            1. At first the method is inspected and all the parameters are
+              investigated. Depending on the type of the default value of the
+              keyword, a ControlBox (CheckBox, DoubleSpinBox, ...) is created.
+            2. Then a in the GUI is created like
+                _<method_name>_generate()
+                which is connected to the generate button and passes all the
+                parameters to the method in the logic.
+            3. An additional method is created as
+                _<method_name>_generate_upload()
+                which generates and uploads the current values to the device.
+        """
+        method_list = self._seq_gen_logic.prepared_method_list
+
+        for method in method_list:
+            inspected = inspect.signature(method)
+
+
+            gridLayout = QtGui.QGridLayout()
+            groupBox = QtGui.QGroupBox(self._pm)
+
+            obj_list = []
+
+            # go through the parameter list and check the type of the default
+            # parameter
+            for index, param_name in enumerate(inspected.parameters):
+
+                label_obj = self._create_QLabel(groupBox, param_name)
+
+                default_value = inspected.parameters[param_name].default
+
+                if default_value is inspect._empty:
+                    self.logMsg('The method "{0}" in the logic has an '
+                                'argument "{1}" without a default value!\n'
+                                'Assign a default value to that, otherwise a '
+                                'type estimation is not possible!\n'
+                                'Creation of the viewbox '
+                                'aborted.'.format(method.__name__, param_name),
+                                msgType='error')
+                    return
+
+                if type(default_value) is bool:
+                    view_obj = self._create_QCheckBox(groupBox, default_value)
+                elif type(default_value) is float:
+                    view_obj = self._create_QDoubleSpinBox(groupBox, default_value)
+                elif type(default_value) is int:
+                    view_obj = self._create_QSpinBox(groupBox, default_value)
+                elif type(default_value) is str:
+                    view_obj = self._create_QLineEdit(groupBox, default_value)
+                else:
+                    self.logMsg('The method "{0}" in the logic has an '
+                                'argument "{1}" with is not of the valid types'
+                                'str, float int or bool!\n'
+                                'Choose one of those default values! Creation '
+                                'of the viewbox '
+                                'aborted.'.format(method.__name__, param_name)
+                                , msgType='error')
+
+                obj_list.append(view_obj)
+                gridLayout.addWidget(label_obj, 0, index, 1, 1)
+                gridLayout.addWidget(view_obj, 1, index, 1, 1)
+
+            gen_button = self._create_QPushButton(groupBox, 'Generate')
+            # Create with the function builder a method, which will be
+            # connected to the click event of the pushbutton generate:
+            func_name = '_'+ method.__name__ + '_generate'
+            setattr(self, func_name, self._function_builder_generate(func_name, obj_list, method) )
+            gen_func = getattr(self, func_name)
+            gen_button.clicked.connect(gen_func)
+
+
+            gen_upload_button = self._create_QPushButton(groupBox, 'Gen. & Upload')
+            # Create with the function builder a method, which will be
+            # connected to the click event of the pushbutton generate & upload:
+            func_name = '_'+ method.__name__ + '_generate_upload'
+            setattr(self, func_name, self._function_builder_generate_upload(func_name, gen_func) )
+            gen_upload_func = getattr(self, func_name)
+            gen_upload_button.clicked.connect(gen_upload_func)
+
+            pos = len(inspected.parameters)
+            gridLayout.addWidget(gen_button, 0, pos, 1, 1)
+            gridLayout.addWidget(gen_upload_button, 1, pos, 1, 1)
+
+            horizontalLayout = QtGui.QHBoxLayout(groupBox)
+
+            horizontalLayout.addLayout(gridLayout)
+
+            groupBox.setTitle(method.__name__.replace('_',' '))
+
+            self._pm.verticalLayout.addWidget(groupBox)
+
+    def _create_QLabel(self, parent, label_name):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        Generate a predefined label.
+        """
+        label = QtGui.QLabel(parent)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(label.sizePolicy().hasHeightForWidth())
+        label.setSizePolicy(sizePolicy)
+        label.setText(label_name)
+        return label
+
+    def _create_QDoubleSpinBox(self, parent, default_val=0.0):
+
+        doublespinBox = QtGui.QDoubleSpinBox(parent)
+        doublespinBox.setMaximum(np.inf)
+        doublespinBox.setMinimum(-np.inf)
+
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(doublespinBox.sizePolicy().hasHeightForWidth())
+
+        doublespinBox.setMinimumSize(QtCore.QSize(80, 0))
+
+        return doublespinBox
+
+    def _create_QSpinBox(self, parent, default_val=0):
+
+        spinBox = QtGui.QSpinBox(parent)
+        spinBox.setMaximum(2**31 -1)
+        spinBox.setMinimum(-2**31 -1)
+        return spinBox
+
+    def _create_QCheckBox(self, parent, default_val=False):
+        checkBox = QtGui.QCheckBox(parent)
+        checkBox.setChecked(default_val)
+        return checkBox
+
+    def _create_QLineEdit(self, parent, default_val=''):
+        lineedit = QtGui.QLineEdit(parent)
+        lineedit.setText(default_val)
+
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(lineedit.sizePolicy().hasHeightForWidth())
+
+        lineedit.setMinimumSize(QtCore.QSize(80, 0))
+
+        lineedit.setSizePolicy(sizePolicy)
+        return lineedit
+
+    def _create_QPushButton(self, parent, text='Generate'):
+        pushbutton = QtGui.QPushButton(parent)
+        pushbutton.setText(text)
+        return pushbutton
+
+    def _function_builder_generate(self, func_name, obj_list, ref_logic_gen ):
+        """ Create a function/method which is called by the generate button
+        @param str func_name: name of the function, which will be append to self
+        @param list obj_list: list of objects, which where the value will be
+                              retrieved
+        @param method ref_logic_gen: reference to method in logic
+        @return: a function, which can be called with func_name
+        """
+
+        def func_dummy_name():
+            object_list = obj_list
+
+            ensemble_name = ''
+            parameters = [None]*len(object_list)
+            for index, object in enumerate(object_list):
+                if hasattr(object,'isChecked'):
+                    parameters[index] = object.isChecked()
+                elif hasattr(object,'value'):
+                    parameters[index] = object.value()
+                elif hasattr(object,'text'):
+
+                    parameters[index] = object.text()
+                    ensemble_name = object.text()
+                else:
+                    self.logMsg('Not possible to get the value from the '
+                                'viewbox, since it does not have one of the'
+                                'possible access methods!', msgType='error')
+
+            # the * operator unpacks the list
+            ref_logic_gen(*parameters)
+            return ensemble_name
+
+        func_dummy_name.__name__ = func_name
+        return func_dummy_name
+
+    def _function_builder_generate_upload(self, func_name, ref_gen_func):
+        """ Create a function/method which is called by the generate and upload button
+
+        @param str func_name: name of the function, which will be append to self
+        @param str ensemble_name: name of the pulse_block_ensemble which will
+                                  be uploaded.
+        @param ref_gen_func: reference to the generate function, which calls
+                             the logic method
+        @return: a function, which can be called with func_name
+        """
+
+        def func_dummy_name():
+            ensemble_name = ref_gen_func()
+
+            index = self._mw.upload_ensemble_ComboBox.findText(ensemble_name, QtCore.Qt.MatchFixedString)
+            self._mw.upload_ensemble_ComboBox.setCurrentIndex(index)
+            self.upload_to_device_clicked()
+
+        func_dummy_name.__name__ = func_name
+        return func_dummy_name
+
 
 
     ###########################################################################
