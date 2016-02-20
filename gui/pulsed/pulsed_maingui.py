@@ -41,6 +41,8 @@ from core.util.mutex import Mutex
 #FIXME: Later that should be able to round up the values directly within
 #       the entering in the dspinbox for a consistent display of the
 #       sequence length.
+#FIXME: Use the desired unit representation to display the value from the logic
+
 
 # =============================================================================
 #                       Define some delegate classes.
@@ -874,6 +876,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_del_sel_PushButton.clicked.connect(self.block_editor_delete_row_selected)
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
 
+        self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block)
         self._mw.curr_block_save_PushButton.clicked.connect(self.block_editor_save_clicked)
         self._mw.curr_block_del_PushButton.clicked.connect(self.block_editor_delete_clicked)
 
@@ -1016,8 +1019,6 @@ class PulsedMeasurementGui(GUIBase):
         @return: float, sample_rate in Hz
         """
         return self._mw.sample_freq_DSpinBox.value()*1e6
-
-
 
     def sample_ensemble_clicked(self):
         """
@@ -1163,6 +1164,9 @@ class PulsedMeasurementGui(GUIBase):
         changed. You have to ensure that
         """
 
+        #FIXME: that method should get the values in SI metric and convert them
+        #        to the desired display.
+
         tab = self._mw.block_editor_TableWidget
         model = tab.model()
         access = tab.itemDelegateForColumn(column).model_data_access
@@ -1171,9 +1175,11 @@ class PulsedMeasurementGui(GUIBase):
             model.setData(model.index(row,column), value, access)
         else:
             self.logMsg('The cell ({0},{1}) in block table could not be '
-                        'assigned with the value="{2}", since the type differs'
-                        'from the delegated type.\nPrevious value will be '
-                        'kept.', msgType='warning')
+                        'assigned with the value="{2}", since the type "{3}" '
+                        'of the cell from the delegated type differs from '
+                        '"{4}" of the value!\nPrevious value will be '
+                        'kept.'.format(row, column, value, type(data),
+                                       type(value) ) , msgType='warning')
 
 
 
@@ -1291,30 +1297,113 @@ class PulsedMeasurementGui(GUIBase):
 
         return table
 
+    def load_pulse_block(self):
+        """ Loads the current selected Pulse_Block object from the logic into
+            the editor.
 
-    #FIXME: Possibility to insert many rows at once
+            Unfortuanetly this method needs to know how Pulse_Block objects
+            are looking like and cannot be that general.
+        """
 
-    def block_editor_add_row_before_selected(self):
+        current_block_name = self._mw.saved_blocks_ComboBox.currentText()
+        block = self._seq_gen_logic.get_block(current_block_name, set_as_current_block=True)
+        self.block_editor_clear_table()
+
+        rows = len(block.element_list)
+
+        block_config_dict = self.get_cfg_param_pbe()
+
+        self.block_editor_add_row_after_last(rows-1) # since one is already present
+
+        for row_index, pulse_block_element in enumerate(block.element_list):
+
+            # set at first all digital channels:
+            for digital_ch in range(pulse_block_element.digital_channels):
+                column = block_config_dict['digital_'+str(digital_ch)]
+                value = pulse_block_element.markers_on[digital_ch]
+                if value:
+                    value=0
+                else:
+                    value=2
+                self.set_element_in_block_table(row_index,column, value)
+
+            # now set all parameters for the analog channels:
+            for analog_ch in range(pulse_block_element.analogue_channels):
+
+                # the function text:
+                column = block_config_dict['function_'+str(analog_ch)]
+                func_text = pulse_block_element.pulse_function[analog_ch]
+                self.set_element_in_block_table(row_index, column, func_text)
+
+                # then the parameter dictionary:
+                parameter_dict = pulse_block_element.parameters[analog_ch]
+                for parameter in parameter_dict:
+                    column = block_config_dict[parameter + '_' +str(analog_ch)]
+                    value = np.float(parameter_dict[parameter])
+                    self.set_element_in_block_table(row_index, column, value)
+
+
+            #FIXME: that is not really general, since the name 'use_as_tau' is
+            #       directly taken. That must be more general! Right now it is
+            #       hard to make it in a general way.
+
+            # now set use as tau parameter:
+            column = block_config_dict['use']
+            value = pulse_block_element.use_as_tau / (self.get_sample_rate() /1e9 )
+            # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
+            if value:
+                value=0
+            else:
+                value=2
+            self.set_element_in_block_table(row_index, column, value)
+
+            # and set the init_length_bins:
+            column = block_config_dict['length']
+            value = pulse_block_element.init_length_bins / (self.get_sample_rate() /1e9 )
+            self.set_element_in_block_table(row_index, column, value)
+
+            # and set the increment parameter
+            column = block_config_dict['increment']
+            value = pulse_block_element.increment_bins / (self.get_sample_rate() /1e9 )
+            self.set_element_in_block_table(row_index, column, value)
+
+        self._mw.curr_block_name_LineEdit.setText(current_block_name)
+
+
+
+    def block_editor_add_row_before_selected(self, insert_rows=1):
         """ Add row before selected element. """
 
         self._mw.block_editor_TableWidget.blockSignals(True)
 
         selected_row = self._mw.block_editor_TableWidget.currentRow()
 
-        self._mw.block_editor_TableWidget.insertRow(selected_row)
-        self.initialize_cells_block_editor(selected_row)
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        for rows in range(insert_rows):
+            self._mw.block_editor_TableWidget.insertRow(selected_row)
+        self.initialize_cells_block_editor(start_row=selected_row,stop_row=selected_row+insert_rows)
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
 
-    def block_editor_add_row_after_last(self):
+    def block_editor_add_row_after_last(self, insert_rows=1):
         """ Add row after last row in the block editor. """
 
         self._mw.block_editor_TableWidget.blockSignals(True)
 
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
         number_of_rows = self._mw.block_editor_TableWidget.rowCount()
-        self._mw.block_editor_TableWidget.setRowCount(number_of_rows+1)
-        self.initialize_cells_block_editor(number_of_rows)
+
+        self._mw.block_editor_TableWidget.setRowCount(number_of_rows+insert_rows)
+        self.initialize_cells_block_editor(start_row=number_of_rows,stop_row=number_of_rows+insert_rows)
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
@@ -1461,24 +1550,37 @@ class PulsedMeasurementGui(GUIBase):
         return table
 
 
-    def block_organizer_add_row_before_selected(self):
+
+
+    def block_organizer_add_row_before_selected(self,insert_rows=1):
         """ Add row before selected element. """
         self._mw.block_organizer_TableWidget.blockSignals(True)
         selected_row = self._mw.block_organizer_TableWidget.currentRow()
 
-        self._mw.block_organizer_TableWidget.insertRow(selected_row)
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        for rows in range(insert_rows):
+            self._mw.block_organizer_TableWidget.insertRow(selected_row)
 
         self.initialize_cells_block_organizer(start_row=selected_row)
         self._mw.block_organizer_TableWidget.blockSignals(False)
         self._update_current_pulse_block_ensemble()
 
 
-    def block_organizer_add_row_after_last(self):
+    def block_organizer_add_row_after_last(self,insert_rows=1):
         """ Add row after last row in the block editor. """
         self._mw.block_organizer_TableWidget.blockSignals(True)
 
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
         number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
-        self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+1)
+        self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+insert_rows)
 
         self.initialize_cells_block_organizer(start_row=number_of_rows)
         self._mw.block_organizer_TableWidget.blockSignals(False)
