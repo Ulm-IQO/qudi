@@ -680,8 +680,8 @@ class ConfocalGui(GUIBase):
             widget['spinbox'] = spinbox = QtGui.QDoubleSpinBox()
             spinbox.setDecimals(3)
             spinbox.setSingleStep(0.01)
-            spinbox.setMaximum(999999999)
-            spinbox.setMinimum(-999999999)
+            spinbox.setMaximum(np.inf)
+            spinbox.setMinimum(-np.inf)
             if not self._optimizer_logic.z_params[str(name)].value == None:
                 spinbox.setValue(self._optimizer_logic.z_params[str(name)].value)
             self._osd.form_Layout.addRow(name, spinbox)

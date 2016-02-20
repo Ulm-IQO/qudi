@@ -28,7 +28,7 @@ import PyDAQmx as daq
 import numpy as np
 import re
 
-class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInterface):
+class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
     """unstable: Kay Jahnke, Alexander Stark
 	
 	A National Instruments device that can count and control microvave generators.
@@ -139,10 +139,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                 
         @return int: error code (0:OK, -1:error)
         """
-        #FIXME: What are the variables doing (i.e. RWTimeout)?
-        self._max_counts = 3e7  # used as a default for expected maximum counts
-        #FIXME: Read-Write timeout
-        self._RWTimeout = 5
+        
+
+        # the tasks used on that hardware device:
         self._counter_daq_task = None
         self._clock_daq_task = None
         self._scanner_clock_daq_task = None
@@ -152,14 +151,18 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         self._odmr_length = None
         self._gated_counter_daq_task = None
 
-        # FIXME: Here you assign a value to some variables. For _sample_number,
-        # _clock_frequency, _scanner_clock_frequency you are doing this later.
-        # Wouldn't it be more convenient to also put the default values for
-        # _sample_number, _clock_frequency, _scanner_clock_frequency here.
-        # Then it is also a bit simpler to change...
+        # some default values for the hardware:
         self._voltage_range = [-10., 10.]
         self._position_range=[[0., 100.], [0., 100.], [0., 100.], [0., 100.]]
         self._current_position = [0., 0., 0., 0.]
+
+        self._max_counts = 3e7  # used as a default for expected maximum counts
+        self._RWTimeout = 5     # timeout for the Read or/and write process in s
+
+        self._clock_frequency_default = 100             # in Hz
+        self._scanner_clock_frequency_default = 100     # in Hz
+        self.__samples_number_default = 10      # number of readout samples 
+                                                # mainly used for gated counter
 
         config = self.getConfiguration()
         # handle all the parameters given by the config
@@ -217,7 +220,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
-            self._clock_frequency=100
+            self._clock_frequency = self._clock_frequency_default
             self.logMsg('No clock_frequency configured taking 100 Hz instead.',
                         msgType='warning')
 
@@ -237,14 +240,14 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         if 'scanner_clock_frequency' in config.keys():
             self._scanner_clock_frequency=config['scanner_clock_frequency']
         else:
-            self._scanner_clock_frequency=100
+            self._scanner_clock_frequency =self._scanner_clock_frequency_default
             self.logMsg('No scanner_clock_frequency configured taking '
                         '100 Hz instead.', msgType='warning')
 
         if 'samples_number' in config.keys():
-            self._samples_number=config['samples_number']
+            self._samples_number = config['samples_number']
         else:
-            self._samples_number=10
+            self._samples_number = self.__samples_number_default
             self.logMsg('No samples_number configured taking 10 instead.',
                         msgType='warning')
 
@@ -326,26 +329,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                          has happened.
         """
         self.reset_hardware()
-        
-    def reset_hardware(self):
-        """ Resets the NI hardware, so the connection is lost and other 
-            programs can access it.
-        
-        @return int: error code (0:OK, -1:error)
-        """
-        match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
-        if match:
-            device = match.group('device')
-            self.logMsg('NI Device "{}" will be reset.'.format(device), 
-                        msgType='warning')
-            daq.DAQmxResetDevice(device)
-            return 0
-        else:
-            self.logMsg('Did not find device name '
-                        'in {}.'.format(self._clock_channel), vmsgType='error')
-            return -1
               
-    # =========================== Counter =====================================
+    # =================== SlowCounterInterface Commands ========================
         
     def set_up_clock(self, clock_frequency = None, clock_channel = None,
                      scanner=False, idle = False):
@@ -769,8 +754,28 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
             self._clock_daq_task = None
 
         return 0
+    
+    # ================ End SlowCounterInterface Commands =======================
+
+    # ================ ConfocalScannerInterface Commands =======================
+
+    def reset_hardware(self):
+        """ Resets the NI hardware, so the connection is lost and other 
+            programs can access it.
         
-    # ====================== Confocal Scanner =================================
+        @return int: error code (0:OK, -1:error)
+        """
+        match = re.match('^.?(?P<device>Dev\d+).*',self._clock_channel)
+        if match:
+            device = match.group('device')
+            self.logMsg('NI Device "{}" will be reset.'.format(device), 
+                        msgType='warning')
+            daq.DAQmxResetDevice(device)
+            return 0
+        else:
+            self.logMsg('Did not find device name '
+                        'in {}.'.format(self._clock_channel), vmsgType='error')
+            return -1
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -1255,9 +1260,6 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         The input array looks for a xy scan of 5x5 points at the position z=-2
         like the following:
             [ [1,2,3,4,5],[1,1,1,1,],[-2,-2,-2,-2],[0,0,0,0]]
-            
-        
-        
         """
         
         #if self.getState() == 'locked':            
@@ -1381,7 +1383,9 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         return self.close_clock(scanner=True)
 
-################################# ODMR ######################################
+    # ================ End ConfocalScannerInterface Commands ===================
+
+    # ==================== ODMRCounterInterface Commands =======================
 
     def set_up_odmr_clock(self, clock_frequency = None, clock_channel = None):
         """ Configures the hardware clock of the NiDAQ card to give the timing. 
@@ -1627,21 +1631,24 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         
         return self.close_clock(scanner=True)
 
-
+    # ================== End ODMRCounterInterface Commands =====================
 
     # ======================== Gated photon counting ==========================
+
     def set_up_gated_counter(self, buffer_length, read_available_samples=False):
         """ Initializes and starts task for external gated photon counting.
         
         @param int buffer_length: Defines how long the buffer to be filled with
                                   samples should be. If buffer is full, program
                                   crashes, so use upper bound. Some reference
-                                  calculated with sample rate(S/s)\Buffer size:
-                                      no rate\10kS, 
-                                      0-100S/s\10kS
-                                      101-10kS/s\1kS,
-                                      10k-1MS/s\100kS, 
-                                      >1MS/s\1Ms
+                                  calculated with sample_rate (in Samples/second)
+                                  divided by Buffer_size: 
+                                  sample_rate/Buffer_size =
+                                      no rate     /  10kS, 
+                                      (0-100S/s)  /  10kS
+                                      (101-10kS/s)/   1kS,
+                                      (10k-1MS/s) / 100kS, 
+                                      (>1MS/s)    / 1Ms
         @param bool read_available_samples: if False, NiDaq waits for the 
                                             sample you asked for to be in the 
                                             buffer before, True it returns what
@@ -1661,8 +1668,8 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # Set up pulse width measurement in photon ticks, i.e. the width of 
         # each pulse generated by pulse_out_task is measured in photon ticks:
         daq.DAQmxCreateCIPulseWidthChan(
-                self._gated_counter_daq_task,   # add to this task:
-                self._counter_channel,          # use this counter:
+                self._gated_counter_daq_task,   # add to this task
+                self._counter_channel,          # use this counter
                 'Gated Counting Task',          # name you assign to it              
                 0,                              # expected minimum value        
                 self._max_counts,               # expected maximum value
@@ -1672,12 +1679,13 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
                                                 # on rising edge
                 '')  
 
-        # Set the pulses to counter self._function_counter_in
+        # Set the pulses to counter self._counter_channel
         daq.DAQmxSetCIPulseWidthTerm(self._gated_counter_daq_task, 
                                      self._counter_channel, 
                                      self._gate_in_channel)
 
-        #  Define the source of ticks for the counter as self._photon_source.
+        # Set the timebase for width measurement as self._photon_source, i.e.
+        # define the source of ticks for the counter as self._photon_source.
         daq.DAQmxSetCICtrTimebaseSrc(self._gated_counter_daq_task, 
                                      self._counter_channel, 
                                      self._photon_source )
@@ -1699,7 +1707,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
 
         # If this is set to True, then the NiDaq will not wait for the sample 
         # you asked for to be in the buffer before read out but immediately 
-        # hand back all samples until #samples is reached.
+        # hand back all samples until samples is reached.
         if read_available_samples: 
             daq.DAQmxSetReadReadAllAvailSamp(self._gated_counter_daq_task,
                                              True)
@@ -1707,7 +1715,7 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         # Do not read first sample:
         daq.DAQmxSetReadOffset(self._gated_counter_daq_task, 0)
 
-        # uUnread data in buffer is not overwritten
+        # Unread data in buffer is not overwritten
         daq.DAQmxSetReadOverWrite(self._gated_counter_daq_task,
                                   daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
 
@@ -1748,19 +1756,22 @@ class NICard(Base,SlowCounterInterface,ConfocalScannerInterface,ODMRCounterInter
         n_read_samples = int() 
 
         if read_available_samples:
-            samples_2 = -1
+            num_samples = -1  # If the task acquires a finite number of samples 
+                              # and you set this parameter to -1, the function 
+                              # waits for the task to acquire all requested 
+                              # samples, then reads those samples.
         else: 
-            samples_2 = samples
+            num_samples = samples
 
         daq.DAQmxReadCounterU32(
                 self._gated_counter_daq_task,   # read from this task
-                samples_2,                      # read number samples
+                num_samples,                    # read number samples
                 timeout,                        # maximal timeout for the read 
                                                 # process
                 _gated_count_data.ctypes.data,  # write into this array
                samples,                         # length of array to write into
                daq.byref(n_read_samples),       # number of samples which were
-                                                # read.
+                                                # actually read.
                None)                            # Reserved for future use. Pass
                                                 # NULL (here None) to this 
                                                 # parameter

@@ -19,12 +19,14 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
-from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
-from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
 import os
+
+from pyqtgraph.Qt import QtCore, QtGui, uic
+from collections import OrderedDict
+
+from gui.guibase import GUIBase
 
 
 class CounterMainWindow(QtGui.QMainWindow):
@@ -55,12 +57,9 @@ class CounterGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    c_dict)
+        state_actions = {'onactivate': self.initUI, 
+                         'ondeactivate': self.deactivation}
+        super().__init__(manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.', 
                     msgType='status')

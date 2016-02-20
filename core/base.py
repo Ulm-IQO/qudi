@@ -221,7 +221,8 @@ class Base(QtCore.QObject, Fysom):
 
         """
         mainpath=os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
-        self.logMsg('Filepath of the main tree was called',importance=0)
+        self.logMsg('Filepath of the main tree was called', msgType='status',
+                    importance=0)
 
         return mainpath
  #            print("PAth of Managerfile: ", os.path.abspath(__file__))

@@ -310,7 +310,8 @@ class PulsedMeasurementLogic(GenericLogic):
 #                self.measuring_error_plot_updated.emit()
                 self.lock()
         return 0
-                def change_timer_interval(self, interval):
+
+    def change_timer_interval(self, interval):
         with self.threadlock:
             self.timer_interval = interval
             if self.timer != None:
