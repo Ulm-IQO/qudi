@@ -802,8 +802,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     # =========================================================================
 
     def generate_pulse_block_object(self, pb_name, block_matrix, num_laser_pulses):
-        """
-        Generates from an given table block_matrix a block_object.
+        """ Generates from an given table block_matrix a block_object.
 
         @param pb_name: string, Name of the created Pulse_Block Object
         @param block_matrix: structured np.array, matrix, in which the
