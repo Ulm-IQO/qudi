@@ -43,7 +43,7 @@ from core.util.mutex import Mutex
 #       the entering in the dspinbox for a consistent display of the
 #       sequence length.
 #FIXME: Use the desired unit representation to display the value from the logic
-
+#FIXME: Check whether as load_pulse_block_ensemble method is necessary.
 
 # =============================================================================
 #                       Define some delegate classes.
@@ -87,15 +87,15 @@ from core.util.mutex import Mutex
 
 class ComboBoxDelegate(QtGui.QStyledItemDelegate):
 
-    def __init__(self, parent, items_list):
+    def __init__(self, parent, item_dict):
         # Use the constructor of the inherited class.
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list  # pass to the object a
+        self.item_dict = item_dict  # pass to the object a
                                                 # reference to the calling
                                                 # function, so that it can
                                                 # check every time the value
 
-        self.get_list = self.items_list['get_list_method']
+        self.get_list = self.item_dict['get_list_method']
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.DisplayRole
@@ -107,7 +107,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         @return list[2]: returns the two values, which corresponds to the last
                          two values you should insert in the setData function.
                          The first one is the first element of the passed item
-                         list items_list and the second one is the Role.
+                         list item_dict and the second one is the Role.
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
 
@@ -163,7 +163,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
             num = 0
         else:
             num = self.get_list().index(value)
-        # num = self.items_list.index(value)
+        # num = self.item_dict.index(value)
         editor.setCurrentIndex(num)
 
     def setModelData(self, editor, model, index):
@@ -204,7 +204,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
         editor.clear()
 
         editor.addItems(self.get_list())
-        # editor.addItems(self.items_list)
+        # editor.addItems(self.item_dict)
         editor.setGeometry(option.rect)
 
 
@@ -218,18 +218,32 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
     python help for spinboxes:
     http://stackoverflow.com/questions/28017395/how-to-use-delegate-to-control-qtableviews-rows-height
     """
-    def __init__(self, parent, items_list):
+    def __init__(self, parent, item_dict):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
-        @param list items_list: A list with predefined properties for the used
+        @param dict item_dict: A list with predefined properties for the used
                                 editor. In this class the items must look like:
                                 [default_val, min_val, max_val]
         """
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list
+        self.item_dict = item_dict
+
+        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
+                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
+                            'T':1e12, 'P':1e15}
+
+        # determine the value to normalized the constraints for that:
+        self.norm_val = unit_prefix_dict[self.item_dict['unit_prefix']]
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.EditRole
+
+    def get_unit_prefix(self):
+        """ Return the unit prefix of that view element to determine the
+            magnitude.
+        @return str: unit prefic
+        """
+        return self.item_dict['unit_prefix']
 
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
@@ -241,7 +255,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
             model.setData(index, editor.itemText(value),QtCore.Qt.DisplayRole)
         """
 
-        return [self.items_list['init_val'], self.model_data_access]
+        return [self.item_dict['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -270,11 +284,12 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         """
         editor = QtGui.QSpinBox(parent)
         self.editor = editor
-        editor.setMinimum(self.items_list['min'])
-        editor.setMaximum(self.items_list['max'])
-        editor.setSingleStep(self.items_list['view_stepsize'])
+
+        editor.setMinimum(self.item_dict['min']/self.norm_val)
+        editor.setMaximum(self.item_dict['max']/self.norm_val)
+        editor.setSingleStep(self.item_dict['view_stepsize']/self.norm_val)
         editor.installEventFilter(self)
-        editor.setValue(self.items_list['init_val'])
+        editor.setValue(self.item_dict['init_val']/self.norm_val)
         return editor
 
     def setEditorData(self, editor, index):
@@ -291,7 +306,7 @@ class SpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = index.data(self.model_data_access)
 
         if not isinstance(value, int):
-            value = self.items_list['init_val']
+            value = self.item_dict['init_val']/self.norm_val
         editor.setValue(value)
 
     def setModelData(self, spinBox, model, index):
@@ -344,15 +359,15 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
     cell of the column to which it's applied
     """
 
-    def __init__(self, parent, items_list):
+    def __init__(self, parent, item_dict):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
-        @param list items_list: A list with predefined properties for the used
+        @param dict item_dict: A list with predefined properties for the used
                                 editor. In this class the items must look like:
                                 [default_val]
         """
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list
+        self.item_dict = item_dict
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.CheckStateRole
@@ -366,7 +381,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, value, QtCore.Qt.CheckStateRole)
         """
-        return [self.items_list['init_val'], self.model_data_access]
+        return [self.item_dict['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -395,7 +410,7 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
         """
 
         editor = QtGui.QCheckBox(parent)
-        editor.setCheckState(self.items_list['init_val'])
+        editor.setCheckState(self.item_dict['init_val'])
         editor.installEventFilter(self)
         return editor
 
@@ -448,25 +463,34 @@ class CheckBoxDelegate(QtGui.QStyledItemDelegate):
 class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
     """ Make a QDoubleSpinBox delegate for the QTableWidget."""
 
-    def __init__(self, parent, items_list):
+    def __init__(self, parent, item_dict):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
-        @param list items_list: ????????????? FIXME
-
+        @param dict item_dict: dict with the following keys which give
+                                informations about the current viewbox:
+                                    'unit', 'init_val', 'min', 'max',
+                                    'view_stepsize', 'dec', 'unit_prefix'
 
         """
         QtGui.QStyledItemDelegate.__init__(self, parent)
-        self.items_list = items_list
+        self.item_dict = item_dict
 
-        self.unit_list = {'p':1e-12, 'n':1e-9, 'micro':1e-6, 'm':1e-3, 'k':1e3, 'M':1e6, 'G':1e9, 'T':1e12}
+        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
+                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
+                            'T':1e12, 'P':1e15}
 
-        if 'unit_prefix' in self.items_list.keys():
-            self.norm = self.unit_list[self.items_list['unit_prefix']]
-        else:
-            self.norm = 1.0
+        # determine the value to normalized the constraints for that:
+        self.norm_val = unit_prefix_dict[self.item_dict['unit_prefix']]
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.EditRole
+
+    def get_unit_prefix(self):
+        """ Return the unit prefix of that view element to determine the
+            magnitude.
+        @return str: unit prefic
+        """
+        return self.item_dict['unit_prefix']
 
     def get_initial_value(self):
         """ Tells you which object to insert in the model.setData function.
@@ -477,7 +501,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
                          list list_items and the second one is the Role.
             model.setData(index, editor.itemText(value), QtCore.Qt.DisplayRole)
         """
-        return [self.items_list['init_val'], self.model_data_access]
+        return [self.item_dict['init_val'], self.model_data_access]
 
     def createEditor(self, parent, option, index):
         """ Create for the display and interaction with the user an editor.
@@ -509,12 +533,12 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
 
         editor = QtGui.QDoubleSpinBox(parent)
         self.editor = editor
-        editor.setMinimum(self.items_list['min'])
-        editor.setMaximum(self.items_list['max'])
-        editor.setSingleStep(self.items_list['view_stepsize']/self.norm)
-        editor.setDecimals(self.items_list['dec'])
+        editor.setMinimum(self.item_dict['min']/self.norm_val)
+        editor.setMaximum(self.item_dict['max']/self.norm_val)
+        editor.setSingleStep(self.item_dict['view_stepsize']/self.norm_val)
+        editor.setDecimals(self.item_dict['dec'])
         editor.installEventFilter(self)
-        editor.setValue(self.items_list['init_val'])
+        editor.setValue(self.item_dict['init_val']/self.norm_val)
         return editor
 
     def setEditorData(self, editor, index):
@@ -531,7 +555,7 @@ class DoubleSpinBoxDelegate(QtGui.QStyledItemDelegate):
         value = index.data(self.model_data_access)
 
         if not isinstance(value, float):
-            value = self.items_list['init_val']
+            value = self.item_dict['init_val']/self.norm_val
         editor.setValue(value)
 
     def setModelData(self, spinBox, model, index):
@@ -781,6 +805,7 @@ class PulsedMeasurementGui(GUIBase):
     def show_prepared_methods(self):
         """ Opens the prepared methods Window."""
         self._pm.show()
+        self._pm.raise_()
 
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
@@ -1173,6 +1198,13 @@ class PulsedMeasurementGui(GUIBase):
         # Get from the corresponding delegate the data access model
         access = tab.itemDelegateForColumn(column).model_data_access
         data = tab.model().index(row, column).data(access)
+
+        # check whether the value has to be normalized to SI values.
+        if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
+            unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
+            # access the method defined in base for unit prefix:
+            return data*self.get_unit_prefix_dict()[unit_prefix]
+
         return data
 
     def set_element_in_block_table(self, row, column, value):
@@ -1189,14 +1221,20 @@ class PulsedMeasurementGui(GUIBase):
         changed. You have to ensure that
         """
 
-        #FIXME: that method should get the values in SI metric and convert them
-        #        to the desired display.
-
         tab = self._mw.block_editor_TableWidget
         model = tab.model()
         access = tab.itemDelegateForColumn(column).model_data_access
         data = tab.model().index(row, column).data(access)
+
         if type(data) == type(value):
+
+            # check whether the SI value has to be adjusted according to the
+            # desired unit prefix of the current viewbox:
+            if hasattr(tab.itemDelegateForColumn(column),'get_unit_prefix'):
+                unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
+
+                # access the method defined in base for unit prefix:
+                value = value/self.get_unit_prefix_dict()[unit_prefix]
             model.setData(model.index(row,column), value, access)
         else:
             self.logMsg('The cell ({0},{1}) in block table could not be '
@@ -1205,13 +1243,6 @@ class PulsedMeasurementGui(GUIBase):
                         '"{4}" of the value!\nPrevious value will be '
                         'kept.'.format(row, column, value, type(data),
                                        type(value) ) , msgType='warning')
-
-
-
-    def test_func(self, arg=None):
-
-
-        self.logMsg('Item changed. {0}'.format(arg), msgType='warning')
 
 
     def _update_current_pulse_block(self):
@@ -1676,12 +1707,12 @@ class PulsedMeasurementGui(GUIBase):
         for column, parameter in enumerate(self.get_add_pbe_param()):
 
             # add the new properties to the whole column through delegate:
-            items_list = self.get_add_pbe_param()[parameter]
+            item_dict = self.get_add_pbe_param()[parameter]
 
-            if 'unit_prefix' in items_list.keys():
-                unit_text = items_list['unit_prefix'] + items_list['unit']
+            if 'unit_prefix' in item_dict.keys():
+                unit_text = item_dict['unit_prefix'] + item_dict['unit']
             else:
-                unit_text = items_list['unit']
+                unit_text = item_dict['unit']
 
             self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos+column)
             self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
@@ -1689,10 +1720,10 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
             # Use only DoubleSpinBox  as delegate:
-            if items_list['unit'] == 'bool':
-                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+            if item_dict['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
             self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
             # initialize the whole row with default values:
@@ -1826,9 +1857,9 @@ class PulsedMeasurementGui(GUIBase):
                 channel_map.append('DCh{:d}'.format(num_d_ch-num_d_to_create))
 
                 # itemlist for checkbox
-                items_list = {}
-                items_list['init_val'] = QtCore.Qt.Unchecked
-                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                item_dict = {}
+                item_dict['init_val'] = QtCore.Qt.Unchecked
+                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
 
 
@@ -1852,10 +1883,10 @@ class PulsedMeasurementGui(GUIBase):
 
                 channel_map.append('ACh{0:d}'.format(num_a_ch-num_a_to_create))
 
-                items_list = {}
-                items_list['get_list_method'] = self.get_current_function_list
+                item_dict = {}
+                item_dict['get_list_method'] = self.get_current_function_list
 
-                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
                 self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
 
                 # create here all
@@ -1863,12 +1894,11 @@ class PulsedMeasurementGui(GUIBase):
 
                     # initial block:
 
-                    items_list = self.get_func_config()[biggest_func][parameter]
+                    item_dict = self.get_func_config()[biggest_func][parameter]
 
-                    if 'unit_prefix' in items_list.keys():
-                        unit_text = items_list['unit_prefix'] + items_list['unit']
-                    else:
-                        unit_text = items_list['unit']
+
+                    unit_text = item_dict['unit_prefix'] + item_dict['unit']
+
 
                     self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos+1, QtGui.QTableWidgetItem())
                     self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos+1).setText('ACh{0:d}\n{1} ({2})'.format(num_a_ch-num_a_to_create, parameter, unit_text))
@@ -1877,7 +1907,7 @@ class PulsedMeasurementGui(GUIBase):
                     # add the new properties to the whole column through delegate:
 
                     # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, items_list)
+                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
                     self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
 
                 column = column + (num_max_param +1)
@@ -2000,10 +2030,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.horizontalHeaderItem(column).setText('Pulse Block')
         self._mw.block_organizer_TableWidget.setColumnWidth(column, 100)
 
-        items_list = {}
-        items_list['get_list_method'] = self.get_current_pb_list
+        item_dict = {}
+        item_dict['get_list_method'] = self.get_current_pb_list
 
-        comboDelegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+        comboDelegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
         self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, comboDelegate)
 
         column = 1
@@ -2011,12 +2041,9 @@ class PulsedMeasurementGui(GUIBase):
         for column, parameter in enumerate(self.get_add_pb_param()):
 
             # add the new properties to the whole column through delegate:
-            items_list = self.get_add_pb_param()[parameter]
+            item_dict = self.get_add_pb_param()[parameter]
 
-            if 'unit_prefix' in items_list.keys():
-                unit_text = items_list['unit_prefix'] + items_list['unit']
-            else:
-                unit_text = items_list['unit']
+            unit_text = item_dict['unit_prefix'] + item_dict['unit']
 
             print('insert_at_col_pos',insert_at_col_pos)
             print('column',column)
@@ -2026,12 +2053,12 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.block_organizer_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
 
             # Use only DoubleSpinBox  as delegate:
-            if items_list['unit'] == 'bool':
-                delegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+            if item_dict['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
             elif parameter == 'repetition':
-                delegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+                delegate = SpinBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
             else:
-                delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, items_list)
+                delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
             self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
         self.initialize_cells_block_organizer(0, self._mw.block_organizer_TableWidget.rowCount())
@@ -2354,6 +2381,7 @@ class PulsedMeasurementGui(GUIBase):
 
             index = self._mw.upload_ensemble_ComboBox.findText(ensemble_name, QtCore.Qt.MatchFixedString)
             self._mw.upload_ensemble_ComboBox.setCurrentIndex(index)
+            self.sample_ensemble_clicked()
             self.upload_to_device_clicked()
 
         func_dummy_name.__name__ = func_name
