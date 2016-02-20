@@ -361,9 +361,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                       'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n'}
 
         rep_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2**31 -1),
-                   'view_stepsize': 1, 'dec': 0}
+                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': ''}
         bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
-                   'view_stepsize': 1, 'dec': 0}
+                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': ''}
 
         # make a parameter constraint dict for the additional parameters of the
         # Pulse_Block_Ensemble objects:
@@ -845,26 +845,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         for row_index, row in enumerate(block_matrix):
 
-            #FIXME: Right now the block matrix contains parameters not in SI
-            #       units, but in their desired representation. The parameter
-            #       should be saved as SI and in needed as bins. The the
-            #       logic call becomes simple and more independant.
+            #FIXME: The output parameters are now in SI units. A conversion to
+            #       bins is still needed.
 
             # check how length is displayed and convert it to bins:
             length_time= row[self.cfg_param_pbe['length']]
-            if 'unit_prefix' in self._add_pbe_param['length']:
-                length_time = length_time*self._unit_prefix[self._add_pbe_param['length']['unit_prefix']]
             init_length_bins=int(np.round(length_time*self.sample_rate))
 
             # check how increment is displayed and convert it to bins:
             increment_time=row[self.cfg_param_pbe['increment']]
-            if 'unit_prefix' in self._add_pbe_param['increment']:
-                increment_time = increment_time*self._unit_prefix[self._add_pbe_param['increment']['unit_prefix']]
             increment_bins= int(np.round(increment_time*self.sample_rate))
 
             # get the dict with all possible functions and their parameters:
             func_dict = self.get_func_config()
-
 
             # get the proper pulse_functions and its parameters:
             pulse_function=[None]*self.analogue_channels
@@ -884,9 +877,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     # Obtain how the value is displayed in the table:
                     param_value = row[self.cfg_param_pbe[entry+'_'+str(num)]]
 
-                    # Check whether the value contains unit_prefix (like kilo):
-                    if 'unit_prefix' in param_dict[entry]:
-                        param_value = param_value*self._unit_prefix[param_dict[entry]['unit_prefix']]
                     parameters[entry] = param_value
                 parameter_list[num] = parameters
 
@@ -1258,10 +1248,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def generate_rabi(self, name='', mw_freq_Hz=0.0, mw_amp_V=0.0, aom_delay_bins=0,
                       laser_time_bins=0, tau_start_bins=0, tau_end_bins=0,
                       number_of_taus=0, use_seqtrig = True):
-
-        self.logMsg((name, mw_freq_Hz, mw_amp_V, aom_delay_bins,
-                      laser_time_bins, tau_start_bins, tau_end_bins,
-                      number_of_taus, use_seqtrig),msgType='status')
 
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]

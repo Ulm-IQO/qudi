@@ -60,13 +60,13 @@ class SamplingFunctions():
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
                     'view_stepsize': 1e3, 'dec': 8, 'unit_prefix': 'M'}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.001, 'dec': 3}
+                    'view_stepsize': 0.001, 'dec': 3, 'unit_prefix': ''}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 0.1, 'dec': 8}
+                    'view_stepsize': 0.1, 'dec': 3, 'unit_prefix': ''}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
-        # for the used keywords is given:
+        # for the used keywords:
 
         # 'unit' : string for the SI unit.
         # 'init_val' : initial value the parameter should have
@@ -81,21 +81,24 @@ class SamplingFunctions():
         #         be related to the parameter 'unit_prefix'.
         # 'unit_prefix' : desired metric prefix of the value, string, one of the
         #               list:
-        #               [ 'p', 'n', 'micro', 'm', 'k', 'M', 'G', 'T']
+        #               [ 'p', 'n', 'micro','', 'm', 'k', 'M', 'G', 'T']
         #               with the obvious meaning:
-        #           ['pico','nano','micro','milli','kilo','Mega','Giga','Tera']
-        #            If unit_prefix is not specified, then 'unit' is displayed.
+        #        ['pico','nano','micro','milli','','kilo','Mega','Giga','Tera']
+
 
 
         self._unit_prefix={}
+        self._unit_prefix['f'] = 10**(-15)
         self._unit_prefix['p'] = 10**(-12)
         self._unit_prefix['n'] = 10**(-9)
         self._unit_prefix['micro'] = 10**(-6)
         self._unit_prefix['m'] = 10**(-3)
+        self._unit_prefix[''] = 10**(0)
         self._unit_prefix['k'] = 10**(+3)
         self._unit_prefix['M'] = 10**(+6)
         self._unit_prefix['G'] = 10**(+9)
         self._unit_prefix['T'] = 10**(+12)
+        self._unit_prefix['P'] = 10**(+15)
 
         # Configure also the parameter for the defined functions so that it is
         # know which input parameters the function desires:
