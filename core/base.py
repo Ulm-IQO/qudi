@@ -235,3 +235,14 @@ class Base(QtCore.QObject, Fysom):
         """
         # I find it good to have after the foldername the separator \\.
         return os.path.abspath(os.path.expanduser('~'))+'\\'
+
+    def get_unit_prefix_dict(self):
+        """ Return the dictionary, which assigns the prefix of a unit to its
+            proper order of magnitude.
+        @return dict: keys are string prefix and items are magnitude values.
+        """
+
+        unit_prefix_dict = {'f':1e-15, 'p':1e-12, 'n': 1e-9, 'micro':1e-6,
+                            'm':1e-3, '':1, 'k':1e3, 'M':1e6, 'G':1e9,
+                            'T':1e12, 'P':1e15}
+        return unit_prefix_dict

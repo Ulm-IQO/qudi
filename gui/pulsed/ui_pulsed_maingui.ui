@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1673</width>
-    <height>1030</height>
+    <width>959</width>
+    <height>844</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -676,6 +676,9 @@
                  </item>
                  <item row="8" column="1">
                   <widget class="QPushButton" name="curr_ensemble_save_PushButton">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="maximumSize">
                     <size>
                      <width>40</width>
@@ -729,6 +732,9 @@
                  </item>
                  <item row="8" column="2">
                   <widget class="QPushButton" name="curr_ensemble_load_PushButton">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="maximumSize">
                     <size>
                      <width>40</width>
@@ -978,6 +984,9 @@
                  </item>
                  <item row="7" column="1">
                   <widget class="QPushButton" name="curr_block_save_PushButton">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="maximumSize">
                     <size>
                      <width>40</width>
@@ -1386,8 +1395,8 @@ sel.</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>98</width>
-                 <height>28</height>
+                 <width>911</width>
+                 <height>701</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_16"/>
@@ -1619,7 +1628,7 @@ sel.</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1673</width>
+     <width>959</width>
      <height>21</height>
     </rect>
    </property>
