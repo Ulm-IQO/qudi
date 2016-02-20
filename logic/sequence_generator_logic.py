@@ -409,6 +409,26 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
         self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
+
+        # Append to this list all methods, which should be used for automated
+        # parameter generation.
+        # ALL THE ARGUMENTS IN THE METHODS MUST BE ASSIGNED TO DEFAULT VALUES!
+        # Otherwise it is not possible to determine the proper viewbox.
+        config = self.getConfiguration()
+        self.prepared_method_list=[]
+        if 'prepared_methods' in config.keys():
+            prep_methods_list = config['prepared_methods']
+            self.prepared_method_list = [None]*len(prep_methods_list)
+
+            # evaluate the name of the method to get the reference to it.
+            for index, method in enumerate(prep_methods_list):
+                self.prepared_method_list[index] = eval('self.'+method)
+
+        else:
+            self.logMsg('None prepared Methods are chosen, therefore none will'
+                        ' be displayed!', msgType='status')
+
+
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
         """
@@ -1235,9 +1255,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, name, mw_freq_Hz, mw_amp_V, aom_delay_bins,
+    def generate_rabi(self, name='', mw_freq_Hz=0.0, mw_amp_V=0.0, aom_delay_bins=0,
+                      laser_time_bins=0, tau_start_bins=0, tau_end_bins=0,
+                      number_of_taus=0, use_seqtrig = True):
+
+        self.logMsg((name, mw_freq_Hz, mw_amp_V, aom_delay_bins,
                       laser_time_bins, tau_start_bins, tau_end_bins,
-                      number_of_taus, use_seqtrig = True):
+                      number_of_taus, use_seqtrig),msgType='status')
 
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
@@ -1303,9 +1327,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
-    def generate_pulsedodmr(self, name, start_freq, stop_freq,
-                            number_of_points, amp_V, pi_bins, aom_delay_bins,
-                            laser_time_bins, use_seqtrig = True):
+    def generate_pulsedodmr(self, name='', start_freq=0.0, stop_freq=0.0,
+                            number_of_points=0, amp_V=0.0, pi_bins=0,
+                            aom_delay_bins=0, laser_time_bins=0,
+                            use_seqtrig=True):
 
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
@@ -1359,10 +1384,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
-    def generate_xy8(self, name, mw_freq_Hz, mw_amp_V, aom_delay_bins,
-                     laser_time_bins, tau_start_bins, tau_end_bins,
-                     number_of_taus, pihalf_bins, pi_bins, N,
-                     use_seqtrig = True):
+    def generate_xy8(self, name='', mw_freq_Hz=0.0, mw_amp_V=0.0,
+                     aom_delay_bins=0, laser_time_bins=0, tau_start_bins=0,
+                     tau_end_bins=0, number_of_taus=0, pihalf_bins=0,
+                     pi_bins=0, N=0, use_seqtrig=True):
 
 
         pihalf_pix_params = [{},{}]
@@ -1461,7 +1486,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # update ensemble list
         self.refresh_ensemble_list()
 
-    def generate_HHamp_sweep(self, name, pihalf_V, pihalf_bins, pi3half_bins, spinlock_start_V, spinlock_stop_V, number_of_points, freq1, freq2, freq3, slphase_deg, spinlock_bins, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+    def generate_HHamp_sweep(self, name='', pihalf_V=0.0, pihalf_bins=0,
+                             pi3half_bins=0, spinlock_start_V=0.0,
+                             spinlock_stop_V=0.0, number_of_points=0,
+                             freq1=0.0, freq2=0.0, freq3=0.0, slphase_deg=0.0,
+                             spinlock_bins=0, aom_delay_bins=0,
+                             laser_time_bins=0, use_seqtrig=True):
         # create parameter dictionary list for MW signal
         pihalf_params = [{},{}]
         pihalf_params[0]['amplitude1'] = pihalf_V
@@ -1530,7 +1560,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
-    def generate_HHtau_sweep(self, name, pihalf_V, pihalf_bins, pi3half_bins, spinlock_start_bins, spinlock_stop_bins, number_of_taus, freq1, freq2, freq3, slphase_deg, spinlock_V, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+    def generate_HHtau_sweep(self, name='', pihalf_V=0.0, pihalf_bins=0,
+                             pi3half_bins=0, spinlock_start_bins=0,
+                             spinlock_stop_bins=0, number_of_taus=0,
+                             freq1=0.0, freq2=0.0, freq3=0.0, slphase_deg=0.0,
+                             spinlock_V=0.0, aom_delay_bins=0,
+                             laser_time_bins=0, use_seqtrig=True):
+
         # create parameter dictionary list for MW signal
         pihalf_params = [{},{}]
         pihalf_params[0]['amplitude1'] = pihalf_V
@@ -1597,7 +1633,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
-    def generate_spinlock_N14(self, name, pihalfamp_V, pihalf_bins, spinlockamp_V, freq1, freq2, freq3, slphase_deg, tau_start_bins, tau_end_bins, number_of_taus, aom_delay_bins, laser_time_bins, use_seqtrig = True):
+    def generate_spinlock_N14(self, name='', pihalfamp_V=0.0, pihalf_bins=0,
+                              spinlockamp_V=0.0, freq1=0.0, freq2=0.0,
+                              freq3=0.0, slphase_deg=0.0, tau_start_bins=0,
+                              tau_end_bins=0, number_of_taus=0,
+                              aom_delay_bins=0, laser_time_bins=0,
+                              use_seqtrig=True):
         # create parameter dictionary list for MW signal
         pihalf_params = [{},{}]
         pihalf_params[0]['amplitude1'] = pihalfamp_V
@@ -1655,7 +1696,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         return
 
-    def generate_rabi_triple(self, name, mw_freq_Hz_1, mw_freq_Hz_2, mw_freq_Hz_3, mw_amp_V, aom_delay_bins, laser_time_bins, tau_start_bins, tau_end_bins, number_of_taus, use_seqtrig = True):
+    def generate_rabi_triple(self, name='', mw_freq_Hz_1=0.0,
+                             mw_freq_Hz_2=0.0, mw_freq_Hz_3=0.0,
+                             mw_amp_V=0.0, aom_delay_bins=0,
+                             laser_time_bins=0, tau_start_bins=0,
+                             tau_end_bins=0, number_of_taus=0,
+                             use_seqtrig=True):
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
         mw_params[0]['frequency1'] = mw_freq_Hz_1
