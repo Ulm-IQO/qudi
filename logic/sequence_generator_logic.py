@@ -330,7 +330,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             if not os.path.exists(self.pulsed_file_dir):
 
                 homedir = self.get_home_dir()
-                self.pulsed_file_dir =os.path.join(homedir, 'pulsed_files\\')
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.logMsg('The directort defined in "pulsed_file_dir" in the'
                         'config for SequenceGeneratorLogic class does not '
                         'exist!\nThe default home directory\n{0}\n will be '
@@ -338,7 +338,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         msgType='warning')
         else:
             homedir = self.get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.logMsg('No directory with the attribute "pulsed_file_dir"'
                         'is defined for the SequenceGeneratorLogic!\nThe '
                         'default home directory\n{0}\n will be taken '
@@ -445,7 +445,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
-        return os.path.abspath(path) + '\\'
+        return os.path.abspath(path)
 
 
     def get_hardware_constraints(self):

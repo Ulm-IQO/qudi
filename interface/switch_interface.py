@@ -29,7 +29,7 @@ class SwitchInterface():
 
           @return int: number of swiches on this hardware
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getNumberOfSwitches')
+        raise InterfaceImplementationError('SwitchInterface: getNumberOfSwitches')
         return -1
 
     def getSwitchState(self, switchNumber):
@@ -39,7 +39,7 @@ class SwitchInterface():
 
           @return bool: True if on, False if off, None on error
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getSwitchStates')
+        raise InterfaceImplementationError('SwitchInterface: getSwitchStates')
         return -1
 
     def getCalibration(self, switchNumber, state):
@@ -50,7 +50,7 @@ class SwitchInterface():
 
           @return str: calibration parameter fir switch and state.
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getCalibration')
+        raise InterfaceImplementationError('SwitchInterface: getCalibration')
         return -1
 
     def setCalibration(self, switchNumber, state, value):
@@ -62,7 +62,7 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: setCalibration')
+        raise InterfaceImplementationError('SwitchInterface: setCalibration')
         return -1
 
     def switchOn(self, switchNumber):
@@ -72,7 +72,7 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: switchOn')
+        raise InterfaceImplementationError('SwitchInterface: switchOn')
         return -1
     
     def switchOff(self, switchNumber):
@@ -82,7 +82,7 @@ class SwitchInterface():
 
           @return bool: True if suceeds, False otherwise
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: switchOff')
+        raise InterfaceImplementationError('SwitchInterface: switchOff')
         return -1
 
     def getSwitchTime(self, switchNumber):
@@ -92,6 +92,6 @@ class SwitchInterface():
 
           @return float: time needed for switch state change
         """
-        raise InterfaceImplementationError('LaserSwitchInterface: getSwitchTime')
+        raise InterfaceImplementationError('SwitchInterface: getSwitchTime')
         return -1
 

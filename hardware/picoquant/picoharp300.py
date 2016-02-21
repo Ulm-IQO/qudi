@@ -206,7 +206,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         maindir = self.get_main_dir()
 
-        filename = maindir +'\\hardware\\PicoQuant\\errorcodes.h'
+        filename = os.path.join(maindir, 'hardware', 'PicoQuant', 'errorcodes.h')
         try:
             with open(filename) as f:
                 content = f.readlines()

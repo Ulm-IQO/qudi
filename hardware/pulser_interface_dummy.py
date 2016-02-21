@@ -71,14 +71,14 @@ class PulserInterfaceDummy(Base, PulserInterface):
             if not os.path.exists(self.pulsed_file_dir):
 
                 homedir = self.get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.logMsg('The directort defined in "pulsed_file_dir" in the'
                         'config for SequenceGeneratorLogic class does not '
                         'exist!\nThe default home directory\n{0}\n will be '
                         'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
         else:
             homedir = self.get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.logMsg('No directory with the attribute "pulsed_file_dir"'
                         'is defined for the SequenceGeneratorLogic!\nThe '
                         'default home directory\n{0}\n will be taken '
@@ -99,7 +99,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.pp_voltage = 0.25
 
         # settings for remote access on the AWG PC
-        self.sequence_directory = '\\waves'
+        self.sequence_directory = 'waves'
 
         # AWG5002C has possibility for sequence output
         self.use_sequencer = True
@@ -210,7 +210,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
             # check if file already exists and overwrite it
             if os.path.isfile(self.host_waveform_directory + filename):
                 os.remove(self.host_waveform_directory + filename)
-            os.rename(os.getcwd() + '\\' + name +'.mat', self.host_waveform_directory + filename)
+            os.rename(os.getcwd() + name +'.mat', self.host_waveform_directory + filename)
         elif self.current_sample_mode == self.sample_mode['wfmx-file']:
             # create WFMX header and save each line of text in a list. Delete the temporary .xml file afterwards.
             header_obj = WFMX_header(sample_rate, pp_voltage, 0, digi_samples.shape[1])
@@ -712,4 +712,4 @@ class PulserInterfaceDummy(Base, PulserInterface):
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
-        return os.path.abspath(path) + '\\'
+        return os.path.abspath(path)

@@ -21,7 +21,7 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 
 from core.base import Base
 from core.util.mutex import Mutex
-from hardware.switches.switch_interface import SwitchInterface
+from interface.switch_interface import SwitchInterface
 import os
 try:
     import thirdparty.opal_kelly as ok

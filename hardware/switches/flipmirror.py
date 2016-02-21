@@ -22,7 +22,7 @@ import visa
 import time
 from core.base import Base
 from core.util.mutex import Mutex
-from .switch_interface import SwitchInterface
+from interface.switch_interface import SwitchInterface
 
 class FlipMirror(Base, SwitchInterface):
     """ This class is implements communication with the Radiant Dyes flip mirror driver
