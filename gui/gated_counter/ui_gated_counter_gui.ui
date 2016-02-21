@@ -123,7 +123,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget">
+  <widget class="QDockWidget" name="control_param_DockWidget">
    <property name="windowTitle">
     <string>Control Parameter</string>
    </property>
