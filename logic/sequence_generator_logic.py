@@ -399,6 +399,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
         """
         self.refresh_block_list()
         self.refresh_ensemble_list()

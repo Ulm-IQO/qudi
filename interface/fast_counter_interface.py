@@ -22,26 +22,27 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 
 from core.util.customexceptions import InterfaceImplementationError
 
+
 class FastCounterInterface():
     """ Interface class to define the controls for fast counting devices. """
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates=0):
         """ Configuration of the fast counter.
 
-        @param float bin_width_s: Length of a single time bin in the time trace 
+        @param float bin_width_s: Length of a single time bin in the time trace
                                   histogram in seconds.
-        @param float record_length_s: Total length of the timetrace/each single 
+        @param float record_length_s: Total length of the timetrace/each single
                                       gate in seconds.
-        @param int number_of_gates: optional, number of gates in the pulse 
+        @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
         """
         raise InterfaceImplementationError('FastCounterInterface>configure')
         return -1
 
     def get_status(self):
-        """ Receives the current status of the Fast Counter and outputs it as 
+        """ Receives the current status of the Fast Counter and outputs it as
             return value.
-        
+
         0 = unconfigured
         1 = idle
         2 = running
@@ -80,7 +81,7 @@ class FastCounterInterface():
     def is_gated(self):
         """ Check the gated counting possibility.
 
-        Boolean return value indicates if the fast counter is a gated counter 
+        Boolean return value indicates if the fast counter is a gated counter
         (TRUE) or not (FALSE).
         """
         raise InterfaceImplementationError('FastCounterInterface>is_gated')
@@ -96,14 +97,13 @@ class FastCounterInterface():
         """ Polls the current timetrace data from the fast counter.
 
         Return value is a numpy array (dtype = int64).
-        The binning, specified by calling configure() in forehand, must be taken
-        care of in this hardware class. A possible overflow of the histogram 
-        bins must be caught here and taken care of.
-        If the counter is NOT GATED it will return a 1D-numpy-array with 
+        The binning, specified by calling configure() in forehand, must be
+        taken care of in this hardware class. A possible overflow of the
+        histogram bins must be caught here and taken care of.
+        If the counter is NOT GATED it will return a 1D-numpy-array with
             returnarray[timebin_index]
-        If the counter is GATED it will return a 2D-numpy-array with 
+        If the counter is GATED it will return a 2D-numpy-array with
             returnarray[gate_index, timebin_index]
         """
         raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
         return -1
-

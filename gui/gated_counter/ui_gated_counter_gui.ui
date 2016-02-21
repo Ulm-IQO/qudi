@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>732</width>
-    <height>495</height>
+    <width>687</width>
+    <height>412</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>732</width>
+     <width>687</width>
      <height>21</height>
     </rect>
    </property>
@@ -59,7 +59,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>91</width>
+     <width>117</width>
      <height>140</height>
     </size>
    </property>
@@ -74,7 +74,14 @@
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="1" column="0">
-        <widget class="PlotWidget" name="graphicsView"/>
+        <widget class="PlotWidget" name="graphicsView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -116,7 +123,14 @@
         </widget>
        </item>
        <item row="0" column="0" colspan="3">
-        <widget class="PlotWidget" name="graphicsView_2"/>
+        <widget class="PlotWidget" name="graphicsView_2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -124,6 +138,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="control_param_DockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="windowTitle">
     <string>Control Parameter</string>
    </property>
@@ -134,6 +154,12 @@
     <layout class="QGridLayout" name="gridLayout_7">
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout">
+       <property name="sizeConstraint">
+        <enum>QLayout::SetMinimumSize</enum>
+       </property>
+       <property name="spacing">
+        <number>6</number>
+       </property>
        <item row="0" column="0">
         <widget class="QLabel" name="label">
          <property name="sizePolicy">
