@@ -2183,7 +2183,7 @@ class PulsedMeasurementGui(GUIBase):
             1. At first the method is inspected and all the parameters are
               investigated. Depending on the type of the default value of the
               keyword, a ControlBox (CheckBox, DoubleSpinBox, ...) is created.
-            2. Then a in the GUI is created like
+            2. Then callable methods are created in the GUI like
                 _<method_name>_generate()
                 which is connected to the generate button and passes all the
                 parameters to the method in the logic.
@@ -2258,6 +2258,7 @@ class PulsedMeasurementGui(GUIBase):
             gen_upload_func = getattr(self, func_name)
             gen_upload_button.clicked.connect(gen_upload_func)
 
+            # position the buttons in the groupbox:
             pos = len(inspected.parameters)
             gridLayout.addWidget(gen_button, 0, pos, 1, 1)
             gridLayout.addWidget(gen_upload_button, 1, pos, 1, 1)
@@ -2273,8 +2274,12 @@ class PulsedMeasurementGui(GUIBase):
     def _create_QLabel(self, parent, label_name):
         """ Helper method for _create_control_for_prepared_methods.
 
-        Generate a predefined label.
+        @param parent: The parent QWidget, which should own that object
+        @param str label_name: the display name for the QLabel Widget.
+
+        @return QtGui.QLabel: a predefined label for the GUI.
         """
+
         label = QtGui.QLabel(parent)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -2285,11 +2290,19 @@ class PulsedMeasurementGui(GUIBase):
         return label
 
     def _create_QDoubleSpinBox(self, parent, default_val=0.0):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        @param parent: The parent QWidget, which should own that object
+        @param float default_val: a default value for the QDoubleSpinBox.
+
+        @return QtGui.QDoubleSpinBox: a predefined QDoubleSpinBox for the GUI.
+        """
 
         doublespinBox = QtGui.QDoubleSpinBox(parent)
         doublespinBox.setMaximum(np.inf)
         doublespinBox.setMinimum(-np.inf)
 
+        # set a size for vertivcal an horizontal dimensions
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -2300,6 +2313,13 @@ class PulsedMeasurementGui(GUIBase):
         return doublespinBox
 
     def _create_QSpinBox(self, parent, default_val=0):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        @param parent: The parent QWidget, which should own that object
+        @param int default_val: a default value for the QSpinBox.
+
+        @return QtGui.QSpinBox: a predefined QSpinBox for the GUI.
+        """
 
         spinBox = QtGui.QSpinBox(parent)
         spinBox.setMaximum(2**31 -1)
@@ -2307,14 +2327,31 @@ class PulsedMeasurementGui(GUIBase):
         return spinBox
 
     def _create_QCheckBox(self, parent, default_val=False):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        @param parent: The parent QWidget, which should own that object
+        @param bool default_val: a default value for the QCheckBox.
+
+        @return QtGui.QCheckBox: a predefined QCheckBox for the GUI.
+        """
+
         checkBox = QtGui.QCheckBox(parent)
         checkBox.setChecked(default_val)
         return checkBox
 
     def _create_QLineEdit(self, parent, default_val=''):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        @param parent: The parent QWidget, which should own that object
+        @param str default_val: a default value for the QLineEdit.
+
+        @return QtGui.QLineEdit: a predefined QLineEdit for the GUI.
+        """
+
         lineedit = QtGui.QLineEdit(parent)
         lineedit.setText(default_val)
 
+        # set a size for vertivcal an horizontal dimensions
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -2326,16 +2363,26 @@ class PulsedMeasurementGui(GUIBase):
         return lineedit
 
     def _create_QPushButton(self, parent, text='Generate'):
+        """ Helper method for _create_control_for_prepared_methods.
+
+        @param parent: The parent QWidget, which should own that object
+        @param str text: a display text for the QPushButton.
+
+        @return QtGui.QPushButton: a predefined QPushButton for the GUI.
+        """
+
         pushbutton = QtGui.QPushButton(parent)
         pushbutton.setText(text)
         return pushbutton
 
     def _function_builder_generate(self, func_name, obj_list, ref_logic_gen ):
-        """ Create a function/method which is called by the generate button
+        """ Create a function/method which is called by the generate button.
+
         @param str func_name: name of the function, which will be append to self
         @param list obj_list: list of objects, which where the value will be
                               retrieved
         @param method ref_logic_gen: reference to method in logic
+
         @return: a function, which can be called with func_name
         """
 
@@ -2362,6 +2409,8 @@ class PulsedMeasurementGui(GUIBase):
             ref_logic_gen(*parameters)
             return ensemble_name
 
+        # assign now a new name to that function, this name will be used to
+        # bound the function as attribute to the main object.
         func_dummy_name.__name__ = func_name
         return func_dummy_name
 
@@ -2384,6 +2433,8 @@ class PulsedMeasurementGui(GUIBase):
             self.sample_ensemble_clicked()
             self.upload_to_device_clicked()
 
+        # assign now a new name to that function, this name will be used to
+        # bound the function as attribute to the main object.
         func_dummy_name.__name__ = func_name
         return func_dummy_name
 
