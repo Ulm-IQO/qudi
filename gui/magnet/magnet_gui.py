@@ -164,13 +164,14 @@ class MagnetGui(GUIBase):
         """ Create the axis position display.
 
         The generic variable name for a created QLable is:
-            curr_pos_axis_{0}_Label
+            curr_pos_axis{0}_Label
         The generic variable name for a created QDoubleSpinBox is:
-            curr_pos_axis_{0}_DoubleSpinBox
+            curr_pos_axis{0}_DoubleSpinBox
         where in {0} the name of the axis will be inserted.
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Otherwise you will break the generality.
+        Use the method get_ref_curr_pos_DoubleSpinBox with the appropriated
+        label, otherwise you will break the generality.
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
@@ -218,16 +219,17 @@ class MagnetGui(GUIBase):
         """ Create all the gui elements to control a relative movement.
 
         The generic variable name for a created QLable is:
-            move_rel_axis_{0}_Label
+            move_rel_axis{0}_Label
         The generic variable name for a created QDoubleSpinBox is:
-            move_rel_axis_{0}_DoubleSpinBox
+            move_rel_axis{0}_DoubleSpinBox
         The generic variable name for a created QPushButton in negative dir is:
-            move_rel_axis_{0}_m_PushButton
+            move_rel_axis{0}_m_PushButton
         The generic variable name for a created QPushButton in positive dir is:
-            move_rel_axis_{0}_p_PushButton
+            move_rel_axis{0}_p_PushButton
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Otherwise you will break the generality.
+        Use the method get_ref_move_rel_DoubleSpinBox with the appropriated
+        label, otherwise you will break the generality.
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
@@ -301,16 +303,17 @@ class MagnetGui(GUIBase):
         """ Create all the gui elements to control a relative movement.
 
         The generic variable name for a created QLable is:
-            move_rel_axis_{0}_Label
+            move_rel_axis{0}_Label
         The generic variable name for a created QLable is:
-            move_abs_axis_{0}_Slider
+            move_abs_axis{0}_Slider
         The generic variable name for a created QDoubleSpinBox is:
-            move_abs_axis_{0}_DoubleSpinBox
+            move_abs_axis{0}_DoubleSpinBox
         The generic variable name for a created QPushButton for move is:
             move_abs_PushButton
 
         DO NOT CALL THESE VARIABLES DIRECTLY! USE THE DEDICATED METHOD INSTEAD!
-        Otherwise you will break the generality.
+        Use the method get_ref_move_abs_DoubleSpinBox with the appropriated
+        label, otherwise you will break the generality.
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
@@ -366,7 +369,7 @@ class MagnetGui(GUIBase):
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
 
-    def _function_builder_move_rel(self, func_name, parameter,direction):
+    def _function_builder_move_rel(self, func_name, parameter, direction):
         def func_dummy_name():
             self.move_rel(parameter, direction)
 
@@ -389,7 +392,6 @@ class MagnetGui(GUIBase):
 
     def move_rel(self, axis_label, direction):
 
-        self.logMsg('Axislabel: {0}, direction: {1}'.format(axis_label,direction) ,msgType='status')
         dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
         movement = dspinbox.value() * direction
 
