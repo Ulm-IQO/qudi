@@ -32,7 +32,7 @@ class MagnetMainWindow(QtGui.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'magnet_gui.ui')
+        ui_file = os.path.join(this_dir, 'ui_magnet_gui.ui')
 
         # Load it
         super(MagnetMainWindow, self).__init__()
@@ -43,7 +43,7 @@ class MagnetSettingsWindow(QtGui.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'magnet_gui_settings.ui')
+        ui_file = os.path.join(this_dir, 'ui_magnet_settings.ui')
 
         # Load it
         super(MagnetSettingsWindow, self).__init__()
@@ -78,7 +78,15 @@ class MagnetGui(GUIBase):
 
 
     def initUI(self, e=None):
-        """ Definition and initialisation of the GUI plus staring the measurement.
+        """ Definition and initialisation of the GUI.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
         """
         self._magnet_logic = self.connector['in']['magnetlogic1']['object']
 
@@ -116,7 +124,11 @@ class MagnetGui(GUIBase):
 
 
     def _activate_magnet_settings(self, e):
-        """ Activate magnet settings. """
+        """ Activate magnet settings.
+
+        @param object e: Event class object from Fysom. For more description
+                         have a look in the main activation routine initUI.
+        """
         self._ms = MagnetSettingsWindow()
         self._ms.accepted.connect(self.update_magnet_settings)
         self._ms.rejected.connect(self.keep_former_magnet_settings)
