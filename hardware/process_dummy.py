@@ -19,8 +19,8 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.base import Base
-from .process_interface import ProcessInterface
-from .process_control_interface import ProcessControlInterface
+from interface.process_interface import ProcessInterface
+from interface.process_control_interface import ProcessControlInterface
 from pyqtgraph.Qt import QtCore
 import time
 import os.path

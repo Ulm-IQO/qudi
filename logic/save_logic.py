@@ -51,7 +51,6 @@ class SaveLogic(GenericLogic):
         # directory was not found in the config:
         if 'linux' in sys.platform or sys.platform == 'darwin':
             self.os_system = 'unix'
-            self.dir_slash = '/'
             if 'unix_data_directory' in config.keys():
                 self.data_dir = config['unix_data_directory']
             else:
@@ -59,7 +58,6 @@ class SaveLogic(GenericLogic):
 
         elif 'win32' in sys.platform or 'AMD64' in sys.platform :
             self.os_system = 'win'
-            self.dir_slash = '\\'
             if 'win_data_directory' in config.keys():
                 self.data_dir = config['win_data_directory']
             else:
@@ -254,7 +252,7 @@ class SaveLogic(GenericLogic):
                         filename = time.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+filelabel+'.dat')
 
             # open the file
-            textfile = open(filepath+self.dir_slash+filename,'w')
+            textfile = open(os.path.join(filepath, filename),'w')
 
 
             # write the paramters if specified:
@@ -374,7 +372,7 @@ class SaveLogic(GenericLogic):
         close_file_flag = False
 
         if opened_file == None:
-            opened_file = open(filepath+self.dir_slash+filename+'.dat','wb')
+            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
             close_file_flag = True
 
 
@@ -404,7 +402,7 @@ class SaveLogic(GenericLogic):
         close_file_flag = False
 
         if opened_file == None:
-            opened_file = open(filepath+self.dir_slash+filename+'.dat','wb')
+            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
             close_file_flag = True
 
         if trace_name != None:
@@ -443,7 +441,7 @@ class SaveLogic(GenericLogic):
         close_file_flag = False
 
         if opened_file == None:
-            opened_file = open(filepath+self.dir_slash+filename+'.dat','wb')
+            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
             close_file_flag = True
 
         # write the trace names:
@@ -586,7 +584,7 @@ class SaveLogic(GenericLogic):
                                 msgType='status', importance=3)
 
         # That is now the current directory:
-        current_dir = self.data_dir + self.dir_slash + time.strftime("%Y") + self.dir_slash + time.strftime("%m")
+        current_dir = os.path.join(self.data_dir, time.strftime("%Y"), time.strftime("%m"))
 
 
 
@@ -598,12 +596,12 @@ class SaveLogic(GenericLogic):
             # Search if there is a folder which starts with the current date:
             for entry in folderlist:
                 if (time.strftime("%Y%m%d") in (entry[:2])):
-                    current_dir = current_dir +self.dir_slash+ str(entry)
+                    current_dir = os.path.join(current_dir, str(entry))
                     folder_exists = True
                     break
 
         if not folder_exists:
-            current_dir = current_dir + self.dir_slash + time.strftime("%Y%m%d")
+            current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
             self.logMsg('Creating directory for today\'s data in \n'+current_dir,
                                 msgType='status', importance=5)
 
@@ -640,7 +638,7 @@ class SaveLogic(GenericLogic):
                                                         # name of the class.
             module_name = 'UNSPECIFIED_'+module_name
 
-        dir_path = self.get_daily_directory() +self.dir_slash+ module_name
+        dir_path = os.path.join(self.get_daily_directory(), module_name)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)

@@ -218,7 +218,7 @@ class LaserScanningGui(GUIBase):
         """
                 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
-        filename = filepath + time.strftime('\\%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss')
+        filename = os.path.join(filepath, time.strftime('%Y-%m-%d_laser_scan_from_%Hh%Mm%Ss'))
                 
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')

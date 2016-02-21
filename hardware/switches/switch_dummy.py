@@ -20,10 +20,10 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from core.base import Base
 from collections import OrderedDict
-from .switch_interface import SwitchInterface
+from interface.switch_interface import SwitchInterface
 import time
 
-class SwitchInterfaceDummy(Base, SwitchInterface):
+class SwitchDummy(Base, SwitchInterface):
     """ Methods to control slow laser switching devices.
     """
     _modclass = 'switchinterfacedummy'

@@ -233,8 +233,7 @@ class Base(QtCore.QObject, Fysom):
             exist.
             @return string: absolute path to the home directory
         """
-        # I find it good to have after the foldername the separator \\.
-        return os.path.abspath(os.path.expanduser('~'))+'\\'
+        return os.path.abspath(os.path.expanduser('~'))
 
     def get_unit_prefix_dict(self):
         """ Return the dictionary, which assigns the prefix of a unit to its

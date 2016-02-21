@@ -83,10 +83,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         elif arch == ('64bit', 'WindowsPE'):
             libname = 'spinapi64.dll'
         elif arch == ('32bit', 'ELF'):
-            folderpath = self.get_main_dir() + '\\hardware\\SpinCore\\'
+            folderpath = os.path.join(self.get_main_dir(), 'hardware', 'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi.so')
         elif arch == ('64bit', 'ELF'):
-            folderpath = self.get_main_dir() + '\\hardware\\SpinCore\\'
+            folderpath = os.path.join(self.get_main_dir(), 'hardware', 'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi64.so')
 
         # In Windows load the spinapi library file spinapi.dll from the folder

@@ -19,7 +19,7 @@ Copyright (C) 2015 Jan M. Binder <jan.binder@uni-ulm.de>
 """
 
 from core.base import Base
-from hardware.process_control_interface import ProcessControlInterface
+from interface.process_control_interface import ProcessControlInterface
 from collections import OrderedDict
 from core.util.mutex import Mutex
 
