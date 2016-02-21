@@ -26,9 +26,9 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 #####################################################
 
 from core.base import Base
-from hardware.fast_counter_interface import FastCounterInterface
+from interface.fast_counter_interface import FastCounterInterface
 
-import ctypes 
+import ctypes
 import os
 import numpy, numpy.fft
 import time
@@ -37,7 +37,7 @@ import time
 """
 Remark to the usage of ctypes:
 All Python types except integers (int), strings (str), and bytes (byte) objects
-have to be wrapped in their corresponding ctypes type, so that they can be 
+have to be wrapped in their corresponding ctypes type, so that they can be
 converted to the required C data type.
 
 ctypes type     C type                  Python type
@@ -53,24 +53,24 @@ c_int           int                     int
 c_uint          unsigned int            int
 c_long          long                    int
 c_ulong         unsigned long           int
-c_longlong      __int64 or 
+c_longlong      __int64 or
                 long long               int
-c_ulonglong     unsigned __int64 or 
+c_ulonglong     unsigned __int64 or
                 unsigned long long      int
 c_size_t        size_t                  int
-c_ssize_t       ssize_t or 
+c_ssize_t       ssize_t or
                 Py_ssize_t              int
 c_float         float                   float
 c_double        double                  float
 c_longdouble    long double             float
-c_char_p        char * 
+c_char_p        char *
                 (NUL terminated)        bytes object or None
-c_wchar_p       wchar_t * 
+c_wchar_p       wchar_t *
                 (NUL terminated)        string or None
 c_void_p        void *                  int or None
 
 """
-# Reconstruct the proper structure of the variables, which can be extracted 
+# Reconstruct the proper structure of the variables, which can be extracted
 # from the header file 'struct.h'.
 
 
@@ -125,7 +125,7 @@ class ACQSTATUS(ctypes.Structure):
 
 class FastComtecP7887(Base,FastCounterInterface):
     """UNSTABLE: Alex Stark
-    
+
     Hardware Class for the FastComtec Card communicating via the p7887 server.
     """
     _modclass = 'fastcomtecp7887'
@@ -133,19 +133,19 @@ class FastComtecP7887(Base,FastCounterInterface):
 
     # connectors
     _out = {'counter': 'FastCounterInterface'}
-    
+
     def __init__(self, manager, name, config, **kwargs):
         Base.__init__(self, manager, name, configuration=config)
-        
-        self.logMsg('The following configuration was found.', 
+
+        self.logMsg('The following configuration was found.',
                     msgType='status')
-                    
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-    
-    
+
+
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
@@ -159,46 +159,46 @@ class FastComtecP7887(Base,FastCounterInterface):
         self._dll_filepath = 'FILEPATH-TO-FIX' + self._dll_name
         self._dll = ctypes.windll.LoadLibrary(self._dll_filepath)
 
-        self._zero = ctypes.c_int(0) 
+        self._zero = ctypes.c_int(0)
 
     def configure(self, duration, bitshift):
         """Configures the Fast Counter.
-        
+
           @param int duration: Duration of the expected measurement
-          @param int bitshift: 
+          @param int bitshift:
         """
-        
+
         self._set_bitshift(int(bitshift))
-        
+
         N = int(duration/(self.BINWIDTH*2**bitshift))
-        
+
         self._set_length(N)
 
     def _set_bitshift(self, bitshift):
         """ Sets the bitshift properly for this card.
-        
+
           @param int bitshift
-          
+
           @return int: asks the actual bitshift and returns the red out value
           """
-        
+
         self._dll.RunCmd(0, 'BITSHIFT={0}'.format(int(bitshift)))
         return self._get_bitshift()
 
     def _get_bitshift(self):
-        """ Get the current bitshift from the program.                
-        
+        """ Get the current bitshift from the program.
+
           @param list settings: the values in the list are defined in ACQSETTING.
         """
-        
+
         setting = ACQSETTING()
         self._dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.bitshift)
 
     def _set_length(self, N):
         """Sets the length of the length of the actual measurement.
-        
-          @param int N: Length of the measurement      
+
+          @param int N: Length of the measurement
         """
         self._dll.RunCmd(0, 'RANGE={0}'.format(int(N)))
         self._dll.RunCmd(0, 'roimax={0}'.format(int(N)))
@@ -206,81 +206,81 @@ class FastComtecP7887(Base,FastCounterInterface):
 
     def _get_length(self):
         """ Get the length of the current measurement.
-        
+
           @return int: length of the current measurement
         """
         setting = ACQSETTING()
         self._dll.GetSettingData(ctypes.byref(setting), self._zero)
-        
+
         return int(setting.range)
 
 
 #    def _get_range(self):
 #        """Get the range of the current measurement.
-#        
+#
 #          @return list(length,bytelength): length is the current length of the
 #                                           measurement and bytelength is the
 #                                           length in byte.
 #        """
 #        return self._get_length(), self.BINWIDTH * 2**self.GetBitshift()
 
-    
+
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
         return value.
-        
+
           @return list status: the values in the list are defined in ACQSTATUS.
         """
 
         status = ACQSTATUS()
         self._dll.GetStatusData(ctypes.byref(status), self._zero)
-        
+
         return status.runtime, status.sweeps
-    
+
     def start(self):
         """Start the Fast Comtec counter and resets the counting bins."""
-        
+
         self._dll.Start(self._zero)
         status = ACQSTATUS()
         status.started = self._zero
-        
+
         while not status.started:
             time.sleep(0.1)
             self._dll.GetStatusData(ctypes.byref(status), self._zero)
-        
-    
+
+
     def halt(self):
         """Make a pause in the measurement, which can be continued. """
         self._dll.Halt(self._zero)
-    
+
     def continue_measure(self):
-        
+
         raise InterfaceImplementationError('FastCounterInterface>continue_measure')
         return -1
 
     def is_trace_extractable(self):
-        
+
         raise InterfaceImplementationError('FastCounterInterface>is_trace_extractable')
         return -1
-   
+
     def get_data_trace(self):
-        
+
         raise InterfaceImplementationError('FastCounterInterface>get_data_trace')
         return -1
-      
+
     def get_data_laserpulses(self):
         """ To extract the laser pulses, a general routine should be written."""
-        
+
         raise InterfaceImplementationError('FastCounterInterface>get_data_laserpulses')
         return -1
-        
-        
-        
-        
-        
+
+
+
+
+
     BINWIDTH=0.25
 
- 
+
 
 
     def SetSoftwareStart(self,b):
@@ -399,5 +399,5 @@ class FastComtecP7887(Base,FastCounterInterface):
     def GetStatus(self):
         status = ACQSTATUS()
         dll.GetStatusData(ctypes.byref(status), 0)
-        return status        
-        
+        return status
+

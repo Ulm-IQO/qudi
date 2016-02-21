@@ -28,7 +28,7 @@ from PyQt4.QtCore import QThread
 from core.base import Base
 from core.util.mutex import Mutex
 from hardware.slow_counter_interface import SlowCounterInterface
-from hardware.fast_counter_interface import FastCounterInterface
+from interface.fast_counter_interface import FastCounterInterface
 
 # =============================================================================
 # Wrapper around the PHLib.DLL. The current file is based on the header files
@@ -98,7 +98,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     _out = {'picocounter': 'PicoHarp300',
             'counter': 'SlowCounterInterface'
             }
-            
+
     sigReadoutPicoharp = QtCore.Signal()
     sigAnalyzeData = QtCore.Signal(object, object)
     sigStart = QtCore.Signal()
@@ -142,17 +142,17 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         # Just some default values:
         self._bin_width_ns = 3000
         self._record_length_ns = 100 *1e9
-        
+
         self._photon_source2 = None #for compatibility reasons with second APD
         self._count_channel = 1
-        
+
         #locking for thread safety
         self.threadlock = Mutex()
-        
-        
-        
-        
-        
+
+
+
+
+
 
 
     def activation(self, fysom_e=None):
@@ -169,14 +169,14 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.open_connection()
         self.initialize(self._mode)
         self.calibrate()
-        
+
         #FIXME: These are default values determined from the measurement
         # One need still to include this in the config.
-        self.set_input_CFD(1,10,7)  
-        
-        # the signal has one argument of type object, which should allow 
+        self.set_input_CFD(1,10,7)
+
+        # the signal has one argument of type object, which should allow
         # anything to pass through:
-        
+
         self.sigStart.connect(self.start_measure)
         self.sigReadoutPicoharp.connect(self.get_fresh_data_loop, QtCore.Qt.QueuedConnection) # ,QtCore.Qt.QueuedConnection
         self.sigAnalyzeData.connect(self.analyze_received_data, QtCore.Qt.QueuedConnection)
@@ -334,7 +334,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         mode = int(mode)    # for safety reasons, convert to integer
         self._mode = mode
-        
+
         if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
                 (mode != self.MODE_T3)):
             self.logMsg('Picoharp: Mode for the device could not be set. It '
@@ -525,11 +525,11 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             5 =  32x base resolution      => 4*2^5 =  128ps
             6 =  64x base resolution      => 4*2^6 =  256ps
             7 = 128x base resolution      => 4*2^7 =  512ps
-            
-        These are all the possible values. In histogram mode the internal 
-        buffer can store 65535 points (each a 32bit word). For largest 
+
+        These are all the possible values. In histogram mode the internal
+        buffer can store 65535 points (each a 32bit word). For largest
         resolution you can count  33.55392 ms in total
-            
+
         """
         if (binning < 0) or (self.BINSTEPSMAX-1 < binning):
             self.logMsg('PicoHarp: Invalid binning.\nValue must be within the '
@@ -880,12 +880,12 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     def set_enable_routing(self, use_router):
         """ Configure whether the connected router is used or not.
 
-        @param int use_router: 0 = enable routing 
-                               1 = disable routing 
+        @param int use_router: 0 = enable routing
+                               1 = disable routing
 
         Note: This function can also be used to detect the presence of a router!
         """
-        
+
         return self.check(self._dll.PH_EnableRouting(self._deviceID, use_router))
 
     def get_router_version(self):
@@ -898,7 +898,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         model_number = ctypes.create_string_buffer(16)
         version_number =  ctypes.create_string_buffer(16)
 
-        self.check(self._dll.PH_GetRouterVersion(self._deviceID, 
+        self.check(self._dll.PH_GetRouterVersion(self._deviceID,
                                                  ctypes.byref(model_number),
                                                  ctypes.byref(version_number)))
 
@@ -907,14 +907,14 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     def set_routing_channel_offset(self, offset_time):
         """ Set the offset for the routed channels to compensate cable delay.
 
-        @param int offset_time: offset (time shift) in ps for that channel. 
+        @param int offset_time: offset (time shift) in ps for that channel.
                                 Value must be within [OFFSETMIN,OFFSETMAX]
 
-        Note: This function can be used to compensate small timing delays 
-              between the individual routing channels. It is similar to 
-              PH_SetSyncOffset and can replace cumbersome cable length 
-              adjustments but compared to PH_SetSyncOffset the adjustment range 
-              is relatively small. A positive number corresponds to inserting 
+        Note: This function can be used to compensate small timing delays
+              between the individual routing channels. It is similar to
+              PH_SetSyncOffset and can replace cumbersome cable length
+              adjustments but compared to PH_SetSyncOffset the adjustment range
+              is relatively small. A positive number corresponds to inserting
               cable in that channel.
         """
 
@@ -922,22 +922,22 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             self.logMsg('PicoHarp: Invalid offset time for routing.\nThe '
                         'offset time was expected to be within the interval '
                         '[{0},{1}] ps, but a value of {2} was '
-                        'passed.'.format(self.OFFSETMIN, self.OFFSETMAX, 
+                        'passed.'.format(self.OFFSETMIN, self.OFFSETMAX,
                                          offset_time),
                         msgType='error')
             return
         else:
-            self.check(self._dll.PH_SetRoutingChannelOffset(self._deviceID, 
+            self.check(self._dll.PH_SetRoutingChannelOffset(self._deviceID,
                                                             offset_time))
 
     def set_phr800_input(self, channel, level, edge):
         """ Configure the input channels of the PHR800 device.
 
-        @param int channel: which router channel is going to be programmed. 
+        @param int channel: which router channel is going to be programmed.
                             This number but be within the range [0,3].
         @param int level: set the trigger voltage level in mV. The entered
                           value must be within [PHR800LVMIN,PHR800LVMAX].
-        @param int edge: Specify whether the trigger should be detected on 
+        @param int edge: Specify whether the trigger should be detected on
                             0 = falling edge or
                             1 = rising edge.
 
@@ -958,7 +958,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             self.logMsg('PicoHarp: Invalid level for routing.\nThe level '
                         'used for channel {0} must be within the interval '
                         '[{1},{2}] mV, but a value of {3} was '
-                        'passed.'.format(channel, self.PHR800LVMIN, 
+                        'passed.'.format(channel, self.PHR800LVMIN,
                                          self.PHR800LVMAX, level),
                          msgType='error')
             return
@@ -969,16 +969,16 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                         'passed'.format(edge), msgType='error')
             return
 
-        self.check(self._dll.PH_SetPHR800Input(self._deviceID, channel, level, 
+        self.check(self._dll.PH_SetPHR800Input(self._deviceID, channel, level,
                                                edge))
 
     def set_phr800_cfd(self, channel, dscrlevel, zerocross):
         """ Set the Constant Fraction Discriminators (CFD) for the PHR800 device.
 
-        @param int channel: which router channel is going to be programmed. 
+        @param int channel: which router channel is going to be programmed.
                             This number but be within the range [0,3].
         @param dscrlevel: the discriminator level in mV, which must be within a
-                          range of [DISCRMIN,DISCRMAX]  
+                          range of [DISCRMIN,DISCRMAX]
         """
 
         channel = int(channel)
@@ -994,7 +994,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             self.logMsg('PicoHarp: Invalid Constant Fraction Discriminators '
                         'level.\nValue must be within the range [{0},{1}] '
                         ' millivolts but a value of {2} has been '
-                        'passed.'.format(self.DISCRMIN, self.DISCRMAX, 
+                        'passed.'.format(self.DISCRMIN, self.DISCRMAX,
                                          dscrlevel), msgType='error')
             return
         if (zerocross < self.ZCMIN) or (self.ZCMAX < zerocross):
@@ -1110,7 +1110,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self._bin_width_ns = bin_width_ns
         self._record_length_ns = record_length_ns
         self._number_of_gates = number_of_gates
-        
+
         #FIXME: actualle only an unsigned array will be needed. Change that later.
 #        self.data_trace = np.zeros(number_of_gates, dtype=np.int64 )
         self.data_trace = [0]*number_of_gates
@@ -1138,13 +1138,13 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                 return 2
             else:
                 return 1
-        
+
 
     def pause_measure(self):
         """
         Pauses the current measurement if the fast counter is in running state.
         """
-        
+
         self.stop_measure()
         self.meas_run = False
 
@@ -1180,45 +1180,45 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
           - If the counter is gated it will return a 2D-numpy-array with
             returnarray[gate_index, timebin_index]
         """
-        
-        
+
+
         return self.data_trace
-        
-        
-        
+
+
+
     # =========================================================================
     #  Test routine for continuous readout
-    # =========================================================================        
-        
+    # =========================================================================
+
 
     def start_measure(self):
         """
         Starts the fast counter.
         """
         self.lock()
-        
+
         self.meas_run = True
-        
+
         # start the device:
         self.start(int(self._record_length_ns/1e6))
-        
-        self.sigReadoutPicoharp.emit()        
-        
+
+        self.sigReadoutPicoharp.emit()
+
     def stop_measure(self):
         """ By setting the Flag, the measurement should stop.  """
         self.meas_run = False
-        
-        
+
+
     def get_fresh_data_loop(self):
         """ This method will be run infinitely until the measurement stops. """
-        
+
         # for testing one can also take another array:
-        buffer, actual_counts = self.tttr_read_fifo() 
+        buffer, actual_counts = self.tttr_read_fifo()
 #        buffer, actual_counts = [1,2,3,4,5,6,7,8,9], 9
-        
+
         # This analysis signel should be analyzed in a queued thread:
         self.sigAnalyzeData.emit(buffer[0:actual_counts-1], actual_counts)
-        
+
         if not self.meas_run:
             with self.threadlock:
                 self.unlock()
@@ -1228,85 +1228,85 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         print('get new data.')
         # get the next data:
         self.sigReadoutPicoharp.emit()
-        
-        
-    
+
+
+
     def analyze_received_data(self, arr_data, actual_counts):
         """ Analyze the actual data obtained from the TTTR mode of the device.
-        
+
         @param arr_data: numpy uint32 array with length 'actual_counts'.
         @param actual_counts: int, number of read out events from the buffer.
-        
-        Write the obtained arr_data to the predefined array data_trace, 
+
+        Write the obtained arr_data to the predefined array data_trace,
         initialized in the configure method.
-        
+
         The received array contains 32bit words. The bit assignment starts from
-        the MSB (most significant bit), which is here displayed as the most 
+        the MSB (most significant bit), which is here displayed as the most
         left bit.
-        
+
         For T2 (initialized device with mode=2):
         ----------------------------------------
-        
+
         [ 4 bit for channel-number |28 bit for time-tag] = [32 bit word]
-                  
+
         channel-number: 4 marker, which serve for the different channels.
                             0001 = marker 1
                             0010 = marker 2
                             0011 = marker 3
                             0100 = marker 4
-                        
-                        The channel code 15 (all bits ones, 1111) marks a 
-                        special record. Special records can be overflows or 
-                        external markers. To differentiate this, the lower 4 
+
+                        The channel code 15 (all bits ones, 1111) marks a
+                        special record. Special records can be overflows or
+                        external markers. To differentiate this, the lower 4
                         bits of timetag must be checked:
-                            - If they are all zero, the record marks an 
+                            - If they are all zero, the record marks an
                               overflow.
-                            - If they are >=1 the individual bits are external 
+                            - If they are >=1 the individual bits are external
                               markers.
-                              
+
                         Overflow period: 210698240
-                        
-                        the first bit is the overflow bit. It will be set if 
+
+                        the first bit is the overflow bit. It will be set if
                         the time-tag reached 2^28:
 
-                            0000 = overflow                        
-                        
+                            0000 = overflow
+
                         Afterwards both overflow marker and time-tag
-                        will be reseted. This overflow should be detected and 
+                        will be reseted. This overflow should be detected and
                         the time axis should be adjusted accordingly.
-                        
-        time-tag: The resolution is fixed to 4ps. Within the time of 
+
+        time-tag: The resolution is fixed to 4ps. Within the time of
                   4ps*2^28 = 1.073741824 ms
-                  another photon event should occur so that the time axis can 
+                  another photon event should occur so that the time axis can
                   be computed properly.
-        
+
         For T3 (initialized device with mode=3):
         ----------------------------------------
-        
-        [ 4 bit for channel-number | 12 bit for start-stop-time | 16 bit for sync counter] = [32 bit word]        
-        
+
+        [ 4 bit for channel-number | 12 bit for start-stop-time | 16 bit for sync counter] = [32 bit word]
+
         channel-number: 4 marker, which serve for the different channels.
                             0001 = marker 1
                             0010 = marker 2
                             0011 = marker 3
                             0100 = marker 4
-                        
-                        the first bit is the overflow bit. It will be set if 
+
+                        the first bit is the overflow bit. It will be set if
                         the sync-counter reached 65536 events:
 
-                            1000 = overflow                        
-                        
+                            1000 = overflow
+
                         Afterwards both, overflow marker and sync-counter
-                        will be reseted. This overflow should be detected and 
+                        will be reseted. This overflow should be detected and
                         the time axis should be adjusted accordingly.
-        
+
         start-stop-time: time between to consecutive sync pulses. Maximal time
-                         between two sync pulses is therefore limited to 
+                         between two sync pulses is therefore limited to
                              2^12 * Res
-                         where Res is the Resolution 
+                         where Res is the Resolution
                              Res = {4,8,16,32,54,128,256,512} (in ps)
                          For largest Resolution of 512ps you have 2097.152 ns.
-        sync-counter: can hold up to 2^16 = 65536 events. It that number is 
+        sync-counter: can hold up to 2^16 = 65536 events. It that number is
                       reached overflow will be set. That means all 4 bits in
                       the channel-number are set to high (i.e. 1).
         """
@@ -1316,31 +1316,31 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         self.data_trace[self.count] = actual_counts
         self.count += 1
-        
+
         if self.count > self._number_of_gates-1:
             self.count = 0
-        
+
         if actual_counts == self.TTREADMAX:
             self.logMsg('Overflow!', msgType='warning')
-            
+
         print('Data analyzed.')
-        
+
 #        self.result = []
-#        for entry in arr_data[0:actual_counts-1]:       
-#        
+#        for entry in arr_data[0:actual_counts-1]:
+#
 #            # apply three bitmasks to extract the relavent numbers:
 #            overflow = entry & (2**(32-1) )
 #            marker_ch = entry & (2**(32-2)  + 2**(32-3) + 2**(32-4))
 #            time_tag = entry & (2**32 -1 - 2**(32-1) + 2**(32-2) + 2**(32-3) + 2**(32-4))
-        
-        
-
-        
 
 
 
-        
-    
-        
+
+
+
+
+
+
+
 
 

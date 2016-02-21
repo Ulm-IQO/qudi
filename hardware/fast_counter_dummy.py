@@ -21,7 +21,7 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from core.base import Base
-from hardware.fast_counter_interface import FastCounterInterface
+from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
 import numpy as np
@@ -33,8 +33,8 @@ class InterfaceImplementationError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class FastCounterInterfaceDummy(Base, FastCounterInterface):
-    """This is the Interface class to define the controls for the simple 
+class FastCounterDummy(Base, FastCounterInterface):
+    """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
     _modclass = 'fastcounterinterface'
@@ -46,16 +46,16 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.', 
+        self.logMsg('The following configuration was found.',
                     msgType='status')
-                    
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-                        
+
         self.gated = False
-        
+
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
@@ -84,30 +84,30 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         actual_length = self._gate_length_bins * actual_binwidth
         self.statusvar = 1
         return (actual_binwidth, actual_length, number_of_gates)
-        
-    
+
+
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
         return self.statusvar
 
     def get_binwidth(self):
         return 1000./950.
-    
+
     def start_measure(self):
         time.sleep(1)
         self.statusvar = 2
         return 0
-    
+
     def pause_measure(self):
         time.sleep(1)
         self.statusvar = 3
         return 0
-        
+
     def stop_measure(self):
         time.sleep(1)
         self.statusvar = 1
         return 0
-    
+
     def continue_measure(self):
         self.statusvar = 2
         return 0
@@ -121,7 +121,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         """
         width_in_seconds = self._binwidth * 1e-6/950
         return width_in_seconds
-      
+
     def get_data_trace(self):
         ''' params '''
 #        num_of_lasers = 100
@@ -130,21 +130,21 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
 #        laser_length = 3000
 #        rise_length = 30
 #        tail_length = 1000
-#        
+#
 #        rising_edge = np.arctan(np.linspace(-10, 10, rise_length))
 #        rising_edge = rising_edge - rising_edge.min()
 #        falling_edge = np.flipud(rising_edge)
 #        low_count = np.full([tail_length], rising_edge.min())
 #        high_count = np.full([laser_length], rising_edge.max())
-#    
+#
 #        gate_length = laser_length + 2*(rise_length + tail_length)
 #        trace_length = num_of_lasers * gate_length
-#    
+#
 #        if self.gated:
 #            data = np.empty([num_of_lasers, gate_length], int)
 #        else:
 #            data = np.empty([trace_length], int)
-#    
+#
 #        for i in range(num_of_lasers):
 #            gauss = signal.gaussian(500,120) / (1 + 3*np.random.random())
 #            gauss = np.append(gauss, np.zeros([laser_length-500]))
@@ -158,7 +158,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
 #                else:
 #                    trace[j] = trace[j] + np.random.randint(-np.sqrt(trace[j]), np.sqrt(trace[j]))
 #                    if trace[j] < 0:
-#                        trace[j] = 0 
+#                        trace[j] = 0
 #            if self.gated:
 #                data[i] = trace
 #            else:
@@ -169,7 +169,7 @@ class FastCounterInterfaceDummy(Base, FastCounterInterface):
         time.sleep(0.5)
         return data
 
-        
+
     def get_frequency(self):
         freq = 950.
         time.sleep(0.5)
