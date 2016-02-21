@@ -7,7 +7,7 @@ class SlowCounterInterface():
     microwave hardware.
     """
 
-    def set_up_clock(self, clock_frequency = None, clock_channel = None):
+    def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
@@ -26,15 +26,21 @@ class SlowCounterInterface():
                        photon_source=None,
                        counter_channel2=None,
                        photon_source2=None,
-                       clock_channel = None):
+                       clock_channel=None,
+                       counter_buffer=None):
         """ Configures the actual counter with a given clock.
 
-        @param string counter_channel: optional, this is the physical channel
-                                       of the counter
-        @param string photon_source: optional, this is the physical channel
-                                     where the photons are to count from
-        @param string clock_channel: optional, this specifies the clock for the
-                                     counter
+        @param str counter_channel: optional, physical channel of the counter
+        @param str photon_source: optional, physical channel where the photons
+                                  are to count from
+        @param str counter_channel2: optional, physical channel of the counter 2
+        @param str photon_source2: optional, second physical channel where the
+                                   photons are to count from
+        @param str clock_channel: optional, specifies the clock channel for the
+                                  counter
+        @param int counter_buffer: optional, a buffer of specified integer
+                                   length, where in each bin the count numbers
+                                   are saved.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -47,7 +53,7 @@ class SlowCounterInterface():
 
         @param int samples: if defined, number of samples to read in one go
 
-        @return array(uint32): the photon counts per second
+        @return numpy.array(uint32): the photon counts per second
         """
 
         raise InterfaceImplementationError('SlowCounterInterface>get_counter')
