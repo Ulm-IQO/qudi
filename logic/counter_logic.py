@@ -15,9 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Kay D. Jahnke
-Copyright (C) 2015 Alexander Stark
-Copyright (C) 2015 Jan M. Binder
+Copyright (C) 2015 Kay D. Jahnke kay.jahnke@alumni.uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -29,9 +29,12 @@ import time
 import datetime
 
 class CounterLogic(GenericLogic):
-    """This logic module gathers data from a hardware counting device.
-      @signal sigCounterUpdate: there is new counting data available
-      @signal sigCountContinuousNext: used to simulate a loop in which the data acquisition runs.
+    """ This logic module gathers data from a hardware counting device.
+
+    @signal sigCounterUpdate: there is new counting data available
+    @signal sigCountContinuousNext: used to simulate a loop in which the data
+                                    acquisition runs.
+    @sigmal sigCountGatedNext: ???
     """
     sigCounterUpdated = QtCore.Signal()
     sigCountContinuousNext = QtCore.Signal()
@@ -55,7 +58,8 @@ class CounterLogic(GenericLogic):
           @param dict kwargs: optional parameters
         """
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        state_actions = {'onactivate': self.activation,
+                         'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
         #locking for thread safety
@@ -80,7 +84,13 @@ class CounterLogic(GenericLogic):
     def activation(self, e):
         """ Initialisation performed during activation of the module.
 
-          @param object e: Fysom state change event
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event
+                         the state before the event happens and the destination
+                         of the state which should be reached after the event
+                         has happen.
         """
         self.countdata = np.zeros((self._count_length,))
         self.countdata_smoothed = np.zeros((self._count_length,))
@@ -106,10 +116,11 @@ class CounterLogic(GenericLogic):
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
-          @param object e: Fysom state change event
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
         """
         return
- 
+
     def set_counting_samples(self, samples = 1):
         """ Sets the length of the counted bins.
 
