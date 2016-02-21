@@ -100,6 +100,6 @@ class GatedCounterGui(GUIBase):
         self._mw.count_trace_DockWidget.setFloating(False)
         self._mw.histogram_DockWidget.setFloating(False)
 
-        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(4), self._mw.curr_pos_DockWidget)
-        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.move_rel_DockWidget)
-        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.move_abs_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.control_param_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(7), self._mw.count_trace_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.histogram_DockWidget)

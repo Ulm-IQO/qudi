@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1348</width>
-    <height>1129</height>
+    <height>981</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1876,7 +1876,8 @@
   <action name="actionSave_XY_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Save XY Data</string>
@@ -1885,7 +1886,8 @@
   <action name="actionSave_configuration">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save co&amp;nfiguration</string>
@@ -1894,7 +1896,8 @@
   <action name="action_Settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Se&amp;ttings</string>
@@ -1903,7 +1906,8 @@
   <action name="actionClose">
    <property name="icon">
     <iconset theme="window-close">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>C&amp;lose</string>
@@ -1918,7 +1922,8 @@
   <action name="actionSave_Depth_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save &amp;XZ Data</string>
@@ -1927,7 +1932,8 @@
   <action name="action_optimizer_settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>O&amp;ptimizer Settings</string>
@@ -1936,7 +1942,8 @@
   <action name="actionSave_XY_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XY &amp;Image+Data</string>
@@ -1945,7 +1952,8 @@
   <action name="actionSave_Depth_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XZ Image+&amp;Data</string>
@@ -2196,7 +2204,8 @@
    </property>
    <property name="icon">
     <iconset theme="go-next">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Forward</string>
@@ -2211,7 +2220,8 @@
    </property>
    <property name="icon">
     <iconset theme="go-previous">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Back</string>
