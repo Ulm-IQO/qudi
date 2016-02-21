@@ -30,7 +30,7 @@ Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 #TODO: get_status
 
 from core.base import Base
-from hardware.fast_counter_interface import FastCounterInterface
+from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
 import numpy as np
@@ -57,17 +57,17 @@ class FastComtec(Base, FastCounterInterface):
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.', 
+        self.logMsg('The following configuration was found.',
                     msgType='status')
-                    
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-                        
+
         self.gated = False
-         
-        
+
+
     def activation(self, e):
         """ Initialisation performed during activation of the module.
         """
@@ -99,9 +99,9 @@ class FastComtec(Base, FastCounterInterface):
     def get_bitshift(self):
         """Get bitshift from Fastcomtec.
 
-		@return int settings.bitshift: the red out bitshift 		
+		@return int settings.bitshift: the red out bitshift
 		"""
-		
+
         settings = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(settings), 0)
         return int(settings.bitshift)
@@ -115,9 +115,9 @@ class FastComtec(Base, FastCounterInterface):
 
     def set_bitshift(self, bitshift):
         """ Sets the bitshift properly for this card.
-        
+
           @param int bitshift
-          
+
           @return int: asks the actual bitshift and returns the red out value
           """
 
@@ -137,10 +137,10 @@ class FastComtec(Base, FastCounterInterface):
 #TODO: Check such that only possible lengths are set.
     def set_length(self, N):
         """Sets the length of the length of the actual measurement.
-        
-          @param int N: Length of the measurement  
 
-		  @return float: Red out length of measurement     
+          @param int N: Length of the measurement
+
+		  @return float: Red out length of measurement
           """
         cmd='RANGE=%i'%int(N)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
@@ -150,7 +150,7 @@ class FastComtec(Base, FastCounterInterface):
 
     def get_length(self):
         """ Get the length of the current measurement.
-        
+
           @return int: length of the current measurement
         """
         setting = AcqSettings()
@@ -193,12 +193,12 @@ class FastComtec(Base, FastCounterInterface):
         """Make a pause in the measurement, which can be continued. """
         self.dll.Halt(0)
         return 0
-        
+
     def stop_measure(self):
         """Stop the measurement. """
         self.dll.Halt(0)
         return 0
-    
+
     def continue_measure(self):
         """Continue a paused measurement. """
         self.dll.Continue(0)
@@ -228,7 +228,7 @@ class FastComtec(Base, FastCounterInterface):
         data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
-        
+
     def is_gated(self):
         """
         Boolean return value indicates if the fast counter is a gated counter (TRUE) or not (FALSE).
