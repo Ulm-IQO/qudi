@@ -907,5 +907,3 @@ class ConfocalLogic(GenericLogic):
             self._change_position('history')
             self.signal_change_position.emit('history')
             self.signal_history_event.emit()
-
-
