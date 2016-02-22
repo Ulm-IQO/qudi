@@ -88,11 +88,14 @@ class SimpleDataGui(GUIBase):
         self.plot2 = self._pw.plotItem
         self.plot2.setLabel('right', 'Smooth Value', units='some unit', color='#ff0000')
 
+        self.curvearr = []
+        self.smootharr = []
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self.plot1.plot()
-        self._curve1.setPen('g')
-        self._curve2 = self.plot2.plot()
-        self._curve2.setPen('r', width=2)
+        for i in range(self._simple_logic._data_logic.getChannels()):
+            self.curvearr.append(self.plot1.plot())
+            self.curvearr[-1].setPen('g')
+            self.smootharr.append(self.plot2.plot())
+            self.smootharr[-1].setPen('r', width=2)
 
         # make correct button state
         self._mw.startAction.setChecked(False)
@@ -123,14 +126,15 @@ class SimpleDataGui(GUIBase):
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
-        self._curve1.setData(
-            y=self._simple_logic.buf[0:-11],
-            x=np.arange(0, len(self._simple_logic.buf[0:-11]))
-            )
-        self._curve2.setData(
-            y=self._simple_logic.smooth[24:-25-10],
-            x=np.arange(0, len(self._simple_logic.smooth[24:-25-10]))
-            )
+        for i in range(self._simple_logic._data_logic.getChannels()):
+            self.curvearr[i].setData(
+                y=self._simple_logic.buf[0:-11, i],
+                x=np.arange(0, len(self._simple_logic.buf[0:-11]))
+                )
+            self.smootharr[i].setData(
+                y=self._simple_logic.smooth[24:-25-10, i],
+                x=np.arange(0, len(self._simple_logic.smooth[24:-25-10]))
+                )
 
         if self._simple_logic.getState() == 'locked':
             self._mw.startAction.setText('Stop')
