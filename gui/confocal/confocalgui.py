@@ -2096,4 +2096,3 @@ class ConfocalGui(GUIBase):
             self._mw.z_min_InputWidget.setValue(zMin)
             self._mw.z_max_InputWidget.setValue(zMax)
             self.change_z_image_range()
-
