@@ -20,17 +20,17 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from core.base import Base
-from hardware.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterInterface
 from hardware.confocal_scanner_interface import ConfocalScannerInterface
 from hardware.odmr_counter_interface import ODMRCounterInterface
-from interface.fast_counter_interface import FastCounterInterface
+
 
 import PyDAQmx as daq
 import numpy as np
 import re
 
-class NICard(Base, SlowCounterInterface, FastCounterInterface,
-             ConfocalScannerInterface, ODMRCounterInterface):
+class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
+             ODMRCounterInterface):
     """stable: Kay Jahnke, Alexander Stark
 
 	A National Instruments device that can count and control microvave generators.
