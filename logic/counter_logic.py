@@ -40,6 +40,10 @@ class CounterLogic(GenericLogic):
     sigCountContinuousNext = QtCore.Signal()
     sigCountGatedNext = QtCore.Signal()
 
+    sigCountFiniteGatedNext = QtCore.Signal()
+    sigGatedCounterFinished = QtCore.Signal()
+    sigGatedCounterContinue = QtCore.Signal(bool)
+
     _modclass = 'counterlogic'
     _modtype = 'logic'
 
@@ -112,6 +116,10 @@ class CounterLogic(GenericLogic):
         #QSignals
         self.sigCountContinuousNext.connect(self.countLoopBody_continuous, QtCore.Qt.QueuedConnection)
         self.sigCountGatedNext.connect(self.countLoopBody_gated, QtCore.Qt.QueuedConnection)
+
+        # for finite gated counting:
+        self.sigCountFiniteGatedNext.connect(self.countLoopBody_finite_gated,
+                                             QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -288,8 +296,9 @@ class CounterLogic(GenericLogic):
     def set_counting_mode(self, mode='continuous'):
         """Set the counting mode, to change between continuous and gated counting.
         Possible options are:
-        'continuous'
-        'gated'
+            'continuous'    = counts continuously
+            'gated'         = bins the counts according to a gate signal
+            'finite-gated'  = finite measurement with predefined number of samples
         """
         self._counting_mode = mode
 
@@ -300,6 +309,8 @@ class CounterLogic(GenericLogic):
             self._startCount_continuous()
         elif self._counting_mode == 'gated':
             self._startCount_gated()
+        elif self._counting_mode == 'finite-gated':
+            self._startCount_finite_gated()
         else:
             self.logMsg('Unknown counting mode, can not start the counter.', msgType='error')
 
@@ -346,6 +357,39 @@ class CounterLogic(GenericLogic):
         """
         with self.threadlock:
             self.stopRequested = True
+
+    def _startCount_finite_gated(self):
+        self.lock()
+
+        returnvalue = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
+        if returnvalue < 0:
+            self.unlock()
+            self.sigCounterUpdated.emit()
+            return
+
+        returnvalue = self._counting_device.set_up_counter(counter_buffer=self._count_length)
+        if returnvalue < 0:
+            self.unlock()
+            self.sigCounterUpdated.emit()
+            return
+
+        # initialising the data arrays
+
+        # in rawdata the 'fresh counts' are read in
+        self.rawdata = np.zeros([2, self._counting_samples])
+        # countdata contains the appended data, that is the total displayed counttrace
+        self.countdata = np.zeros((self._count_length,))
+        # do not use a smoothed count trace
+        # self.countdata_smoothed = np.zeros((self._count_length,)) # contains the smoothed data
+        # for now, there will be no oversampling mode.
+        # self._sampling_data = np.empty((self._counting_samples, 2))
+
+        # the index
+        self._already_counted_samples = 0
+
+        self.sigCountFiniteGatedNext.emit()
+
+
 
     def countLoopBody_continuous(self):
         """ This method gets the count data from the hardware for the continuous counting mode (default).
@@ -436,10 +480,12 @@ class CounterLogic(GenericLogic):
 
 
     def countLoopBody_gated(self):
-        """ This method gets the count data from the hardware for the gated counting mode.
+        """ This method gets the count data from the hardware for the gated
+        counting mode.
 
         It runs repeatedly in the logic module event loop by being connected
-        to sigCountGatedNext and emitting sigCountGatedNext through a queued connection.
+        to sigCountGatedNext and emitting sigCountGatedNext through a queued
+        connection.
         """
 
         # check for aborts of the thread in break if necessary
@@ -493,3 +539,102 @@ class CounterLogic(GenericLogic):
         # call this again from event loop
         self.sigCounterUpdated.emit()
         self.sigCountGatedNext.emit()
+
+
+
+    def countLoopBody_finite_gated(self):
+        """ This method gets the count data from the hardware for the finite
+        gated counting mode.
+
+        It runs repeatedly in the logic module event loop by being connected
+        to sigCountFiniteGatedNext and emitting sigCountFiniteGatedNext through
+        a queued connection.
+        """
+
+        # check for aborts of the thread in break if necessary
+        if self.stopRequested:
+            with self.threadlock:
+                try:
+                    # close off the actual counter
+                    self._counting_device.close_counter()
+                    self._counting_device.close_clock()
+                except Exception as e:
+                    self.logExc('Could not even close the hardware, giving up.',
+                                msgType='error')
+                    raise e
+                finally:
+                    # switch the state variable off again
+                    self.unlock()
+                    self.stopRequested = False
+                    self.sigCounterUpdated.emit()
+                    self.sigGatedCounterFinished.emit()
+                    return
+        try:
+            # read the current counter value
+            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+
+        except Exception as e:
+            self.logMsg('The counting went wrong, killing the counter.',
+                        msgType='error')
+            self.stopCount()
+            self.sigCountFiniteGatedNext.emit()
+            raise e
+
+
+        if self._already_counted_samples+len(self.rawdata[0]) >= len(self.countdata):
+
+            needed_counts = len(self.countdata) - self._already_counted_samples
+            self.countdata[0:needed_counts] = self.rawdata[0][0:needed_counts]
+            self.countdata=np.roll(self.countdata, -needed_counts)
+
+            self._already_counted_samples = 0
+            self.stopRequested = True
+
+        else:
+            # replace the first part of the array with the new data:
+            self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
+            # roll the array by the amount of data it had been inserted:
+            self.countdata=np.roll(self.countdata, -len(self.rawdata[0]))
+            # increment the index counter:
+            self._already_counted_samples += len(self.rawdata[0])
+            # self.logMsg(('already_counted_samples:',self._already_counted_samples))
+
+        # remember the new count data in circular array
+        # self.countdata[0:len(self.rawdata)] = np.average(self.rawdata[0])
+        # move the array to the left to make space for the new data
+        # self.countdata=np.roll(self.countdata, -1)
+        # also move the smoothing array
+        # self.countdata_smoothed = np.roll(self.countdata_smoothed, -1)
+        # calculate the median and save it
+        # self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
+
+        # in this case, saving should happen afterwards, therefore comment out:
+        # # save the data if necessary
+        # if self._saving:
+        #      # if oversampling is necessary
+        #     if self._counting_samples > 1:
+        #         self._sampling_data=np.empty((self._counting_samples,2))
+        #         self._sampling_data[:, 0] = time.time()-self._saving_start_time
+        #         self._sampling_data[:, 1] = self.rawdata[0]
+        #         self._data_to_save.extend(list(self._sampling_data))
+        #     # if we don't want to use oversampling
+        #     else:
+        #         # append tuple to data stream (timestamp, average counts)
+        #         self._data_to_save.append(np.array((time.time()-self._saving_start_time, self.countdata[-1])))
+        # # call this again from event loop
+
+        self.sigCounterUpdated.emit()
+        self.sigCountFiniteGatedNext.emit()
+
+    def save_count_trace(self, file_desc=''):
+        """ Call this method not during count, but after counting is done.
+
+        @param str file_desc: optional, personal description that will be
+                              appended to the file name
+
+        This method saves the already displayed counts to file and does not
+        accumulate them. The counttrace variable will be saved to file with the
+        provided name!
+        """
+
+
