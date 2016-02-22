@@ -65,8 +65,9 @@ class SimpleDataLogic(GenericLogic):
 
     def startMeasure(self):
         """ Start measurement: zero the buffer and call loop function."""
-        self.buf = np.zeros(self.bufferLength)
-        self.smooth = np.zeros(self.bufferLength)
+        self.window_len = 50
+        self.buf = np.zeros((self.bufferLength,  self._data_logic.getChannels()))
+        self.smooth = np.zeros((self.bufferLength + self.window_len - 1,  self._data_logic.getChannels()))
         self.lock()
         self.sigRepeat.emit()
 
@@ -84,11 +85,12 @@ class SimpleDataLogic(GenericLogic):
 
         data = [self._data_logic.getData() for i in range(10)]
 
-        self.buf = np.roll(self.buf, -10)
+        self.buf = np.roll(self.buf, -10, axis=0)
         self.buf[-11:-1] = data
-        window_len = 50
-        w = np.hanning(window_len)
-        s = np.r_[self.buf[window_len-1:0:-1], self.buf, self.buf[-1:-window_len:-1]]
-        self.smooth = np.convolve(w/w.sum(), s, mode='valid')
+        w = np.hanning(self.window_len)
+        s = np.r_[self.buf[self.window_len-1:0:-1], self.buf, self.buf[-1:-self.window_len:-1]]
+        for channel in range(self._data_logic.getChannels()):
+            convolved = np.convolve(w/w.sum(), s[:, channel], mode='valid')
+            self.smooth[:, channel] = convolved 
         self.sigRepeat.emit()
 
