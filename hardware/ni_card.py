@@ -138,8 +138,7 @@ class NICard(Base, SlowCounterInterface, FastCounterInterface,
     # connectors
     _out = {'counter': 'SlowCounterInterface',
             'confocalscanner': 'ConfocalScannerInterface',
-            'odmrcounter': 'ODMRCounterInterface',
-            'gatedfastcounter' : 'FastCounterInterface'
+            'odmrcounter': 'ODMRCounterInterface'
             }
 
     def __init__(self, manager, name, config, **kwargs):
@@ -1681,32 +1680,6 @@ class NICard(Base, SlowCounterInterface, FastCounterInterface,
 
     # ================== End ODMRCounterInterface Commands ====================
 
-
-    # ==================== FastCounterInterface Commands =======================
-
-    def configure(self, bin_width_s, record_length_s, number_of_gates=0):
-        """ Configuration of the fast counter.
-
-        @param float bin_width_s: Length of a single time bin in the time trace
-                                  histogram in seconds.
-        @param float record_length_s: Total length of the timetrace/each single
-                                      gate in seconds.
-        @param int number_of_gates: optional, number of gates in the pulse
-                                    sequence. Ignore for not gated counter.
-        """
-
-        # that corresponds in principle to that number.
-        buffer_length = number_of_gates
-
-        # save the binwith in a class variable:
-        self._bin_width_s = bin_width_s
-
-        # ignore the argument record_length_s
-
-        self.set_up_gated_counter(buffer_length, read_available_samples=False)
-
-
-
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
             return value.
@@ -1738,72 +1711,6 @@ class NICard(Base, SlowCounterInterface, FastCounterInterface,
                 return 1
             else:
                 return 2
-
-    def start_measure(self):
-        """ Start the (gated) fast counter. """
-        self.start_gated_counter()
-
-    def stop_measure(self):
-        """ Stop the (gated) fast counter. """
-        self.close_gated_counter()
-
-    def pause_measure(self):
-        """ Pauses the current measurement.
-
-        Fast counter must be initially in the run state to make it pause.
-        """
-        self.stop_gated_counter()
-
-    def continue_measure(self):
-        """ Continues the current measurement.
-
-        If fast counter is in pause state, then fast counter will be continued.
-        """
-        self.start_gated_counter()
-
-    def is_gated(self):
-        """ Check the gated counting possibility.
-
-        Boolean return value indicates if the fast counter is a gated counter
-        (TRUE) or not (FALSE).
-
-        That is actually counterintuitive, but the gated counter bins up the
-        number of counts based on an external trigger and if you set the return
-        value to true, than a 2D-numpy-array will be expected in the method
-        get_data_trace. Therefore, set return value to False.
-        """
-        return False
-
-    def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds
-
-        The gated counter bins up the number of counts based on an external
-        trigger. Therefore the actual binwith cannot be known in forhand.
-        Just return the passed binwidth value, which was set in the
-        configuration method.
-        """
-
-        return self._bin_width_s
-
-    def get_data_trace(self):
-        """ Polls the current timetrace data from the fast counter.
-
-        Return value is a numpy array (dtype = int64).
-        The binning, specified by calling configure() in forehand, must be
-        taken care of in this hardware class. A possible overflow of the
-        histogram bins must be caught here and taken care of.
-        If the counter is NOT GATED it will return a 1D-numpy-array with
-            returnarray[timebin_index]
-        If the counter is GATED it will return a 2D-numpy-array with
-            returnarray[gate_index, timebin_index]
-        """
-
-        #FIXME: It has to be checked, whether the globally defined timeout value
-        #       self._RWTimeout is sufficient for that.
-        timeout = 10  # make a timeout of 10s.
-
-        # convert directly to int64 representation
-        return self.get_gated_counts(timeout=timeout).astype(dtype=np.int64)
 
 
     # ======================== Gated photon counting ==========================
@@ -2004,7 +1911,7 @@ class NICard2(NICard):
     _modclass = 'hardware'
 
     # connectors
-    _out = {'gatedslowcounter' : 'SlowCounterInterface'}
+    _out = {'gatedslowcounter1' : 'SlowCounterInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         # run the init of the superclass:
@@ -2126,7 +2033,7 @@ class NICard2(NICard):
         @return numpy.array(uint32): the photon counts per second
         """
 
-        self.get_gated_counts(samples=samples)
+        return self.get_gated_counts(samples=samples)
 
     def close_counter(self):
         """ Closes the counter and cleans up afterwards.
