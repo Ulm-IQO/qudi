@@ -27,7 +27,7 @@ from PyQt4.QtCore import QThread
 
 from core.base import Base
 from core.util.mutex import Mutex
-from hardware.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterInterface
 from interface.fast_counter_interface import FastCounterInterface
 
 # =============================================================================

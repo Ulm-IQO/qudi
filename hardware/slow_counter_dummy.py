@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from core.base import Base
-from hardware.slow_counter_interface import SlowCounterInterface
+import numpy as np
+
 from collections import OrderedDict
 import random
 import time
 
-import numpy as np
+from core.base import Base
+from interface.slow_counter_interface import SlowCounterInterface
 
-class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
+class SlowCounterDummy(Base,SlowCounterInterface):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
@@ -69,7 +70,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         if clock_frequency != None:
             self._clock_frequency = float(clock_frequency)
 
-        self.logMsg('slowcounterinterfacedummy>set_up_clock',
+        self.logMsg('slowcounterdummy>set_up_clock',
                     msgType='warning')
 
         time.sleep(0.1)
@@ -93,7 +94,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterinterfacedummy>set_up_counter',
+        self.logMsg('slowcounterdummy>set_up_counter',
                     msgType='warning')
 
         time.sleep(0.1)
@@ -109,8 +110,6 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         @return float: the photon counts per second
         """
 
-#        self.logMsg('slowcounterinterfacedummy>get_counter',
-#                    msgType='warning')
 
         if samples == None:
             samples = int(self._samples_number)
@@ -136,7 +135,7 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterinterfacedummy>close_counter',
+        self.logMsg('slowcounterdummy>close_counter',
                     msgType='warning')
         return 0
 
@@ -146,6 +145,6 @@ class SlowCounterInterfaceDummy(Base,SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('slowcounterinterfacedummy>close_clock',
+        self.logMsg('slowcounterdummy>close_clock',
                     msgType='warning')
         return 0
