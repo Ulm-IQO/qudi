@@ -246,6 +246,8 @@ class APTMotor():
 
 
     def getVelocityParameters(self):
+        """ TODO docstring
+        """
         minimumVelocity = c_float()
         acceleration = c_float()
         maximumVelocity = c_float()
