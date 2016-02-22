@@ -32,7 +32,7 @@ class GatedCounterLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'gatedfastcounter1': 'FastCounterInterface',
+    _in = { 'gatedslowcounter1': 'FastCounterInterface',
             'savelogic': 'SaveLogic'
             }
     _out = {'gatedcounterlogic1': 'GatedCounterLogic'}
@@ -82,3 +82,33 @@ class GatedCounterLogic(GenericLogic):
                          explanation can be found in method activation.
         """
         return
+
+
+
+
+    def set_counting_samples(self, samples = 50):
+        """ Sets the length of the counted bins.
+
+        @param int length: the length of the array to be set.
+
+        @return int: error code (0:OK, -1:error)
+
+        This makes sure, the counter is stopped first and restarted afterwards.
+        """
+        # do I need to restart the counter?
+        restart = False
+
+        # if the counter is running, stop it
+        if self.getState() == 'locked':
+            restart = True
+            self.stopCount()
+            while self.getState() == 'locked':
+                time.sleep(0.01)
+
+        self._counting_samples = int(samples)
+
+        # if the counter was running, restart it
+        if restart:
+            self.startCount()
+
+        return 0

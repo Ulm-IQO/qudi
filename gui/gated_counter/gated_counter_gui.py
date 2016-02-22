@@ -49,6 +49,9 @@ class GatedCounterGui(GUIBase):
     _in = {'gatedcounterlogic1': 'GatedCounterLogic'}
 
 
+    sigStartGatedCounter = QtCore.Signal()
+    sigStopGatedCounter = QtCore.Signal()
+
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         state_actions = {'onactivate': self.initUI,
@@ -74,12 +77,53 @@ class GatedCounterGui(GUIBase):
                          of the state which should be reached after the event
                          has happen.
         """
-        self._gc_logic = self.connector['in']['gatedcounterlogic1']['object']
+        self._counter_logic = self.connector['in']['gatedcounterlogic1']['object']
+
+        # self._trace_analysis = self.connector['in']['trace_analysis1']['object']
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
         self.set_default_view_main_window()
+
+        self._gp = self._mw.gated_count_trace_PlotWidget
+        self._gp.setLabel('left', 'Counts', units='counts/s')
+        self._gp.setLabel('bottom', 'Number of Gates', units='#')
+
+        # Create an empty plot curve to be filled later, set its pen
+        self._curve1 = self._gp.plot()
+        self._curve1.setPen('g')
+
+        self._hp = self._mw.histogram_PlotWidget
+
+        self._hp.setLabel('left', 'Occurrences', units='#')
+        self._hp.setLabel('bottom', 'Counts', units='counts/s')
+
+        # setting the x axis length correctly
+        self._gp.setXRange(0, self._counter_logic.get_count_length())
+
+        self._counter_logic.set_counting_mode('finite-gated')
+        # Setting default parameters
+        self._mw.count_length_SpinBox.setValue(self._counter_logic.get_count_length())
+        self._mw.count_per_readout_SpinBox.setValue(self._counter_logic.get_counting_samples())
+
+        # Connecting user interactions
+        self._mw.start_counter_Action.triggered.connect(self.start_clicked)
+
+        self._mw.stop_counter_Action.triggered.connect(self.stop_clicked)
+
+        self._mw.save_measurement_Action.triggered.connect(self.save_clicked)
+
+        self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
+
+        self._mw.count_per_readout_SpinBox.valueChanged.connect(self.count_per_readout_changed)
+
+        # starting the physical measurement
+        self.sigStartGatedCounter.connect(self._counter_logic.startCount)
+        self.sigStopGatedCounter.connect(self._counter_logic.stopCount)
+
+        self._counter_logic.sigCounterUpdated.connect(self.update_trace)
+        self._counter_logic.sigGatedCounterFinished.connect(self.reset_display)
 
     def deactivation(self, e=None):
         """
@@ -90,7 +134,7 @@ class GatedCounterGui(GUIBase):
 
     def show(self):
         """ Make main window visible and put it above all other windows. """
-        # Show the Main Gated Counter GUI:
+
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
@@ -101,5 +145,55 @@ class GatedCounterGui(GUIBase):
         self._mw.histogram_DockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.control_param_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(7), self._mw.count_trace_DockWidget)
+        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(6), self._mw.count_trace_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.histogram_DockWidget)
+
+    def start_clicked(self):
+        """ Handling the Start button to stop and restart the counter.
+        """
+        if self._counter_logic.getState() != 'locked':
+            self.sigStartGatedCounter.emit()
+            self._mw.start_counter_Action.setEnabled(False)
+            self._mw.stop_counter_Action.setEnabled(True)
+
+    def stop_clicked(self):
+        if self._counter_logic.getState() == 'locked':
+            self.sigStopGatedCounter.emit()
+            self.reset_display()
+
+    def reset_display(self):
+        self._mw.start_counter_Action.setEnabled(True)
+        self._mw.stop_counter_Action.setEnabled(False)
+
+    def save_clicked(self):
+        file_desc = self._mw.filename_LineEdit.text()
+        if file_desc == '':
+            file_desc = 'gated_counter'
+
+        trace_file_desc = file_desc + '_trace'
+        self._counter_logic.save_count_trace(file_desc=trace_file_desc)
+
+        # histo_file_desc = file_desc + '_histogram'
+        # self._trace_analysis.save_histogram(file_desc=histo_file_desc)
+
+    def count_length_changed(self):
+        """ Handling the change of the count_length and sending it to the measurement.
+        """
+#        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
+        self._counter_logic.set_count_length(self._mw.count_length_SpinBox.value())
+        self._gp.setXRange(0, self._counter_logic.get_count_length())
+
+    def count_per_readout_changed(self):
+        """ Handling the change of the oversampling and sending it to the measurement.
+        """
+        self._counter_logic.set_counting_samples(samples=self._mw.count_per_readout_SpinBox.value())
+        # self._gp.setXRange(0, self._counter_logic.get_count_length()/self._counter_logic.get_count_frequency())
+
+    def update_trace(self):
+        """ The function that grabs the data and sends it to the plot.
+        """
+
+        if self._counter_logic.getState() == 'locked':
+            # self._mw.count_value_Label.setText('{0:,.0f}'.format(self._counter_logic.countdata_smoothed[-1]))
+            self._curve1.setData(y=self._counter_logic.countdata, x=np.arange(0, self._counter_logic.get_count_length()))
+            # self._curve2.setData(y=self._counter_logic.countdata_smoothed, x=np.arange(0, self._counter_logic.get_count_length())/self._counter_logic.get_count_frequency())

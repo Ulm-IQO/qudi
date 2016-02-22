@@ -57,33 +57,33 @@ class CounterGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.initUI, 
+        state_actions = {'onactivate': self.initUI,
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.', 
+        self.logMsg('The following configuration was found.',
                     msgType='status')
-                            
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-                        
+
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
         """
         self._counting_logic = self.connector['in']['counterlogic1']['object']
-        
+
         #####################
         # Configuring the dock widgets
         # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = CounterMainWindow()
-                
+
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-                
+
         # Plot labels.
         self._pw = self._mw.counter_trace_PlotWidget
 
@@ -101,10 +101,10 @@ class CounterGui(GUIBase):
             self._curve3.setPen('b')
             self._curve4 = self._pw.plot()
             self._curve4.setPen('b', width=4)
-        
+
         # setting the x axis length correctly
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
-        
+
         #####################
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue( self._counting_logic.get_count_length() )
@@ -119,7 +119,7 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.valueChanged.connect( self.count_length_changed )
         self._mw.count_freq_SpinBox.valueChanged.connect( self.count_frequency_changed )
         self._mw.oversampling_SpinBox.valueChanged.connect( self.oversampling_changed )
-            
+
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
@@ -129,7 +129,7 @@ class CounterGui(GUIBase):
         self.sigStopCounter.connect(self._counting_logic.stopCount)
 
         self._counting_logic.sigCounterUpdated.connect(self.updateData)
-        
+
     def show(self):
         """Make window visible and put it above all other windows.
         """
@@ -144,7 +144,7 @@ class CounterGui(GUIBase):
     def updateData(self):
         """ The function that grabs the data and sends it to the plot.
         """
-            
+
         if self._counting_logic.getState() == 'locked':
             self._mw.count_value_Label.setText('{0:,.0f}'.format(self._counting_logic.countdata_smoothed[-1]))
             self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
@@ -172,21 +172,21 @@ class CounterGui(GUIBase):
             self._mw.record_counts_Action.setText('Start Saving Data')
             self._mw.count_freq_SpinBox.setEnabled(True)
             self._mw.oversampling_SpinBox.setEnabled(True)
-            
+
         if self._counting_logic.getState() == 'locked':
-            self._mw.start_counter_Action.setText('Stop')
-        else:            
-            self._mw.start_counter_Action.setText('Start')
-            
-            
+            self._mw.start_counter_Action.setText('Stop counter')
+        else:
+            self._mw.start_counter_Action.setText('Start counter')
+
+
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
         if self._counting_logic.getState() == 'locked':
-            self._mw.start_counter_Action.setText('Start')
+            self._mw.start_counter_Action.setText('Start counter')
             self.sigStopCounter.emit()
         else:
-            self._mw.start_counter_Action.setText('Stop')
+            self._mw.start_counter_Action.setText('Stop counter')
             self.sigStartCounter.emit()
 
     def save_clicked(self):
@@ -202,21 +202,21 @@ class CounterGui(GUIBase):
             self._mw.count_freq_SpinBox.setEnabled(False)
             self._mw.oversampling_SpinBox.setEnabled(False)
             self._counting_logic.start_saving()
-    
+
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
         """
 #        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counting_logic.set_count_length(self._mw.count_length_SpinBox.value())
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
-        
+
     def count_frequency_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
 #        print ('count_frequency_changed: {0:d}'.format(self._mw.count_freq_SpinBox.value()))
         self._counting_logic.set_count_frequency(self._mw.count_freq_SpinBox.value())
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
-        
+
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
         """
@@ -233,7 +233,7 @@ class CounterGui(GUIBase):
         # re-dock any floating dock widgets
         self._mw.counter_trace_DockWidget.setFloating(False)
         self._mw.slow_counter_control_DockWidget.setFloating(False)
-        
+
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_control_DockWidget)
