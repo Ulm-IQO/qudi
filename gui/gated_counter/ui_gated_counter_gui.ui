@@ -44,11 +44,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_start_measurement"/>
-   <addaction name="action_continue_measurement"/>
-   <addaction name="action_stop_measurement"/>
+   <addaction name="start_counter_Action"/>
+   <addaction name="stop_counter_Action"/>
    <addaction name="separator"/>
-   <addaction name="action_save_measurement"/>
+   <addaction name="save_measurement_Action"/>
   </widget>
   <widget class="QDockWidget" name="count_trace_DockWidget">
    <property name="sizePolicy">
@@ -74,7 +73,7 @@
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="1" column="0">
-        <widget class="PlotWidget" name="graphicsView">
+        <widget class="PlotWidget" name="gated_count_trace_PlotWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -123,7 +122,7 @@
         </widget>
        </item>
        <item row="0" column="0" colspan="3">
-        <widget class="PlotWidget" name="graphicsView_2">
+        <widget class="PlotWidget" name="histogram_PlotWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -169,7 +168,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Bufferlength (#)</string>
+          <string>Countlength (#)</string>
          </property>
         </widget>
        </item>
@@ -224,7 +223,7 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QSpinBox" name="buffer_length_SpinBox">
+        <widget class="QSpinBox" name="count_length_SpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -243,6 +242,9 @@
          <property name="maximum">
           <number>1000000</number>
          </property>
+         <property name="value">
+          <number>200</number>
+         </property>
         </widget>
        </item>
        <item row="1" column="1">
@@ -253,6 +255,9 @@
          <property name="maximum">
           <number>1000000</number>
          </property>
+         <property name="value">
+          <number>20</number>
+         </property>
         </widget>
        </item>
       </layout>
@@ -260,7 +265,7 @@
     </layout>
    </widget>
   </widget>
-  <action name="action_start_measurement">
+  <action name="start_counter_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
@@ -272,7 +277,7 @@
     <string>Start Gated Counter Measurement</string>
    </property>
   </action>
-  <action name="action_stop_measurement">
+  <action name="stop_counter_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</iconset>
@@ -296,7 +301,7 @@
     <string>Continue Gated Counter Measurement</string>
    </property>
   </action>
-  <action name="action_save_measurement">
+  <action name="save_measurement_Action">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</iconset>
