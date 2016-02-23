@@ -24,6 +24,7 @@ from collections import OrderedDict
 
 from gui.guibase import GUIBase
 from pyqtgraph.Qt import QtCore, QtGui, uic
+from pyqtgraph import PlotCurveItem
 
 
 class GatedCounterMainWindow(QtGui.QMainWindow):
@@ -46,7 +47,8 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'gatedcounterlogic1': 'GatedCounterLogic'}
+    _in = {'gatedcounterlogic1': 'GatedCounterLogic',
+           'traceanalysislogic1': 'TraceAnalysisLogic'}
 
 
     sigStartGatedCounter = QtCore.Signal()
@@ -78,8 +80,7 @@ class GatedCounterGui(GUIBase):
                          has happen.
         """
         self._counter_logic = self.connector['in']['gatedcounterlogic1']['object']
-
-        # self._trace_analysis = self.connector['in']['trace_analysis1']['object']
+        self._trace_analysis = self.connector['in']['traceanalysislogic1']['object']
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()
@@ -91,16 +92,30 @@ class GatedCounterGui(GUIBase):
         self._gp.setLabel('bottom', 'Number of Gates', units='#')
 
         # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._gp.plot()
-        self._curve1.setPen('g')
+        self._trace1 = self._gp.plot()
+        self._trace1.setPen('g')
 
         self._hp = self._mw.histogram_PlotWidget
 
         self._hp.setLabel('left', 'Occurrences', units='#')
         self._hp.setLabel('bottom', 'Counts', units='counts/s')
 
+        self._histoplot1 = PlotCurveItem()
+        self._hp.addItem(self._histoplot1)
+
+        self._histoplot1.setPen('b')
+        # self._histoplot1.  stepMode=True, fillLevel=0, brush=(0,0,255,150)
+
         # setting the x axis length correctly
         self._gp.setXRange(0, self._counter_logic.get_count_length())
+        self._mw.hist_bins_SpinBox.setRange(1, self._counter_logic.get_count_length())
+
+        self._mw.hist_bins_Slider.setRange(1,self._counter_logic.get_count_length())
+        self._mw.hist_bins_Slider.setSingleStep(1)
+
+        self._mw.hist_bins_Slider.sliderMoved.connect(self.num_bins_changed)
+        self._mw.hist_bins_SpinBox.valueChanged.connect(self.num_bins_changed)
+
 
         self._counter_logic.set_counting_mode('finite-gated')
         # Setting default parameters
@@ -114,9 +129,10 @@ class GatedCounterGui(GUIBase):
 
         self._mw.save_measurement_Action.triggered.connect(self.save_clicked)
 
-        self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
+        self._mw.count_length_SpinBox.editingFinished.connect(self.count_length_changed)
 
-        self._mw.count_per_readout_SpinBox.valueChanged.connect(self.count_per_readout_changed)
+        self._mw.count_per_readout_SpinBox.editingFinished.connect(self.count_per_readout_changed)
+
 
         # starting the physical measurement
         self.sigStartGatedCounter.connect(self._counter_logic.startCount)
@@ -124,6 +140,8 @@ class GatedCounterGui(GUIBase):
 
         self._counter_logic.sigCounterUpdated.connect(self.update_trace)
         self._counter_logic.sigGatedCounterFinished.connect(self.reset_display)
+
+        self._trace_analysis.sigHistogramUpdated.connect(self.update_histogram)
 
     def deactivation(self, e=None):
         """
@@ -182,6 +200,8 @@ class GatedCounterGui(GUIBase):
 #        print ('count_length_changed: {0:d}'.format(self._count_length_display.value()))
         self._counter_logic.set_count_length(self._mw.count_length_SpinBox.value())
         self._gp.setXRange(0, self._counter_logic.get_count_length())
+        self._mw.hist_bins_Slider.setRange(1, self._counter_logic.get_count_length())
+        self._mw.hist_bins_SpinBox.setRange(1, self._counter_logic.get_count_length())
 
     def count_per_readout_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
@@ -195,5 +215,19 @@ class GatedCounterGui(GUIBase):
 
         if self._counter_logic.getState() == 'locked':
             # self._mw.count_value_Label.setText('{0:,.0f}'.format(self._counter_logic.countdata_smoothed[-1]))
-            self._curve1.setData(y=self._counter_logic.countdata, x=np.arange(0, self._counter_logic.get_count_length()))
+            self._trace1.setData(x=np.arange(0, self._counter_logic.get_count_length()),
+                                 y=self._counter_logic.countdata )
             # self._curve2.setData(y=self._counter_logic.countdata_smoothed, x=np.arange(0, self._counter_logic.get_count_length())/self._counter_logic.get_count_frequency())
+
+    def update_histogram(self):
+
+        self._histoplot1.setData(x=self._trace_analysis.hist_data[0],
+                                 y=self._trace_analysis.hist_data[1],
+                                 stepMode=True, fillLevel=0,
+                                 brush=(0, 0, 255, 80))
+
+
+    def num_bins_changed(self, num_bins):
+        self._trace_analysis.set_num_bins_histogram(num_bins)
+        self._mw.hist_bins_SpinBox.setValue(num_bins)
+        self._mw.hist_bins_Slider.setValue(num_bins)
