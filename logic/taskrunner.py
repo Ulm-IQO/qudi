@@ -26,14 +26,16 @@ import logic.generic_task as gt
 import importlib
 
 class TaskListTableModel(ListTableModel):
-    """ An extension of the ListTableModel for keepting a task list in a TaskRunner.
+    """ An extension of the ListTableModel for keeping a task list in a TaskRunner.
     """
     def __init__(self):
         super().__init__()
-        self.headers = ['Task Name', 'Task State', 'Pre/Post actions', 'Pauses', 'Needs modules', 'is ok']
+        self.headers = ['Task Name', 'Task State', 'Pre/Post actions', 'Pauses',
+                        'Needs modules', 'is ok']
 
     def data(self, index, role):
-        """ Get data from model for a given cell. Data can have a role that affects display.
+        """ Get data from model for a given cell. Data can have a role that 
+        affects display.
 
           @param QModelIndex index: cell for which data is requested
           @param ItemDataRole role: role for which data is requested
@@ -62,7 +64,8 @@ class TaskListTableModel(ListTableModel):
 
     def append(self, data):
         """ Add a task to the end of the storage list and listen to its signals.
-          @param object data: PrePostTask or InterruptableTask to add to list.
+
+        @param object data: PrePostTask or InterruptableTask to add to list.
         """
         with self.lock:
             n = len(self.storage)
@@ -78,8 +81,9 @@ class TaskListTableModel(ListTableModel):
                 )
     
 class TaskRunner(GenericLogic):
-    """ This module keeps a collection of tasks that have varying preconditions, postconditions
-        and conflicts and executes these tasks as their given conditions allow.
+    """ This module keeps a collection of tasks that have varying preconditions,
+        postconditions and conflicts and executes these tasks as their given 
+        conditions allow.
     """
     _modclass = 'TaskRunner'
     _modtype = 'Logic'
@@ -91,17 +95,18 @@ class TaskRunner(GenericLogic):
     def __init__(self, manager, name, configuration, **kwargs):
         """ Initialzize a logic module.
 
-          @param object manager: Manager object that has instantiated this object
-          @param str name: unique module name
-          @param dict configuration: module configuration as a ict
-          @param dict kwargs: dict of additional arguments
+        @param object manager: Manager object that has instantiated this object
+        @param str name: unique module name
+        @param dict configuration: module configuration as a ict
+        @param dict kwargs: dict of additional arguments
         """
         callbacks = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, configuration, callbacks, **kwargs)
 
     def activation(self, e):
         """ Initialise task runner.
-          @param object e: Fysom state change notification
+
+        @param object e: Fysom state change notification
         """
         self.model = TaskListTableModel()
         self.model.rowsInserted.connect(self.modelChanged)
@@ -131,27 +136,33 @@ class TaskRunner(GenericLogic):
             t['name'] = task
             # print('tsk:', task)
             if not 'module' in config['tasks'][task]:
-                self.logMsg('No module given for task {}'.format(task), msgType='error')
+                self.logMsg('No module given for task {}'.format(task), 
+                            msgType='error')
                 continue
             else:
                 t['module'] = config['tasks'][task]['module']
                 # print('mod:', config['tasks'][task]['module'])
+
             if 'preposttasks' in config['tasks'][task]:
                 t['preposttasks'] = config['tasks'][task]['preposttasks']
             else:
                 t['preposttasks'] = []
+
             if 'pausetasks' in config['tasks'][task]:
                 t['pausetasks'] = config['tasks'][task]['pausetasks']
             else:
                 t['pausetasks'] = []
+
             if 'needsmodules' in config['tasks'][task]:
                 t['needsmodules'] = config['tasks'][task]['needsmodules']
             else:
                 t['needsmodules'] = {}
+
             if 'config' in config['tasks'][task]:
                 t['config'] = config['tasks'][task]['config']
             else:
                 t['config'] = {}
+
             try:
                 ref = dict()
                 for moddef, mod in t['needsmodules'].items():
