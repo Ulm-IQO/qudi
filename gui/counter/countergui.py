@@ -98,7 +98,7 @@ class CounterGui(GUIBase):
 
         if self._counting_logic._counting_device._photon_source2 is not None:
             self._curve3 = self._pw.plot()
-            self._curve3.setPen('b')
+            self._curve3.setPen('y')
             self._curve4 = self._pw.plot()
             self._curve4.setPen('b', width=4)
 
