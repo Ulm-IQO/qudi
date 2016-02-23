@@ -51,9 +51,26 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         else:
             self._photon_source2 = None
 
+
+        self.dist = 'dark_bright_gaussian'
+
+        # possibilities are:
+        # dark_bright_gaussian, uniform, exponential, single_poisson,
+        # dark_bright_poisson, single_gaussian
+
         # parameters
-        self.mean_signal = 5e5
-        self.noise_amplitude = 5e4
+        self.mean_signal = 260*1000
+        self.contrast = 0.3
+        self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
+        self.noise_amplitude = self.mean_signal*0.1
+
+        self.life_time_bright = 0.08 # 60 millisecond
+        self.life_time_dark    = 0.04 # 40 milliseconds
+
+        # needed for the life time simulation
+        self.current_dec_time = self.life_time_bright
+        self.curr_state_b = True
+        self.total_time = 0.0
 
     def deactivation(self, e):
         pass
@@ -116,10 +133,59 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         else:
             samples = int(samples)
 
+        timestep = 1./self._clock_frequency*samples
+
         count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
 
         for i in range(samples):
-            count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
+
+            if self.dist == 'single_gaussian':
+                count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude/2)
+
+            elif self.dist == 'dark_bright_gaussian':
+
+                self.total_time = self.total_time + timestep
+
+                if self.total_time > self.current_dec_time:
+                    if self.curr_state_b:
+                        self.curr_state_b = False
+                        self.current_dec_time = np.random.exponential(self.life_time_dark)
+                        count_data[0][i] = np.random.poisson(self.mean_signal)
+                    else:
+                        self.curr_state_b = True
+                        self.current_dec_time = np.random.exponential(self.life_time_bright)
+                    self.total_time = 0.0
+
+                count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude)*self.curr_state_b + \
+                                   np.random.normal(self.mean_signal2, self.noise_amplitude)*(1-self.curr_state_b)
+
+            elif self.dist == 'uniform':
+                count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
+
+            elif self.dist == 'exponential':
+                count_data[0][i] = np.random.exponential(self.mean_signal)
+
+            elif self.dist == 'single_poisson':
+                count_data[0][i] = np.random.poisson(self.mean_signal)
+
+            elif self.dist == 'dark_bright_poisson':
+                self.total_time = self.total_time + timestep
+
+                if self.total_time > self.current_dec_time:
+                    if self.curr_state_b:
+                        self.curr_state_b = False
+                        self.current_dec_time = np.random.exponential(self.life_time_dark)
+                        count_data[0][i] = np.random.poisson(self.mean_signal)
+                    else:
+                        self.curr_state_b = True
+                        self.current_dec_time = np.random.exponential(self.life_time_bright)
+                    self.total_time = 0.0
+
+                count_data[0][i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
+
+            else:
+                # make uniform as default
+                count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
 
         if self._photon_source2 is not None:
             for i in range(samples):

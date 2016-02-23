@@ -103,7 +103,8 @@ class GatedCounterGui(GUIBase):
         self._histoplot1 = PlotCurveItem()
         self._hp.addItem(self._histoplot1)
 
-        self._histoplot1.setPen('b')
+        # self._histoplot1.setPen('b')
+        self._histoplot1.setPen((37,87,238,255))
         # self._histoplot1.  stepMode=True, fillLevel=0, brush=(0,0,255,150)
 
         # setting the x axis length correctly
@@ -224,7 +225,8 @@ class GatedCounterGui(GUIBase):
         self._histoplot1.setData(x=self._trace_analysis.hist_data[0],
                                  y=self._trace_analysis.hist_data[1],
                                  stepMode=True, fillLevel=0,
-                                 brush=(0, 0, 255, 80))
+                                 brush=(0, 0, 208, 180))
+
 
 
     def num_bins_changed(self, num_bins):
