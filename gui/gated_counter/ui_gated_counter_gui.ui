@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>687</width>
-    <height>412</height>
+    <width>685</width>
+    <height>448</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>687</width>
+     <width>685</width>
      <height>21</height>
     </rect>
    </property>
@@ -105,23 +105,34 @@
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout_4">
        <item row="1" column="1">
-        <widget class="QSpinBox" name="spinBox_2"/>
+        <widget class="QSpinBox" name="hist_bins_SpinBox"/>
        </item>
        <item row="1" column="0">
-        <widget class="QSlider" name="horizontalSlider">
+        <widget class="QSlider" name="hist_bins_Slider">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="2">
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="fit_poisson_PushButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Fit Poisson</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0" colspan="3">
+       <item row="1" column="3">
+        <widget class="QCheckBox" name="checkBox">
+         <property name="text">
+          <string>Manual
+Threshold</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="4">
         <widget class="PlotWidget" name="histogram_PlotWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
