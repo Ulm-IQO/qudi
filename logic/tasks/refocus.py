@@ -10,7 +10,7 @@ class Task(InterruptableTask):
         print('Task {} added!'.format(self.name))
 
     def startTask(self):
-        """ Get position from scnning device and do the refocus """
+        """ Get position from scanning device and do the refocus """
         pos = self.ref['optimizer']._scanning_device.get_scanner_position()
         self.ref['optimizer'].start_refocus(pos, 'task')
 
@@ -32,7 +32,7 @@ class Task(InterruptableTask):
 
     def checkExtraStartPrerequisites(self):
         """ Check whether anything we need is locked. """
-        print('things neede for task to start')
+        print('things needed for task to start')
         return (
             not self.ref['optimizer']._scanning_device.isstate('locked')
             and not self.ref['optimizer'].isstate('locked')

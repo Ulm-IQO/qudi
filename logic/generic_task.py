@@ -43,9 +43,11 @@ class InterruptableTask(QtCore.QObject, Fysom):
 
         stopped -> starting -----------> running ---------> finishing -*
            ^          |            _______|   ^_________               |
-           |<---------*            v                   |               |
+           |<---------*            v                   |               v
            |                   pausing -> paused -> resuming           |
-           |______________________|____________________|_______________|
+           |                      |                    |               |
+           ^                      v                    v               |
+           |-------------<--------|----------<---------|--------<-------
 
         Each state has a transition state that allow for checks, synchronizatuion and for parts of the task
         to influence its own execution via signals.
@@ -242,16 +244,17 @@ class InterruptableTask(QtCore.QObject, Fysom):
         return True
 
     def checkExtraStartPrerequisites(self):
-        """ If yout task has extra prerequisites that are not covered by checking if a certain task can be paused,
-            ovewrite this function when subclassing. 
+        """ If your task has extra prerequisites that are not covered by 
+            checking if a certain task can be paused, overwrite this function 
+            when sub-classing. 
 
-          @return bool: return True if task can be started, False otherwise
+        @return bool: return True if task can be started, False otherwise
         """
         return True
 
     def checkPausePrerequisites(self):
-        """ Check if task is allowed to pause based on external state.
-        """
+        """ Check if task is allowed to pause based on external state."""
+
         try:
             return self.checkExtraPausePrerequisites()
         except Exception as e:
