@@ -903,7 +903,7 @@ class ConfocalGui(GUIBase):
                 z=optimal_pos[2],
                 a=0.0
                 )
-    
+
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
         if enable and self._scanning_logic.history_index < len(self._scanning_logic.history) - 1:
@@ -1152,7 +1152,7 @@ class ConfocalGui(GUIBase):
         roi_x_view = self.roi_xy.pos()[0]
         roi_y_view = self.roi_xy.pos()[1]
 
-        if not x is None: 
+        if not x is None:
             roi_x_view = x - self.roi_xy.size()[0] * 0.5
         if not y is None:
             roi_y_view = y - self.roi_xy.size()[1] * 0.5
@@ -1182,7 +1182,7 @@ class ConfocalGui(GUIBase):
 
     def update_from_roi_xy(self, roi):
         """The user manually moved the XY ROI, adjust all other GUI elements accordingly
-        
+
         @params object roi: PyQtGraph ROI object
         """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
@@ -1210,7 +1210,7 @@ class ConfocalGui(GUIBase):
 
     def update_from_roi_depth(self, roi):
         """The user manually moved the Z ROI, adjust all other GUI elements accordingly
-        
+
         @params object roi: PyQtGraph ROI object
         """
         x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
@@ -1262,7 +1262,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth(x=x_pos)
         self.update_slider_x(x_pos)
         self._scanning_logic.set_position('xinput', x=x_pos)
-        
+
     def update_from_input_y(self):
         """The user changed the number in the y position spin box, adjust all other GUI elements."""
         y_pos = self._mw.y_current_InputWidget.value()
@@ -1303,7 +1303,7 @@ class ConfocalGui(GUIBase):
 
     def update_from_slider_x(self, sliderValue):
         """The user moved the x position slider, adjust the other GUI elements.
-        
+
         @params int sliderValue: slider postion, a quantized whole number
         """
         x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
@@ -1314,7 +1314,7 @@ class ConfocalGui(GUIBase):
 
     def update_from_slider_y(self, sliderValue):
         """The user moved the y position slider, adjust the other GUI elements.
-        
+
         @params int sliderValue: slider postion, a quantized whole number
         """
         y_pos = self._scanning_logic.y_range[0] + sliderValue * self.slider_res
@@ -1324,7 +1324,7 @@ class ConfocalGui(GUIBase):
 
     def update_from_slider_z(self, sliderValue):
         """The user moved the z position slider, adjust the other GUI elements.
-        
+
         @params int sliderValue: slider postion, a quantized whole number
         """
         z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
@@ -1334,7 +1334,7 @@ class ConfocalGui(GUIBase):
 
     def update_slider_x(self, x_pos):
         """ Update the x slider when a change happens.
-        
+
         @param float x_pos: x position in µm
         """
         self._mw.x_SliderWidget.setValue((x_pos - self._scanning_logic.x_range[0]) / self.slider_res)
@@ -1528,7 +1528,7 @@ class ConfocalGui(GUIBase):
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
         xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:,:,3].transpose()
-        
+
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.max(xy_optimizer_image) != 0:
             colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image) ] )
@@ -1773,7 +1773,7 @@ class ConfocalGui(GUIBase):
         """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y%m%d-%H%M-%S_confocal_xy_scan_image')
+        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_xy_scan_image')
 
         self._mw.xy_ViewWidget.plotItem.removeItem(self.roi_xy)
         self._mw.xy_ViewWidget.plotItem.removeItem(self.hline_xy)
@@ -1808,7 +1808,7 @@ class ConfocalGui(GUIBase):
         """
 
         filepath = self._save_logic.get_path_for_module(module_name='Confocal')
-        filename = filepath + self._save_logic.dir_slash + time.strftime('%Y%m%d-%H%M-%S_confocal_depth_scan_image')
+        filename = filepath + os.sep + time.strftime('%Y%m%d-%H%M-%S_confocal_depth_scan_image')
 
         self._mw.depth_ViewWidget.plotItem.removeItem(self.roi_depth)
         self._mw.depth_ViewWidget.plotItem.removeItem(self.hline_depth)
