@@ -81,7 +81,7 @@ class AWG5002C(Base, PulserInterface):
             self.logMsg('No parameter "timeout" found in the config for '
                         'the AWG5002C! Take a default value of 10s.',
                         msgType='error')
-
+            self._timeout = 10
 
         self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
         self.current_sample_mode = self.sample_mode['wfm-file']
