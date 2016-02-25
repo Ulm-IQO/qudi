@@ -449,7 +449,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @return: string, absolute path to the directory with folder 'name'.
         """
 
-        path = self.pulsed_file_dir + name
+        path = os.path.join(self.pulsed_file_dir,name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
@@ -558,7 +558,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # TODO: Overwrite handling
         block.name = name
-        with open(self.block_dir + name + '.blk', 'wb') as outfile:
+        with open(os.path.join(self.block_dir, name + '.blk'), 'wb') as outfile:
             pickle.dump(block, outfile)
         self.refresh_block_list()
         self.current_block = block
@@ -578,7 +578,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         if name in self.saved_pulse_blocks:
-            with open(self.block_dir + name + '.blk', 'rb') as infile:
+            with open(os.path.join(self.block_dir, name + '.blk'), 'rb') as infile:
                 block = pickle.load(infile)
         else:
             self.logMsg('The Pulse_Block object with name "{0}" could not be '
@@ -597,7 +597,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         if name in self.saved_pulse_blocks:
-            os.remove(self.block_dir + name + '.blk')
+            os.remove(os.path.join(self.block_dir + name + '.blk'))
             self.refresh_block_list()
         else:
             self.logMsg('Pulse_Block object with name "{0}" not found '
@@ -626,7 +626,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         '''
         # TODO: Overwrite handling
         ensemble.name = name
-        with open(self.ensemble_dir + name + '.ens', 'wb') as outfile:
+        with open(os.path.join(self.ensemble_dir, name + '.ens'), 'wb') as outfile:
             pickle.dump(ensemble, outfile)
         self.refresh_ensemble_list()
         self.current_ensemble = ensemble
@@ -643,7 +643,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         if name in self.saved_pulse_block_ensembles:
-            with open(self.ensemble_dir + name + '.ens', 'rb') as infile:
+            with open( os.path.join(self.ensemble_dir, name + '.ens'), 'rb') as infile:
                 ensemble = pickle.load(infile)
         else:
             self.logMsg('The Pulse_Block_Ensemble object with name "{0}" '
@@ -662,7 +662,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ''' remove the ensemble "name" from the ensemble list and HDD
         '''
         if name in self.saved_pulse_block_ensembles:
-            os.remove(self.ensemble_dir + name + '.ens')
+            os.remove( os.path.join(self.ensemble_dir, name + '.ens'))
             self.refresh_ensemble_list()
         else:
             # TODO: implement proper error
@@ -687,7 +687,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         '''
         # TODO: Overwrite handling
         sequence.name = name
-        with open(self.sequence_dir + name + '.se', 'wb') as outfile:
+        with open( os.path.join(self.sequence_dir, name + '.se'), 'wb') as outfile:
             pickle.dump(sequence, outfile)
         self.refresh_sequence_list()
         self.current_sequence = sequence
@@ -704,7 +704,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         if name in self.saved_sequences:
-            with open(self.sequence_dir + name + '.se', 'rb') as infile:
+            with open( os.path.join(self.sequence_dir, name + '.se'), 'rb') as infile:
                 sequence = pickle.load(infile)
         else:
             self.logMsg('The Sequence object with name "{0}" could not be '
@@ -722,7 +722,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ''' remove the sequence "name" from the sequence list and HDD
         '''
         if name in self.saved_sequences:
-            os.remove(self.sequence_dir + name + '.se')
+            os.remove( os.path.join(self.sequence_dir, name + '.se'))
             self.refresh_sequence_list()
         else:
             # TODO: implement proper error
