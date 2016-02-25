@@ -272,7 +272,7 @@ class ODMRLogic(GenericLogic):
                 self.signal_ODMR_matrix_updated.emit()
                 return
 
-        self._MW_device.reset_listpos()
+#        self._MW_device.reset_listpos()
         new_counts = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
 
 
