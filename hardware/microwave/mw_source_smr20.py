@@ -1,22 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-This file contains the QuDi hardare module MWSourceSMR20 class.
-
-QuDi is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-QuDi is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with QuDi. If not, see <http://www.gnu.org/licenses/>.
-
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
-"""
 
 from core.base import Base
 from hardware.microwave.mwsourceinterface import MWInterface
@@ -41,36 +23,38 @@ class MWSourceSMR20(Base,MWInterface):
         Base.__init__(self, manager, name, config, cb)
 
     def activation(self, e):
+    	
         # checking for the right configuration
         config = self.getConfiguration()
+
         if 'gpib_address' in config.keys():
             self._gpib_address = config['gpib_address']
         else:
-            self.logMsg('MWSourceSMR20: did not find >>gpib_address<< in configration.', msgType='error')
+            self.logMsg('MWSourceSMR20: did not find parameter '
+            			'>>gpib_address<< in configuration.', msgType='error')
         
         if 'gpib_timeout' in config.keys():
             self._gpib_timeout = int(config['gpib_timeout'])
         else:
             self._gpib_timeout = 10
-            self.logMsg('MWSourceSMR20: did not find >>gpib_timeout<< in configration. I will set it to 10 seconds.', msgType='error')
+            self.logMsg('MWSourceSMR20: did not find >>gpib_timeout<< in '
+            			'configration. It will be set to {0} '
+            			'seconds.'.format(self._gpib_timeout),
+            			msgType='error')
         
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
-        try:
-            # it seems that pyvisa has a problem concerning the parameter
-            # 'timeout'. It no timeout is specified for this device then a
-            # a sequential set of commands can be processed. Even the Handshake
-            # signal *WAI for write commands or *OPC? for read commands cannot
-            # prevent an error. That happens only if a timeout value is 
-            # specified. Here the error report:
-            # http://pyvisa.sourceforge.net/pyvisa.html#sec-timeouts
-            # Therefore do not pass the timeout parameter to visa connection.    
- #            self._gpib_connection = self.rm.open_resource(self._gpib_address, timeout=self._gpib_timeout)
-            self._gpib_connection = self.rm.open_resource(self._gpib_address)
+        try:  
+            self._gpib_connection = self.rm.open_resource(self._gpib_address, 
+            										timeout=self._gpib_timeout)
+            #self._gpib_connection.term_chars = "\r\n"
 
-            self.logMsg('MWSourceSMR20: initialised and connected to hardware.', msgType='status')
+            self.logMsg('MWSourceSMR20: initialised and connected to '
+            			'hardware.', msgType='status')
         except:
-            self.logMsg('MWSourceSMR20: could not connect to the GPIB address >>{0}<<.'.format(self._gpib_address), msgType='error')
+             self.logMsg('MWSourceSMR20: could not connect to the GPIB '
+             			 'address >>{0}<<.'.format(self._gpib_address), 
+             			 msgType='error')
 
     def deactivation(self, e):
         self.off()  # turn the device off in case it is running
@@ -94,7 +78,7 @@ class MWSourceSMR20(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-
+        self._gpib_connection.write('*WAI')
         if self._gpib_connection.ask(':FREQ:MODE?') == 'LIST':
             self._gpib_connection.write(':FREQ:MODE CW')
         self._gpib_connection.write(':OUTP OFF')
@@ -119,7 +103,7 @@ class MWSourceSMR20(Base,MWInterface):
         """
         
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':POW {:f}'.format(power))
+        self._gpib_connection.write(':POW {:f};'.format(power))
         return 0
         
     def get_frequency(self):
@@ -138,12 +122,14 @@ class MWSourceSMR20(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
+
+ 
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':FREQ {:e}'.format(freq))
         # {:e} meens a representation in float with exponential style
         return 0
         
-    def set_cw(self, freq=None, power=None):
+    def set_cw(self,freq=None, power=None):
         """ Sets the MW mode to cw and additionally frequency and power
         
         @param float freq: frequency to set in Hz
@@ -151,61 +137,80 @@ class MWSourceSMR20(Base,MWInterface):
         
         @return int: error code (0:OK, -1:error)
         """
-
-        error = 0
         self._gpib_connection.write(':FREQ:MODE CW')
         
         if freq != None:
-            error = self.set_frequency(freq)
-        else:
-            return -1
+            self.set_frequency(freq)
+
         if power != None:
-            error = self.set_power(power)
-        else:
-            return -1
+            self.set_power(power)
         
-        return error
+        self.on()
         
-    def set_list(self, freq=None, power=None):
+        return 0
+        
+    def set_list(self,freq=None, power=None):
         """Sets the MW mode to list mode 
         @param list freq: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
          
         @return int: error code (0:OK, -1:error)
         """
-        error = 0
+        error = 0    
         
         if self.set_cw(freq[0],power) != 0:
             self.logMsg('The frequency list has an invalide first frequency '
                         'and power, which cannot be set.', msgType='error')
             error = -1
-            
+               
+        self._gpib_connection.write(':SOUR:LIST:MODE STEP')
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:DEL:ALL')
+                       
+               
+        # It seems that we have to set a DWEL for the device, but it is not so
+        # clear why it is necessary. At least there was a hint in the manual for
+        # that:
+        self._gpib_connection.write(':SOUR:LIST:DWEL')
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(":LIST:SEL 'ODMR'")
+        
+        
+        self._gpib_connection.write(':SOUR:LIST:DEL:ALL')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(":SOUR:LIST:SEL 'ODMR'")
         FreqString = ''
+        PowerString = ''
         
         for f in freq[:-1]:
-            FreqString += ' {:f},'.format(f)
-        FreqString += ' {:f},'.format(freq[-1])
+            FreqString += ' {:f}Hz,'.format(f)
+            PowerString +=' {:f}dBm,'.format(power)
+        FreqString += ' {:f}Hz'.format(freq[-1])
+        PowerString +=' {:f}dBm'.format(power)
       
-        self._gpib_connection.write(':LIST:FREQ' + FreqString)
+        self._gpib_connection.write(':SOUR:LIST:FREQ' + FreqString)
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:POW' + (' {:f},'.format(power * len(freq))[:-1]))
+
+        self._gpib_connection.write(':SOUR:LIST:POW' + PowerString)
+       
+        # It seems that we have to set a DWEL for the device, but it is not so
+        # clear why it is necessary. At least the instrument displays an error,
+        # when this parameter is not set in the list mode (even it should be
+        # set by default):
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':OUTP:AMOD FIX')     
        
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
-        self._gpib_connection.write(':TRIG1:SLOP NEG')
-        self._gpib_connection.write(':LIST:MODE STEP')
         self._gpib_connection.write('*WAI')
-        
-        N = int(np.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
+        self._gpib_connection.write(':TRIG1:SLOP NEG')
+        self._gpib_connection.write('*WAI')
+
+        N = int(np.round(float(self._gpib_connection.ask(':SOUR:LIST:FREQ:POIN?'))))
         
         if N != len(freq):
             error = -1
             self.logMsg('The input Frequency list does not corresponds to the '
                         'generated List from the SMR20.', msgType='error')
+        
         return error
         
     def reset_listpos(self):
@@ -213,9 +218,11 @@ class MWSourceSMR20(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        
-        self._gpib_connection.write(':FREQ:MODE CW; :FREQ:MODE LIST')
         self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':FREQ:MODE CW')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':FREQ:MODE LIST')
+        
         return 0
         
     def list_on(self):
@@ -223,11 +230,11 @@ class MWSourceSMR20(Base,MWInterface):
          
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write(':OUTP ON')
-        self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':LIST:LEAR')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':FREQ:MODE LIST')
+        self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':OUTP ON')
         
         return 0
     
@@ -241,12 +248,12 @@ class MWSourceSMR20(Base,MWInterface):
         Set the Amplitude modulation based on an external DC signal source and
         switch on the device after configuration.
         """
-
+        self._gpib_connection.write('*WAI')
         self._gpib_connection.write('AM:SOUR EXT')
         self._gpib_connection.write('AM:EXT:COUP DC')
         self._gpib_connection.write('AM {:f}'.format(float(depth)))
         self._gpib_connection.write('AM:STAT ON')
-        self._gpib_connection.write('*WAI')
+        
         
         return 0
         
@@ -256,8 +263,9 @@ class MWSourceSMR20(Base,MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         
-        self._gpib_connection.write(':AM:STAT OFF')
         self._gpib_connection.write('*WAI')
+        self._gpib_connection.write(':AM:STAT OFF')
+        
         
         return 0
     
@@ -272,3 +280,10 @@ class MWSourceSMR20(Base,MWInterface):
         # for the SMR20 no configuration is needed.
         return 0
         
+    def reset_device(self):
+        """ Resets the device and sets the default values."""
+        self._gpib_connection.write(':SYSTem:PRESet')
+        self._gpib_connection.write('*RST')
+        self._gpib_connection.write(':OUTP OFF')
+    
+        return 0
