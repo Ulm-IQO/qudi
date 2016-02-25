@@ -597,7 +597,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         if name in self.saved_pulse_blocks:
-            os.remove(os.path.join(self.block_dir + name + '.blk'))
+            os.remove(os.path.join(self.block_dir, name + '.blk'))
             self.refresh_block_list()
         else:
             self.logMsg('Pulse_Block object with name "{0}" not found '

@@ -256,9 +256,27 @@ class FitLogic(GenericLogic):
         ########################################################################
 
         def make_gaussian_model(self):
-            """ This method creates a model of a gaussian with an offset. The
-            parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
-            'c'. For function see:
+            """ This method creates a model of a gaussian with an offset.
+
+            @return (lmfit.model.CompositeModel, lmfit.parameter.Parameters)
+
+            Explanation of the objects:
+                lmfit.model.CompositeModel:
+                    A model the lmfit module will use for that fit. Here a
+                    gaussian model
+                lmfit.parameter.Parameters:
+                    It is basically an OrderedDict, so a dictionary, with keys
+                    denoting the parameters as string names and values which are
+                    lmfit.parameter.Parameter (without s) objects, keeping the
+                    information about the current value.
+                    The used model has the Parameter with the meaning:
+                        'amplitude' : amplitude
+                        'center'    : center
+                        'sigm'      : sigma
+                        'fwhm'      : full width half maximum
+                        'c'         : offset
+
+            For further information have a look in:
             http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
 
             @return lmfit.model.CompositeModel model: Returns an object of the
@@ -267,7 +285,6 @@ class FitLogic(GenericLogic):
                                                        class Parameters with all
                                                        parameters for the
                                                        gaussian model.
-
             """
 
             model=GaussianModel()+ConstantModel()
