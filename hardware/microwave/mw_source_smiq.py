@@ -186,7 +186,12 @@ class Mwsourcesmiq(Base, MWInterface):
         
         if N != len(freq):
             error = -1
-            
+
+        self._gpib_connection.write(':LIST:LEARN')
+        #print(self._gpib_connection.ask('*OPC?'))
+        self._gpib_connection.write('*WAI')
+        # If there are timeout  problems after this command, update the smiq firmware to > 5.90 as there was a problem
+        # with excessive wait times after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
         return error
         
     def reset_listpos(self):#
@@ -208,11 +213,15 @@ class Mwsourcesmiq(Base, MWInterface):
         @return int: error code (0:OK, -1:error)
         """
         self._gpib_connection.write(':OUTP ON')
+        #print(self._gpib_connection.ask('*OPC?'))
         self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':LIST:LEAR')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':FREQ:MODE LIST')
-        
+        #print(self._gpib_connection.ask('*OPC?'))
+        self._gpib_connection.write(':LIST:LEARN')
+        #print(self._gpib_connection.ask('*OPC?'))
+        #self._gpib_connection.write('*WAI')
+        #print(self._gpib_connection.ask('*OPC?'))
+        #self._gpib_connection.write(':FREQ:MODE LIST')
+        #print(self._gpib_connection.ask('*OPC?'))
         return 0
         
     def trigger(self,source,pol):
