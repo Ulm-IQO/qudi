@@ -332,7 +332,8 @@ class AWG5002C(Base, PulserInterface):
 
         return 0
 
-    def send_file(self, filepath):
+    # def send_file(self, filepath):
+    def upload_asset(self, filename):
         """ Sends an already hardware specific waveform file to the pulse
             generators waveform directory.
 
@@ -343,6 +344,10 @@ class AWG5002C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
+
+        # for i in range(1,3,1):
+        filepath = os.path.join(self.host_waveform_directory, filename+ '.WFM')
+        # self.logMsg(('Uploaded: ', filepath))
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
