@@ -1841,10 +1841,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             timeout = self._RWTimeout
 
         # Count data will be written here
-        _gated_count_data = np.empty((samples,), dtype=np.uint32)
+        _gated_count_data = np.empty([2,samples], dtype=np.uint32)
 
         # Number of samples which were read will be stored here
-        n_read_samples = daq.uInt32()
+        n_read_samples = daq.int32()
 
         if read_available_samples:
             num_samples = -1  # If the task acquires a finite number of samples
@@ -1852,27 +1852,27 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
                               # waits for the task to acquire all requested
                               # samples, then reads those samples.
         else:
-            num_samples = samples
+            num_samples = int(samples)
+
 
         daq.DAQmxReadCounterU32(
                 self._gated_counter_daq_task,   # read from this task
                 num_samples,                    # read number samples
                 timeout,                        # maximal timeout for the read
                                                 # process
-                _gated_count_data.ctypes.data,  # write into this array
-               samples,                         # length of array to write into
-               daq.byref(n_read_samples),       # number of samples which were
-                                                # actually read.
-               None)                            # Reserved for future use. Pass
+                _gated_count_data[0],  # write into this array
+                samples,                         # length of array to write into
+                daq.byref(n_read_samples),       # number of samples which were # actually read.     
+                None)                            # Reserved for future use. Pass
                                                 # NULL (here None) to this
                                                 # parameter
 
         # Chops the array or read sample to the length that it exactly returns
         # acquired data and not more
         if read_available_samples:
-            return _gated_count_data[:n_read_samples.value], n_read_samples.value
+            return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
         else:
-            return _gated_count_data[:]
+            return _gated_count_data
 
 
     def stop_gated_counter(self):
@@ -1942,6 +1942,7 @@ class NICard2(NICard):
         self._counting_edge_default = True  # count on rising edge
                                             # mainly used for gated counter
 
+        self._counter_channel = '/NIDAQ/Ctr0'
 
         config = self.getConfiguration()
 
@@ -1996,7 +1997,7 @@ class NICard2(NICard):
         """
         # ignore that command. For an gated counter (with external trigger
         # you do not need a clock signal).
-        pass
+        return 0
 
     def set_up_counter(self,
                        counter_channel=None,
@@ -2024,6 +2025,8 @@ class NICard2(NICard):
 
         self.set_up_gated_counter(buffer_length=counter_buffer)
         self.start_gated_counter()
+
+        return 0
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
