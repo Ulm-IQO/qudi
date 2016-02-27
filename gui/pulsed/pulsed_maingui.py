@@ -1077,7 +1077,7 @@ class PulsedMeasurementGui(GUIBase):
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
         # Sample the ensemble via logic module
-        self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
+        self._seq_gen_logic.sample_ensemble(ensemble_name, True, False)
         return
 
     def upload_to_device_clicked(self):

@@ -179,7 +179,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
         self.current_status = 0
         return self.current_status
 
-    def write_to_file(self, name, ana_samples, digi_samples, sample_rate,
+    def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
                        pp_voltage):
         if self.current_sample_mode == self.sample_mode['matlab']:
             matcontent = {}
