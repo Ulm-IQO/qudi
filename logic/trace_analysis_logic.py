@@ -20,7 +20,6 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 
 from logic.generic_logic import GenericLogic
 from PyQt4 import QtGui, QtCore
-from logic.trace_analysis.trace_analysis import Trace
 import numpy as np
 import time
 
@@ -69,7 +68,7 @@ class TraceAnalysisLogic(GenericLogic):
         # self._trace
 
         self.hist_data = None
-        self. hist_num_bins = None
+        self._hist_num_bins = None
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -106,7 +105,7 @@ class TraceAnalysisLogic(GenericLogic):
         @param bool update: if the change of bins should evoke a recalculation
                             of the histogram.
         """
-        self. hist_num_bins = num_bins
+        self._hist_num_bins = num_bins
 
         if update:
             self.do_calculate_histogram()
@@ -118,7 +117,7 @@ class TraceAnalysisLogic(GenericLogic):
         """
 
         self.hist_data = self.calculate_histogram(self._counter_logic.countdata,
-                                                  self. hist_num_bins)
+                                                  self._hist_num_bins)
 
 
         self.sigHistogramUpdated.emit()

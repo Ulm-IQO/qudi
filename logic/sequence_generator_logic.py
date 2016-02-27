@@ -1084,7 +1084,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             print('Time needed for write chunkwise: ', time.time()-start_time, ' sec')
             return
         else:
-            self._pulse_generator_device.write_to_file(ensemble.name, analogue_samples, digital_samples, self.sample_rate, self.pp_voltage)
+            # FIXME:
+            # WHAT IS THAT SHIT??? :P
+            # THAT IS NO INTERFACE COMMAND OF THE PULSER!!!
+            self._pulse_generator_device._write_to_file(ensemble.name, analogue_samples, digital_samples, self.sample_rate, self.pp_voltage)
             print('Time needed for write in whole: ', time.time()-start_time, ' sec')
             return
 
