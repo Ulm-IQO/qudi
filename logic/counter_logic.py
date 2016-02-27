@@ -571,8 +571,9 @@ class CounterLogic(GenericLogic):
                     return
         try:
             # read the current counter value
-            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
 
+            self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
+            
         except Exception as e:
             self.logMsg('The counting went wrong, killing the counter.',
                         msgType='error')
@@ -591,6 +592,9 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         else:
+            self.logMsg(('len(self.rawdata[0]):', len(self.rawdata[0])))
+            self.logMsg(('self._already_counted_samples', self._already_counted_samples))
+
             # replace the first part of the array with the new data:
             self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
             # roll the array by the amount of data it had been inserted:
