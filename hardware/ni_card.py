@@ -154,10 +154,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         @param object e: Event class object from Fysom.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
                          of the state which should be reached after the event
-                         has happen.
+                         had happened.
         """
 
         # the tasks used on that hardware device:

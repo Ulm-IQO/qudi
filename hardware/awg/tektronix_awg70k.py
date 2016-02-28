@@ -64,7 +64,6 @@ class AWG70K(Base, PulserInterface):
         self.use_sequencer = False
 
         self.awg_waveform_directory = '/waves/'
-        self.host_waveform_directory = 'C:/software/qudi/trunk/waveforms/'
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -72,22 +71,25 @@ class AWG70K(Base, PulserInterface):
             if not os.path.exists(self.pulsed_file_dir):
 
                 homedir = self.get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
-                self.logMsg('The directort defined in "pulsed_file_dir" in the'
-                        'config for SequenceGeneratorLogic class does not '
-                        'exist!\nThe default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self.logMsg('The directory defined in parameter '
+                            '"pulsed_file_dir" in the config for '
+                            'SequenceGeneratorLogic class does not exist!\n'
+                            'The default home directory\n{0}\n will be taken '
+                            'instead.'.format(self.pulsed_file_dir),
+                            msgType='warning')
         else:
             homedir = self.get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
-            self.logMsg('No directory with the attribute "pulsed_file_dir"'
-                        'is defined for the SequenceGeneratorLogic!\nThe '
-                        'default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir), msgType='warning')
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+            self.logMsg('No parameter "pulsed_file_dir" was specified in the '
+                        'config for SequenceGeneratorLogic as directory for '
+                        'the pulsed files!\nThe default home directory\n{0}\n'
+                        'will be taken instead.'.format(self.pulsed_file_dir),
+                        msgType='warning')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
-        self.active_channel = (2,4)
+        self.active_channel = (2, 4)
         self.interleave = False
 
         self.current_status =  0
@@ -95,7 +97,16 @@ class AWG70K(Base, PulserInterface):
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
+
         # connect ethernet socket and FTP
         self.soc = socket(AF_INET, SOCK_STREAM)
         self.soc.settimeout(3)
@@ -112,8 +123,12 @@ class AWG70K(Base, PulserInterface):
 
 
     def deactivation(self, e):
-        """Tasks that are required to be performed during deactivation of the module.
+        """ Required tasks to be performed during deactivation of the module.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in method activation.
         """
+
         # Closes the connection to the AWG via ftp and the socket
         self.tell('\n')
         self.soc.close()
@@ -141,7 +156,6 @@ class AWG70K(Base, PulserInterface):
         If you are not sure about the meaning, look in other hardware files
         to get an impression.
         """
-
 
         constraints = {}
         # (min, max, incr) in samples/second:
@@ -257,8 +271,9 @@ class AWG70K(Base, PulserInterface):
 
 
     def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples, is_first_chunk,
-                            is_last_chunk, sample_rate, pp_voltage):
+                            digital_samples_chunk, total_number_of_samples,
+                            is_first_chunk, is_last_chunk, sample_rate,
+                            pp_voltage):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -275,6 +290,7 @@ class AWG70K(Base, PulserInterface):
                               write to this file.
         @return: error code (0: OK, -1: error)
         """
+
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
             # create header
