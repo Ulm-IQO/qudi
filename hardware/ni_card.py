@@ -33,7 +33,7 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
              ODMRCounterInterface):
-    """stable: Kay Jahnke, Alexander Stark
+    """ stable: Kay Jahnke, Alexander Stark
 
 	A National Instruments device that can count and control microvave generators.
 
