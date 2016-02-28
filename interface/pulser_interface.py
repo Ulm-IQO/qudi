@@ -82,11 +82,35 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def upload_asset(self, name):
+    #FIXME: That method needs to be carefully investigated to be used also for
+    #       pulsing devices without analogue channels!
+    def write_chunk_to_file(self, name, analogue_samples_chunk,
+                            digital_samples_chunk, total_number_of_samples,
+                            is_first_chunk, is_last_chunk, sample_rate,
+                            pp_voltage):
         """
-        Waveform or sequence with name "name" gets uploaded to the Hardware.
+        Appends a sampled chunk of a whole waveform to a file. Create the file
+        if it is the first chunk.
 
-        @param str name: The name of the sequence/waveform to be transfered
+        @param name: string representing the name of the sampled ensemble
+        @param analogue_samples_chunk: float32 numpy ndarray containing the
+                                       samples for the analogue channels.
+        @param digital_samples_chunk: bool numpy ndarray containing the samples
+                                      for the digital channels.
+        @param total_number_of_samples: The total number of samples in the entire waveform
+        @param is_first_chunk: bool indicating if the current chunk is the
+                               first write to this file.
+        @param is_last_chunk: bool indicating if the current chunk is the last
+                              write to this file.
+        @return: error code (0: OK, -1: error)
+        """
+        raise InterfaceImplementationError('PulserInterface>write_chunk_to_file')
+        return -1
+
+    def upload_asset(self, name):
+        """ Waveform or sequence with name "name" gets uploaded to the Hardware.
+
+        @param str name: The name of the sequence/waveform to be transferred
 
         @return int: error code (0:OK, -1:error)
         """
@@ -94,7 +118,8 @@ class PulserInterface():
         return -1
 
     def load_asset(self, asset_name, channel=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing device.
+        """ Loads a sequence or waveform to the specified channel of the pulsing
+            device.
 
         @param str asset_name: The name of the asset to be loaded
         @param int channel: The channel for the sequence to be loaded into if
@@ -142,7 +167,7 @@ class PulserInterface():
 
         @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return foat: the sample rate returned from the device (-1:error)
+        @return float: the sample rate returned from the device (-1:error)
         """
         raise InterfaceImplementationError('PulserInterface>set_sampling_rate')
         return -1.
@@ -308,7 +333,7 @@ class PulserInterface():
         return ''
 
     def reset(self):
-        """Reset the device.
+        """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """

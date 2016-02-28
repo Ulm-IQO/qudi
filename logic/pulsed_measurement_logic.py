@@ -29,8 +29,8 @@ class PulsedMeasurementLogic(GenericLogic):
             'pulseanalysislogic': 'PulseAnalysisLogic',
             'fitlogic': 'FitLogic',
             'savelogic': 'SaveLogic',
-            'mykrowave': 'mykrowave'
-           #'pulsegenerator': 'PulserInterfaceDummy',
+            'mykrowave': 'mykrowave',
+            'pulsegenerator': 'PulserInterfae',
             }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
@@ -121,7 +121,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 
         print("Confocal Logic is", self._confocal_logic)
-        #self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
+        self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
 
         self.fast_counter_gated = self._fast_counter_device.is_gated()
@@ -471,14 +471,20 @@ class PulsedMeasurementLogic(GenericLogic):
     def pulse_generator_on(self):
         """Switching on the pulse generator.
         """
-        time.sleep(0.1)
+        # time.sleep(0.1)
+        #FIXME: do a proper activation of the channels!!!
+        self._pulse_generator_device.set_active_channels(a_ch=2)
+        self._pulse_generator_device.pulser_on()
         return 0
 
 
     def pulse_generator_off(self):
         """Switching off the pulse generator.
         """
-        time.sleep(0.1)
+
+        self._pulse_generator_device.pulser_off()
+        self._pulse_generator_device.set_active_channels(a_ch=0)
+        # time.sleep(0.1)
         return 0
 
 
@@ -507,9 +513,6 @@ class PulsedMeasurementLogic(GenericLogic):
     def mykrowave_off(self):
         self._mycrowave_source_device.off()
         return
-
-
-
 
     def do_fit(self,fit_function):
         """Performs the chosen fit on the measured data.
