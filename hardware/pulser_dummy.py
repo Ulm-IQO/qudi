@@ -31,8 +31,7 @@ from hardware.awg.WFMX_header import WFMX_header
 
 
 class PulserDummy(Base, PulserInterface):
-    """
-    Interface class to pass
+    """ Dummy class for  PulseInterface
 
     Be careful in adjusting the method names in that class, since some of them
     are also connected to the mwsourceinterface (to give the AWG the possibility
@@ -73,22 +72,22 @@ class PulserDummy(Base, PulserInterface):
 
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.logMsg('The directort defined in "pulsed_file_dir" in the'
-                        'config for SequenceGeneratorLogic class does not '
-                        'exist!\nThe default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
+                self.logMsg('The directory defined in parameter '
+                            '"pulsed_file_dir" in the config for '
+                            'SequenceGeneratorLogic class does not exist!\n'
+                            'The default home directory\n{0}\n will be taken '
+                            'instead.'.format(self.pulsed_file_dir),
+                            msgType='warning')
         else:
             homedir = self.get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.logMsg('No directory with the attribute "pulsed_file_dir"'
-                        'is defined for the SequenceGeneratorLogic!\nThe '
-                        'default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir), msgType='warning')
+            self.logMsg('No parameter "pulsed_file_dir" was specified in the '
+                        'config for SequenceGeneratorLogic as directory for '
+                        'the pulsed files!\nThe default home directory\n{0}\n'
+                        'will be taken instead.'.format(self.pulsed_file_dir),
+                        msgType='warning')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        # self.host_waveform_directory = 'C:\\Users\\astark\\Dropbox\\Doctorwork\\Software\\QuDi\\trunk\\waveforms\\'
-        # self.host_waveform_directory = 'C:\\'
 
         self.connected = False
         self.amplitude = 0.25
@@ -113,10 +112,25 @@ class PulserDummy(Base, PulserInterface):
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
 
     def activation(self, e):
+        """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
         self.connected = True
 
-
     def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
+
         self.connected = False
 
     def get_constraints(self):
@@ -138,7 +152,6 @@ class PulserDummy(Base, PulserInterface):
         If you are not sure about the meaning, look in other hardware files
         to get an impression.
         """
-
 
         constraints = {}
         # (min, max, incr) in samples/second:
@@ -170,6 +183,7 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:stopped, -1:error, 1:running)
         """
         self.current_status = 1
+        self.logMsg('PulserDummy: Switch on the Output.', msgType='status')
         return self.current_status
 
     def pulser_off(self):
@@ -178,6 +192,7 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:stopped, -1:error, 1:running)
         """
         self.current_status = 0
+        self.logMsg('PulserDummy: Switch off the Output.', msgType='status')
         return self.current_status
 
     def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
@@ -284,9 +299,6 @@ class PulserDummy(Base, PulserInterface):
             # After this number a 14bit binary representation of the channel
             # and the marker are followed.
 
-
-
-
             for channel_index, channel_arr in enumerate(ana_samples):
 
                 filename = name+'_ch'+str(channel_index+1) + '.wfm'
@@ -353,8 +365,6 @@ class PulserDummy(Base, PulserInterface):
                     footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
                     wfm_file.write(footer)
 
-
-
         else:
             self.logMsg('Sample mode not defined for the given pulser hardware.'
                         '\nEither the mode does not exist or the sample mode is'
@@ -364,8 +374,9 @@ class PulserDummy(Base, PulserInterface):
 
     #FIXME: Implement the below method for all possible file formats. Currently only WFMX is supported.
     def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples, is_first_chunk,
-                            is_last_chunk, sample_rate, pp_voltage):
+                            digital_samples_chunk, total_number_of_samples,
+                            is_first_chunk, is_last_chunk, sample_rate,
+                            pp_voltage):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -393,7 +404,7 @@ class PulserDummy(Base, PulserInterface):
             os.remove('header.xml')
             # create .WFMX-file for each channel.
             for channel_number in range(analogue_samples_chunk.shape[0]):
-                filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
+                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                 with open(filepath, 'wb') as wfmxfile:
                     # write header
                     for line in header_lines:
@@ -403,7 +414,7 @@ class PulserDummy(Base, PulserInterface):
         # digital samples in temporary files.
         for channel_number in range(analogue_samples_chunk.shape[0]):
             # append analogue samples chunk to .WFMX file
-            filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
+            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
             with open(filepath, 'ab') as wfmxfile:
                 # append analogue samples in binary format. One sample is 4
                 # bytes (np.float32). Write in chunks if array is very big to
@@ -420,7 +431,7 @@ class PulserDummy(Base, PulserInterface):
             # create the byte values corresponding to the marker states
             # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
             # and write them into a temporary file
-            filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp'
+            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
             with open(filepath, 'ab') as tmpfile:
                 if digital_samples_chunk.shape[0] <= (2*channel_number):
                     # no digital channels to write for this analogue channel
@@ -454,8 +465,8 @@ class PulserDummy(Base, PulserInterface):
         # .tmp files if it was the last chunk to write.
         if is_last_chunk:
             for channel_number in range(analogue_samples_chunk.shape[0]):
-                tmp_filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp'
-                wfmx_filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
+                tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+                wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                 with open(wfmx_filepath, 'ab') as wfmxfile:
                     with open(tmp_filepath, 'rb') as tmpfile:
                         # read and write files in max. 64kB chunks to reduce
@@ -531,7 +542,7 @@ class PulserDummy(Base, PulserInterface):
 
         @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return foat: the sample rate returned from the device (-1:error)
+        @return float: the sample rate returned from the device (-1:error)
         """
         self.sample_rate = sample_rate
         return self.sample_rate
@@ -601,6 +612,25 @@ class PulserDummy(Base, PulserInterface):
 
         return self.uploaded_assets_list
 
+    def get_saved_assets_names(self):
+        """ Retrieve the names of all sampled and saved assets on the host PC.
+
+        @return list: List of assets name strings
+        """
+        # list of all files in the waveform directory ending with .mat or .WFMX
+        file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
+
+        # exclude the channel specifier for multiple analogue channels and create return list
+        saved_assets = []
+        for name in file_list:
+            if name.endswith('_Ch1.WFMX'):
+                saved_assets.append(name[0:-9])
+            elif name.endswith('.mat'):
+                saved_assets.append(name[0:-4])
+            elif name.endswith('.wfm'):
+                saved_assets.append(name[0:-4])
+        return saved_assets
+
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
 
@@ -644,7 +674,8 @@ class PulserDummy(Base, PulserInterface):
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
-        @param bool state: The state the interleave should be set to (True: ON, False: OFF)
+        @param bool state: The state the interleave should be set to
+                           (True: ON, False: OFF)
 
         @return int: error code (0:OK, -1:error)
 
@@ -673,7 +704,7 @@ class PulserDummy(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.logMsg('It is so nice that you talk to me and told me "{0}", as '
+        self.logMsg('It is so nice that you talk to me and told me "{0}"; as '
                     'a dummy it is very dull out here! :) '.format(command),
                     msgType='status')
 
@@ -694,10 +725,11 @@ class PulserDummy(Base, PulserInterface):
         return 'I am a dummy!'
 
     def reset(self):
-        """Reset the device.
+        """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
+        self.logMsg('Dummy cannot be reseted!', msgType='status')
 
         return 0
 
@@ -709,7 +741,7 @@ class PulserDummy(Base, PulserInterface):
         @return: string, absolute path to the directory with folder 'name'.
         """
 
-        path = self.pulsed_file_dir + name
+        path = os.path.join(self.pulsed_file_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
