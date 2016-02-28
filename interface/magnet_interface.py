@@ -1,13 +1,34 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi Interface file to control magnet devices.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 from core.util.customexceptions import InterfaceImplementationError
 
 
 class MagnetInterface():
-
-    """This is the Interface class to define the controls for the devices
-    controlling the magnetic field.
+    """ This is the Interface class to define the controls for the devices
+        controlling the magnetic field.
     """
+
+    _modtype = 'MagnetInterface'
+    _modclass = 'interface'
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the magnet driving device.
@@ -30,7 +51,7 @@ class MagnetInterface():
         If the hardware does not support the values for the constraints, then
         insert just None. If you are not sure about the meaning, look in other
         hardware files to get an impression.
-        """
+
         constraints = {}
 
         # get the constraints for the x axis:
@@ -73,9 +94,11 @@ class MagnetInterface():
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
         constraints[axis2['label']] = axis2
+        """
 
         raise InterfaceImplementationError('magnet_interface>get_constraints')
         return constraints
+
 
     def move_rel(self,  param_dict):
         """ Moves stage in given direction (relative movement)

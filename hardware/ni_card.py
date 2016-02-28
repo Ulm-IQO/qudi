@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 This file contains the QuDi Hardware module NICard class.
 
