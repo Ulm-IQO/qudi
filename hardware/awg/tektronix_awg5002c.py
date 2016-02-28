@@ -25,13 +25,12 @@ from socket import socket, AF_INET, SOCK_STREAM
 import numpy as np
 import os
 
-
 from core.base import Base
-from hardware.pulser_interface import PulserInterface
-from core.util.customexceptions import InterfaceImplementationError
+from interface.pulser_interface import PulserInterface
+
 
 class AWG5002C(Base, PulserInterface):
-    """ Unstable and in contruction, Alex Stark    """
+    """ Unstable and in construction, Alex Stark    """
 
     _modclass = 'awg5002c'
     _modtype = 'hardware'
@@ -93,7 +92,6 @@ class AWG5002C(Base, PulserInterface):
 
         # settings for remote access on the AWG PC
         self.sequence_directory = '\\waves'
-        # self.host_waveform_directory = 'C:\\Users\\astark\\Dropbox\\Doctorwork\\Software\\QuDi\\trunk\\waveforms\\'
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -101,18 +99,21 @@ class AWG5002C(Base, PulserInterface):
             if not os.path.exists(self.pulsed_file_dir):
 
                 homedir = self.get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
-                self.logMsg('The directort defined in "pulsed_file_dir" in the'
-                        'config for SequenceGeneratorLogic class does not '
-                        'exist!\nThe default home directory\n{0}\n will be '
-                        'taken instead.'.format(self.pulsed_file_dir), msgType='warning')
+                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self.logMsg('The directory defined in parameter '
+                            '"pulsed_file_dir" in the config for '
+                            'SequenceGeneratorLogic class does not exist!\n'
+                            'The default home directory\n{0}\n will be taken '
+                            'instead.'.format(self.pulsed_file_dir),
+                            msgType='warning')
         else:
             homedir = self.get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files\\')
-            self.logMsg('No directory with the attribute "pulsed_file_dir"'
-                        'is defined for the SequenceGeneratorLogic!\nThe '
-                        'default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir), msgType='warning')
+            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+            self.logMsg('No parameter "pulsed_file_dir" was specified in the '
+                        'config for SequenceGeneratorLogic as directory for '
+                        'the pulsed files!\nThe default home directory\n{0}\n'
+                        'will be taken instead.'.format(self.pulsed_file_dir),
+                        msgType='warning')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
@@ -839,8 +840,8 @@ class AWG5002C(Base, PulserInterface):
         @return: string, absolute path to the directory with folder 'name'.
         """
 
-        path = self.pulsed_file_dir + name
+        path = os.path.join(self.pulsed_file_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
-        return os.path.abspath(path) + '\\'
+        return os.path.abspath(path)
