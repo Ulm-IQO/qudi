@@ -19,15 +19,16 @@ Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from core.base import Base
-from interface.slow_counter_interface import SlowCounterInterface
-from hardware.confocal_scanner_interface import ConfocalScannerInterface
-from hardware.odmr_counter_interface import ODMRCounterInterface
-
-
-import PyDAQmx as daq
 import numpy as np
 import re
+
+import PyDAQmx as daq
+
+from core.base import Base
+from interface.slow_counter_interface import SlowCounterInterface
+from interface.odmr_counter_interface import ODMRCounterInterface
+from interface.confocal_scanner_interface import ConfocalScannerInterface
+
 
 class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
              ODMRCounterInterface):
@@ -1862,7 +1863,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
                                                 # process
                 _gated_count_data[0],  # write into this array
                 samples,                         # length of array to write into
-                daq.byref(n_read_samples),       # number of samples which were # actually read.     
+                daq.byref(n_read_samples),       # number of samples which were # actually read.
                 None)                            # Reserved for future use. Pass
                                                 # NULL (here None) to this
                                                 # parameter
