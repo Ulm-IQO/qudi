@@ -403,10 +403,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param object e: Event class object from Fysom.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
                          of the state which should be reached after the event
-                         has happen.
+                         had happened.
         """
         self.refresh_block_list()
         self.refresh_ensemble_list()
@@ -418,11 +418,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
 
+        config = self.getConfiguration()
+
         # Append to this list all methods, which should be used for automated
         # parameter generation.
         # ALL THE ARGUMENTS IN THE METHODS MUST BE ASSIGNED TO DEFAULT VALUES!
         # Otherwise it is not possible to determine the proper viewbox.
-        config = self.getConfiguration()
+
         self.prepared_method_list=[]
         if 'prepared_methods' in config.keys():
             prep_methods_list = config['prepared_methods']
@@ -433,20 +435,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 self.prepared_method_list[index] = eval('self.'+method)
 
         else:
-            self.logMsg('None prepared Methods are chosen, therefore none will'
-                        ' be displayed!', msgType='status')
+            self.logMsg('No prepared Methods are chosen, therefore none will '
+                        'be displayed!', msgType='status')
 
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
         """
         pass
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
 
-        @param name: string, name of the folder
-        @return: string, absolute path to the directory with folder 'name'.
+        @param str name: name of the folder
+        @return: str, absolute path to the directory with folder 'name'.
         """
 
         path = os.path.join(self.pulsed_file_dir,name)
@@ -892,6 +897,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             for num in range(self.digital_channels):
                 marker_active[num] = bool(row[self.cfg_param_pbe['digital_'+str(num)]])
 
+            use_as_tau = bool(row[self.cfg_param_pbe['use']])
+
             # create here actually the object with all the obtained information:
 
             pbe_obj_list[row_index] = Pulse_Block_Element(
@@ -901,7 +908,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         increment_bins=increment_bins,
                         pulse_function=pulse_function,
                         marker_active=marker_active,
-                        parameters=parameter_list)
+                        parameters=parameter_list,
+                        use_as_tau=use_as_tau)
 
         pb_obj = Pulse_Block(pb_name, pbe_obj_list, num_laser_pulses)
         self.save_block(pb_name, pb_obj)
@@ -1087,7 +1095,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # FIXME:
             # WHAT IS THAT SHIT??? :P
             # THAT IS NO INTERFACE COMMAND OF THE PULSER!!!
-            self._pulse_generator_device._write_to_file(ensemble.name, analogue_samples, digital_samples, self.sample_rate, self.pp_voltage)
+            is_first_chunk= False
+            is_last_chunk=False
+            self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, self.pp_voltage)
             print('Time needed for write in whole: ', time.time()-start_time, ' sec')
             return
 
