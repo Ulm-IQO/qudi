@@ -33,8 +33,7 @@ from gui.guiutils import ColorScale, ColorBar
 
 
 class PoiMark(pg.CircleROI):
-
-    """Creates a circle as a marker.
+    """ Creates a circle as a marker.
 
         @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
         @param **args: All extra keyword arguments are passed to ROI()
@@ -210,10 +209,8 @@ class ReorientRoiDialog(QtGui.QDialog):
 
 
 class PoiManagerGui(GUIBase):
+    """ This is the GUI Class for PoiManager """
 
-    """
-    This is the GUI Class for PoiManager
-    """
     _modclass = 'PoiManagerGui'
     _modtype = 'gui'
 
@@ -235,11 +232,17 @@ class PoiManagerGui(GUIBase):
             self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
-    def deactivation(self, e):
-        self._mw.close()
-
     def initUI(self, e=None):
         """ Initializes the overall GUI, and establishes the connectors.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+
         This method executes the init methods for each of the GUIs and passes
         the event argument from fysom to these methods.
         """
@@ -265,13 +268,13 @@ class PoiManagerGui(GUIBase):
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the POI Manager GUI.
 
-          @param class e: event class from Fysom
-
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
-
         """
+
         # Use the inherited class 'Ui_PoiManagerGuiTemplate' to create now the
         # GUI element:
         self._mw = PoiManagerMainWindow()
@@ -416,9 +419,11 @@ class PoiManagerGui(GUIBase):
     def initReorientRoiDialogUI(self, e):
         """Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
 
-        @param class e: event class from Fysom
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
 
-        This init connects all the graphic modules which were created in the *.ui file and configures event handling.
+        This init connects all the graphic modules which were created in the
+        *.ui file and configures event handling.
         """
 
         # Create the Reorient ROI Dialog window
@@ -447,6 +452,14 @@ class PoiManagerGui(GUIBase):
         self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
         self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
 
+    def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
+        """
+        self._mw.close()
+
     def show(self):
         """Make main window visible and put it above all other windows.
         """
@@ -455,7 +468,8 @@ class PoiManagerGui(GUIBase):
         self._mw.raise_()
 
     def get_confocal_image(self):
-        """Update the roi_map_data in poi manager logic, and use this updated data to redraw an image of the ROI
+        """ Update the roi_map_data in poi manager logic, and use this updated
+            data to redraw an image of the ROI.
         """
 
         # Make poi manager logic get the confocal data
@@ -496,7 +510,7 @@ class PoiManagerGui(GUIBase):
 
 
         cb_min, cb_max = self.determine_cb_range()
-        
+
         self.roi_map_image.setImage(image=self.roi_xy_image_data, levels=(cb_min, cb_max))
 
         self.roi_cb.refresh_colorbar(cb_min, cb_max)
@@ -637,9 +651,9 @@ class PoiManagerGui(GUIBase):
 
     def handle_active_poi_ComboBox_index_change(self):
         """Handle the change of index in the active POI combobox"""
-        
+
         key = self._mw.active_poi_ComboBox.itemData(self._mw.active_poi_ComboBox.currentIndex())
-        
+
         # If this key is not the selected key, then update selected key and redraw POI markers
         if key != self.selected_poi_key:
             self.selected_poi_key = key
@@ -783,7 +797,7 @@ class PoiManagerGui(GUIBase):
         self._redraw_clocktime_ticks()
 
     def _redraw_poi_markers(self):
-        
+
         print('starting redraw_poi_markers', time.time())
 
         for key in self._poi_manager_logic.get_all_pois():

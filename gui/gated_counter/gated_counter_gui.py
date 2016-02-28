@@ -43,7 +43,7 @@ class GatedCounterMainWindow(QtGui.QMainWindow):
 class GatedCounterGui(GUIBase):
     """ Main GUI for the Gated Counting. """
 
-    _modclass = 'gatedcountergui'
+    _modclass = 'GatedCounterGui'
     _modtype = 'gui'
 
     ## declare connectors
@@ -74,11 +74,12 @@ class GatedCounterGui(GUIBase):
         @param object e: Event class object from Fysom.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
                          of the state which should be reached after the event
-                         has happen.
+                         had happened.
         """
+
         self._counter_logic = self.connector['in']['gatedcounterlogic1']['object']
         self._trace_analysis = self.connector['in']['traceanalysislogic1']['object']
 
@@ -117,7 +118,6 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_Slider.sliderMoved.connect(self.num_bins_changed)
         self._mw.hist_bins_SpinBox.valueChanged.connect(self.num_bins_changed)
 
-
         self._counter_logic.set_counting_mode('finite-gated')
         # Setting default parameters
         self._mw.count_length_SpinBox.setValue(self._counter_logic.get_count_length())
@@ -145,7 +145,8 @@ class GatedCounterGui(GUIBase):
         self._trace_analysis.sigHistogramUpdated.connect(self.update_histogram)
 
     def deactivation(self, e=None):
-        """
+        """ Deinitialisation performed during deactivation of the module.
+
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method initUI.
         """
@@ -209,7 +210,6 @@ class GatedCounterGui(GUIBase):
         """
         self._counter_logic.set_counting_samples(samples=self._mw.count_per_readout_SpinBox.value())
         # self._gp.setXRange(0, self._counter_logic.get_count_length()/self._counter_logic.get_count_frequency())
-
     def update_trace(self):
         """ The function that grabs the data and sends it to the plot.
         """

@@ -180,7 +180,8 @@ class ConfocalGui(GUIBase):
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
-        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
+        c_dict = {'onactivate': self.initUI,
+                  'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.',
@@ -207,18 +208,16 @@ class ConfocalGui(GUIBase):
         self.xy_image_orientation = np.array([0, 1, 2, -1],int)
         self.depth_image_orientation = np.array([0, 1, 2, -1], int)
 
-    def deactivation(self, e):
-        """ Reverse steps of activation
-
-        @param e: error code
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self._mw.close()
-        return 0
-
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
 
         This method executes the all the inits for the differnt GUIs and passes
         the event argument from fysom to the methods.
@@ -239,13 +238,8 @@ class ConfocalGui(GUIBase):
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
 
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
-                         of the state which should be reached after the event
-                         has happen.
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -626,7 +620,8 @@ class ConfocalGui(GUIBase):
     def initSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the settings GUI.
 
-        @param class e: event class from Fysom
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -646,7 +641,8 @@ class ConfocalGui(GUIBase):
     def initOptimizerSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the optimizer settings GUI.
 
-        @param class e: event class from Fysom
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -691,6 +687,17 @@ class ConfocalGui(GUIBase):
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
+    def deactivation(self, e):
+        """ Reverse steps of activation
+
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method initUI.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._mw.close()
+        return 0
+
     def show(self):
         """Make main window visible and put it above all other windows. """
         # Show the Main Confocal GUI:
@@ -701,7 +708,7 @@ class ConfocalGui(GUIBase):
     def keyPressEvent(self, event):
         """ Handles the passed keyboard events from the main window.
 
-        @param PyQt4.QtCore.QEvent event:
+        @param object event: PyQt4.QtCore.QEvent object.
         """
         modifiers = QtGui.QApplication.keyboardModifiers()
 
