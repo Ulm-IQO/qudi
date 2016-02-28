@@ -1,15 +1,36 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi Interface file to control motorized stages.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 from core.util.customexceptions import InterfaceImplementationError
 
 
 class MotorInterface():
-
     """ This is the Interface class to define the controls for the simple
         step motor device. The actual hardware implementation might have a
         different amount of axis. Implement each single axis as 'private'
         methods for the hardware class, which get called by the general method.
     """
+
+    _modtype = 'MotorInterface'
+    _modclass = 'interface'
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -39,8 +60,8 @@ class MotorInterface():
         constraints = {}
 
         axis0 = {}
-        axis0['label'] = 'x'    # it is very crucial that this label coincides 
-                                # with the label set in the config. 
+        axis0['label'] = 'x'    # it is very crucial that this label coincides
+                                # with the label set in the config.
         axis0['unit'] = 'm'     # the SI units, only possible m or degree
         axis0['ramp'] = ['Sinus','Linear'], # a possible list of ramps
         axis0['pos_min'] = 0,

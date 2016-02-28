@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Control the Radiant Dyes flip mirror driver through the serial interface.
 
@@ -20,9 +21,12 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 
 from core.util.customexceptions import InterfaceImplementationError
 
+
 class SwitchInterface():
-    """ Methods to control slow (mechaincal) laser switching devices.
-    """
+    """ Methods to control slow (mechaincal) laser switching devices. """
+
+    _modtype = 'SwitchInterface'
+    _modclass = 'interface'
 
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.
@@ -45,8 +49,10 @@ class SwitchInterface():
     def getCalibration(self, switchNumber, state):
         """ Get calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration parameter
-          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+          @param int switchNumber: number of switch for which to get calibration
+                                   parameter
+          @param str switchState: state ['On', 'Off'] for which to get
+                                  calibration parameter
 
           @return str: calibration parameter fir switch and state.
         """
@@ -56,8 +62,10 @@ class SwitchInterface():
     def setCalibration(self, switchNumber, state, value):
         """ Set calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration parameter
-          @param str switchState: state ['On', 'Off'] for which to get calibration parameter
+          @param int switchNumber: number of switch for which to get calibration
+                                   parameter
+          @param str switchState: state ['On', 'Off'] for which to get
+                                  calibration parameter
           @param int value: calibration parameter to be set.
 
           @return bool: True if suceeds, False otherwise
@@ -74,7 +82,7 @@ class SwitchInterface():
         """
         raise InterfaceImplementationError('SwitchInterface: switchOn')
         return -1
-    
+
     def switchOff(self, switchNumber):
         """ Switch off.
 

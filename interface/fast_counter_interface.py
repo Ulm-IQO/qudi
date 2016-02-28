@@ -26,6 +26,9 @@ from core.util.customexceptions import InterfaceImplementationError
 class FastCounterInterface():
     """ Interface class to define the controls for fast counting devices. """
 
+    _modtype = 'FastCounterInterface'
+    _modclass = 'interface'
+
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
         """ Configuration of the fast counter.
 

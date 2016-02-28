@@ -1,11 +1,33 @@
 # -*- coding: utf-8 -*-
 
+"""
+This file contains the QuDi Interface for Slow counter.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+"""
+
 from core.util.customexceptions import InterfaceImplementationError
 
+
 class SlowCounterInterface():
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
-    """
+    """ Define the controls for a slow counter."""
+
+    _modtype = 'SlowCounterInterface'
+    _modclass = 'interface'
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.

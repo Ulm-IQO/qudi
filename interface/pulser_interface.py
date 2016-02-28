@@ -31,6 +31,9 @@ class PulserInterface():
     communication with all pulsing devices.
     """
 
+    _modtype = 'PulserInterface'
+    _modclass = 'interface'
+
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Pulsing device.
 

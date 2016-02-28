@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 This module contains the QuDi interface file for confocal scanner.
 
@@ -26,6 +27,9 @@ class ConfocalScannerInterface():
     """ This is the Interface class to define the controls for the simple
     microwave hardware.
     """
+
+    _modtype = 'ConfocalScannerInterface'
+    _modclass = 'interface'
 
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
