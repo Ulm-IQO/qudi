@@ -211,7 +211,7 @@ class ConfocalGui(GUIBase):
     def initUI(self, e=None):
         """ Initializes all needed UI files and establishes the connectors.
 
-        @param object e: Event class object from Fysom.
+        @param object e: Fysom.event object from Fysom class.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
                          the Base Class). This object contains the passed event,
@@ -238,8 +238,8 @@ class ConfocalGui(GUIBase):
     def initMainUI(self, e=None):
         """ Definition, configuration and initialisation of the confocal GUI.
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -620,8 +620,8 @@ class ConfocalGui(GUIBase):
     def initSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the settings GUI.
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -641,8 +641,8 @@ class ConfocalGui(GUIBase):
     def initOptimizerSettingsUI(self, e=None):
         """ Definition, configuration and initialisation of the optimizer settings GUI.
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
 
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
@@ -690,8 +690,8 @@ class ConfocalGui(GUIBase):
     def deactivation(self, e):
         """ Reverse steps of activation
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
 
         @return int: error code (0:OK, -1:error)
         """

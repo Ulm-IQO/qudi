@@ -64,30 +64,38 @@ class PIDGui(GUIBase):
                     c_dict)
 
         self.logMsg('The following configuration was found.', msgType='status')
-                            
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-                        
+
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI plus staring the measurement.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
         self._pid_logic = self.connector['in']['pidlogic']['object']
-        
+
         #####################
         # Configuring the dock widgets
         # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = PIDMainWindow()
-                
+
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-                
+
         # Plot labels.
         self._pw = self._mw.trace_PlotWidget
-        
+
         self.plot1 = self._pw.plotItem
         self.plot1.setLabel('left', 'Process Value', units='unit', color='#00ff00')
         self.plot1.setLabel('bottom', 'Time', units='s')
@@ -137,7 +145,7 @@ class PIDGui(GUIBase):
 
         self._mw.setpointDoubleSpinBox.valueChanged.connect( self._pid_logic.setSetpoint )
         self._mw.manualDoubleSpinBox.valueChanged.connect( self._pid_logic.setManualValue )
-            
+
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
@@ -147,7 +155,7 @@ class PIDGui(GUIBase):
         self.sigStop.connect(self._pid_logic.stopLoop)
 
         self._pid_logic.sigNewValue.connect(self.updateData)
-        
+
     def show(self):
         """Make window visible and put it above all other windows.
         """
@@ -156,13 +164,18 @@ class PIDGui(GUIBase):
         self._mw.raise_()
 
     def deactivation(self, e):
+        """ Deactivate the module properly.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
         # FIXME: !
         self._mw.close()
 
     def updateData(self, value):
         """ The function that grabs the data and sends it to the plot.
         """
-            
+
         if self._pid_logic.enable:
             self._mw.process_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[0, -1]))
             self._mw.control_value_Label.setText('{0:,.3f}'.format(self._pid_logic.history[1, -1]))
@@ -187,21 +200,21 @@ class PIDGui(GUIBase):
             self._mw.record_control_Action.setText('Save')
         else:
             self._mw.record_control_Action.setText('Start Saving Data')
-            
+
         if self._pid_logic.enable:
             self._mw.start_control_Action.setText('Stop')
-        else:            
+        else:
             self._mw.start_control_Action.setText('Start')
 
     def updateViews(self):
     ## view has resized; update auxiliary views to match
         self.plot2.setGeometry(self.plot1.vb.sceneBoundingRect())
-    
+
         ## need to re-update linked axes since this was called
         ## incorrectly while views had different shapes.
         ## (probably this should be handled in ViewBox.resizeEvent)
         self.plot2.linkedViewChanged(self.plot1.vb, self.plot2.XAxis)
-            
+
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
@@ -221,7 +234,7 @@ class PIDGui(GUIBase):
         else:
             self._mw.record_counts_Action.setText('Save')
             self._pid_logic.startSaving()
-    
+
     def kPChanged(self):
         self._pid_logic.kP = self._mw.P_DoubleSpinBox.value()
 
@@ -241,7 +254,7 @@ class PIDGui(GUIBase):
         # re-dock any floating dock widgets
         self._mw.pid_trace_DockWidget.setFloating(False)
         self._mw.pid_parameters_DockWidget.setFloating(False)
-        
+
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.pid_trace_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.pid_parameters_DockWidget)

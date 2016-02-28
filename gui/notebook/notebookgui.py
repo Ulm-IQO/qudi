@@ -22,6 +22,17 @@ class NotebookWebView(GUIBase):
         super().__init__(manager, name, config, c_dict)
 
     def activation(self, e):
+        """ Initializes all needed UI files and establishes the connectors.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
+
         self._mw = NotebookMainWindow()
         url = QtCore.QUrl('http://localhost:8888')
         tw = self._mw.newTab()
@@ -30,6 +41,11 @@ class NotebookWebView(GUIBase):
         self._mw.show()
 
     def deactivation(self, e):
+        """ Deactivate the module properly.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method activation.
+        """
         self.saveWindowPos(self._mw)
         self._mw.close()
 

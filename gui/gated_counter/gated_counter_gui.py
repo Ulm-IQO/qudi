@@ -71,7 +71,7 @@ class GatedCounterGui(GUIBase):
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.
 
-        @param object e: Event class object from Fysom.
+        @param object e: Fysom.event object from Fysom class.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
                          the Base Class). This object contains the passed event,
@@ -147,8 +147,8 @@ class GatedCounterGui(GUIBase):
     def deactivation(self, e=None):
         """ Deinitialisation performed during deactivation of the module.
 
-        @param object e: Event class object from Fysom. A more detailed
-                         explanation can be found in method initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
         """
         self._mw.close()
 
