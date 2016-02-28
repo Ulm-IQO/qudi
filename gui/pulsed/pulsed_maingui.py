@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi GUI module base class.
+This file contains the QuDi main GUI for pulsed measurements.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1378,9 +1378,9 @@ class PulsedMeasurementGui(GUIBase):
                 column = block_config_dict['digital_'+str(digital_ch)]
                 value = pulse_block_element.markers_on[digital_ch]
                 if value:
-                    value=0
-                else:
                     value=2
+                else:
+                    value=0
                 self.set_element_in_block_table(row_index,column, value)
 
             # now set all parameters for the analog channels:
@@ -1405,22 +1405,22 @@ class PulsedMeasurementGui(GUIBase):
 
             # now set use as tau parameter:
             column = block_config_dict['use']
-            value = pulse_block_element.use_as_tau / (self.get_sample_rate() /1e9 )
+            value = pulse_block_element.use_as_tau
             # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
             if value:
-                value=0
-            else:
                 value=2
+            else:
+                value=0
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the init_length_bins:
             column = block_config_dict['length']
-            value = pulse_block_element.init_length_bins / (self.get_sample_rate() /1e9 )
+            value = pulse_block_element.init_length_bins / (self.get_sample_rate() )
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the increment parameter
             column = block_config_dict['increment']
-            value = pulse_block_element.increment_bins / (self.get_sample_rate() /1e9 )
+            value = pulse_block_element.increment_bins / (self.get_sample_rate() )
             self.set_element_in_block_table(row_index, column, value)
 
         self._mw.curr_block_name_LineEdit.setText(current_block_name)

@@ -140,8 +140,7 @@ class MagnetGui(GUIBase):
         self._mw.close()
 
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """Make window visible and put it above all other windows. """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
@@ -343,24 +342,25 @@ class MagnetGui(GUIBase):
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            slider_var_name = 'move_abs_axis{0}_Slider'.format(parameter)
-            setattr(self._mw, slider_var_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
-            slider_var = getattr(self._mw, slider_var_name)
-            slider_var.setObjectName(slider_var_name)
-            slider_var.setOrientation(QtCore.Qt.Horizontal)
+            slider_obj_name = 'move_abs_axis{0}_Slider'.format(parameter)
+            setattr(self._mw, slider_obj_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
+            slider_obj = getattr(self._mw, slider_obj_name)
+            slider_obj.setObjectName(slider_obj_name)
+            slider_obj.setOrientation(QtCore.Qt.Horizontal)
 #            dspinbox_var.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
             max_val = abs(constraints[parameter]['pos_max'] - constraints[parameter]['pos_min'])
 
             max_steps = int(max_val/constraints[parameter]['pos_step'])
 
-            slider_var.setMaximum(max_steps)
-            slider_var.setMinimum(0)
+            slider_obj.setMaximum(max_steps)
+            slider_obj.setMinimum(0)
             #TODO: set the decimals also from the constraints!
-#            slider_var.setDecimals(3)
-            slider_var.setSingleStep(1)
-            slider_var.setEnabled(False)
-            self._mw.move_abs_GridLayout.addWidget(slider_var, index, 1, 1, 1)
+#            slider_obj.setDecimals(3)
+            slider_obj.setSingleStep(1)
+            slider_obj.setEnabled(False)
+
+            self._mw.move_abs_GridLayout.addWidget(slider_obj, index, 1, 1, 1)
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
@@ -376,6 +376,10 @@ class MagnetGui(GUIBase):
             dspinbox_var.setSingleStep(constraints[parameter]['pos_step'])
             self._mw.move_abs_GridLayout.addWidget(dspinbox_var, index, 2, 1, 1)
 
+
+        # TODO: connect the slider move with the doublespinbox value.
+        # TODO: Update after get pos the sliders.
+        # TODO: connect the doublespinbox change with the slider
 
         extension =  len(constraints)
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
@@ -453,8 +457,8 @@ class MagnetGui(GUIBase):
     def update_pos(self, param_list=None):
         """ Update the current position.
 
-        @param dict param_dict: optional, if you want to update specific
-                                positions.
+        @param dict param_dict: optional, if specific positions needed to be
+                                updated.
 
         If no value is passed, the current possition is retrieved from the
         logic and the display is changed.
