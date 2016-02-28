@@ -5,16 +5,16 @@ Created on Fri Aug 21 12:31:16 2015
 @author: s_ntomek
 """
 
-from socket import socket, AF_INET, SOCK_STREAM
-from ftplib import FTP
 import os
 import time
-from collections import OrderedDict
-from core.base import Base
-from core.util.mutex import Mutex
+from socket import socket, AF_INET, SOCK_STREAM
+from ftplib import FTP
 import numpy as np
+
 import hdf5storage
-from hardware.pulser_interface import PulserInterface
+
+from core.base import Base
+from interface.pulser_interface import PulserInterface
 from hardware.awg.WFMX_header import WFMX_header
 
 class AWG70K(Base, PulserInterface):

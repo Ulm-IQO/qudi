@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware interface dummy for pulsing devices.
+This file contains the QuDi hardware dummy for pulsing devices.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,16 +20,17 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 """
 
-from core.base import Base
-from hardware.pulser_interface import PulserInterface
 import os
 import numpy as np
-import hdf5storage
-from hardware.awg.WFMX_header import WFMX_header
-import struct
-import time
 
-class PulserInterfaceDummy(Base, PulserInterface):
+import hdf5storage
+
+from core.base import Base
+from interface.pulser_interface import PulserInterface
+from hardware.awg.WFMX_header import WFMX_header
+
+
+class PulserDummy(Base, PulserInterface):
     """
     Interface class to pass
 
@@ -37,7 +38,7 @@ class PulserInterfaceDummy(Base, PulserInterface):
     are also connected to the mwsourceinterface (to give the AWG the possibility
     to act like a microwave source).
     """
-    _modclass = 'PulserInterfaceDummy'
+    _modclass = 'PulserDummy'
     _modtype = 'hardware'
     # connectors
     _out = {'pulser': 'PulserInterface'}
