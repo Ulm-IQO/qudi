@@ -66,10 +66,16 @@ class ManagerGui(GUIBase):
 
     def activation(self, e=None):
         """ Activation method called on change to active state.
-            
-          @param e: Fysom state change information
 
-            This method creates the Manager main window.
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+
+        This method creates the Manager main window.
         """
         self._mw = ManagerMainWindow()
         self.restoreWindowPos(self._mw)
@@ -127,7 +133,8 @@ class ManagerGui(GUIBase):
     def deactivation(self,e):
         """Close window and remove connections.
 
-          @param object eFysom state change notification
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method activation.
         """
         self.stopIPythonWidget()
         self.stopIPython()
@@ -162,7 +169,7 @@ class ManagerGui(GUIBase):
 
     def handleLogEntry(self, entry):
         """ Forward log entry to log widget and show an error popup if it is an error message.
-            
+
             @param dict entry: Log entry
         """
         self._mw.logwidget.addEntry(entry)
@@ -210,7 +217,7 @@ Go, play.
         self._csd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.consoleApplySettings)
         self._mw.actionConsoleSettings.triggered.connect(self._csd.exec_)
         self.consoleKeepSettings()
-        
+
         self._mw.consolewidget.kernel_manager = self.kernel_manager
         self._mw.consolewidget.kernel_client = self._mw.consolewidget.kernel_manager.client()
         self._mw.consolewidget.kernel_client.start_channels()
@@ -229,7 +236,7 @@ Go, play.
         self._mw.consolewidget.kernel_client.stop_channels()
 
     def updateIPythonModuleList(self):
-        """Remove non-existing modules from namespace, 
+        """Remove non-existing modules from namespace,
             add new modules to namespace, update reloaded modules
         """
         currentModules = set()
@@ -266,7 +273,7 @@ Go, play.
         """ Clear and refill the tree widget showing the configuration.
         """
         self.fillTreeWidget(self._mw.treeWidget, self._manager.tree)
-    
+
     def updateGUIModuleList(self):
         """ Clear and refill the module list widget
         """
@@ -274,7 +281,7 @@ Go, play.
         self.fillModuleList(self._mw.guilayout, 'gui')
         self.fillModuleList(self._mw.logiclayout, 'logic')
         self.fillModuleList(self._mw.hwlayout, 'hardware')
-        
+
     def fillModuleList(self, layout, base):
         """ Fill the module list widget with module widgets for defined gui modules.
 
@@ -293,7 +300,7 @@ Go, play.
 
     def fillTreeItem(self, item, value):
         """ Recursively fill a QTreeWidgeItem with the contents from a dictionary.
-            
+
           @param QTreeWidgetItem item: the widget item to fill
           @param (dict, list, etc) value: value to fill in
         """
@@ -334,11 +341,11 @@ Go, play.
             return (info['url'], info['commit#revision'])
         except:
             return ('unknown', -1)
-            
+
 
     def fillTreeWidget(self, widget, value):
         """ Fill a QTreeWidget with the content of a dictionary
-           
+
           @param QTreeWidget widget: the tree widget to fill
           @param dict,OrderedDict value: the dictionary to fill in
         """
@@ -352,7 +359,7 @@ Go, play.
         filename = QtGui.QFileDialog.getOpenFileName(
                 self._mw,
                 'Load Configration',
-                defaultconfigpath , 
+                defaultconfigpath ,
                 'Configuration files (*.cfg)')
         if filename != '':
             reply = QtGui.QMessageBox.question(
@@ -372,7 +379,7 @@ Go, play.
         filename = QtGui.QFileDialog.getSaveFileName(
                 self._mw,
                 'Save Configration',
-                defaultconfigpath , 
+                defaultconfigpath ,
                 'Configuration files (*.cfg)')
         if filename != '':
             self.sigSaveConfig.emit(filename)
@@ -489,6 +496,6 @@ class ModuleListItem(QtGui.QFrame):
                     state = 'not loaded'
             except:
                 state = 'exception, cannot get state'
-        
+
             self.statusLabel.setText(state)
 

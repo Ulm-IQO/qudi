@@ -42,7 +42,15 @@ class SpectrometerGui(GUIBase):
                         msgType='status')
 
     def initUI(self, e=None):
-        """ Definition and initialisation of the GUI plus staring the measurement.
+        """ Definition and initialisation of the GUI.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
 
         self._spectrum_logic = self.connector['in']['spectrumlogic1']['object']
@@ -97,6 +105,11 @@ class SpectrometerGui(GUIBase):
         self._save_PNG = True
 
     def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
         self._mw.close()
 
     def show(self):

@@ -45,7 +45,13 @@ class SwitchGui(GUIBase):
     def initUI(self, e=None):
         """Create all UI objects and show the window.
 
-          @param object e: Fysom state change notice
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
         self._mw = SwitchMainWindow()
         lsw =  self.connector['in']['switchlogic']['object']
@@ -62,15 +68,17 @@ class SwitchGui(GUIBase):
 
         self.restoreWindowPos(self._mw)
         self.show()
-       
+
     def show(self):
         """Make sure that the window is visible and at the top.
         """
         self._mw.show()
- 
+
     def deactivation(self, e=None):
         """ Hide window and stop ipython console.
-          @param object e: Fysom state change notice
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
         """
         self.saveWindowPos(self._mw)
         self._mw.close()
@@ -90,7 +98,7 @@ class SwitchMainWindow(QtGui.QMainWindow):
         super().__init__()
         uic.loadUi(ui_file, self)
         self.show()
-        
+
         # Add layout that we want to fill
         self.layout = QtGui.QVBoxLayout(self.scrollArea)
 

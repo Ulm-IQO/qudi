@@ -58,30 +58,38 @@ class SimpleDataGui(GUIBase):
         c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, c_dict)
         self.logMsg('The following configuration was found.', msgType='status')
-                            
+
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]), 
+            self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
-                        
+
 
     def initUI(self, e=None):
-        """ Definition and initialisation of the GUI plus staring the measurement.
+        """ Definition and initialisation of the GUI.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
         self._simple_logic = self.connector['in']['simplelogic']['object']
-        
+
         #####################
         # Configuring the dock widgets
         # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = SimpleMainWindow()
-                
+
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-                
+
         # Plot labels.
         self._pw = self._mw.trace_PlotWidget
-        
+
         self.plot1 = self._pw.plotItem
         self.plot1.setLabel('left', 'Some Value', units='some unit', color='#00ff00')
         self.plot1.setLabel('bottom', 'Number of values', units='some unit')
@@ -111,7 +119,7 @@ class SimpleDataGui(GUIBase):
         self.sigStop.connect(self._simple_logic.stopMeasure)
 
         self._simple_logic.sigRepeat.connect(self.updateData)
-        
+
     def show(self):
         """Make window visible and put it above all other windows.
         """
@@ -120,6 +128,11 @@ class SimpleDataGui(GUIBase):
         self._mw.raise_()
 
     def deactivation(self, e):
+        """ Deactivate the module properly.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
         # FIXME: !
         self._mw.close()
 
@@ -138,7 +151,7 @@ class SimpleDataGui(GUIBase):
 
         if self._simple_logic.getState() == 'locked':
             self._mw.startAction.setText('Stop')
-        else:            
+        else:
             self._mw.startAction.setText('Start')
 
     def start_clicked(self):
@@ -154,4 +167,4 @@ class SimpleDataGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        return 
+        return

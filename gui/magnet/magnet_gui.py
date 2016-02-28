@@ -80,13 +80,13 @@ class MagnetGui(GUIBase):
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.
 
-        @param object e: Event class object from Fysom.
+        @param object e: Fysom.event object from Fysom class.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
                          of the state which should be reached after the event
-                         has happen.
+                         had happened.
         """
         self._magnet_logic = self.connector['in']['magnetlogic1']['object']
 
@@ -126,8 +126,8 @@ class MagnetGui(GUIBase):
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
 
-        @param object e: Event class object from Fysom. For more description
-                         have a look in the main activation routine initUI.
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
         """
         self._ms = MagnetSettingsWindow()
         self._ms.accepted.connect(self.update_magnet_settings)
@@ -137,6 +137,11 @@ class MagnetGui(GUIBase):
         self.keep_former_magnet_settings()
 
     def deactivation(self, e=None):
+        """ Deactivate the module properly.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method initUI.
+        """
         self._mw.close()
 
     def show(self):
