@@ -991,6 +991,8 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
 
+        self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
+        self._mw.pulser_off_PushButton.clicked.connect(self.pulser_off_clicked)
 
         self._create_control_for_prepared_methods()
 
@@ -1028,6 +1030,18 @@ class PulsedMeasurementGui(GUIBase):
         """
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
+
+    def pulser_on_clicked(self):
+        """ Switch on the pulser and pass the number of channels to logic.  """
+
+        a_ch, d_ch = self.get_current_channels()
+        self._seq_gen_logic.pulser_on(d_ch, a_ch)
+
+    def pulser_off_clicked(self):
+        """ Switch off the pulser """
+
+        self._seq_gen_logic.pulser_off()
+
 
     def get_func_config(self):
         """ Retrieve the function configuration from the Logic.

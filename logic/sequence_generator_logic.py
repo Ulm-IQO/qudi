@@ -447,6 +447,53 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
+    def pulser_on(self, d_ch=None, a_ch=None):
+        """ Switch on the Pulse Generator and set also the active channels
+
+        @param int d_ch: optional, number of active digital channels, which
+                         should be activated.
+        @param int a_ch: optional, number of active analogue channels, which are
+                         activated.
+
+        @return: int, status of pulse device.
+
+        If no analogue or digital parameters are passed, then the device is
+        'just' switched on but the channels are not activated. For some pulse
+        devices, an activation of the pulse channels is not needed.
+        """
+        if d_ch is None:
+            d_ch = 0
+        if a_ch is None:
+            a_ch = 0
+
+        self._pulse_generator_device.set_active_channels(d_ch, a_ch)
+        status = self._pulse_generator_device.pulser_on()
+
+        return status
+
+    def pulser_off(self, d_ch=None, a_ch=None):
+        """ Switch off the Pulse Generator and deactivate desired channels.
+
+        @param int d_ch: optional, number of digital channels, you want to stay
+                         active after pulser is switched off
+        @param int a_ch: optional, number of analogue channels, you want to stay
+                         active after pulser is switched off
+
+        @return: int, status of pulse device.
+
+        If no analoque or digital parameters are passed, then the device is
+        switched off and the number of active channels are set to zero.
+        """
+
+        if d_ch is None:
+            d_ch = 0
+        if a_ch is None:
+            a_ch = 0
+
+        self._pulse_generator_device.set_active_channels(d_ch, a_ch)
+        status = self._pulse_generator_device.pulser_off()
+        return status
+
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
 
@@ -454,7 +501,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @return: str, absolute path to the directory with folder 'name'.
         """
 
-        path = os.path.join(self.pulsed_file_dir,name)
+        path = os.path.join(self.pulsed_file_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
