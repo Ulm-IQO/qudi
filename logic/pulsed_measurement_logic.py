@@ -35,9 +35,8 @@ class PulsedMeasurementLogic(GenericLogic):
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
     signal_time_updated = QtCore.Signal()
-    signal_laser_plot_updated = QtCore.Signal()
-    signal_signal_plot_updated = QtCore.Signal()
-    measuring_error_plot_updated = QtCore.Signal()
+    sigPulseAnalysisUpdated = QtCore.Signal()
+    sigMeasuringErrorUpdated = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal()
     signal_odmr_refocus_finished = QtCore.Signal()
 
@@ -56,8 +55,8 @@ class PulsedMeasurementLogic(GenericLogic):
                         msgType='status')
 
         # mykrowave parameters
-        self.mykrowave_power = -30. # dbm
-        self.mykrowave_freq = 2870. # MHz
+        self.microwave_power = -30.     # dbm  (always in SI!)
+        self.microwave_freq = 2870e6    # Hz (always in SI!)
         # fast counter status variables
         self.fast_counter_status = None     # 0=unconfigured, 1=idle, 2=running, 3=paused, -1=error
         self.fast_counter_gated = None      # gated=True, ungated=False
@@ -230,9 +229,8 @@ class PulsedMeasurementLogic(GenericLogic):
             # has to be changed. just for testing purposes
             self.elapsed_sweeps = self.elapsed_time/3
             # emit signals
-            self.signal_signal_plot_updated.emit()
-            self.signal_laser_plot_updated.emit()
-            self.measuring_error_plot_updated.emit()
+            self.sigPulseAnalysisUpdated.emit()
+            self.sigMeasuringErrorUpdated.emit()
             self.signal_time_updated.emit()
 
 
@@ -257,8 +255,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.fast_counter_off()
                 self.mykrowave_off()
                 self.pulse_generator_off()
-                self.signal_laser_plot_updated.emit()
-                self.measuring_error_plot_updated.emit()
+                self.sigPulseAnalysisUpdated.emit()
+                self.sigMeasuringErrorUpdated.emit()
                 self.unlock()
 
     def pause_pulsed_measurement(self):
@@ -283,9 +281,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.fast_counter_off()
                 self.mykrowave_off()
                 self.pulse_generator_off()
-                self.signal_signal_plot_updated.emit()
-                self.signal_laser_plot_updated.emit()
-                self.measuring_error_plot_updated.emit()
+                self.sigPulseAnalysisUpdated.emit()
+                self.sigMeasuringErrorUpdated.emit()
                 self.unlock()
         return 0
 
@@ -305,9 +302,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.fast_counter_on()
                 self.mykrowave_on()
                 self.pulse_generator_on()
-#                self.signal_signal_plot_updated.emit()
-#                self.signal_laser_plot_updated.emit()
-#                self.measuring_error_plot_updated.emit()
+#                self.sigPulseAnalysisUpdated.emit()
+#                self.sigMeasuringErrorUpdated.emit()
                 self.lock()
         return 0
 
@@ -506,7 +502,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return error_code
 
     def mykrowave_on(self):
-        self._mycrowave_source_device.set_cw(freq=self.mykrowave_freq, power=self.mykrowave_power)
+        self._mycrowave_source_device.set_cw(freq=self.microwave_freq, power=self.microwave_power)
         self._mycrowave_source_device.on()
         return
 
