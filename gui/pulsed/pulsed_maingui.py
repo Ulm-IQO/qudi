@@ -2502,22 +2502,22 @@ class PulsedMeasurementGui(GUIBase):
 #
 #        # Add the display item to the xy VieWidget, which was defined in
 #        # the UI file.
-        self._mw.signal_plot_ViewWidget.addItem(self.signal_image)
-        self._mw.signal_plot_ViewWidget.addItem(self.fit_image)
-        self._mw.fft_PlotWidget.addItem(self.fft_image)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.lasertrace_image)
+        self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
+        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image)
+        self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
+        self._mw.pulse_analyze_window_PlotWidget.addItem(self.lasertrace_image)
 
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_start_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.sig_end_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_start_line)
-        self._mw.lasertrace_plot_ViewWidget.addItem(self.ref_end_line)
+        self._mw.pulse_analyze_window_PlotWidget.addItem(self.sig_start_line)
+        self._mw.pulse_analyze_window_PlotWidget.addItem(self.sig_end_line)
+        self._mw.pulse_analyze_window_PlotWidget.addItem(self.ref_start_line)
+        self._mw.pulse_analyze_window_PlotWidget.addItem(self.ref_end_line)
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
-        self._mw.signal_plot_ViewWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.fft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.signal_plot_ViewWidget.setLabel('left', 'Intensity', units='a.u.')
-        self._mw.signal_plot_ViewWidget.setLabel('left', 'Counts')
-        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'tau', units='ns')
-        self._mw.lasertrace_plot_ViewWidget.setLabel('bottom', 'bins')
+        self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Intensity', units='a.u.')
+        self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
+        self._mw.pulse_analyze_window_PlotWidget.setLabel('bottom', 'tau', units='s')
+        self._mw.pulse_analyze_window_PlotWidget.setLabel('bottom', 'bins')
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
@@ -2525,18 +2525,15 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # Initialize  what is visible and what not
-        self._mw.mw_frequency_Label.setVisible(False)
-        self._mw.mw_frequency_InputWidget.setVisible(False)
-        self._mw.mw_power_Label.setVisible(False)
-        self._mw.mw_power_InputWidget.setVisible(False)
+        self._mw.ext_control_mw_freq_Label.setVisible(False)
+        self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
+        self._mw.ext_control_mw_power_Label.setVisible(False)
+        self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
 
-        self._mw.tau_start_Label.setVisible(False)
-        self._mw.tau_start_InputWidget.setVisible(False)
-        self._mw.tau_increment_Label.setVisible(False)
-        self._mw.tau_increment_InputWidget.setVisible(False)
-
-        self._mw.fft_PlotWidget.setVisible(False)
-
+        self._mw.ana_param_x_axis_start_Label.setVisible(False)
+        self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
+        self._mw.ana_param_x_axis_inc_Label.setVisible(False)
+        self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
 
         # Set the state button as ready button as default setting.
 
@@ -2545,68 +2542,54 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_pull_data.setEnabled(False)
 
         # Configuration of the comboWidget
-        # self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
-        # self._mw.binning_comboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
+        # self._mw.ana_param_fc_bins_ComboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']))
+        # self._mw.ana_param_fc_bins_ComboBox.addItem(str(self._pulsed_measurement_logic.fast_counter_status['binwidth_ns']*2.))
         # set up the types of the columns and create a pattern based on
         # the desired settings:
 
-#        # Add Validators to InputWidgets
-        validator = QtGui.QDoubleValidator()
-        validator2 = QtGui.QIntValidator()
-
-        # pulsed measurement tab
-        self._mw.mw_frequency_InputWidget.setValidator(validator)
-        self._mw.mw_power_InputWidget.setValidator(validator)
-        self._mw.analysis_period_InputWidget.setValidator(validator)
-        self._mw.numlaser_InputWidget.setValidator(validator2)
-        self._mw.tau_start_InputWidget.setValidator(validator)
-        self._mw.tau_increment_InputWidget.setValidator(validator)
-        self._mw.signal_start_InputWidget.setValidator(validator2)
-        self._mw.signal_length_InputWidget.setValidator(validator2)
-        self._mw.reference_start_InputWidget.setValidator(validator2)
-        self._mw.reference_length_InputWidget.setValidator(validator2)
-
         # Fill in default values:
 
+        #FIXME: THE DEFAULT VALUES DO NOT NEED TO BE DEFINED HERE!!!
         # pulsed measurement tab
-        self._mw.mw_frequency_InputWidget.setText(str(2870.))
-        self._mw.mw_power_InputWidget.setText(str(-30.))
-        self._mw.numlaser_InputWidget.setText(str(50))
-        self._mw.tau_start_InputWidget.setText(str(1))
-        self._mw.tau_increment_InputWidget.setText(str(1))
+        self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(2870e6)
+        self._mw.ext_control_mw_power_DoubleSpinBox.setValue(-30.)
+        self._mw.ana_param_fc_num_laser_pulse_SpinBox.setValue(50)
+        self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
+        self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 #        self._mw.lasertoshow_spinBox.setRange(0, 50)
 #        self._mw.lasertoshow_spinBox.setPrefix("#")
 #        self._mw.lasertoshow_spinBox.setSpecialValueText("sum")
 #        self._mw.lasertoshow_spinBox.setValue(0)
 
-        self._mw.laser_to_show_ComboBox.clear()
-        self._mw.laser_to_show_ComboBox.addItem('sum')
-        for ii in range(50):
-            self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
+        self._mw.time_param_elapsed_time_LineEdit.setText('00:00:00:00')
 
-        self._mw.signal_start_InputWidget.setText(str(5))
-        self._mw.signal_length_InputWidget.setText(str(200))
-        self._mw.reference_start_InputWidget.setText(str(500))
-        self._mw.reference_length_InputWidget.setText(str(200))
-        self._mw.expected_duration_TimeLabel.setText('00:00:00:03')
-        self._mw.elapsed_time_label.setText('00:00:00:00')
-        self._mw.elapsed_sweeps_LCDNumber.display(0)
-        self._mw.analysis_period_InputWidget.setText(str(2))
-        self._mw.refocus_interval_LineEdit.setText(str(500))
-        self._mw.odmr_refocus_interval_LineEdit.setText(str(500))
+        self._mw.laserpulses_ComboBox.clear()
+        self._mw.laserpulses_ComboBox.addItem('sum')
+        for ii in range(50):
+            self._mw.laserpulses_ComboBox.addItem(str(1+ii))
+
+        self._mw.extract_param_ana_window_start_SpinBox.setValue(5)
+        self._mw.extract_param_ana_window_width_SpinBox.setValue(200)
+        self._mw.extract_param_ref_window_start_SpinBox.setValue(500)
+        self._mw.extract_param_ref_window_width_SpinBox.setValue(200)
+
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(0)
+        self._mw.time_param_ana_periode_DoubleSpinBox.setValue(2)
+        self._mw.ext_control_optimize_interval_DoubleSpinBox.setValue(500)
+        self._mw.ext_control_redo_odmr_DoubleSpinBox.setValue(500)
 
 
         # Configuration of the fit ComboBox
 
-        self._mw.fit_function_ComboBox.addItem('No Fit')
-        self._mw.fit_function_ComboBox.addItem('Rabi Decay')
-        self._mw.fit_function_ComboBox.addItem('Lorentian (neg)')
-        self._mw.fit_function_ComboBox.addItem('Lorentian (pos)')
-        self._mw.fit_function_ComboBox.addItem('N14')
-        self._mw.fit_function_ComboBox.addItem('N15')
-        self._mw.fit_function_ComboBox.addItem('Stretched Exponential')
-        self._mw.fit_function_ComboBox.addItem('Exponential')
-        self._mw.fit_function_ComboBox.addItem('XY8')
+        self._mw.fit_param_fit_func_ComboBox.addItem('No Fit')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Rabi Decay')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (neg)')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (pos)')
+        self._mw.fit_param_fit_func_ComboBox.addItem('N14')
+        self._mw.fit_param_fit_func_ComboBox.addItem('N15')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Stretched Exponential')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Exponential')
+        self._mw.fit_param_fit_func_ComboBox.addItem('XY8')
 
 
         # ---------------------------------------------------------------------
@@ -2630,9 +2613,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
 
 
-        self._pulsed_measurement_logic.signal_laser_plot_updated.connect(self.refresh_lasertrace_plot)
-        self._pulsed_measurement_logic.signal_signal_plot_updated.connect(self.refresh_signal_plot)
-        self._pulsed_measurement_logic.measuring_error_plot_updated.connect(self.refresh_measuring_error_plot)
+        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.connect(self.refresh_pulse_analysis)
+
+        # self._pulsed_measurement_logic.sigMeasuringErrorUpdated.connect(self.refresh_measuring_error_plot)
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
 
         # sequence generator tab
@@ -2640,29 +2623,30 @@ class PulsedMeasurementGui(GUIBase):
         # Connect the CheckBoxes
         # anaylsis tab
 
-        self._mw.turn_off_external_mw_source_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
-        self._mw.tau_defined_in_sequence_CheckBox.stateChanged.connect(self.show_tau_editor)
-        self._mw.show_fft_plot_CheckBox.stateChanged.connect(self.show_fft_plot)
+        self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
+        self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.show_tau_editor)
+        self._mw.ana_param_show_ft_CheckBox.stateChanged.connect(self.show_ft_plot)
+        self.show_ft_plot()
 
         # Connect InputWidgets to events
         # pulsed measurement tab
-        self._mw.numlaser_InputWidget.editingFinished.connect(self.lasernum_changed)
+        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.lasernum_changed)
         #self._mw.lasertoshow_spinBox.valueChanged.connect(self.seq_parameters_changed)
-        self._mw.laser_to_show_ComboBox.activated.connect(self.seq_parameters_changed)
-        self._mw.tau_start_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.tau_increment_InputWidget.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.signal_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.signal_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.reference_start_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.reference_length_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.analysis_period_InputWidget.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.laserpulses_ComboBox.activated.connect(self.seq_parameters_changed)
+        self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_parameters_changed)
+        self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_parameters_changed)
 
         self.seq_parameters_changed()
         self.analysis_parameters_changed()
 #
 #        self._mw.actionSave_Data.triggered.connect(self.save_clicked)
 
-        self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
+        self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
 
 
     def _deactivate_analysis_ui(self, e):
@@ -2677,19 +2661,18 @@ class PulsedMeasurementGui(GUIBase):
         # disconnect signals
 #        self._mw.idle_RadioButton.toggled.disconnect()
 #        self._mw.run_RadioButton.toggled.disconnect()
-        self._pulsed_measurement_logic.signal_laser_plot_updated.disconnect()
-        self._pulsed_measurement_logic.signal_signal_plot_updated.disconnect()
-        self._pulsed_measurement_logic.measuring_error_plot_updated.disconnect()
-        self._mw.numlaser_InputWidget.editingFinished.disconnect()
+        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.disconnect()
+        # self._pulsed_measurement_logic.sigMeasuringErrorUpdated.disconnect()
+        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.disconnect()
         #self._mw.lasertoshow_spinBox.valueChanged.disconnect()
-        self._mw.laser_to_show_ComboBox.activated.disconnect()
+        self._mw.laserpulses_ComboBox.activated.disconnect()
 
 #    def idle_clicked(self):
 #        """ Stopp the scan if the state has switched to idle. """
 #        self._pulsed_measurement_logic.stop_pulsed_measurement()
-#        self._mw.mw_frequency_InputWidget.setEnabled(True)
-#        self._mw.mw_power_InputWidget.setEnabled(True)
-#        self._mw.binning_comboBox.setEnabled(True)
+#        self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
+#        self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+#        self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
 #        self._mw.pull_data_pushButton.setEnabled(False)
 
     def run_stop_clicked(self, isChecked):
@@ -2703,10 +2686,10 @@ class PulsedMeasurementGui(GUIBase):
         #Then if enabled. start a new scan.
 
         if isChecked:
-            #self._mw.signal_plot_ViewWidget.clear()
-            self._mw.mw_frequency_InputWidget.setEnabled(False)
-            self._mw.mw_power_InputWidget.setEnabled(False)
-            self._mw.binning_comboBox.setEnabled(False)
+            #self._mw.pulse_analysis_PlotWidget.clear()
+            self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
+            self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
+            self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
             self._pulsed_measurement_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -2715,9 +2698,9 @@ class PulsedMeasurementGui(GUIBase):
 
         else:
             self._pulsed_measurement_logic.stop_pulsed_measurement()
-            self._mw.mw_frequency_InputWidget.setEnabled(True)
-            self._mw.mw_power_InputWidget.setEnabled(True)
-            self._mw.binning_comboBox.setEnabled(True)
+            self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
+            self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
+            self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
 
@@ -2750,7 +2733,7 @@ class PulsedMeasurementGui(GUIBase):
     def fit_clicked(self):
         self._mw.fit_result_TextBrowser.clear()
 
-        current_fit_function = self._mw.fit_function_ComboBox.currentText()
+        current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
 
 
 
@@ -2758,7 +2741,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
 
-        self._mw.signal_plot_ViewWidget.addItem(self.fit_image,pen='r')
+        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image,pen='r')
 
         self._mw.fit_result_TextBrowser.setPlainText(fit_result)
 
@@ -2767,7 +2750,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def refresh_lasertrace_plot(self):
+    def refresh_pulse_analysis(self):
         ''' This method refreshes the xy-plot image
         '''
         self.lasertrace_image.setData(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
@@ -2790,61 +2773,61 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
-        self._mw.elapsed_time_label.setText(self._pulsed_measurement_logic.elapsed_time_str)
-        self._mw.elapsed_sweeps_LCDNumber.display(self._pulsed_measurement_logic.elapsed_sweeps)
+        self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_measurement_logic.elapsed_time_str)
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_measurement_logic.elapsed_sweeps)
 
 
 
 
     def show_external_mw_source_checked(self):
-        if self._mw.turn_off_external_mw_source_CheckBox.isChecked():
+        if not self._mw.ext_control_use_mw_CheckBox.isChecked():
 
-            self._mw.mw_frequency_Label.setVisible(False)
-            self._mw.mw_frequency_InputWidget.setVisible(False)
-            self._mw.mw_power_Label.setVisible(False)
-            self._mw.mw_power_InputWidget.setVisible(False)
+            self._mw.ext_control_mw_freq_Label.setVisible(False)
+            self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
+            self._mw.ext_control_mw_power_Label.setVisible(False)
+            self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
         else:
-            self._mw.mw_frequency_Label.setVisible(True)
-            self._mw.mw_frequency_InputWidget.setVisible(True)
-            self._mw.mw_power_Label.setVisible(True)
-            self._mw.mw_power_InputWidget.setVisible(True)
+            self._mw.ext_control_mw_freq_Label.setVisible(True)
+            self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
+            self._mw.ext_control_mw_power_Label.setVisible(True)
+            self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(True)
 
 
     def show_tau_editor(self):
-        if self._mw.tau_defined_in_sequence_CheckBox.isChecked():
-            self._mw.tau_start_Label.setVisible(True)
-            self._mw.tau_start_InputWidget.setVisible(True)
-            self._mw.tau_increment_Label.setVisible(True)
-            self._mw.tau_increment_InputWidget.setVisible(True)
+        if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+            self._mw.ana_param_x_axis_start_Label.setVisible(True)
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
+            self._mw.ana_param_x_axis_inc_Label.setVisible(True)
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(True)
         else:
-            self._mw.tau_start_Label.setVisible(False)
-            self._mw.tau_start_InputWidget.setVisible(False)
-            self._mw.tau_increment_Label.setVisible(False)
-            self._mw.tau_increment_InputWidget.setVisible(False)
+            self._mw.ana_param_x_axis_start_Label.setVisible(False)
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
+            self._mw.ana_param_x_axis_inc_Label.setVisible(False)
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
 
-    def show_fft_plot(self):
-        if self._mw.show_fft_plot_CheckBox.isChecked():
-            self._mw.fft_PlotWidget.setVisible(True)
+    def show_ft_plot(self):
+        if self._mw.ana_param_show_ft_CheckBox.isChecked():
+            self._mw.fourier_transform_GroupBox.setVisible(True)
         else:
-            self._mw.fft_PlotWidget.setVisible(False)
+            self._mw.fourier_transform_GroupBox.setVisible(False)
 
     def lasernum_changed(self):
-        self._mw.laser_to_show_ComboBox.clear()
-        self._mw.laser_to_show_ComboBox.addItem('sum')
-        for ii in range(int(self._mw.numlaser_InputWidget.text())):
-            self._mw.laser_to_show_ComboBox.addItem(str(1+ii))
-        # print (self._mw.laser_to_show_ComboBox.currentText())
+        self._mw.laserpulses_ComboBox.clear()
+        self._mw.laserpulses_ComboBox.addItem('sum')
+        for ii in range(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()):
+            self._mw.laserpulses_ComboBox.addItem(str(1+ii))
+        # print (self._mw.laserpulses_ComboBox.currentText())
         #self.seq_parameters_changed()
 
     def seq_parameters_changed(self):
-        laser_num = int(self._mw.numlaser_InputWidget.text())
-        tau_start = int(self._mw.tau_start_InputWidget.text())
-        tau_incr = int(self._mw.tau_increment_InputWidget.text())
-        mw_frequency = float(self._mw.mw_frequency_InputWidget.text())
-        mw_power = float(self._mw.mw_power_InputWidget.text())
+        laser_num = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
+        tau_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
+        tau_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
+        mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
+        mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
 
-        current_laser = self._mw.laser_to_show_ComboBox.currentText()
+        current_laser = self._mw.laserpulses_ComboBox.currentText()
 
 
         # print (current_laser)
@@ -2855,33 +2838,33 @@ class PulsedMeasurementGui(GUIBase):
 
 
         else:
-            # print (self._mw.laser_to_show_ComboBox.currentText())
+            # print (self._mw.laserpulses_ComboBox.currentText())
             laser_show = int(current_laser)
             #laser_show=5
 
 
         if (laser_show > laser_num):
             print ('warning. Number too high')
-            self._mw.laser_to_show_ComboBox.setEditText('sum')
+            self._mw.laserpulses_ComboBox.setEditText('sum')
             laser_show = 0
 
 
 
-        tau_vector = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
+        tau_vector = np.arange(tau_start, tau_start + tau_incr*laser_num, tau_incr)
         # self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
         # self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
         self._pulsed_measurement_logic.display_pulse_no = laser_show
-        self._pulsed_measurement_logic.mykrowave_freq = mw_frequency
-        self._pulsed_measurement_logic.mykrowave_power = mw_power
+        self._pulsed_measurement_logic.microwave_freq = mw_frequency
+        self._pulsed_measurement_logic.microwave_power = mw_power
         return
 
 
     def analysis_parameters_changed(self):
-        sig_start = int(self._mw.signal_start_InputWidget.text())
-        sig_length = int(self._mw.signal_length_InputWidget.text())
-        ref_start = int(self._mw.reference_start_InputWidget.text())
-        ref_length = int(self._mw.reference_length_InputWidget.text())
-        timer_interval = float(self._mw.analysis_period_InputWidget.text())
+        sig_start = self._mw.extract_param_ana_window_start_SpinBox.value()
+        sig_length = self._mw.extract_param_ana_window_width_SpinBox.value()
+        ref_start = self._mw.extract_param_ref_window_start_SpinBox.value()
+        ref_length = self._mw.extract_param_ref_window_width_SpinBox.value()
+        timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self.signal_start_bin = sig_start
         self.signal_width_bins = sig_length
         self.norm_start_bin = ref_start
