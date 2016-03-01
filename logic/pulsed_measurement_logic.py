@@ -578,9 +578,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            fitted_function,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
-            self.signal_plot_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+            fitted_function, params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
+            fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
@@ -590,23 +590,24 @@ class PulsedMeasurementLogic(GenericLogic):
                                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
-
+            return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
             fitted_function,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
-            self.signal_plot_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+            pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
+            fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
+            return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function =='Stretched Exponential':
             fit_result = ('Stretched Exponential not yet implemented')
-            return pulsed_fit_x,pulsed_fit_x, fit_result
+            return pulsed_fit_x, pulsed_fit_x, fit_result
 
         elif fit_function =='Exponential':
             fit_result = ('Exponential not yet implemented')
