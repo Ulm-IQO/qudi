@@ -2537,6 +2537,9 @@ class PulsedMeasurementGui(GUIBase):
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
+        self.fit_image = pg.PlotDataItem()
+        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image,pen='r')
+
 
         # Initialize  what is visible and what not
         self._mw.ext_control_mw_freq_Label.setVisible(False)
@@ -2745,19 +2748,18 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def fit_clicked(self):
-        self._mw.fit_result_TextBrowser.clear()
+        self._mw.fit_param_results_TextBrowser.clear()
 
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
 
-
-
         fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
 
-        self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
+        # self.fit_image = pg.PlotDataItem(fit_x, fit_y,pen='r')
+        # self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image,pen='r')
 
-        self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image,pen='r')
+        self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
 
-        self._mw.fit_result_TextBrowser.setPlainText(fit_result)
+        self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
 
         return
 
