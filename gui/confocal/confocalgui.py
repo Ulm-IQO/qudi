@@ -567,7 +567,7 @@ class ConfocalGui(GUIBase):
 
         # Configure and connect the zoom actions with the desired buttons and
         # functions if
-        self._mw.action_zoom.toggled.connect(self.zoomed_clicked)
+        self._mw.action_zoom.toggled.connect(self.zoom_clicked)
         self._mw.xy_ViewWidget.sigMouseClick.connect(self.xy_scan_start_zoom_point)
         self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
 
@@ -576,7 +576,7 @@ class ConfocalGui(GUIBase):
 
         # Check whenever a state of the ViewBox was changed inside of a
         # PlotWidget, which creates a xy_ViewWidget or a depth_Viewwidget:
-        self._mw.xy_ViewWidget.getViewBox().sigRangeChanged.connect(self.reset_xy_imagerange)
+        #self._mw.xy_ViewWidget.getViewBox().sigRangeChanged.connect(self.reset_xy_imagerange)
 
         #######################################################################
         ####           Connect the colorbar and their actions              ####
@@ -1372,19 +1372,16 @@ class ConfocalGui(GUIBase):
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_x_range = [self._mw.x_min_InputWidget.value(),
-                                              self._mw.x_max_InputWidget.value()]
+        self._scanning_logic.image_x_range = [self._mw.x_min_InputWidget.value(), self._mw.x_max_InputWidget.value()]
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.image_y_range = [self._mw.y_min_InputWidget.value(),
-                                              self._mw.y_max_InputWidget.value()]
+        self._scanning_logic.image_y_range = [self._mw.y_min_InputWidget.value(), self._mw.y_max_InputWidget.value()]
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.image_z_range = [self._mw.z_min_InputWidget.value(),
-                                              self._mw.z_max_InputWidget.value()]
+        self._scanning_logic.image_z_range = [self._mw.z_min_InputWidget.value(), self._mw.z_max_InputWidget.value()]
 
     def use_tiltcorrection_clicked(self, e):
         """ """
@@ -1888,7 +1885,7 @@ class ConfocalGui(GUIBase):
 #FIXME: For the depth scan both possibilities have to be implemented, either
 #       for a xz of a yz scan. The image ranges have to be adjusted properly.
 
-    def zoomed_clicked(self, is_checked):
+    def zoom_clicked(self, is_checked):
         """ Activates the zoom mode in the xy and depth Windows.
 
         @param bool is_checked: pass the state of the zoom button if checked
@@ -1932,8 +1929,7 @@ class ConfocalGui(GUIBase):
         """
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and
-                (event.button() == QtCore.Qt.LeftButton)):
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
@@ -1950,8 +1946,7 @@ class ConfocalGui(GUIBase):
         """
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and
-                (event.button() == QtCore.Qt.LeftButton)):
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
@@ -1965,14 +1960,14 @@ class ConfocalGui(GUIBase):
         initpos = self._current_xy_zoom_start
 
         # get the right corners from the zoom window:
-        if initpos[0]>endpos[0]:
+        if initpos[0] > endpos[0]:
             xMin = endpos[0]
             xMax = initpos[0]
         else:
             xMin = initpos[0]
             xMax = endpos[0]
 
-        if initpos[1]>endpos[1]:
+        if initpos[1] > endpos[1]:
             yMin = endpos[1]
             yMax = initpos[1]
         else:
@@ -1989,8 +1984,10 @@ class ConfocalGui(GUIBase):
         self.change_y_image_range()
 
         # Finally change the visible area of the ViewBox:
-        viewbox.setRange(xRange = (xMin, xMax), yRange = (yMin, yMax))
         event.accept()
+        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
+        # second time is really needed, otherwisa zooming will not work for the first time
+        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
 
     def reset_xy_imagerange(self, viewbox):
         """ Reset the imagerange if autorange was pressed.
@@ -2022,8 +2019,7 @@ class ConfocalGui(GUIBase):
         """
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and
-                (event.button() == QtCore.Qt.LeftButton)):
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
@@ -2040,8 +2036,7 @@ class ConfocalGui(GUIBase):
         """
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and
-                (event.button() == QtCore.Qt.LeftButton)):
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
@@ -2055,14 +2050,14 @@ class ConfocalGui(GUIBase):
         initpos = self._current_depth_zoom_start
 
         # get the right corners from the zoom window:
-        if initpos[0]>endpos[0]:
+        if initpos[0] > endpos[0]:
             xMin = endpos[0]
             xMax = initpos[0]
         else:
             xMin = initpos[0]
             xMax = endpos[0]
 
-        if initpos[1]>endpos[1]:
+        if initpos[1] >endpos[1]:
             zMin = endpos[1]
             zMax = initpos[1]
         else:
@@ -2078,9 +2073,11 @@ class ConfocalGui(GUIBase):
         self._mw.z_max_InputWidget.setValue(zMax)
         self.change_z_image_range()
 
-        # Finally change the visible area of the ViewBox:
-        viewbox.setRange(xRange = (xMin, xMax), yRange = (zMin, zMax))
         event.accept()
+        # Finally change the visible area of the ViewBox:
+        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
+        # second time is really needed, otherwisa zooming will not work for the first time
+        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
 
     def reset_depth_imagerange(self, viewbox):
         """ Reset the imagerange if autorange was pressed.

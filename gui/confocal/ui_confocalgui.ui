@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1348</width>
-    <height>981</height>
+    <height>1129</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1292,7 +1292,7 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
-            <widget class="QLabel" name="label_6">
+            <widget class="QLabel" name="percentage_xy_high_label">
              <property name="maximumSize">
               <size>
                <width>30</width>
@@ -1344,7 +1344,7 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_8">
            <item>
-            <widget class="QLabel" name="label_7">
+            <widget class="QLabel" name="percentage_xy_low_label">
              <property name="maximumSize">
               <size>
                <width>30</width>
@@ -1506,6 +1506,9 @@
    <property name="windowTitle">
     <string>Utilities Toolbar</string>
    </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
@@ -1613,7 +1616,7 @@
         </widget>
        </item>
        <item row="0" column="0">
-        <widget class="QLabel" name="label_10">
+        <widget class="QLabel" name="tiltpoint_label">
          <property name="text">
           <string>Set Tiltpoint :</string>
          </property>
@@ -1645,7 +1648,7 @@
         </widget>
        </item>
        <item row="0" column="1" alignment="Qt::AlignHCenter">
-        <widget class="QLabel" name="label_11">
+        <widget class="QLabel" name="tilt_x_label">
          <property name="text">
           <string>X</string>
          </property>
@@ -1836,14 +1839,14 @@
         </widget>
        </item>
        <item row="0" column="2" alignment="Qt::AlignHCenter">
-        <widget class="QLabel" name="label_13">
+        <widget class="QLabel" name="tilt_y_label">
          <property name="text">
           <string>Y</string>
          </property>
         </widget>
        </item>
        <item row="0" column="3" alignment="Qt::AlignHCenter">
-        <widget class="QLabel" name="label_14">
+        <widget class="QLabel" name="tilt_z_label">
          <property name="text">
           <string>Z</string>
          </property>
@@ -1876,8 +1879,7 @@
   <action name="actionSave_XY_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Save XY Data</string>
@@ -1886,8 +1888,7 @@
   <action name="actionSave_configuration">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save co&amp;nfiguration</string>
@@ -1896,8 +1897,7 @@
   <action name="action_Settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Se&amp;ttings</string>
@@ -1906,8 +1906,7 @@
   <action name="actionClose">
    <property name="icon">
     <iconset theme="window-close">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>C&amp;lose</string>
@@ -1922,8 +1921,7 @@
   <action name="actionSave_Depth_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save &amp;XZ Data</string>
@@ -1932,8 +1930,7 @@
   <action name="action_optimizer_settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>O&amp;ptimizer Settings</string>
@@ -1942,8 +1939,7 @@
   <action name="actionSave_XY_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save XY &amp;Image+Data</string>
@@ -1952,8 +1948,7 @@
   <action name="actionSave_Depth_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save XZ Image+&amp;Data</string>
@@ -1969,7 +1964,7 @@
      <normalon>../../artwork/icons/qudiTheme/32x32/search_active.png</normalon>../../artwork/icons/qudiTheme/22x22/search.png</iconset>
    </property>
    <property name="text">
-    <string>zoom</string>
+    <string>Zoom</string>
    </property>
   </action>
   <action name="actionXY_scan_view">
@@ -2187,7 +2182,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Use Tiltcorrection</string>
+    <string>&amp;Use Tilt Correction</string>
    </property>
   </action>
   <action name="actionTilt_correction_view">
@@ -2204,8 +2199,7 @@
    </property>
    <property name="icon">
     <iconset theme="go-next">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Forward</string>
@@ -2220,8 +2214,7 @@
    </property>
    <property name="icon">
     <iconset theme="go-previous">
-     <normaloff/>
-    </iconset>
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>&amp;Back</string>
