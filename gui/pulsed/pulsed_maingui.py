@@ -2624,8 +2624,19 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
+
+            # set number of laser pulses:
+            self._pulsed_measurement_logic.number_of_lasers = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
+
+            self._pulsed_measurement_logic.aom_delay_s = 0.5e-6
+            self._pulsed_measurement_logic.laser_length_s = 3e-6
+
+            self._pulsed_measurement_logic.configure_fast_counter()
+
             self._pulsed_measurement_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
+
+
             if not self._mw.action_continue_pause.isChecked():
                 self._mw.action_continue_pause.toggle()
 
