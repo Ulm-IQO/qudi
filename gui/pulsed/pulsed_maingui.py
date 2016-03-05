@@ -2572,7 +2572,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
         self._mw.action_save.toggled.connect(self.save_clicked)
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
-        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.connect(self.refresh_pulse_analysis)
+
         self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
 
         # sequence generator tab
@@ -2592,6 +2592,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_parameters_changed)
+        self.analysis_parameters_changed()
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
 
 
@@ -2687,10 +2688,6 @@ class PulsedMeasurementGui(GUIBase):
         return
 
 
-    def refresh_pulse_analysis(self):
-        ''' This method refreshes the xy-plot image
-        '''
-        self.lasertrace_image.setData(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
 
     def refresh_signal_plot(self):
         ''' This method refreshes the xy-matrix image
@@ -2757,6 +2754,7 @@ class PulsedMeasurementGui(GUIBase):
         #self.seq_parameters_changed()
 
     def seq_parameters_changed(self):
+
         laser_num = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
         tau_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
         tau_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
@@ -2764,33 +2762,13 @@ class PulsedMeasurementGui(GUIBase):
         mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
 
-        current_laser = self._mw.laserpulses_ComboBox.currentText()
-
-
-        # print (current_laser)
-
-        if current_laser == 'sum':
-
-            laser_show = 0
-
-
-        else:
-            # print (self._mw.laserpulses_ComboBox.currentText())
-            laser_show = int(current_laser)
-            #laser_show=5
-
-
-        if (laser_show > laser_num):
-            print ('warning. Number too high')
-            self._mw.laserpulses_ComboBox.setEditText('sum')
-            laser_show = 0
 
 
 
         tau_vector = np.arange(tau_start, tau_start + tau_incr*laser_num, tau_incr)
         # self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
         # self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
-        self._pulsed_measurement_logic.display_pulse_no = laser_show
+
         self._pulsed_measurement_logic.microwave_freq = mw_frequency
         self._pulsed_measurement_logic.microwave_power = mw_power
         return
@@ -2942,7 +2920,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-        self._mw.laserpulses_ComboBox.activated.connect(self.seq_parameters_changed)
+
 
         self._mw.laserpulses_ComboBox.clear()
         self._mw.laserpulses_ComboBox.addItem('sum')
@@ -2954,12 +2932,23 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.extract_param_ref_window_start_SpinBox.setValue(500)
         self._mw.extract_param_ref_window_width_SpinBox.setValue(200)
 
-
+        # Display laser pulses, connect change of viewboxes and change of lines:
         self._mw.extract_param_ana_window_start_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
         self._mw.extract_param_ana_window_width_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
         self._mw.extract_param_ref_window_start_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
         self._mw.extract_param_ref_window_width_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
-        self.analysis_parameters_changed()
+
+        self.sig_start_line.sigPositionChanged.connect(self.analysis_window_sig_line_start_changed)
+        self.sig_end_line.sigPositionChanged.connect(self.analysis_window_sig_line_stop_changed)
+        self.ref_start_line.sigPositionChanged.connect(self.analysis_window_ref_line_start_changed)
+        self.ref_end_line.sigPositionChanged.connect(self.analysis_window_ref_line_stop_changed)
+
+        self._mw.laserpulses_ComboBox.currentIndexChanged.connect(self.refresh_laser_pulses_display)
+        self._mw.laserpulses_display_raw_CheckBox.stateChanged.connect(self.refresh_laser_pulses_display)
+
+        self._pulsed_measurement_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
+        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
+
 
         #FIXME: remove the dependency on the seq parameter changed for this
         #       section!
@@ -2998,6 +2987,47 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_measurement_logic.norm_start_bin = ref_start
         self._pulsed_measurement_logic.norm_width_bin = ref_length
 
-    def analysis_window_lines_changed(self):
-        """ React when the line get moved by the user. """
+    def analysis_window_sig_line_start_changed(self):
+        """ React when the start signal line get moved by the user. """
+        sig_start = self.sig_start_line.value()
+        self._mw.extract_param_ana_window_start_SpinBox.setValue(sig_start)
+        self._pulsed_measurement_logic.signal_start_bin = sig_start
 
+    def analysis_window_sig_line_stop_changed(self):
+        """ React when the stop signal line get moved by the user. """
+        sig_start = self.sig_start_line.value()
+        sig_length = self.sig_end_line.value() - sig_start
+        self._mw.extract_param_ana_window_width_SpinBox.setValue(sig_length)
+        self._pulsed_measurement_logic.signal_width_bin = sig_length
+
+    def analysis_window_ref_line_start_changed(self):
+        """ React when the reference start line get moved by the user. """
+        ref_start = self.ref_start_line.value()
+        self._mw.extract_param_ref_window_start_SpinBox.setValue(ref_start)
+        self._pulsed_measurement_logic.norm_start_bin = ref_start
+
+    def analysis_window_ref_line_stop_changed(self):
+        """ React when the reference stop line get moved by the user. """
+        ref_start = self.ref_start_line.value()
+        ref_length = self.ref_end_line.value()-ref_start
+        self._mw.extract_param_ref_window_width_SpinBox.setValue(ref_length)
+        self._pulsed_measurement_logic.norm_width_bin = ref_length
+
+    def refresh_laser_pulses_display(self):
+        """ Refresh the extracted laser pulse display. """
+
+        current_laser = self._mw.laserpulses_ComboBox.currentText()
+
+        if current_laser == 'sum':
+            show_laser_num = 0
+        else:
+            show_laser_num = int(current_laser)
+
+        if self._mw.laserpulses_display_raw_CheckBox.isChecked():
+            self._pulsed_measurement_logic.raw_laser_pulse = True
+        else:
+            self._pulsed_measurement_logic.raw_laser_pulse = False
+
+        x_data, y_data = self._pulsed_measurement_logic.get_laserpulse(show_laser_num)
+
+        self.lasertrace_image.setData(x=x_data, y=y_data)
