@@ -35,6 +35,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
     signal_time_updated = QtCore.Signal()
+    sigSinglePulsesUpdated = QtCore.Signal()
     sigPulseAnalysisUpdated = QtCore.Signal()
     sigMeasuringErrorUpdated = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal()
@@ -68,9 +69,6 @@ class PulsedMeasurementLogic(GenericLogic):
         # setup parameters
         self.aom_delay_s = 0.7e-6
         self.laser_length_s = 3.e-6
-        # index of the laser pulse to be displayed in the GUI (starting from 1).
-        # A value of 0 corresponds to the sum of all laser pulses
-        self.display_pulse_no = 0
 
         # timer for data analysis
         self.timer = None
@@ -105,8 +103,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_plot_y = None
 
         # raw data
-        self.laser_data = None
-        self.raw_data = None
+        self.laser_data = np.zeros((10,20))
+        self.raw_data = np.zeros((10,20))
+        self.raw_laser_pulse=False
 
 
     def activation(self, e):
@@ -210,15 +209,18 @@ class PulsedMeasurementLogic(GenericLogic):
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
             # analyze pulses and get data points for signal plot
-            self.signal_plot_y, self.laser_data, self.raw_data, self.measuring_error = self._pulse_analysis_logic._analyze_data(norm_start, norm_end, sig_start, sig_end, self.number_of_lasers)
+
+            self.signal_plot_y, \
+            self.laser_data,    \
+            self.raw_data,      \
+            self.measuring_error = self._pulse_analysis_logic._analyze_data(norm_start,
+                                                                            norm_end,
+                                                                            sig_start,
+                                                                            sig_end,
+                                                                            self.number_of_lasers)
             # set x-axis of signal plot
             self.signal_plot_x = self.tau_array
-            # set laser plot
-            if self.display_pulse_no > 0:
-                self.laser_plot_y = self.laser_data[self.display_pulse_no-1]
-            else:
-                self.laser_plot_y = np.sum(self.laser_data,0)
-            self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, self.laser_data.shape[1]+1)
+
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
             self.elapsed_time_str = ''
@@ -228,11 +230,37 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
             # has to be changed. just for testing purposes
             self.elapsed_sweeps = self.elapsed_time/3
+
             # emit signals
+            self.sigSinglePulsesUpdated.emit()
             self.sigPulseAnalysisUpdated.emit()
             self.sigMeasuringErrorUpdated.emit()
             self.signal_time_updated.emit()
 
+    def get_laserpulse(self, laser_num=0):
+        """ Get the laserpulse with the appropriate number.
+
+        @param int num: number of laserpulse, to be displayed, if zero is passed
+                        then the sum off all laserpulses is calculated.
+        @return: tuple of 1D arrays, first one is x data, second is y data of
+                                     currently selected laser.
+        """
+
+        if self.raw_laser_pulse:
+            if laser_num > 0:
+                self.laser_plot_y = self.raw_data[laser_num-1]
+            else:
+                self.laser_plot_y = np.sum(self.raw_data,0)
+        else:
+            # set laser plot
+            if laser_num > 0:
+                self.laser_plot_y = self.laser_data[laser_num-1]
+            else:
+                self.laser_plot_y = np.sum(self.laser_data,0)
+
+        self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, len(self.laser_plot_y)+1)
+
+        return self.laser_plot_x, self.laser_plot_y
 
     def stop_pulsed_measurement(self):
         """ Stop the measurement
@@ -296,11 +324,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 #pausing all the timers
                 self.timer.start()
-                self.refocus_timer.start()
-                self.odmr_refocus_timer.start()
+                # self.refocus_timer.start()
+                # self.odmr_refocus_timer.start()
 
                 self.fast_counter_on()
-                self.mykrowave_on()
+                # self.mykrowave_on()
                 self.pulse_generator_on()
 #                self.sigPulseAnalysisUpdated.emit()
 #                self.sigMeasuringErrorUpdated.emit()
