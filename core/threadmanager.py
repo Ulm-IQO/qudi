@@ -190,6 +190,7 @@ class ThreadItem(QtCore.QObject):
         """
         super().__init__()
         self.thread = QtCore.QThread()
+        self.thread.setObjectName(name)
         self.name = name
         self.thread.finished.connect(self.myThreadHasQuit)
         
