@@ -1414,17 +1414,24 @@ sel.</string>
               <layout class="QGridLayout" name="gridLayout_32">
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_31">
-                 <item row="0" column="1">
+                 <item row="0" column="2">
                   <widget class="QComboBox" name="laserpulses_ComboBox"/>
                  </item>
-                 <item row="0" column="0">
+                 <item row="0" column="1">
                   <widget class="QLabel" name="label_38">
                    <property name="text">
                     <string>Laser Pulse number:</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0" colspan="2">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="laserpulses_display_raw_CheckBox">
+                   <property name="text">
+                    <string>Display raw</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="3">
                   <widget class="PlotWidget" name="laserpulses_PlotWidget"/>
                  </item>
                 </layout>
