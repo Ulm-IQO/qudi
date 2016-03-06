@@ -592,8 +592,8 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
         else:
-            self.logMsg(('len(self.rawdata[0]):', len(self.rawdata[0])))
-            self.logMsg(('self._already_counted_samples', self._already_counted_samples))
+            #self.logMsg(('len(self.rawdata[0]):', len(self.rawdata[0])))
+            #self.logMsg(('self._already_counted_samples', self._already_counted_samples))
 
             # replace the first part of the array with the new data:
             self.countdata[0:len(self.rawdata[0])] = self.rawdata[0]
