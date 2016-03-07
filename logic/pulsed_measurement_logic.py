@@ -364,8 +364,31 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.getState() == 'locked':
             self._pulsed_analysis_loop()
 
+    def set_num_of_lasers(self, num_of_lasers):
+        """ Set the number of laser pulses.
 
+        @param int num_of_lasers: number of expected laser pulsed. Number must
+                                  be greater then zero.
 
+        The number of laser pulses is quite necessary to configure some fast
+        counting hardware and to make the pulse extraction work properly.
+        """
+
+        if num_of_lasers < 1:
+            self.logMsg('Invalid number of laser pulses set in the '
+                        'pulsed_measurement_logic! A value of {0} was provided '
+                        'but an interger value in the range [0,inf) is '
+                        'expected! Set number_of_pulses to '
+                        '1.'.format(num_of_lasers), msgType='error')
+            num_of_lasers = 1
+
+        self.number_of_lasers = num_of_lasers
+
+    def get_num_of_lasers(self):
+        """ Retrieve the set number of laser pulses.
+        @return: int, number of laser pulses
+        """
+        return self.number_of_lasers
 
 
     def _initialize_signal_plot(self):
