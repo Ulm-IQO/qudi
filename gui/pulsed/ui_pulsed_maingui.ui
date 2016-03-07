@@ -56,7 +56,7 @@
                  <property name="sizeHint" stdset="0">
                   <size>
                    <width>20</width>
-                   <height>400</height>
+                   <height>5000</height>
                   </size>
                  </property>
                 </spacer>
@@ -202,7 +202,7 @@
                  <property name="sizeHint" stdset="0">
                   <size>
                    <width>20</width>
-                   <height>400</height>
+                   <height>5000</height>
                   </size>
                  </property>
                 </spacer>
@@ -1293,18 +1293,18 @@ sel.</string>
           <string>Pulse Extraction</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_15">
-          <item row="1" column="1">
+          <item row="1" column="0">
            <layout class="QGridLayout" name="gridLayout_20">
             <item row="0" column="0">
-             <widget class="QGroupBox" name="groupBox_12">
+             <widget class="QGroupBox" name="groupBox_11">
               <property name="title">
-               <string>Window for Pulse Analysis</string>
+               <string>Error and Signal to Noise</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_21">
-               <item row="1" column="0">
-                <layout class="QGridLayout" name="gridLayout_16">
+              <layout class="QGridLayout" name="gridLayout_27">
+               <item row="0" column="0">
+                <layout class="QGridLayout" name="gridLayout_22">
                  <item row="0" column="0">
-                  <widget class="PlotWidget" name="pulse_analyze_window_PlotWidget"/>
+                  <widget class="PlotWidget" name="measuring_error_PlotWidget"/>
                  </item>
                 </layout>
                </item>
@@ -1368,19 +1368,6 @@ sel.</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
-                  <spacer name="verticalSpacer_3">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
                  <item row="2" column="0">
                   <widget class="QLabel" name="label_37">
                    <property name="text">
@@ -1401,12 +1388,25 @@ sel.</string>
                    </property>
                   </spacer>
                  </item>
+                 <item row="3" column="1">
+                  <spacer name="verticalSpacer_3">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
                 </layout>
                </item>
               </layout>
              </widget>
             </item>
-            <item row="1" column="0">
+            <item row="1" column="0" colspan="2">
              <widget class="QGroupBox" name="groupBox_13">
               <property name="title">
                <string>Pulses</string>
@@ -1426,6 +1426,9 @@ sel.</string>
                  </item>
                  <item row="0" column="0">
                   <widget class="QCheckBox" name="laserpulses_display_raw_CheckBox">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="text">
                     <string>Display raw</string>
                    </property>
@@ -1433,22 +1436,6 @@ sel.</string>
                  </item>
                  <item row="1" column="0" colspan="3">
                   <widget class="PlotWidget" name="laserpulses_PlotWidget"/>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QGroupBox" name="groupBox_11">
-              <property name="title">
-               <string>Error and Signal to Noise</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_27">
-               <item row="0" column="0">
-                <layout class="QGridLayout" name="gridLayout_22">
-                 <item row="0" column="0">
-                  <widget class="PlotWidget" name="measuring_error_PlotWidget"/>
                  </item>
                 </layout>
                </item>
