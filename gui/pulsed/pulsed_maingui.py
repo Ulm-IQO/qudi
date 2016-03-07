@@ -30,7 +30,6 @@ import inspect
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is loaded by uic.loadUI in the QtGui classes below.
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
@@ -42,16 +41,11 @@ from core.util.mutex import Mutex
 #FIXME: Later that should be able to round up the values directly within
 #       the entering in the dspinbox for a consistent display of the
 #       sequence length.
-#FIXME: Use the desired unit representation to display the value from the logic
 #FIXME: Check whether as load_pulse_block_ensemble method is necessary.
 
 # =============================================================================
 #                       Define some delegate classes.
 # =============================================================================
-
-# These delegate classes can modify the behaviour of a whole row or column of
-# in a QTableWidget. When this starts to work properly, then the delegate
-# classes will move to a separate file.
 #
 # A general idea, which functions are customizable for our purpose it is worth
 # to read the documentation for the QItemDelegate Class:
@@ -125,9 +119,8 @@ class PredefinedMethodsDialog(QtGui.QDialog):
         uic.loadUi(ui_file, self)
 
 class PulsedMeasurementGui(GUIBase):
-    """
-    This is the GUI Class for pulsed measurements
-    """
+    """ This is the main GUI Class for pulsed measurements. """
+
     _modclass = 'PulsedMeasurementGui'
     _modtype = 'gui'
 
@@ -169,14 +162,14 @@ class PulsedMeasurementGui(GUIBase):
         GUI.
         """
 
-
-        self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
-        self._pulsed_measurement_logic = self.connector['in']['pulsedmeasurementlogic']['object']
+        self._pulsed_ana_logic = self.connector['in']['pulseanalysislogic']['object']
+        self._pulsed_meas_logic  = self.connector['in']['pulsedmeasurementlogic']['object']
         self._seq_gen_logic = self.connector['in']['sequencegeneratorlogic']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
         self._mw = PulsedMeasurementMainWindow()
 
+        # each tab/section has its own activation methods:
         self._activate_analysis_settings_ui(e)
         self._activate_analysis_ui(e)
 
@@ -203,7 +196,7 @@ class PulsedMeasurementGui(GUIBase):
         connected in the initUI method.
         """
 
-
+        # each tab/section has its own deactivation methods:
         self._deactivate_analysis_settings_ui(e)
         self._deactivate_analysis_ui(e)
 
@@ -221,6 +214,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def show(self):
         """Make main window visible and put it above all other windows. """
+
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
@@ -315,7 +309,8 @@ class PulsedMeasurementGui(GUIBase):
 
         channel_config = self.get_hardware_constraints()['channel_config']
 
-        ch_settings = (self._bs.analog_channels_SpinBox.value(), self._bs.digital_channels_SpinBox.value())
+        ch_settings = (self._bs.analog_channels_SpinBox.value(),
+                       self._bs.digital_channels_SpinBox.value())
 
         if ch_settings in channel_config:
 
@@ -388,8 +383,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._bs.analog_channels_SpinBox.setRange(a_ch_min, a_ch_max)
         self._bs.digital_channels_SpinBox.setRange(d_ch_min, d_ch_max)
-
-
 
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
@@ -1454,8 +1447,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.laserchannel_ComboBox.addItems(channel_map)
         self._channel_map = channel_map
 
-
-
     def get_channel_map(self):
         """
 
@@ -1473,7 +1464,6 @@ class PulsedMeasurementGui(GUIBase):
                       string) and the items denoting the column number (int).
         """
         return self._cfg_param_pbe
-
 
     def set_cfg_param_pbe(self):
         """ Set the parameter configuration of the Pulse_Block_Elements
@@ -1995,7 +1985,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # Configure the main pulse analysis display:
-        self.signal_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Intensity', units='a.u.')
         self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
@@ -2006,7 +1996,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the fourier transform of the main pulse analysis display:
-        self.fft_image = pg.PlotDataItem(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
         self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
@@ -2031,7 +2021,7 @@ class PulsedMeasurementGui(GUIBase):
         # pulsed measurement tab
         self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(2870e6)
         self._mw.ext_control_mw_power_DoubleSpinBox.setValue(-30.)
-        self._mw.ana_param_fc_num_laser_pulse_SpinBox.setValue(50)
+        self._mw.ana_param_fc_num_laser_pulse_SpinBox.setValue(self._pulsed_meas_logic.get_num_of_lasers())
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 
@@ -2041,7 +2031,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.time_param_ana_periode_DoubleSpinBox.setValue(2)
         self._mw.ext_control_optimize_interval_DoubleSpinBox.setValue(500)
         self._mw.ext_control_redo_odmr_DoubleSpinBox.setValue(500)
-
 
         # Configuration of the fit ComboBox
         self._mw.fit_param_fit_func_ComboBox.addItem('No Fit')
@@ -2065,7 +2054,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_save.toggled.connect(self.save_clicked)
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
 
-        self._pulsed_measurement_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+        self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
 
         # sequence generator tab
 
@@ -2079,7 +2068,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect InputWidgets to events
         # pulsed measurement tab
-        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.lasernum_changed)
+        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
         self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
@@ -2098,9 +2087,8 @@ class PulsedMeasurementGui(GUIBase):
         self.run_stop_clicked(False)
 
         # disconnect signals
-        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.disconnect()
+        self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
         self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.disconnect()
-        self._mw.laserpulses_ComboBox.activated.disconnect()
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
@@ -2109,7 +2097,7 @@ class PulsedMeasurementGui(GUIBase):
         """
 
         #Firstly stop any scan that might be in progress
-        self._pulsed_measurement_logic.stop_pulsed_measurement()
+        self._pulsed_meas_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
 
         if isChecked:
@@ -2119,14 +2107,14 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(True)
 
             # set number of laser pulses:
-            self._pulsed_measurement_logic.number_of_lasers = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
+            self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value())
 
-            self._pulsed_measurement_logic.aom_delay_s = 0.5e-6
-            self._pulsed_measurement_logic.laser_length_s = 3e-6
+            self._pulsed_meas_logic.aom_delay_s = 0.5e-6
+            self._pulsed_meas_logic.laser_length_s = 3e-6
 
-            self._pulsed_measurement_logic.configure_fast_counter()
+            self._pulsed_meas_logic.configure_fast_counter()
 
-            self._pulsed_measurement_logic.start_pulsed_measurement()
+            self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
 
 
@@ -2134,7 +2122,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.action_continue_pause.toggle()
 
         else:
-            self._pulsed_measurement_logic.stop_pulsed_measurement()
+            self._pulsed_meas_logic.stop_pulsed_measurement()
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
@@ -2160,11 +2148,11 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def pull_data_clicked(self):
-        self._pulsed_measurement_logic.manually_pull_data()
+        self._pulsed_meas_logic.manually_pull_data()
         return
 
     def save_clicked(self):
-        self._pulsed_measurement_logic._save_data()
+        self._pulsed_meas_logic._save_data()
         return
 
     def fit_clicked(self):
@@ -2172,7 +2160,7 @@ class PulsedMeasurementGui(GUIBase):
 
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
 
-        fit_x, fit_y, fit_result = self._pulsed_measurement_logic.do_fit(current_fit_function)
+        fit_x, fit_y, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
 
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
@@ -2184,23 +2172,23 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_signal_plot(self):
         ''' This method refreshes the xy-matrix image
         '''
-        self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
 
 
 
 
     def refresh_measuring_error_plot(self):
 
-        #print(self._pulsed_measurement_logic.measuring_error)
+        #print(self._pulsed_meas_logic.measuring_error)
 
-        self.measuring_error_image.setData(self._pulsed_measurement_logic.signal_plot_x,self._pulsed_measurement_logic.measuring_error*1000)
+        self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x,self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
-        self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_measurement_logic.elapsed_time_str)
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_measurement_logic.elapsed_sweeps)
+        self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_sweeps)
 
 
 
@@ -2237,14 +2225,6 @@ class PulsedMeasurementGui(GUIBase):
         else:
             self._mw.fourier_transform_GroupBox.setVisible(False)
 
-    def lasernum_changed(self):
-        self._mw.laserpulses_ComboBox.clear()
-        self._mw.laserpulses_ComboBox.addItem('sum')
-        for ii in range(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()):
-            self._mw.laserpulses_ComboBox.addItem(str(1+ii))
-        # print (self._mw.laserpulses_ComboBox.currentText())
-        #self.seq_parameters_changed()
-
     def seq_parameters_changed(self):
 
         laser_num = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
@@ -2258,44 +2238,21 @@ class PulsedMeasurementGui(GUIBase):
 
 
         tau_vector = np.arange(tau_start, tau_start + tau_incr*laser_num, tau_incr)
-        # self._pulsed_measurement_logic.running_sequence_parameters['tau_vector'] = tau_vector
-        # self._pulsed_measurement_logic.running_sequence_parameters['number_of_lasers'] = laser_num
+        # self._pulsed_meas_logic.running_sequence_parameters['tau_vector'] = tau_vector
 
-        self._pulsed_measurement_logic.microwave_freq = mw_frequency
-        self._pulsed_measurement_logic.microwave_power = mw_power
+        self._pulsed_meas_logic.microwave_freq = mw_frequency
+        self._pulsed_meas_logic.microwave_power = mw_power
         return
 
 
     def analysis_parameters_changed(self):
 
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
-        self._pulsed_measurement_logic.change_timer_interval(timer_interval)
+        self._pulsed_meas_logic.change_timer_interval(timer_interval)
         return
 
     def check_input_with_samplerate(self):
         pass
-
-
-
-
-
-    def current_sequence_changed(self):
-        ''' This method updates the current sequence variables in the sequence generator logic.
-        '''
-        name = self._mw.sequence_list_comboBox.currentText()
-        self._sequence_generator_logic.set_current_sequence(name)
-        self.create_table()
-        repetitions = self._sequence_generator_logic._current_sequence_parameters['repetitions']
-        self._mw.repetitions_lineEdit.setText(str(repetitions))
-        return
-
-
-    def sequence_to_run_changed(self):
-        ''' This method updates the parameter set of the sequence to run in the PulseAnalysisLogic.
-        '''
-        name = self._mw.sequence_name_comboBox.currentText()
-        self._pulse_analysis_logic.update_sequence_parameters(name)
-        return
 
 
     ###########################################################################
@@ -2386,8 +2343,9 @@ class PulsedMeasurementGui(GUIBase):
                          explanation can be found in the method initUI.
         """
 
-        self.lasertrace_image = pg.PlotDataItem(self._pulsed_measurement_logic.laser_plot_x, self._pulsed_measurement_logic.laser_plot_y)
+        # Configure all objects for laserpulses_PlotWidget and also itself:
 
+        # The infinite lines:
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
         self.sig_start_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
@@ -2397,27 +2355,28 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(0,255,0,255)), movable=True)
         self.ref_end_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
 
-        self.measuring_error_image = pg.PlotDataItem(self._pulsed_measurement_logic.measuring_error_plot_x, self._pulsed_measurement_logic.measuring_error_plot_y*1000)
-        self._mw.pulse_analyze_window_PlotWidget.addItem(self.lasertrace_image)
+        # the actual data:
+        self.lasertrace_image = pg.PlotDataItem(self._pulsed_meas_logic.laser_plot_x, self._pulsed_meas_logic.laser_plot_y)
 
-        self._mw.pulse_analyze_window_PlotWidget.addItem(self.sig_start_line)
-        self._mw.pulse_analyze_window_PlotWidget.addItem(self.sig_end_line)
-        self._mw.pulse_analyze_window_PlotWidget.addItem(self.ref_start_line)
-        self._mw.pulse_analyze_window_PlotWidget.addItem(self.ref_end_line)
+        self._mw.laserpulses_PlotWidget.addItem(self.lasertrace_image)
+        self._mw.laserpulses_PlotWidget.addItem(self.sig_start_line)
+        self._mw.laserpulses_PlotWidget.addItem(self.sig_end_line)
+        self._mw.laserpulses_PlotWidget.addItem(self.ref_start_line)
+        self._mw.laserpulses_PlotWidget.addItem(self.ref_end_line)
+
+        self._mw.laserpulses_PlotWidget.setLabel('bottom', 'tau', units='s')
+        self._mw.laserpulses_PlotWidget.setLabel('bottom', 'bins')
+
+        # Configure all objects for measuring_error_PlotWidget and also itself:
+
+        self.measuring_error_image = pg.PlotDataItem(self._pulsed_meas_logic.measuring_error_plot_x, self._pulsed_meas_logic.measuring_error_plot_y*1000)
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
-        self._mw.pulse_analyze_window_PlotWidget.setLabel('bottom', 'tau', units='s')
-        self._mw.pulse_analyze_window_PlotWidget.setLabel('bottom', 'bins')
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
         self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
 
 
-
-
-
-        self._mw.laserpulses_ComboBox.clear()
-        self._mw.laserpulses_ComboBox.addItem('sum')
-        for ii in range(50):
-            self._mw.laserpulses_ComboBox.addItem(str(1+ii))
+        # prepare the combobox:
+        self.num_of_lasers_changed()
 
         self._mw.extract_param_ana_window_start_SpinBox.setValue(5)
         self._mw.extract_param_ana_window_width_SpinBox.setValue(200)
@@ -2429,6 +2388,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.extract_param_ana_window_width_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
         self._mw.extract_param_ref_window_start_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
         self._mw.extract_param_ref_window_width_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
+        self.analysis_window_values_changed()   # run it to apply changes.
 
         self.sig_start_line.sigPositionChanged.connect(self.analysis_window_sig_line_start_changed)
         self.sig_end_line.sigPositionChanged.connect(self.analysis_window_sig_line_stop_changed)
@@ -2438,8 +2398,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.laserpulses_ComboBox.currentIndexChanged.connect(self.refresh_laser_pulses_display)
         self._mw.laserpulses_display_raw_CheckBox.stateChanged.connect(self.refresh_laser_pulses_display)
 
-        self._pulsed_measurement_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
-        self._pulsed_measurement_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
+        self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
+        self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
 
         #FIXME: remove the dependency on the seq parameter changed for this
@@ -2458,6 +2418,13 @@ class PulsedMeasurementGui(GUIBase):
         """
         pass
 
+    def num_of_lasers_changed(self):
+        """ Handle what happens if number of laser pulses changes. """
+
+        self._mw.laserpulses_ComboBox.clear()
+        self._mw.laserpulses_ComboBox.addItem('sum')
+        for ii in range(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()):
+            self._mw.laserpulses_ComboBox.addItem(str(1+ii))
 
     def analysis_window_values_changed(self):
         """ If the boarders or the lines are changed update the other parameters
@@ -2474,36 +2441,36 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.setValue(ref_start)
         self.ref_end_line.setValue(ref_start+ref_length)
 
-        self._pulsed_measurement_logic.signal_start_bin = sig_start
-        self._pulsed_measurement_logic.signal_width_bin = sig_length
-        self._pulsed_measurement_logic.norm_start_bin = ref_start
-        self._pulsed_measurement_logic.norm_width_bin = ref_length
+        self._pulsed_meas_logic.signal_start_bin = sig_start
+        self._pulsed_meas_logic.signal_width_bin = sig_length
+        self._pulsed_meas_logic.norm_start_bin = ref_start
+        self._pulsed_meas_logic.norm_width_bin = ref_length
 
     def analysis_window_sig_line_start_changed(self):
         """ React when the start signal line get moved by the user. """
         sig_start = self.sig_start_line.value()
         self._mw.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pulsed_measurement_logic.signal_start_bin = sig_start
+        self._pulsed_meas_logic.signal_start_bin = sig_start
 
     def analysis_window_sig_line_stop_changed(self):
         """ React when the stop signal line get moved by the user. """
         sig_start = self.sig_start_line.value()
         sig_length = self.sig_end_line.value() - sig_start
         self._mw.extract_param_ana_window_width_SpinBox.setValue(sig_length)
-        self._pulsed_measurement_logic.signal_width_bin = sig_length
+        self._pulsed_meas_logic.signal_width_bin = sig_length
 
     def analysis_window_ref_line_start_changed(self):
         """ React when the reference start line get moved by the user. """
         ref_start = self.ref_start_line.value()
         self._mw.extract_param_ref_window_start_SpinBox.setValue(ref_start)
-        self._pulsed_measurement_logic.norm_start_bin = ref_start
+        self._pulsed_meas_logic.norm_start_bin = ref_start
 
     def analysis_window_ref_line_stop_changed(self):
         """ React when the reference stop line get moved by the user. """
         ref_start = self.ref_start_line.value()
         ref_length = self.ref_end_line.value()-ref_start
         self._mw.extract_param_ref_window_width_SpinBox.setValue(ref_length)
-        self._pulsed_measurement_logic.norm_width_bin = ref_length
+        self._pulsed_meas_logic.norm_width_bin = ref_length
 
     def refresh_laser_pulses_display(self):
         """ Refresh the extracted laser pulse display. """
@@ -2516,10 +2483,10 @@ class PulsedMeasurementGui(GUIBase):
             show_laser_num = int(current_laser)
 
         if self._mw.laserpulses_display_raw_CheckBox.isChecked():
-            self._pulsed_measurement_logic.raw_laser_pulse = True
+            self._pulsed_meas_logic.raw_laser_pulse = True
         else:
-            self._pulsed_measurement_logic.raw_laser_pulse = False
+            self._pulsed_meas_logic.raw_laser_pulse = False
 
-        x_data, y_data = self._pulsed_measurement_logic.get_laserpulse(show_laser_num)
+        x_data, y_data = self._pulsed_meas_logic.get_laserpulse(show_laser_num)
 
         self.lasertrace_image.setData(x=x_data, y=y_data)
