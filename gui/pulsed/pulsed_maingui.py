@@ -1987,7 +1987,6 @@ class PulsedMeasurementGui(GUIBase):
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Intensity', units='a.u.')
         self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
 
         # Configure the fit of the data in the main pulse analysis display:
@@ -1995,11 +1994,21 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image, pen='r')
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
+        # Configure the errorbars of the data in the main pulse analysis display:
+        self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_measurement_logic.signal_plot_x,
+                                                     y=self._pulsed_measurement_logic.signal_plot_y,
+                                                     top=self._pulsed_measurement_logic.measuring_error_plot_y,
+                                                     bottom=self._pulsed_measurement_logic.measuring_error_plot_y,pen='b')
+        self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
+
         # Configure the fourier transform of the main pulse analysis display:
         self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
         self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
+
+        #FIXME: Is currently needed for the errorbars, but there has to be a better solution
+        self.errorbars_present=False
 
         #FIXME: THE DEFAULT VALUES DO NOT NEED TO BE DEFINED HERE!!!
         # Initialize  what is visible and what not
@@ -2055,7 +2064,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
 
         self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
-
+        self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_signal_plot)
+        self._pulsed_meas_logic.sigMeasuringErrorUpdated.connect(self.refresh_measuring_error_plot)
+        self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         # sequence generator tab
 
         # Connect the CheckBoxes
@@ -2172,9 +2183,32 @@ class PulsedMeasurementGui(GUIBase):
     def refresh_signal_plot(self):
         ''' This method refreshes the xy-matrix image
         '''
-        self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        #### dealing with the error bars
+        #if self._mw.show_errorbars_CheckBox.isChecked():
+        if True:
+            # calculate optimal beam width for the error bars
+            beamwidth = 1e99
+            for i in range(len(self._pulsed_measurement_logic.tau_array)-1):
+                width = self._pulsed_measurement_logic.tau_array[i+1] - self._pulsed_measurement_logic.tau_array[i]
+                width = width/3
+                if width <= beamwidth:
+                    beamwidth = width
+            # create ErrorBarItem
+            self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=beamwidth)
+            if not self.errorbars_present:
+                #print ('add erro')
+                self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
+                self.errorbars_present = True
+        else:
+            if self.errorbars_present:
+                #print ('remove eror')
+                self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
+                self.errorbars_present = False
+            else:
+                pass
 
+        self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
 
 
 
