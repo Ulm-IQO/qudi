@@ -646,6 +646,7 @@ class AWG7122C(Base, PulserInterface):
         error_code = self.tell('SOUR{0}:VOLT {1}\n'.format(channel, voltage))
 
         self.amplitude = voltage
+
         return error_code
 
     # works!
@@ -662,7 +663,13 @@ class AWG7122C(Base, PulserInterface):
         """
 
         self.amplitude = self.ask('SOUR{0}:VOLT?\n'.format(int(channel)))
-        return self.amplitude
+        if int(self.amplitude) == -1:
+            self.logMsg('In hardware.awg.tektronix_awg7122c the voltage was requested and  '
+                        ' a value of -1 was returned.',
+                        msgType='error')
+            return None
+        else:
+            return self.amplitude
 
     # Fixme: why in this manner? should it just turns on all used outputs?
     def set_active_channels(self, d_ch=2, a_ch=0):
@@ -927,7 +934,7 @@ class AWG7122C(Base, PulserInterface):
             message = message.decode('UTF-8')  # decode bytes into a python str
         except OSError:
             self.logMsg('Most propably timeout was reached during querying '
-                        'the AWG5000 Series device with the question:\n'
+                        'the AWG7122 Series device with the question:\n'
                         '{0}\n'
                         'The question text must be wrong.'.format(question),
                         msgType='error')
