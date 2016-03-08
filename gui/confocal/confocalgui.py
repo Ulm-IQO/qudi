@@ -30,6 +30,7 @@ import os
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
+from gui.fitsettings import FitSettingsWidget
 
 
 class CrossROI(pg.ROI):
@@ -656,32 +657,7 @@ class ConfocalGui(GUIBase):
         self._osd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
 
         ########### Generation of the fit params tab ##################
-        try:
-            _fromUtf8 = QtCore.QString.fromUtf8
-        except AttributeError:
-            def _fromUtf8(s):
-                return s
-
-        self._osd.fit_tab = QtGui.QWidget()
-        self._osd.fit_tab.setObjectName(_fromUtf8("fit_tab"))
-        self._osd.form_Layout = QtGui.QFormLayout(self._osd.fit_tab)
-        self._osd.form_Layout.setObjectName(_fromUtf8("form_Layout"))
-        self._osd.checkbox_01 = QtGui.QCheckBox(self._osd.fit_tab)
-        self._osd.checkbox_01.setObjectName(_fromUtf8("checkbox_01"))
-        self._osd.form_Layout.addRow('use custom', self._osd.checkbox_01)
-
-        self._osd.widgets = {}
-        for name in self._optimizer_logic.z_params:
-            self._osd.widgets[name] = widget = {}
-            widget['spinbox'] = spinbox = QtGui.QDoubleSpinBox()
-            spinbox.setDecimals(3)
-            spinbox.setSingleStep(0.01)
-            spinbox.setMaximum(np.inf)
-            spinbox.setMinimum(-np.inf)
-            if not self._optimizer_logic.z_params[str(name)].value == None:
-                spinbox.setValue(self._optimizer_logic.z_params[str(name)].value)
-            self._osd.form_Layout.addRow(name, spinbox)
-
+        self._osd.fit_tab = FitSettingsWidget(self._optimizer_logic.z_params)
         self._osd.settings_tabWidget.addTab(self._osd.fit_tab,"Fit Params")
 
         # write the configuration to the settings window of the GUI.
@@ -968,10 +944,8 @@ class ConfocalGui(GUIBase):
             self._optimizer_logic.optimization_sequence = 'Z-XY'
 
         self._optimizer_logic.set_optimization_sequence()
-
-        for name in self._optimizer_logic.z_params:
-            self._optimizer_logic.z_params[str(name)].value = self._osd.widgets[name]['spinbox'].value()
-        self._optimizer_logic.use_custom_params =  self._osd.checkbox_01.isChecked()
+        # z fit parameters
+        self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
 
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
@@ -988,13 +962,8 @@ class ConfocalGui(GUIBase):
             self._osd.optim_sequence_z_last_RadioButton.setChecked(True)
         else:
             self._osd.optim_sequence_z_first_RadioButton.setChecked(True)
-        ######################################################################
-        for name in self._optimizer_logic.z_params:
-            if not self._optimizer_logic.z_params[str(name)].value == None:
-                self._osd.widgets[name]['spinbox'].setValue(self._optimizer_logic.z_params[str(name)].value)
-
-        self._osd.checkbox_01.setChecked(self._optimizer_logic.use_custom_params)
-        ######################################################################
+        # fit parameters
+        self._osd.fit_tab.keepFitSettings(self._optimizer_logic.z_params, self._optimizer_logic.use_custom_params)
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
