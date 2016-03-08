@@ -1,10 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 23 11:43:51 2015
+This file contains the QuDi logic which controlls all pulsed measurements.
 
-@author: s_ntomek
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 """
-# unstable: Nikolas Tomek
 
 from logic.generic_logic import GenericLogic
 from pyqtgraph.Qt import QtCore
@@ -19,18 +31,18 @@ class PulsedMeasurementLogic(GenericLogic):
     """unstable: Nikolas Tomek
     This is the Logic class for the control of pulsed measurements.
     """
-    _modclass = 'pulsedmeasurementlogic'
+    _modclass = 'PulsedMeasurementLogic'
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'fastcounter': 'FastCounterInterface',
-            'optimizer1': 'OptimizerLogic',
-            'scannerlogic': 'ConfocalLogic',
-            'pulseanalysislogic': 'PulseAnalysisLogic',
-            'fitlogic': 'FitLogic',
-            'savelogic': 'SaveLogic',
-            'mykrowave': 'mykrowave',
-            'pulsegenerator': 'PulserInterfae',
+    _in = {'optimizer1': 'OptimizerLogic',
+           'scannerlogic': 'ConfocalLogic',
+           'pulseanalysislogic': 'PulseAnalysisLogic',
+           'fitlogic': 'FitLogic',
+           'savelogic': 'SaveLogic',
+           'fastcounter': 'FastCounterInterface',
+           'microwave': 'MWInterface',
+           'pulsegenerator': 'PulserInterfae',
             }
     _out = {'pulsedmeasurementlogic': 'PulsedMeasurementLogic'}
 
@@ -38,45 +50,46 @@ class PulsedMeasurementLogic(GenericLogic):
     sigSinglePulsesUpdated = QtCore.Signal()
     sigPulseAnalysisUpdated = QtCore.Signal()
     sigMeasuringErrorUpdated = QtCore.Signal()
-    signal_refocus_finished = QtCore.Signal()
-    signal_odmr_refocus_finished = QtCore.Signal()
-
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
+        state_actions = {'onactivate': self.activation,
+                         'ondeactivate': self.deactivation}
+        GenericLogic.__init__(self, manager, name, config, state_actions,
+                              **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        # mykrowave parameters
+        # microwave parameters
         self.microwave_power = -30.     # dbm  (always in SI!)
-        self.microwave_freq = 2870e6    # Hz (always in SI!)
+        self.microwave_freq = 2870e6    # Hz   (always in SI!)
+
         # fast counter status variables
         self.fast_counter_status = None     # 0=unconfigured, 1=idle, 2=running, 3=paused, -1=error
         self.fast_counter_gated = None      # gated=True, ungated=False
         self.fast_counter_binwidth = 1e-9   # in seconds
+
         # parameters of the currently running sequence
         self.tau_array = np.array(range(50))
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
+
         # setup parameters
         self.aom_delay_s = 0.7e-6
         self.laser_length_s = 3.e-6
 
         # timer for data analysis
         self.timer = None
-        self.refocus_timer = None
-        self.odmr_refocus_timer = None
+        self.confocal_optimize_timer = None
+        self.odmr_optimize_timer = None
         self.timer_interval = 5 # in seconds
-        self.refocus_timer_interval= 11 # in seconds
-        self.odmr_refocus_timer_interval = 0.5 # in seconds
+        self.confocal_optimize_timer_interval= 11 # in seconds
+        self.odmr_optimize_timer_interval = 0.5 # in seconds
 
         #timer for time
         self.start_time = 0
@@ -89,8 +102,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_width_bin = None
         self.norm_start_bin = None
         self.norm_width_bin = None
-
-
 
         # threading
         self.threadlock = Mutex()
@@ -110,7 +121,17 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
+
+        # get all the connectors:
         self._pulse_analysis_logic = self.connector['in']['pulseanalysislogic']['object']
         self._fast_counter_device = self.connector['in']['fastcounter']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -120,7 +141,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         print("Confocal Logic is", self._confocal_logic)
         self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
-        self._mycrowave_source_device = self.connector['in']['mykrowave']['object']
+        self._mycrowave_source_device = self.connector['in']['microwave']['object']
 
         self.fast_counter_gated = self._fast_counter_device.is_gated()
         self.update_fast_counter_status()
@@ -137,14 +158,17 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
     def update_fast_counter_status(self):
-        ''' This method captures the fast counter status and updates the corresponding class variables
-        '''
+        """ Captures the fast counter status and update the corresponding class variables
+        """
+
         self.fast_counter_status = self._fast_counter_device.get_status()
         return
 
     def configure_fast_counter(self):
-        ''' This method configures the fast counter and updates the actually set values in the class variables.
-        '''
+        """ Configure the fast counter and updates the actually set values in
+            the class variables.
+        """
+
         if self.fast_counter_gated:
             record_length_s = self.aom_delay_s + self.laser_length_s
             number_of_gates = self.number_of_lasers
@@ -156,18 +180,23 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def start_pulsed_measurement(self):
-        '''Start the analysis thread.
-        '''
+        """Start the analysis thread. """
+        #FIXME: Describe the idea of how the measurement is intended to be run
+        #       and how the used thread principle was used in this method (or
+        #       will be use in another method).
+
         with self.threadlock:
             if self.getState() == 'idle':
                 self.update_fast_counter_status()
 
-                #self._do_refocus()
+                #self._do_confocal_optimize()
                 # initialize plots
                 self._initialize_signal_plot()
                 self._initialize_laser_plot()
-                # start mykrowave generator
-                self.mykrowave_on()
+
+                # start microwave generator
+                # self.microwave_on()
+
                 # start fast counter
                 self.fast_counter_on()
                 # start pulse generator
@@ -178,30 +207,36 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.timer.setSingleShot(False)
                 self.timer.setInterval(int(1000. * self.timer_interval))
                 self.timer.timeout.connect(self._pulsed_analysis_loop)
-                # start analysis loop and set lock to indicate a running measurement
-                self.refocus_timer = QtCore.QTimer()
-                self.refocus_timer.setSingleShot(False)
-                self.refocus_timer.setInterval(int(1000. * self.refocus_timer_interval))
-                self.refocus_timer.timeout.connect(self._do_refocus)
 
-                self.odmr_refocus_timer = QtCore.QTimer()
-                self.odmr_refocus_timer.setSingleShot(False)
-                self.odmr_refocus_timer.setInterval(int(1000. * self.odmr_refocus_timer_interval))
-                self.odmr_refocus_timer.timeout.connect(self._do_odmr_refocus)
+                #FIXME: a proper confocal optimizer has to be implemented. But
+                #       the QtCore.QTimer method is a good starting point.
+                # start analysis loop and set lock to indicate a running measurement
+                # self.confocal_optimize_timer = QtCore.QTimer()
+                # self.confocal_optimize_timer.setSingleShot(False)
+                # self.confocal_optimize_timer.setInterval(int(1000. * self.confocal_optimize_timer_interval))
+                # self.confocal_optimize_timer.timeout.connect(self._do_confocal_optimize)
+
+                #FIXME: a proper ODMR optimizer has to be implemented. But the
+                #       QtCore.QTimer method is a good starting point.
+                # self.odmr_optimize_timer = QtCore.QTimer()
+                # self.odmr_optimize_timer.setSingleShot(False)
+                # self.odmr_optimize_timer.setInterval(int(1000. * self.odmr_optimize_timer_interval))
+                # self.odmr_optimize_timer.timeout.connect(self._do_odmr_optimize)
 
 
                 self.lock()
                 self.start_time = time.time()
                 self.timer.start()
-                self.refocus_timer.start()
-                self.odmr_refocus_timer.start()
+                # self.confocal_optimize_timer.start()
+                # self.odmr_optimize_timer.start()
         return
 
 
     def _pulsed_analysis_loop(self):
-        '''Acquires laser pulses from fast counter, calculates fluorescence signal and creates plots.
-        '''
-        print ('analyzing')
+        """ Acquires laser pulses from fast counter,
+            calculates fluorescence signal and creates plots.
+        """
+
         with self.threadlock:
             # calculate analysis windows
             sig_start = self.signal_start_bin
@@ -273,15 +308,23 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.timer.stop()
                 self.timer.timeout.disconnect()
                 self.timer = None
-                self.refocus_timer.stop()
-                self.refocus_timer.timeout.disconnect()
-                self.refocus_timer = None
-                self.odmr_refocus_timer.stop()
-                self.odmr_refocus_timer.timeout.disconnect()
-                self.odmr_refocus_timer = None
+
+                #FIXME: a proper confocal optimizer has to be implemented. But
+                #       the QtCore.QTimer method is a good starting point.
+                # self.confocal_optimize_timer.stop()
+                # self.confocal_optimize_timer.timeout.disconnect()
+                # self.confocal_optimize_timer = None
+
+                #FIXME: a proper ODMR optimizer has to be implemented. But the
+                #       QtCore.QTimer method is a good starting point.
+                # self.odmr_optimize_timer.stop()
+                # self.odmr_optimize_timer.timeout.disconnect()
+                # self.odmr_optimize_timer = None
 
                 self.fast_counter_off()
-                self.mykrowave_off()
+
+                # self.microwave_off()
+
                 self.pulse_generator_off()
                 self.sigPulseAnalysisUpdated.emit()
                 self.sigMeasuringErrorUpdated.emit()
@@ -296,18 +339,20 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 #pausing all the timers
                 print (self.timer)
-                print (self.refocus_timer)
-                print (self.odmr_refocus_timer)
+                print (self.confocal_optimize_timer)
+                print (self.odmr_optimize_timer)
                 self.timer.stop()
-                self.refocus_timer.stop()
-                self.odmr_refocus_timer.stop()
+                self.confocal_optimize_timer.stop()
+                self.odmr_optimize_timer.stop()
                 print (self.timer)
-                print (self.refocus_timer)
-                print (self.odmr_refocus_timer)
+                print (self.confocal_optimize_timer)
+                print (self.odmr_optimize_timer)
 
 
                 self.fast_counter_off()
-                self.mykrowave_off()
+
+                # self.microwave_off()
+
                 self.pulse_generator_off()
                 self.sigPulseAnalysisUpdated.emit()
                 self.sigMeasuringErrorUpdated.emit()
@@ -324,11 +369,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 #pausing all the timers
                 self.timer.start()
-                # self.refocus_timer.start()
-                # self.odmr_refocus_timer.start()
+                # self.confocal_optimize_timer.start()
+                # self.odmr_optimize_timer.start()
 
                 self.fast_counter_on()
-                # self.mykrowave_on()
+                # self.microwave_on()
                 self.pulse_generator_on()
 #                self.sigPulseAnalysisUpdated.emit()
 #                self.sigMeasuringErrorUpdated.emit()
@@ -342,21 +387,21 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.timer.setInterval(int(1000. * self.timer_interval))
         return
 
-    def change_refocus_timer_interval(self, interval):
+    def change_confocal_optimize_timer_interval(self, interval):
         with self.threadlock:
-            self.refocus_timer_interval = interval
-            if self.refocus_timer != None:
+            self.confocal_optimize_timer_interval = interval
+            if self.confocal_optimize_timer != None:
                 print ('changing refocus timer')
-                self.refocus_timer.setInterval(int(1000. * self.refocus_timer_interval))
+                self.confocal_optimize_timer.setInterval(int(1000. * self.confocal_optimize_timer_interval))
             else:
                 print('never mind')
         return
 
-    def change_odmr_refocus_timer_interval(self, interval):
+    def change_odmr_optimize_timer_interval(self, interval):
         with self.threadlock:
-            self.odmr_refocus_timer_interval = interval
-            if self.odmr_refocus_timer != None:
-                self.odmr_refocus_timer.setInterval(1000. * self.odmr_refocus_timer_interval)
+            self.odmr_optimize_timer_interval = interval
+            if self.odmr_optimize_timer != None:
+                self.odmr_optimize_timer.setInterval(1000. * self.odmr_optimize_timer_interval)
         return
 
 
@@ -552,13 +597,13 @@ class PulsedMeasurementLogic(GenericLogic):
         error_code = self._fast_counter_device.stop_measure()
         return error_code
 
-    def mykrowave_on(self):
-        self._mycrowave_source_device.set_cw(freq=self.microwave_freq, power=self.microwave_power)
-        self._mycrowave_source_device.on()
+    def microwave_on(self):
+        # self._mycrowave_source_device.set_cw(freq=self.microwave_freq, power=self.microwave_power)
+        # self._mycrowave_source_device.on()
         return
 
-    def mykrowave_off(self):
-        self._mycrowave_source_device.off()
+    def microwave_off(self):
+        # self._mycrowave_source_device.off()
         return
 
     def do_fit(self,fit_function):
@@ -677,21 +722,25 @@ class PulsedMeasurementLogic(GenericLogic):
 
         return x_for_fit
 
-    def _do_refocus(self):
-        """ Does a refocus.
+    def _do_confocal_optimize(self):
+        """ Does a refocus. """
 
-        """
-        print ('refocussing')
-        self.pause_pulsed_measurement()
-        position=self._confocal_logic.get_position()
-        self._optimizer_logic.start_refocus(position, caller_tag='poimanager')
-        self.continue_pulsed_measurement()
+        self.logMsg('Confocal Optimizing needs to be implemented properly with'
+                    'tasks!\nNo confocal optimization performed.',
+                    msgType='warning')
+        # self.pause_pulsed_measurement()
+        # position=self._confocal_logic.get_position()
+        # self._optimizer_logic.start_refocus(position, caller_tag='poimanager')
+        # self.continue_pulsed_measurement()
+        pass
 
 
-    def _do_odmr_refocus(self):
-        """ Does a refocus.
+    def _do_odmr_optimize(self):
+        """ Does a refocus. """
 
-        """
-        print ('here the odmr refocus has to be implemented')
+        self.logMsg('ODMR Optimizing needs to be implemented properly with'
+                    'tasks!\nNo ODMR optimization performed.',
+                    msgType='warning')
+        pass
 
 

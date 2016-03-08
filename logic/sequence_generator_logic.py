@@ -279,6 +279,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     and dicts (set by the GUI). The logic sets(creats) the objects in the list
     and read the dict, which tell it which parameters to expect from the GUI.
     """
+
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
