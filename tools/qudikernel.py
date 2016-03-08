@@ -25,14 +25,14 @@ class QuDi(object):
         return self.connection.root.getModule(name)
 
     def startKernel(self, connfile):
-        m = self.getModule('rkernel')
+        m = self.getModule('kernellogic')
         self.kernelthread = m.startKernel(connfile)
         print('Kernel up!')
 
     def stopKernel(self):
         print('Shutting down: ', self.kernelthread)
         sys.stdout.flush()
-        m = self.getModule('rkernel')
+        m = self.getModule('kernellogic')
         if self.kernelthread is not None:
             m.stopKernel(self.kernelthread)
             print('Down!')
