@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import time
@@ -517,7 +518,7 @@ class AWG7122C(Base, PulserInterface):
 
         pass
 
-    # TODO: test
+    # works
     def load_asset(self, asset_name, channel=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
@@ -536,7 +537,8 @@ class AWG7122C(Base, PulserInterface):
         path = self.ftp_path + self.get_sequence_directory()
 
         if channel is None or channel == 1:
-            self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
+            self.tell('SOUR1:FUNC:USER "{0}\{1}"\n'.format(path, asset_name))
+            print('SOUR1:FUNC:USER "{0}\{1}"\n'.format(path, asset_name))
         elif channel == 2:
             self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
         else:
