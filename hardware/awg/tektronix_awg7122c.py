@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware module for AWG5000 Series.
+This file contains the QuDi hardware module for AWG7000 Series.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,8 +29,9 @@ from core.base import Base
 from interface.pulser_interface import PulserInterface
 
 
+# todo: add in squencing a method which changes from dynamic to jump in order to get triggers for odmr
 class AWG7122C(Base, PulserInterface):
-    """ Unstable and in construction, Alex Stark    """
+    """ Unstable and in construction, Jochen Scheuer    """
 
     _modclass = 'awg7122c'
     _modtype = 'hardware'
@@ -41,8 +42,8 @@ class AWG7122C(Base, PulserInterface):
 
     def __init__(self, manager, name, config, **kwargs):
 
-        state_actions = {'onactivate'   : self.activation,
-                         'ondeactivate' : self.deactivation}
+        state_actions = {'onactivate': self.activation,
+                         'ondeactivate': self.deactivation}
 
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
@@ -82,10 +83,12 @@ class AWG7122C(Base, PulserInterface):
                         msgType='error')
             self._timeout = 10
 
-        self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
+        self.sample_mode = {'matlab': 0, 'wfm-file': 1, 'wfmx-file': 2}
         self.current_sample_mode = self.sample_mode['wfm-file']
 
         self.connected = False
+
+        # todo: how should the amplitude be handled for more than one channel? as a dict, or list?
         self.amplitude = 0.25
         self.loaded_sequence = None
         self.is_output_enabled = True
@@ -97,7 +100,6 @@ class AWG7122C(Base, PulserInterface):
             self.pulsed_file_dir = config['pulsed_file_dir']
 
             if not os.path.exists(self.pulsed_file_dir):
-
                 homedir = self.get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.logMsg('The directory defined in parameter '
@@ -117,11 +119,10 @@ class AWG7122C(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
-
         # AWG7122c has possibility for sequence output
         self.use_sequencer = True
 
-        self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
+        self._marker_byte_dict = {0: b'\x00', 1: b'\x01', 2: b'\x02', 3: b'\x03'}
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -140,7 +141,7 @@ class AWG7122C(Base, PulserInterface):
         self.soc = socket(AF_INET, SOCK_STREAM)
         self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
         self.soc.connect((self.ip_address, self.port))
-        self.input_buffer = int(2 * 1024)   # buffer length for received text
+        self.input_buffer = int(2 * 1024)  # buffer length for received text
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -169,7 +170,7 @@ class AWG7122C(Base, PulserInterface):
         for this device.
         """
 
-        #Todo: Set values for AWG7122c
+        # Todo: Set values for AWG7122c
         constraints = {}
         # (min, max, incr) in samples/second:
         constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
@@ -190,9 +191,10 @@ class AWG7122C(Base, PulserInterface):
         # (min, max, incr) in Samples:
         constraints['total_length_bins'] = (1, 32e6, 1)
         # (analogue, digital) possible combination in given channels:
-        constraints['channel_config'] = ((1,2), (2,4))
+        constraints['channel_config'] = ((1, 2), (2, 4))
         return constraints
 
+    # works!
     def pulser_on(self):
         """ Switches the pulsing device on.
 
@@ -205,6 +207,7 @@ class AWG7122C(Base, PulserInterface):
 
         return self.get_status()[0]
 
+    # works!
     def pulser_off(self):
         """ Switches the pulsing device off.
 
@@ -216,6 +219,7 @@ class AWG7122C(Base, PulserInterface):
 
         return self.get_status()[0]
 
+    # TODO: test
     def upload_asset(self, name):
         """ Waveform or sequence with name "name" gets uploaded to the Hardware.
 
@@ -280,6 +284,7 @@ class AWG7122C(Base, PulserInterface):
         #     self.load_asset(waveform.name)
         # return 0
 
+    # TODO: test
     def write_chunk_to_file(self, name, analogue_samples_chunk,
                             digital_samples_chunk, total_number_of_samples,
                             is_first_chunk, is_last_chunk, sample_rate,
@@ -320,15 +325,13 @@ class AWG7122C(Base, PulserInterface):
 
 
             for channel_index, channel_arr in enumerate(analogue_samples_chunk):
+                filename = name + '_ch' + str(channel_index + 1) + '.wfm'
 
-                filename = name+'_ch'+str(channel_index+1) + '.wfm'
-
-                filepath = os.path.join(self.host_waveform_directory,filename)
+                filepath = os.path.join(self.host_waveform_directory, filename)
                 with open(filepath, 'wb') as wfm_file:
-
-                    num_bytes = str(len(digital_samples_chunk[channel_index*2])*5)
+                    num_bytes = str(len(digital_samples_chunk[channel_index * 2]) * 5)
                     num_digits = str(len(num_bytes))
-                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
+                    header = str.encode('MAGIC 1000\r\n#' + num_digits + num_bytes)
 
                     wfm_file.write(header)
 
@@ -346,21 +349,21 @@ class AWG7122C(Base, PulserInterface):
                     #     wfm_file.write(byte_marker+byte_val)
 
                     shape_for_wavetmp = np.shape(channel_arr)[0]
-                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-                    wavetmp = wavetmp.reshape((-1,5))
+                    wavetmp = np.zeros(shape_for_wavetmp * 5, dtype='c')
+                    wavetmp = wavetmp.reshape((-1, 5))
                     # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-                    wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+                    wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr / 4), dtype='c').reshape((-1, 4))
 
                     # marker1 =
                     # marker2 = digital_samples_chunk[channel_index*2+1]
 
                     # marker = np.zeros(len(marker1),dtype='c')
 
-                    #FIXME: This is a very very ugly and inefficient way of
+                    # FIXME: This is a very very ugly and inefficient way of
                     #       appending the marker array. A much nicer way
                     #       should be implemented!!!
 
-                    marker = digital_samples_chunk[channel_index*2] + digital_samples_chunk[channel_index*2+1]*2
+                    marker = digital_samples_chunk[channel_index * 2] + digital_samples_chunk[channel_index * 2 + 1] * 2
 
                     marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
                     # for index in range(len(marker1)):
@@ -379,7 +382,7 @@ class AWG7122C(Base, PulserInterface):
 
 
                     # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
-                    wavetmp[:,-1] = marker_byte
+                    wavetmp[:, -1] = marker_byte
 
                     wfm_file.write(wavetmp.tobytes())
 
@@ -487,6 +490,7 @@ class AWG7122C(Base, PulserInterface):
     #
     #     return 0
 
+    # TODO: test
     # def send_file(self, filepath):
     def _send_file(self, filename):
         """ Sends an already hardware specific waveform file to the pulse
@@ -505,15 +509,15 @@ class AWG7122C(Base, PulserInterface):
         # self.logMsg(('Uploaded: ', filepath))
 
         with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.login()  # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.sequence_directory)
             with open(filepath, 'rb') as uploaded_file:
                 filename = filepath.rsplit('\\', 1)[1]
-                ftp.storbinary('STOR '+filename, uploaded_file)
-
+                ftp.storbinary('STOR ' + filename, uploaded_file)
 
         pass
 
+    # TODO: test
     def load_asset(self, asset_name, channel=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
@@ -543,6 +547,7 @@ class AWG7122C(Base, PulserInterface):
 
         return 0
 
+    # works!
     def clear_all(self):
         """ Clears the loaded waveform from the pulse generators RAM.
 
@@ -553,11 +558,10 @@ class AWG7122C(Base, PulserInterface):
         storage capability (PulseBlaster, FPGA).
         """
 
-
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
         return
 
-
+    # works!
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
@@ -590,13 +594,14 @@ class AWG7122C(Base, PulserInterface):
             # if nothing comes back than the output should be marked as error
             return -1
 
-        if message==2:
+        if message == 2:
             return (1, status_dic)
-        elif message ==1:
+        elif message == 1:
             return (2, status_dic)
         else:
             return (message, status_dic)
 
+    # works!
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
 
@@ -605,14 +610,14 @@ class AWG7122C(Base, PulserInterface):
         @return foat: the sample rate returned from the device (-1:error)
         """
 
-        self.tell('SOURCE1:FREQUENCY {0:.4G}MHz\n'.format(sample_rate/1e6))
+        self.tell('SOURCE1:FREQUENCY {0:.4G}MHz\n'.format(sample_rate / 1e6))
 
         # Here we need to wait, because when the sampling rate is changed AWG is busy
         # and therefore the ask in get_sample_rate will return an empty string.
         time.sleep(0.3)
         return self.get_sample_rate()
 
-
+    # works!
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
 
@@ -622,6 +627,8 @@ class AWG7122C(Base, PulserInterface):
         self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
         return self.sample_rate
 
+    # works
+    # todo: how should the amplitude be handled? as a dict, or list?
     def set_pp_voltage(self, channel, voltage):
         """ Set the peak-to-peak voltage of the pulse generator hardware
         analogue channels.
@@ -636,10 +643,12 @@ class AWG7122C(Base, PulserInterface):
         capability (DTG, FPGA, etc.).
         """
 
-        # TODO: Actually change the amplitude
-        self.amplitude = voltage
-        return 0
+        error_code = self.tell('SOUR{0}:VOLT {1}\n'.format(channel, voltage))
 
+        self.amplitude = voltage
+        return error_code
+
+    # works!
     def get_pp_voltage(self, channel):
         """ Get the peak-to-peak voltage of the pulse generator hardware
         analogue channels.
@@ -651,9 +660,11 @@ class AWG7122C(Base, PulserInterface):
         Unused for purely digital hardware without logic level setting
         capability (FPGA, etc.).
         """
-        # TODO: Actually ask for the amplitude
+
+        self.amplitude = self.ask('SOUR{0}:VOLT?\n'.format(int(channel)))
         return self.amplitude
 
+    # Fixme: why in this manner? should it just turns on all used outputs?
     def set_active_channels(self, d_ch=2, a_ch=0):
         """ Set the active channels for the pulse generator hardware.
 
@@ -675,7 +686,7 @@ class AWG7122C(Base, PulserInterface):
             self.tell('OUTPUT2:STATE ON\n')
             active_a_ch = self.get_active_channels()[1]
 
-        elif a_ch ==1:
+        elif a_ch == 1:
             self.tell('OUTPUT1:STATE ON\n')
             self.tell('OUTPUT2:STATE OFF\n')
             active_a_ch = self.get_active_channels()[1]
@@ -684,39 +695,49 @@ class AWG7122C(Base, PulserInterface):
             self.tell('OUTPUT2:STATE OFF\n')
             active_a_ch = self.get_active_channels()[1]
 
-        #FIXME: That must be investigated, commenting out for now:
-        # if active_a_ch == a_ch:
-        #     return 0
-        # else:
-        #     self.logMsg('Activation of the desired analogue channels not '
-        #                 'possible!\nMaybe no valid waveform(s) is loaded into '
-        #                 'the channels, or the waveform for the second channel '
-        #                 'is not valid (due to a different length).\n'
-        #                 'Correct that!', msgType='error')
-        #    return -1
+            # FIXME: That must be investigated, commenting out for now:
+            # if active_a_ch == a_ch:
+            #     return 0
+            # else:
+            #     self.logMsg('Activation of the desired analogue channels not '
+            #                 'possible!\nMaybe no valid waveform(s) is loaded into '
+            #                 'the channels, or the waveform for the second channel '
+            #                 'is not valid (due to a different length).\n'
+            #                 'Correct that!', msgType='error')
+            #    return -1
 
-
-    #Question: Is this method needed, especially the second part. Like this it does not work
-    #for interleave.
+    # todo : Is this method needed, especially the second part. Like this it does not work
+    # for interleave.
+    #works!
     def get_active_channels(self):
         """ Get the active channels of the pulse generator hardware.
 
         @return (int, int): number of active channels (analogue, digital)
         """
 
-        analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + \
-                            int(self.ask('OUTPUT2:STATE?\n'))
+        analogue_channels = int(self.ask('AWGControl:CONFigure:CNUMber?'))
 
-        # For the AWG7122 series, the resolution of the DAC for the analogue
-        # channel is fixed to 14bit. Therefore the digital channels are always
-        # active and cannot be deactivated, by setting the DAC by 1bit per
-        # channel higher. The following construction will give always 2 since
-        # 20-10-10 =2:
-        digital_channels =20 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) -\
-                               int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
+        # For the AWG7122 series, the resolution of the DAC can be set to
+        # 10 bit if only one marker is used, if 2 markers are used the
+        # resolution is 8 bit, like this one can figure out the number of
+        # active channels by checking the resolution.
 
-        return (analogue_channels, digital_channels)
+        digital_channels = 0
+        res = self.ask('SOURCE1:DAC:RESOLUTION?\n')
+        if int(res) == 8:
+            digital_channels += 2
+        elif int(res) == 10:
+            digital_channels += 1
+        if analogue_channels == 2:
+            res = self.ask('SOURCE2:DAC:RESOLUTION?\n')
+            if int(res) == 8:
+                digital_channels += 2
+            elif int(res) == 10:
+                digital_channels += 1
 
+        return (analogue_channels, int(digital_channels))
+
+    # tested and works
     def get_downloaded_sequence_names(self):
         """ Retrieve the names of all downloaded sequences on the device.
 
@@ -727,11 +748,11 @@ class AWG7122C(Base, PulserInterface):
         """
 
         with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.login()  # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.sequence_directory)
 
             # get only the files from the dir and skip possible directories
-            log =[]
+            log = []
             file_list = []
             ftp.retrlines('LIST', callback=log.append)
             for line in log:
@@ -739,7 +760,8 @@ class AWG7122C(Base, PulserInterface):
                     file_list.append(line.rsplit(None, 1)[1])
         return file_list
 
-
+    # just gives back a empty list
+    # todo: test when sequences can be written
     def get_sequence_names(self):
         """ Retrieve the names of all sampled and saved sequences on the host PC.
 
@@ -759,9 +781,9 @@ class AWG7122C(Base, PulserInterface):
             else:
                 saved_sequences.append(name)
 
-
         return saved_sequences
 
+    #todo: test
     def delete_sequence(self, seq_name):
         """ Delete a sequence with the passed seq_name from the device memory.
 
@@ -779,7 +801,7 @@ class AWG7122C(Base, PulserInterface):
         file_list = self.get_sequence_names()
 
         with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.login()  # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.sequence_directory)
 
             for entry in seq_name:
@@ -788,6 +810,7 @@ class AWG7122C(Base, PulserInterface):
 
         return 0
 
+    #todo: test
     def set_sequence_directory(self, dir_path):
         """ Change the directory where the sequences are stored on the device.
 
@@ -801,7 +824,7 @@ class AWG7122C(Base, PulserInterface):
 
         # check whether the desired directory exists:
         with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.login()  # login as default user anonymous, passwd anonymous@
 
             try:
                 ftp.cwd(dir_path)
@@ -813,6 +836,7 @@ class AWG7122C(Base, PulserInterface):
         self.sequence_directory = dir_path
         return 0
 
+    # tested and works
     def get_sequence_directory(self):
         """ Ask for the directory where the sequences are stored on the device.
 
@@ -829,27 +853,41 @@ class AWG7122C(Base, PulserInterface):
 
         @param bool state: The state the interleave should be set to
                            (True: ON, False: OFF)
-        @return int: error code (0:OK, -1:error)
+        @return bool state: State of interleave by using get_interleave()
 
-        Unused for pulse generator hardware other than an AWG. The AWG 5000
-        Series does not have an interleave mode and this method exists only for
-        compability reasons.
         """
-        self.logMsg('Interleave mode not available for the AWG 5000 Series!\n'
-                    'Method call will be ignored.', msgType='warning')
-        return 0
 
+        if state == False:
+            self.tell('AWGControl:INTerleave:STAT 0\n')
+        elif state == True:
+            self.tell('AWGControl:INTerleave:STAT 1\n')
+        else:
+            self.logMsg('Interleave mode can not be set to desired state!\n'
+                        , msgType='warning')
+
+        return self.get_interleave()
+
+    # todo: should there also be a class variable which keeps track of this?
     def get_interleave(self):
         """ Check whether Interleave is on in AWG.
-        Unused for pulse generator hardware other than an AWG. The AWG 5000
-        Series does not have an interleave mode and this method exists only for
-        compability reasons.
 
-        @return bool: will be always False since no interleave functionality
+        @return bool: True if Interleave is turned on and False if interleave is off,
+                      None if non of both
         """
 
-        return False
+        interleave = self.ask('AWGControl:INTerleave:STAT?\n')
+        # TODO: change constraints to allowed values depending on mode
 
+        if interleave == '1':
+            return True
+        elif interleave == '0':
+            return False
+        else:
+            self.logMsg('State of interleave mode neither 1 nor 0. Returning false.\n',
+                        msgType='warning')
+            return None
+
+    # works
     def tell(self, command):
         """Send a command string to the AWG.
 
@@ -868,6 +906,7 @@ class AWG7122C(Base, PulserInterface):
         self.soc.send(command)
         return 0
 
+    # works
     def ask(self, question):
         """ Asks the device a 'question' and receive an answer from it.
 
@@ -881,11 +920,11 @@ class AWG7122C(Base, PulserInterface):
         #  and no str.
         question = bytes(question, 'UTF-8')
         self.soc.send(question)
-        time.sleep(0.3) # you need to wait until AWG generating an answer.
-                        # This number was determined experimentally.
+        time.sleep(0.3)  # you need to wait until AWG generating an answer.
+        # This number was determined experimentally.
         try:
             message = self.soc.recv(self.input_buffer)  # receive an answer
-            message = message.decode('UTF-8')   # decode bytes into a python str
+            message = message.decode('UTF-8')  # decode bytes into a python str
         except OSError:
             self.logMsg('Most propably timeout was reached during querying '
                         'the AWG5000 Series device with the question:\n'
@@ -894,11 +933,12 @@ class AWG7122C(Base, PulserInterface):
                         msgType='error')
             message = str(-1)
 
-        message = message.replace('\n','')  # cut away the characters\r and \n.
-        message = message.replace('\r','')
+        message = message.replace('\n', '')  # cut away the characters\r and \n.
+        message = message.replace('\r', '')
 
         return message
 
+    # todo:test
     def reset(self):
         """Reset the device.
 
@@ -919,12 +959,12 @@ class AWG7122C(Base, PulserInterface):
         @param int a_ch: To which channel to apply, either 1 or 2.
         @param cutoff_freq: Cutoff Frequency of the lowpass filter in Hz.
         """
-        if a_ch ==1:
-            self.tell('OUTPUT1:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq/1e6) )
-        elif a_ch ==2:
-            self.tell('OUTPUT2:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq/1e6) )
+        if a_ch == 1:
+            self.tell('OUTPUT1:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq / 1e6))
+        elif a_ch == 2:
+            self.tell('OUTPUT2:FILTER:LPASS:FREQUENCY {0:f}MHz\n'.format(cutoff_freq / 1e6))
 
-    def set_jump_timing(self, synchronous = False):
+    def set_jump_timing(self, synchronous=False):
         """Sets control of the jump timing in the AWG.
 
         @param bool synchronous: if True the jump timing will be set to
@@ -936,7 +976,7 @@ class AWG7122C(Base, PulserInterface):
         synchornous the jump is made after the current waveform is output. The
         default value is asynchornous.
         """
-        if(synchronous):
+        if (synchronous):
             self.tell('EVEN:JTIM SYNC\n')
         else:
             self.tell('EVEN:JTIM ASYNC\n')
@@ -952,16 +992,16 @@ class AWG7122C(Base, PulserInterface):
 
         """
 
-        look_up = {'C' : 'CONT',
-                   'T' : 'TRIG',
-                   'G' : 'GAT' ,
-                   'E' : 'ENH' ,
-                   'S' : 'SEQ'
-                  }
+        look_up = {'C': 'CONT',
+                   'T': 'TRIG',
+                   'G': 'GAT',
+                   'E': 'ENH',
+                   'S': 'SEQ'
+                   }
         self.tell('AWGC:RMOD %s\n' % look_up[mode.upper()])
 
-
-    def get_sequencer_mode(self,output_as_int=False):
+    # works
+    def get_sequencer_mode(self, output_as_int=False):
         """ Asks the AWG which sequencer mode it is using.
 
         @param: bool output_as_int: optional boolean variable to set the output
