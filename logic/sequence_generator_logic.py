@@ -415,6 +415,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
 
+        # Fixme: There should be not a hard coded channel setting, what if there is only one channel?
+        # and there should be also a general channel naming, do we start with ch1 or ch0?
+        # Anyways this makes no sense, one gets the voltage from the device and then sets it again...
+
         self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
         self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
