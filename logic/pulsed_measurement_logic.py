@@ -98,10 +98,10 @@ class PulsedMeasurementLogic(GenericLogic):
         self.elapsed_sweeps = 0
 
         # analyze windows for laser pulses
-        self.signal_start_bin = None
-        self.signal_width_bin = None
-        self.norm_start_bin = None
-        self.norm_width_bin = None
+        self.signal_start_bin = 5
+        self.signal_width_bin = 200
+        self.norm_start_bin = 5
+        self.norm_width_bin = 200
 
         # threading
         self.threadlock = Mutex()
@@ -742,5 +742,8 @@ class PulsedMeasurementLogic(GenericLogic):
                     'tasks!\nNo ODMR optimization performed.',
                     msgType='warning')
         pass
+
+
+
 
 
