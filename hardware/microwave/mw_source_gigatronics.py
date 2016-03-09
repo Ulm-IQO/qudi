@@ -20,15 +20,15 @@ Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
 """
 
 import visa
+import numpy as np
 
 from core.base import Base
 from interface.microwave_interface import MicrowaveInterface
 
 
 class MicrowaveGigatronics(Base, MicrowaveInterface):
-    """ This is the Interface class to define the controls for the simple
-        microwave hardware.
-    """
+    """ Hardware file for Gigatronics. """
+
     _modclass = 'MicrowaveInterface'
     _modtype = 'hardware'
 
@@ -143,7 +143,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         return float(self._gpib_connection.ask(':FREQ?'))
 
 
-    def set_frequency(self, freq=0.):
+    def set_frequency(self, freq=None):
         """ Sets the frequency of the microwave output.
 
         @param float freq: the frequency (in Hz) set for this device
@@ -211,7 +211,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         self._gpib_connection.write(':TRIG:SOUR EXT')
         self._gpib_connection.write(':OUTP ON')
 
-        N = int(numpy.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
+        N = int(np.round(float(self._gpib_connection.ask(':LIST:FREQ:POIN?'))))
         if N != len(freq):
             error = -1
 
