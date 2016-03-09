@@ -115,6 +115,13 @@ class MagnetGui(GUIBase):
 
         self.set_default_view_main_window()
 
+        # After a movement command, the device should not block the program, at
+        # least on the hardware level. That meant that the dll (or whatever
+        # protocol is used to access the hardware) can receive a command during
+        # an ongoing action. That is of course controller specific, but in
+        # general should it should be possible (unless the controller was
+        # written by someone who has no clue what he is doing). Eventually with
+        # that you have the possibility of stopping an ongoing movement!
         self._interactive_mode = True
         self._activate_magnet_settings(e)
         self._mw.actionMagnet_Settings.triggered.connect(self.open_magnet_settings)
@@ -152,14 +159,20 @@ class MagnetGui(GUIBase):
 
 
     def set_default_view_main_window(self):
+        """ Establish the default dock Widget configuration. """
+
+        # connect all widgets to the main Window
         self._mw.curr_pos_DockWidget.setFloating(False)
         self._mw.move_rel_DockWidget.setFloating(False)
         self._mw.move_abs_DockWidget.setFloating(False)
 
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(4), self._mw.curr_pos_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.move_rel_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.move_abs_DockWidget)
-
+        # align the widget
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(4),
+                               self._mw.curr_pos_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
+                               self._mw.move_rel_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
+                               self._mw.move_abs_DockWidget)
 
     def open_magnet_settings(self):
         """ This method opens the settings menu. """
@@ -192,14 +205,6 @@ class MagnetGui(GUIBase):
 
         constraints = self._magnet_logic.get_hardware_constraints()
 
-#        param = OrderedDict()
-#        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
-#        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-#        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-#        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-#
-#        constraints = param
-
         # set the parameters in the curr_pos_DockWidget:
         for index, parameter in enumerate(constraints):
 
@@ -222,7 +227,8 @@ class MagnetGui(GUIBase):
             dspinbox_var.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
             dspinbox_var.setMaximum(np.inf)
             dspinbox_var.setMinimum(-np.inf)
-            #TODO: set the decimals also from the constraints!
+            #TODO: set the decimals also from the constraints or make them
+            #      setable in the settings window!
             dspinbox_var.setDecimals(3)
             dspinbox_var.setSingleStep(constraints[parameter]['pos_step'])
             self._mw.curr_pos_GridLayout.addWidget(dspinbox_var, index, 1, 1, 1)
@@ -250,49 +256,41 @@ class MagnetGui(GUIBase):
 
         constraints = self._magnet_logic.get_hardware_constraints()
 
-#        param = OrderedDict()
-#        param['x'] = {'pos_min': 0, 'pos_max':200, 'pos_step': 0.1}
-#        param['y'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-#        param['z'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
-#        param['phi'] = {'pos_min': 0, 'pos_max':50, 'pos_step':0.2}
+        # set the axis_labels in the curr_pos_DockWidget:
+        for index, axis_label in enumerate(constraints):
 
-#        constraints = param
-
-        # set the parameters in the curr_pos_DockWidget:
-        for index, parameter in enumerate(constraints):
-
-            label_var_name = 'move_rel_axis{0}_Label'.format(parameter)
+            label_var_name = 'move_rel_axis{0}_Label'.format(axis_label)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_rel_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
-            # set parameter for the label:
+            # set axis_label for the label:
             label_var.setObjectName(label_var_name)
-            label_var.setText(parameter)
+            label_var.setText(axis_label)
             # add the label to the grid:
             self._mw.move_rel_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_var_name = 'move_rel_axis{0}_DoubleSpinBox'.format(parameter)
+            dspinbox_var_name = 'move_rel_axis{0}_DoubleSpinBox'.format(axis_label)
             setattr(self._mw, dspinbox_var_name, QtGui.QDoubleSpinBox(self._mw.move_rel_DockWidgetContents))
             dspinbox_var = getattr(self._mw, dspinbox_var_name)
             dspinbox_var.setObjectName(dspinbox_var_name)
 #            dspinbox_var.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
-            dspinbox_var.setMaximum(constraints[parameter]['pos_max'])
-            dspinbox_var.setMinimum(constraints[parameter]['pos_min'])
+            dspinbox_var.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_var.setMinimum(constraints[axis_label]['pos_min'])
             #TODO: set the decimals also from the constraints!
             dspinbox_var.setDecimals(3)
-            dspinbox_var.setSingleStep(constraints[parameter]['pos_step'])
+            dspinbox_var.setSingleStep(constraints[axis_label]['pos_step'])
             self._mw.move_rel_GridLayout.addWidget(dspinbox_var, index, 1, 1, 1)
 
 
             # this is the name prototype for the relative movement minus button
-            func_name = '_move_rel_axis{0}_m'.format(parameter)
+            func_name = '_move_rel_axis{0}_m'.format(axis_label)
             # create a method and assign it as attribute:
-            setattr(self, func_name, self._function_builder_move_rel(func_name,parameter,-1) )
+            setattr(self, func_name, self._function_builder_move_rel(func_name,axis_label,-1) )
             move_rel_m_ref =  getattr(self, func_name)  # get the reference
 
             # the change of the PushButton is connected to the previous method.
-            button_var_name = 'move_rel_axis{0}_m_PushButton'.format(parameter)
+            button_var_name = 'move_rel_axis{0}_m_PushButton'.format(axis_label)
             setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
@@ -300,14 +298,13 @@ class MagnetGui(GUIBase):
             button_var.clicked.connect(move_rel_m_ref, type=QtCore.Qt.QueuedConnection)
             self._mw.move_rel_GridLayout.addWidget(button_var, index, 2, 1, 1)
 
-
             # this is the name prototype for the relative movement plus button
-            func_name = '_move_rel_axis{0}_p'.format(parameter)
-            setattr(self, func_name, self._function_builder_move_rel(func_name,parameter,1) )
+            func_name = '_move_rel_axis{0}_p'.format(axis_label)
+            setattr(self, func_name, self._function_builder_move_rel(func_name,axis_label,1) )
             move_rel_p_ref =  getattr(self, func_name)
 
             # the change of the PushButton is connected to the previous method.
-            button_var_name = 'move_rel_axis{0}_p_PushButton'.format(parameter)
+            button_var_name = 'move_rel_axis{0}_p_PushButton'.format(axis_label)
             setattr(self._mw, button_var_name, QtGui.QPushButton(self._mw.move_rel_DockWidgetContents))
             button_var = getattr(self._mw, button_var_name)
             button_var.setObjectName(button_var_name)
@@ -316,7 +313,7 @@ class MagnetGui(GUIBase):
             self._mw.move_rel_GridLayout.addWidget(button_var, index, 3, 1, 1)
 
     def _create_move_abs_control(self):
-        """ Create all the gui elements to control a relative movement.
+        """ Create all the GUI elements to control a relative movement.
 
         The generic variable name for a created QLable is:
             move_rel_axis{0}_Label
@@ -334,29 +331,29 @@ class MagnetGui(GUIBase):
 
         constraints = self._magnet_logic.get_hardware_constraints()
 
-        for index, parameter in enumerate(constraints):
+        for index, axis_label in enumerate(constraints):
 
-            label_var_name = 'move_abs_axis{0}_Label'.format(parameter)
+            label_var_name = 'move_abs_axis{0}_Label'.format(axis_label)
             setattr(self._mw, label_var_name, QtGui.QLabel(self._mw.move_abs_DockWidgetContents))
             label_var = getattr(self._mw, label_var_name) # get the reference
-            # set parameter for the label:
+            # set axis_label for the label:
             label_var.setObjectName(label_var_name)
-            label_var.setText(parameter)
+            label_var.setText(axis_label)
             # add the label to the grid:
             self._mw.move_abs_GridLayout.addWidget(label_var, index, 0, 1, 1)
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            slider_obj_name = 'move_abs_axis{0}_Slider'.format(parameter)
+            slider_obj_name = 'move_abs_axis{0}_Slider'.format(axis_label)
             setattr(self._mw, slider_obj_name, QtGui.QSlider(self._mw.move_abs_DockWidgetContents))
             slider_obj = getattr(self._mw, slider_obj_name)
             slider_obj.setObjectName(slider_obj_name)
             slider_obj.setOrientation(QtCore.Qt.Horizontal)
 #            dspinbox_var.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
 
-            max_val = abs(constraints[parameter]['pos_max'] - constraints[parameter]['pos_min'])
+            max_val = abs(constraints[axis_label]['pos_max'] - constraints[axis_label]['pos_min'])
 
-            max_steps = int(max_val/constraints[parameter]['pos_step'])
+            max_steps = int(max_val/constraints[axis_label]['pos_step'])
 
             slider_obj.setMaximum(max_steps)
             slider_obj.setMinimum(0)
@@ -369,16 +366,16 @@ class MagnetGui(GUIBase):
 
             # Set the QDoubleSpinBox according to the grid
             # this is the name prototype for the relative movement display
-            dspinbox_var_name = 'move_abs_axis{0}_DoubleSpinBox'.format(parameter)
+            dspinbox_var_name = 'move_abs_axis{0}_DoubleSpinBox'.format(axis_label)
             setattr(self._mw, dspinbox_var_name, QtGui.QDoubleSpinBox(self._mw.move_abs_DockWidgetContents))
             dspinbox_var = getattr(self._mw, dspinbox_var_name)
             dspinbox_var.setObjectName(dspinbox_var_name)
 #            dspinbox_var.setButtonSymbols(QtGui.QAbstractSpinBox.NoButtons)
-            dspinbox_var.setMaximum(constraints[parameter]['pos_max'])
-            dspinbox_var.setMinimum(constraints[parameter]['pos_min'])
+            dspinbox_var.setMaximum(constraints[axis_label]['pos_max'])
+            dspinbox_var.setMinimum(constraints[axis_label]['pos_min'])
             #TODO: set the decimals also from the constraints!
             dspinbox_var.setDecimals(3)
-            dspinbox_var.setSingleStep(constraints[parameter]['pos_step'])
+            dspinbox_var.setSingleStep(constraints[axis_label]['pos_step'])
             self._mw.move_abs_GridLayout.addWidget(dspinbox_var, index, 2, 1, 1)
 
 
@@ -390,20 +387,23 @@ class MagnetGui(GUIBase):
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
 
-    def _function_builder_move_rel(self, func_name, parameter, direction):
+    def _function_builder_move_rel(self, func_name, axis_label, direction):
+        """ Create a function/method, which gots executed for pressing move_rel.
+
+        @param str func_name: name how the function should be called.
+        @param str axis_label: label of the axis you want to create a control
+                               function for.
+        @param int direction: either 1 or -1 depending on the relative movement.
+        @return: function with name func_name
+
+        A routine to construct a method on the fly and attach it as attribute
+        to the object, so that it can be used or so that other signals can be
+        connected to it. That means the return value is already fixed for a
+        function name.
+        """
+
         def func_dummy_name():
-            self.move_rel(parameter, direction)
-
-        func_dummy_name.__name__ = func_name
-        return func_dummy_name
-
-        # create the signals for the push buttons and connect them to the move
-        # rel method in the Logic
-
-
-    def _function_builder_move_abs(self, func_name, parameter):
-        def func_dummy_name():
-            self.move_abs(parameter)
+            self.move_rel(axis_label, direction)
 
         func_dummy_name.__name__ = func_name
         return func_dummy_name
@@ -412,6 +412,16 @@ class MagnetGui(GUIBase):
         # rel method in the Logic
 
     def move_rel(self, axis_label, direction):
+        """ Move relative by the axis with given label an direction.
+
+        @param str axis_label: tells which axis should move.
+        @param int direction: either 1 or -1 depending on the relative movement.
+
+        That method get called from methods, which are created on the fly at
+        runtime during the activation of that module (basically from the
+        methods with the generic name _move_rel_axis{0} or
+        _por _move_rel_axis{0}_m with the appropriate label).
+        """
 
         dspinbox = self.get_ref_move_rel_DoubleSpinBox(axis_label)
         movement = dspinbox.value() * direction
@@ -422,6 +432,13 @@ class MagnetGui(GUIBase):
             self.update_pos()
 
     def move_abs(self, param_dict=None):
+        """ Perform an absolute movement.
+
+        @param param_dict: with {<axis_label>:<position>}, can of course
+                           contain many entries of the same kind.
+
+        Basically all the axis can be controlled at the same time.
+        """
 
         if (param_dict is not None) and (type(param_dict) is not bool):
             self._magnet_logic.move_abs(param_dict)
@@ -439,18 +456,21 @@ class MagnetGui(GUIBase):
 
     def get_ref_curr_pos_DoubleSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
+
         dspinbox_name = 'curr_pos_axis{0}_DoubleSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
     def get_ref_move_rel_DoubleSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
+
         dspinbox_name = 'move_rel_axis{0}_DoubleSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
     def get_ref_move_abs_DoubleSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
+        
         dspinbox_name = 'move_abs_axis{0}_DoubleSpinBox'.format(label)
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
