@@ -20,10 +20,10 @@ Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
 Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
 """
 
-from core.base import Base
-from interface.microwave_interface import MicrowaveInterface
 import random
 
+from core.base import Base
+from interface.microwave_interface import MicrowaveInterface
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):

@@ -19,9 +19,10 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
 """
 
+import visa
+
 from core.base import Base
 from interface.microwave_interface import MicrowaveInterface
-import visa
 
 
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
