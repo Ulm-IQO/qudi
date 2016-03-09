@@ -44,7 +44,7 @@ class CounterLogic(GenericLogic):
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
 
-    _modclass = 'counterlogic'
+    _modclass = 'CounterLogic'
     _modtype = 'logic'
 
     ## declare connectors
@@ -56,10 +56,10 @@ class CounterLogic(GenericLogic):
     def __init__(self, manager, name, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
-          @param dict kwargs: optional parameters
+        @param object manager: Manager object thath loaded this module
+        @param str name: unique module name
+        @param dict config: module configuration
+        @param dict kwargs: optional parameters
         """
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation,
@@ -303,8 +303,10 @@ class CounterLogic(GenericLogic):
         self._counting_mode = mode
 
     def startCount(self):
-        """This is called externally, and is basically a wrapper that redirects to the chosen counting mode start function.
+        """ This is called externally, and is basically a wrapper that
+            redirects to the chosen counting mode start function.
         """
+
         if self._counting_mode == 'continuous':
             self._startCount_continuous()
         elif self._counting_mode == 'gated':
@@ -312,7 +314,8 @@ class CounterLogic(GenericLogic):
         elif self._counting_mode == 'finite-gated':
             self._startCount_finite_gated()
         else:
-            self.logMsg('Unknown counting mode, can not start the counter.', msgType='error')
+            self.logMsg('Unknown counting mode, can not start the counter.',
+                        msgType='error')
 
     def _startCount_continuous(self):
         """Prepare to start counting change state and start counting 'loop'."""
@@ -359,6 +362,12 @@ class CounterLogic(GenericLogic):
             self.stopRequested = True
 
     def _startCount_finite_gated(self):
+        """Prepare to start finite gated counting.
+
+        Change state and start counting 'loop'."""
+
+        # setting up the counter
+        # set a lock, to signify the measurment is running
         self.lock()
 
         returnvalue = self._counting_device.set_up_clock(clock_frequency = self._count_frequency)
@@ -573,7 +582,7 @@ class CounterLogic(GenericLogic):
             # read the current counter value
 
             self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-            
+
         except Exception as e:
             self.logMsg('The counting went wrong, killing the counter.',
                         msgType='error')

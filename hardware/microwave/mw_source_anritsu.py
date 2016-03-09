@@ -232,7 +232,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         return 0
 
-    def trigger(self, source, pol='POS'):
+    def set_ex_trigger(self, source, pol='POS'):
         """ Set the external trigger for this device with proper polarization.
 
         @param str source: channel name, where external trigger is expected.
