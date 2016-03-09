@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Interface file for control wavemeter hardware.
+This file contains the QuDi Interface file to control microwave devices.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ class MicrowaveInterface():
     def get_power(self):
         """ Gets the microwave output power.
 
-        @return float: the power set at the device
+        @return float: the power set at the device in dBm
         """
         raise InterfaceImplementationError('MicrowaveInterface>get_power')
         return 0.0
@@ -137,8 +137,12 @@ class MicrowaveInterface():
         raise InterfaceImplementationError('MicrowaveInterface>sweep_pos')
         return -1
 
-    def trigger(self, source,pol):
-        """
+    def trigger(self, source, pol):
+        """ Set the external trigger for this device with proper polarization.
+
+        @param str source: channel name, where external trigger is expected.
+        @param str pol: polarisation of the trigger (basically rising edge or
+                        falling edge)
 
         @return int: error code (0:OK, -1:error)
         """

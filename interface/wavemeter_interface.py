@@ -25,8 +25,8 @@ from core.util.customexceptions import InterfaceImplementationError
 class WavemeterInterface():
     """ Define the controls for a wavemeter hardware."""
 
-    _modtype = 'WavemeterInterface'
-    _modclass = 'interface'
+    _modclass = 'WavemeterInterface'
+    _modtype = 'interface'
 
     def start_acqusition(self):
         """ Method to start the wavemeter software.
