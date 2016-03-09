@@ -145,7 +145,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        c_dict = {'onactivate': self.activation,
+                  'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, c_dict)
 
     def activation(self, e=None):
