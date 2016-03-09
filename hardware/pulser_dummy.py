@@ -535,7 +535,7 @@ class PulserDummy(Base, PulserInterface):
         # All the other status messages should have higher integer values
         # then 1.
 
-        return (self.current_status, status_dic)
+        return self.current_status, status_dic
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
