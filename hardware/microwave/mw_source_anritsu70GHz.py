@@ -213,7 +213,7 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         pass
 
 
-    def trigger(self, source, pol):
+    def set_ex_trigger(self, source, pol):
         """ Set the external trigger for this device with proper polarization.
 
         @param str source: channel name, where external trigger is expected.

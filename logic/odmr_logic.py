@@ -52,7 +52,7 @@ class ODMRLogic(GenericLogic):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
-        state_actions = {'onactivate': self.activation, 
+        state_actions = {'onactivate': self.activation,
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
@@ -70,7 +70,7 @@ class ODMRLogic(GenericLogic):
         self.threadlock = Mutex()
 
         self.stopRequested = False
-        
+
 
 
     def activation(self, e):
@@ -136,7 +136,7 @@ class ODMRLogic(GenericLogic):
         self.set_frequency(frequency = self.MW_frequency)
         self.set_power(power = self.MW_power)
         self.MW_off()
-        self._MW_device.trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
+        self._MW_device.set_ex_trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
 
 
     def deactivation(self, e):
@@ -187,7 +187,7 @@ class ODMRLogic(GenericLogic):
 
     def kill_ODMR(self):
         """ Stopping the ODMR counter. """
-        
+
         self._ODMR_counter.close_odmr()
         self._ODMR_counter.close_odmr_clock()
         return 0
@@ -195,7 +195,7 @@ class ODMRLogic(GenericLogic):
 
     def start_ODMR_scan(self):
         """ Starting an ODMR scan. """
-        
+
         self._odmrscan_counter = 0
         self._StartTime = time.time()
         self.ElapsedTime = 0
@@ -203,21 +203,21 @@ class ODMRLogic(GenericLogic):
 
         self._MW_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
         self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
-        
+
         if self.safeRawData:
 
             # All that is necesarry fo saving of raw data:
-      
-            self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list    
-            self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line 
+
+            self._MW_frequency_list_length=int(self._MW_frequency_list.shape[0])  #length of req list
+            self._ODMR_line_time= self._MW_frequency_list_length /  self._clock_frequency # time for one line
             self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
-        
+
             self.ODMR_raw_data = np.full((self._MW_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
             self.logMsg('Raw data saving...',msgType='status', importance=5)
-            
+
         else:
             self.logMsg('Raw data NOT saved',msgType='status', importance=5)
-            
+
         self.start_ODMR()
 
         self._MW_device.set_list(self._MW_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
@@ -243,7 +243,7 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_ODMR_plot(self):
         """ Initializing the ODMR line plot. """
-        
+
         self.ODMR_plot_x = self._MW_frequency_list
         self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
         self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
@@ -251,16 +251,16 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_ODMR_matrix(self):
         """ Initializing the ODMR matrix plot. """
-        
+
         self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self._MW_frequency_list)) )
 
 
     def _scan_ODMR_line(self):
-        """ Scans one line in ODMR 
+        """ Scans one line in ODMR
 
         (from MW_start to MW_stop in steps of MW_step)
         """
-        
+
         if self.stopRequested:
             with self.threadlock:
                 self._MW_device.set_cw(freq=self.MW_frequency, power=self.MW_power)
@@ -278,11 +278,11 @@ class ODMRLogic(GenericLogic):
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
-        
+
         if self.safeRawData:
             self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
-        
-        
+
+
         self._odmrscan_counter += 1
 
         self.ElapsedTime = time.time() - self._StartTime
@@ -482,7 +482,7 @@ class ODMRLogic(GenericLogic):
         data3=OrderedDict()
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
-        matrix_data=self.ODMR_plot_xy # the data in the matix plot 
+        matrix_data=self.ODMR_plot_xy # the data in the matix plot
         data['frequency values (MHz)'] = freq_data
         data['count data'] = count_data
         #data['frequency values (MHz)'] = freq_data
@@ -494,20 +494,20 @@ class ODMRLogic(GenericLogic):
         parameters['Star Frequency (MHz)'] = self.MW_start
         parameters['Stop Frequency (MHz)'] = self.MW_stop
         parameters['Step size (MHz)'] = self.MW_step
-        
-        if self.safeRawData:        
+
+        if self.safeRawData:
             raw_data=self.ODMR_raw_data # array cotaining ALL messured data
-            data3['count data'] = raw_data #saves the raw data, ALL of it so keep an eye on performance 
+            data3['count data'] = raw_data #saves the raw data, ALL of it so keep an eye on performance
             self._save_logic.save_data(data3, filepath3, parameters=parameters,
                                    filelabel=filelabel3, timestamp=timestamp, as_text=True)
             self.logMsg('Raw data succesfully saved',msgType='status', importance=7)
-            
+
         else:
             self.logMsg('Raw data is NOT saved',msgType='status', importance=7)
-               
+
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
-                                   
+
         self._save_logic.save_data(data2, filepath2, parameters=parameters,
                                    filelabel=filelabel2, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
 
