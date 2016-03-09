@@ -1995,10 +1995,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the errorbars of the data in the main pulse analysis display:
-        self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_measurement_logic.signal_plot_x,
-                                                     y=self._pulsed_measurement_logic.signal_plot_y,
-                                                     top=self._pulsed_measurement_logic.measuring_error_plot_y,
-                                                     bottom=self._pulsed_measurement_logic.measuring_error_plot_y,pen='b')
+        self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_meas_logic.signal_plot_x,
+                                                     y=self._pulsed_meas_logic.signal_plot_y,
+                                                     top=self._pulsed_meas_logic.measuring_error_plot_y,
+                                                     bottom=self._pulsed_meas_logic.measuring_error_plot_y,pen='b')
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
 
         # Configure the fourier transform of the main pulse analysis display:
@@ -2149,8 +2149,6 @@ class PulsedMeasurementGui(GUIBase):
             #self._mw.action_continue_pause.toggle()
 
             self._mw.action_run_stop.setChecked(True)
-
-
         else:
             #self._mw.action_continue_pause.toggle
 
@@ -2188,13 +2186,13 @@ class PulsedMeasurementGui(GUIBase):
         if True:
             # calculate optimal beam width for the error bars
             beamwidth = 1e99
-            for i in range(len(self._pulsed_measurement_logic.tau_array)-1):
-                width = self._pulsed_measurement_logic.tau_array[i+1] - self._pulsed_measurement_logic.tau_array[i]
+            for i in range(len(self._pulsed_meas_logic.tau_array)-1):
+                width = self._pulsed_meas_logic.tau_array[i+1] - self._pulsed_meas_logic.tau_array[i]
                 width = width/3
                 if width <= beamwidth:
                     beamwidth = width
             # create ErrorBarItem
-            self.signal_image_error_bars.setData(x=self._pulsed_measurement_logic.signal_plot_x, y=self._pulsed_measurement_logic.signal_plot_y, top=self._pulsed_measurement_logic.measuring_error,bottom=self._pulsed_measurement_logic.measuring_error,beam=beamwidth)
+            self.signal_image_error_bars.setData(x=self._pulsed_meas_logic.signal_plot_x, y=self._pulsed_meas_logic.signal_plot_y, top=self._pulsed_meas_logic.measuring_error,bottom=self._pulsed_meas_logic.measuring_error,beam=beamwidth)
             if not self.errorbars_present:
                 #print ('add erro')
                 self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
@@ -2207,8 +2205,8 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 pass
 
-        self.signal_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
-        self.fft_image.setData(self._pulsed_measurement_logic.signal_plot_x, self._pulsed_measurement_logic.signal_plot_y)
+        self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
 
 
 
