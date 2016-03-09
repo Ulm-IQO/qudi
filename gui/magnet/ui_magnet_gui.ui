@@ -98,6 +98,16 @@
          </property>
         </widget>
        </item>
+       <item row="0" column="3">
+        <widget class="QPushButton" name="curr_pos_stop_PushButton">
+         <property name="styleSheet">
+          <string notr="true">color: red</string>
+         </property>
+         <property name="text">
+          <string>STOP Movement</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
     </layout>
