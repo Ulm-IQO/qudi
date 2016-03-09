@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Interface file to control microwave devices.
+This file contains the QuDi hardware file to control Anritsu Microwave Device.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
     _modtype = 'hardware'
 
     # declare connectors
-    _out = {'mwsourceanritsu': 'MWInterface'}
+    _out = {'mwsourceanritsu': 'MicrowaveInterface'}
 
     def __init__(self, manager, name, config = {}, **kwargs):
         c_dict = {'onactivate': self.activation,
