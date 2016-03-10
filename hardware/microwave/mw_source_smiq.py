@@ -62,9 +62,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
                         'configration.', msgType='error')
 
         if 'gpib_timeout' in config.keys():
-            self._gpib_timeout = int(config['gpib_timeout'])
+            self._gpib_timeout = int(config['gpib_timeout'])*1000
         else:
-            self._gpib_timeout = 10
+            self._gpib_timeout = 10*1000
             self.logMsg('This is MWSMIQ: did not find >>gpib_timeout<< in '
                         'configration. I will set it to 10 seconds.',
                         msgType='error')
