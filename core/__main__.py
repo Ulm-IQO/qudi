@@ -112,17 +112,19 @@ class AppWatchdog(QtCore.QObject):
 
 if '--profile' in sys.argv:
     profile = True
-    sys.argv.pop(sys.argv.index('--profile'))   # remove parameter from argv
-                                                # since it is used now.
+    sys.argv.pop(sys.argv.index('--profile'))   # remove parameter from argv since it is used now.
 else:
     profile = False
 if '--callgraph' in sys.argv:
     callgraph = True
-    sys.argv.pop(sys.argv.index('--callgraph')) # remove parameter from argv
-                                                # since it is used now.
+    sys.argv.pop(sys.argv.index('--callgraph')) # remove parameter from argv since it is used now.
 else:
     callgraph = False
-
+if '--manhole' in sys.argv:
+    open_manhole = True
+    sys.argv.pop(sys.argv.index('--manhole')) # remove parameter from argv since it is used now.
+else:
+    open_manhole = False
 if '-g' in sys.argv or '--no-gui' in sys.argv:
     app = QtCore.QCoreApplication(sys.argv)
 else:
@@ -164,6 +166,11 @@ man.sigManagerQuit.connect(watchdog.quitApplication)
 
 ## for debugging with pdb
 #QtCore.pyqtRemoveInputHook()
+
+# manhole for debugging stuff inside the app from outside
+if open_manhole:
+    import manhole
+    manhole.install()
 
 # Start Qt event loop unless running in interactive mode and not using PySide.
 interactive = (sys.flags.interactive == 1) and not pg.Qt.USE_PYSIDE
