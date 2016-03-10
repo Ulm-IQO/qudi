@@ -53,7 +53,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
                          of the state which should be reached after the event
                          had happened.
         """
-
         # checking for the right configuration
         config = self.getConfiguration()
         if 'gpib_address' in config.keys():
@@ -177,7 +176,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-
         error = 0
         self._gpib_connection.write(':FREQ:MODE CW')
 
@@ -201,7 +199,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         error = 0
 #        if self.set_cw(freq[0],power) != 0:
 #            error = -1
@@ -221,9 +218,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:FREQ' + FreqString)
         self._gpib_connection.write('*WAI')
 
-        self.test2 = ':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1]))))
+        self.test2 = ':LIST:POW ' + str(power)+ ('{0}'.format(( ', '+str(power)) * (len(freq[:-1]))))
 
-        self._gpib_connection.write(':LIST:POW '  + str(power)+  ('{0}'.format(( ', '+str(power)) * (len(freq[:-1])))))
+        self._gpib_connection.write(':LIST:POW ' + str(power)+ ('{0}'.format(( ', '+str(power)) * (len(freq[:-1])))))
 
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':TRIG1:LIST:SOUR EXT')
@@ -235,13 +232,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         if N != len(freq):
             error = -1
-
-        self._gpib_connection.write(':LIST:LEARN')
-        #print(self._gpib_connection.ask('*OPC?'))
-        self._gpib_connection.write('*WAI')
-        # If there are timeout  problems after this command, update the smiq
-        # firmware to > 5.90 as there was a problem with excessive wait times
-        # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
         return error
 
     def reset_listpos(self):#
@@ -249,7 +239,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
         #self._gpib_connection.write(':FREQ:MODE CW; :FREQ:MODE LIST')
         #due an unknown reason the old call above produces timeouts
         self._gpib_connection.write(':FREQ:MODE CW')
@@ -260,14 +249,18 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     def list_on(self):
         """ Switches on the list mode.
 
-        @return int: error code (0:OK, -1:error)
+        @return int: error code (1: ready, 0:not ready, -1:error)
         """
-
         self._gpib_connection.write(':OUTP ON')
         self._gpib_connection.write('*WAI')
         self._gpib_connection.write(':LIST:LEARN')
-
-        return 0
+        self._gpib_connection.write('*WAI')
+        # If there are timeout  problems after this command, update the smiq
+        # firmware to > 5.90 as there was a problem with excessive wait times
+        # after issuing :LIST:LEARN over a GPIB connection in firmware 5.88
+        self._gpib_connection.write(':FREQ:MODE LIST')
+        self._gpib_connection.write('*WAI')
+        return int(self._gpib_connection.ask('*OPC?'))
 
     def set_ex_trigger(self, source, pol):
         """ Set the external trigger for this device with proper polarization.
