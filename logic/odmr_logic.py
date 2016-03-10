@@ -66,12 +66,8 @@ class ODMRLogic(GenericLogic):
 
         #number of lines in the matrix plot
         self.NumberofLines = 50
-
         self.threadlock = Mutex()
-
         self.stopRequested = False
-
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -138,10 +134,8 @@ class ODMRLogic(GenericLogic):
         self.MW_off()
         self._MW_device.set_ex_trigger(source = self.MW_trigger_source, pol = self.MW_trigger_pol)
 
-
     def deactivation(self, e):
         """ Perform required deactivation. """
-
         # save parameters stored in app state store
         self._statusVariables['MW_trigger_source'] = self.MW_trigger_source
         self._statusVariables['MW_trigger_pol'] = self.MW_trigger_pol
@@ -161,7 +155,6 @@ class ODMRLogic(GenericLogic):
         #self._statusVariables['current_fit_function'] = self.current_fit_function
         #self._statusVariables['fit_results'] = self.fit_results
 
-
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
 
@@ -169,7 +162,6 @@ class ODMRLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._clock_frequency = int(clock_frequency)
         #checks if scanner is still running
         if self.getState() == 'locked':
@@ -177,13 +169,11 @@ class ODMRLogic(GenericLogic):
         else:
             return 0
 
-
     def start_ODMR(self):
         """ Starting the ODMR counter. """
         self.lock()
         self._ODMR_counter.set_up_odmr_clock(clock_frequency = self._clock_frequency)
         self._ODMR_counter.set_up_odmr()
-
 
     def kill_ODMR(self):
         """ Stopping the ODMR counter. """
@@ -192,10 +182,8 @@ class ODMRLogic(GenericLogic):
         self._ODMR_counter.close_odmr_clock()
         return 0
 
-
     def start_ODMR_scan(self):
         """ Starting an ODMR scan. """
-
         self._odmrscan_counter = 0
         self._StartTime = time.time()
         self.ElapsedTime = 0
@@ -223,6 +211,9 @@ class ODMRLogic(GenericLogic):
         self._MW_device.set_list(self._MW_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
         self._MW_device.list_on()
 
+        # sleep to wait for learn/list mode
+        #time.sleep(5.0)
+
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
 
@@ -243,7 +234,6 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_ODMR_plot(self):
         """ Initializing the ODMR line plot. """
-
         self.ODMR_plot_x = self._MW_frequency_list
         self.ODMR_plot_y = np.zeros(self._MW_frequency_list.shape)
         self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
@@ -251,7 +241,6 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_ODMR_matrix(self):
         """ Initializing the ODMR matrix plot. """
-
         self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self._MW_frequency_list)) )
 
 
@@ -260,7 +249,6 @@ class ODMRLogic(GenericLogic):
 
         (from MW_start to MW_stop in steps of MW_step)
         """
-
         if self.stopRequested:
             with self.threadlock:
                 self._MW_device.set_cw(freq=self.MW_frequency, power=self.MW_power)
@@ -272,16 +260,23 @@ class ODMRLogic(GenericLogic):
                 self.signal_ODMR_matrix_updated.emit()
                 return
 
-#        self._MW_device.reset_listpos()
+        # reset position so every line starts from the same frequency
+        self._MW_device.reset_listpos()
+
         new_counts = self._ODMR_counter.count_odmr(length=len(self._MW_frequency_list))
 
+        # ######################## this is a quick and dirty fix due to a missing trigger;
+        # index = self._odmrscan_counter % len(new_counts)
+        # #print(index)
+        # if index != 0:
+        #     new_counts=np.hstack((new_counts[len(new_counts)-index:],new_counts[:-index]))
+        # ######################## end of quick and dirty fix
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
         self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
 
         if self.safeRawData:
-            self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts# adds the ne odmr line to the overall np.array
-
+            self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
 
         self._odmrscan_counter += 1
 
@@ -296,7 +291,6 @@ class ODMRLogic(GenericLogic):
         self.signal_ODMR_matrix_updated.emit()
         self.signal_next_line.emit()
 
-
     def set_power(self, power = None):
         """ Forwarding the desired new power from the GUI to the MW source.
 
@@ -310,7 +304,6 @@ class ODMRLogic(GenericLogic):
             error_code = self._MW_device.set_power(power)
             return error_code
 
-
     def get_power(self):
         """ Getting the current power from the MW source.
 
@@ -319,7 +312,6 @@ class ODMRLogic(GenericLogic):
         power = self._MW_device.get_power()
         return power
 
-
     def set_frequency(self, frequency = None):
         """ Forwarding the desired new frequency from the GUI to the MW source.
 
@@ -327,7 +319,6 @@ class ODMRLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-
         if isinstance(frequency,(int, float)):
             self.MW_frequency = frequency
         else:
@@ -339,7 +330,6 @@ class ODMRLogic(GenericLogic):
             error_code = self._MW_device.set_frequency(frequency*1e6) #times 1e6 to have freq in Hz
             return error_code
 
-
     def get_frequency(self):
         """ Getting the current frequency from the MW source.
 
@@ -347,7 +337,6 @@ class ODMRLogic(GenericLogic):
         """
         frequency = self._MW_device.get_frequency()/1e6 #divided by 1e6 to get freq in MHz
         return frequency
-
 
     def MW_on(self):
         """ Switching on the MW source.
@@ -357,7 +346,6 @@ class ODMRLogic(GenericLogic):
         error_code = self._MW_device.on()
         return error_code
 
-
     def MW_off(self):
         """ Switching off the MW source.
 
@@ -365,7 +353,6 @@ class ODMRLogic(GenericLogic):
         """
         error_code = self._MW_device.off()
         return error_code
-
 
     def do_fit(self, fit_function = None):
         """Performs the chosen fit on the measured data.
@@ -376,94 +363,88 @@ class ODMRLogic(GenericLogic):
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
-            self.signal_ODMR_plot_updated.emit()#ist das hier nötig?
-
+            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
         elif self.fit_function == 'Lorentzian':
             result = self._fit_logic.make_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            lorentzian, params = self._fit_logic.make_lorentzian_model()
             self.ODMR_fit_y = lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'frequency : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
-
-
-
+            self.fit_result = (
+                'frequency : ' + str(np.round(result.params['center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'linewidth : ' + str(np.round(result.params['fwhm'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['fwhm'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                )
         elif self.fit_function =='Double Lorentzian':
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]'
-                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + u" \u00B1 "
+                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['lorentz0_fwhm'].stderr,2)) + ' [MHz]'  + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]'
-                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + u" \u00B1 "
+                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['lorentz1_fwhm'].stderr,2)) + ' [MHz]' + '\n'
                                 + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
                                 )
-
-
-
         elif self.fit_function =='Double Lorentzian with fixed splitting':
-            p=Parameters()
-#            TODO: insert this in gui config of ODMR
-            splitting_from_gui_config=3.03 #in MHz
+            p = Parameters()
+            # TODO: insert this in gui config of ODMR
+            splitting_from_gui_config = 3.03 #in MHz
 
-            error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset = self._fit_logic.estimate_double_lorentz(self._MW_frequency_list,self.ODMR_plot_y)
+            error, lorentz0_amplitude, lorentz1_amplitude, lorentz0_center, lorentz1_center, lorentz0_sigma, lorentz1_sigma, offset = self._fit_logic.estimate_double_lorentz(self._MW_frequency_list, self.ODMR_plot_y)
 
-            if lorentz0_center<lorentz1_center:
-                p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+            if lorentz0_center < lorentz1_center:
+                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
             else:
-                splitting_from_gui_config*=-1
-                p.add('lorentz1_center',expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
+                splitting_from_gui_config *= -1
+                p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
 
             result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
             double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]'
-                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_fwhm'].stderr,2)) + ' [MHz]'  + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]'
-                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_fwhm'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
-
+            self.fit_result = (
+                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + u" \u00B1 "
+                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' [MHz]'
+                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value, 3)) + u" \u00B1 "
+                + str(np.round(result.params['lorentz0_fwhm'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + u" \u00B1 "
+                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' [MHz]'
+                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value, 3)) + u" \u00B1 "
+                + str(np.round(result.params['lorentz1_fwhm'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                )
         elif self.fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz2_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
-
+            self.fit_result = (
+                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['lorentz2_center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                )
         elif self.fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
             fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
-
+            self.fit_result = (
+                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + " \u00B1 "
+                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' [MHz]' + '\n'
+                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
+                )
 
     def save_ODMR_Data(self):
         """ Saves the current ODMR data to a file. """
@@ -478,15 +459,14 @@ class ODMRLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data2=OrderedDict()
-        data3=OrderedDict()
+        data2 = OrderedDict()
+        data3 = OrderedDict()
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
-        matrix_data=self.ODMR_plot_xy # the data in the matix plot
+        matrix_data = self.ODMR_plot_xy  # the data in the matix plot
         data['frequency values (MHz)'] = freq_data
         data['count data'] = count_data
-        #data['frequency values (MHz)'] = freq_data
-        data2['count data'] = matrix_data #saves the raw data used in the matrix NOT all only the size of the matrix
+        data2['count data'] = matrix_data  #saves the raw data used in the matrix NOT all only the size of the matrix
 
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.MW_power
@@ -496,20 +476,34 @@ class ODMRLogic(GenericLogic):
         parameters['Step size (MHz)'] = self.MW_step
 
         if self.safeRawData:
-            raw_data=self.ODMR_raw_data # array cotaining ALL messured data
-            data3['count data'] = raw_data #saves the raw data, ALL of it so keep an eye on performance
-            self._save_logic.save_data(data3, filepath3, parameters=parameters,
-                                   filelabel=filelabel3, timestamp=timestamp, as_text=True)
-            self.logMsg('Raw data succesfully saved',msgType='status', importance=7)
+            raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
+            data3['count data'] = raw_data  #saves the raw data, ALL of it so keep an eye on performance
+            self._save_logic.save_data(
+                data3,
+                filepath3,
+                parameters=parameters,
+                filelabel=filelabel3,
+                timestamp=timestamp,
+                as_text=True)
 
+            self.logMsg('Raw data succesfully saved', msgType='status', importance=7)
         else:
-            self.logMsg('Raw data is NOT saved',msgType='status', importance=7)
+            self.logMsg('Raw data is NOT saved', msgType='status', importance=7)
 
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            data,
+            filepath,
+            parameters=parameters,
+            filelabel=filelabel,
+            timestamp=timestamp,
+            as_text=True)
 
-        self._save_logic.save_data(data2, filepath2, parameters=parameters,
-                                   filelabel=filelabel2, timestamp=timestamp, as_text=True)#, as_xml=False, precision=None, delimiter=None)
+        self._save_logic.save_data(
+            data2,
+            filepath2,
+            parameters=parameters,
+            filelabel=filelabel2,
+            timestamp=timestamp,
+            as_text=True)
 
-        self.logMsg('ODMR data saved to:\n{0}'.format(filepath),
-                    msgType='status', importance=3)
+        self.logMsg('ODMR data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
