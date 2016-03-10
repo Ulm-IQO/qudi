@@ -419,8 +419,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # and there should be also a general channel naming, do we start with ch1 or ch0?
         # Anyways this makes no sense, one gets the voltage from the device and then sets it again...
 
-        self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
-        self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
+        # self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
+        # self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
 
         config = self.getConfiguration()
@@ -1318,9 +1318,55 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #                    END sequence/block sampling
 #-------------------------------------------------------------------------------
 
-    def generate_rabi(self, name='', mw_freq_Hz=0.0, mw_amp_V=0.0, aom_delay_bins=0,
-                      laser_time_bins=0, tau_start_bins=0, tau_end_bins=0,
-                      number_of_taus=0, use_seqtrig = True):
+    #Fixme: This method has to be fixed
+    def generate_laser_on(self, name='Laser_On',laser_time_bins=3000,number_of_taus=0):
+
+        no_analogue_params = [{},{}]
+        laser_markers = [False, True, False, False]
+
+        # create tau list
+        tau_list = [1]
+
+        # generate elements
+
+        # parameters of a Pulse_Block_Element:
+        #init_length_bins, analogue_channels, digital_channels,
+        #         increment_bins = 0, pulse_function = None,
+        #         marker_active = None, parameters={}, use_as_tau=False
+        laser_element = Pulse_Block_Element(laser_time_bins, 1, 2, 0,
+                                            ['Idle', 'Idle'], laser_markers,
+                                            no_analogue_params)
+
+        # Create the Pulse_Block_Element objects and append them to the element
+        # list.
+        element_list = []
+        element_list.append(laser_element)
+
+
+        # create the Pulse_Block object.
+        block = Pulse_Block(name, element_list)
+        # put block in a list with repetitions
+        block_list = [(block, 0),]
+        # create ensemble out of the block(s)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list,
+                                              number_of_taus,
+                                              rotating_frame=False)
+        # save block
+        # self.save_block(name, block)
+        # save ensemble
+        self.save_ensemble(name, block_ensemble)
+        # set current block
+        self.current_block = block
+        # set current block ensemble
+        self.current_ensemble = block_ensemble
+        # update ensemble list
+        self.refresh_ensemble_list()
+        return
+
+
+    def generate_rabi(self, name='rabi', mw_freq_Hz=7784.13, mw_amp_V=1.0, aom_delay_bins=50,
+                      laser_time_bins=3000, tau_start_bins=7, tau_end_bins=350,
+                      number_of_taus=49, use_seqtrig = True):
 
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
