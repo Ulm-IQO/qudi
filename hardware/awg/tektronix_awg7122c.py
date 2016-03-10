@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
-Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import time
@@ -174,9 +174,9 @@ class AWG7122C(Base, PulserInterface):
         # Todo: Set values for AWG7122c
         constraints = {}
         # (min, max, incr) in samples/second:
-        constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
+        constraints['sample_rate'] = (12.0e9, 24.0e9, 1)
         # (min, max, res) in Volt-peak-to-peak:
-        constraints['amplitude_analog'] = (0.005, 2.0, 0.001)
+        constraints['amplitude_analog'] = (0.005, 1.0, 0.001)
         # (min, max, res, range_min, range_max)
         # min, max and res are in Volt, range_min and range_max in
         # Volt-peak-to-peak:
@@ -220,7 +220,9 @@ class AWG7122C(Base, PulserInterface):
 
         return self.get_status()[0]
 
-    # TODO: test
+    # TODO: works, but is this hardcoded ch2 really a good idea?
+    # Todo: The generation of a wfm has to be done before!
+    # Fixme: If interleave only use first channel - works anyways because ch2 is ignored in interleave.
     def upload_asset(self, name):
         """ Waveform or sequence with name "name" gets uploaded to the Hardware.
 
@@ -682,11 +684,11 @@ class AWG7122C(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
 
-        AWG5000 Series instruments support only 14-bit resolution. Therefore
+        AWG7122 Series instruments support only 10-bit resolution. Therefore
         this command will have no effect for these instruments.
         """
 
-        self.logMsg('Digital Channel of the AWG5000 series will always be '
+        self.logMsg('Digital Channel of the AWG7122 series will always be '
                     'active. This configuration cannot be changed.',
                     msgType='status')
 
@@ -857,6 +859,7 @@ class AWG7122C(Base, PulserInterface):
 
         return self.sequence_directory
 
+    #works!
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
 
