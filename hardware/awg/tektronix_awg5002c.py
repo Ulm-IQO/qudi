@@ -726,7 +726,7 @@ class AWG5002C(Base, PulserInterface):
                    (a_ch >= 0):
                     amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
                 else:
-                    self.logMsg('The device does not have that much analog'
+                    self.logMsg('The device does not have that much analog '
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
@@ -738,7 +738,7 @@ class AWG5002C(Base, PulserInterface):
                    (a_ch >= 0):
                     off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
                 else:
-                    self.logMsg('The device does not have that much analog'
+                    self.logMsg('The device does not have that much analog '
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
@@ -794,7 +794,7 @@ class AWG5002C(Base, PulserInterface):
 
 
             else:
-                self.logMsg('The device does not support that much analog'
+                self.logMsg('The device does not support that much analog '
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
@@ -821,7 +821,7 @@ class AWG5002C(Base, PulserInterface):
                                                                     offset[a_ch]))
 
             else:
-                self.logMsg('The device does not support that much analog'
+                self.logMsg('The device does not support that much analog '
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
@@ -968,7 +968,7 @@ class AWG5002C(Base, PulserInterface):
                         self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
 
             else:
-                self.logMsg('The device does not support that much digital'
+                self.logMsg('The device does not support that much digital '
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
@@ -1001,73 +1001,142 @@ class AWG5002C(Base, PulserInterface):
 
 
             else:
-                self.logMsg('The device does not support that much digital'
+                self.logMsg('The device does not support that much digital '
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
                                                  constraints['available_channels']['d_ch']),
                             msgType='warning')
 
-    def set_active_channels(self, d_ch=2, a_ch=0):
+    def set_active_channels(self, a_ch={}, d_ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param int d_ch: The number of digital channels
-        @param int a_ch: optional, the number of analogue channels
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
 
         @return int: error code (0:OK, -1:error)
 
+        Example for possible input:
+            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
+
+        The hardware itself has to handle, whether separate channel activation
+        is possible.
+
         AWG5000 Series instruments support only 14-bit resolution. Therefore
-        this command will have no effect for these instruments.
+        this command will have no effect on the DAC for these instruments. On
+        other devices the deactivation of digital channels increase the DAC
+        resolution of the analog channels.
         """
 
-        self.logMsg('Digital Channel of the AWG5000 series will always be '
-                    'active. This configuration cannot be changed.',
-                    msgType='status')
+        constraints = self.get_constraints()
 
-        if a_ch == 2:
-            self.tell('OUTPUT1:STATE ON\n')
-            self.tell('OUTPUT2:STATE ON\n')
-            active_a_ch = self.get_active_channels()[1]
+        for ana_chan in a_ch:
+            if (ana_chan <= constraints['available_channels']['a_ch']) and \
+               (ana_chan >= 0):
 
-        elif a_ch ==1:
-            self.tell('OUTPUT1:STATE ON\n')
-            self.tell('OUTPUT2:STATE OFF\n')
-            active_a_ch = self.get_active_channels()[1]
-        else:
-            self.tell('OUTPUT1:STATE OFF\n')
-            self.tell('OUTPUT2:STATE OFF\n')
-            active_a_ch = self.get_active_channels()[1]
+                if a_ch[ana_chan]:
+                    state = 'ON'
+                else:
+                    state = 'OFF'
 
-        #FIXME: That must be investigated, commenting out for now:
-        # if active_a_ch == a_ch:
-        #     return 0
-        # else:
-        #     self.logMsg('Activation of the desired analogue channels not '
-        #                 'possible!\nMaybe no valid waveform(s) is loaded into '
-        #                 'the channels, or the waveform for the second channel '
-        #                 'is not valid (due to a different length).\n'
-        #                 'Correct that!', msgType='error')
-            return -1
+                self.tell('OUTPUT{0}:STATE {1}'.format(ana_chan, state))
 
 
-    def get_active_channels(self):
+            else:
+                self.logMsg('The device does not support that much analog '
+                            'channels! A channel number "{0}" was passed, but '
+                            'only "{1}" channels are available!\nCommand will '
+                            'be ignored.'.format(ana_chan,
+                                                 constraints['available_channels']['a_ch']),
+                            msgType='warning')
+
+        if d_ch != {}:
+            self.logMsg('Digital Channel of the AWG5000 series will always be '
+                        'active. This configuration cannot be changed.',
+                        msgType='status')
+
+    def get_active_channels(self, a_ch=[], d_ch=[]):
         """ Get the active channels of the pulse generator hardware.
 
-        @return (int, int): number of active channels (analogue, digital)
+        @param list a_ch: optional, if specific analog channels are needed to be
+                          asked without obtaining all the channels.
+        @param list d_ch: optional, if specific digital channels are needed to
+                          be asked without obtaining all the channels.
+
+        @return tuple of two dicts, where keys denoting the channel number and
+                items boolean expressions whether channel are active or not.
+                First dict contains the analog settings, second dict the digital
+                settings. If either digital or analog are not present, return
+                an empty dict.
+
+        Example for an possible input:
+            a_ch=[2, 1] d_ch=[2,1,5]
+        then the output might look like
+            {1: True, 2: False} {1: False, 2: True, 5: False}
+
+        If no parameters are passed to this method all channels will be asked
+        for their setting.
         """
 
-        analogue_channels = int(self.ask('OUTPUT1:STATE?\n')) + \
-                            int(self.ask('OUTPUT2:STATE?\n'))
+        constraints = self.get_constraints()
+        active_a_ch = {}
+        active_d_ch = {}
 
-        # For the AWG5000 series, the resolution of the DAC for the analogue
-        # channel is fixed to 14bit. Therefore the digital channels are always
-        # active and cannot be deactivated, by setting the DAC by 1bit per
-        # channel higher. The following construction will give always 2 since
-        # 30-14-14 =2:
-        digital_channels =30 - int(self.ask('SOURCE1:DAC:RESOLUTION?\n')) -\
-                               int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
+        if (a_ch == []) and (d_ch == []):
 
-        return (analogue_channels, digital_channels)
+            # because 0 = False and 1 = True
+            active_a_ch[1] = bool(int(self.ask('OUTPUT1:STATE?')))
+            active_a_ch[2] = bool(int(self.ask('OUTPUT2:STATE?')))
+
+            # For the AWG5000 series, the resolution of the DAC for the analogue
+            # channel is fixed to 14bit. Therefore the digital channels are
+            # always active and cannot be deactivated. For other AWG devices the
+            # command
+            #   self.ask('SOURCE1:DAC:RESOLUTION?'))
+            # might be useful from which the active digital channels can be
+            # obtained.
+            active_d_ch[1] = True
+            active_d_ch[2] = True
+            active_d_ch[3] = True
+            active_d_ch[4] = True
+
+        else:
+            for ana_chan in a_ch:
+
+                if (ana_chan <= constraints['available_channels']['a_ch']) and \
+                   (ana_chan >= 0):
+
+                    # because 0 = False and 1 = True
+                    active_a_ch[ana_chan] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
+
+                else:
+                    self.logMsg('The device does not support that much analog '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(ana_chan,
+                                                                  constraints['available_channels']['a_ch']),
+                                msgType='warning')
+
+            for digi_chan in d_ch:
+
+                if (digi_chan <= constraints['available_channels']['d_ch']) and \
+                   (digi_chan >= 0):
+
+                    active_d_ch[digi_chan] = True
+
+                else:
+                    self.logMsg('The device does not support that much digital '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(digi_chan,
+                                                                  constraints['available_channels']['d_ch']),
+                                msgType='warning')
+
+        return active_a_ch, active_d_ch
 
     def get_downloaded_sequence_names(self):
         """ Retrieve the names of all downloaded sequences on the device.
