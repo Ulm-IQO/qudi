@@ -1319,29 +1319,30 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 
     #Fixme: This method has to be fixed
-    def generate_laser_on(self, name='Laser_On',laser_time_bins=3000,number_of_taus=0):
+    #Question: How can I gate the samle_rate here.
+    def generate_laser_on(self, name='Laser_On'):
 
+        laser_time_bins = self.sample_rate*3e-6 #3mus
         no_analogue_params = [{},{}]
+
+        #Fixme: Check for channels
         laser_markers = [False, True, False, False]
 
-        # create tau list
-        tau_list = [1]
-
         # generate elements
-
         # parameters of a Pulse_Block_Element:
         #init_length_bins, analogue_channels, digital_channels,
         #         increment_bins = 0, pulse_function = None,
         #         marker_active = None, parameters={}, use_as_tau=False
-        laser_element = Pulse_Block_Element(laser_time_bins, 1, 2, 0,
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0,
                                             ['Idle', 'Idle'], laser_markers,
                                             no_analogue_params)
 
         # Create the Pulse_Block_Element objects and append them to the element
         # list.
-        element_list = []
+        element_list = [ ]
         element_list.append(laser_element)
 
+        tau_list = [laser_time_bins]
 
         # create the Pulse_Block object.
         block = Pulse_Block(name, element_list)
@@ -1349,10 +1350,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
         block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list,
-                                              number_of_taus,
+                                              len(tau_list),
                                               rotating_frame=False)
         # save block
-        # self.save_block(name, block)
+        self.save_block(name, block)
         # save ensemble
         self.save_ensemble(name, block_ensemble)
         # set current block
