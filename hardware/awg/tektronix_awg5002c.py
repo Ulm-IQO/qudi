@@ -194,72 +194,57 @@ class AWG5002C(Base, PulserInterface):
         # # (analogue, digital) possible combination in given channels:
         # constraints['channel_config'] = ((1,2), (2,4))
 
-        constraints['sample_rate'] = {'min': 10.0e6,
-                                      'max': 600.0e6,
-                                      'step': 1,
-                                      'unit': 'Samples/s'}
+        # if interleave option is available, then sample rate constraints must
+        # be assigned to the output of a function called
+        # _get_sample_rate_constraints()
+        # which outputs the shown dictionary with the correct values depending
+        # on the present mode. The the GUI will have to check again the
+        # limitations if interleave was selected.
+        constraints['sample_rate'] = {'min': 10.0e6, 'max': 600.0e6,
+                                      'step': 1, 'unit': 'Samples/s'}
 
-        constraints['a_ch_amplitude'] = {'min': 0.02,
-                                         'max': 4.5,
-                                         'step': 0.001, # the stepsize will be determined by the DAC in combination with the maximal output amplitude (in Vpp)
-                                         'unit': 'Vpp'}
+        # the stepsize will be determined by the DAC in combination with the
+        # maximal output amplitude (in Vpp):
+        constraints['a_ch_amplitude'] = {'min': 0.02, 'max': 4.5,
+                                         'step': 0.001, 'unit': 'Vpp'}
 
-        constraints['a_ch_offset'] = {'min': -2.25,
-                                      'max': 2.25,
-                                      'step': 0.001,
-                                      'unit': 'V'}
+        constraints['a_ch_offset'] = {'min': -2.25, 'max': 2.25,
+                                      'step': 0.001, 'unit': 'V'}
 
-        constraints['d_ch_amplitude'] = {'min': 0.1,
-                                         'max': 3.7,
-                                         'step': 0.01,
-                                         'unit': 'Vpp'}
+        constraints['d_ch_low'] = {'min': -1, 'max': 2.6,
+                                   'step': 0.01, 'unit': 'V'}
 
-        constraints['d_ch_offset'] = {'min': -0.95,
-                                      'max': 2.65,
-                                      'step': 0.01,
-                                      'unit': 'V'}
+        constraints['d_ch_high'] = {'min': -0.9, 'max': 2.7,
+                                      'step': 0.01, 'unit': 'V'}
 
-        # deprecated elements, will be deleted soon:
-        # constraints['total_length_bins'] = (1, 32e6, 1)
-        # constraints['waveform_length']
+        # for arbitrary waveform generators, this values will be used. The
+        # step value corresponds to the waveform granularity.
+        constraints['sampled_file_length'] = {'min': 1, 'max': 32400000,
+                                              'step': 1, 'unit': 'Samples'}
 
-        # for arbitrary waveform generators, this values will be used:
-        constraints['sampled_file_length'] = {'min': 1,
-                                              'max': 32400000,
-                                              'step': 1, # this is the waveform granularity
-                                              'multiple': 1,
-                                              'unit': 'Samples'}
+        # if only digital bins can be saved, then their limitation is different
+        # compared to a waveform file
+        constraints['digital_bin_num'] = {'min': 0, 'max': 0,
+                                          'step': 0, 'unit': '#'}
 
-        # since only waveforms are saved and no digital patterns.
-        constraints['digital_bin_num'] = {'min': 0,
-                                          'max': 0,
-                                          'step': 0,
-                                          'unit': '#'}
+        constraints['waveform_num'] = {'min': 1, 'max': 32000,
+                                       'step': 1, 'unit': '#'}
 
-        constraints['waveform_num'] = {'min': 1,
-                                       'max': 32000,
-                                       'step': 1,
-                                       'unit': '#'}
+        constraints['sequence_num'] = {'min': 1, 'max': 4000,
+                                       'step': 1, 'unit': '#'}
 
-        constraints['sequence_num'] = {'min': 1,
-                                       'max': 4000,
-                                       'step': 1,
-                                       'unit': '#'}
-
-        constraints['subsequence_num'] = {'min': 1,
-                                          'max': 8000,
-                                          'step':1,
-                                          'unit': '#'}
+        constraints['subsequence_num'] = {'min': 1, 'max': 8000,
+                                          'step':1, 'unit': '#'}
 
         constraints['available_channels'] = {'a_ch': 2, 'd_ch': 4}
 
-        # channel configuration for this device, (analoque, digital)
+        # channel configuration for this device, use OrderedDictionaries to
+        # keep an order in that dictionary.
         channel_config = OrderedDict()
         channel_config['conf1'] = {'a_ch': 1, 'd_ch': 2}
         channel_config['conf2'] = {'a_ch': 2, 'd_ch': 4}
 
         constraints['channel_config'] = channel_config
-
 
         return constraints
 
@@ -691,437 +676,337 @@ class AWG5002C(Base, PulserInterface):
         self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
         return self.sample_rate
 
-    def get_a_ch_amplitude(self):
-        pass
 
-    def set_a_ch_amplitude(self):
-        pass
+    def get_analog_level(self, amplitude=[], offset=[]):
+        """ Retrieve the analog amplitude and offset of the provided channels.
 
-    def get_a_ch_offset(self):
-        pass
+        @param list amplitude: optional, if a specific amplitude value (in Volt
+                               peak to peak, i.e. the full amplitude) of a
+                               channel is desired.
+        @param list offset: optional, if a specific high value (in Volt) of a
+                            channel is desired.
 
-    def set_a_ch_offset(self):
-        pass
+        @return: ({}, {}): tuple of two dicts, with keys being the channel
+                           number and items being the values for those channels.
+                           Amplitude is always denoted in Volt-peak-to-peak and
+                           Offset in (absolute) Voltage.
 
-    
-    def get_d_ch_high(self):
-        pass
+        If no entries provided then the levels of all channels where simply
+        returned. If no analog channels provided, return just an empty dict.
+        Example of a possible input:
+            amplitude = [1,4], offset =[1,3]
+        to obtain the amplitude of channel 1 and 4 and the offset
+            {1: -0.5, 4: 2.0} {}
+        since no high request was performed.
 
-    def set_d_ch_high(self):
-        pass
-
-    def get_d_ch_low(self):
-        pass
-
-    def set_d_ch_low(self):
-        pass
-
-    def set_pp_voltage(self, channel, voltage):
-        """ Set the peak-to-peak voltage of the pulse generator hardware
-        analogue channels.
-
-        @param int channel: The channel to be reconfigured
-        @param float voltage: The peak-to-peak amplitude the channel should be
-                              set to (in V)
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for purely digital hardware without logic level setting
-        capability (DTG, FPGA, etc.).
+        Note, the major difference to digital signals is that analog signals are
+        always oscillating or changing signals, otherwise you can use just
+        digital output. In contrast to digital output levels, analog output
+        levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
 
-        # TODO: Actually change the amplitude
-        self.amplitude = voltage
-        return 0
+        amp = {}
+        off = {}
+        constraints = self.get_constraints()
 
-    def set_output_amplitude(self, a_ch={}, d_ch={}):
-        """ Set the peak to peak amplitude for the given channel.
+        if (amplitude == []) and (offset == []):
 
-        @param dict a_ch: dictionary, with key being the channel and item being
-                          again a dict for the channel configuration, with the
-                          following form:
-                            {<valid_ch_num>: <amplitude_value>}
-                          Note that the <amplitude_value> must be in units of
-                          Voltage-peak-to-peak!
+            # since the available channels are not going to change for this
+            # device you are asking directly:
+            amp[1] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
+            amp[2] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
 
-        @param dict d_ch: dictionary, with key being the channel and item being
-                          again a dict for the channel configuration, with the
-                          following form:
-                            {<valid_ch_num>: <amplitude_value>}
-                          Note that the <amplitude_value> must be in units of
-                          absolute Voltage!
+            off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
+            off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
-        Example: set to the analogue channel 1 an amplitude of 3.0 Vpp:
-            a_ch = {1: 3.0}
+        else:
+            for a_ch in amplitude:
+                if (a_ch <= constraints['available_channels']['a_ch']) and \
+                   (a_ch >= 0):
+                    amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
+                else:
+                    self.logMsg('The device does not have that much analog'
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(a_ch,
+                                                                  constraints['available_channels']['a_ch']),
+                            msgType='warning')
 
-        This method will be unused if the pulse device cannot set its output
-        level neither for digital output nor for analogue output. Otherwise you
-        can set each channel amplitude. Sometimes only e.g. the maximum value
-        can be set and the minimum is 0. This has to be handle in each hardware
-        file separately.
+            for a_ch in offset:
+                if (a_ch <= constraints['available_channels']['a_ch']) and \
+                   (a_ch >= 0):
+                    off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
+                else:
+                    self.logMsg('The device does not have that much analog'
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(a_ch,
+                                                                  constraints['available_channels']['a_ch']),
+                            msgType='warning')
+
+        return amp, off
+
+
+    def set_analog_level(self, amplitude={}, offset={}):
+        """ Set amplitude and/or offset value of the provided analog channel.
+
+        @param dict amplitude: dictionary, with key being the channel and items
+                               being the amplitude values (in Volt peak to peak,
+                               i.e. the full amplitude) for the desired channel.
+        @param dict offset: dictionary, with key being the channel and items
+                            being the offset values (in absolute volt) for the
+                            desired channel.
+
+        If nothing is passed then the command is being ignored.
+
+        Note, the major difference to digital signals is that analog signals are
+        always oscillating or changing signals, otherwise you can use just
+        digital output. In contrast to digital output levels, analog output
+        levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
         constraints = self.get_constraints()
 
-        for a_ch_entry in a_ch:
-            if (a_ch_entry <= constraints['available_channels']['a_ch']) and \
-               (a_ch_entry >=0):
+        for a_ch in amplitude:
+            if (a_ch <= constraints['available_channels']['a_ch']) and \
+               (a_ch >= 0):
 
-                if a_ch[a_ch_entry] < constraints['a_ch_amplitude']['min'] or \
-                   a_ch[a_ch_entry] > constraints['a_ch_amplitude']['max']:
+                if amplitude[a_ch] < constraints['a_ch_amplitude']['min'] or \
+                   amplitude[a_ch] > constraints['a_ch_amplitude']['max']:
 
                     self.logMsg('Not possible to set for analog channel {0} '
                                 'the amplitude value {1}Vpp, since it is not '
                                 'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(a_ch_entry,
-                                                     a_ch[a_ch_entry],
+                                'be ignored.'.format(a_ch,
+                                                     amplitude[a_ch],
                                                      constraints['a_ch_amplitude']['min'],
                                                      constraints['a_ch_amplitude']['max']),
                                 msgType='warning')
                 else:
 
-                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch_entry,
-                                                                 a_ch[a_ch_entry]))
-        for d_ch_entry in d_ch:
-            if (d_ch_entry <= constraints['available_channels']['d_ch']) and \
-               (d_ch_entry >= 0):
-
-                if d_ch[d_ch_entry] < constraints['d_ch_amplitude']['min'] or \
-                   d_ch[d_ch_entry] > constraints['d_ch_amplitude']['max']:
-
-                    self.logMsg('Not possible to set for digital channel {0} '
-                                'the amplitude value {1}Vpp, since it is not '
-                                'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(d_ch_entry,
-                                                     d_ch[d_ch_entry],
-                                                     constraints['d_ch_amplitude']['min'],
-                                                     constraints['d_ch_amplitude']['max']),
-                                msgType='warning')
-                else:
-
-                    # calculate the value for the digital channels from
-                    # amplitude and offset to high and low level:
-
-                    d_ch_off = self.get_output_offset(d_ch=[d_ch_entry])['d_ch'][d_ch_entry]
-
-                    m_high_limit = constraints['d_ch_offset']['max'] + constraints['d_ch_amplitude']['max']/2
-                    m_high = d_ch_off + d_ch[d_ch_entry]/2
-
-                    m_low_limit = constraints['d_ch_offset']['max'] - constraints['d_ch_amplitude']['max']/2
-                    m_low = d_ch_off - d_ch[d_ch_entry]/2
-
-                    if m_high > m_high_limit:
-                        self.logMsg((d_ch_entry,'m_high',m_high,'m_high_limit',m_high_limit))
-                        m_low = round(m_low - (m_high - m_high_limit), ndigits=5)
-                        m_high = m_high_limit
-
-                    elif m_low < m_low_limit:
-                        self.logMsg((d_ch_entry,'m_low',m_low,'m_low_limit',m_low_limit))
-                        m_high = round(m_high + (m_low_limit - m_low), ndigits=5)
-                        m_low = m_low_limit
-
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch_entry-2) <= 0:
-                        # the conversion to integer is just for safety.
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(int(d_ch_entry), m_high))
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(int(d_ch_entry), m_low))
-                        self.logMsg((d_ch_entry,'m_low',m_low,'m_high',m_high))
-
-                    else:
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(int(d_ch_entry-2), m_high))
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(int(d_ch_entry-2), m_low))
-                        self.logMsg((d_ch_entry,'m_low',m_low,'m_high',m_high))
-
-    def get_output_amplitude(self, a_ch=[], d_ch=[]):
-        """ Retrieve the current output level
-
-        @param a_ch: Be aware that the analog amplitude is given in
-                     Voltage-Peak-to-Peak! In order to relate the amplitude to
-                     an absolute voltage value you have to ask the offset
-                     voltage with get_output_offset. That will tell you around
-                     which value the amplitude will change.
-
-        @param d_ch:
-        @return:
-        """
-
-        constraints = self.get_constraints()
-
-        a_ch_amp = {}   # in these dicts the result will be written
-        d_ch_amp = {}   #
-
-        if (a_ch == []) and (d_ch == []) :
-
-            # since the available channels are not going to change for this
-            # device you are asking directly:
-            a_ch_amp[1] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
-            a_ch_amp[2] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
-
-            # You have to convert an marker high and marker low value to an
-            # amplitude and an offset value.
-            m1_high = float(self.ask('SOURCE1:MARKER1:VOLTAGE:HIGH?'))
-            m1_low =  float(self.ask('SOURCE1:MARKER1:VOLTAGE:LOW?'))
-            m2_high = float(self.ask('SOURCE1:MARKER2:VOLTAGE:HIGH?'))
-            m2_low =  float(self.ask('SOURCE1:MARKER2:VOLTAGE:LOW?'))
-            m3_high = float(self.ask('SOURCE2:MARKER1:VOLTAGE:HIGH?'))
-            m3_low =  float(self.ask('SOURCE2:MARKER1:VOLTAGE:LOW?'))
-            m4_high = float(self.ask('SOURCE2:MARKER2:VOLTAGE:HIGH?'))
-            m4_low =  float(self.ask('SOURCE2:MARKER2:VOLTAGE:LOW?'))
-
-            d_ch_amp[1] = round(m1_high - m1_low, ndigits=5)
-            d_ch_amp[2] = round(m2_high - m2_low, ndigits=5)
-            d_ch_amp[3] = round(m3_high - m3_low, ndigits=5)
-            d_ch_amp[4] = round(m4_high - m4_low, ndigits=5)
+                    self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch,
+                                                                       amplitude[a_ch]))
 
 
-        else:
-            for a_ch_entry in a_ch:
-                if a_ch_entry <= constraints['available_channels']['a_ch']:
-                    a_ch_amp[a_ch_entry] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch_entry)))
+            else:
+                self.logMsg('The device does not support that much analog'
+                            'channels! A channel number "{0}" was passed, but '
+                            'only "{1}" channels are available!\nCommand will '
+                            'be ignored.'.format(a_ch,
+                                                 constraints['available_channels']['a_ch']),
+                            msgType='warning')
 
-            for d_ch_entry in d_ch:
-                if d_ch_entry <= constraints['available_channels']['d_ch']:
+        for a_ch in offset:
+            if (a_ch <= constraints['available_channels']['a_ch']) and \
+               (a_ch >= 0):
 
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch_entry-2) <= 0:
-                        m_high = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(d_ch_entry)))
-                        m_low = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(d_ch_entry)))
-                        d_ch_amp[d_ch_entry] = round(m_high - m_low, ndigits=5)
-                    else:
-                        m_high = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(d_ch_entry-2)))
-                        m_low = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(d_ch_entry-2)))
-                        d_ch_amp[d_ch_entry] = round(m_high - m_low, ndigits=5)
-
-        return {'a_ch' :a_ch_amp, 'd_ch': d_ch_amp}
-
-    def get_output_offset(self, a_ch=[], d_ch=[]):
-        """ Get the absolute voltage offset of the channels.
-
-        @param list a_ch: optional, if specifically for these channels the
-                          offset values (in volt) will be asked.
-        @param list d_ch: optional, if specifically for these channels the
-                          offset values (in volt) will be asked.
-
-        @return: dict, with the two keys 'a_ch' and 'd_ch'. The item to the key
-                 contain again a dictionary, which tell for the channelnumber
-                 the obtained value, so e.g.:
-                    {'a_ch': a_ch_dict, 'd_ch': d_ch_dict}
-                 where
-                    a_ch_dict = {1: 0.5}
-                 would mean that channel 1 has 0.5 V offset voltage.
-
-        Note, that offset is always stated in (absolute) volts. If nothing is
-        passed for a_ch and d_ch, then the whole channel offset configuration
-        will be asked.
-
-        It will depend on the device whether the analog offset level is
-        configurable or not. If not then pass just 0.0 as output.
-        """
-
-        constraints = self.get_constraints()
-
-        a_ch_off = {}   # in these dicts the result will be written
-        d_ch_off = {}   #
-
-        if (a_ch == []) and (d_ch == []) :
-
-            # since the available channels are not going to change for this
-            # device you are asking directly:
-            a_ch_off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
-            a_ch_off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
-
-            # You have to convert an marker high and marker low value to an
-            # amplitude and an offset value.
-            m1_high = float(self.ask('SOURCE1:MARKER1:VOLTAGE:HIGH?'))
-            m1_low =  float(self.ask('SOURCE1:MARKER1:VOLTAGE:LOW?'))
-            m2_high = float(self.ask('SOURCE1:MARKER2:VOLTAGE:HIGH?'))
-            m2_low =  float(self.ask('SOURCE1:MARKER2:VOLTAGE:LOW?'))
-            m3_high = float(self.ask('SOURCE2:MARKER1:VOLTAGE:HIGH?'))
-            m3_low =  float(self.ask('SOURCE2:MARKER1:VOLTAGE:LOW?'))
-            m4_high = float(self.ask('SOURCE2:MARKER2:VOLTAGE:HIGH?'))
-            m4_low =  float(self.ask('SOURCE2:MARKER2:VOLTAGE:LOW?'))
-
-            d_ch_off[1] = round((m1_high + m1_low)/2.0, ndigits=5)
-            d_ch_off[2] = round((m2_high + m2_low)/2.0, ndigits=5)
-            d_ch_off[3] = round((m3_high + m3_low)/2.0, ndigits=5)
-            d_ch_off[4] = round((m4_high + m4_low)/2.0, ndigits=5)
-
-        else:
-            for a_ch_entry in a_ch:
-                if a_ch_entry <= constraints['available_channels']['a_ch']:
-                    a_ch_off[a_ch_entry] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch_entry)))
-
-            for d_ch_entry in d_ch:
-                if d_ch_entry <= constraints['available_channels']['d_ch']:
-
-                    # a fast way to map from a list [1, 2, 3, 4] to  a list like
-                    # [[1,2], [1,2]]:
-                    if (d_ch_entry-2) <= 0:
-                        m_high = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(d_ch_entry)))
-                        m_low = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(d_ch_entry)))
-                        d_ch_off[d_ch_entry] = round((m_high + m_low)/2.0, ndigits=6)
-                    else:
-                        m_high = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(d_ch_entry-2)))
-                        m_low = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(d_ch_entry-2)))
-                        d_ch_off[d_ch_entry] = round((m_high + m_low)/2.0, ndigits=6)
-
-        return {'a_ch' :a_ch_off, 'd_ch': d_ch_off}
-
-
-    def set_output_offset(self, a_ch={}, d_ch={}):
-        """ Set the output offset voltage of the device.
-
-        @param dict a_ch: if specified, then the offset will be set according to
-                          the provided channels in the dict a_ch.
-        @param dict d_ch: if specified, then the offset will be set according to
-                          the provided channels in the dict d_ch.
-
-        Esample:
-            A passed dict must look e.g. like that:
-                a_ch={1 : 0.3}
-            of course, all available channels can be modified at once but
-            passing e.g.:
-                a_ch={1 : 0.3, 2: 0.0}
-        That will only work if the device provides two analog channels. The same
-        idea will be applied for digital channels. Note that the offset for each
-        channel will be set in (absolute) volt.
-        If no parameters are passed, nothing will happen.
-        If the offset value cannot be set then do nothing and specify the
-        method get_output_offset accordingly.
-
-        VERY IMPORTANT:
-        The change of the offset should not change the amplitude!
-
-        """
-
-        constraints = self.get_constraints()
-
-        for a_ch_entry in a_ch:
-            if (a_ch_entry <= constraints['available_channels']['a_ch']) and \
-               (a_ch_entry>=0):
-
-                if a_ch[a_ch_entry] < constraints['a_ch_offset']['min'] or \
-                   a_ch[a_ch_entry] > constraints['a_ch_offset']['max']:
+                if offset[a_ch] < constraints['a_ch_offset']['min'] or \
+                   offset[a_ch] > constraints['a_ch_offset']['max']:
 
                     self.logMsg('Not possible to set for analog channel {0} '
-                                'the offset voltage {1}V, since it is not '
+                                'the offset value {1}V, since it is not '
                                 'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(a_ch_entry,
-                                                     a_ch[a_ch_entry],
+                                'be ignored.'.format(a_ch,
+                                                     offset[a_ch],
                                                      constraints['a_ch_offset']['min'],
                                                      constraints['a_ch_offset']['max']),
                                 msgType='warning')
+                else:
+                    self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch,
+                                                                    offset[a_ch]))
 
-                self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}V'.format(a_ch_entry,
-                                                                 a_ch[a_ch_entry]))
+            else:
+                self.logMsg('The device does not support that much analog'
+                            'channels! A channel number "{0}" was passed, but '
+                            'only "{1}" channels are available!\nCommand will '
+                            'be ignored.'.format(a_ch,
+                                                 constraints['available_channels']['a_ch']),
+                            msgType='warning')
 
-        for d_ch_entry in d_ch:
-            if (d_ch_entry <= constraints['available_channels']['d_ch']) and \
-               (d_ch_entry >= 0):
+    def get_digital_level(self, low=[], high=[]):
+        """ Retrieve the digital low and high level of the provided channels.
 
-                if d_ch[d_ch_entry] < constraints['d_ch_offset']['min'] or \
-                   d_ch[d_ch_entry] > constraints['d_ch_offset']['max']:
+        @param list low: optional, if a specific low value (in Volt) of a
+                         channel is desired.
+        @param list high: optional, if a specific high value (in Volt) of a
+                          channel is desired.
 
-                    self.logMsg('Not possible to set for digital channel {0} '
-                                'the offset voltage {1}V, since it is not '
+        @return: tuple of two dicts, with keys being the channel number and
+                 items being the values for those channels. Both low and high
+                 value of a channel is denoted in (absolute) Voltage.
+
+        If no entries provided then the levels of all channels where simply
+        returned. If no digital channels provided, return just an empty dict.
+        Example of a possible input:
+            low = [1,4]
+        to obtain the low voltage values of digital channel 1 an 4. A possible
+        answer might be
+            {1: -0.5, 4: 2.0} {}
+        since no high request was performed.
+
+        Note, the major difference to analog signals is that digital signals are
+        either ON or OFF, whereas analog channels have a varying amplitude
+        range. In contrast to analog output levels, digital output levels are
+        defined by a voltage, which corresponds to the ON status and a voltage
+        which corresponds to the OFF status (both denoted in (absolute) voltage)
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
+        """
+
+        low_val = {}
+        high_val = {}
+
+        constraints = self.get_constraints()
+
+        if (low == []) and (high == []):
+
+            low_val[1] =  float(self.ask('SOURCE1:MARKER1:VOLTAGE:LOW?'))
+            high_val[1] = float(self.ask('SOURCE1:MARKER1:VOLTAGE:HIGH?'))
+            low_val[2] =  float(self.ask('SOURCE1:MARKER2:VOLTAGE:LOW?'))
+            high_val[2] = float(self.ask('SOURCE1:MARKER2:VOLTAGE:HIGH?'))
+            low_val[3] =  float(self.ask('SOURCE2:MARKER1:VOLTAGE:LOW?'))
+            high_val[3] = float(self.ask('SOURCE2:MARKER1:VOLTAGE:HIGH?'))
+            low_val[4] =  float(self.ask('SOURCE2:MARKER2:VOLTAGE:LOW?'))
+            high_val[4] = float(self.ask('SOURCE2:MARKER2:VOLTAGE:HIGH?'))
+
+        else:
+
+            for d_ch in low:
+                if (d_ch <= constraints['available_channels']['d_ch']) and \
+                   (d_ch >= 0):
+
+                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                    # list like [[1,2], [1,2]]:
+                    if (d_ch-2) <= 0:
+                        # the conversion to integer is just for safety.
+                        low_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch))))
+
+                    else:
+                        low_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch-2))))
+                else:
+                    self.logMsg('The device does not have that much digital '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(d_ch,
+                                                                  constraints['available_channels']['d_ch']),
+                                msgType='warning')
+
+            for d_ch in high:
+
+                if (d_ch <= constraints['available_channels']['d_ch']) and \
+                   (d_ch >= 0):
+
+                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                    # list like [[1,2], [1,2]]:
+                    if (d_ch-2) <= 0:
+                        # the conversion to integer is just for safety.
+                        high_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch))))
+
+                    else:
+                        high_val[d_ch] = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch-2))))
+                else:
+                    self.logMsg('The device does not have that much digital '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(d_ch,
+                                                                  constraints['available_channels']['d_ch']),
+                                msgType='warning')
+
+        return low_val, high_val
+
+
+    def set_digital_level(self, low={}, high={}):
+        """ Set low and/or high value of the provided digital channel.
+
+        @param dict low: dictionary, with key being the channel and items being
+                         the low values (in volt) for the desired channel.
+        @param dict high: dictionary, with key being the channel and items being
+                         the high values (in volt) for the desired channel.
+
+        If nothing is passed then the command is being ignored.
+
+        Note, the major difference to analog signals is that digital signals are
+        either ON or OFF, whereas analog channels have a varying amplitude
+        range. In contrast to analog output levels, digital output levels are
+        defined by a voltage, which corresponds to the ON status and a voltage
+        which corresponds to the OFF status (both denoted in (absolute) voltage)
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
+        """
+
+        constraints = self.get_constraints()
+
+        for d_ch in low:
+            if (d_ch <= constraints['available_channels']['d_ch']) and \
+               (d_ch >=0):
+
+                if low[d_ch] < constraints['d_ch_low']['min'] or \
+                   low[d_ch] > constraints['d_ch_low']['max']:
+
+                    self.logMsg('Not possible to set for analog channel {0} '
+                                'the amplitude value {1}Vpp, since it is not '
                                 'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(d_ch_entry,
-                                                     d_ch[d_ch_entry],
-                                                     constraints['d_ch_offset']['min'],
-                                                     constraints['d_ch_offset']['max']),
+                                'be ignored.'.format(d_ch,
+                                                     low[d_ch],
+                                                     constraints['d_ch_low']['min'],
+                                                     constraints['d_ch_low']['max']),
                                 msgType='warning')
                 else:
 
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]
-
-                    if (d_ch_entry-2) <= 0:
-
-                        m_high = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch_entry))))
-                        m_low = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch_entry))))
-
-                        calc_off = (m_high + m_low)/2
-
-                        offset_diff = d_ch[d_ch_entry] - calc_off
-
-                        m_high_limit = constraints['d_ch_offset']['max'] + constraints['d_ch_amplitude']['min']/2
-                        m_low_limit = constraints['d_ch_offset']['min'] - constraints['d_ch_amplitude']['min']/2
-
-                        # if the offset is set to high then the offset will be
-                        # shifted only about the allowed amount (the difference
-                        # between the high limit and the present value):
-                        if m_high + offset_diff > m_high_limit:
-                            m_low = m_low + (m_high_limit - m_high)
-                            m_high = m_high_limit
-
-                        # if the offset is set to low then the offset will be
-                        # shifted only about the allowed amount (the difference
-                        # between the present value and the low limit):
-                        elif m_low + offset_diff < m_low_limit:
-                            m_high = m_high - (m_low - m_low_limit)
-                            m_low =  m_low_limit
-
-                        # otherwise not limits are hurt, so you can change the
-                        # offset:
-                        else:
-                            m_high = m_high + offset_diff
-                            m_low = m_low + offset_diff
-
-                        # the conversion to integer is just for safety.
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(int(d_ch_entry), m_high))
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(int(d_ch_entry), m_low))
-                        # self.logMsg((d_ch_entry, 'm_low', m_low, 'm_high', m_high))
-
+                    # list like [[1,2], [1,2]]:
+                    if (d_ch-2) <= 0:
+                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
                     else:
-                        m_high = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch_entry-2))))
-                        m_low = float(self.ask('SOURCE2:MARKER{0}:VOLTAGE:LOW?'.format(int(d_ch_entry-2))))
+                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
 
-                        calc_off = (m_high + m_low)/2
+            else:
+                self.logMsg('The device does not support that much digital'
+                            'channels! A channel number "{0}" was passed, but '
+                            'only "{1}" channels are available!\nCommand will '
+                            'be ignored.'.format(d_ch,
+                                                 constraints['available_channels']['d_ch']),
+                            msgType='warning')
 
-                        offset_diff = d_ch[d_ch_entry] - calc_off
+        for d_ch in high:
+            if (d_ch <= constraints['available_channels']['d_ch']) and \
+               (d_ch >=0):
 
-                        m_high_limit = constraints['d_ch_offset']['max'] + constraints['d_ch_amplitude']['min']/2
-                        m_low_limit = constraints['d_ch_offset']['min'] - constraints['d_ch_amplitude']['min']/2
+                if high[d_ch] < constraints['d_ch_high']['min'] or \
+                   high[d_ch] > constraints['d_ch_high']['max']:
 
-                        # if the offset is set to high then the offset will be
-                        # shifted only about the allowed amount (the difference
-                        # between the high limit and the present value):
-                        if m_high + offset_diff > m_high_limit:
-                            m_low = m_low + (m_high_limit - m_high)
+                    self.logMsg('Not possible to set for analog channel {0} '
+                                'the amplitude value {1}Vpp, since it is not '
+                                'within the interval [{2},{3}]! Command will '
+                                'be ignored.'.format(d_ch,
+                                                     high[d_ch],
+                                                     constraints['d_ch_high']['min'],
+                                                     constraints['d_ch_high']['max']),
+                                msgType='warning')
+                else:
 
-                        # if the offset is set to low then the offset will be
-                        # shifted only about the allowed amount (the difference
-                        # between the present value and the low limit):
-                        elif m_low + offset_diff < m_low_limit:
-                            m_high = m_high - (m_low - m_low_limit)
-                            m_low =  m_low_limit
+                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
+                    # list like [[1,2], [1,2]]:
+                    if (d_ch-2) <= 0:
+                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
+                    else:
+                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch-2, high[d_ch]))
 
-                        # otherwise not limits are hurt, so you can change the
-                        # offset:
-                        else:
-                            m_high = m_high + offset_diff
-                            m_low = m_low + offset_diff
-                            self.logMsg((d_ch_entry, 'm_low', m_low, 'm_high', m_high))
 
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(int(d_ch_entry-2), m_high))
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(int(d_ch_entry-2), m_low))
-                        # self.logMsg((d_ch_entry, 'm_low', m_low, 'm_high', m_high))
-
-    def get_pp_voltage(self, channel):
-        """ Get the peak-to-peak voltage of the pulse generator hardware
-        analogue channels.
-
-        @param int channel: The channel to be checked
-
-        @return float: The peak-to-peak amplitude the channel is set to (in V)
-
-        Unused for purely digital hardware without logic level setting
-        capability (FPGA, etc.).
-        """
-        # TODO: Actually ask for the amplitude
-        return self.amplitude
+            else:
+                self.logMsg('The device does not support that much digital'
+                            'channels! A channel number "{0}" was passed, but '
+                            'only "{1}" channels are available!\nCommand will '
+                            'be ignored.'.format(d_ch,
+                                                 constraints['available_channels']['d_ch']),
+                            msgType='warning')
 
     def set_active_channels(self, d_ch=2, a_ch=0):
         """ Set the active channels for the pulse generator hardware.
