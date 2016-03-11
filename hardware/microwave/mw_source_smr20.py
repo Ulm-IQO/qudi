@@ -262,10 +262,12 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':FREQ:MODE CW')
-        self._gpib_connection.write('*WAI')
-        self._gpib_connection.write(':FREQ:MODE LIST')
+        # self._gpib_connection.write('*WAI')
+        # self._gpib_connection.write(':FREQ:MODE CW')
+        # self._gpib_connection.write('*WAI')
+        # self._gpib_connection.write(':FREQ:MODE LIST')
+
+        self._gpib_connection.write(':ABOR:LIST')
 
         return 0
 
