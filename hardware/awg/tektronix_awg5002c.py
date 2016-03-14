@@ -87,12 +87,9 @@ class AWG5002C(Base, PulserInterface):
         self.current_sample_mode = self.sample_mode['wfm-file']
 
         self.connected = False
-        self.amplitude = 0.25
-        self.loaded_sequence = None
-        self.is_output_enabled = True
 
         # settings for remote access on the AWG PC
-        self.sequence_directory = '\\waves'
+        self.asset_directory = '\\waves'
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -120,7 +117,8 @@ class AWG5002C(Base, PulserInterface):
 
 
         # AWG5002C has possibility for sequence output
-        self.use_sequencer = True
+        # self.use_sequencer = True
+        self.sequence_mode = True
 
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
 
@@ -164,36 +162,30 @@ class AWG5002C(Base, PulserInterface):
         Provides all the constraints (e.g. sample_rate, amplitude,
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
-        Each constraint is a tuple of the form
-            (min_value, max_value, stepsize)
-        and the key 'channel_map' indicates all possible combinations in usage
-        for this device.
+        The keys of the returned dictionary are the str name for the constraints
+        (which are set in this method). No other keys should be invented. If you
+        are not sure about the meaning, look in other hardware files to get an
+        impression. If still additional constraints are needed, then they have
+        to be add to all files containing this interface.
+        The items of the keys are again dictionaries which have the generic
+        dictionary form:
+            {'min': <value>,
+             'max': <value>,
+             'step': <value>,
+             'unit': '<value>'}
+
+        Only the keys 'channel_config', 'available channels', 'available_ch_num'
+        'activation_map' and 'independent_ch' differ.
+
+        If the constraints cannot be set in the pulsing hardware (because it
+        might e.g. has no sequence mode) then write just zero to each generic
+        dict. Note that there is a difference between float input (0.0) and
+        integer input (0).
+        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+
         """
 
-
-
         constraints = {}
-        # # (min, max, incr) in samples/second:
-        # constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
-        # # (min, max, res) in Volt-peak-to-peak:
-        # constraints['amplitude_analog'] = (0.02, 4.5, 0.001)
-        # # (min, max, res, range_min, range_max)
-        # # min, max and res are in Volt, range_min and range_max in
-        # # Volt-peak-to-peak:
-        # constraints['amplitude_digital'] = (-2.0, 5.4, 0.01, 0.2, 7.4)
-        # # (min, max, granularity) in samples for one waveform:
-        # constraints['waveform_length'] = (1, 32400000, 1)
-        # # (min, max, inc) in number of waveforms in system
-        # constraints['waveform_number'] = (1, 32000, 1)
-        # # (min, max, inc) number of subsequences within a sequence:
-        # constraints['subsequence_number'] = (1, 8000, 1)
-        # # number of possible elements within a sequence
-        # constraints['sequence_elements'] = (1, 4000, 1)
-        # # (min, max, incr) in Samples:
-        # constraints['total_length_bins'] = (1, 32e6, 1)
-        # # (analogue, digital) possible combination in given channels:
-        # constraints['channel_config'] = ((1,2), (2,4))
-
         # if interleave option is available, then sample rate constraints must
         # be assigned to the output of a function called
         # _get_sample_rate_constraints()
@@ -234,17 +226,56 @@ class AWG5002C(Base, PulserInterface):
                                        'step': 1, 'unit': '#'}
 
         constraints['subsequence_num'] = {'min': 1, 'max': 8000,
-                                          'step':1, 'unit': '#'}
+                                          'step': 1, 'unit': '#'}
 
-        constraints['available_channels'] = {'a_ch': 2, 'd_ch': 4}
+        # For the channel configuration, three information has to be set!
+        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
+        #   by yourself.
+        #   Second is whether the specified channel is an analog or digital
+        #   channel
+        #   Third is the channel number, which is assigned to that channel name.
+        #
+        # So in summary:
+        #       configuration: channel-name, channel-type, channelnumber
+        # That configuration takes place here:
+        available_ch = OrderedDict()
+        available_ch['ACH1'] = {'a_ch': 1}
+        available_ch['DCH1'] = {'d_ch': 1}
+        available_ch['DCH2'] = {'d_ch': 2}
+        available_ch['ACH2'] = {'a_ch': 2}
+        available_ch['DCH3'] = {'d_ch': 3}
+        available_ch['DCH4'] = {'d_ch': 4}
+        constraints['available_ch'] = available_ch
 
-        # channel configuration for this device, use OrderedDictionaries to
-        # keep an order in that dictionary.
+        # State all possible DIFFERENT configurations, which the pulsing device
+        # may have. That concerns also the display of the chosen channels.
+        # Channel configuration for this device, use OrderedDictionaries to
+        # keep an order in that dictionary. That is for now the easiest way to
+        # determine the channel configuration:
         channel_config = OrderedDict()
-        channel_config['conf1'] = {'a_ch': 1, 'd_ch': 2}
-        channel_config['conf2'] = {'a_ch': 2, 'd_ch': 4}
-
+        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
+        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
         constraints['channel_config'] = channel_config
+
+        # Now you can choose, how many channel activation pattern exists. You
+        # can only use the names, declared in the constraint 'available_ch'!
+        activation_map = OrderedDict()
+        activation_map['map1'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        # Usage of channel 1 only:
+        activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
+        # Usage of channel 2 only:
+        activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
+        constraints['activation_map'] = activation_map
+
+        # this information seems to be almost redundant but it can be that no
+        # channel configuration exists, where not all available channels are
+        # present. Therefore this is needed here:
+        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
+
+        # number of independent channels on which you can load or upload
+        # separately the created files. It does not matter how the channels
+        # are looking like.
+        constraints['independent_ch'] = 2
 
         return constraints
 
@@ -272,70 +303,47 @@ class AWG5002C(Base, PulserInterface):
 
         return self.get_status()[0]
 
-    def upload_asset(self, name):
-        """ Waveform or sequence with name "name" gets uploaded to the Hardware.
+    def upload_asset(self, upload_dict={}):
+        """ Upload an already hardware conform file to the device on the
+            specific channel(s).
 
-        @param str name: The name of the sequence/waveform to be transferred
+        @param: dict upload_dict: a dictionary with keys being one of the
+                                  available channel numbers and items being the
+                                  name of the already hardware conform file.
 
         @return int: error code (0:OK, -1:error)
+
+        If nothing is passed, method will be skipped.
+
+        Example:
+            The created file with the generic name 'my-funny-stuff' should be
+            uploaded on channel 1 and 2:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The hardware will handle the proper file choice, like e.g. the file
+            with the name
+                my-funny-stuff_ch1.wfm
+            will be chosen for upload on channel 1.
         """
 
-        # TODO: Download waveform to AWG and load it into channels
-        # FIXME: that should also be possible for more then one channel!!!
+        if upload_dict == {}:
+            self.logMsg('No file and channel provided for upload!\nCorrect '
+                        'that!\nCommand will be ignored.', msgType='warning')
+
         if self.current_sample_mode == self.sample_mode['wfm-file']:
             # if len(waveform.analogue_samples)> 1:
-            self._send_file(name + '_ch1.wfm')
-            self.load_asset(name + '_ch1.wfm', channel=1)
-            self._send_file(name + '_ch2.wfm')
-            self.load_asset(name + '_ch2.wfm', channel=2)
-            # else:
-            #
-            #     self.send_file(self.host_waveform_directory + name + '_ch1.wfm')
+
+            for channel_num in list(upload_dict):
+                file_name = str(upload_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
+                self._send_file(file_name)
+                # load the file in appropriated channel:
+                self.load_asset({channel_num: upload_dict[channel_num]})
+
         else:
             self.logMsg('Error in file upload:\nInvalid sample mode for '
                         'this device!\nSet a proper one for sample the '
                         'real data.',
                         msgType='error')
         return 0
-
-        # def download_waveform(self, waveform, write_to_file=True):
-        # """ Convert the pre-sampled numpy array to a specific hardware file.
-        #
-        # @param Waveform() waveform: The raw sampled pulse sequence.
-        # @param bool write_to_file: Flag to indicate if the samples should be
-        #                            written to a file (= True) or uploaded
-        #                            directly to the pulse generator channels
-        #                            (= False).
-        #
-        # @return int: error code (0:OK, -1:error)
-        #
-        # Brings the numpy arrays containing the samples in the Waveform() object
-        # into a format the hardware understands. Optionally this is then saved
-        # in a file. Afterwards they get downloaded to the Hardware.
-        # """
-        #
-        # #FIXME: implement method: download_sequence
-        #
-        # if write_to_file:
-        #     self._write_to_file(waveform.name, waveform.analogue_samples,
-        #                         waveform.digital_samples, waveform.sample_rate,
-        #                         waveform.pp_voltage)
-        #
-        #     # TODO: Download waveform to AWG and load it into channels
-        #     if self.current_sample_mode == self.sample_mode['wfm-file']:
-        #         if len(waveform.analogue_samples)> 1:
-        #             self.send_file(self.host_waveform_directory + waveform.name + '_ch1.wfm')
-        #             self.send_file(self.host_waveform_directory + waveform.name + '_ch2.wfm')
-        #         else:
-        #
-        #             self.send_file(self.host_waveform_directory + waveform.name + '_ch1.wfm')
-        #     else:
-        #         self.logMsg('Error in file upload:\nInvalid sample mode for '
-        #                     'this device!\nSet a proper one for sample the '
-        #                     'real data.',
-        #                     msgType='error')
-        #     self.load_asset(waveform.name)
-        # return 0
 
     def write_chunk_to_file(self, name, analogue_samples_chunk,
                             digital_samples_chunk, total_number_of_samples,
@@ -374,8 +382,6 @@ class AWG5002C(Base, PulserInterface):
             # and the marker are followed.
 
 
-
-
             for channel_index, channel_arr in enumerate(analogue_samples_chunk):
 
                 filename = name+'_ch'+str(channel_index+1) + '.wfm'
@@ -383,63 +389,34 @@ class AWG5002C(Base, PulserInterface):
                 filepath = os.path.join(self.host_waveform_directory,filename)
                 with open(filepath, 'wb') as wfm_file:
 
+                    # write the first line, which is the header file:
                     num_bytes = str(len(digital_samples_chunk[channel_index*2])*5)
                     num_digits = str(len(num_bytes))
                     header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-
                     wfm_file.write(header)
 
-                    # for value_index, value in enumerate(channel_arr):
-                    #     byte_val = struct.pack('f',value)   # convert float to byte
-                    #                                         # representation
-                    #
-                    #
-                    #
-                    #     marker1 = digital_samples_chunk[channel_index*2][value_index]
-                    #     [value_index]
-                    #
-                    #     byte_marker = struct.pack('f',marker1+marker2)
-                    #
-                    #     wfm_file.write(byte_marker+byte_val)
+                    # now write at once the whole file in binary representation:
 
+                    # convert the presampled numpy array of the analog channels
+                    # to a float number represented by 8bits:
                     shape_for_wavetmp = np.shape(channel_arr)[0]
                     wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
                     wavetmp = wavetmp.reshape((-1,5))
                     # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
                     wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
 
-                    # marker1 =
-                    # marker2 = digital_samples_chunk[channel_index*2+1]
-
-                    # marker = np.zeros(len(marker1),dtype='c')
-
-                    #FIXME: This is a very very ugly and inefficient way of
-                    #       appending the marker array. A much nicer way
-                    #       should be implemented!!!
-
+                    # The previously created array wavetmp contains one
+                    # additional column, where the marker states will be written
+                    # into:
                     marker = digital_samples_chunk[channel_index*2] + digital_samples_chunk[channel_index*2+1]*2
-
                     marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-                    # for index in range(len(marker1)):
-                    #     test_val = marker1[index] + marker2[index]
-                    #     if marker1[index] and marker2[index]:
-                    #         wavetmp[index,-1] = b'\x03'
-                    #     elif marker1[index] and not marker2[index]:
-                    #         wavetmp[index,-1] = b'\x01'
-                    #     elif not marker1[index] and marker2[index]:
-                    #         wavetmp[index,-1] = b'\x02'
-                    #     else:
-                    #         wavetmp[index,-1] = b'\x00'
+                    wavetmp[:, -1] = marker_byte
 
-                    # [marker]
-
-
-
-                    # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
-                    wavetmp[:,-1] = marker_byte
-
+                    # now write everything to file:
                     wfm_file.write(wavetmp.tobytes())
 
+                    # the footer encodes the sample rate, which was used for
+                    # that file:
                     footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
                     wfm_file.write(footer)
 
@@ -450,101 +427,6 @@ class AWG5002C(Base, PulserInterface):
 
         return 0
 
-    # def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
-    #                    pp_voltage):
-    #
-    #     if self.current_sample_mode == self.sample_mode['wfm-file']:
-    #
-    #         # IMPORTANT: These numbers build the header in the wfm file. Needed
-    #         # by the device program to understand wfm file. If it is wrong,
-    #         # AWG will not be able to understand the written file.
-    #
-    #         # The pure waveform has the number 1000, idicating that it is a
-    #         # *.wfm file. For sequence mode e.g. the number would be 3001 or
-    #         # 3002, depending on the number of channels in the sequence mode.
-    #         # (The last number indicates the channel numbers).
-    #         # Next line after the header tells the number of bins of the
-    #         # waveform file.
-    #         # After this number a 14bit binary representation of the channel
-    #         # and the marker are followed.
-    #
-    #
-    #
-    #
-    #         for channel_index, channel_arr in enumerate(ana_samples):
-    #
-    #             filename = name+'_ch'+str(channel_index+1) + '.wfm'
-    #
-    #             with open(self.host_waveform_directory + filename, 'wb') as wfm_file:
-    #
-    #                 num_bytes = str(len(digi_samples[channel_index*2])*5)
-    #                 num_digits = str(len(num_bytes))
-    #                 header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-    #
-    #                 wfm_file.write(header)
-    #
-    #                 # for value_index, value in enumerate(channel_arr):
-    #                 #     byte_val = struct.pack('f',value)   # convert float to byte
-    #                 #                                         # representation
-    #                 #
-    #                 #
-    #                 #
-    #                 #     marker1 = digi_samples[channel_index*2][value_index]
-    #                 #     [value_index]
-    #                 #
-    #                 #     byte_marker = struct.pack('f',marker1+marker2)
-    #                 #
-    #                 #     wfm_file.write(byte_marker+byte_val)
-    #
-    #                 shape_for_wavetmp = np.shape(channel_arr)[0]
-    #                 wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-    #                 wavetmp = wavetmp.reshape((-1,5))
-    #                 # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-    #                 wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
-    #
-    #                 # marker1 =
-    #                 # marker2 = digi_samples[channel_index*2+1]
-    #
-    #                 # marker = np.zeros(len(marker1),dtype='c')
-    #
-    #                 #FIXME: This is a very very ugly and inefficient way of
-    #                 #       appending the marker array. A much nicer way
-    #                 #       should be implemented!!!
-    #
-    #                 marker = digi_samples[channel_index*2] + digi_samples[channel_index*2+1]*2
-    #
-    #                 marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-    #                 # for index in range(len(marker1)):
-    #                 #     test_val = marker1[index] + marker2[index]
-    #                 #     if marker1[index] and marker2[index]:
-    #                 #         wavetmp[index,-1] = b'\x03'
-    #                 #     elif marker1[index] and not marker2[index]:
-    #                 #         wavetmp[index,-1] = b'\x01'
-    #                 #     elif not marker1[index] and marker2[index]:
-    #                 #         wavetmp[index,-1] = b'\x02'
-    #                 #     else:
-    #                 #         wavetmp[index,-1] = b'\x00'
-    #
-    #                 # [marker]
-    #
-    #
-    #
-    #                 # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
-    #                 wavetmp[:,-1] = marker_byte
-    #
-    #                 wfm_file.write(wavetmp.tobytes())
-    #
-    #                 footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
-    #                 wfm_file.write(footer)
-    #
-    #     else:
-    #         self.logMsg('Sample mode not defined for the given pulser hardware.'
-    #                     '\nEither the mode does not exist or the sample mode is'
-    #                     'not assigned properly. Correct that!', msgType='error')
-    #
-    #     return 0
-
-    # def send_file(self, filepath):
     def _send_file(self, filename):
         """ Sends an already hardware specific waveform file to the pulse
             generators waveform directory.
@@ -563,7 +445,7 @@ class AWG5002C(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.sequence_directory)
+            ftp.cwd(self.asset_directory)
             with open(filepath, 'rb') as uploaded_file:
                 filename = filepath.rsplit('\\', 1)[1]
                 ftp.storbinary('STOR '+filename, uploaded_file)
@@ -571,14 +453,25 @@ class AWG5002C(Base, PulserInterface):
 
         pass
 
-    def load_asset(self, asset_name, channel=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing device.
+    def load_asset(self, load_dict={}):
+        """ Load an already hardware conform file, which was transferred to the
+            device on the with the provided name to the specified channel.
 
-        @param str asset_name: The name of the asset to be loaded
-        @param int channel: The channel for the sequence to be loaded into if
-                            not already specified in the sequence itself
+        @param: dict load_dict: a dictionary with keys being one of the
+                                available channel numbers and items being the
+                                name of the already sampled
+                                Pulse_Block_Ensemble.
 
         @return int: error code (0:OK, -1:error)
+
+        Example:
+            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
+            be loaded on channel 1 and 2 then it has to be passed like:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The pulse device should choose the proper file (which belongs to
+            channel 1 and 2) and load it.
+            You can e.g. also load just the file on channel two with:
+                upload_dict = {2: 'my-funny-stuff'}
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA). Waveforms and single channel sequences can be
@@ -586,17 +479,17 @@ class AWG5002C(Base, PulserInterface):
         assigned to channel 1. The AWG's file system is case-sensitive.
         """
 
-        path = self.ftp_path + self.get_sequence_directory()
+        path = self.ftp_path + self.get_file_dir_on_device()
 
-        if channel is None or channel == 1:
-            self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
-        elif channel == 2:
-            self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name))
-        else:
-            self.logMsg('Channel number was expected to be 1 or 2 but a '
-                        'parameter "{0}" was passed.'.format(channel),
-                        msgType='error')
-            return -1
+
+        if load_dict == {}:
+            self.logMsg('No file and channel provided for load!\nCorrect '
+                        'that!\nCommand will be ignored.', msgType='warning')
+
+        for channel_num in list(load_dict):
+
+            file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
+            self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
 
         return 0
 
@@ -673,7 +566,7 @@ class AWG5002C(Base, PulserInterface):
         @return float: The current sample rate of the device (in Hz)
         """
 
-        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
+        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?'))
         return self.sample_rate
 
 
@@ -722,7 +615,7 @@ class AWG5002C(Base, PulserInterface):
 
         else:
             for a_ch in amplitude:
-                if (a_ch <= constraints['available_channels']['a_ch']) and \
+                if (a_ch <= constraints['available_ch_num']['a_ch']) and \
                    (a_ch >= 0):
                     amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
                 else:
@@ -730,11 +623,11 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
-                                                                  constraints['available_channels']['a_ch']),
+                                                                  constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
             for a_ch in offset:
-                if (a_ch <= constraints['available_channels']['a_ch']) and \
+                if (a_ch <= constraints['available_ch_num']['a_ch']) and \
                    (a_ch >= 0):
                     off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
                 else:
@@ -742,7 +635,7 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
-                                                                  constraints['available_channels']['a_ch']),
+                                                                  constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
         return amp, off
@@ -773,7 +666,7 @@ class AWG5002C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for a_ch in amplitude:
-            if (a_ch <= constraints['available_channels']['a_ch']) and \
+            if (a_ch <= constraints['available_ch_num']['a_ch']) and \
                (a_ch >= 0):
 
                 if amplitude[a_ch] < constraints['a_ch_amplitude']['min'] or \
@@ -798,11 +691,11 @@ class AWG5002C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
-                                                 constraints['available_channels']['a_ch']),
+                                                 constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
         for a_ch in offset:
-            if (a_ch <= constraints['available_channels']['a_ch']) and \
+            if (a_ch <= constraints['available_ch_num']['a_ch']) and \
                (a_ch >= 0):
 
                 if offset[a_ch] < constraints['a_ch_offset']['min'] or \
@@ -825,7 +718,7 @@ class AWG5002C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
-                                                 constraints['available_channels']['a_ch']),
+                                                 constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
     def get_digital_level(self, low=[], high=[]):
@@ -878,7 +771,7 @@ class AWG5002C(Base, PulserInterface):
         else:
 
             for d_ch in low:
-                if (d_ch <= constraints['available_channels']['d_ch']) and \
+                if (d_ch <= constraints['available_ch_num']['d_ch']) and \
                    (d_ch >= 0):
 
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
@@ -894,12 +787,12 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(d_ch,
-                                                                  constraints['available_channels']['d_ch']),
+                                                                  constraints['available_ch_num']['d_ch']),
                                 msgType='warning')
 
             for d_ch in high:
 
-                if (d_ch <= constraints['available_channels']['d_ch']) and \
+                if (d_ch <= constraints['available_ch_num']['d_ch']) and \
                    (d_ch >= 0):
 
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
@@ -915,7 +808,7 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(d_ch,
-                                                                  constraints['available_channels']['d_ch']),
+                                                                  constraints['available_ch_num']['d_ch']),
                                 msgType='warning')
 
         return low_val, high_val
@@ -944,7 +837,7 @@ class AWG5002C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for d_ch in low:
-            if (d_ch <= constraints['available_channels']['d_ch']) and \
+            if (d_ch <= constraints['available_ch_num']['d_ch']) and \
                (d_ch >=0):
 
                 if low[d_ch] < constraints['d_ch_low']['min'] or \
@@ -972,11 +865,11 @@ class AWG5002C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
-                                                 constraints['available_channels']['d_ch']),
+                                                 constraints['available_ch_num']['d_ch']),
                             msgType='warning')
 
         for d_ch in high:
-            if (d_ch <= constraints['available_channels']['d_ch']) and \
+            if (d_ch <= constraints['available_ch_num']['d_ch']) and \
                (d_ch >=0):
 
                 if high[d_ch] < constraints['d_ch_high']['min'] or \
@@ -1005,15 +898,15 @@ class AWG5002C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
-                                                 constraints['available_channels']['d_ch']),
+                                                 constraints['available_ch_num']['d_ch']),
                             msgType='warning')
 
     def set_active_channels(self, a_ch={}, d_ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
         @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
                           and items being boolean values.
 
         @return int: error code (0:OK, -1:error)
@@ -1035,7 +928,7 @@ class AWG5002C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for ana_chan in a_ch:
-            if (ana_chan <= constraints['available_channels']['a_ch']) and \
+            if (ana_chan <= constraints['available_ch_num']['a_ch']) and \
                (ana_chan >= 0):
 
                 if a_ch[ana_chan]:
@@ -1051,7 +944,7 @@ class AWG5002C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(ana_chan,
-                                                 constraints['available_channels']['a_ch']),
+                                                 constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
         if d_ch != {}:
@@ -1107,7 +1000,7 @@ class AWG5002C(Base, PulserInterface):
         else:
             for ana_chan in a_ch:
 
-                if (ana_chan <= constraints['available_channels']['a_ch']) and \
+                if (ana_chan <= constraints['available_ch_num']['a_ch']) and \
                    (ana_chan >= 0):
 
                     # because 0 = False and 1 = True
@@ -1118,12 +1011,12 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(ana_chan,
-                                                                  constraints['available_channels']['a_ch']),
+                                                                  constraints['available_ch_num']['a_ch']),
                                 msgType='warning')
 
             for digi_chan in d_ch:
 
-                if (digi_chan <= constraints['available_channels']['d_ch']) and \
+                if (digi_chan <= constraints['available_ch_num']['d_ch']) and \
                    (digi_chan >= 0):
 
                     active_d_ch[digi_chan] = True
@@ -1133,15 +1026,16 @@ class AWG5002C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(digi_chan,
-                                                                  constraints['available_channels']['d_ch']),
+                                                                  constraints['available_ch_num']['d_ch']),
                                 msgType='warning')
 
         return active_a_ch, active_d_ch
 
-    def get_downloaded_sequence_names(self):
-        """ Retrieve the names of all downloaded sequences on the device.
+    def get_uploaded_asset_names(self):
+        """ Retrieve the names of all uploaded assets on the device.
 
-        @return list: List of sequence name strings
+        @return list: List of all uploaded asset name strings in the current
+                      device directory.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
@@ -1149,7 +1043,7 @@ class AWG5002C(Base, PulserInterface):
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.sequence_directory)
+            ftp.cwd(self.asset_directory)
 
             # get only the files from the dir and skip possible directories
             log =[]
@@ -1161,10 +1055,11 @@ class AWG5002C(Base, PulserInterface):
         return file_list
 
 
-    def get_sequence_names(self):
+    def get_saved_assets_names(self):
         """ Retrieve the names of all sampled and saved sequences on the host PC.
 
-        @return list: List of sequence name strings
+        @return list: List of all saved asset name strings in the current
+                      directory of the host PC.
         """
         # list of all files in the waveform directory ending with .mat or .WFMX
         file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfm'))]
@@ -1183,40 +1078,43 @@ class AWG5002C(Base, PulserInterface):
 
         return saved_sequences
 
-    def delete_sequence(self, seq_name):
+    def delete_asset(self, asset_name):
         """ Delete a sequence with the passed seq_name from the device memory.
 
-        @param str seq_name: The full name of the file to be deleted.
-                             Optionally a list of file names can be passed.
+        @param str asset_name: The full name of the file to be deleted.
+                               Optionally a list of file names can be passed.
 
         @return int: error code (0:OK, -1:error)
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        if not isinstance(seq_name, list):
-            seq_name = [seq_name]
+        if not isinstance(asset_name, list):
+            asset_name = [asset_name]
 
         file_list = self.get_sequence_names()
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.sequence_directory)
+                        # FIXME: that should be changed at some point so that
+                        # ftp login is only possible with a proper username and
+                        # password.
+            ftp.cwd(self.asset_directory)
 
-            for entry in seq_name:
+            for entry in asset_name:
                 if entry in file_list:
                     ftp.delete(entry)
 
         return 0
 
-    def set_sequence_directory(self, dir_path):
-        """ Change the directory where the sequences are stored on the device.
+    def set_asset_dir_on_device(self, dir_path):
+        """ Change the directory where the assets are stored on the device.
 
         @param string dir_path: The target directory
 
         @return int: error code (0:OK, -1:error)
 
-        Unused for digital pulse generators without sequence storage capability
+        Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
 
@@ -1231,19 +1129,27 @@ class AWG5002C(Base, PulserInterface):
                             'Create new.'.format(dir_path), msgType='status')
                 ftp.mkd(dir_path)
 
-        self.sequence_directory = dir_path
+        self.asset_directory = dir_path
         return 0
 
-    def get_sequence_directory(self):
-        """ Ask for the directory where the sequences are stored on the device.
+    def get_asset_dir_on_device(self):
+        """ Ask for the directory where the assets are stored on the device.
 
         @return string: The current sequence directory
 
-        Unused for digital pulse generators without sequence storage capability
+        Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
 
-        return self.sequence_directory
+        return self.asset_directory
+
+
+    def has_sequence_mode(self):
+        """ Asks the pulse generator whether sequence mode exists.
+
+        @return: bool, True for yes, False for no.
+        """
+        return self.sequence_mode
 
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
@@ -1315,8 +1221,8 @@ class AWG5002C(Base, PulserInterface):
                         msgType='error')
             message = str(-1)
 
-        message = message.replace('\n','')  # cut away the characters\r and \n.
-        message = message.replace('\r','')
+        message = message.replace('\n', '')  # cut away the characters\r and \n.
+        message = message.replace('\r', '')
 
         return message
 
