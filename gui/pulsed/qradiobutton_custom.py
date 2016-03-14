@@ -31,8 +31,6 @@ class CustomQRadioButton(QtGui.QRadioButton):
           them of not, depending on the state of the Widget.
     """
 
-    readOnly = QtCore.pyqtProperty(bool, isReadOnly, setReadOnly)
-
     def __init__(self, *args):
         # just pass all stuff to superclass, will fail if passing **kwargs
         super(CustomQRadioButton, self).__init__(*args)
@@ -83,5 +81,4 @@ class CustomQRadioButton(QtGui.QRadioButton):
         @param bool state: True or False, for having a readonly QRadioButton.
         """
         self._readOnly = state
-
-    
+    readOnly = QtCore.pyqtProperty(bool, isReadOnly, setReadOnly)
