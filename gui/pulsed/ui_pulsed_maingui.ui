@@ -7,8 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>1009</width>
-    <height>844</height>
+    <height>850</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>40</width>
+    <height>0</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>qudi: Pulsed Measurement</string>
@@ -23,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -413,7 +419,7 @@
           <string>Pulse Generator</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_5">
-          <item row="0" column="2">
+          <item row="0" column="1">
            <layout class="QGridLayout" name="gridLayout_7">
             <item row="3" column="2">
              <widget class="QGroupBox" name="groupBox_4">
@@ -911,10 +917,10 @@
              </widget>
             </item>
             <item row="4" column="0" colspan="3">
-             <widget class="QGroupBox" name="groupBox_5">
+             <widget class="QGroupBox" name="upload_load_GroupBox">
               <property name="maximumSize">
                <size>
-                <width>550</width>
+                <width>700</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -930,38 +936,7 @@
               <layout class="QGridLayout" name="gridLayout_38">
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_36">
-                 <item row="1" column="3">
-                  <widget class="QPushButton" name="upload_load_channel_PushButton">
-                   <property name="text">
-                    <string>load to channel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
-                   <property name="text">
-                    <string>sample</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="2">
-                  <widget class="QPushButton" name="upload_to_device_PushButton">
-                   <property name="text">
-                    <string>upload to device</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_21">
-                   <property name="text">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block Ensemble&lt;br/&gt;for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1" colspan="3">
-                  <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
-                 </item>
-                 <item row="0" column="4" rowspan="2">
+                 <item row="0" column="6">
                   <widget class="QPushButton" name="pulser_on_PushButton">
                    <property name="minimumSize">
                     <size>
@@ -975,7 +950,7 @@ On</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="5" rowspan="2">
+                 <item row="0" column="7">
                   <widget class="QPushButton" name="pulser_off_PushButton">
                    <property name="minimumSize">
                     <size>
@@ -986,6 +961,202 @@ On</string>
                    <property name="text">
                     <string>Pulser
 Off</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="6" colspan="2">
+                  <layout class="QHBoxLayout" name="RadioButtons_HorizontalLayout">
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_3">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_2">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_5">
+                     <property name="styleSheet">
+                      <string notr="true"/>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_6">
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="checkable">
+                      <bool>false</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_4">
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="checkable">
+                      <bool>false</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton">
+                     <property name="enabled">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>channel-something</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="checkable">
+                      <bool>false</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QRadioButton" name="radioButton_7">
+                     <property name="font">
+                      <font>
+                       <kerning>true</kerning>
+                      </font>
+                     </property>
+                     <property name="mouseTracking">
+                      <bool>true</bool>
+                     </property>
+                     <property name="focusPolicy">
+                      <enum>Qt::StrongFocus</enum>
+                     </property>
+                     <property name="layoutDirection">
+                      <enum>Qt::LeftToRight</enum>
+                     </property>
+                     <property name="autoFillBackground">
+                      <bool>true</bool>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>10</width>
+                       <height>10</height>
+                      </size>
+                     </property>
+                     <property name="checkable">
+                      <bool>false</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="1" column="4">
+                  <widget class="QLabel" name="label_27">
+                   <property name="text">
+                    <string>To Channel:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QPushButton" name="upload_load_channel_PushButton">
+                   <property name="minimumSize">
+                    <size>
+                     <width>85</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>load to channel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_21">
+                   <property name="text">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block &lt;br/&gt;Ensemble for &lt;br/&gt;Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" colspan="5">
+                  <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
+                 </item>
+                 <item row="1" column="5">
+                  <widget class="QComboBox" name="upload_independ_ch_combi_ComboBox"/>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QPushButton" name="upload_to_device_PushButton">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>100</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>upload to device</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
+                   <property name="text">
+                    <string>sample</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QPushButton" name="upload_clear_device_PushButton">
+                   <property name="minimumSize">
+                    <size>
+                     <width>40</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Clear Device</string>
                    </property>
                   </widget>
                  </item>
@@ -1503,6 +1674,7 @@ sel.</string>
    <addaction name="action_continue_pause"/>
    <addaction name="action_pull_data"/>
    <addaction name="action_save"/>
+   <addaction name="separator"/>
   </widget>
   <action name="actionSettings_Sequence">
    <property name="text">

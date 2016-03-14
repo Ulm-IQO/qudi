@@ -26,9 +26,11 @@ from collections import OrderedDict
 import pyqtgraph as pg
 import re
 import inspect
+import itertools
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
+from .qradiobutton_custom import CustomQRadioButton
 
 
 #FIXME: Display the Pulse
@@ -78,6 +80,26 @@ from core.util.mutex import Mutex
 # http://qt.developpez.com/doc/4.7/itemviews-spinboxdelegate/
 # and a similar python implementation:
 # https://github.com/PySide/Examples/blob/master/examples/itemviews/spinboxdelegate.py
+
+# ==============================================================================
+#                Explanation of the usage of QTableWidget
+# ==============================================================================
+
+# In general a table consist out of an object for viewing the data and out of an
+# object where the data are saved. For viewing the data, there is the general
+# QWidgetView class and for holding/storing the data you have to define a model.
+# The model ensures to hold your data in the proper data type and give the
+# possibility to separate the data from the display.
+# The QTableWidget class is a specialized class to handle user input into an
+# table. In order to handle the data, it contains already a model (due to that
+# you can e.g. easily add rows and columns and modify the content of each cell).
+# Therefore the model of a QTableWidget is a privite attribute and cannot be
+# changed externally. If you want to define a custom model for QTableWidget you
+# have to start from a QTableView and construct you own data handling in the
+# model.
+# Since QTableWidget has all the (nice and) needed requirements for us, a
+# custom definition of QTableView with a Model is not needed.
+
 
 from .spinbox_delegate import SpinBoxDelegate
 from .doublespinbox_delegate import DoubleSpinBoxDelegate
@@ -240,9 +262,23 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
+        # load in the possible channel configurations into the config
+        pulser_constr = self.get_hardware_constraints()
+        channel_config = list(pulser_constr['channel_config'])
+        self._bs.channel_config_ComboBox.clear()
+        self._bs.channel_config_ComboBox.addItems(channel_config)
+
+        self._bs.channel_config_ComboBox.currentIndexChanged.connect(self._update_channel_display)
+
+        activation_map = list(pulser_constr['activation_map'])
+        self._bs.ch_activation_pattern_ComboBox.clear()
+        self._bs.ch_activation_pattern_ComboBox.addItems(activation_map)
+
+        self._bs.ch_activation_pattern_ComboBox.currentIndexChanged.connect(self._update_activation_map)
+        self._bs.use_interleave_CheckBox.stateChanged.connect(self._interleave_changed)
+
         # create the Predefined methods Dialog
         self._pm = PredefinedMethodsDialog()
-
 
         # Add in the settings menu within the groupbox widget all the available
         # math_functions, based on the list from the Logic. Right now, the GUI
@@ -292,6 +328,75 @@ class PulsedMeasurementGui(GUIBase):
 
         self._bs.close()
 
+    def _interleave_changed(self, state):
+        """ React on a Interleave state change.
+
+        @param int state: 0 for False and 1 or 2 for True.
+        """
+
+        self._seq_gen_logic.set_interleave(bool(state))
+        # Check also whether the sample rate has been changed:
+        self._set_sample_rate_constraints()
+
+    def _update_channel_display(self, index=None):
+        """ Updates the channel display of the currently chosen configuration in
+            the settings for Block Generator.
+
+        @param int index: optional, update the display boxes with the
+                          configuration corresponding to the passed index in the
+                          Combobox. Otherwise the active index will be asked
+                          from the Combobox.
+        """
+
+
+        if index is None:
+            config = self._bs.channel_config_ComboBox.currentText()
+        else:
+            config = self._bs.channel_config_ComboBox.itemText(index)
+
+        channel_config = self.get_hardware_constraints()['channel_config'][config]
+
+        # Here just the number of analog or digital channels is needed:
+        self._bs.digital_channels_SpinBox.setValue(channel_config.count('d_ch'))
+        self._bs.analog_channels_SpinBox.setValue(channel_config.count('a_ch'))
+
+
+    def _update_activation_map(self, index=None):
+        """ Switches the dedicated Radiobuttons for the channels on or off.
+
+        @param int index: optional, update the display boxes with the
+                          configuration corresponding to the passed index in the
+                          Combobox. Otherwise the active index will be asked
+                          from the Combobox.
+
+        The Radiobuttons are used to show the channel activity. Moreover, if
+        pulser is switched on, it will tell which channels are switched on.
+        """
+
+        pulser_const = self.get_hardware_constraints()
+
+
+        available_ch =  list(pulser_const['available_ch'])
+
+        if index is None:
+            map = self._bs.ch_activation_pattern_ComboBox.currentText()
+        else:
+            map = self._bs.ch_activation_pattern_ComboBox.itemText(index)
+
+        activation_map = pulser_const['activation_map'][map]
+        self._bs.ch_activation_pattern_LineEdit.setText(str(activation_map))
+
+        # at first disable all the channels:
+
+        for channelname in available_ch:
+            radiobutton_obj = self.get_radiobutton_obj(channelname)
+            radiobutton_obj.setEnabled(False)
+
+        for channelname in activation_map:
+            radiobutton_obj = self.get_radiobutton_obj(channelname)
+            radiobutton_obj.setEnabled(True)
+
+
     def show_block_settings(self):
         """ Opens the block settings menue. """
         self._bs.exec_()
@@ -307,26 +412,18 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.block_editor_TableWidget.blockSignals(True)
 
-        channel_config = self.get_hardware_constraints()['channel_config']
-
         ch_settings = (self._bs.analog_channels_SpinBox.value(),
                        self._bs.digital_channels_SpinBox.value())
 
-        if ch_settings in channel_config:
-
-            self._set_block_editor_columns(num_d_ch=ch_settings[1], num_a_ch=ch_settings[0])
-
-            self._seq_gen_logic.set_active_channels(digital=ch_settings[1],
-                                                analogue=ch_settings[0])
-        else:
-            self.logMsg('Desired channel configuration (analog, digital) as '
-                        '{0} not possible, since the hardware does not '
-                        'support it!/n'
-                        'Restore previous configuration.'.format(ch_settings),
-                        msgType='warning')
-            self.keep_former_block_settings()
+        self._set_block_editor_columns(num_a_ch=ch_settings[0],
+                                       num_d_ch=ch_settings[1])
 
         self._mw.block_editor_TableWidget.blockSignals(False)
+
+        #FIXME: Think about whether this method should not make an instant
+        #       action if an activation map is chosen, but rather be executed on
+        #       on pressing the apply and cancel button:
+        self._update_activation_map()
 
 
     def keep_former_block_settings(self):
@@ -334,8 +431,12 @@ class PulsedMeasurementGui(GUIBase):
 
         self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
         self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
-        self._seq_gen_logic.set_active_channels(digital=self._num_d_ch,
-                                                analogue=self._num_a_ch)
+
+        #FIXME: Think about whether this method should not make an instant
+        #       action if an activation map is chosen, but rather be executed on
+        #       on pressing the apply and cancel button:
+        self._update_activation_map()
+
 
     def get_current_function_list(self):
         """ Retrieve the functions, which are chosen by the user.
@@ -357,33 +458,6 @@ class PulsedMeasurementGui(GUIBase):
 
         return current_functions
 
-    def set_channel_constraints(self):
-        """ Set limitations for the choise of the channels based on the
-            constraints received from the hardware. """
-
-        channel_config = self.get_hardware_constraints()['channel_config']
-
-        # at least one channel configuration must be known. Set this as initial
-        # values for the constraints:
-        a_ch_min = channel_config[0][0]
-        a_ch_max = channel_config[0][0]
-        d_ch_min = channel_config[0][1]
-        d_ch_max = channel_config[0][1]
-
-
-        for entry in (channel_config):
-            if entry[0] < a_ch_min:
-                a_ch_min = entry[0]
-            if entry[0] > a_ch_max:
-                a_ch_max = entry[0]
-            if entry[1] < d_ch_min:
-                d_ch_min = entry[1]
-            if entry[1] > d_ch_max:
-                d_ch_max = entry[1]
-
-        self._bs.analog_channels_SpinBox.setRange(a_ch_min, a_ch_max)
-        self._bs.digital_channels_SpinBox.setRange(d_ch_min, d_ch_max)
-
     ###########################################################################
     ###   Methods related to Tab 'Pulse Generator' in the Pulsed Window:    ###
     ###########################################################################
@@ -396,15 +470,9 @@ class PulsedMeasurementGui(GUIBase):
         """
         # connect the signal for a change of the sample frequency
         self._mw.sample_freq_DSpinBox.editingFinished.connect(self.update_sample_rate)
+        self._set_sample_rate_constraints()
 
-        sample_min, sample_max, sample_step = self.get_hardware_constraints()['sample_rate']
-        self._mw.sample_freq_DSpinBox.setMinimum(sample_min/1e6)
-        self._mw.sample_freq_DSpinBox.setMaximum(sample_max/1e6)
-        self._mw.sample_freq_DSpinBox.setSingleStep(sample_step/1e6)
-        self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step/1e6)* -1) )
-        self.set_sample_rate(sample_max)
-
-
+        # set them to maximum or minimum
         self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
         self._mw.curr_block_laserpulses_SpinBox.setMaximum(2**31 -1)
         self._mw.curr_ensemble_bins_SpinBox.setMaximum(2**31 -1)
@@ -446,10 +514,35 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
 
-        channel_config = self.get_hardware_constraints()['channel_config'][-1]
-        self._set_block_editor_columns(num_d_ch=channel_config[1], num_a_ch=channel_config[0])
+        pulser_constr = self.get_hardware_constraints()
+        # Here just the number of analog or digital channels is needed:
+        channel_config = pulser_constr['channel_config']['conf1']
+        self._set_block_editor_columns(num_a_ch=channel_config.count('a_ch'),
+                                       num_d_ch=channel_config.count('d_ch'))
+
+        # create all the needed control widgets on the fly and connect their a
+        # actions to each other:
+        self._create_control_for_prepared_methods()
+        self._create_radiobuttons_for_channels()
 
         self.keep_former_block_settings()
+
+        # create a list with all possible combinations of independant channels,
+        # so that one can choose, which scenerio to take and to which channel
+        # to upload which created file:
+        maximum_ch_variation = range(1,pulser_constr['independent_ch']+1)
+        channels_combi = []
+        for entry in range(0, len(maximum_ch_variation)+1):
+            for subset in itertools.combinations(maximum_ch_variation, entry):
+                if subset != ():
+                    channels_combi.append(str(list(subset)))
+
+        self._mw.upload_independ_ch_combi_ComboBox.clear()
+        self._mw.upload_independ_ch_combi_ComboBox.addItems(channels_combi)
+        index =  len(channels_combi)-1
+        self._mw.upload_independ_ch_combi_ComboBox.setCurrentIndex(index)
+
+
         # A dictionary containing the mathematical function names to choose
         # from in the block editor with corresponding lists of needed
         # parameters like phase, frequency etc. This should be provided by the
@@ -460,47 +553,21 @@ class PulsedMeasurementGui(GUIBase):
         self.update_ensemble_list()
         self.update_sequence_list()
 
-        self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block)
-
-        self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble)
-
         self.set_cfg_param_pbe()
-        self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
-        self._mw.laserchannel_ComboBox.currentIndexChanged.connect(self._update_current_pulse_block)
-
-        self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_pulse_block_ensemble_list)
-
         self._set_organizer_columns()
 
+        # connect all the needed signal to methods:
+        self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block)
+        self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble)
+        self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
+        self._mw.laserchannel_ComboBox.currentIndexChanged.connect(self._update_current_pulse_block)
+        self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_pulse_block_ensemble_list)
         self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
-
         self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
-
         self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
         self._mw.pulser_off_PushButton.clicked.connect(self.pulser_off_clicked)
+        self._mw.upload_clear_device_PushButton.clicked.connect(self.clear_device_clicked)
 
-        self._create_control_for_prepared_methods()
-
-        # =====================================================================
-        #              Explanation of the usage of QTableWidget
-        # =====================================================================
-
-        # In general a table consist out of an object for viewing the data and
-        # and out of an object where the data are saved. For viewing the data,
-        # there is the general QWidgetView class and for holding/storing the
-        # data you have to define a model. The model ensures to hold your data
-        # in the proper data type and give the possibility to separate the data
-        # from the display.
-        # The QTableWidget class is a specialized class to handle user input
-        # into an table. In order to handle the data, it contains already a
-        # model (due to that you can e.g. easily add rows and columns and
-        # modify the content of each cell). Therefore the model of a
-        # QTableWidget is a privite attribute and cannot be changed externally.
-        # If you want to define a custom model for QTableWidget you have to
-        # start from a QTableView and construct you own data handling in the
-        # model.
-        # Since QTableWidget has all the (nice and) needed requirements for us,
-        # a custom definition of QTableView with a Model is not needed.
 
 
         # Modified by me
@@ -516,16 +583,119 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
 
-    def pulser_on_clicked(self):
-        """ Switch on the pulser and pass the number of channels to logic.  """
+    def _create_radiobuttons_for_channels(self):
+        """ To display, which channels are on and active, create a row of
+            Radiobuttons in a dedicated region in the gui.
 
-        a_ch, d_ch = self.get_current_channels()
-        self._seq_gen_logic.pulser_on(d_ch, a_ch)
+        Procedure of construction:
+            Create RadioButtons Widgets and add them to the special Layout area
+            RadioButtons_HorizontalLayoutattach. Moreover, add them to the main
+            window object to be able to ask their status if needed.
+            Additionaly, each radiobutton with the Tooltip as the channel name,
+            chosen in the pulser constraints.
+        """
+        # that will be the parent object for proper inheritence:
+        parent = self._mw.upload_load_GroupBox
+
+        pulser_const = self.get_hardware_constraints()
+
+        # delete in the cleanest way at first all Widgets which are within the
+        # RadioButtons_HorizontalLayout by dereferencing them:
+        for i in reversed(range(self._mw.RadioButtons_HorizontalLayout.count())):
+            self._mw.RadioButtons_HorizontalLayout.itemAt(i).widget().setParent(None)
+
+        for channel in pulser_const['available_ch']:
+
+            radiobutton_obj_name = str(channel) + '_RadioButton'
+
+            radiobutton = CustomQRadioButton(parent)
+            radiobutton.setEnabled(False)
+            radiobutton.setText('')
+            radiobutton.setAutoExclusive(False)
+            radiobutton.setObjectName(radiobutton_obj_name)
+            radiobutton.setToolTip(str(channel))
+            radiobutton.setReadOnly(True)
+            self._mw.RadioButtons_HorizontalLayout.addWidget(radiobutton)
+            # attach to the main object the radiobutton:
+            setattr(self._mw, radiobutton_obj_name, radiobutton)
+
+    def get_radiobutton_obj(self, channelname):
+        """ Retrieve the reference to the Radiobutton with the passed name.
+
+        @param str channelname: A name which must be present in the hardware
+                                constraints under the category 'available_ch'.
+
+        @return: object: Reference to a QtGui.QRadioButton object
+        """
+        radiobutton_obj_name =  str(channelname) + '_RadioButton'
+        radiobutton = getattr(self._mw, radiobutton_obj_name)
+        return radiobutton
+
+    def _set_sample_rate_constraints(self):
+        """ Retrieve from the Hardware again the constraints dict and set again
+            the sample rate constraits.
+        """
+
+        pulser_constr = self.get_hardware_constraints()
+        sample_min = pulser_constr['sample_rate']['min']
+        sample_max = pulser_constr['sample_rate']['max']
+        sample_step = pulser_constr['sample_rate']['step']
+
+        #FIXME: that should be in SI units! ...that will be changed soon
+        self._mw.sample_freq_DSpinBox.setMinimum(sample_min/1e6)
+        self._mw.sample_freq_DSpinBox.setMaximum(sample_max/1e6)
+        self._mw.sample_freq_DSpinBox.setSingleStep(sample_step/1e6)
+        self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step/1e6)* -1) )
+        self.set_sample_rate(sample_max)
+
+
+
+    def pulser_on_clicked(self):
+        """ Switch on the pulser and pass the number of channels to logic.
+
+        Get from the current activation map the channels, and pass them to the
+        logic, so that they could be activated.
+        """
+
+        # provide the logic, which buttons to switch on:
+        pulser_const = self.get_hardware_constraints()
+        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        for ch_name in pulser_const['activation_map'][curr_map]:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+            radiobutton = self.get_radiobutton_obj(ch_name)
+            radiobutton.setChecked(True)
+
+        self._seq_gen_logic.pulser_on(a_ch, d_ch)
 
     def pulser_off_clicked(self):
-        """ Switch off the pulser """
+        """ Switch off the pulser.
 
-        self._seq_gen_logic.pulser_off()
+        Get from the current activation map the channels, and pass them to the
+        logic, so that they could be deactivated.
+        """
+
+        pulser_const = self.get_hardware_constraints()
+        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        for ch_name in pulser_const['activation_map'][curr_map]:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+            radiobutton = self.get_radiobutton_obj(ch_name)
+            radiobutton.setChecked(False)
+
+        self._seq_gen_logic.pulser_off(a_ch, d_ch)
 
 
     def get_func_config(self):
@@ -587,6 +757,20 @@ class PulsedMeasurementGui(GUIBase):
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
         # Sample the ensemble via logic module
+
+        #FIXME: According to the chosen value in the ComboBox
+        #       self._mw.upload_independ_ch_combi_ComboBox the sample file
+        #       should receive a dict, where all the channels are described,
+        #       which will receive that sampled file.
+        #       Here the already finished code sniplet for passed dict sample_ch:
+
+        sample_ch = {}
+        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # evaluate to have a proper list:
+        channels = eval(channels)
+        for entry in channels:
+            sample_ch[entry] = ensemble_name
+
         self._seq_gen_logic.sample_ensemble(ensemble_name, True, False)
         return
 
@@ -594,10 +778,21 @@ class PulsedMeasurementGui(GUIBase):
         """
         This method is called when the user clicks on "load to channel"
         """
+
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+
+        # Check out on which channel it should be uploaded:
+        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # overwrite with the evaluated array:
+        channels = eval(channels)
+
+        upload_dict = {}
+        for ch in channels:
+            upload_dict[ch] = ensemble_name
+
         # Upload the ensemble via logic module
-        self._seq_gen_logic.upload_file(ensemble_name)
+        self._seq_gen_logic.upload_file(upload_dict)
         return
 
     def load_into_channel_clicked(self):
@@ -606,8 +801,17 @@ class PulsedMeasurementGui(GUIBase):
         """
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+
+        # Check out on which channel it should be uploaded:
+        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # overwrite with the evaluated array:
+        channels = eval(channels)
+
+        load_dict = {}
+        for ch in channels:
+            load_dict[ch] = ensemble_name
         # Sample and upload the ensemble via logic module
-        self._seq_gen_logic.load_asset(ensemble_name)
+        self._seq_gen_logic.load_file(load_dict)
         return
 
     def update_block_list(self):
@@ -645,6 +849,11 @@ class PulsedMeasurementGui(GUIBase):
         # updated list of all generated sequences
         new_list = self._seq_gen_logic.saved_sequences
         return
+
+
+    def clear_device_clicked(self):
+        """ Delete all loaded files in the device's current memory. """
+        self._seq_gen_logic.clear_pulser()
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
@@ -1266,11 +1475,11 @@ class PulsedMeasurementGui(GUIBase):
         self._num_d_ch = count_dch
         return count_dch
 
-    def set_a_d_ch(self, num_d_ch=None, num_a_ch=None):
+    def set_a_d_ch(self, num_a_ch=None, num_d_ch=None):
         """ Set amount of analog or/and digital channels.
 
-        @param num_d_ch: int, optional, number of digital channels.
         @param num_a_ch: int, optional, number of analog channels.
+        @param num_d_ch: int, optional, number of digital channels.
 
         This function wraps basically around the function
         _set_block_editor_columns. It is more intuitive to set the number of
@@ -1278,7 +1487,7 @@ class PulsedMeasurementGui(GUIBase):
         If no arguments are passed, the table is simple reinitialized to
         default values.
         """
-        self._set_block_editor_columns(num_d_ch=num_d_ch, num_a_ch=num_a_ch)
+        self._set_block_editor_columns(num_a_ch=num_a_ch, num_d_ch=num_d_ch,)
 
     def _determine_needed_parameters(self):
         """ Determine the maximal number of needed parameters for desired functions.
@@ -1308,12 +1517,12 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def _set_block_editor_columns(self, num_d_ch=None, num_a_ch=None):
+    def _set_block_editor_columns(self, num_a_ch=None, num_d_ch=None,):
         """ General function which creates the needed columns in Pulse Block
             Editor.
 
-        @param num_d_ch: int, desired number of digital channels
         @param num_a_ch: int, desired numbe of analogue channels
+        @param num_d_ch: int, desired number of digital channels
 
         If no argument is passed, the table is simply renewed. Otherwise the
         desired number of channels are created.
@@ -1329,6 +1538,12 @@ class PulsedMeasurementGui(GUIBase):
         if num_a_ch is None:
             num_a_ch = self._num_a_ch
 
+        #FIXME: that should be done properly with a channel map
+        self._pulsed_meas_logic.analog = num_a_ch
+        self._pulsed_meas_logic.digital = num_d_ch
+        self._seq_gen_logic.analogue_channels = num_a_ch
+        self._seq_gen_logic.digital_channels = num_d_ch
+
         # Determine the function with the most parameters. Use also that
         # function as a construction plan to create all the needed columns for
         # the parameters.
@@ -1336,7 +1551,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Erase the delegate from the column, pass a None reference:
         for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column,None)
+            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, None)
 
         # clear the number of columns:
         self._mw.block_editor_TableWidget.setColumnCount(0)
@@ -1692,7 +1907,7 @@ class PulsedMeasurementGui(GUIBase):
               keyword, a ControlBox (CheckBox, DoubleSpinBox, ...) is created.
             2. Then callable methods are created in the GUI like
                 _<method_name>_generate()
-                which is connected to the generate button and passes all the
+                which are connected to the generate button and passes all the
                 parameters to the method in the logic.
             3. An additional method is created as
                 _<method_name>_generate_upload()
@@ -1929,6 +2144,7 @@ class PulsedMeasurementGui(GUIBase):
                                   be uploaded.
         @param ref_gen_func: reference to the generate function, which calls
                              the logic method
+
         @return: a function, which can be called with func_name
         """
 
@@ -2110,6 +2326,24 @@ class PulsedMeasurementGui(GUIBase):
         #Firstly stop any scan that might be in progress
         self._pulsed_meas_logic.stop_pulsed_measurement()
         #Then if enabled. start a new scan.
+
+        # provide the logic, which buttons to switch on:
+        pulser_const = self.get_hardware_constraints()
+        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        for ch_name in pulser_const['activation_map'][curr_map]:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = isChecked
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = isChecked
+            radiobutton = self.get_radiobutton_obj(ch_name)
+            radiobutton.setChecked(isChecked)
+
+        self._pulsed_meas_logic.active_analog = a_ch
+        self._pulsed_meas_logic.active_digital= d_ch
 
         if isChecked:
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
