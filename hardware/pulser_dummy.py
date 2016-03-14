@@ -22,6 +22,7 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 
 import os
 import numpy as np
+from collections import OrderedDict
 
 import hdf5storage
 
@@ -90,25 +91,31 @@ class PulserDummy(Base, PulserInterface):
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
         self.connected = False
-        self.amplitude = 0.25
         self.sample_rate = 25e9
+        self.amplitude_list = {1: 1, 2: 1, 3: 1} # for each analog channel one value
+        self.offset_list = {1: 0, 2: 0, 3: 0}
+
+        # Deactivate all channels at first:
+        a_ch = {1: False, 2: False, 3: False}
+        d_ch = {1: False, 2: False, 3: False, 4: False,
+                5: False, 6: False, 7: False, 8: False}
+        self.active_channel = (a_ch, d_ch)
+
+        self.digital_high_list = {1: 5, 2: 5, 2: 5, 4: 5,
+                                  5: 5, 6: 5, 7: 5, 8: 5}
+        self.digital_low_list = {1: 0, 2: 0, 3: 0, 4: 0,
+                                 5: 0, 6: 0, 7: 0, 8: 0}
+
         self.uploaded_assets_list = []
         self.current_loaded_asset = None
         self.is_output_enabled = True
 
-        self.pp_voltage = 0.25
-
         # settings for remote access on the AWG PC
-        self.sequence_directory = 'waves'
-
-        # AWG5002C has possibility for sequence output
+        self.asset_directory = 'waves'
         self.use_sequencer = True
-
-        self.active_channel = (2,4)
         self.interleave = False
 
-        self.current_status =  0    # that means off, not running.
-
+        self.current_status = 0    # that means off, not running.
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
 
     def activation(self, e):
@@ -141,41 +148,142 @@ class PulserDummy(Base, PulserInterface):
         Provides all the constraints (e.g. sample_rate, amplitude,
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
-        Each constraint is a tuple of the form
-            (min_value, max_value, stepsize)
-        and the key 'channel_map' indicates all possible combinations in usage
-        for this device.
+        The keys of the returned dictionary are the str name for the constraints
+        (which are set in this method). No other keys should be invented. If you
+        are not sure about the meaning, look in other hardware files to get an
+        impression. If still additional constraints are needed, then they have
+        to be add to all files containing this interface.
+        The items of the keys are again dictionaries which have the generic
+        dictionary form:
+            {'min': <value>,
+             'max': <value>,
+             'step': <value>,
+             'unit': '<value>'}
 
-        The possible keys in the constraint are defined here in the interface
-        file. If the hardware does not support the values for the constraints,
-        then insert just None.
-        If you are not sure about the meaning, look in other hardware files
-        to get an impression.
+        Only the keys 'channel_config', 'available channels', 'available_ch_num'
+        'activation_map' and 'independent_ch' differ.
+
+        If the constraints cannot be set in the pulsing hardware (because it
+        might e.g. has no sequence mode) then write just zero to each generic
+        dict. Note that there is a difference between float input (0.0) and
+        integer input (0).
+        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+
         """
+        constraints = dict()
 
-        constraints = {}
-        # (min, max, incr) in samples/second:
-        constraints['sample_rate'] = (10.0e6, 600.0e6, 1)
-        # (min, max, res) in Volt-peak-to-peak:
-        constraints['amplitude_analog'] = (0.02, 4.5, 0.001)
-        # (min, max, res, range_min, range_max)
-        # min, max and res are in Volt, range_min and range_max in
-        # Volt-peak-to-peak:
-        constraints['amplitude_digital'] = (-2.0, 5.4, 0.01, 0.2, 7.4)
-        # (min, max, granularity) in samples for one waveform:
-        constraints['waveform_length'] = (1, 32400000, 1)
-        # (min, max, inc) in number of waveforms in system
-        constraints['waveform_number'] = (1, 32000, 1)
-        # (min, max, inc) number of subsequences within a sequence:
-        constraints['subsequence_number'] = (1, 8000, 1)
-        # number of possible elements within a sequence
-        constraints['sequence_elements'] = (1, 4000, 1)
-        # (min, max, incr) in Samples:
-        constraints['total_length_bins'] = (1, 32e6, 1)
-        # (analogue, digital) possible combination in given channels:
-        constraints['channel_config'] = [(0,1), (0,2), (0,3), (0,4), (0,5),
-                                         (0,6), (0,7), (0,8), (1,2), (2,4)]
+        # if interleave option is available, then sample rate constraints must
+        # be assigned to the output of a function called
+        # _get_sample_rate_constraints()
+        # which outputs the shown dictionary with the correct values depending
+        # on the present mode. The the GUI will have to check again the
+        # limitations if interleave was selected.
+        constraints['sample_rate']  = self._get_sample_rate_constraints()
+        # the stepsize will be determined by the DAC in combination with the
+        # maximal output amplitude (in Vpp):
+        constraints['a_ch_amplitude'] = {'min': 0.02, 'max': 2.0,
+                                         'step': 0.001, 'unit': 'Vpp'}
+
+        constraints['a_ch_offset'] = {'min': -1.0, 'max': 1.0,
+                                      'step': 0.001, 'unit': 'V'}
+
+        constraints['d_ch_low'] = {'min': -1.0, 'max': 4.0,
+                                   'step': 0.01, 'unit': 'V'}
+
+        constraints['d_ch_high'] = {'min': 0.0, 'max': 5.0,
+                                    'step': 0.0, 'unit': 'V'}
+
+        constraints['sampled_file_length'] = {'min': 80, 'max': 64.8e6,
+                                              'step': 1, 'unit': 'Samples'}
+
+        constraints['digital_bin_num'] = {'min': 0, 'max': 0.0,
+                                          'step': 0, 'unit': '#'}
+
+        constraints['waveform_num'] = {'min': 1, 'max': 32000,
+                                       'step': 1, 'unit': '#'}
+
+        constraints['sequence_num'] = {'min': 1, 'max': 8000,
+                                       'step': 1, 'unit': '#'}
+
+        constraints['subsequence_num'] = {'min': 1, 'max': 4000,
+                                          'step': 1, 'unit': '#'}
+
+        # For the channel configuration, three information has to be set!
+        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
+        #   by yourself.
+        #   Second is whether the specified channel is an analog or digital
+        #   channel
+        #   Third is the channel number, which is assigned to that channel name.
+        #
+        # So in summary:
+        #       configuration: channel-name, channel-type, channelnumber
+        # That configuration takes place here. A Setting for an AWG type
+        # configuration, where 2 analog and 4 digital channels are available.
+        available_ch = OrderedDict()
+        available_ch['Interleave'] = {'a_ch': 1}
+        available_ch['ACH1'] = {'a_ch': 1}
+        available_ch['DCH1'] = {'d_ch': 1}
+        available_ch['DCH2'] = {'d_ch': 2}
+        available_ch['ACH2'] = {'a_ch': 2}
+        available_ch['DCH3'] = {'d_ch': 3}
+        available_ch['DCH4'] = {'d_ch': 4}
+        available_ch['DCH5'] = {'d_ch': 5}
+        available_ch['DCH6'] = {'d_ch': 6}
+        available_ch['DCH7'] = {'d_ch': 7}
+        available_ch['DCH8'] = {'d_ch': 8}
+        constraints['available_ch'] = available_ch
+
+        # State all possible DIFFERENT configurations, which the pulsing device
+        # may have. That concerns also the display of the chosen channels.
+        # Channel configuration for this device, use OrderedDictionaries to
+        # keep an order in that dictionary. That is for now the easiest way to
+        # determine the channel configuration:
+        channel_config = OrderedDict()
+        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
+        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf3'] = ['d_ch', 'd_ch', 'd_ch', 'd_ch',
+                                   'd_ch', 'd_ch', 'd_ch', 'd_ch']
+        constraints['channel_config'] = channel_config
+
+        # Now you can choose, how many channel activation pattern exists:
+        activation_map = OrderedDict()
+        activation_map['map1'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        # Usage of channel 1 only:
+        activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
+        # Usage of channel 2 only:
+        activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
+        # Usage of Interleave mode:
+        activation_map['map4'] = ['Interleave', 'DCH1', 'DCH2']
+        # make only digital channels visible:
+        activation_map['map4'] = ['DCH1', 'DCH2', 'DCH3', 'DCH4',
+                                  'DCH5', 'DCH6', 'DCH7', 'DCH8']
+        constraints['activation_map'] = activation_map
+
+        # this information seems to be almost redundant but it can be that no
+        # channel configuration exists, where not all available channels are
+        # present. Therefore this is needed here:
+        constraints['available_ch_num'] = {'a_ch': 3, 'd_ch': 8}
+
+        # number of independent channels on which you can load or upload
+        # separately the created files. It does not matter how the channels
+        # are looking like.
+        constraints['independent_ch'] = 2
+
         return constraints
+
+    def _get_sample_rate_constraints(self):
+        """ If sample rate changes during Interleave mode, then it has to be
+            adjusted for that state.
+
+        @return dict: with keys 'min', 'max':, 'step' and 'unit' and the
+                      assigned values for that keys.
+        """
+        if self.interleave:
+            return {'min': 12.0e9, 'max': 24.0e9,
+                    'step': 4, 'unit': 'Samples/s'}
+        else:
+            return {'min': 10.0e6, 'max': 12.0e9,
+                    'step': 4, 'unit': 'Samples/s'}
 
     def pulser_on(self):
         """ Switches the pulsing device on.
@@ -484,7 +592,7 @@ class PulserDummy(Base, PulserInterface):
         """
         Waveform or sequence with name "name" gets uploaded to the Hardware.
 
-        @param str name: The name of the sequence/waveform to be transfered
+        @param str name: The name of the sequence/waveform to be transferred.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -493,7 +601,8 @@ class PulserDummy(Base, PulserInterface):
         return 0
 
     def load_asset(self, asset_name, channel=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing device.
+        """ Loads a sequence or waveform to the specified channel of the pulsing
+            device.
 
         @param str asset_name: The name of the asset to be loaded
         @param int channel: The channel for the sequence to be loaded into if
@@ -555,56 +664,234 @@ class PulserDummy(Base, PulserInterface):
 
         return self.sample_rate
 
-    def set_pp_voltage(self, channel, voltage):
-        """ Set the peak-to-peak voltage of the pulse generator hardware
-        analogue channels. Unused for purely digital hardware without logic
-        level setting capability (DTG, FPGA, etc.).
+    def get_analog_level(self, amplitude=[], offset=[]):
+        """ Retrieve the analog amplitude and offset of the provided channels.
 
-        @param int channel: The channel to be reconfigured
-        @param float voltage: The peak-to-peak amplitude the channel should be
-                              set to (in V)
+        @param list amplitude: optional, if a specific amplitude value (in Volt
+                               peak to peak, i.e. the full amplitude) of a
+                               channel is desired.
+        @param list offset: optional, if a specific high value (in Volt) of a
+                            channel is desired.
 
-        @return int: error code (0:OK, -1:error)
+        @return: ({}, {}): tuple of two dicts, with keys being the channel
+                           number and items being the values for those channels.
+                           Amplitude is always denoted in Volt-peak-to-peak and
+                           Offset in (absolute) Voltage.
+
+        If no entries provided then the levels of all channels where simply
+        returned. If no analog channels provided, return just an empty dict.
+        Example of a possible input:
+            amplitude = [1,4], offset =[1,3]
+        to obtain the amplitude of channel 1 and 4 and the offset
+            {1: -0.5, 4: 2.0} {}
+        since no high request was performed.
+
+        Note, the major difference to digital signals is that analog signals are
+        always oscillating or changing signals, otherwise you can use just
+        digital output. In contrast to digital output levels, analog output
+        levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
-        self.amplitude = voltage
-        return 0
 
-    def get_pp_voltage(self, channel):
-        """ Get the peak-to-peak voltage of the pulse generator hardware
-            analogue channels.
+        ampl = {}
+        off = {}
 
-        @param int channel: The channel to be checked
+        if (amplitude == []) and (offset == []):
 
-        @return float: The peak-to-peak amplitude the channel is set to (in V)
+            for a_ch in self.amplitude_list:
+                ampl[a_ch] = self.amplitude_list[a_ch]
 
-        Unused for purely digital hardware without logic level setting
-        capability (FPGA, etc.).
+            for a_ch in self.offset_list:
+                off[a_ch] = self.offset_list[a_ch]
+
+        else:
+            for a_ch in amplitude:
+                ampl[a_ch] = self.amplitude_list[a_ch]
+
+            for a_ch in offset:
+                off[a_ch] = self.offset_list[a_ch]
+
+        return ampl, off
+
+    def set_analog_level(self, amplitude={}, offset={}):
+        """ Set amplitude and/or offset value of the provided analog channel.
+
+        @param dict amplitude: dictionary, with key being the channel and items
+                               being the amplitude values (in Volt peak to peak,
+                               i.e. the full amplitude) for the desired channel.
+        @param dict offset: dictionary, with key being the channel and items
+                            being the offset values (in absolute volt) for the
+                            desired channel.
+
+        If nothing is passed then the command is being ignored.
+
+        Note, the major difference to digital signals is that analog signals are
+        always oscillating or changing signals, otherwise you can use just
+        digital output. In contrast to digital output levels, analog output
+        levels are defined by an amplitude (here total signal span, denoted in
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
         """
-        return self.amplitude
 
-    def set_active_channels(self, d_ch=0, a_ch=0):
+        for a_ch in amplitude:
+            self.amplitude_list[a_ch] = amplitude[a_ch]
+
+        for a_ch in offset:
+            self.offset_list[a_ch] = offset[a_ch]
+
+    def get_digital_level(self, low=[], high=[]):
+        """ Retrieve the digital low and high level of the provided channels.
+
+        @param list low: optional, if a specific low value (in Volt) of a
+                         channel is desired.
+        @param list high: optional, if a specific high value (in Volt) of a
+                          channel is desired.
+
+        @return: tuple of two dicts, with keys being the channel number and
+                 items being the values for those channels. Both low and high
+                 value of a channel is denoted in (absolute) Voltage.
+
+        If no entries provided then the levels of all channels where simply
+        returned. If no digital channels provided, return just an empty dict.
+        Example of a possible input:
+            low = [1,4]
+        to obtain the low voltage values of digital channel 1 an 4. A possible
+        answer might be
+            {1: -0.5, 4: 2.0} {}
+        since no high request was performed.
+
+        Note, the major difference to analog signals is that digital signals are
+        either ON or OFF, whereas analog channels have a varying amplitude
+        range. In contrast to analog output levels, digital output levels are
+        defined by a voltage, which corresponds to the ON status and a voltage
+        which corresponds to the OFF status (both denoted in (absolute) voltage)
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
+        """
+
+        low_val = {}
+        high_val = {}
+
+        if (low == []) and (high == []):
+
+            for d_ch in self.digital_low_list:
+                low_val[d_ch] = self.digital_low_list[d_ch]
+
+            for d_ch in self.digital_high_list:
+                high_val[d_ch] = self.digital_high_list[d_ch]
+
+        else:
+            for d_ch in low:
+                low_val[d_ch] = self.digital_low_list[d_ch]
+
+            for d_ch in high:
+                high_val[d_ch] = self.digital_high_list[d_ch]
+
+        return low_val, high_val
+
+    def set_digital_level(self, low={}, high={}):
+        """ Set low and/or high value of the provided digital channel.
+
+        @param dict low: dictionary, with key being the channel and items being
+                         the low values (in volt) for the desired channel.
+        @param dict high: dictionary, with key being the channel and items being
+                         the high values (in volt) for the desired channel.
+
+        If nothing is passed then the command is being ignored.
+
+        Note, the major difference to analog signals is that digital signals are
+        either ON or OFF, whereas analog channels have a varying amplitude
+        range. In contrast to analog output levels, digital output levels are
+        defined by a voltage, which corresponds to the ON status and a voltage
+        which corresponds to the OFF status (both denoted in (absolute) voltage)
+
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
+        """
+
+        for d_ch in low:
+            self.digital_low_list[d_ch] = low[d_ch]
+
+        for d_ch in high:
+            self.digital_high_list[d_ch] = high[d_ch]
+
+    def set_active_channels(self, a_ch={}, d_ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param int d_ch: number of active digital channels
-        @param int a_ch: number of active analogue channels
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
 
         @return int: error code (0:OK, -1:error)
+
+        Example for possible input:
+            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
+
+        The hardware itself has to handle, whether separate channel activation
+        is possible.
         """
-        self.active_channel = (a_ch, d_ch)
+        for channel in a_ch:
+            self.active_channel[0][channel] = a_ch[channel]
+
+        for channel in d_ch:
+            self.active_channel[1][channel] = d_ch[channel]
+
         return 0
 
-    def get_active_channels(self):
+    def get_active_channels(self, a_ch=[], d_ch=[]):
         """ Get the active channels of the pulse generator hardware.
 
-        @return (int, int): number of active channels (analogue, digital)
+        @param list a_ch: optional, if specific analog channels are needed to be
+                          asked without obtaining all the channels.
+        @param list d_ch: optional, if specific digital channels are needed to
+                          be asked without obtaining all the channels.
+
+        @return tuple of two dicts, where keys denoting the channel number and
+                items boolean expressions whether channel are active or not.
+                First dict contains the analog settings, second dict the digital
+                settings. If either digital or analog are not present, return
+                an empty dict.
+
+        Example for an possible input:
+            a_ch=[2, 1] d_ch=[2,1,5]
+        then the output might look like
+            {1: True, 2: False} {1: False, 2: True, 5: False}
+
+        If no parameters are passed to this method all channels will be asked
+        for their setting.
         """
+
+        active_a_ch = {}
+        active_d_ch = {}
+
+        if (a_ch == []) and (d_ch == []):
+
+            for ana_chan in self.active_channel[0]:
+                active_a_ch[ana_chan] = self.active_channel[0][ana_chan]
+
+            for digi_chan in self.active_channel[1]:
+                active_d_ch[digi_chan] = self.active_channel[1][digi_chan]
+
+        else:
+            for ana_chan in a_ch:
+                active_a_ch[ana_chan] = self.active_channel[0][ana_chan]
+
+            for digi_chan in d_ch:
+                active_d_ch[digi_chan] = self.active_channel[1][digi_chan]
 
         return self.active_channel
 
     def get_uploaded_assets_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
-        @return list: List of asset name strings
+        @return list: List of all uploaded asset name strings in the current
+                      device directory.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
@@ -613,10 +900,12 @@ class PulserDummy(Base, PulserInterface):
         return self.uploaded_assets_list
 
     def get_saved_assets_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC.
+        """ Retrieve the names of all sampled and saved files on the host PC.
 
-        @return list: List of assets name strings
+        @return list: List of all saved asset name strings in the current
+                      directory of the host PC.
         """
+
         # list of all files in the waveform directory ending with .mat or .WFMX
         file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
 
@@ -631,10 +920,11 @@ class PulserDummy(Base, PulserInterface):
                 saved_assets.append(name[0:-4])
         return saved_assets
 
-    def delete_sequence(self, seq_name):
-        """ Delete a sequence with the passed seq_name from the device memory.
+    def delete_asset(self, asset_name):
+        """ Delete an asset with the passed asset_name from the device memory.
 
-        @param str seq_name: The name of the sequence to be deleted
+        @param str asset_name: The name of the sequence to be deleted
+                               Optionally a list of file names can be passed.
 
         @return int: error code (0:OK, -1:error)
 
@@ -642,34 +932,35 @@ class PulserDummy(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        if seq_name in self.uploaded_assets_list:
-            self.uploaded_assets_list.remove(seq_name)
-            if seq_name == self.current_loaded_asset:
+        if asset_name in self.uploaded_assets_list:
+            self.uploaded_assets_list.remove(asset_name)
+            if asset_name == self.current_loaded_asset:
                 self.clear_channel()
         return 0
 
     def set_sequence_directory(self, dir_path):
-        """ Change the directory where the sequences are stored on the device.
+        """ Change the directory where the assets are stored on the device.
 
         @param string dir_path: The target directory
 
         @return int: error code (0:OK, -1:error)
 
-        Unused for digital pulse generators without sequence storage capability
+        Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
-        self.sequence_directory = dir_path
+        self.asset_directory = dir_path
         return 0
 
-    def get_sequence_directory(self):
-        """ Ask for the directory where the sequences are stored on the device.
+    def get_asset_dir_on_device(self):
+        """ Ask for the directory where the hardware conform files are stored on
+            the device.
 
-        @return string: The current sequence directory
+        @return string: The current file directory
 
-        Unused for digital pulse generators without sequence storage capability
+        Unused for digital pulse generators without changeable file structure
         (PulseBlaster, FPGA).
         """
-        return self.sequence_directory
+        return self.asset_directory
 
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
@@ -682,8 +973,7 @@ class PulserDummy(Base, PulserInterface):
         Unused for pulse generator hardware other than an AWG.
         """
 
-        # no interleave is possible
-        return self.interleave
+        self.interleave = state
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
@@ -746,3 +1036,11 @@ class PulserDummy(Base, PulserInterface):
             os.makedirs(os.path.abspath(path))
 
         return os.path.abspath(path)
+
+
+    def has_sequence_mode(self):
+        """ Asks the pulse generator whether sequence mode exists.
+
+        @return: bool, True for yes, False for no.
+        """
+        return True
