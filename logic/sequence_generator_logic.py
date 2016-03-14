@@ -309,10 +309,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
 
-        self.sample_rate = 25e9
-        self.pp_voltage = 0.5
-        self.analogue_channels = 2
-        self.digital_channels = 4
         self.current_block = None
         self.current_ensemble = None
         self.current_sequence = None
@@ -388,12 +384,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # logic to show how the cfg_param_pbe is looking like.
 
         self.cfg_param_pbe = {'function_0':    0, 'frequency1_0':  1,
-                                   'amplitude1_0':  2, 'phase1_0':      3,
-                                   'digital_0':     4, 'digital_1':     5,
-                                   'function_1':    6, 'frequency1_1':  7,
-                                   'amplitude1_1':  8, 'phase1_1':      9,
-                                   'digital_2':    10, 'digital_3':     11,
-                                   'length':       12, 'increment':     13}
+                              'amplitude1_0':  2, 'phase1_0':      3,
+                              'digital_0':     4, 'digital_1':     5,
+                              'function_1':    6, 'frequency1_1':  7,
+                              'amplitude1_1':  8, 'phase1_1':      9,
+                              'digital_2':    10, 'digital_3':     11,
+                              'length':       12, 'increment':     13}
 
         # the same idea for Pulse_Block (pb) objects:
         self.cfg_param_pb = {'pulse_block' :    0, 'length':    1}
@@ -415,13 +411,27 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
 
-        # Fixme: There should be not a hard coded channel setting, what if there is only one channel?
-        # and there should be also a general channel naming, do we start with ch1 or ch0?
-        # Anyways this makes no sense, one gets the voltage from the device and then sets it again...
+        self.sample_rate = self._pulse_generator_device.get_sample_rate()
 
-        # self.set_pp_voltage(0, self._pulse_generator_device.get_pp_voltage(0))
-        # self.set_pp_voltage(1, self._pulse_generator_device.get_pp_voltage(1))
 
+        constraints = self.get_hardware_constraints()
+
+        # at least this configuration should always be available, if other
+        # configuration are available, they can be chosen and set from the GUI.
+        channel_config = constraints['channel_config']['conf1']
+        self.analogue_channels =  channel_config.count('a_ch')
+        self.digital_channels =  channel_config.count('d_ch')
+
+        #FIXME: the pp_voltage should be at first renamed in amplitude and a
+        #       dict should be passed to the appropriated method in the device
+        #       to tell the amplitude for the specific channels, because they
+        #       are not nessesarily the same! If that is done, this should be
+        #       also included in the method get_func_config, so that each
+        #       displayed column of analog channels can have their own
+        #       amplitude.
+        #       Right now, the ampltude from the first channel will be asked and
+        #       set as the sampling amplitude.
+        self.pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
 
         config = self.getConfiguration()
 
@@ -452,52 +462,58 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
-    def pulser_on(self, d_ch=None, a_ch=None):
+    def pulser_on(self, a_ch={}, d_ch={}):
         """ Switch on the Pulse Generator and set also the active channels
 
-        @param int d_ch: optional, number of active digital channels, which
-                         should be activated.
-        @param int a_ch: optional, number of active analogue channels, which are
-                         activated.
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
 
-        @return: int, status of pulse device.
+        @return int: error code (0:OK, -1:error)
+
+        Example for possible input:
+            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
 
         If no analogue or digital parameters are passed, then the device is
         'just' switched on but the channels are not activated. For some pulse
-        devices, an activation of the pulse channels is not needed.
+        devices, an activation of the pulse channels is not needed. But
+        depending on the current configuration in the GUI, it will tell which
+        channels to activate (if even needed)
+
+        The logic does actually not know which exact channel configuration of
+        analog or digital channels are currently present! That has the GUI to
+        tell the logic by calling that method! Since the logic should be not
+        hardware dependant, that is the only way to go.
         """
-        if d_ch is None:
-            d_ch = 0
-        if a_ch is None:
-            a_ch = 0
 
-        self._pulse_generator_device.set_active_channels(d_ch, a_ch)
-        status = self._pulse_generator_device.pulser_on()
+        self.set_active_channels(a_ch, d_ch)
+        self._pulse_generator_device.pulser_on()
 
-        return status
+        return 0
 
-    def pulser_off(self, d_ch=None, a_ch=None):
+    def pulser_off(self, a_ch={}, d_ch={}):
         """ Switch off the Pulse Generator and deactivate desired channels.
 
-        @param int d_ch: optional, number of digital channels, you want to stay
-                         active after pulser is switched off
-        @param int a_ch: optional, number of analogue channels, you want to stay
-                         active after pulser is switched off
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
 
-        @return: int, status of pulse device.
+        @return int: error code (0:OK, -1:error)
 
-        If no analoque or digital parameters are passed, then the device is
-        switched off and the number of active channels are set to zero.
+        Look for example of usage in method pulser_on.
+
+        If no analoque or digital parameters are passed, then the device is just
+        switched off but the channels remain still active (if the hardware
+        supports this status).
         """
 
-        if d_ch is None:
-            d_ch = 0
-        if a_ch is None:
-            a_ch = 0
-
-        self._pulse_generator_device.set_active_channels(d_ch, a_ch)
-        status = self._pulse_generator_device.pulser_off()
-        return status
+        self.set_active_channels(a_ch, d_ch)
+        self._pulse_generator_device.pulser_off()
+        return 0
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -537,7 +553,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         func_config = self.func_config
 
         # set the max amplitude from the hardware:
-        ampl_max = const['amplitude_analog'][1]
+        # ampl_max = const['amplitude_analog'][1]
+
+        ampl_max = const['a_ch_amplitude']['max']/2.0
         if ampl_max is not None:
             for func in func_config:
                 for param in func_config[func]:
@@ -573,34 +591,70 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.sample_rate = freq_Hz
         return 0
 
-    def set_pp_voltage(self, channel, voltage):
-        """ Sets the peak-to-peak output voltage of the pulse generator device.
+    def set_active_channels(self, a_ch={}, d_ch={}):
+        """ Set the active channels for the pulse generator hardware.
 
-        Additionally this value is updated in this logic. Only of importance
-        if the device has analogue channels with adjustable
-        peak-to-peak voltage.
-        """
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
 
-        self._pulse_generator_device.set_pp_voltage(channel, voltage)
-        self.pp_voltage = voltage
-        return 0
+        @return int: error code (0:OK, -1:error)
 
-    def set_active_channels(self, digital, analogue):
-        """ Sets the number of active channels in the pulse generator device.
+        Example for possible input:
+            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
 
         Additionally the variables which hold this values are updated in the
         logic.
         """
 
-        self._pulse_generator_device.set_active_channels(digital, analogue)
-        self.analogue_channels = analogue
-        self.digital_channels = digital
+        self._pulse_generator_device.set_active_channels(a_ch, d_ch)
+        self.analogue_channels = len(list(a_ch))
+        self.digital_channels = len(list(d_ch))
         return 0
 
-    def load_asset(self, name, channel = None):
-        assets_on_device = self._pulse_generator_device.uploaded_assets_list
-        if name in assets_on_device:
-            self._pulse_generator_device.load_asset(name, channel)
+    def load_file(self, load_dict={}):
+        """ Load an already sampled PulseBlockEnsemble object to the device.
+
+        @param: dict load_dict: a dictionary with keys being one of the
+                                available channel numbers and items being the
+                                name of the already sampled
+                                Pulse_Block_Ensemble.
+
+        Example:
+            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
+            be loaded on channel 1 and 2 then it has to be passed like:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The pulse device should choose the proper file (which belongs to
+            channel 1 and 2) and load it.
+            You can e.g. also load just the file on channel two with:
+                upload_dict = {2: 'my-funny-stuff'}
+        """
+
+        self._pulse_generator_device.load_asset(load_dict)
+
+
+    def clear_pulser(self):
+        """ Delete all loaded files in the device's current memory. """
+        self._pulse_generator_device.clear_all()
+
+
+    def get_interleave(self):
+        """ Get the interleave state.
+
+        @return bool, state of the interleave, True=Interleave On, False=OFF
+        """
+        return self._pulse_generator_device.get_interleave()
+
+    def set_interleave(self,interleave_state=False):
+        """ Set the interleave state.
+
+        @param bool interleave_state: If nothing passed, interleave will be
+                                      switched off.
+        """
+        self._pulse_generator_device.set_interleave(interleave_state)
 
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -672,7 +726,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         blocks = []
         for filename in block_files:
             blocks.append(filename[:-4])
-        blocks.sort()
+        # blocks.sort()
         self.saved_pulse_blocks = blocks
         self.signal_block_list_updated.emit()
         return
@@ -733,7 +787,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ensembles = []
         for filename in ensemble_files:
             ensembles.append(filename[:-4])
-        ensembles.sort()
+        # ensembles.sort()
         self.saved_pulse_block_ensembles = ensembles
         self.signal_ensemble_list_updated.emit()
         return
@@ -1063,13 +1117,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         pass
 
     def sample_ensemble(self, ensemble_name, write_to_file = True, chunkwise = True):
-        """
+        """ General sampling of a PulseBlockEnsemble object, which serves as the
+            construction plan.
 
-        @param ensemble_name:
-        @param write_to_file:
-        @param chunkwise:
-        @return:
+        @param str ensemble_name: Name, which should correlate with the name of
+                                  on of the displayed ensembles.
+        @param bool write_to_file: Write either to RAM or to File (depends on
+                                   the available space in RAM).
+        @param bool chunkwise: Decide, whether you want to write chunkwise,
+                               which should reduce memory usage.
         """
+        #FIXME: Describe the major idea/routines of this method in docstrings.
+
+        #FIXME: This method should receive (from the GUI) and pass the
+        #       appropriated channel number, so that the chosen write_to_file
+        #       (or write_chunk_to_file) method creates the right filename,
+        #       which is either for channel 1 or channel 2.
+
         start_time = time.time()
         # get ensemble
         ensemble = self.get_ensemble(ensemble_name)
@@ -1077,6 +1141,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         number_of_samples = ensemble.length_bins
         ana_channels = ensemble.analogue_channels
         dig_channels = ensemble.digital_channels
+
+        #FIXME: the pp_voltage should be at first renamed in amplitude and a
+        #       dict should be passed to the appropriated method in the device
+        #       to tell the amplitude for the specific channels, because they
+        #       are not nessesarily the same! If that is done, this should be
+        #       also included in the method get_func_config, so that each
+        #       displayed column of analog channels can have their own
+        #       amplitude.
+        #       Right now, the ampltude from the first channel will be asked and
+        #       set as the sampling amplitude.
+        pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
         bin_offset = 0
@@ -1124,7 +1199,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, func_name in enumerate(pulse_function):
                             analogue_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
 
-                        self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, self.pp_voltage)
+                        self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, pp_voltage)
                         is_first_chunk = False
                     else:
                         for i, state in enumerate(markers_on):
@@ -1149,14 +1224,31 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # THAT IS NO INTERFACE COMMAND OF THE PULSER!!!
             is_first_chunk= False
             is_last_chunk=False
-            self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, self.pp_voltage)
+            self._pulse_generator_device.write_chunk_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk, self.sample_rate, pp_voltage)
             print('Time needed for write in whole: ', time.time()-start_time, ' sec')
             return
 
 
-    def upload_file(self, name):
-        self._pulse_generator_device.upload_asset(name)
-        pass
+    def upload_file(self, upload_dict={}):
+        """ Upload an already sampled PulseBlockEnsemble object to the device.
+
+        @param: dict upload_dict: a dictionary with keys being one of the
+                                  available channel numbers and items being the
+                                  name of the already sampled
+                                  Pulse_Block_Ensemble.
+
+        Example:
+            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
+            be uploaded on channel 1 and 2 then it has to be passed like:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The pulse device should choose the proper file (which belongs to
+            channel 1 and 2) and upload it.
+            You can also upload just the file on channel two with:
+                upload_dict = {2: 'my-funny-stuff'}
+        """
+
+        self._pulse_generator_device.upload_asset(upload_dict)
+
 
     # def _sample_ensemble(self, ensemble):
     #     """

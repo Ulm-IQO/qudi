@@ -118,6 +118,11 @@ class PulsedMeasurementLogic(GenericLogic):
         self.raw_data = np.zeros((10,20))
         self.raw_laser_pulse=False
 
+        # these parameters have to be set if specific channel activation or
+        # deactivation is needed.
+        self.active_analog = {}
+        self.active_digital = {}
+
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -149,6 +154,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_laser_plot()
         self._initialize_measuring_error_plot()
 
+        pulser_constr = self._pulse_generator_device.get_constraints()
 
 
     def deactivation(self, e):
@@ -563,9 +569,8 @@ class PulsedMeasurementLogic(GenericLogic):
     def pulse_generator_on(self):
         """Switching on the pulse generator.
         """
-        # time.sleep(0.1)
-        #FIXME: do a proper activation of the channels!!!
-        self._pulse_generator_device.set_active_channels(a_ch=2)
+
+        self._pulse_generator_device.set_active_channels(self.active_analog, self.active_digital)
         self._pulse_generator_device.pulser_on()
         return 0
 
@@ -575,7 +580,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
 
         self._pulse_generator_device.pulser_off()
-        self._pulse_generator_device.set_active_channels(a_ch=0)
+        self._pulse_generator_device.set_active_channels(self.active_analog, self.active_digital)
         # time.sleep(0.1)
         return 0
 
