@@ -448,8 +448,6 @@ class AWG5002C(Base, PulserInterface):
             with open(filepath, 'rb') as uploaded_file:
                 filename = filepath.rsplit('\\', 1)[1]
                 ftp.storbinary('STOR '+filename, uploaded_file)
-
-
         pass
 
     def load_asset(self, load_dict={}):
@@ -1065,17 +1063,16 @@ class AWG5002C(Base, PulserInterface):
         # list of only the names without the file extension
         file_names = [file.split('.')[0] for file in file_list]
         # exclude the channel specifier for multiple analogue channels and create return list
-        saved_sequences = []
+        saved_asset = []
         for name in file_names:
             if name.endswith('_Ch1'):
-                saved_sequences.append(name[0:-4])
+                saved_asset.append(name[0:-4])
             elif name.endswith('_Ch2'):
                 pass
             else:
-                saved_sequences.append(name)
+                saved_asset.append(name)
 
-
-        return saved_sequences
+        return saved_asset
 
     def delete_asset(self, asset_name):
         """ Delete a sequence with the passed seq_name from the device memory.
