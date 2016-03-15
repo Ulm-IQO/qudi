@@ -175,18 +175,30 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>upload_asset')
         return -1
 
-    def load_asset(self, asset_name, channel=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
+    def load_asset(self, load_dict={}):
+        """" Load an already hardware conform file, which was transferred to the
+            device on the with the provided name to the specified channel.
 
-        @param str asset_name: The name of the asset to be loaded
-        @param int channel: The channel for the sequence to be loaded into if
-                            not already specified in the sequence itself
+        @param: dict load_dict: a dictionary with keys being one of the
+                                available channel numbers and items being the
+                                name of the already sampled
+                                Pulse_Block_Ensemble.
 
         @return int: error code (0:OK, -1:error)
 
+        Example:
+            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
+            be loaded on channel 1 and 2 then it has to be passed like:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The pulse device should choose the proper file (which belongs to
+            channel 1 and 2) and load it.
+            You can e.g. also load just the file on channel two with:
+                upload_dict = {2: 'my-funny-stuff'}
+
         Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        (PulseBlaster, FPGA). Waveforms and single channel sequences can be
+        assigned to each or both channels. Double channel sequences must be
+        assigned to channel 1. The AWG's file system is case-sensitive.
         """
         raise InterfaceImplementationError('PulserInterface>load_asset')
         return -1
