@@ -182,7 +182,6 @@ class AWG5002C(Base, PulserInterface):
         dict. Note that there is a difference between float input (0.0) and
         integer input (0).
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
-
         """
 
         constraints = {}
@@ -541,11 +540,11 @@ class AWG5002C(Base, PulserInterface):
             return -1
 
         if message==2:
-            return (1, status_dic)
+            return 1, status_dic
         elif message ==1:
-            return (2, status_dic)
+            return 2, status_dic
         else:
-            return (message, status_dic)
+            return message, status_dic
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
@@ -1055,7 +1054,7 @@ class AWG5002C(Base, PulserInterface):
         return file_list
 
 
-    def get_saved_assets_names(self):
+    def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved sequences on the host PC.
 
         @return list: List of all saved asset name strings in the current
@@ -1181,6 +1180,7 @@ class AWG5002C(Base, PulserInterface):
         """Send a command string to the AWG.
 
         @param command: string containing the command
+
         @return int: error code (0:OK, -1:error)
         """
 
@@ -1199,6 +1199,7 @@ class AWG5002C(Base, PulserInterface):
         """ Asks the device a 'question' and receive an answer from it.
 
         @param string question: string containing the command
+
         @return string: the answer of the device to the 'question'
         """
         if not question.endswith('\n'):
