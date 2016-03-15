@@ -129,6 +129,17 @@ class BlockSettingDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
+class AnalysisSettingDialog(QtGui.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui-pulsed-main-gui-settings-analysis.ui')
+
+        # Load it
+        super(AnalysisSettingDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
 class PredefinedMethodsDialog(QtGui.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
@@ -2175,6 +2186,10 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+        self._as = AnalysisSettingDialog()
+        self._as.accepted.connect(self.update_analysis_settings)
+        self._as.rejected.connect(self.keep_former_analysis_settings)
+        self._as.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
 
         pass
 
@@ -2187,6 +2202,19 @@ class PulsedMeasurementGui(GUIBase):
 
         pass
 
+    def update_analysis_settings(self):
+        """ Apply the new settings """
+        #FIXME: Implement the behaviour
+        pass
+
+    def keep_former_analysis_settings(self):
+        """ Keep the old settings """
+        #FIXME: Implement the behaviour
+        pass
+
+    def show_analysis_settings(self):
+        """ Open the Analysis Settings Window. """
+        self._as.exec_()
 
     ###########################################################################
     ###     Methods related to the Tab 'Analysis' in the Pulsed Window:     ###
@@ -2283,6 +2311,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_signal_plot)
         self._pulsed_meas_logic.sigMeasuringErrorUpdated.connect(self.refresh_measuring_error_plot)
         self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
+
+        self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
         # sequence generator tab
 
         # Connect the CheckBoxes

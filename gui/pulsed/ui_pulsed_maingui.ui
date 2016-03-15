@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1009</width>
-    <height>850</height>
+    <height>855</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -1642,7 +1642,7 @@ sel.</string>
     <property name="title">
      <string>Se&amp;ttings</string>
     </property>
-    <addaction name="actionSettings_Sequence"/>
+    <addaction name="action_Settings_Analysis"/>
     <addaction name="action_Settings_Block_Generation"/>
     <addaction name="actionSettings_Sequence_Editor"/>
    </widget>
@@ -1676,7 +1676,7 @@ sel.</string>
    <addaction name="action_save"/>
    <addaction name="separator"/>
   </widget>
-  <action name="actionSettings_Sequence">
+  <action name="action_Settings_Analysis">
    <property name="text">
     <string>&amp;Settings: Analysis</string>
    </property>
