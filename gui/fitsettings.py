@@ -32,21 +32,20 @@ class FitSettingsWidget(QtGui.QWidget):
         """
         super().__init__()
 
-        self.form_Layout = QtGui.QFormLayout(self)  # Creation of the form Layout ( Maybe grid would be better )
-        self.custom_params_checkbox = QtGui.QCheckBox(self)
-        self.form_Layout.addRow('use custom', self.custom_params_checkbox)
-        headline = QtGui.QHBoxLayout(self)
-        lable00 = QtGui.QLabel('Value')
-        lable01 = QtGui.QLabel('Min')
-        lable02 = QtGui.QLabel('Max')
-        lable03 = QtGui.QLabel('Vary')
-        headline.addWidget(lable00)
-        headline.addWidget(lable01)
-        headline.addWidget(lable02)
-        headline.addWidget(lable03)
-        self.form_Layout.addRow('',headline)
+        self._Layout = QtGui.QGridLayout(self)  # Creation of the form Layout ( Maybe grid would be better )
+        self.custom_params_checkbox = QtGui.QCheckBox('Use custom values')
+        self._Layout.addWidget(self.custom_params_checkbox, 0, 0)
+        self.lable00 = QtGui.QLabel('Value')
+        self.lable01 = QtGui.QLabel('Min')
+        self.lable02 = QtGui.QLabel('Max')
+        self.lable03 = QtGui.QLabel('Vary')
+        self._Layout.addWidget(self.lable00, 1, 0)
+        self._Layout.addWidget(self.lable01, 1, 1)
+        self._Layout.addWidget(self.lable02, 1, 2)
+        self._Layout.addWidget(self.lable03, 1, 3)
 
         self.widgets = {}
+        n = 2
         for name in parameters:
             self.widgets[name] = widget = {}
             self.widgets[name+'min'] = widget2 = {}
@@ -73,12 +72,13 @@ class FitSettingsWidget(QtGui.QWidget):
                 spinbox2.setValue(parameters[str(name)].min)
                 spinbox2.setValue(parameters[str(name)].max)
                 checkbox.setChecked(parameters[str(name)].vary)
-            tt = QtGui.QHBoxLayout(self)
-            tt.addWidget(spinbox)
-            tt.addWidget(spinbox2)
-            tt.addWidget(spinbox3)
-            tt.addWidget(checkbox)
-            self.form_Layout.addRow(name,tt)
+            
+            self._Layout.addWidget(spinbox, n, 0)
+            self._Layout.addWidget(spinbox2, n, 1)
+            self._Layout.addWidget(spinbox3, n, 2)
+            self._Layout.addWidget(checkbox, n, 3)
+            n += 1
+
     def updateFitSettings(self, parameters):
         """ Updates the fit parameters with the new values from the settings window
         """
