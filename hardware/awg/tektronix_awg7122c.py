@@ -265,7 +265,9 @@ class AWG7122C(Base, PulserInterface):
         # determine the channel configuration:
         channel_config = OrderedDict()
         channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf2'] = ['a_ch']
+        channel_config['conf3'] = ['a_ch', 'a_ch']
+        channel_config['conf4'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
         constraints['channel_config'] = channel_config
 
         # Now you can choose, how many channel activation pattern exists. You
@@ -276,14 +278,23 @@ class AWG7122C(Base, PulserInterface):
         activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
         # Usage of channel 2 only:
         activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
-        # Usage of Interleave configuration only:
+        # Usage of Interleave configuration with digital channels:
         activation_map['map4'] = ['Interleave', 'DCH1', 'DCH2']
+        # Usage of Interleave configuration only:
+        activation_map['map5'] = ['Interleave']
+        # usage of two analog channels only:
+        activation_map['map6'] = ['ACH1', 'ACH2']
+        # Usage of one analog channel without digital channel
+        activation_map['map7'] = ['ACH1']
+        # Usage of one analog channel without digital channel
+        activation_map['map8'] = ['ACH2']
+
         constraints['activation_map'] = activation_map
 
         # this information seems to be almost redundant but it can be that no
         # channel configuration exists, where not all available channels are
         # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
+        constraints['available_ch_num'] = {'a_ch': 3, 'd_ch': 4}
 
         # number of independent channels on which you can load or upload
         # separately the created files. It does not matter how the channels
@@ -366,10 +377,19 @@ class AWG7122C(Base, PulserInterface):
         if self.current_sample_mode == self.sample_mode['wfm-file']:
             # if len(waveform.analogue_samples)> 1:
 
-            for channel_num in list(upload_dict):
-                file_name = str(upload_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
-                self._send_file(file_name)
-                # load the file in appropriated channel:
+            for channel_num in upload_dict:
+                if channel_num == 1 or channel_num == 2:
+                    file_name = str(upload_dict[channel_num]) + '_ch1.wfm'.format(int(channel_num))
+                    self._send_file(file_name)
+                    # load the file in appropriated channel:
+                elif channel_num == 3:
+                    file_name = str(upload_dict[channel_num]) + '_ch2.wfm'.format(int(channel_num))
+                    self._send_file(file_name)
+                else:
+                    self.logMsg('No analog channel with channel number "{0}" '
+                            'exists! Check the load '
+                            'routine!'.format(channel_num), msgType='error')
+
                 self.load_asset({channel_num: upload_dict[channel_num]})
 
         else:
@@ -522,9 +542,17 @@ class AWG7122C(Base, PulserInterface):
                         'that!\nCommand will be ignored.', msgType='warning')
 
         for channel_num in list(load_dict):
+            if channel_num == 1 or  channel_num == 2:
+                file_name = str(load_dict[channel_num]) + '_ch1.wfm'
+                self.tell('SOUR1:FUNC:USER "{1}/{2}"\n'.format(path, file_name))
+            elif channel_num == 3:
+                file_name = str(load_dict[channel_num]) + '_ch2.wfm'
+                self.tell('SOUR2:FUNC:USER "{1}/{2}"\n'.format(path, file_name))
 
-            file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
-            self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
+            else:
+                self.logMsg('No analog channel with channel number "{0}" '
+                            'exists! Check the load '
+                            'routine!'.format(channel_num), msgType='error')
 
         return 0
 
@@ -653,6 +681,14 @@ class AWG7122C(Base, PulserInterface):
             off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
         else:
+
+            #FIXME: include the check for interleave channel and obtain also for
+            #       that channel the proper amplitude and offset
+            #       Remember channelnumbers were defined like
+            #           Interleave = 1
+            #           ACH1       = 2
+            #           ACH2       = 3
+            #       for analog channels.
             for a_ch in amplitude:
                 if (a_ch <= constraints['available_ch_num']['a_ch']) and \
                    (a_ch >= 0):
@@ -703,6 +739,14 @@ class AWG7122C(Base, PulserInterface):
         """
 
         constraints = self.get_constraints()
+
+        #FIXME: include the check for interleave channel and obtain also for
+        #       that channel the proper amplitude and offset
+        #       Remember channelnumbers were defined like
+        #           Interleave = 1
+        #           ACH1       = 2
+        #           ACH2       = 3
+        #       for analog channels.
 
         for a_ch in amplitude:
             if (a_ch <= constraints['available_ch_num']['a_ch']) and \
@@ -993,6 +1037,11 @@ class AWG7122C(Base, PulserInterface):
                         'active. This configuration cannot be changed.',
                         msgType='status')
 
+            #FIXME: The awg 7000 series has the opportuinity to run only in
+            #       analog mode by switching off the digital channels through
+            #       changing the DAC resolution
+            #       adapt that possibility.
+
 
 
     def get_active_channels(self, a_ch=[], d_ch=[]):
@@ -1039,6 +1088,10 @@ class AWG7122C(Base, PulserInterface):
             active_d_ch[2] = True
             active_d_ch[3] = True
             active_d_ch[4] = True
+            #FIXME: The awg 7000 series has the opportuinity to run only in
+            #       analog mode by switching off the digital channels through
+            #       changing the DAC resolution. Adapt that possibility. Look
+            #       above in the comment.
 
         else:
             for ana_chan in a_ch:
@@ -1063,7 +1116,11 @@ class AWG7122C(Base, PulserInterface):
                    (digi_chan >= 0):
 
                     active_d_ch[digi_chan] = True
-
+                    #FIXME: The awg 7000 series has the opportuinity to run only in
+                    #       analog mode by switching off the digital channels through
+                    #       changing the DAC resolution. Adapt that possibility.
+                    #       Look above in the comment.
+                    
                 else:
                     self.logMsg('The device does not support that much digital '
                                 'channels! A channel number "{0}" was passed, '

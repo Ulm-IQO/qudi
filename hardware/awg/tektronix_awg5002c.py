@@ -331,7 +331,7 @@ class AWG5002C(Base, PulserInterface):
         if self.current_sample_mode == self.sample_mode['wfm-file']:
             # if len(waveform.analogue_samples)> 1:
 
-            for channel_num in list(upload_dict):
+            for channel_num in upload_dict:
                 file_name = str(upload_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
                 self._send_file(file_name)
                 # load the file in appropriated channel:
