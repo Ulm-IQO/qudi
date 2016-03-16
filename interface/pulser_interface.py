@@ -165,12 +165,26 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def upload_asset(self, name):
-        """ Waveform or sequence with name "name" gets uploaded to the Hardware.
+    def upload_asset(self, upload_dict={}):
+        """ Upload an already hardware conform file to the device on the
+            specific channel(s).
 
-        @param str name: The name of the sequence/waveform to be transferred
+        @param: dict upload_dict: a dictionary with keys being one of the
+                                  available channel numbers and items being the
+                                  name of the already hardware conform file.
 
         @return int: error code (0:OK, -1:error)
+
+        If nothing is passed, method will be skipped.
+
+        Example:
+            The created file with the generic name 'my-funny-stuff' should be
+            uploaded on channel 1 and 2:
+                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+            The hardware will handle the proper file choice, like e.g. the file
+            with the name
+                my-funny-stuff_ch1.wfm
+            will be chosen for upload on channel 1.
         """
         raise InterfaceImplementationError('PulserInterface>upload_asset')
         return -1
