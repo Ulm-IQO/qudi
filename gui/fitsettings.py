@@ -35,68 +35,66 @@ class FitSettingsWidget(QtGui.QWidget):
         self._Layout = QtGui.QGridLayout(self)  # Creation of the form Layout ( Maybe grid would be better )
         self.custom_params_checkbox = QtGui.QCheckBox('Use custom values')
         self._Layout.addWidget(self.custom_params_checkbox, 0, 0)
-        self.lable00 = QtGui.QLabel('Value')
-        self.lable01 = QtGui.QLabel('Min')
-        self.lable02 = QtGui.QLabel('Max')
-        self.lable03 = QtGui.QLabel('Vary')
-        self._Layout.addWidget(self.lable00, 1, 0)
-        self._Layout.addWidget(self.lable01, 1, 1)
-        self._Layout.addWidget(self.lable02, 1, 2)
-        self._Layout.addWidget(self.lable03, 1, 3)
+        self.valueLabel = QtGui.QLabel('Value')
+        self.minimumLabel = QtGui.QLabel('Min')
+        self.maximumLabel = QtGui.QLabel('Max')
+        self.varyLabel = QtGui.QLabel('Vary')
+        self._Layout.addWidget(self.valueLabel, 1, 1)
+        self._Layout.addWidget(self.minimumLabel, 1, 2)
+        self._Layout.addWidget(self.maximumLabel, 1, 3)
+        self._Layout.addWidget(self.varyLabel, 1, 4)
 
         self.widgets = {}
         n = 2
         for name in parameters:
-            self.widgets[name] = widget = {}
-            self.widgets[name+'min'] = widget2 = {}
-            self.widgets[name+'max'] = widget3 = {}
-            self.widgets[name+'vary'] = widget4 = {}
-            widget['spinbox'] = spinbox = QtGui.QDoubleSpinBox()
-            widget2['spinbox'] = spinbox2 = QtGui.QDoubleSpinBox()
-            widget3['spinbox'] = spinbox3 = QtGui.QDoubleSpinBox()
-            widget4['checkbox'] = checkbox = QtGui.QCheckBox()
-            spinbox.setDecimals(3)
-            spinbox.setSingleStep(0.01)
-            spinbox.setMaximum(np.inf)
-            spinbox.setMinimum(-np.inf)
-            spinbox2.setDecimals(3)
-            spinbox2.setSingleStep(0.01)
-            spinbox2.setMaximum(np.inf)
-            spinbox2.setMinimum(-np.inf)
-            spinbox3.setDecimals(3)
-            spinbox3.setSingleStep(0.01)
-            spinbox3.setMaximum(np.inf)
-            spinbox3.setMinimum(-np.inf)
+            self.widgets[name+"_label"] = parameterNameLabel = QtGui.QLabel(str(name))
+            self.widgets[name+'_value'] = valueSpinbox =  QtGui.QDoubleSpinBox()
+            self.widgets[name+'_min'] = minimumSpinbox = QtGui.QDoubleSpinBox()
+            self.widgets[name+'_max'] = maximumSpinbox = QtGui.QDoubleSpinBox()
+            self.widgets[name+'_vary'] = varyCheckbox = QtGui.QCheckBox()
+            valueSpinbox.setDecimals(3)
+            valueSpinbox.setSingleStep(0.01)
+            valueSpinbox.setMaximum(np.inf)
+            valueSpinbox.setMinimum(-np.inf)
+            minimumSpinbox.setDecimals(3)
+            minimumSpinbox.setSingleStep(0.01)
+            minimumSpinbox.setMaximum(np.inf)
+            minimumSpinbox.setMinimum(-np.inf)
+            maximumSpinbox.setDecimals(3)
+            maximumSpinbox.setSingleStep(0.01)
+            maximumSpinbox.setMaximum(np.inf)
+            maximumSpinbox.setMinimum(-np.inf)
             if not parameters[str(name)].value == None:
-                spinbox.setValue(parameters[str(name)].value)
-                spinbox2.setValue(parameters[str(name)].min)
-                spinbox2.setValue(parameters[str(name)].max)
-                checkbox.setChecked(parameters[str(name)].vary)
+                valueSpinbox.setValue(parameters[str(name)].value)
+                minimumSpinbox.setValue(parameters[str(name)].min)
+                minimumSpinbox.setValue(parameters[str(name)].max)
+                varyCheckbox.setChecked(parameters[str(name)].vary)
             
-            self._Layout.addWidget(spinbox, n, 0)
-            self._Layout.addWidget(spinbox2, n, 1)
-            self._Layout.addWidget(spinbox3, n, 2)
-            self._Layout.addWidget(checkbox, n, 3)
+            self._Layout.addWidget(parameterNameLabel, n, 0)
+            self._Layout.addWidget(valueSpinbox, n, 1)
+            self._Layout.addWidget(minimumSpinbox, n, 2)
+            self._Layout.addWidget(maximumSpinbox, n, 3)
+            self._Layout.addWidget(varyCheckbox, n, 4)
             n += 1
 
     def updateFitSettings(self, parameters):
         """ Updates the fit parameters with the new values from the settings window
         """
         for name in parameters:
-            parameters[str(name)].value = self.widgets[name]['spinbox'].value()
-            parameters[str(name)].min = self.widgets[name+'min']['spinbox'].value()
-            parameters[str(name)].max = self.widgets[name+'max']['spinbox'].value()
-            parameters[str(name)].vary = self.widgets[name+'vary']['checkbox'].checkState()
+            parameters[name].value = self.widgets[name+'_value'].value()
+            parameters[name].min = self.widgets[name+'_min'].value()
+            parameters[name].max = self.widgets[name+'_max'].value()
+            parameters[name].vary = self.widgets[name+'_vary'].checkState()
         return self.custom_params_checkbox.isChecked()
 
     def keepFitSettings(self, parameters, use_custom_parameters):
         """ Keeps the old fit settings
         """
         for name in parameters:
-            if not parameters[str(name)].value == None:
-                self.widgets[name]['spinbox'].setValue(parameters[str(name)].value)
-                self.widgets[name+'min']['spinbox'].setValue(parameters[str(name)].min)
-                self.widgets[name+'max']['spinbox'].setValue(parameters[str(name)].max)
-                self.widgets[name+'vary']['checkbox'].setChecked(parameters[str(name)].vary)
+            if not parameters[name].value == None:
+                self.widgets[name+'_value'].setValue(parameters[name].value)
+                self.widgets[name+'_min'].setValue(parameters[name].min)
+                self.widgets[name+'_max'].setValue(parameters[name].max)
+                self.widgets[name+'_vary'].setChecked(parameters[name].vary)
         self.custom_params_checkbox.setChecked(use_custom_parameters)
 
