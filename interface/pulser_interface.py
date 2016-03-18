@@ -165,26 +165,15 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>pulser_off')
         return -1
 
-    def upload_asset(self, upload_dict={}):
-        """ Upload an already hardware conform file to the device on the
-            specific channel(s).
+    def upload_asset(self, name):
+        """ Upload an already hardware conform file to the device.
+            Does NOT load it into channels.
 
-        @param: dict upload_dict: a dictionary with keys being one of the
-                                  available channel numbers and items being the
-                                  name of the already hardware conform file.
+        @param name: string, name of the asset to upload
 
         @return int: error code (0:OK, -1:error)
 
         If nothing is passed, method will be skipped.
-
-        Example:
-            The created file with the generic name 'my-funny-stuff' should be
-            uploaded on channel 1 and 2:
-                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
-            The hardware will handle the proper file choice, like e.g. the file
-            with the name
-                my-funny-stuff_ch1.wfm
-            will be chosen for upload on channel 1.
         """
         raise InterfaceImplementationError('PulserInterface>upload_asset')
         return -1
@@ -547,27 +536,30 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>has_sequence_mode')
         return -1
 
-    #FIXME: That method needs to be carefully investigated to be used also for
-    #       pulsing devices without analogue channels!
-    def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples,
-                            is_first_chunk, is_last_chunk, sample_rate,
-                            pp_voltage):
+    def write_to_file(self, name, analogue_samples,
+                            digital_samples, total_number_of_samples,
+                            is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
 
-        @param name: string representing the name of the sampled ensemble
-        @param analogue_samples_chunk: float32 numpy ndarray containing the
-                                       samples for the analogue channels.
-        @param digital_samples_chunk: bool numpy ndarray containing the samples
-                                      for the digital channels.
-        @param total_number_of_samples: The total number of samples in the entire waveform
-        @param is_first_chunk: bool indicating if the current chunk is the
+        @param name: string, represents the name of the sampled ensemble
+        @param analogue_samples: float32 numpy ndarray, contains the
+                                       samples for the analogue channels that
+                                       are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the entire waveform.
+                                        Has to be known it advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
                                first write to this file.
-        @param is_last_chunk: bool indicating if the current chunk is the last
+        @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
+
         @return: error code (0: OK, -1: error)
         """
-        raise InterfaceImplementationError('PulserInterface>write_chunk_to_file')
+        raise InterfaceImplementationError('PulserInterface>write_to_file')
         return -1

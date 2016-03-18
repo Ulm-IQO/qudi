@@ -117,6 +117,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.current_status = 0    # that means off, not running.
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
+        self.pp_voltage = 0.5
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -303,94 +304,167 @@ class PulserDummy(Base, PulserInterface):
         self.logMsg('PulserDummy: Switch off the Output.', msgType='status')
         return self.current_status
 
-    def _write_to_file(self, name, ana_samples, digi_samples, sample_rate,
-                       pp_voltage):
+    def write_to_file(self, name, analogue_samples,
+                            digital_samples, total_number_of_samples,
+                            is_first_chunk, is_last_chunk):
+        """
+        Appends a sampled chunk of a whole waveform to a file. Create the file
+        if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
+
+        @param name: string, represents the name of the sampled ensemble
+        @param analogue_samples: float32 numpy ndarray, contains the
+                                       samples for the analogue channels that
+                                       are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the entire waveform.
+                                        Has to be known it advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
+                               first write to this file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last
+                              write to this file.
+
+        @return: error code (0: OK, -1: error)
+        """
         if self.current_sample_mode == self.sample_mode['matlab']:
-            matcontent = {}
-            matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
-            matcontent[u'Waveform_Data_1'] = ana_samples[0]
-            matcontent[u'Waveform_Sampling_Rate_1'] = sample_rate
-            matcontent[u'Waveform_Amplitude_1'] = pp_voltage
+            #FIXME: chunkwise write to a .mat file not supported by the used
+            #       hdf5storage package. This package is inefficient anyway and
+            #       needs a replacement if .mat files should be supported.
 
-            if ana_samples.shape[0] == 2:
-                matcontent[u'Waveform_Name_1'] = name + '_Ch1'
-                matcontent[u'Waveform_Name_2'] = name + '_Ch2'
-                matcontent[u'Waveform_Data_2'] = ana_samples[1]
-                matcontent[u'Waveform_Sampling_Rate_2'] = sample_rate
-                matcontent[u'Waveform_Amplitude_2'] = pp_voltage
+            # check if chunkwise write is requested and issue warning if this is the case.
+            # Do not write to file then.
+            if (not is_first_chunk) and (not is_last_chunk):
+                self.logMsg('Chunkwise write for sample mode matlab not supported.'
+                            'Nothing was written to file.', msgType='error')
+                return -1
+            else:
+                matcontent = {}
+                matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
+                matcontent[u'Waveform_Data_1'] = analogue_samples[0]
+                matcontent[u'Waveform_Sampling_Rate_1'] = self.sample_rate
+                matcontent[u'Waveform_Amplitude_1'] = self.pp_voltage
 
-            if digi_samples.shape[0] >= 1:
-                matcontent[u'Waveform_M1_1'] = digi_samples[0]
-            if digi_samples.shape[0] >= 2:
-                matcontent[u'Waveform_M2_1'] = digi_samples[1]
-            if digi_samples.shape[0] >= 3:
-                matcontent[u'Waveform_M1_2'] = digi_samples[2]
-            if digi_samples.shape[0] >= 4:
-                matcontent[u'Waveform_M2_2'] = digi_samples[3]
+                if analogue_samples.shape[0] == 2:
+                    matcontent[u'Waveform_Name_1'] = name + '_Ch1'
+                    matcontent[u'Waveform_Name_2'] = name + '_Ch2'
+                    matcontent[u'Waveform_Data_2'] = analogue_samples[1]
+                    matcontent[u'Waveform_Sampling_Rate_2'] = self.sample_rate
+                    matcontent[u'Waveform_Amplitude_2'] = self.pp_voltage
 
-            # create file in current directory
-            filename = name +'.mat'
-            hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
-            # check if file already exists and overwrite it
-            if os.path.isfile(self.host_waveform_directory + filename):
-                os.remove(self.host_waveform_directory + filename)
-            os.rename(os.getcwd() + name +'.mat', self.host_waveform_directory + filename)
+                if digital_samples.shape[0] >= 1:
+                    matcontent[u'Waveform_M1_1'] = digital_samples[0]
+                if digital_samples.shape[0] >= 2:
+                    matcontent[u'Waveform_M2_1'] = digital_samples[1]
+                if digital_samples.shape[0] >= 3:
+                    matcontent[u'Waveform_M1_2'] = digital_samples[2]
+                if digital_samples.shape[0] >= 4:
+                    matcontent[u'Waveform_M2_2'] = digital_samples[3]
+
+                # create file in current directory
+                filename = name +'.mat'
+                hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
+                # check if file already exists and overwrite it
+                if os.path.isfile(os.path.join(self.host_waveform_directory, filename)):
+                    os.remove(os.path.join(self.host_waveform_directory, filename))
+                os.rename(os.getcwd() + name +'.mat', os.path.join(self.host_waveform_directory, filename))
+
         elif self.current_sample_mode == self.sample_mode['wfmx-file']:
-            # create WFMX header and save each line of text in a list. Delete the temporary .xml file afterwards.
-            header_obj = WFMX_header(sample_rate, pp_voltage, 0, digi_samples.shape[1])
-            header_obj.create_xml_file()
-            with open('header.xml','r') as header:
-                header_lines = header.readlines()
-            os.remove('header.xml')
+            # The overhead of the write process in bytes.
+            # Making this value bigger will result in a faster write process
+            # but consumes more memory
+            write_overhead_bytes = 1024*1024*256 # 256 MB
+            # The overhead of the write process in number of samples
+            write_overhead = write_overhead_bytes//4
 
-            for channel_number in range(ana_samples.shape[0]):
-                print(ana_samples.shape[0])
+            # if it is the first chunk, create the .WFMX file with header.
+            if is_first_chunk:
+                # create header
+                header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0,
+                                         int(total_number_of_samples))
+
+                header_obj.create_xml_file()
+                with open('header.xml','r') as header:
+                    header_lines = header.readlines()
+                os.remove('header.xml')
                 # create .WFMX-file for each channel.
-                filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
-                with open(filepath, 'wb') as wfmxfile:
-                    # write header
-                    for line in header_lines:
-                        wfmxfile.write(bytes(line, 'UTF-8'))
-                    # append analogue samples in binary format. One sample is 4 bytes (np.float32).
-                    # write in chunks if array is very big to avoid large temporary copys in memory
-                    print(ana_samples.shape[1]//1e6)
-                    number_of_full_chunks = int(ana_samples.shape[1]//1e6)
-                    print('number of 1e6-sample-chunks: ' + str(number_of_full_chunks))
+                for channel_number in range(analogue_samples.shape[0]):
+                    filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                    with open(filepath, 'wb') as wfmxfile:
+                        # write header
+                        for line in header_lines:
+                            wfmxfile.write(bytes(line, 'UTF-8'))
+
+            # append analogue samples to the .WFMX files of each channel. Write
+            # digital samples in temporary files.
+            for channel_number in range(analogue_samples.shape[0]):
+                # append analogue samples chunk to .WFMX file
+                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                with open(filepath, 'ab') as wfmxfile:
+                    # append analogue samples in binary format. One sample is 4
+                    # bytes (np.float32). Write in chunks if array is very big to
+                    # avoid large temporary copys in memory
+                    number_of_full_chunks = int(analogue_samples.shape[1]//write_overhead)
                     for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        wfmxfile.write(ana_samples[channel_number][start_ind:stop_ind])
+                        start_ind = i*write_overhead
+                        stop_ind = (i+1)*write_overhead
+                        wfmxfile.write(analogue_samples[channel_number][start_ind:stop_ind])
                     # write rest
-                    rest_start_ind = number_of_full_chunks*1e6
-                    print('rest size: ' + str(ana_samples.shape[1]-rest_start_ind))
-                    wfmxfile.write(ana_samples[channel_number][rest_start_ind:])
-                    # create the byte values corresponding to the marker states (\x01 for marker 1, \x02 for marker 2, \x03 for both)
-                    print('number of digital channels: ' + str(digi_samples.shape[0]))
-                    if digi_samples.shape[0] <= (2*channel_number):
+                    rest_start_ind = number_of_full_chunks*write_overhead
+                    wfmxfile.write(analogue_samples[channel_number][rest_start_ind:])
+
+                # create the byte values corresponding to the marker states
+                # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
+                # and write them into a temporary file
+                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+                with open(filepath, 'ab') as tmpfile:
+                    if digital_samples.shape[0] <= (2*channel_number):
                         # no digital channels to write for this analogue channel
                         pass
-                    elif digi_samples.shape[0] == (2*channel_number + 1):
+                    elif digital_samples.shape[0] == (2*channel_number + 1):
                         # one digital channels to write for this analogue channel
                         for i in range(number_of_full_chunks):
-                            start_ind = i*1e6
-                            stop_ind = (i+1)*1e6
-                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
-                            wfmxfile.write(digi_samples[2*channel_number][start_ind:stop_ind])
+                            start_ind = i*write_overhead
+                            stop_ind = (i+1)*write_overhead
+                            # append digital samples in binary format. One sample
+                            # is 1 byte (np.uint8).
+                            tmpfile.write(digital_samples[2*channel_number][start_ind:stop_ind])
                         # write rest of digital samples
-                        rest_start_ind = number_of_full_chunks*1e6
-                        wfmxfile.write(digi_samples[2*channel_number][rest_start_ind:])
-                    elif digi_samples.shape[0] >= (2*channel_number + 2):
+                        rest_start_ind = number_of_full_chunks*write_overhead
+                        tmpfile.write(digital_samples[2*channel_number][rest_start_ind:])
+                    elif digital_samples.shape[0] >= (2*channel_number + 2):
                         # two digital channels to write for this analogue channel
                         for i in range(number_of_full_chunks):
-                            start_ind = i*1e6
-                            stop_ind = (i+1)*1e6
-                            temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digi_samples[2*channel_number][start_ind:stop_ind])
-                            # append digital samples in binary format. One sample is 1 byte (np.uint8).
-                            wfmxfile.write(temp_markers)
+                            start_ind = i*write_overhead
+                            stop_ind = (i+1)*write_overhead
+                            temp_markers = np.add(np.left_shift(digital_samples[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digital_samples[2*channel_number][start_ind:stop_ind])
+                            # append digital samples in binary format. One sample
+                            # is 1 byte (np.uint8).
+                            tmpfile.write(temp_markers)
                         # write rest of digital samples
-                        rest_start_ind = number_of_full_chunks*1e6
-                        temp_markers = np.add(np.left_shift(digi_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digi_samples[2*channel_number][rest_start_ind:])
-                        wfmxfile.write(temp_markers)
+                        rest_start_ind = number_of_full_chunks*write_overhead
+                        temp_markers = np.add(np.left_shift(digital_samples[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digital_samples[2*channel_number][rest_start_ind:])
+                        tmpfile.write(temp_markers)
+
+            # append the digital sample tmp file to the .WFMX file and delete the
+            # .tmp files if it was the last chunk to write.
+            if is_last_chunk:
+                for channel_number in range(analogue_samples.shape[0]):
+                    tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+                    wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                    with open(wfmx_filepath, 'ab') as wfmxfile:
+                        with open(tmp_filepath, 'rb') as tmpfile:
+                            # read and write files in max. write_overhead_bytes chunks to reduce
+                            # memory usage
+                            while True:
+                                tmp_data = tmpfile.read(write_overhead_bytes)
+                                if not tmp_data:
+                                    break
+                                wfmxfile.write(tmp_data)
+                    # delete tmp file
+                    os.remove(tmp_filepath)
 
         elif self.current_sample_mode == self.sample_mode['wfm-file']:
 
@@ -407,185 +481,85 @@ class PulserDummy(Base, PulserInterface):
             # After this number a 14bit binary representation of the channel
             # and the marker are followed.
 
-            for channel_index, channel_arr in enumerate(ana_samples):
+            #FIXME: chunkwise write to a .wfm file not supported yet. Implement!
 
-                filename = name+'_ch'+str(channel_index+1) + '.wfm'
+            # check if chunkwise write is requested and issue error if this is the case.
+            # Do not write to file then.
+            if (not is_first_chunk) and (not is_last_chunk):
+                self.logMsg('Chunkwise write for sample mode wfm-file not supported.'
+                            'Nothing was written to file.', msgType='error')
+                return -1
+            else:
+                for channel_index, channel_arr in enumerate(analogue_samples):
 
-                with open(self.host_waveform_directory + filename, 'wb') as wfm_file:
+                    filename = name+'_ch'+str(channel_index+1) + '.wfm'
 
-                    num_bytes = str(len(digi_samples[channel_index*2])*5)
-                    num_digits = str(len(num_bytes))
-                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
+                    with open(os.path.join(self.host_waveform_directory, filename), 'wb') as wfm_file:
 
-                    wfm_file.write(header)
+                        num_bytes = str(len(digital_samples[channel_index*2])*5)
+                        num_digits = str(len(num_bytes))
+                        header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
 
-                    # for value_index, value in enumerate(channel_arr):
-                    #     byte_val = struct.pack('f',value)   # convert float to byte
-                    #                                         # representation
-                    #
-                    #
-                    #
-                    #     marker1 = digi_samples[channel_index*2][value_index]
-                    #     [value_index]
-                    #
-                    #     byte_marker = struct.pack('f',marker1+marker2)
-                    #
-                    #     wfm_file.write(byte_marker+byte_val)
+                        wfm_file.write(header)
 
-                    shape_for_wavetmp = np.shape(channel_arr)[0]
-                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-                    wavetmp = wavetmp.reshape((-1,5))
-                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-                    wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+                        # for value_index, value in enumerate(channel_arr):
+                        #     byte_val = struct.pack('f',value)   # convert float to byte
+                        #                                         # representation
+                        #
+                        #
+                        #
+                        #     marker1 = digi_samples[channel_index*2][value_index]
+                        #     [value_index]
+                        #
+                        #     byte_marker = struct.pack('f',marker1+marker2)
+                        #
+                        #     wfm_file.write(byte_marker+byte_val)
 
-                    # marker1 =
-                    # marker2 = digi_samples[channel_index*2+1]
+                        shape_for_wavetmp = np.shape(channel_arr)[0]
+                        wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
+                        wavetmp = wavetmp.reshape((-1,5))
+                        # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
+                        wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
 
-                    # marker = np.zeros(len(marker1),dtype='c')
+                        # marker1 =
+                        # marker2 = digi_samples[channel_index*2+1]
 
-                    #FIXME: This is a very very ugly and inefficient way of
-                    #       appending the marker array. A much nicer way
-                    #       should be implemented!!!
+                        # marker = np.zeros(len(marker1),dtype='c')
 
-                    marker = digi_samples[channel_index*2] + digi_samples[channel_index*2+1]*2
+                        #FIXME: This is a very very ugly and inefficient way of
+                        #       appending the marker array. A much nicer way
+                        #       should be implemented!!!
 
-                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-                    # for index in range(len(marker1)):
-                    #     test_val = marker1[index] + marker2[index]
-                    #     if marker1[index] and marker2[index]:
-                    #         wavetmp[index,-1] = b'\x03'
-                    #     elif marker1[index] and not marker2[index]:
-                    #         wavetmp[index,-1] = b'\x01'
-                    #     elif not marker1[index] and marker2[index]:
-                    #         wavetmp[index,-1] = b'\x02'
-                    #     else:
-                    #         wavetmp[index,-1] = b'\x00'
+                        marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
 
-                    # [marker]
+                        marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
+                        # for index in range(len(marker1)):
+                        #     test_val = marker1[index] + marker2[index]
+                        #     if marker1[index] and marker2[index]:
+                        #         wavetmp[index,-1] = b'\x03'
+                        #     elif marker1[index] and not marker2[index]:
+                        #         wavetmp[index,-1] = b'\x01'
+                        #     elif not marker1[index] and marker2[index]:
+                        #         wavetmp[index,-1] = b'\x02'
+                        #     else:
+                        #         wavetmp[index,-1] = b'\x00'
+
+                        # [marker]
 
 
 
-                    # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
-                    wavetmp[:,-1] = marker_byte
+                        # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
+                        wavetmp[:,-1] = marker_byte
 
-                    wfm_file.write(wavetmp.tobytes())
+                        wfm_file.write(wavetmp.tobytes())
 
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
-                    wfm_file.write(footer)
+                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
+                        wfm_file.write(footer)
 
         else:
             self.logMsg('Sample mode not defined for the given pulser hardware.'
                         '\nEither the mode does not exist or the sample mode is'
                         'not assigned properly. Correct that!', msgType='error')
-
-        return 0
-
-    #FIXME: Implement the below method for all possible file formats. Currently only WFMX is supported.
-    def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples,
-                            is_first_chunk, is_last_chunk, sample_rate,
-                            pp_voltage):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-
-        @param name: string representing the name of the sampled ensemble
-        @param analogue_samples_chunk: float32 numpy ndarray containing the
-                                       samples for the analogue channels.
-        @param digital_samples_chunk: bool numpy ndarray containing the samples
-                                      for the digital channels.
-        @param is_first_chunk: bool indicating if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool indicating if the current chunk is the last
-                              write to this file.
-        @return: error code (0: OK, -1: error)
-        """
-        # if it is the first chunk, create the .WFMX file with header.
-        if is_first_chunk:
-            # create header
-            header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0,
-                                     int(total_number_of_samples))
-
-            header_obj.create_xml_file()
-            with open('header.xml','r') as header:
-                header_lines = header.readlines()
-            os.remove('header.xml')
-            # create .WFMX-file for each channel.
-            for channel_number in range(analogue_samples_chunk.shape[0]):
-                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
-                with open(filepath, 'wb') as wfmxfile:
-                    # write header
-                    for line in header_lines:
-                        wfmxfile.write(bytes(line, 'UTF-8'))
-
-        # append analogue samples to the .WFMX files of each channel. Write
-        # digital samples in temporary files.
-        for channel_number in range(analogue_samples_chunk.shape[0]):
-            # append analogue samples chunk to .WFMX file
-            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
-            with open(filepath, 'ab') as wfmxfile:
-                # append analogue samples in binary format. One sample is 4
-                # bytes (np.float32). Write in chunks if array is very big to
-                # avoid large temporary copys in memory
-                number_of_full_chunks = int(analogue_samples_chunk.shape[1]//1e6)
-                for i in range(number_of_full_chunks):
-                    start_ind = i*1e6
-                    stop_ind = (i+1)*1e6
-                    wfmxfile.write(analogue_samples_chunk[channel_number][start_ind:stop_ind])
-                # write rest
-                rest_start_ind = number_of_full_chunks*1e6
-                wfmxfile.write(analogue_samples_chunk[channel_number][rest_start_ind:])
-
-            # create the byte values corresponding to the marker states
-            # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
-            # and write them into a temporary file
-            filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
-            with open(filepath, 'ab') as tmpfile:
-                if digital_samples_chunk.shape[0] <= (2*channel_number):
-                    # no digital channels to write for this analogue channel
-                    pass
-                elif digital_samples_chunk.shape[0] == (2*channel_number + 1):
-                    # one digital channels to write for this analogue channel
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
-                        tmpfile.write(digital_samples_chunk[2*channel_number][start_ind:stop_ind])
-                    # write rest of digital samples
-                    rest_start_ind = number_of_full_chunks*1e6
-                    tmpfile.write(digital_samples_chunk[2*channel_number][rest_start_ind:])
-                elif digital_samples_chunk.shape[0] >= (2*channel_number + 2):
-                    # two digital channels to write for this analogue channel
-                    for i in range(number_of_full_chunks):
-                        start_ind = i*1e6
-                        stop_ind = (i+1)*1e6
-                        temp_markers = np.add(np.left_shift(digital_samples_chunk[2*channel_number + 1][start_ind:stop_ind].astype('uint8'),1), digital_samples_chunk[2*channel_number][start_ind:stop_ind])
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
-                        tmpfile.write(temp_markers)
-                    # write rest of digital samples
-                    rest_start_ind = number_of_full_chunks*1e6
-                    temp_markers = np.add(np.left_shift(digital_samples_chunk[2*channel_number + 1][rest_start_ind:].astype('uint8'),1), digital_samples_chunk[2*channel_number][rest_start_ind:])
-                    tmpfile.write(temp_markers)
-
-        # append the digital sample tmp file to the .WFMX file and delete the
-        # .tmp files if it was the last chunk to write.
-        if is_last_chunk:
-            for channel_number in range(analogue_samples_chunk.shape[0]):
-                tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
-                wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
-                with open(wfmx_filepath, 'ab') as wfmxfile:
-                    with open(tmp_filepath, 'rb') as tmpfile:
-                        # read and write files in max. 64kB chunks to reduce
-                        # memory usage
-                        while True:
-                            tmp_data = tmpfile.read(65536)
-                            if not tmp_data:
-                                break
-                            wfmxfile.write(tmp_data)
-                # delete tmp file
-                os.remove(tmp_filepath)
         return 0
 
     def upload_asset(self, name):
