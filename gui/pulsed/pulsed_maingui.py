@@ -787,23 +787,14 @@ class PulsedMeasurementGui(GUIBase):
 
     def upload_to_device_clicked(self):
         """
-        This method is called when the user clicks on "load to channel"
+        This method is called when the user clicks on "upload to device"
         """
 
         # Get the ensemble name to be uploaded from the ComboBox
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
 
-        # Check out on which channel it should be uploaded:
-        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
-        # overwrite with the evaluated array:
-        channels = eval(channels)
-
-        upload_dict = {}
-        for ch in channels:
-            upload_dict[ch] = ensemble_name
-
         # Upload the ensemble via logic module
-        self._seq_gen_logic.upload_file(upload_dict)
+        self._seq_gen_logic.upload_file(ensemble_name)
         return
 
     def load_into_channel_clicked(self):
