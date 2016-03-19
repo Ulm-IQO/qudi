@@ -344,21 +344,23 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         if np.shape(line_path)[1] != self._line_length:
             self.set_up_line(np.shape(line_path)[1])
 
-        count_data = np.zeros(self._line_length)
+        #print('line',line_path[0,:])
         count_data = np.random.uniform(0, 2e4, self._line_length)
         z_data = line_path[2, :]
 
+        #TODO: Change the gaussian function here to the one from fitlogic and delete the local modules to calculate
+        #the gaussian functions
         if line_path[0, 0] != line_path[0, 1]:
             x_data,y_data = np.meshgrid(line_path[0, :], line_path[1, 0])
             for i in range(self._num_points):
-                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self._fit_logic.gaussian_function(np.array(z_data[0]),
+                count_data += self.twoD_gaussian_function((x_data,y_data),
+                              *(self._points[i])) * ((self.gaussian_function(np.array(z_data[0]),
                               *(self._points_z[i]))))
         else:
             x_data,y_data = np.meshgrid(line_path[0, 0], line_path[1, 0])
             for i in range(self._num_points):
-                count_data += self._fit_logic.twoD_gaussian_function((x_data,y_data),
-                              *(self._points[i])) * ((self._fit_logic.gaussian_function(z_data,
+                count_data += self.twoD_gaussian_function((x_data,y_data),
+                              *(self._points[i])) * ((self.gaussian_function(z_data,
                               *(self._points_z[i]))))
 
 
@@ -396,3 +398,90 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self.logMsg('ConfocalScannerDummy>close_scanner_clock',
                     msgType='warning')
         return 0
+
+############################################################################
+#                                                                          #
+#    the following two functions are needed to fluoreschence signal        #
+#                             of the dummy NVs                             #
+#                                                                          #
+############################################################################
+
+
+    def twoD_gaussian_function(self, x_data_tuple=None, amplitude=None,
+                               x_zero=None, y_zero=None, sigma_x=None,
+                               sigma_y=None, theta=None, offset=None):
+
+        #FIXME: x_data_tuple: dimension of arrays
+
+        """ This method provides a two dimensional gaussian function.
+
+        @param (k,M)-shaped array x_data_tuple: x and y values
+        @param float or int amplitude: Amplitude of gaussian
+        @param float or int x_zero: x value of maximum
+        @param float or int y_zero: y value of maximum
+        @param float or int sigma_x: standard deviation in x direction
+        @param float or int sigma_y: standard deviation in y direction
+        @param float or int theta: angle for eliptical gaussians
+        @param float or int offset: offset
+
+        @return callable function: returns the function
+
+        """
+        # check if parameters make sense
+        #FIXME: Check for 2D matrix
+        if not isinstance( x_data_tuple,(frozenset, list, set, tuple,
+                            np.ndarray)):
+            self.logMsg('Given range of axes is no array type.',
+                        msgType='error')
+
+        parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
+        for var in parameters:
+            if not isinstance(var,(float,int)):
+                self.logMsg('Given range of parameter is no float or int.',
+                            msgType='error')
+
+        (x, y) = x_data_tuple
+        x_zero = float(x_zero)
+        y_zero = float(y_zero)
+
+        a = (np.cos(theta)**2)/(2*sigma_x**2) \
+                                    + (np.sin(theta)**2)/(2*sigma_y**2)
+        b = -(np.sin(2*theta))/(4*sigma_x**2) \
+                                    + (np.sin(2*theta))/(4*sigma_y**2)
+        c = (np.sin(theta)**2)/(2*sigma_x**2) \
+                                    + (np.cos(theta)**2)/(2*sigma_y**2)
+        g = offset + amplitude*np.exp( - (a*((x-x_zero)**2) \
+                                + 2*b*(x-x_zero)*(y-y_zero) \
+                                + c*((y-y_zero)**2)))
+        return g.ravel()
+
+
+    def gaussian_function(self, x_data=None, amplitude=None, x_zero=None,
+                          sigma=None, offset=None):
+        """ This method provides a one dimensional gaussian function.
+
+        @param array x_data: x values
+        @param float or int amplitude: Amplitude of gaussian
+        @param float or int x_zero: x value of maximum
+        @param float or int sigma: standard deviation
+        @param float or int offset: offset
+
+        @return callable function: returns a 1D Gaussian function
+
+        """
+        # check if parameters make sense
+        if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given range of axis is no array type.',
+                        msgType='error')
+
+
+        parameters=[amplitude,x_zero,sigma,offset]
+        for var in parameters:
+            if not isinstance(var,(float,int)):
+                print('error',var)
+                self.logMsg('Given range of parameter is no float or int.',
+                            msgType='error')
+        gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
+        return gaussian
+
+
