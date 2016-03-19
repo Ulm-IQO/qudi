@@ -77,94 +77,10 @@ class FitLogic(GenericLogic):
     def deactivation(self,e):
         pass
 
-    ############################################################################
-    #                                                                          #
-    #       the following two functions are needed for the ConfocalDummy       #
-    #                                                                          #
-    ############################################################################
-
-
-    def twoD_gaussian_function(self, x_data_tuple=None, amplitude=None,
-                               x_zero=None, y_zero=None, sigma_x=None,
-                               sigma_y=None, theta=None, offset=None):
-
-        #FIXME: x_data_tuple: dimension of arrays
-
-        """ This method provides a two dimensional gaussian function.
-
-        @param (k,M)-shaped array x_data_tuple: x and y values
-        @param float or int amplitude: Amplitude of gaussian
-        @param float or int x_zero: x value of maximum
-        @param float or int y_zero: y value of maximum
-        @param float or int sigma_x: standard deviation in x direction
-        @param float or int sigma_y: standard deviation in y direction
-        @param float or int theta: angle for eliptical gaussians
-        @param float or int offset: offset
-
-        @return callable function: returns the function
-
-        """
-        # check if parameters make sense
-        #FIXME: Check for 2D matrix
-        if not isinstance( x_data_tuple,(frozenset, list, set, tuple,
-                            np.ndarray)):
-            self.logMsg('Given range of axes is no array type.',
-                        msgType='error')
-
-        parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
-        for var in parameters:
-            if not isinstance(var,(float,int)):
-                self.logMsg('Given range of parameter is no float or int.',
-                            msgType='error')
-
-        (x, y) = x_data_tuple
-        x_zero = float(x_zero)
-        y_zero = float(y_zero)
-
-        a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                    + (np.sin(theta)**2)/(2*sigma_y**2)
-        b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                    + (np.sin(2*theta))/(4*sigma_y**2)
-        c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                    + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = offset + amplitude*np.exp( - (a*((x-x_zero)**2) \
-                                + 2*b*(x-x_zero)*(y-y_zero) \
-                                + c*((y-y_zero)**2)))
-        return g.ravel()
-
-
-    def gaussian_function(self, x_data=None, amplitude=None, x_zero=None,
-                          sigma=None, offset=None):
-        """ This method provides a one dimensional gaussian function.
-
-        @param array x_data: x values
-        @param float or int amplitude: Amplitude of gaussian
-        @param float or int x_zero: x value of maximum
-        @param float or int sigma: standard deviation
-        @param float or int offset: offset
-
-        @return callable function: returns a 1D Gaussian function
-
-        """
-        # check if parameters make sense
-        if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given range of axis is no array type.',
-                        msgType='error')
-
-
-        parameters=[amplitude,x_zero,sigma,offset]
-        for var in parameters:
-            if not isinstance(var,(float,int)):
-                print('error',var)
-                self.logMsg('Given range of parameter is no float or int.',
-                            msgType='error')
-        gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
-        return gaussian
-
 
     ############################################################################
     #                                                                          #
-    #                   New methods with lmfit libraray                        #
+    #                             General methods                              #
     #                                                                          #
     ############################################################################
 
@@ -919,7 +835,8 @@ class FitLogic(GenericLogic):
 
 
     def estimate_double_lorentz(self, x_axis=None, data=None):
-        """ This method provides a lorentzian function.
+        """ This method estimates the starting values of a
+        double lorentzian function.
 
         @param array x_axis: x values
         @param array data: value of each data point corresponding to
@@ -976,7 +893,7 @@ class FitLogic(GenericLogic):
         ii=0
 
         #if the minimum is at the end set this as boarder
-        if absolute_argmin!=0:
+        if absolute_argmin != 0:
             while True:
 
                 # if no minimum can be found decrease threshold
@@ -1004,10 +921,10 @@ class FitLogic(GenericLogic):
         #search for the right end of the dip
         sigma_threshold=sigma_threshold_fraction*absolute_min
         sigma_argright=int(0)
-        ii=0
+        ii = 0
 
         #if the minimum is at the end set this as boarder
-        if absolute_argmin!=len(data)-1:
+        if absolute_argmin != len(data)-1:
             while True:
 
                 # if no minimum can be found decrease threshold
