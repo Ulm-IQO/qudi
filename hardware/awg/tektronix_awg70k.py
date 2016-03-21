@@ -358,7 +358,7 @@ class AWG70K(Base, PulserInterface):
         if is_first_chunk:
             for channel_number in range(analogue_samples.shape[0]):
                 # create header
-                header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number], 0,
+                header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number+1], 0,
                                          int(total_number_of_samples))
 
                 header_obj.create_xml_file()

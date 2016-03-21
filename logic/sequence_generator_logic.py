@@ -1018,7 +1018,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_block = pb_obj
 
 
-    def generate_pulse_block_ensemble(self, ensemble_name, ensemble_matrix,
+    def generate_pulse_block_ensemble(self, ensemble_name, ensemble_matrix, laser_channel,
                                       rotating_frame=True):
         """
         Generates from an given table ensemble_matrix a ensemble object.
@@ -1028,6 +1028,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param ensemble_matrix: structured np.array, matrix, in which the
                                 construction plan for Pulse_Block objects
                                 are displayed as rows.
+        @param laser_channel: string, the channel controlling the laser
         @param rotating_frame: bool, optional, whether the phase preservation
                                is mentained throughout the sequence.
 
@@ -1056,7 +1057,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # the repetitions of a block is used as the offset_time for the next
         # block.
         offset_tau_bin = 0
-        num_laser_pulse = 0
 
         for row_index, row in enumerate(ensemble_matrix):
 
@@ -1068,8 +1068,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             for num in range(pulse_block_reps+1):
                 tau_list.append(offset_tau_bin + block.init_length_bins + num*block.increment_bins)
 
-            num_laser_pulse =  num_laser_pulse + block.num_laser_pulses*(pulse_block_reps+1)
-
             # for the next block, add the biggest time as offset_tau_bin.
             # Otherwise the tau_list will be a mess.
             offset_tau_bin = offset_tau_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
@@ -1077,11 +1075,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
 
+        laser_channel_index = int(laser_channel[-1]) - 1
+        if 'A' in laser_channel:
+            self.logMsg('Use of analogue channels as laser trigger not implemented yet.', msgType='error')
+            laser_channel_index = 0
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
                                               block_list=pb_obj_list,
                                               tau_array=tau_list,
-                                              number_of_lasers=num_laser_pulse,
+                                              laser_channel_index=laser_channel_index,
                                               rotating_frame=rotating_frame)
         # save block
         # self.save_block(name, block)
