@@ -117,7 +117,7 @@ class PulserDummy(Base, PulserInterface):
 
         self.current_status = 0    # that means off, not running.
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
-        self.pp_voltage = 0.5
+        # self.pp_voltage = 0.5
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -381,16 +381,16 @@ class PulserDummy(Base, PulserInterface):
 
             # if it is the first chunk, create the .WFMX file with header.
             if is_first_chunk:
-                # create header
-                header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0,
-                                         int(total_number_of_samples))
-
-                header_obj.create_xml_file()
-                with open('header.xml','r') as header:
-                    header_lines = header.readlines()
-                os.remove('header.xml')
-                # create .WFMX-file for each channel.
                 for channel_number in range(analogue_samples.shape[0]):
+                    # create header
+                    header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number], 0,
+                                             int(total_number_of_samples))
+
+                    header_obj.create_xml_file()
+                    with open('header.xml','r') as header:
+                        header_lines = header.readlines()
+                    os.remove('header.xml')
+                    # create .WFMX-file for each channel.
                     filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                     with open(filepath, 'wb') as wfmxfile:
                         # write header

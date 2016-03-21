@@ -438,7 +438,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         #       amplitude.
         #       Right now, the ampltude from the first channel will be asked and
         #       set as the sampling amplitude.
-        self.pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
+        #self.pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
+
+        # lists with the pp-voltages and offsets corresponding to the analogue channels
+        self.amplitude_list, self.offset_list = self._pulse_generator_device.get_analog_level()
 
         config = self.getConfiguration()
 
@@ -468,56 +471,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
-    def pulser_on(self, a_ch={}, d_ch={}):
-        """ Switch on the Pulse Generator and set also the active channels
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+    def pulser_on(self):
+        """ Switch on the output of the Pulse Generator.
+        Does not change the active channels.
 
         @return int: error code (0:OK, -1:error)
-
-        Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
-        to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        If no analogue or digital parameters are passed, then the device is
-        'just' switched on but the channels are not activated. For some pulse
-        devices, an activation of the pulse channels is not needed. But
-        depending on the current configuration in the GUI, it will tell which
-        channels to activate (if even needed)
-
-        The logic does actually not know which exact channel configuration of
-        analog or digital channels are currently present! That has the GUI to
-        tell the logic by calling that method! Since the logic should be not
-        hardware dependant, that is the only way to go.
         """
 
-        self.set_active_channels(a_ch, d_ch)
         self._pulse_generator_device.pulser_on()
-
         return 0
 
-    def pulser_off(self, a_ch={}, d_ch={}):
-        """ Switch off the Pulse Generator and deactivate desired channels.
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+    def pulser_off(self):
+        """ Switch off the output of the Pulse Generator.
+        Does not change the active channels.
 
         @return int: error code (0:OK, -1:error)
-
-        Look for example of usage in method pulser_on.
-
-        If no analoque or digital parameters are passed, then the device is just
-        switched off but the channels remain still active (if the hardware
-        supports this status).
         """
 
-        self.set_active_channels(a_ch, d_ch)
         self._pulse_generator_device.pulser_off()
         return 0
 
@@ -617,8 +587,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         self._pulse_generator_device.set_active_channels(a_ch, d_ch)
-        self.analogue_channels = len(list(a_ch))
-        self.digital_channels = len(list(d_ch))
+        # count all channels that are set to True
+        self.analogue_channels = len([x for x in a_ch.values() if x == True])
+        self.digital_channels = len([x for x in d_ch.values() if x == True])
         return 0
 
     def get_active_channels(self):
@@ -632,8 +603,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
 
         active_channels = self._pulse_generator_device.get_active_channels()
-        self.analogue_channels = len(list(active_channels[0]))
-        self.digital_channels = len(list(active_channels[1]))
+        self.analogue_channels = len([x for x in active_channels[0].values() if x == True])
+        self.digital_channels = len([x for x in active_channels[1].values() if x == True])
         return active_channels
 
     def load_file(self, load_dict={}):
@@ -1240,7 +1211,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i] = np.full(element_length_bins, state, dtype = bool)
                         for i, func_name in enumerate(pulse_function):
-                            analogue_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+                            analogue_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
                         self._pulse_generator_device.write_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
@@ -1251,7 +1222,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype = bool)
                         for i, func_name in enumerate(pulse_function):
-                            analogue_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i]))
+                            analogue_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
                         # increment the index offset of the overall sample array for the next element
                         entry_ind += element_length_bins
 

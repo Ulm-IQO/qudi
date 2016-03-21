@@ -72,7 +72,8 @@ class AWG70K(Base, PulserInterface):
         # self.current_sample_mode = self.sample_mode['wfmx-file']
         self.sample_rate = 25e9
 
-        self.pp_voltage = 0.5
+        self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
+        self.offset_list = {1: 0, 2: 0, 3: 0, 4: 0} # for each analog channel one value, the offset voltage
 
         self.uploaded_assets_list = []
         self.current_loaded_asset = None
@@ -106,6 +107,8 @@ class AWG70K(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
+        a_ch = {1: False, 2: False}
+        d_ch = {1: False, 2: False, 3: False, 4: False}
         self.active_channel = (2, 4)
         self.interleave = False
 
@@ -258,18 +261,44 @@ class AWG70K(Base, PulserInterface):
         # keep an order in that dictionary. That is for now the easiest way to
         # determine the channel configuration:
         channel_config = OrderedDict()
-        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch']
+        channel_config['conf3'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch']
+        channel_config['conf4'] = ['a_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf5'] = ['a_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf6'] = ['a_ch', 'd_ch', 'a_ch', 'd_ch']
+        channel_config['conf7'] = ['a_ch', 'd_ch', 'a_ch']
+        channel_config['conf8'] = ['a_ch', 'a_ch', 'd_ch']
+        channel_config['conf9'] = ['a_ch', 'a_ch']
+        channel_config['conf10'] = ['a_ch', 'd_ch']
+        channel_config['conf11'] = ['a_ch']
+
         constraints['channel_config'] = channel_config
 
         # Now you can choose, how many channel activation pattern exists. You
         # can only use the names, declared in the constraint 'available_ch'!
         activation_map = OrderedDict()
-        activation_map['map1'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        activation_map['all'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        # Usage of both channels but reduced markers (higher analogue resolution)
+        activation_map['ch1_2mrk_ch2_1mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3']
+        activation_map['ch1_2mrk_ch2_0mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2']
+        activation_map['ch1_1mrk_ch2_2mrk'] = ['ACH1', 'DCH1', 'ACH2', 'DCH3', 'DCH4']
+        activation_map['ch1_0mrk_ch2_2mrk'] = ['ACH1', 'ACH2', 'DCH3', 'DCH4']
+        activation_map['ch1_1mrk_ch2_1mrk'] = ['ACH1', 'DCH1', 'ACH2', 'DCH3']
+        activation_map['ch1_0mrk_ch2_1mrk'] = ['ACH1', 'ACH2', 'DCH3']
+        activation_map['ch1_1mrk_ch2_0mrk'] = ['ACH1', 'DCH1', 'ACH2']
         # Usage of channel 1 only:
-        activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
+        activation_map['ch1_2mrk'] = ['ACH1', 'DCH1', 'DCH2']
         # Usage of channel 2 only:
-        activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
+        activation_map['ch2_2mrk'] = ['ACH2', 'DCH3', 'DCH4']
+        # Usage of only channel 1 with one marker:
+        activation_map['ch1_1mrk'] = ['ACH1', 'DCH1']
+        # Usage of only channel 2 with one marker:
+        activation_map['ch2_1mrk'] = ['ACH2', 'DCH3']
+        # Usage of only channel 1 with no marker:
+        activation_map['ch1_0mrk'] = ['ACH1']
+        # Usage of only channel 2 with no marker:
+        activation_map['ch2_0mrk'] = ['ACH2']
         constraints['activation_map'] = activation_map
 
         # this information seems to be almost redundant but it can be that no
@@ -327,16 +356,16 @@ class AWG70K(Base, PulserInterface):
 
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
-            # create header
-            header_obj = WFMX_header(self.sample_rate, self.pp_voltage, 0,
-                                     int(total_number_of_samples))
-
-            header_obj.create_xml_file()
-            with open('header.xml','r') as header:
-                header_lines = header.readlines()
-            os.remove('header.xml')
-            # create .WFMX-file for each channel.
             for channel_number in range(analogue_samples.shape[0]):
+                # create header
+                header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number], 0,
+                                         int(total_number_of_samples))
+
+                header_obj.create_xml_file()
+                with open('header.xml','r') as header:
+                    header_lines = header.readlines()
+                os.remove('header.xml')
+                # create .WFMX-file for each channel.
                 filepath = self.host_waveform_directory + name + '_Ch' + str(channel_number+1) + '.WFMX'
                 with open(filepath, 'wb') as wfmxfile:
                     # write header
@@ -635,24 +664,19 @@ class AWG70K(Base, PulserInterface):
         constraints = self.get_constraints()
 
         if (amplitude == []) and (offset == []):
-
             # since the available channels are not going to change for this
             # device you are asking directly:
             #FIXME: Implement here the proper ask routine:
-            amp[1] = 0.5
-            amp[2] = 0.5
-
-            off[1] = 0.0
-            off[2] = 0.0
+            amp = self.amplitude_list
+            off = self.offset_list
 
         else:
             for a_ch in amplitude:
                 #FIXME: Implement here the proper ask routine:
-                amp[a_ch] = 0.5
-
+                amp[a_ch] = self.amplitude_list[a_ch]
             for a_ch in offset:
                 #FIXME: Implement here the proper ask routine:
-                off[a_ch] = 0.0
+                off[a_ch] = self.offset_list[a_ch]
 
         return amp, off
 
@@ -682,11 +706,13 @@ class AWG70K(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for a_ch in amplitude:
+            self.amplitude_list[a_ch] = amplitude[a_ch]
             #FIXME: Tell the device the proper amplitude:
             # self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
             pass
 
         for a_ch in offset:
+            self.offset_list[a_ch] = offset[a_ch]
             #FIXME: Tell the device the proper offset:
             # self.tell('SOURCE{0}:VOLTAGE:OFFSET {1}'.format(a_ch, offset[a_ch]))
             pass
@@ -789,37 +815,6 @@ class AWG70K(Base, PulserInterface):
             pass
 
 
-    # DEPRECATED METHOD: SHOULD BE REMOVED AS SOON AS NOT NEEDED ANY MORE
-    # These methods are just here for compatibility reasons.
-    # ==========================================================================
-    #
-    def set_pp_voltage(self, channel, voltage):
-        """ Set the peak-to-peak voltage of the pulse generator hardware analogue channels.
-        Unused for purely digital hardware without logic level setting capability (DTG, FPGA, etc.).
-
-        @param int channel: The channel to be reconfigured
-        @param float amplitude: The peak-to-peak amplitude the channel should be set to (in V)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.pp_voltage = voltage
-        return 0
-
-    def get_pp_voltage(self, channel):
-        """ Get the peak-to-peak voltage of the pulse generator hardware analogue channels.
-
-        @param int channel: The channel to be checked
-
-        @return float: The peak-to-peak amplitude the channel is set to (in V)
-
-        Unused for purely digital hardware without logic level setting
-        capability (FPGA, etc.).
-        """
-        return self.pp_voltage
-
-    # ==========================================================================
-
-
     def set_active_channels(self, a_ch={}, d_ch={}):
         """ Set the active channels for the pulse generator hardware.
 
@@ -848,9 +843,6 @@ class AWG70K(Base, PulserInterface):
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
-
-        # FIXME: That is not a good way of setting the active channels since no
-        # deactivation method of the channels is provided.
 
         for digi_ch in d_ch:
             if digi_ch <= 2:

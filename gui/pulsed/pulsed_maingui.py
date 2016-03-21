@@ -374,6 +374,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def _update_activation_map(self, index=None):
         """ Switches the dedicated Radiobuttons for the channels on or off.
+        Also activates the chosen channels in the hardware.
 
         @param int index: optional, update the display boxes with the
                           configuration corresponding to the passed index in the
@@ -386,7 +387,6 @@ class PulsedMeasurementGui(GUIBase):
 
         pulser_const = self.get_hardware_constraints()
 
-
         available_ch =  list(pulser_const['available_ch'])
 
         if index is None:
@@ -396,7 +396,6 @@ class PulsedMeasurementGui(GUIBase):
 
         activation_map = pulser_const['activation_map'][map]
         self._bs.ch_activation_pattern_LineEdit.setText(str(activation_map))
-
         # at first disable all the channels:
 
         for channelname in available_ch:
@@ -406,6 +405,24 @@ class PulsedMeasurementGui(GUIBase):
         for channelname in activation_map:
             radiobutton_obj = self.get_radiobutton_obj(channelname)
             radiobutton_obj.setEnabled(True)
+
+        # activate channels in hardware
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        # reset all channels to False
+        for ch_name in pulser_const['available_ch'].keys():
+            if 'ACH' in ch_name:
+                a_ch[int(ch_name[-1])] = False
+            if 'DCH' in ch_name:
+                d_ch[int(ch_name[-1])] = False
+        # Set desired channels to True
+        for ch_name in activation_map:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+        self._seq_gen_logic.set_active_channels(a_ch, d_ch)
 
 
     def show_block_settings(self):
@@ -662,51 +679,43 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def pulser_on_clicked(self):
-        """ Switch on the pulser and pass the number of channels to logic.
-
-        Get from the current activation map the channels, and pass them to the
-        logic, so that they could be activated.
+        """ Switch on the pulser output.
         """
 
         # provide the logic, which buttons to switch on:
-        pulser_const = self.get_hardware_constraints()
-        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
-
-        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
-        d_ch = {}   # the various channel separetely on.
-        for ch_name in pulser_const['activation_map'][curr_map]:
-            ch_type = list(pulser_const['available_ch'][ch_name])[0]
-            if 'a_ch' == ch_type:
-                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
-            if 'd_ch' == ch_type:
-                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
-            radiobutton = self.get_radiobutton_obj(ch_name)
-            radiobutton.setChecked(True)
-
-        self._seq_gen_logic.pulser_on(a_ch, d_ch)
+        # pulser_const = self.get_hardware_constraints()
+        # curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+        #
+        # a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        # d_ch = {}   # the various channel separetely on.
+        # for ch_name in pulser_const['activation_map'][curr_map]:
+        #     ch_type = list(pulser_const['available_ch'][ch_name])[0]
+        #     if 'a_ch' == ch_type:
+        #         a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+        #     if 'd_ch' == ch_type:
+        #         d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+        #     radiobutton = self.get_radiobutton_obj(ch_name)
+        #     radiobutton.setChecked(True)
+        self._seq_gen_logic.pulser_on()
 
     def pulser_off_clicked(self):
-        """ Switch off the pulser.
-
-        Get from the current activation map the channels, and pass them to the
-        logic, so that they could be deactivated.
+        """ Switch off the pulser output.
         """
 
-        pulser_const = self.get_hardware_constraints()
-        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
-
-        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
-        d_ch = {}   # the various channel separetely on.
-        for ch_name in pulser_const['activation_map'][curr_map]:
-            ch_type = list(pulser_const['available_ch'][ch_name])[0]
-            if 'a_ch' == ch_type:
-                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
-            if 'd_ch' == ch_type:
-                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
-            radiobutton = self.get_radiobutton_obj(ch_name)
-            radiobutton.setChecked(False)
-
-        self._seq_gen_logic.pulser_off(a_ch, d_ch)
+        # pulser_const = self.get_hardware_constraints()
+        # curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+        #
+        # a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        # d_ch = {}   # the various channel separetely on.
+        # for ch_name in pulser_const['activation_map'][curr_map]:
+        #     ch_type = list(pulser_const['available_ch'][ch_name])[0]
+        #     if 'a_ch' == ch_type:
+        #         a_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+        #     if 'd_ch' == ch_type:
+        #         d_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+        #     radiobutton = self.get_radiobutton_obj(ch_name)
+        #     radiobutton.setChecked(False)
+        self._seq_gen_logic.pulser_off()
 
 
     def get_func_config(self):
@@ -752,7 +761,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.sample_freq_DSpinBox.setValue(sample_rate/1e6)
         self._seq_gen_logic.set_sample_rate(sample_rate)
-
 
     def get_sample_rate(self):
         """ Retrieve the current sample rate
