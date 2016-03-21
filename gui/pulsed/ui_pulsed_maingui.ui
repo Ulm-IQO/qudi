@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -329,6 +329,20 @@
                  </item>
                  <item row="3" column="3">
                   <widget class="QCheckBox" name="ana_param_show_ft_CheckBox">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="show_errorbars_Label">
+                   <property name="text">
+                    <string>Error bars?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QCheckBox" name="ana_param_error_bars_CheckBox">
                    <property name="text">
                     <string/>
                    </property>
