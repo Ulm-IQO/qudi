@@ -679,6 +679,7 @@ class ConfocalLogic(GenericLogic):
                     ))
 
             # scan of a single return-line
+            # This is just needed in order to return the scanner to the start of next line
             return_line_counts = self._scanning_device.scan_line(return_line)
             # updating images
             if self._zscan:
