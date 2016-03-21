@@ -109,7 +109,7 @@ class AWG70K(Base, PulserInterface):
 
         a_ch = {1: False, 2: False}
         d_ch = {1: False, 2: False, 3: False, 4: False}
-        self.active_channel = (2, 4)
+        self.active_channel = (a_ch, d_ch)
         self.interleave = False
 
         self.current_status =  0
@@ -844,33 +844,35 @@ class AWG70K(Base, PulserInterface):
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
 
-        for digi_ch in d_ch:
-            if digi_ch <= 2:
-                ch1_marker = digi_ch
-                ch2_marker = 0
-            elif digi_ch == 3:
-                ch1_marker = 2
-                ch2_marker = 1
-            else:
-                ch1_marker = 2
-                ch2_marker = 2
+        # update active channels variable
+        for channel in a_ch:
+            self.active_channel[0][channel] = a_ch[channel]
+        for channel in d_ch:
+            self.active_channel[1][channel] = d_ch[channel]
 
+        # create marker list for the 4 available markers
+        marker_on = []
+        for digi_ch in self.active_channel[1].keys():
+            marker_on.append(self.active_channel[1][digi_ch])
+
+        # count the markers per channel
+        ch1_marker = marker_on[0:2].count(True)
+        ch2_marker = marker_on[2:4].count(True)
+
+        # adjust the DAC resolution accordingly
         self.tell('SOURCE1:DAC:RESOLUTION ' + str(10-ch1_marker) + '\n')
         self.tell('SOURCE2:DAC:RESOLUTION ' + str(10-ch2_marker) + '\n')
 
-        for ana_ch in a_ch:
-            if ana_ch == 2:
-                self.tell('OUTPUT2:STATE ON\n')
-                self.tell('OUTPUT1:STATE ON\n')
-            elif ana_ch ==1:
-                self.tell('OUTPUT1:STATE ON\n')
-                self.tell('OUTPUT2:STATE OFF\n')
-            else:
-                self.tell('OUTPUT1:STATE OFF\n')
-                self.tell('OUTPUT2:STATE OFF\n')
+        # switch on channels accordingly
+        if self.active_channel[0][1]:
+            self.tell('OUTPUT1:STATE ON\n')
+        else:
+            self.tell('OUTPUT1:STATE OFF\n')
 
-            #FIXME: Adjust that, maybe don't save that even in a file:
-            # self.active_channel = (a_ch, d_ch)
+        if self.active_channel[0][2]:
+            self.tell('OUTPUT2:STATE ON\n')
+        else:
+            self.tell('OUTPUT2:STATE OFF\n')
 
         return 0
 
