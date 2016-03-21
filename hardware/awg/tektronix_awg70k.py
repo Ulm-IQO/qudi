@@ -839,8 +839,6 @@ class AWG70K(Base, PulserInterface):
         resolution of the analog channels.
         """
 
-        #FIXME: This method has to be substantially revised.
-
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
 
@@ -904,34 +902,54 @@ class AWG70K(Base, PulserInterface):
         active_a_ch = {}
         active_d_ch = {}
 
-        if (a_ch == []) and (d_ch == []):
-            #FIXME: Implement here the proper ask routine:
-            active_a_ch[1] = False
-            active_a_ch[2] = False
+        # check how many markers are active on each channel, i.e. the DAC resolution
+        ch1_markers = 10-int(self.ask('SOURCE1:DAC:RESOLUTION?\n'))
+        ch2_markers = 10-int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
 
-            # For the AWG5000 series, the resolution of the DAC for the analogue
-            # channel is fixed to 14bit. Therefore the digital channels are
-            # always active and cannot be deactivated. For other AWG devices the
-            # command
-            #   self.ask('SOURCE1:DAC:RESOLUTION?'))
-            # might be useful from which the active digital channels can be
-            # obtained.
-            #FIXME: Implement here the proper ask routine:
+        if ch1_markers == 0:
+            active_d_ch[1] = False
+            active_d_ch[2] = False
+        elif ch1_markers == 1:
+            active_d_ch[1] = True
+            active_d_ch[2] = False
+        else:
             active_d_ch[1] = True
             active_d_ch[2] = True
+
+        if ch2_markers == 0:
+            active_d_ch[3] = False
+            active_d_ch[4] = False
+        elif ch1_markers == 1:
+            active_d_ch[3] = True
+            active_d_ch[4] = False
+        else:
             active_d_ch[3] = True
             active_d_ch[4] = True
+
+        # check what analogue channels are active
+        if bool(int(self.ask('OUTPUT1:STATE?\n'))):
+            active_a_ch[1] = True
         else:
+            active_a_ch[1] = False
+
+        if bool(int(self.ask('OUTPUT2:STATE?\n'))):
+            active_a_ch[2] = True
+        else:
+            active_a_ch[2] = False
+
+        # return either all channel information of just the one asked for.
+        if (a_ch == []) and (d_ch == []):
+            return_a_ch = active_a_ch
+            return_d_ch = active_d_ch
+        else:
+            return_a_ch = {}
+            return_d_ch = {}
             for ana_chan in a_ch:
-                #FIXME: Implement here the proper ask routine:
-                # active_a_ch[ana_chan] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
-                active_a_ch[ana_chan] = False
-
+                return_a_ch[ana_chan] = active_a_ch[ana_chan]
             for digi_chan in d_ch:
-                #FIXME: Implement here the proper ask routine:
-                active_d_ch[digi_chan] = True
+                return_d_ch[digi_chan] = active_d_ch[digi_chan]
 
-        return active_a_ch, active_d_ch
+        return return_a_ch, return_d_ch
 
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.

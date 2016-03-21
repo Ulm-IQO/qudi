@@ -845,21 +845,15 @@ class PulserDummy(Base, PulserInterface):
         active_d_ch = {}
 
         if (a_ch == []) and (d_ch == []):
-
-            for ana_chan in self.active_channel[0]:
-                active_a_ch[ana_chan] = self.active_channel[0][ana_chan]
-
-            for digi_chan in self.active_channel[1]:
-                active_d_ch[digi_chan] = self.active_channel[1][digi_chan]
-
+            active_a_ch = self.active_channel[0]
+            active_d_ch = self.active_channel[1]
         else:
             for ana_chan in a_ch:
                 active_a_ch[ana_chan] = self.active_channel[0][ana_chan]
-
             for digi_chan in d_ch:
                 active_d_ch[digi_chan] = self.active_channel[1][digi_chan]
 
-        return self.active_channel
+        return active_a_ch, active_d_ch
 
     def get_uploaded_assets_names(self):
         """ Retrieve the names of all uploaded assets on the device.
