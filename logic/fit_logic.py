@@ -84,101 +84,107 @@ class FitLogic(GenericLogic):
     #                                                                          #
     ############################################################################
 
-    def substitute_parameter(self, parameters=None, update_parameters=None):
-        """ This method substitutes all parameters handed in the
-        update_parameters object in an initial set of parameters.
+        def substitute_parameter(self, parameters=None, update_parameters=None):
+            """ This method substitutes all parameters handed in the
+            update_parameters object in an initial set of parameters.
 
-        @param object parameters: lmfit.parameter.Parameters object, initial
-                                  parameters
-        @param object update_parameters: lmfit.parameter.Parameters object, new
-                                         parameters
+            @param object parameters: lmfit.parameter.Parameters object, initial
+                                      parameters
+            @param object update_parameters: lmfit.parameter.Parameters object, new
+                                             parameters
 
-        @return object parameters: lmfit.parameter.Parameters object, new object
-                                   with substituted parameters
-        """
+            @return object parameters: lmfit.parameter.Parameters object, new object
+                                       with substituted parameters
+            """
 
-        for para in update_parameters:
-            #store value because when max,min is set the value is overwritten
-            store_value=parameters[para].value
+            for para in update_parameters:
 
-            # the Parameter object changes the value, min and max when the
-            # value is called therefore the parameters have to be saved from
-            # the reseted Parameter object therefore the Parameters have to be
-            # saved also here
+                #first check if completely new parameter, which is added in the else
+                if para in parameters:
+                    #store value because when max,min is set the value is overwritten
+                    store_value=parameters[para].value
 
-            para_temp=update_parameters
-            if para_temp[para].value!=None:
-                value_new=True
-                value_value=para_temp[para].value
-            else:
-                value_new=False
+                    # the Parameter object changes the value, min and max when the
+                    # value is called therefore the parameters have to be saved from
+                    # the reseted Parameter object therefore the Parameters have to be
+                    # saved also here
 
-            para_temp=update_parameters
-            if para_temp[para].min!=None:
-                min_new=True
-                min_value=para_temp[para].min
-            else:
-                min_new=False
+                    para_temp=update_parameters
+                    if para_temp[para].value!=None:
+                        value_new=True
+                        value_value=para_temp[para].value
+                    else:
+                        value_new=False
 
-            para_temp=update_parameters
-            if para_temp[para].max!=None:
-                max_new=True
-                max_value=para_temp[para].max
-            else:
-                max_new=False
+                    para_temp=update_parameters
+                    if para_temp[para].min!=None:
+                        min_new=True
+                        min_value=para_temp[para].min
+                    else:
+                        min_new=False
 
-            # vary is set by default to True
-            parameters[para].vary=update_parameters[para].vary
+                    para_temp=update_parameters
+                    if para_temp[para].max!=None:
+                        max_new=True
+                        max_value=para_temp[para].max
+                    else:
+                        max_new=False
 
-            # if the min, max and expression and value are new overwrite
-            # them here
+                    # vary is set by default to True
+                    parameters[para].vary=update_parameters[para].vary
 
-            if min_new:
-                parameters[para].min=update_parameters[para].min
+                    # if the min, max and expression and value are new overwrite
+                    # them here
 
-            if max_new:
-                parameters[para].max=update_parameters[para].max
+                    if min_new:
+                        parameters[para].min=update_parameters[para].min
 
-            if update_parameters[para].expr!=None:
-                parameters[para].expr=update_parameters[para].expr
+                    if max_new:
+                        parameters[para].max=update_parameters[para].max
 
-            if value_new:
-                parameters[para].value=value_value
+                    if update_parameters[para].expr!=None:
+                        parameters[para].expr=update_parameters[para].expr
 
-            # if the min or max are changed they overwrite the value
-            # therefore here the values have to be reseted to the initial
-            # value also when no new value was set in the beginning
+                    if value_new:
+                        parameters[para].value=value_value
 
-            if min_new:
-                # in case the value is 0, devision by 0 has to be avoided
-                if parameters[para].value<1e-12:
-                    if abs((min_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
-                        parameters[para].value=store_value
+                    # if the min or max are changed they overwrite the value
+                    # therefore here the values have to be reseted to the initial
+                    # value also when no new value was set in the beginning
+
+                    if min_new:
+                        # in case the value is 0, devision by 0 has to be avoided
+                        if parameters[para].value<1e-12:
+                            if abs((min_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
+                                parameters[para].value=store_value
+                        else:
+                            if abs(min_value/parameters[para].value-1.)<1e-12:
+                                parameters[para].value=store_value
+                    if max_new:
+                        # in case the value is 0, devision by 0 has to be avoided
+                        if parameters[para].value<1e-12:
+                            if abs((max_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
+                                parameters[para].value=store_value
+                        else:
+                            if abs(max_value/parameters[para].value-1.)<1e-12:
+                                parameters[para].value=store_value
+
+                    # check if the suggested value or the value in parameters is
+                    # smaller/bigger than min/max values and set then the value to
+                    # min or max
+
+                    if min_new:
+                        if parameters[para].value<min_value:
+                            parameters[para].value=min_value
+
+                    if max_new:
+                        if parameters[para].value>max_value:
+                            parameters[para].value=max_value
                 else:
-                    if abs(min_value/parameters[para].value-1.)<1e-12:
-                        parameters[para].value=store_value
-            if max_new:
-                # in case the value is 0, devision by 0 has to be avoided
-                if parameters[para].value<1e-12:
-                    if abs((max_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
-                        parameters[para].value=store_value
-                else:
-                    if abs(max_value/parameters[para].value-1.)<1e-12:
-                        parameters[para].value=store_value
+                    #if parameter is new add here
+                    parameters.add(para)
 
-            # check if the suggested value or the value in parameters is
-            # smaller/bigger than min/max values and set then the value to
-            # min or max
-
-            if min_new:
-                if parameters[para].value<min_value:
-                    parameters[para].value=min_value
-
-            if max_new:
-                if parameters[para].value>max_value:
-                    parameters[para].value=max_value
-
-        return parameters
+            return parameters
 
     ############################################################################
     #                                                                          #
@@ -834,9 +840,31 @@ class FitLogic(GenericLogic):
         return model, params
 
 
+    def make_multiple_lorentzian_model(self, no_of_lor=None):
+        """ This method creates a model of lorentzian with an offset. The
+        parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
+        'c'. For function see:
+        http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
+
+        @return lmfit.model.CompositeModel model: Returns an object of the
+                                                  class CompositeModel
+        @return lmfit.parameter.Parameters params: Returns an object of the
+                                                   class Parameters with all
+                                                   parameters for the
+                                                   lorentzian model.
+        """
+
+        model=ConstantModel()
+        for ii in range(no_of_lor):
+            model+=LorentzianModel(prefix='lorentz{}_'.format(ii))
+
+        params=model.make_params()
+
+        return model, params
+
+
     def estimate_double_lorentz(self, x_axis=None, data=None):
-        """ This method estimates the starting values of a
-        double lorentzian function.
+        """ This method provides a lorentzian function.
 
         @param array x_axis: x values
         @param array data: value of each data point corresponding to
@@ -851,6 +879,8 @@ class FitLogic(GenericLogic):
         @return float lorentz1_sigma: estimated sigma of 2nd peak
         @return float offset: estimated offset
         """
+
+        make_prints = False
 
         error=0
         # check if parameters make sense
@@ -877,18 +907,19 @@ class FitLogic(GenericLogic):
         absolute_argmin=data_level.argmin()
 
         lorentz0_center=x_axis[absolute_argmin]
-        lorentz0_amplitude=data.min()-offset
+        lorentz0_amplitude=data_level.min()
 
         #TODO: make threshold,minimal_threshold and sigma_threshold value a
         # config variable
 
         #set thresholds
-        threshold=0.3*absolute_min
-        minimal_threshold=0.01
-        sigma_threshold_fraction=0.5
-        sigma_threshold=sigma_threshold_fraction*absolute_min
+        self.threshold_fraction=0.3
+        threshold=self.threshold_fraction*absolute_min
+        self.minimal_threshold=0.01
+        self.sigma_threshold_fraction=0.5
+        sigma_threshold=self.sigma_threshold_fraction*absolute_min
 
-#            search for the left end of the dip
+#       search for the left end of the dip
         sigma_argleft=int(0)
         ii=0
 
@@ -900,26 +931,35 @@ class FitLogic(GenericLogic):
                 if absolute_argmin-ii<0:
                     sigma_threshold*=0.9
                     ii=0
+                    if make_prints:
+                        print('h1')
 
                 #if the dip is alsways over threshold the end is the 0 as
                 # set before
                 if abs(sigma_threshold)<abs(threshold):
+                    if make_prints:
+                        print('h2')
                     break
 
                  #check if value was changed and search is finished
                 if sigma_argleft==0:
                     # check if if value is lower as threshold this is the
                     # searched value
+                    if make_prints:
+                        print('h3')
                     if abs(data_level[absolute_argmin-ii])<abs(sigma_threshold):
                         sigma_argleft=absolute_argmin-ii
+                        if make_prints:
+                            print('sigma_argleft',x_axis[sigma_argleft])
 
                 #if value is not zero the search was successful and finished
                 else:
+                    if make_prints:
+                        print('h5')
                     break
                 ii+=1
 
         #search for the right end of the dip
-        sigma_threshold=sigma_threshold_fraction*absolute_min
         sigma_argright=int(0)
         ii = 0
 
@@ -931,29 +971,40 @@ class FitLogic(GenericLogic):
                 if absolute_argmin+ii>len(data)-1:
                     sigma_threshold*=0.9
                     ii=0
-
+                    if make_prints:
+                        print('h6')
                 # if the dip is alsways over threshold the end is the most
                 # right index
                 if abs(sigma_threshold)<abs(threshold):
                     sigma_argright=len(data)-1
+                    if make_prints:
+                        print('h7')
                     break
 
                 #check if value was changed and search is finished
                 if sigma_argright==0:
 
+                    if make_prints:
+                        print('h8')
                     # check if if value is lower as threshold this is the
                     # searched value
                     if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold):
-                            sigma_argright=absolute_argmin+ii
+                        if make_prints:
+                            print('h9')
+                        sigma_argright=absolute_argmin+ii
 
                 #if value is not zero the search was successful and finished
                 else:
+                    if make_prints:
+                        print('sigma argright',x_axis[sigma_argright])
                     break
                 ii+=1
 
         # in this case the value is the last index and should be search set
         # as right argument
         else:
+            if make_prints:
+                print('h10')
             sigma_argright=absolute_argmin
 
 #           search for second lorentzian dip
@@ -1008,7 +1059,7 @@ class FitLogic(GenericLogic):
                     mid_index_right=sigma_argright
 
                     #if no second dip can be found set both to same value
-                    if abs(threshold/absolute_min)<abs(minimal_threshold):
+                    if abs(threshold/absolute_min)<abs(self.minimal_threshold):
                         self.logMsg('threshold to minimum ratio was too '
                                     'small to estimate two minima. So both '
                                     'are set to the same value',
@@ -1020,26 +1071,28 @@ class FitLogic(GenericLogic):
                         break
 
         #estimate sigma
-        numerical_integral=np.sum(data_level) * \
+        numerical_integral = np.sum(data_level) * \
                            (x_axis[-1] - x_axis[0]) / len(x_axis)
 
         lorentz0_sigma = abs(numerical_integral/2. /
-                             (np.pi * lorentz0_amplitude) )
+                             (np.pi * lorentz0_amplitude))
         lorentz1_sigma = abs( numerical_integral /2.
-                              / (np.pi * lorentz1_amplitude)  )
+                              / (np.pi * lorentz1_amplitude))
 
         #esstimate amplitude
         lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
         lorentz1_amplitude=-1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
 
         if lorentz1_center < lorentz0_center :
-
+            lorentz0_amplitude_temp = lorentz0_amplitude
             lorentz0_amplitude = lorentz1_amplitude
-            lorentz1_amplitude = lorentz0_amplitude
-            lorentz0_center    = lorentz1_center
-            lorentz1_center    = lorentz0_center
-            lorentz0_sigma     = lorentz1_sigma
-            lorentz1_sigma     = lorentz0_sigma
+            lorentz1_amplitude = lorentz0_amplitude_temp
+            lorentz0_center_temp = lorentz0_center
+            lorentz0_center = lorentz1_center
+            lorentz1_center = lorentz0_center_temp
+            lorentz0_sigma_temp = lorentz0_sigma
+            lorentz0_sigma = lorentz1_sigma
+            lorentz1_sigma = lorentz0_sigma_temp
 
         return error, lorentz0_amplitude,lorentz1_amplitude, \
                lorentz0_center,lorentz1_center, lorentz0_sigma, \
