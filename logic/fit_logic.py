@@ -813,13 +813,13 @@ class FitLogic(GenericLogic):
 
     ############################################################################
     #                                                                          #
-    #                          Double Lorentzian Model                         #
+    #                          Double Gaussian Model                         #
     #                                                                          #
     ############################################################################
 
-    def make_multiple_lorentzian_model(self, no_of_lor=None):
-        """ This method creates a model of lorentzian with an offset. The
-        parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
+    def make_multiple_gaussian_model(self, no_of_gauss=None):
+        """ This method creates a model of gaussian with an offset. The
+        parameters are: 'amplitude', 'center', 'sigma', 'fwhm' and offset
         'c'. For function see:
         http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
 
@@ -832,13 +832,18 @@ class FitLogic(GenericLogic):
         """
 
         model=ConstantModel()
-        for ii in range(no_of_lor):
-            model+=LorentzianModel(prefix='lorentz{}_'.format(ii))
+        for ii in range(no_of_gauss):
+            model+=GaussianModel(prefix='gaussian{}_'.format(ii))
 
         params=model.make_params()
 
         return model, params
 
+    ############################################################################
+    #                                                                          #
+    #                          Double Lorentzian Model                         #
+    #                                                                          #
+    ############################################################################
 
     def make_multiple_lorentzian_model(self, no_of_lor=None):
         """ This method creates a model of lorentzian with an offset. The
