@@ -2232,6 +2232,7 @@ class PulsedMeasurementGui(GUIBase):
         self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
+        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', 'To be adjusted')
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
@@ -2246,8 +2247,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
 
         # Configure the fourier transform of the main pulse analysis display:
-        self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
+        # ToDo: clean up properly
+        #self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        #self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
+        self._mw.pulse_analysis_ft_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
@@ -2304,16 +2307,16 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
-        self._mw.action_save.toggled.connect(self.save_clicked)
         self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
+        self._mw.action_save.toggled.connect(self.save_clicked)
+
 
         self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_signal_plot)
         self._pulsed_meas_logic.sigMeasuringErrorUpdated.connect(self.refresh_measuring_error_plot)
-        self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
 
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
-        # sequence generator tab
+
 
         # Connect the CheckBoxes
         # anaylsis tab
@@ -2321,6 +2324,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.show_tau_editor)
         self._mw.ana_param_show_ft_CheckBox.stateChanged.connect(self.show_ft_plot)
+        #FIXME: what is that doing?
         self.show_ft_plot()
 
         # Connect InputWidgets to events
@@ -2405,7 +2409,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_continue_pause.setEnabled(False)
 
 
-
+    #ToDo: I think that is not really working yet
     def continue_pause_clicked(self,isChecked):
         """ Continues and pauses the measurement. """
 
