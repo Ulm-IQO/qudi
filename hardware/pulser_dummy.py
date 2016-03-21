@@ -620,22 +620,30 @@ class PulserDummy(Base, PulserInterface):
 
         return self.current_status, status_dic
 
+    def get_sample_rate(self):
+        """ Get the sample rate of the pulse generator hardware
+
+        @return float: The current sample rate of the device (in Hz)
+
+        Do not return a saved sample rate in a class variable, but instead
+        retrieve the current sample rate directly from the device.
+        """
+
+        return self.sample_rate
+
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
 
         @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return float: the sample rate returned from the device (-1:error)
+        @return float: the sample rate returned from the device.
+
+        Note: After setting the sampling rate of the device, retrieve it again
+              for obtaining the actual set value and use that information for
+              further processing.
         """
+
         self.sample_rate = sample_rate
-        return self.sample_rate
-
-    def get_sample_rate(self):
-        """ Get the sample rate of the pulse generator hardware
-
-        @return float: The current sample rate of the device (in Hz)
-        """
-
         return self.sample_rate
 
     def get_analog_level(self, amplitude=[], offset=[]):
@@ -647,10 +655,15 @@ class PulserDummy(Base, PulserInterface):
         @param list offset: optional, if a specific high value (in Volt) of a
                             channel is desired.
 
-        @return: ({}, {}): tuple of two dicts, with keys being the channel
-                           number and items being the values for those channels.
-                           Amplitude is always denoted in Volt-peak-to-peak and
-                           Offset in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel
+                               number and items being the values for those
+                               channels. Amplitude is always denoted in
+                               Volt-peak-to-peak and Offset in (absolute)
+                               Voltage.
+
+        Note: Do not return a saved amplitude and/or offset value but instead
+              retrieve the current amplitude and/or offset directly from the
+              device.
 
         If no entries provided then the levels of all channels where simply
         returned. If no analog channels provided, return just an empty dict.
@@ -660,11 +673,15 @@ class PulserDummy(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        Note, the major difference to digital signals is that analog signals are
+        The major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+        Voltage peak to peak) and an offset (a value around which the signal
+        oscillates, denoted by an (absolute) voltage).
+
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         ampl = {}
@@ -697,16 +714,24 @@ class PulserDummy(Base, PulserInterface):
                             being the offset values (in absolute volt) for the
                             desired channel.
 
-        If nothing is passed then the command is being ignored.
+        @return (dict, dict): tuple of two dicts with the actual set values for
+                              amplitude and offset.
 
-        Note, the major difference to digital signals is that analog signals are
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the analog and/or offset of the device, retrieve
+              them again for obtaining the actual set value(s) and use that
+              information for further processing.
+
+        The major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+        Voltage peak to peak) and an offset (a value around which the signal
+        oscillates, denoted by an (absolute) voltage).
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         for a_ch in amplitude:
@@ -714,6 +739,8 @@ class PulserDummy(Base, PulserInterface):
 
         for a_ch in offset:
             self.offset_list[a_ch] = offset[a_ch]
+
+        return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
     def get_digital_level(self, low=[], high=[]):
         """ Retrieve the digital low and high level of the provided channels.
@@ -723,12 +750,17 @@ class PulserDummy(Base, PulserInterface):
         @param list high: optional, if a specific high value (in Volt) of a
                           channel is desired.
 
-        @return: tuple of two dicts, with keys being the channel number and
-                 items being the values for those channels. Both low and high
-                 value of a channel is denoted in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel
+                               number and items being the values for those
+                               channels. Both low and high value of a channel is
+                               denoted in (absolute) Voltage.
+
+        Note: Do not return a saved low and/or high value but instead retrieve
+              the current low and/or high value directly from the device.
 
         If no entries provided then the levels of all channels where simply
         returned. If no digital channels provided, return just an empty dict.
+
         Example of a possible input:
             low = [1,4]
         to obtain the low voltage values of digital channel 1 an 4. A possible
@@ -736,14 +768,14 @@ class PulserDummy(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        Note, the major difference to analog signals is that digital signals are
+        The major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         low_val = {}
@@ -774,16 +806,24 @@ class PulserDummy(Base, PulserInterface):
         @param dict high: dictionary, with key being the channel and items being
                          the high values (in volt) for the desired channel.
 
-        If nothing is passed then the command is being ignored.
+        @return (dict, dict): tuple of two dicts where first dict denotes the
+                              current low value and the second dict the high
+                              value.
 
-        Note, the major difference to analog signals is that digital signals are
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the high and/or low values of the device, retrieve
+              them again for obtaining the actual set value(s) and use that
+              information for further processing.
+
+        The major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         for d_ch in low:
@@ -792,31 +832,7 @@ class PulserDummy(Base, PulserInterface):
         for d_ch in high:
             self.digital_high_list[d_ch] = high[d_ch]
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
-        """ Set the active channels for the pulse generator hardware.
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
-
-        @return int: error code (0:OK, -1:error)
-
-        Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
-        to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
-        """
-        for channel in a_ch:
-            self.active_channel[0][channel] = a_ch[channel]
-
-        for channel in d_ch:
-            self.active_channel[1][channel] = d_ch[channel]
-
-        return 0
+        return self.get_digital_level(low=list(low), high=list(high))
 
     def get_active_channels(self, a_ch=[], d_ch=[]):
         """ Get the active channels of the pulse generator hardware.
@@ -826,11 +842,12 @@ class PulserDummy(Base, PulserInterface):
         @param list d_ch: optional, if specific digital channels are needed to
                           be asked without obtaining all the channels.
 
-        @return tuple of two dicts, where keys denoting the channel number and
-                items boolean expressions whether channel are active or not.
-                First dict contains the analog settings, second dict the digital
-                settings. If either digital or analog are not present, return
-                an empty dict.
+        @return (dict, dict): tuple of two dicts, where keys denoting the
+                              channel number and items boolean expressions
+                              whether channel are active or not. First dict
+                              contains the analog settings, second dict the
+                              digital settings. If either digital or analog are
+                              not present, return an empty dict.
 
         Example for an possible input:
             a_ch=[2, 1] d_ch=[2,1,5]
@@ -854,6 +871,39 @@ class PulserDummy(Base, PulserInterface):
                 active_d_ch[digi_chan] = self.active_channel[1][digi_chan]
 
         return active_a_ch, active_d_ch
+
+    def set_active_channels(self, a_ch={}, d_ch={}):
+        """ Set the active channels for the pulse generator hardware.
+
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
+
+        @return (dict, dict): tuple of two dicts with the actual set values for
+                active channels for analog (a_ch) and digital (d_ch) values.
+
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the active channels of the device, retrieve them
+              again for obtaining the actual set value(s) and use that
+              information for further processing.
+
+        Example for possible input:
+            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
+
+        The hardware itself has to handle, whether separate channel activation
+        is possible.
+        """
+        for channel in a_ch:
+            self.active_channel[0][channel] = a_ch[channel]
+
+        for channel in d_ch:
+            self.active_channel[1][channel] = d_ch[channel]
+
+        return self.get_active_channels(a_ch=list(a_ch), d_ch=list(d_ch))
 
     def get_uploaded_assets_names(self):
         """ Retrieve the names of all uploaded assets on the device.
@@ -930,19 +980,6 @@ class PulserDummy(Base, PulserInterface):
         """
         return self.asset_directory
 
-    def set_interleave(self, state=False):
-        """ Turns the interleave of an AWG on or off.
-
-        @param bool state: The state the interleave should be set to
-                           (True: ON, False: OFF)
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for pulse generator hardware other than an AWG.
-        """
-
-        self.interleave = state
-
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
@@ -953,6 +990,22 @@ class PulserDummy(Base, PulserInterface):
 
         return self.interleave
 
+    def set_interleave(self, state=False):
+        """ Turns the interleave of an AWG on or off.
+
+        @param bool state: The state the interleave should be set to
+                           (True: ON, False: OFF)
+
+        @return bool: actual interleave status (True: ON, False: OFF)
+
+        Note: After setting the interleave of the device, retrieve the
+              interleave again and use that information for further processing.
+
+        Unused for pulse generator hardware other than an AWG.
+        """
+
+        self.interleave = state
+        return self.get_interleave()
 
     def tell(self, command):
         """ Sends a command string to the device.
