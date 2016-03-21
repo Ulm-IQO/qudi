@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1009</width>
-    <height>855</height>
+    <height>857</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -342,7 +342,7 @@
                   </widget>
                  </item>
                  <item row="4" column="3">
-                  <widget class="QCheckBox" name="ana_param_error_bars_CheckBox">
+                  <widget class="QCheckBox" name="ana_param_errorbars_CheckBox">
                    <property name="text">
                     <string/>
                    </property>
@@ -361,16 +361,6 @@
               <layout class="QGridLayout" name="gridLayout_30">
                <item row="0" column="1">
                 <layout class="QGridLayout" name="gridLayout_29">
-                 <item row="0" column="0">
-                  <widget class="QPushButton" name="fit_param_PushButton">
-                   <property name="text">
-                    <string>Fit</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="fit_param_fit_func_ComboBox"/>
-                 </item>
                  <item row="1" column="1">
                   <widget class="QTextBrowser" name="fit_param_results_TextBrowser">
                    <property name="sizePolicy">
@@ -398,6 +388,16 @@
                     <string>Fit Resuts</string>
                    </property>
                   </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QPushButton" name="fit_param_PushButton">
+                   <property name="text">
+                    <string>Fit</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="fit_param_fit_func_ComboBox"/>
                  </item>
                 </layout>
                </item>
