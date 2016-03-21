@@ -148,22 +148,22 @@ class SamplingFunctions():
         return result_arr
 
     def _sin(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _cos(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase)
         return result_arr
 
     def _doublesin(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         phase1 = 180*np.pi * parameters['phase1']
@@ -173,9 +173,9 @@ class SamplingFunctions():
         return result_arr
 
     def _triplesin(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp3 = 2*parameters['amplitude3']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
+        amp3 = 2*parameters['amplitude3'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         freq3 = parameters['frequency3']
@@ -188,7 +188,7 @@ class SamplingFunctions():
         return result_arr
 
     def _singauss(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         length_s = time_arr[-1]-time_arr[0]
@@ -198,7 +198,7 @@ class SamplingFunctions():
         return result_arr
 
     def _cosgauss(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
         phase = 180*np.pi * parameters['phase1']
         length_s = time_arr[-1]-time_arr[0]
@@ -208,8 +208,8 @@ class SamplingFunctions():
         return result_arr
 
     def _doublesingauss(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         phase1 = 180*np.pi * parameters['phase1']
@@ -221,9 +221,9 @@ class SamplingFunctions():
         return result_arr
 
     def _triplesingauss(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
-        amp3 = 2*parameters['amplitude3']/self.pp_voltage #conversion so that the AWG actually outputs the specified voltage
+        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
+        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
+        amp3 = 2*parameters['amplitude3'] #conversion so that the AWG actually outputs the specified voltage
         freq1 = parameters['frequency1']
         freq2 = parameters['frequency2']
         freq3 = parameters['frequency3']
