@@ -13,6 +13,8 @@ from scipy.ndimage import filters
 import scipy.optimize as op
 import time
 
+import peakutils
+from peakutils.plot import plot as pplot
 #TODO:
 #Make Estimator, Fit method, comments, try smooth as estimator
 class FitLogic():        
@@ -22,17 +24,6 @@ class FitLogic():
         are implemented to process the data.
         
         """
-        
-##############################################################################
-##############################################################################
-##############################################################################
-
-    # the following two functions are needed for the ConfocalInterfaceDummy
-
-
-##############################################################################
-##############################################################################
-##############################################################################
 
 
         ############################################################################
@@ -1597,8 +1588,8 @@ class FitLogic():
  
 
         def double_lorentzian_testing(self):
-            for ii in range(10):
-                time.sleep(0.51)
+            for ii in range(1):
+#                time.sleep(0.51)
                 start=2800
                 stop=2950
                 num_points=int((stop-start)/2)
@@ -1614,9 +1605,9 @@ class FitLogic():
 #                center=np.random.random(1)*50+2805
     #            p.add('center',max=-1)
                 p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
+#                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
 #                p.add('lorentz0_center',value=2945)
-#                p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
+                p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
 #                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
                 p.add('lorentz0_sigma',value=abs(np.random.random(1)*5.+1.))
                 p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
@@ -1625,7 +1616,7 @@ class FitLogic():
                 p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
                 p.add('c',value=100.)
 
-                print(p)
+#                print(p)
 ##               von odmr dummy
 #                sigma=7.
 #                length=stop-start
@@ -1664,11 +1655,12 @@ class FitLogic():
                 
                 data_smooth, offset = self.find_offset_parameter(x,data_noisy)
                 
-                print('Offset:',offset)
-                print('Success:',result.success)
-                print(result.message)
-                print(result.lmdif_message)
-                print(result.fit_report(show_correl=False))
+#                print('Offset:',offset)
+#                print('Success:',result.success)
+#                print(result.message)
+#                print(result.lmdif_message)
+#                print(result.fit_report(show_correl=False))
+                
                 try:
     #            print(result.fit_report()
                     plt.plot(x,data_noisy,'o')
@@ -1679,6 +1671,17 @@ class FitLogic():
                     print('exception')
     ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
                 plt.show()
+                
+                print('Peaks:',p['lorentz0_center'].value,p['lorentz1_center'].value)
+                print('Estimator:',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
+                
+                data=-1*data_smooth+data_smooth.max()
+#                print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
+                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
+                print('Peakutils',x[indices])
+                pplot(x,data,indices)
+                
+                
 #                if p['lorentz0_center'].value<p['lorentz1_center'].value:
 #                    results[0,ii]=p['lorentz0_center'].value
 #                    results[1,ii]=p['lorentz1_center'].value
