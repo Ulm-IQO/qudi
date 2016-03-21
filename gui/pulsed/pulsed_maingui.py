@@ -1033,7 +1033,7 @@ class PulsedMeasurementGui(GUIBase):
                 # Calculate the length via the gaussian summation formula:
                 length_bin = int(length_bin + block_obj.init_length_bins*(reps+1) + ((reps+1)*((reps+1)+1)/2)*block_obj.increment_bins)
 
-                num_laser_pulses = num_laser_pulses + block_obj.num_laser_pulses * (reps+1)
+                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps+1)
 
 
             length_mu = (length_bin/self.get_sample_rate())*1e6 # in microns
@@ -1105,7 +1105,7 @@ class PulsedMeasurementGui(GUIBase):
             # set at first all digital channels:
             for digital_ch in range(pulse_block_element.digital_channels):
                 column = block_config_dict['digital_'+str(digital_ch)]
-                value = pulse_block_element.markers_on[digital_ch]
+                value = pulse_block_element.marker_active[digital_ch]
                 if value:
                     value=2
                 else:
@@ -1420,6 +1420,7 @@ class PulsedMeasurementGui(GUIBase):
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
         self._seq_gen_logic.generate_pulse_block_ensemble(objectname,
                                                     self.get_organizer_table(),
+                                                    self._mw.laserchannel_ComboBox.currentText(),
                                                     rotating_frame)
 
 
