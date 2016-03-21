@@ -863,7 +863,7 @@ class FitLogic():
             sigma_argleft=int(0)
             ii=0
             
-            make_prints=True
+            make_prints=False
             #if the minimum is at the end set this as boarder
             if absolute_argmin != 0:
                 while True:
@@ -947,8 +947,14 @@ class FitLogic():
                 if make_prints:
                     print('h10')
                 sigma_argright=absolute_argmin
+  
+            numerical_integral_0=np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
+                               
+            lorentz0_sigma = abs(numerical_integral_0 /
+                                 (np.pi * lorentz0_amplitude) )
     
-    #           search for second lorentzian dip
+#           ======== search for second lorentzian dip ========
             left_index=int(0)
             right_index=len(x_axis)-1
     
@@ -958,15 +964,31 @@ class FitLogic():
             # if main first dip covers the whole left side search on the right
             # side only
             if sigma_argleft==left_index:
-                lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
-                                       mid_index_right]
-                lorentz1_amplitude=data_level[mid_index_right:right_index].min()
+                if make_prints:
+                    print('h11', left_index,mid_index_left,mid_index_right,right_index)
+                #if one dip is within the second they have to be set to one
+                if sigma_argright==right_index:
+                    lorentz1_center=lorentz0_center
+                    lorentz0_amplitude/=2.           
+                    lorentz1_amplitude=lorentz0_amplitude
+                else:
+                    lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
+                                           mid_index_right]
+                    lorentz1_amplitude=data_level[mid_index_right:right_index].min()
     
             #if main first dip covers the whole right side search on the left
             # side only
             elif sigma_argright==right_index:
-                lorentz1_amplitude=data_level[left_index:mid_index_left].min()
-                lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
+                if make_prints:
+                    print('h12')
+                #if one dip is within the second they have to be set to one
+                if sigma_argleft==left_index: 
+                    lorentz1_center=lorentz0_center
+                    lorentz0_amplitude/=2.           
+                    lorentz1_amplitude=lorentz0_amplitude              
+                else:
+                    lorentz1_amplitude=data_level[left_index:mid_index_left].min()
+                    lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
     
             # search for peak left and right of the dip
             else:
@@ -979,6 +1001,8 @@ class FitLogic():
     
                     if abs(left_min) > abs(threshold) and \
                        abs(left_min) > abs(right_min):
+                        if make_prints:
+                            print('h13')
                         # there is a minimum on the left side which is higher
                         # than right side
                         lorentz1_amplitude=left_min
@@ -989,6 +1013,8 @@ class FitLogic():
                         # than on left side
                         lorentz1_amplitude=right_min
                         lorentz1_center=x_axis[right_argmin+mid_index_right]
+                        if make_prints:
+                            print('h14')
                         break
                     else:
                         # no minimum at all over threshold so lowering threshold
@@ -998,9 +1024,12 @@ class FitLogic():
                         right_index=len(x_axis)-1
                         mid_index_left=sigma_argleft
                         mid_index_right=sigma_argright
-    
+                        if make_prints:
+                            print('h15')    
                         #if no second dip can be found set both to same value
                         if abs(threshold/absolute_min)<abs(self.minimal_threshold):
+                            if make_prints:
+                                print('h16')
                             self.logMsg('threshold to minimum ratio was too '
                                         'small to estimate two minima. So both '
                                         'are set to the same value',
@@ -1011,21 +1040,19 @@ class FitLogic():
                             lorentz1_amplitude=lorentz0_amplitude/2.
                             break
     
-            #estimate sigma
-            numerical_integral=np.sum(data_level) * \
-                               (x_axis[-1] - x_axis[0]) / len(x_axis)
-    
-            lorentz0_sigma = abs(numerical_integral/2. /
-                                 (np.pi * lorentz0_amplitude) )
-            lorentz1_sigma = abs( numerical_integral /2.
+
+            numerical_integral_1=np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
+                               
+            lorentz1_sigma = abs( numerical_integral_1
                                   / (np.pi * lorentz1_amplitude)  )
-    
+
             #esstimate amplitude
-            lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
-            lorentz1_amplitude=-1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-    
+            lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
+            lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+            
+            
             if lorentz1_center < lorentz0_center :
-                print('interchanging lorentz1 and 2')
                 lorentz0_amplitude_temp = lorentz0_amplitude
                 lorentz0_amplitude = lorentz1_amplitude
                 lorentz1_amplitude = lorentz0_amplitude_temp
@@ -1035,7 +1062,8 @@ class FitLogic():
                 lorentz0_sigma_temp= lorentz0_sigma
                 lorentz0_sigma     = lorentz1_sigma
                 lorentz1_sigma     = lorentz0_sigma_temp
-    
+                
+            
             return error, lorentz0_amplitude,lorentz1_amplitude, \
                    lorentz0_center,lorentz1_center, lorentz0_sigma, \
                    lorentz1_sigma, offset
@@ -1569,7 +1597,7 @@ class FitLogic():
  
 
         def double_lorentzian_testing(self):
-            for ii in range(1):
+            for ii in range(10):
                 time.sleep(0.51)
                 start=2800
                 stop=2950
@@ -1580,20 +1608,24 @@ class FitLogic():
     #            print('Parameters of the model',mod.param_names)
                 
                 p=Parameters()
-                
-##                center=np.random.random(1)*50+2805
-#    #            p.add('center',max=-1)
-#                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-##                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-#                p.add('lorentz0_center',value=np.random.random(1)*50.0+2850)
-##                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
-#                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
-#                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
-#                p.add('lorentz1_center',value=np.random.random(1)*50.0+2850)
-#                p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
-#                p.add('c',value=100.)
 
-#               ============ Create data ==========
+                #============ Create data ==========
+                
+#                center=np.random.random(1)*50+2805
+    #            p.add('center',max=-1)
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
+#                p.add('lorentz0_center',value=2945)
+#                p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
+#                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*5.+1.))
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
+#                p.add('lorentz1_center',value=2949)
+                p.add('lorentz1_center',value=np.random.random(1)*150.0+2800)
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('c',value=100.)
+
+                print(p)
 ##               von odmr dummy
 #                sigma=7.
 #                length=stop-start
@@ -1605,12 +1637,12 @@ class FitLogic():
 #                p.add('lorentz1_center',value=2*length/3+start)
 #                p.add('lorentz1_sigma',value=sigma)
 #                p.add('c',value=80000.)                
-##                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
-##                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
-#                data_noisy=(mod.eval(x=x,params=p)
-#                                        + 4000*np.random.normal(size=x.shape))
-                data_noisy=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,1]
-                x=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,0]
+#                print(p['lorentz0_center'].value,p['lorentz1_center'].value)
+#                print('center left, right',p['lorentz0_center'].value,p['lorentz1_center'].value)
+                data_noisy=(mod.eval(x=x,params=p)
+                                        + 2*np.random.normal(size=x.shape))
+#                data_noisy=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,1]
+#                x=np.loadtxt('C:\\Data\\2016\\03\\20160321\\ODMR\\20160321-0938-11_ODMR_data.dat')[:,0]
                 para=Parameters()
 #                para.add('lorentz1_center',value=2*length/3+start)
 #                para.add('bounded',expr='abs(lorentz0_center-lorentz1_center)>10')
@@ -1639,7 +1671,7 @@ class FitLogic():
                 print(result.fit_report(show_correl=False))
                 try:
     #            print(result.fit_report()
-                    plt.plot(x,data_noisy)
+                    plt.plot(x,data_noisy,'o')
                     plt.plot(x,result.init_fit,'-y')
                     plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
                     plt.plot(x,data_smooth,'-g')

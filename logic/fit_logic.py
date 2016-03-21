@@ -880,8 +880,6 @@ class FitLogic(GenericLogic):
         @return float offset: estimated offset
         """
 
-        make_prints = False
-
         error=0
         # check if parameters make sense
         parameters=[x_axis,data]
@@ -922,7 +920,8 @@ class FitLogic(GenericLogic):
 #       search for the left end of the dip
         sigma_argleft=int(0)
         ii=0
-
+        
+        make_prints=False
         #if the minimum is at the end set this as boarder
         if absolute_argmin != 0:
             while True:
@@ -951,7 +950,7 @@ class FitLogic(GenericLogic):
                         sigma_argleft=absolute_argmin-ii
                         if make_prints:
                             print('sigma_argleft',x_axis[sigma_argleft])
-
+                        
                 #if value is not zero the search was successful and finished
                 else:
                     if make_prints:
@@ -972,7 +971,7 @@ class FitLogic(GenericLogic):
                     sigma_threshold*=0.9
                     ii=0
                     if make_prints:
-                        print('h6')
+                        print('h6')    
                 # if the dip is alsways over threshold the end is the most
                 # right index
                 if abs(sigma_threshold)<abs(threshold):
@@ -985,7 +984,7 @@ class FitLogic(GenericLogic):
                 if sigma_argright==0:
 
                     if make_prints:
-                        print('h8')
+                        print('h8')    
                     # check if if value is lower as threshold this is the
                     # searched value
                     if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold):
@@ -1006,8 +1005,14 @@ class FitLogic(GenericLogic):
             if make_prints:
                 print('h10')
             sigma_argright=absolute_argmin
+  
+        numerical_integral_0=np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                           (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
+                           
+        lorentz0_sigma = abs(numerical_integral_0 /
+                             (np.pi * lorentz0_amplitude) )
 
-#           search for second lorentzian dip
+#           ======== search for second lorentzian dip ========
         left_index=int(0)
         right_index=len(x_axis)-1
 
@@ -1017,15 +1022,31 @@ class FitLogic(GenericLogic):
         # if main first dip covers the whole left side search on the right
         # side only
         if sigma_argleft==left_index:
-            lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
-                                   mid_index_right]
-            lorentz1_amplitude=data_level[mid_index_right:right_index].min()
+            if make_prints:
+                print('h11', left_index,mid_index_left,mid_index_right,right_index)
+            #if one dip is within the second they have to be set to one
+            if sigma_argright==right_index:
+                lorentz1_center=lorentz0_center
+                lorentz0_amplitude/=2.           
+                lorentz1_amplitude=lorentz0_amplitude
+            else:
+                lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
+                                       mid_index_right]
+                lorentz1_amplitude=data_level[mid_index_right:right_index].min()
 
         #if main first dip covers the whole right side search on the left
         # side only
         elif sigma_argright==right_index:
-            lorentz1_amplitude=data_level[left_index:mid_index_left].min()
-            lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
+            if make_prints:
+                print('h12')
+            #if one dip is within the second they have to be set to one
+            if sigma_argleft==left_index: 
+                lorentz1_center=lorentz0_center
+                lorentz0_amplitude/=2.           
+                lorentz1_amplitude=lorentz0_amplitude              
+            else:
+                lorentz1_amplitude=data_level[left_index:mid_index_left].min()
+                lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
 
         # search for peak left and right of the dip
         else:
@@ -1038,6 +1059,8 @@ class FitLogic(GenericLogic):
 
                 if abs(left_min) > abs(threshold) and \
                    abs(left_min) > abs(right_min):
+                    if make_prints:
+                        print('h13')
                     # there is a minimum on the left side which is higher
                     # than right side
                     lorentz1_amplitude=left_min
@@ -1048,6 +1071,8 @@ class FitLogic(GenericLogic):
                     # than on left side
                     lorentz1_amplitude=right_min
                     lorentz1_center=x_axis[right_argmin+mid_index_right]
+                    if make_prints:
+                        print('h14')
                     break
                 else:
                     # no minimum at all over threshold so lowering threshold
@@ -1057,9 +1082,12 @@ class FitLogic(GenericLogic):
                     right_index=len(x_axis)-1
                     mid_index_left=sigma_argleft
                     mid_index_right=sigma_argright
-
+                    if make_prints:
+                        print('h15')    
                     #if no second dip can be found set both to same value
                     if abs(threshold/absolute_min)<abs(self.minimal_threshold):
+                        if make_prints:
+                            print('h16')
                         self.logMsg('threshold to minimum ratio was too '
                                     'small to estimate two minima. So both '
                                     'are set to the same value',
@@ -1070,34 +1098,34 @@ class FitLogic(GenericLogic):
                         lorentz1_amplitude=lorentz0_amplitude/2.
                         break
 
-        #estimate sigma
-        numerical_integral = np.sum(data_level) * \
-                           (x_axis[-1] - x_axis[0]) / len(x_axis)
 
-        lorentz0_sigma = abs(numerical_integral/2. /
-                             (np.pi * lorentz0_amplitude))
-        lorentz1_sigma = abs( numerical_integral /2.
-                              / (np.pi * lorentz1_amplitude))
+        numerical_integral_1=np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                           (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
+                           
+        lorentz1_sigma = abs( numerical_integral_1
+                              / (np.pi * lorentz1_amplitude)  )
 
         #esstimate amplitude
-        lorentz0_amplitude=-1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
-        lorentz1_amplitude=-1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-
+        lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
+        lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+        
+        
         if lorentz1_center < lorentz0_center :
             lorentz0_amplitude_temp = lorentz0_amplitude
             lorentz0_amplitude = lorentz1_amplitude
             lorentz1_amplitude = lorentz0_amplitude_temp
-            lorentz0_center_temp = lorentz0_center
-            lorentz0_center = lorentz1_center
-            lorentz1_center = lorentz0_center_temp
-            lorentz0_sigma_temp = lorentz0_sigma
-            lorentz0_sigma = lorentz1_sigma
-            lorentz1_sigma = lorentz0_sigma_temp
-
+            lorentz0_center_temp    = lorentz0_center
+            lorentz0_center    = lorentz1_center
+            lorentz1_center    = lorentz0_center_temp
+            lorentz0_sigma_temp= lorentz0_sigma
+            lorentz0_sigma     = lorentz1_sigma
+            lorentz1_sigma     = lorentz0_sigma_temp
+            
+        
         return error, lorentz0_amplitude,lorentz1_amplitude, \
                lorentz0_center,lorentz1_center, lorentz0_sigma, \
                lorentz1_sigma, offset
-
+    
     def make_double_lorentzian_fit(self, axis=None, data=None,
                                    add_parameters=None):
         """ This method performes a 1D lorentzian fit on the provided data.
