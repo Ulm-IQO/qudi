@@ -12,6 +12,7 @@ from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
 import scipy.optimize as op
 import time
+import random
 
 import peakutils
 from peakutils.plot import plot as pplot
@@ -24,82 +25,82 @@ class FitLogic():
         are implemented to process the data.
         
         """
-
-
-        ############################################################################
-        #                                                                          #
-        #                             General methods                              #
-        #                                                                          #
-        ############################################################################
     
+    
+    ############################################################################
+    #                                                                          #
+    #                             General methods                              #
+    #                                                                          #
+    ############################################################################
+
         def substitute_parameter(self, parameters=None, update_parameters=None):
             """ This method substitutes all parameters handed in the
             update_parameters object in an initial set of parameters.
-    
+
             @param object parameters: lmfit.parameter.Parameters object, initial
                                       parameters
             @param object update_parameters: lmfit.parameter.Parameters object, new
                                              parameters
-    
+
             @return object parameters: lmfit.parameter.Parameters object, new object
                                        with substituted parameters
             """
-    
+
             for para in update_parameters:
-                
+
                 #first check if completely new parameter, which is added in the else
                 if para in parameters:
                     #store value because when max,min is set the value is overwritten
                     store_value=parameters[para].value
-        
+
                     # the Parameter object changes the value, min and max when the
                     # value is called therefore the parameters have to be saved from
                     # the reseted Parameter object therefore the Parameters have to be
                     # saved also here
-        
+
                     para_temp=update_parameters
                     if para_temp[para].value!=None:
                         value_new=True
                         value_value=para_temp[para].value
                     else:
                         value_new=False
-        
+
                     para_temp=update_parameters
                     if para_temp[para].min!=None:
                         min_new=True
                         min_value=para_temp[para].min
                     else:
                         min_new=False
-        
+
                     para_temp=update_parameters
                     if para_temp[para].max!=None:
                         max_new=True
                         max_value=para_temp[para].max
                     else:
                         max_new=False
-        
+
                     # vary is set by default to True
                     parameters[para].vary=update_parameters[para].vary
-        
+
                     # if the min, max and expression and value are new overwrite
                     # them here
-        
+
                     if min_new:
                         parameters[para].min=update_parameters[para].min
-        
+
                     if max_new:
                         parameters[para].max=update_parameters[para].max
-        
+
                     if update_parameters[para].expr!=None:
                         parameters[para].expr=update_parameters[para].expr
-        
+
                     if value_new:
                         parameters[para].value=value_value
-        
+
                     # if the min or max are changed they overwrite the value
                     # therefore here the values have to be reseted to the initial
                     # value also when no new value was set in the beginning
-        
+
                     if min_new:
                         # in case the value is 0, devision by 0 has to be avoided
                         if parameters[para].value<1e-12:
@@ -116,24 +117,24 @@ class FitLogic():
                         else:
                             if abs(max_value/parameters[para].value-1.)<1e-12:
                                 parameters[para].value=store_value
-        
+
                     # check if the suggested value or the value in parameters is
                     # smaller/bigger than min/max values and set then the value to
                     # min or max
-        
+
                     if min_new:
                         if parameters[para].value<min_value:
                             parameters[para].value=min_value
-        
+
                     if max_new:
                         if parameters[para].value>max_value:
                             parameters[para].value=max_value
                 else:
                     #if parameter is new add here
                     parameters.add(para)
-    
+
             return parameters
-    
+
         ############################################################################
         #                                                                          #
         #                          1D gaussian model                               #
@@ -444,6 +445,149 @@ class FitLogic():
                     error=-1
     
             return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+
+        ############################################################################
+        #                                                                          #
+        #                          Double Gaussian Model                           #
+        #                                                                          #
+        ############################################################################
+    
+        def make_multiple_gaussian_model(self, no_of_gauss=None):
+            """ This method creates a model of gaussian with an offset. The
+            parameters are: 'amplitude', 'center', 'sigma', 'fwhm' and offset
+            'c'. For function see:
+            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
+    
+            @return lmfit.model.CompositeModel model: Returns an object of the
+                                                      class CompositeModel
+            @return lmfit.parameter.Parameters params: Returns an object of the
+                                                       class Parameters with all
+                                                       parameters for the
+                                                       lorentzian model.
+            """
+    
+            model=ConstantModel()
+            for ii in range(no_of_gauss):
+                model+=GaussianModel(prefix='gaussian{}_'.format(ii))
+    
+            params=model.make_params()
+    
+            return model, params
+    
+    #   Todo: implement estimator
+        def estimate_double_gaussian(self, x_axis=None, data=None):
+            """ This method provides a gaussian function.
+    
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+    
+            @return int error: error code (0:OK, -1:error)
+            @return float gaussian0_amplitude: estimated amplitude of 1st peak
+            @return float gaussian1_amplitude: estimated amplitude of 2nd peak
+            @return float gaussian0_center: estimated x value of 1st maximum
+            @return float gaussian1_center: estimated x value of 2nd maximum
+            @return float gaussian0_sigma: estimated sigma of 1st peak
+            @return float gaussian1_sigma: estimated sigma of 2nd peak
+            @return float offset: estimated offset
+            """
+
+            gaus=gaussian(10,10)
+            data = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
+            
+            var=1/max(data)
+            dist=20
+            interations=0
+            while True:
+                indices= peakutils.indexes(data, thres=var, min_dist=dist)
+                print('Peakutils',x_axis[indices],var)
+            
+                
+                if len(indices)==2:
+                    break
+                elif len(indices)>2:
+                    var*=1.2
+                elif len(indices)<2:
+                    var*=0.8
+                if interations==1000:
+                    break
+                interations+=1                    
+            print('Number of iterations:',interations)
+            pplot(x_axis,data,indices)
+                       
+
+    
+            error = 0
+            gaussian0_amplitude = 100000
+            gaussian1_amplitude = 100000
+            gaussian0_center = x_axis[indices[0]]
+            gaussian1_center = x_axis[indices[1]]
+            gaussian0_sigma = 30000
+            gaussian1_sigma = 30000
+            offset = 2
+    
+            return error, gaussian0_amplitude,gaussian1_amplitude, \
+                   gaussian0_center,gaussian1_center, gaussian0_sigma, \
+                   gaussian1_sigma, offset
+                   
+                   
+    
+        def make_double_gaussian_fit(self, axis=None, data=None,
+                                       add_parameters=None):
+            """ This method performes a 1D double gaussian fit on the provided data.
+    
+            @param array [] axis: axis values
+            @param array[]  x_data: data
+            @param dictionary add_parameters: Additional parameters
+    
+            @return lmfit.model.ModelFit result: All parameters provided about
+                                                 the fitting, like: success,
+                                                 initial fitting values, best
+                                                 fitting values, data with best
+                                                 fit with given axis,...
+    
+            """
+    
+            error,              \
+            gaussian0_amplitude, \
+            gaussian1_amplitude, \
+            gaussian0_center,    \
+            gaussian1_center,    \
+            gaussian0_sigma,     \
+            gaussian1_sigma,     \
+            offset              = self.estimate_double_gaussian(axis, data)
+    
+            model, params = self.make_multiple_gaussian_model(no_of_gauss=2)
+    
+            # Auxiliary variables:
+            stepsize=axis[1]-axis[0]
+            n_steps=len(axis)
+    
+            #Defining standard parameters
+            #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
+            params.add('gaussian0_amplitude', gaussian0_amplitude, True, None,                      None,                       None)
+            params.add('gaussian0_sigma',     gaussian0_sigma,     True, None ,       None,        None)
+            params.add('gaussian0_center',    gaussian0_center,    True, None, None, None)
+            params.add('gaussian1_amplitude', gaussian1_amplitude, True, None,                     None,                       None)
+            params.add('gaussian1_sigma',     gaussian1_sigma,     True, None ,       None,        None)
+            params.add('gaussian1_center',    gaussian1_center,    True, None, None, None)
+            params.add('c',                  offset,             True, None,                       None,                        None)
+    
+            #redefine values of additional parameters
+            if add_parameters!=None:
+                params=self.substitute_parameter(parameters=params,
+                                                 update_parameters=add_parameters)
+            try:
+                result=model.fit(data, x=axis,params=params)
+            except:
+                result=model.fit(data, x=axis,params=params)
+                self.logMsg('The double gaussian fit did not '
+                            'work:'+result.message,
+                            msgType='message')
+    
+            return result
+    
+
     
         ############################################################################
         #                                                                          #
@@ -452,8 +596,8 @@ class FitLogic():
         ############################################################################
     
         def find_offset_parameter(self, x_values=None, data=None):
-            """ This method convolves the data with a Lorentzian and finds the
-            offset which is supposed to be the most likely value via a histogram.
+            """ This method convolves the data with a Lorentzian and the finds the
+            offset which is supposed to be the most likely valy via a histogram.
             Additional the smoothed data is returned
     
             @param array x_axis: x values
@@ -758,15 +902,8 @@ class FitLogic():
                             msgType='message')
     
             return result
-
-        ############################################################################
-        #                                                                          #
-        #                          Peak detection                                  #
-        #                                                                          #
-        ############################################################################
-
-
     
+
         ############################################################################
         #                                                                          #
         #                          Double Lorentzian Model                         #
@@ -812,7 +949,7 @@ class FitLogic():
             @return float lorentz1_sigma: estimated sigma of 2nd peak
             @return float offset: estimated offset
             """
-    
+            make_prints=False
             error=0
             # check if parameters make sense
             parameters=[x_axis,data]
@@ -853,8 +990,7 @@ class FitLogic():
     #       search for the left end of the dip
             sigma_argleft=int(0)
             ii=0
-            
-            make_prints=False
+    
             #if the minimum is at the end set this as boarder
             if absolute_argmin != 0:
                 while True:
@@ -883,7 +1019,7 @@ class FitLogic():
                             sigma_argleft=absolute_argmin-ii
                             if make_prints:
                                 print('sigma_argleft',x_axis[sigma_argleft])
-                            
+    
                     #if value is not zero the search was successful and finished
                     else:
                         if make_prints:
@@ -904,7 +1040,7 @@ class FitLogic():
                         sigma_threshold*=0.9
                         ii=0
                         if make_prints:
-                            print('h6')    
+                            print('h6')
                     # if the dip is alsways over threshold the end is the most
                     # right index
                     if abs(sigma_threshold)<abs(threshold):
@@ -915,9 +1051,9 @@ class FitLogic():
     
                     #check if value was changed and search is finished
                     if sigma_argright==0:
-
+    
                         if make_prints:
-                            print('h8')    
+                            print('h8')
                         # check if if value is lower as threshold this is the
                         # searched value
                         if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold):
@@ -938,14 +1074,14 @@ class FitLogic():
                 if make_prints:
                     print('h10')
                 sigma_argright=absolute_argmin
-  
+    
             numerical_integral_0=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
-                               
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+    
             lorentz0_sigma = abs(numerical_integral_0 /
                                  (np.pi * lorentz0_amplitude) )
     
-#           ======== search for second lorentzian dip ========
+    #           ======== search for second lorentzian dip ========
             left_index=int(0)
             right_index=len(x_axis)-1
     
@@ -960,7 +1096,7 @@ class FitLogic():
                 #if one dip is within the second they have to be set to one
                 if sigma_argright==right_index:
                     lorentz1_center=lorentz0_center
-                    lorentz0_amplitude/=2.           
+                    lorentz0_amplitude/=2.
                     lorentz1_amplitude=lorentz0_amplitude
                 else:
                     lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
@@ -973,10 +1109,10 @@ class FitLogic():
                 if make_prints:
                     print('h12')
                 #if one dip is within the second they have to be set to one
-                if sigma_argleft==left_index: 
+                if sigma_argleft==left_index:
                     lorentz1_center=lorentz0_center
-                    lorentz0_amplitude/=2.           
-                    lorentz1_amplitude=lorentz0_amplitude              
+                    lorentz0_amplitude/=2.
+                    lorentz1_amplitude=lorentz0_amplitude
                 else:
                     lorentz1_amplitude=data_level[left_index:mid_index_left].min()
                     lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
@@ -1016,7 +1152,7 @@ class FitLogic():
                         mid_index_left=sigma_argleft
                         mid_index_right=sigma_argright
                         if make_prints:
-                            print('h15')    
+                            print('h15')
                         #if no second dip can be found set both to same value
                         if abs(threshold/absolute_min)<abs(self.minimal_threshold):
                             if make_prints:
@@ -1031,18 +1167,18 @@ class FitLogic():
                             lorentz1_amplitude=lorentz0_amplitude/2.
                             break
     
-
+    
             numerical_integral_1=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])  
-                               
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+    
             lorentz1_sigma = abs( numerical_integral_1
                                   / (np.pi * lorentz1_amplitude)  )
-
+    
             #esstimate amplitude
             lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
             lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-            
-            
+    
+    
             if lorentz1_center < lorentz0_center :
                 lorentz0_amplitude_temp = lorentz0_amplitude
                 lorentz0_amplitude = lorentz1_amplitude
@@ -1053,8 +1189,8 @@ class FitLogic():
                 lorentz0_sigma_temp= lorentz0_sigma
                 lorentz0_sigma     = lorentz1_sigma
                 lorentz1_sigma     = lorentz0_sigma_temp
-                
-            
+    
+    
             return error, lorentz0_amplitude,lorentz1_amplitude, \
                    lorentz0_center,lorentz1_center, lorentz0_sigma, \
                    lorentz1_sigma, offset
@@ -1065,7 +1201,6 @@ class FitLogic():
     
             @param array [] axis: axis values
             @param array[]  x_data: data
-            @param int no_of_lor: Number of lorentzians
             @param dictionary add_parameters: Additional parameters
     
             @return lmfit.model.ModelFit result: All parameters provided about
@@ -1404,7 +1539,6 @@ class FitLogic():
     
     
             return result, fit_x, fit_y
-            
 ##############################################################################
 ##############################################################################
 
@@ -1737,6 +1871,159 @@ class FitLogic():
             
 #            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
             plt.show()
-                       
+            
+        def double_gaussian_testing(self):
+            for ii in range(1):
+#                time.sleep(0.51)
+                start=120000
+                stop=320000
+                num_points=int((stop-start)/2000)
+                x = np.linspace(start, stop, num_points)
+                
+                mod,params = self.make_multiple_gaussian_model(no_of_gauss=2)
+    #            print('Parameters of the model',mod.param_names)
+                
+                p=Parameters()
+                calculate_alex_model=False
+                if calculate_alex_model==True:
+    #                #============ Create data ==========
+                    self.dist = 'dark_bright_gaussian'
+    
+                    self.mean_signal = 260*1000
+                    self.contrast = 0.3
+                    self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
+                    self.noise_amplitude = self.mean_signal*0.1
+            
+                    self.life_time_bright = 0.08 # 60 millisecond
+                    self.life_time_dark    = 0.04 # 40 milliseconds
+                    
+                    # needed for the life time simulation
+                    self.current_dec_time = self.life_time_bright
+                    self.curr_state_b = True
+                    self.total_time = 0.0
+                    
+                    start=time.time()
+                    data=self.get_counter(50)
+                    print('time to create data',time.time()-start)
+                    
+                    plt.hist(data[0,:],20)
+                    plt.show()
+                    
+                amplitude=100000
+                sigma=30000
+                splitting=100* 1000
+                p.add('gaussian0_amplitude',value=amplitude)
+                p.add('gaussian0_center',value=180000)
+                p.add('gaussian0_sigma',value=sigma)
+                p.add('gaussian1_amplitude',value=amplitude*1.5)
+                p.add('gaussian1_center',value=180000+splitting)
+                p.add('gaussian1_sigma',value=sigma)
+                p.add('c',value=2.)
+
+                data_noisy=(mod.eval(x=x,params=p)
+                                        + 0.3*np.random.normal(size=x.shape))
+
+#                np.savetxt('data',data_noisy)
+
+#                data_noisy=np.loadtxt('data')
+#                para=Parameters()
+#                result=self.make_double_gaussianian_fit(axis=x,data=data_noisy,add_parameters=para)
+#                            
+                result=self.make_double_gaussian_fit(x,data_noisy)
+                try:
+                    plt.plot(x, data_noisy, '-')
+                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
+                    plt.plot(x,result.init_fit,'-y')
+                    plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+#                    plt.plot(x,data_smooth,'-g')
+
+                except:
+                    print('exception')
+                        
+                        
+#                        
+#                plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
+#                plt.show()
+#                
+#                print('Peaks:',p['gaussian0_center'].value,p['gaussian1_center'].value)
+#                print('Estimator:',result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+#                
+#                data=-1*data_smooth+data_smooth.max()
+#                 print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
+#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
+#                print('Peakutils',x[indices])
+#                pplot(x,data,indices)
+
+        def get_counter(self,samples=None):
+            """ Returns the current counts per second of the counter.
+    
+            @param int samples: if defined, number of samples to read in one go
+    
+            @return float: the photon counts per second
+            """
+    
+            count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
+            
+            self._clock_frequency=100
+
+            
+            timestep = 1./self._clock_frequency*samples
+            
+            for i in range(samples):
+    
+                if self.dist == 'single_gaussian':
+                    count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude/2)
+    
+                elif self.dist == 'dark_bright_gaussian':
+    
+                    self.total_time = self.total_time + timestep
+    
+                    if self.total_time > self.current_dec_time:
+                        if self.curr_state_b:
+                            self.curr_state_b = False
+                            self.current_dec_time = np.random.exponential(self.life_time_dark)
+                            count_data[0][i] = np.random.poisson(self.mean_signal)
+                        else:
+                            self.curr_state_b = True
+                            self.current_dec_time = np.random.exponential(self.life_time_bright)
+                        self.total_time = 0.0
+    
+                    count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude)*self.curr_state_b + \
+                                       np.random.normal(self.mean_signal2, self.noise_amplitude)*(1-self.curr_state_b)
+    
+                elif self.dist == 'uniform':
+                    count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
+    
+                elif self.dist == 'exponential':
+                    count_data[0][i] = np.random.exponential(self.mean_signal)
+    
+                elif self.dist == 'single_poisson':
+                    count_data[0][i] = np.random.poisson(self.mean_signal)
+    
+                elif self.dist == 'dark_bright_poisson':
+                    self.total_time = self.total_time + timestep
+    
+                    if self.total_time > self.current_dec_time:
+                        if self.curr_state_b:
+                            self.curr_state_b = False
+                            self.current_dec_time = np.random.exponential(self.life_time_dark)
+                            count_data[0][i] = np.random.poisson(self.mean_signal)
+                        else:
+                            self.curr_state_b = True
+                            self.current_dec_time = np.random.exponential(self.life_time_bright)
+                        self.total_time = 0.0
+    
+                    count_data[0][i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
+    
+                else:
+                    # make uniform as default
+                    count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
+    
+    
+            time.sleep(1./self._clock_frequency*samples)
+    
+            return count_data
+                         
 test=FitLogic()
-test.double_lorentzian_testing()
+# test.double_lorentzian_testing()
+test.double_gaussian_testing()
