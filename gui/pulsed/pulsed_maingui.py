@@ -2232,7 +2232,8 @@ class PulsedMeasurementGui(GUIBase):
         self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
         self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
-        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', 'To be adjusted')
+        #self._mw.ana_param_x_axis_name_LineEdit.setText('tau(ns)')
+        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', self._mw.ana_param_x_axis_name_LineEdit.text())
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
@@ -2262,6 +2263,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_mw_power_Label.setVisible(False)
         self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
 
+        self._mw.ana_param_x_axis_name_Label.setVisible(False)
+        self._mw.ana_param_x_axis_name_LineEdit.setVisible(False)
         self._mw.ana_param_x_axis_start_Label.setVisible(False)
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
         self._mw.ana_param_x_axis_inc_Label.setVisible(False)
@@ -2276,6 +2279,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(2870e6)
         self._mw.ext_control_mw_power_DoubleSpinBox.setValue(-30.)
         self._mw.ana_param_fc_num_laser_pulse_SpinBox.setValue(self._pulsed_meas_logic.get_num_of_lasers())
+        self._mw.ana_param_x_axis_name_LineEdit.setText('tau(ns)')
+        self.name_x_axis_changed()
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 
@@ -2334,6 +2339,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect InputWidgets to events
         self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
+        self._mw.ana_param_x_axis_name_LineEdit.editingFinished.connect(self.name_x_axis_changed)
         self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
@@ -2437,6 +2443,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic._save_data()
         return
 
+    def name_x_axis_changed(self):
+        name=self._mw.ana_param_x_axis_name_LineEdit.text()
+        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', name)
+        self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', name)
+        return
+
     def fit_clicked(self):
         self._mw.fit_param_results_TextBrowser.clear()
 
@@ -2515,11 +2527,15 @@ class PulsedMeasurementGui(GUIBase):
 
     def show_tau_editor(self):
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+            self._mw.ana_param_x_axis_name_Label.setVisible(True)
+            self._mw.ana_param_x_axis_name_LineEdit.setVisible(True)
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
             self._mw.ana_param_x_axis_inc_Label.setVisible(True)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(True)
         else:
+            self._mw.ana_param_x_axis_name_Label.setVisible(False)
+            self._mw.ana_param_x_axis_name_LineEdit.setVisible(False)
             self._mw.ana_param_x_axis_start_Label.setVisible(False)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
