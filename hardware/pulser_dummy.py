@@ -23,6 +23,7 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 import os
 import numpy as np
 from collections import OrderedDict
+from fnmatch import fnmatch
 
 import hdf5storage
 
@@ -107,6 +108,7 @@ class PulserDummy(Base, PulserInterface):
                                  5: 0, 6: 0, 7: 0, 8: 0}
 
         self.uploaded_assets_list = []
+        self.uploaded_files_list = []
         self.current_loaded_asset = None
         self.is_output_enabled = True
 
@@ -577,6 +579,17 @@ class PulserDummy(Base, PulserInterface):
                         'that!\nCommand will be ignored.', msgType='warning')
             return -1
 
+        saved_files = self._get_filenames_on_host()
+
+        for filename in saved_files:
+            if filename not in self.uploaded_files_list:
+                if fnmatch(filename, asset_name+'_ch?.wfm'):
+                    self.uploaded_files_list.append(filename)
+                elif fnmatch(filename, asset_name+'_ch?.WFMX'):
+                    self.uploaded_files_list.append(filename)
+                elif fnmatch(filename, asset_name+'.mat'):
+                    self.uploaded_files_list.append(filename)
+
         if asset_name not in self.uploaded_assets_list:
             self.uploaded_assets_list.append(asset_name)
         return 0
@@ -925,51 +938,61 @@ class PulserDummy(Base, PulserInterface):
         """ Retrieve the names of all uploaded assets on the device.
 
         @return list: List of all uploaded asset name strings in the current
-                      device directory.
+                      device directory. This is no list of the file names.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-
         return self.uploaded_assets_list
 
     def get_saved_assets_names(self):
-        """ Retrieve the names of all sampled and saved files on the host PC.
+        """ Retrieve the names of all sampled and saved assets on the host PC.
+        This is no list of the file names.
 
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
         """
 
         # list of all files in the waveform directory ending with .mat or .WFMX
-        file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
+        file_list = self._get_filenames_on_host()
 
         # exclude the channel specifier for multiple analogue channels and create return list
         saved_assets = []
         for name in file_list:
-            if name.endswith('_Ch1.WFMX'):
-                saved_assets.append(name[0:-9])
-            elif name.endswith('.mat'):
-                saved_assets.append(name[0:-4])
-            elif name.endswith('.wfm'):
-                saved_assets.append(name[0:-4])
+            if fnmatch(name, '*_Ch?.WFMX'):
+                if name[0:-9] not in saved_assets:
+                    saved_assets.append(name[0:-9])
+            elif fnmatch(name, '*.mat'):
+                if name[0:-4] not in saved_assets:
+                    saved_assets.append(name[0:-4])
+            elif fnmatch(name, '*_ch?.wfm'):
+                if name[0:-8] not in saved_assets:
+                    saved_assets.append(name[0:-8])
         return saved_assets
 
     def delete_asset(self, asset_name):
-        """ Delete an asset with the passed asset_name from the device memory.
+        """ Delete all files associated with an asset with the passed asset_name from the device memory.
 
-        @param str asset_name: The name of the sequence to be deleted
-                               Optionally a list of file names can be passed.
+        @param str asset_name: The name of the asset to be deleted
+                               Optionally a list of asset names can be passed.
 
         @return int: error code (0:OK, -1:error)
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-
         if asset_name in self.uploaded_assets_list:
             self.uploaded_assets_list.remove(asset_name)
             if asset_name == self.current_loaded_asset:
-                self.clear_channel()
+                self.clear_all()
+
+        files_to_delete = []
+        for filename in self.uploaded_files_list:
+            if fnmatch(filename, asset_name+'.mat') or fnmatch(filename, asset_name+'_Ch?.WFMX') or fnmatch(filename, asset_name+'_ch?.wfm'):
+                files_to_delete.append(filename)
+
+        for filename in files_to_delete:
+            self.uploaded_files_list.remove(filename)
         return 0
 
     def set_sequence_directory(self, dir_path):
@@ -1060,6 +1083,12 @@ class PulserDummy(Base, PulserInterface):
 
         return 0
 
+    def has_sequence_mode(self):
+        """ Asks the pulse generator whether sequence mode exists.
+
+        @return: bool, True for yes, False for no.
+        """
+        return True
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -1074,10 +1103,10 @@ class PulserDummy(Base, PulserInterface):
 
         return os.path.abspath(path)
 
+    def _get_filenames_on_host(self):
+        """ Get the full filenames of all assets saved on the host PC.
 
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
+        @return: list, The full filenames of all assets saved on the host PC.
         """
-        return True
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
+        return filename_list

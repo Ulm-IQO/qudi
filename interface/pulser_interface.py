@@ -458,7 +458,7 @@ class PulserInterface():
         """ Retrieve the names of all uploaded assets on the device.
 
         @return list: List of all uploaded asset name strings in the current
-                      device directory.
+                      device directory. This is no list of the file names.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
@@ -468,27 +468,28 @@ class PulserInterface():
         return names
 
     def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved files on the host PC.
+        """ Retrieve the names of all sampled and saved assets on the host PC.
+        This is no list of the file names.
 
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
         """
         names = []
-        raise InterfaceImplementationError('PulserInterface>get_sequence_names')
+        raise InterfaceImplementationError('PulserInterface>get_saved_asset_names')
         return names
 
     def delete_asset(self, asset_name):
-        """ Delete an asset with the passed asset_name from the device memory.
+        """ Delete all files associated with an asset with the passed asset_name from the device memory.
 
-        @param str asset_name: The name of the sequence to be deleted
-                               Optionally a list of file names can be passed.
+        @param str asset_name: The name of the asset to be deleted
+                               Optionally a list of asset names can be passed.
 
         @return int: error code (0:OK, -1:error)
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-        raise InterfaceImplementationError('PulserInterface>delete_sequence')
+        raise InterfaceImplementationError('PulserInterface>delete_asset')
         return -1
 
     def set_asset_dir_on_device(self, dir_path):
