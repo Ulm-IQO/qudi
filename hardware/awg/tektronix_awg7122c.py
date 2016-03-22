@@ -611,12 +611,29 @@ class AWG7122C(Base, PulserInterface):
             return (message, status_dic)
 
     # works!
+    def get_sample_rate(self):
+        """ Get the sample rate of the pulse generator hardware
+
+        @return float: The current sample rate of the device (in Hz)
+
+        Do not return a saved sample rate in a class variable, but instead
+        retrieve the current sample rate directly from the device.
+        """
+
+        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
+        return self.sample_rate
+
+    # works!
     def set_sample_rate(self, sample_rate):
-        """ Set the sample rate of the pulse generator hardware
+        """ Set the sample rate of the pulse generator hardware.
 
-        @param float sample_rate: The sample rate to be set (in Hz)
+        @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return foat: the sample rate returned from the device (-1:error)
+        @return float: the sample rate returned from the device.
+
+        Note: After setting the sampling rate of the device, retrieve it again
+              for obtaining the actual set value and use that information for
+              further processing.
         """
 
         self.tell('SOURCE1:FREQUENCY {0:.4G}MHz\n'.format(sample_rate / 1e6))
@@ -625,17 +642,6 @@ class AWG7122C(Base, PulserInterface):
         # and therefore the ask in get_sample_rate will return an empty string.
         time.sleep(0.3)
         return self.get_sample_rate()
-
-    # works!
-    def get_sample_rate(self):
-        """ Set the sample rate of the pulse generator hardware
-
-        @return float: The current sample rate of the device (in Hz)
-        """
-
-        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
-        return self.sample_rate
-
 
     def get_analog_level(self, amplitude=[], offset=[]):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -646,10 +652,15 @@ class AWG7122C(Base, PulserInterface):
         @param list offset: optional, if a specific high value (in Volt) of a
                             channel is desired.
 
-        @return: ({}, {}): tuple of two dicts, with keys being the channel
-                           number and items being the values for those channels.
-                           Amplitude is always denoted in Volt-peak-to-peak and
-                           Offset in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel
+                               number and items being the values for those
+                               channels. Amplitude is always denoted in
+                               Volt-peak-to-peak and Offset in (absolute)
+                               Voltage.
+
+        Note: Do not return a saved amplitude and/or offset value but instead
+              retrieve the current amplitude and/or offset directly from the
+              device.
 
         If no entries provided then the levels of all channels where simply
         returned. If no analog channels provided, return just an empty dict.
@@ -659,11 +670,15 @@ class AWG7122C(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        Note, the major difference to digital signals is that analog signals are
+        The major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+        Voltage peak to peak) and an offset (a value around which the signal
+        oscillates, denoted by an (absolute) voltage).
+
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         amp = {}
@@ -726,16 +741,24 @@ class AWG7122C(Base, PulserInterface):
                             being the offset values (in absolute volt) for the
                             desired channel.
 
-        If nothing is passed then the command is being ignored.
+        @return (dict, dict): tuple of two dicts with the actual set values for
+                              amplitude and offset.
 
-        Note, the major difference to digital signals is that analog signals are
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the analog and/or offset of the device, retrieve
+              them again for obtaining the actual set value(s) and use that
+              information for further processing.
+
+        The major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
+        Voltage peak to peak) and an offset (a value around which the signal
+        oscillates, denoted by an (absolute) voltage).
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         constraints = self.get_constraints()
@@ -804,6 +827,8 @@ class AWG7122C(Base, PulserInterface):
                                                  constraints['available_ch_num']['a_ch']),
                             msgType='warning')
 
+        return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
+
     def get_digital_level(self, low=[], high=[]):
         """ Retrieve the digital low and high level of the provided channels.
 
@@ -812,12 +837,17 @@ class AWG7122C(Base, PulserInterface):
         @param list high: optional, if a specific high value (in Volt) of a
                           channel is desired.
 
-        @return: tuple of two dicts, with keys being the channel number and
-                 items being the values for those channels. Both low and high
-                 value of a channel is denoted in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel
+                               number and items being the values for those
+                               channels. Both low and high value of a channel is
+                               denoted in (absolute) Voltage.
+
+        Note: Do not return a saved low and/or high value but instead retrieve
+              the current low and/or high value directly from the device.
 
         If no entries provided then the levels of all channels where simply
         returned. If no digital channels provided, return just an empty dict.
+
         Example of a possible input:
             low = [1,4]
         to obtain the low voltage values of digital channel 1 an 4. A possible
@@ -825,14 +855,14 @@ class AWG7122C(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        Note, the major difference to analog signals is that digital signals are
+        The major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         low_val = {}
@@ -905,16 +935,24 @@ class AWG7122C(Base, PulserInterface):
         @param dict high: dictionary, with key being the channel and items being
                          the high values (in volt) for the desired channel.
 
-        If nothing is passed then the command is being ignored.
+        @return (dict, dict): tuple of two dicts where first dict denotes the
+                              current low value and the second dict the high
+                              value.
 
-        Note, the major difference to analog signals is that digital signals are
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the high and/or low values of the device, retrieve
+              them again for obtaining the actual set value(s) and use that
+              information for further processing.
+
+        The major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
+        In general there is no bijective correspondence between
+        (amplitude, offset) and (value high, value low)!
         """
 
         constraints = self.get_constraints()
@@ -984,6 +1022,7 @@ class AWG7122C(Base, PulserInterface):
                                                  constraints['available_ch_num']['d_ch']),
                             msgType='warning')
 
+        return self.get_digital_level(low=list(low), high=list(high))
 
 
     def set_active_channels(self, a_ch={}, d_ch={}):
@@ -994,7 +1033,14 @@ class AWG7122C(Base, PulserInterface):
         @param dict d_ch: dictionary with keys being the digital channel numbers
                           and items being boolean values.
 
-        @return int: error code (0:OK, -1:error)
+        @return (dict, dict): tuple of two dicts with the actual set values for
+                active channels for analog (a_ch) and digital (d_ch) values.
+
+        If nothing is passed then the command will return two empty dicts.
+
+        Note: After setting the active channels of the device, retrieve them
+              again for obtaining the actual set value(s) and use that
+              information for further processing.
 
         Example for possible input:
             a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
@@ -1042,6 +1088,7 @@ class AWG7122C(Base, PulserInterface):
             #       changing the DAC resolution
             #       adapt that possibility.
 
+        return self.get_active_channels(a_ch=list(a_ch), d_ch=list(d_ch))
 
 
     def get_active_channels(self, a_ch=[], d_ch=[]):
@@ -1120,7 +1167,7 @@ class AWG7122C(Base, PulserInterface):
                     #       analog mode by switching off the digital channels through
                     #       changing the DAC resolution. Adapt that possibility.
                     #       Look above in the comment.
-                    
+
                 else:
                     self.logMsg('The device does not support that much digital '
                                 'channels! A channel number "{0}" was passed, '
