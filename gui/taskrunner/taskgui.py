@@ -103,9 +103,11 @@ class TaskGui(GUIBase):
 
     def setRunToolState(self, index, index2=None):
         selected = self._mw.taskTableView.selectedIndexes()
-
-        if not index2 is None and selected[0].row() != index2.row():
+        try:
+            if not index2 is None and selected[0].row() != index2.row():
                 return
+        except:
+            return
 
         if len(selected) >= 1:
             state = self.logic.model.storage[selected[0].row()]['object'].current

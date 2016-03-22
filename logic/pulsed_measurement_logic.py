@@ -752,8 +752,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     'tasks!\nNo confocal optimization performed.',
                     msgType='warning')
         # self.pause_pulsed_measurement()
-        # position=self._confocal_logic.get_position()
-        # self._optimizer_logic.start_refocus(position, caller_tag='poimanager')
+        #self.getTaskRunner().startTaskByName('default-confocal-refocus')
         # self.continue_pulsed_measurement()
         pass
 
@@ -764,9 +763,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.logMsg('ODMR Optimizing needs to be implemented properly with'
                     'tasks!\nNo ODMR optimization performed.',
                     msgType='warning')
+        #self.getTaskRunner().startTaskByName('default-odmr-refocus')
         pass
-
-
-
 
 

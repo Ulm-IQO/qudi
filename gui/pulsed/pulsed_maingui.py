@@ -344,7 +344,6 @@ class PulsedMeasurementGui(GUIBase):
 
         @param int state: 0 for False and 1 or 2 for True.
         """
-
         self._seq_gen_logic.set_interleave(bool(state))
         # Check also whether the sample rate has been changed:
         self._set_sample_rate_constraints()
@@ -358,8 +357,6 @@ class PulsedMeasurementGui(GUIBase):
                           Combobox. Otherwise the active index will be asked
                           from the Combobox.
         """
-
-
         if index is None:
             config = self._bs.channel_config_ComboBox.currentText()
         else:
@@ -2842,3 +2839,11 @@ class PulsedMeasurementGui(GUIBase):
         x_data, y_data = self._pulsed_meas_logic.get_laserpulse(show_laser_num)
 
         self.lasertrace_image.setData(x=x_data, y=y_data)
+
+    def save_pulsed_plots(self):
+        """ Save plot from analysis graph as a picture. """
+        filepath = self._save_logic.get_path_for_module(module_name='Pulsed')
+        filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_pulsed'))
+
+        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem)
+        exporter.export(filename+'.svg')
