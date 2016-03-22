@@ -30,34 +30,34 @@
    <item row="1" column="0">
     <layout class="QGridLayout" name="gridLayout">
      <item row="1" column="0">
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="ana_param_y_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Analysis &lt;br/&gt;y-axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;y ayis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
      <item row="4" column="0">
-      <widget class="QLabel" name="label_4">
+      <widget class="QLabel" name="ana_param_second_plot_y_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;FFT&lt;br/&gt;y-axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;/p&gt;&lt;p&gt;y axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QLabel" name="label_2">
+      <widget class="QLabel" name="ana_param_second_plot_x_axis_label_Label">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;FFT &lt;br/&gt;x-axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;/p&gt;&lt;p&gt; x axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
      <item row="3" column="1">
-      <widget class="QLineEdit" name="lineEdit_2"/>
+      <widget class="QLineEdit" name="ana_param_second_plot_x_axis_name_LineEdit"/>
      </item>
      <item row="1" column="1">
-      <widget class="QLineEdit" name="lineEdit_3"/>
+      <widget class="QLineEdit" name="ana_param_y_axis_name_LineEdit"/>
      </item>
      <item row="4" column="1">
-      <widget class="QLineEdit" name="lineEdit_4"/>
+      <widget class="QLineEdit" name="ana_param_second_plot_y_axis_name_LineEdit"/>
      </item>
      <item row="2" column="1">
       <widget class="QComboBox" name="comboBox"/>
@@ -70,9 +70,9 @@
       </widget>
      </item>
      <item row="0" column="0">
-      <widget class="QLabel" name="ana_param_x_axis_name_Label">
+      <widget class="QLabel" name="ana_param_x_axis_label_Label">
        <property name="text">
-        <string>x axis name:</string>
+        <string>x axis label:</string>
        </property>
       </widget>
      </item>
