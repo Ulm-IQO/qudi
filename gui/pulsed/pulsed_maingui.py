@@ -2330,7 +2330,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.show_tau_editor)
-        #self._mw.ana_param_show_ft_CheckBox.stateChanged.connect(self.show_ft_plot)
 
 
         # Connect InputWidgets to events
@@ -2481,7 +2480,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # dealing with the actual signal
         self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        #self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
 
 
 
@@ -2531,6 +2530,39 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.fourier_transform_GroupBox.setVisible(False)
         else:
             self._mw.fourier_transform_GroupBox.setVisible(True)
+
+            if self._mw.second_plot_ComboBox.currentText()=='unchanged data':
+                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=False)
+
+            elif self._mw.second_plot_ComboBox.currentText()=='FFT':
+                log_data=np.log(self._pulsed_meas_logic.signal_plot_x+1)
+                print(log_data)
+                log_datay=np.log(self._pulsed_meas_logic.signal_plot_y)
+                test_x=[0,1,2,3]
+                test_y=[4,5,6,7]
+                self.fft_image.setData(log_data, log_datay)
+                #self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
+
+            elif self._mw.second_plot_ComboBox.currentText()=='Log(x)':
+                #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
+                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
+                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
+
+                #self._mw.pulse_analysis_ft_PlotWidget.setLimits(xMin=0, xMax=50)
+
+            elif self._mw.second_plot_ComboBox.currentText()=='Log(y)':
+                #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
+                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
+                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=True)
+
+            elif self._mw.second_plot_ComboBox.currentText()=='Log(x)&Log(y)':
+                #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
+                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
+                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=True)
+
+
+
 
     def seq_parameters_changed(self):
 
