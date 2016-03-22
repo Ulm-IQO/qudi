@@ -2289,7 +2289,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 
-        self._mw.time_param_expected_dur_DoubleSpinBox.setValue(99)
+        self._mw.time_param_expected_dur_DoubleSpinBox.setValue(0)
         self._mw.time_param_elapsed_time_LineEdit.setText('00:00:00:00')
 
         self._mw.time_param_elapsed_sweep_SpinBox.setValue(0)
@@ -2413,8 +2413,8 @@ class PulsedMeasurementGui(GUIBase):
 
             self._pulsed_meas_logic.configure_fast_counter()
             # FIXME: Not sure if that belongs to here...
-            print('exp dur',self._pulsed_meas_logic.expected_duration)
-            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._pulsed_meas_logic.expected_duration)
+            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(5765.0)
+            #self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._seq_gen_logic.current_ensemble.length_bins)
 
             self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -2514,7 +2514,7 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_sweeps)
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1000000))
 
 
 
@@ -2618,6 +2618,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.change_timer_interval(timer_interval)
         return
 
+    #FIXME:
     def check_input_with_samplerate(self):
         pass
 
