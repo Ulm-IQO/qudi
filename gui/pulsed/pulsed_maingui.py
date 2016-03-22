@@ -2531,35 +2531,31 @@ class PulsedMeasurementGui(GUIBase):
         else:
             self._mw.fourier_transform_GroupBox.setVisible(True)
 
-            if self._mw.second_plot_ComboBox.currentText()=='unchanged data':
-                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+            #Here FFT is seperated from the other option. The reason for that is preventing of code doubling
+            if self._mw.second_plot_ComboBox.currentText()=='FFT':
+                fft_x,fft_y=self._pulsed_meas_logic.compute_fft()
+                self.fft_image.setData(fft_x, fft_y)
                 self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=False)
+                self._mw.pulse_analysis_ft_PlotWidget.setLabel('left', 'FT-Amplitude')
+                self._mw.pulse_analysis_ft_PlotWidget.setLabel('bottom', 'frequency [GHz]')
 
-            elif self._mw.second_plot_ComboBox.currentText()=='FFT':
-                log_data=np.log(self._pulsed_meas_logic.signal_plot_x+1)
-                print(log_data)
-                log_datay=np.log(self._pulsed_meas_logic.signal_plot_y)
-                test_x=[0,1,2,3]
-                test_y=[4,5,6,7]
-                self.fft_image.setData(log_data, log_datay)
-                #self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
-
-            elif self._mw.second_plot_ComboBox.currentText()=='Log(x)':
+            else:
                 #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
                 self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
+                self._mw.pulse_analysis_ft_PlotWidget.setLabel('left', 'Counts')
+                self._mw.pulse_analysis_ft_PlotWidget.setLabel('bottom', 'To be adjusted')
 
-                #self._mw.pulse_analysis_ft_PlotWidget.setLimits(xMin=0, xMax=50)
+                if self._mw.second_plot_ComboBox.currentText()=='unchanged data':
+                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=False)
 
-            elif self._mw.second_plot_ComboBox.currentText()=='Log(y)':
-                #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
-                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=True)
+                elif self._mw.second_plot_ComboBox.currentText()=='Log(x)':
+                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
 
-            elif self._mw.second_plot_ComboBox.currentText()=='Log(x)&Log(y)':
-                #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
-                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=True)
+                elif self._mw.second_plot_ComboBox.currentText()=='Log(y)':
+                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=True)
+
+                elif self._mw.second_plot_ComboBox.currentText()=='Log(x)&Log(y)':
+                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=True)
 
 
 
