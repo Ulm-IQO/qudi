@@ -45,17 +45,7 @@ class MotorStagePI(Base, MotorInterface):
         self._x_axis = '1'
         self._y_axis = '3'
         self._z_axis = '2'
-
-        #ranges of axis:      factor 10000. needed to have everything in millimeters
-        self._min_x = -100. * 10000.
-        self._max_x = 100. * 10000.
-        self._min_y = -100. * 10000.
-        self._max_y = 100. * 10000.
-        self._min_z = -100. * 10000.
-        self._max_z = 100. * 10000.
-
-        #Translationfactor
-        self.MicroStepSize = 0.000234375
+        
 
         #!!!!NOTE:  vielleicht sollte überall .ask anstatt .write genommen werden, das die stage glaube ich immer was zurückgibt....
 
@@ -87,7 +77,7 @@ class MotorStagePI(Base, MotorInterface):
                         'Cannot connect to motorized stage!',
                         msgType='error')
                         
-        # get the the right baud rate from config
+        # get the the right baud rates from config
         if 'pi_xyz_baud_rate' in config.keys():
             self._pi_xyz_baud_rate = config['pi_xyz_baud_rate']
         else:
@@ -104,14 +94,103 @@ class MotorStagePI(Base, MotorInterface):
                         'Taking the baud rate {0} '
                         'instead.'.format(self._rot_baud_rate),
                         msgType='warning')
-        
+                        
+        # get the the right timeouts from config
+        if 'pi_xyz_timeout' in config.keys():
+            self._pi_xyz_timeout = config['pi_xyz_timeout']
+        else:
+            self._pi_xyz_timeout = 1
+            self.logMsg('No parameter "pi_xyz_timeout" found in config!\n'
+                        'Setting the timeout to {0} '
+                        'instead.'.format(self._pi_xyz_timeout),
+                        msgType='warning')
+        if 'rot_timeout' in config.keys():
+            self._rot_timeout = config['rot_timeout']
+        else:
+            self._rot_timeout = 5     #TIMEOUT shorter?
+            self.logMsg('No parameter "rot_timeout" found in config!\n'
+                        'Setting the timeout to {0} '
+                        'instead.'.format(self._rot_timeout),
+                        msgType='warning')
+                        
+        # get the the right term_chars from config
+        if 'pi_xyz_timeout' in config.keys():
+            self._pi_xyz_term_char = config['pi_xyz_term_char']
+        else:
+            self._pi_xyz_term_char = '\n'
+            self.logMsg('No parameter "pi_xyz_term_char" found in config!\n'
+                        'Taking the term_char {0} '
+                        'instead.'.format(self._pi_xyz_term_char),
+                        msgType='warning')
+        if 'rot_term_char' in config.keys():
+            self._rot_term_char = config['rot_term_char']
+        else:
+            self._rot_term_char = '\n'     #TIMEOUT shorter?
+            self.logMsg('No parameter "rot_term_char" found in config!\n'
+                        'Taking the term_char {0} '
+                        'instead.'.format(self._rot_term_char),
+                        msgType='warning')        
         
         self.rm = visa.ResourceManager()
-        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, self._pi_xyz_baud_rate, timeout=1)
-        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, self._rot_baud_rate, timeout=5) #TIMEOUT shorter?
-        self._serial_connection_xyz.term_chars = '\n'
-        self._serial_connection_rot.term_chars = '\n'
+        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, self._pi_xyz_baud_rate, self._pi_xyz_timeout)
+        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, self._rot_baud_rate, self._rot_timeout)
+        self._serial_connection_xyz.term_chars = self._pi_xyz_term_char
+        self._serial_connection_rot.term_chars = self._rot_term_char
 
+        # setting the ranges of the axes - factor 10000. needed to have everything in millimeters
+        if 'pi_x_min' in config.keys():
+            self._min_x = config['pi_x_min'] * 10000. 
+        else:
+            self._min_x = -100. * 10000.
+            self.logMsg('No parameter "pi_x_min" found in config!\n'
+                        'Taking -100mm instead.',
+                        msgType='warning')
+        if 'pi_x_max' in config.keys():
+            self._max_x = config['pi_x_max'] * 10000.
+        else:
+            self._max_x = 100. * 10000.
+            self.logMsg('No parameter "pi_x_max" found in config!\n'
+                        'Taking 100mm instead.',
+                        msgType='warning')
+        if 'pi_y_min' in config.keys():
+            self._min_y = config['pi_y_min'] * 10000.
+        else:
+            self._min_y = -100. * 10000.
+            self.logMsg('No parameter "pi_y_min" found in config!\n'
+                        'Taking -100mm instead.',
+                        msgType='warning')
+        if 'pi_y_max' in config.keys():
+            self._max_y = config['pi_y_max'] * 10000.
+        else:
+            self._max_y = 100. * 10000.
+            self.logMsg('No parameter "pi_y_max" found in config!\n'
+                        'Taking 100mm instead.',
+                        msgType='warning')
+        if 'pi_z_min' in config.keys():
+            self._min_z = config['pi_z_min'] * 10000.
+        else:
+            self._min_z = -100. * 10000.
+            self.logMsg('No parameter "pi_z_min" found in config!\n'
+                        'Taking -100mm instead.',
+                        msgType='warning')
+        if 'pi_z_max' in config.keys():
+            self._max_z = config['pi_z_max'] * 10000.
+        else:
+            self._max_z = 100. * 10000.
+            self.logMsg('No parameter "pi_z_max" found in config!\n'
+                        'Taking 100mm instead.',
+                        msgType='warning')
+                        
+        # get the MicroStepSize value for the rotation stage
+        if 'rot_microstepsize' in config.keys():
+            self._MicroStepSize = config['rot_microstepsize']
+        else:
+            self._MicroStepSize = 0.000234375
+            self.logMsg('No parameter "rot_microstepsize" found in config!\n'
+                        'Taking the MicroStepSize {0} '
+                        'instead.'.format(self._MicroStepSize),
+                        msgType='warning') 
+                        
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -189,7 +268,7 @@ class MotorStagePI(Base, MotorInterface):
         y = int(self._serial_connection_xyz.ask(self._y_axis+'TT')[8:])/100000.
         z = int(self._serial_connection_xyz.ask(self._z_axis+'TT')[8:])/100000.
         phi_temp = self._ask_rot([1,60,0])
-        phi = phi_temp * self.MicroStepSize
+        phi = phi_temp * self._MicroStepSize
         return x, y, z, phi
 
 
@@ -417,25 +496,25 @@ class MotorStagePI(Base, MotorInterface):
 
     def _move_absolute_rot(self, value):
         '''moves the rotation stage to an absolut position; value in degrees'''
-        data = int(value/self.MicroStepSize)
+        data = int(value/self._MicroStepSize)
         self.write_rot([1,20,data])
         self._in_movement_rot()         # waits until rot_stage finished its move
 
 
     def _move_relative_rot(self, value):
         '''moves the rotation stage by a relative value in degrees'''
-        data = int(value/self.MicroStepSize)
+        data = int(value/self._MicroStepSize)
         self.write_rot([1,21,data])
         self._in_movement_rot()         # waits until rot_stage finished its move
 
 
     def _data_to_speed_rot(self, data):
-        speed = data * 9.375 * self.MicroStepSize
+        speed = data * 9.375 * self._MicroStepSize
         return speed
 
 
     def _speed_to_data_rot(self, speed):
-        data = int(speed / 9.375 / self.MicroStepSize)
+        data = int(speed / 9.375 / self._MicroStepSize)
         return data
 
     def _go_to_pos(self, axis = None, move = None):
