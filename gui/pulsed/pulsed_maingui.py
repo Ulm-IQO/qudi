@@ -2247,8 +2247,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configure the fourier transform of the main pulse analysis display:
         self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        self._mw.pulse_analysis_ft_PlotWidget.addItem(self.fft_image)
-        self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.pulse_analysis_second_PlotWidget.addItem(self.fft_image)
+        self._mw.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
 
@@ -2536,27 +2536,27 @@ class PulsedMeasurementGui(GUIBase):
             if self._mw.second_plot_ComboBox.currentText()=='FFT':
                 fft_x,fft_y=self._pulsed_meas_logic.compute_fft()
                 self.fft_image.setData(fft_x, fft_y)
-                self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=False)
-                self._mw.pulse_analysis_ft_PlotWidget.setLabel('left', 'FT-Amplitude')
-                self._mw.pulse_analysis_ft_PlotWidget.setLabel('bottom', 'frequency [GHz]')
+                self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
+                self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'FT-Amplitude')
+                self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'frequency [GHz]')
 
             else:
                 #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
                 self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
-                self._mw.pulse_analysis_ft_PlotWidget.setLabel('left', 'Counts')
-                self._mw.pulse_analysis_ft_PlotWidget.setLabel('bottom', 'To be adjusted')
+                self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'Counts')
+                self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'To be adjusted')
 
                 if self._mw.second_plot_ComboBox.currentText()=='unchanged data':
-                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=False)
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
 
                 elif self._mw.second_plot_ComboBox.currentText()=='Log(x)':
-                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=False)
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True,y=False)
 
                 elif self._mw.second_plot_ComboBox.currentText()=='Log(y)':
-                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=False,y=True)
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=True)
 
                 elif self._mw.second_plot_ComboBox.currentText()=='Log(x)&Log(y)':
-                    self._mw.pulse_analysis_ft_PlotWidget.setLogMode(x=True,y=True)
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True,y=True)
 
 
 
