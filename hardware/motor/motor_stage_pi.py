@@ -180,7 +180,7 @@ class MotorStagePI(Base, MotorInterface):
             self.logMsg('No parameter "pi_z_max" found in config!\n'
                         'Taking 100mm instead.',
                         msgType='warning')
-                        
+          
         # get the MicroStepSize value for the rotation stage
         if 'rot_microstepsize' in config.keys():
             self._MicroStepSize = config['rot_microstepsize']
@@ -190,7 +190,7 @@ class MotorStagePI(Base, MotorInterface):
                         'Taking the MicroStepSize {0} '
                         'instead.'.format(self._MicroStepSize),
                         msgType='warning') 
-                        
+   
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -201,6 +201,19 @@ class MotorStagePI(Base, MotorInterface):
         self._serial_connection_xyz.close()
         self._serial_connection_rot.close()
         self.rm.close()
+
+
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the motor device.
+
+        @return dict: dict with constraints for the sequence generation and GUI
+
+        Provides all the constraints for the xyz stage  and rot stage (like total
+        movement, velocity, ...)
+        Each constraint is a tuple of the form
+            (min_value, max_value, stepsize)
+        """
+        constraints = {}
 
 
     def move_rel(self, param_dict):
@@ -382,10 +395,6 @@ class MotorStagePI(Base, MotorInterface):
             return param_dict
         except:
             return -1
-            
-               
-
-
 
 
     def calibrate(self, param_list=None):
@@ -402,69 +411,90 @@ class MotorStagePI(Base, MotorInterface):
         After calibration the stage moves to home position which will be the
         zero point for the passed axis. 
         """
-
-
-    def calibrate_phi(self):
-        """Calibrates the phi-direction of the stage.
-        For this it turns to the point zero in phi.
-
-        @return int: error code (0:OK, -1:error)
-
-        moving the rotation stage to its home position; per default 0 degree
-        """
-        self._write_rot([1,1,0])      # moves the rot stage to its home position
-        self._in_movement_rot()       # waits until rot_stage finished its move
-        return 0
-
-
-    def get_velocity(self, dimension=None):
-        """ Gets the velocity of the given dimension
-
-        @param str dimension: name of chosen dimension
-
-        @return float velocity: velocity of chosen dimension
-        """
-        """Get the velocity of x and y"""
-        if dimension == 'x':
-            vel = int(self._serial_connection_xyz.ask(self._x_axis+'TY')[8:])/100000.
-        elif dimension == 'y':
-            vel = int(self._serial_connection_xyz.ask(self._y_axis+'TY')[8:])/100000.
-        elif dimension == 'z':
-            vel = int(self._serial_connection_xyz.ask(self._z_axis+'TY')[8:])/100000.
-        elif dimension == 'phi':
-            data = self._ask_rot([1,53,42])
-            vel = self._data_to_speed_rot(data)
-        else:
+        #TODO: implement calibration x, y and z
+        try:
+            if param_list != None and 'x' in param_list or param_list==None:
+                self.logMsg('x calibration is not yet implemented!',
+                                    msgType='error')
+            if param_list != None and 'y' in param_list or param_list==None:
+                self.logMsg('y calibration is not yet implemented!',
+                                    msgType='error')
+            if param_list != None and 'z' in param_list or param_list==None:
+                self.logMsg('z calibration is not yet implemented!',
+                                    msgType='error')                        
+            if param_list != None and 'phi' in param_list or param_list==None:
+                self._write_rot([1,1,0])      # moves the rot stage to its home position
+                self._in_movement_rot()       # waits until rot_stage finished its move
+            return 0
+        except:
             return -1
-        return vel
 
 
-    def set_velocity(self, dimension=None, vel=None):
-        """Write new value for velocity in chosen dimension
+    def get_velocity(self, param_list=None):
+        """ Gets the current velocity for all connected axes.
 
-        @param str dimension: name of chosen dimension
-        @param float vel: velocity for chosen dimension
+        @param dict param_list: optional, if a specific velocity of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed as the param_list.
+                                If nothing is passed, then from each axis the
+                                velocity is asked.
+
+        @return dict : with the axis label as key and the velocity as item.
+        """
+        param_dict = {}
+        try:
+            if param_list != None and 'x' in param_list or param_list==None:
+                x_vel = int(self._serial_connection_xyz.ask(self._x_axis+'TY')[8:])/100000.
+                param_dict['x'] = x_vel
+            if param_list != None and 'y' in param_list or param_list==None:
+                y_vel = int(self._serial_connection_xyz.ask(self._y_axis+'TY')[8:])/100000.
+                param_dict['y'] = y_vel
+            if param_list != None and 'z' in param_list or param_list==None:
+                z_vel = int(self._serial_connection_xyz.ask(self._z_axis+'TY')[8:])/100000.
+                param_dict['z'] = z_vel
+            if param_list != None and 'phi' in param_list or param_list==None:
+                data = self._ask_rot([1,53,42])
+                phi_vel = self._data_to_speed_rot(data)
+                param_dict['phi'] = phi_vel
+            return param_dict
+        except:
+            return -1
+
+
+    def set_velocity(self, param_dict):
+        """ Write new value for velocity.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-velocity-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
 
         @return int: error code (0:OK, -1:error)
         """
-        if vel != None:
-            if dimension == 'x':
+        try:
+            if 'x' in param_dict:
+                vel = param_dict['x']
                 self._serial_connection_xyz.write(self._x_axis+'SV%i\n'%(int(vel*10000)))
-            elif dimension == 'y':
+            if 'y' in param_dict:
+                vel = param_dict['y']
                 self._serial_connection_xyz.write(self._y_axis+'SV%i\n'%(int(vel*10000)))
-            elif dimension == 'z':
+            if 'z' in param_dict:
+                vel = param_dict['z']
                 self._serial_connection_xyz.write(self._z_axis+'SV%i\n'%(int(vel*10000)))
-            elif dimension == 'phi':
+            if 'phi' in param_dict:
+                vel = param_dict['phi']
                 data = self._speed_to_data_rot(vel)
                 self._write_rot([1,42,data])
-            else:
-                return -1
             return 0
-        else:
+        except:
             return -1
+
 
 
 ########################## internal methods ##################################
+
+#TODO: check if everything below here is working properly
 
     def _write_rot(self, inst):
         ''' sending a command to the rotation stage,
@@ -477,7 +507,7 @@ class MotorStagePI(Base, MotorInterface):
         z2 = 0
         z1 = 0
         base = 256
-
+        # this works, I used it like this in the old software
         if z >= 0:
             if z/base**3 >= 1:
                 z4 = int(z/base**3)   #since  int(8.9999)=8
@@ -514,7 +544,7 @@ class MotorStagePI(Base, MotorInterface):
         # there must be 6 bytes to receive (no error checking)
         r = [0,0,0,0,0,0]
         for i in range (6):
-            r[i] = ord(ser_rot.read(1))
+            r[i] = ord(self._serial_connection_rot.read(1))
         #x=r[0]
         y = r[1]
         z1 = r[2]
@@ -522,7 +552,6 @@ class MotorStagePI(Base, MotorInterface):
         z3 = r[4]
         z4 = r[5]
         q = z1+z2*256+z3*256**2+z4*256**3
-
         if y == 255:
             print(('error nr. ' + str(q)))
         return q
