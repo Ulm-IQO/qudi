@@ -28,7 +28,7 @@ class CustomQRadioButton(QtGui.QRadioButton):
 
     The following customization have been applied:
         - Make the QRadioButton readonly, i.e. catch all the Signals and pass
-          them of not, depending on the state of the Widget.
+          them or not, depending on the chosen state of the Widget.
     """
 
     def __init__(self, *args):
@@ -50,7 +50,8 @@ class CustomQRadioButton(QtGui.QRadioButton):
         else:
             super(CustomQRadioButton, self).mousePressEvent(event)
 
-    # This method is called, if QToolTip is going to be displayed
+    # Comment out this method, since it is called, if QToolTip is going to be
+    # displayed. You would not see any QTooltip if you catch that signal.
     # def mouseMoveEvent( self, event ):
     #     if ( self.isReadOnly() ):
     #         event.accept()
