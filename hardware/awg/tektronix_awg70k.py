@@ -462,7 +462,7 @@ class AWG70K(Base, PulserInterface):
         self.current_status = 0
         return 0
 
-    def upload_asset(self, name):
+    def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
             Does NOT load it into channels.
 
@@ -472,96 +472,142 @@ class AWG70K(Base, PulserInterface):
 
         If nothing is passed, method will be skipped.
         """
+        # check input
+        if asset_name is None:
+            self.logMsg('No asset name provided for upload!\nCorrect '
+                        'that!\nCommand will be ignored.', msgType='warning')
+            return -1
 
         filelist = os.listdir(self.host_waveform_directory)
         upload_names = []
         for filename in filelist:
             is_wfmx = filename.endswith('.WFMX')
-            is_mat = filename.endswith(name+'.mat')
-            if is_wfmx and (name + '_Ch') in filename:
+            is_mat = filename.endswith(asset_name+'.mat')
+            if is_wfmx and (asset_name + '_Ch') in filename:
                 upload_names.append(filename)
             elif is_mat:
                 upload_names.append(filename)
                 break
-
+        # Transfer files
         for filename in upload_names:
-            filepath = os.path.join(self.host_waveform_directory, filename)
-            with open(filepath, 'rb') as file:
-                self.ftp.storbinary('STOR ' + filename, file)
+            self._send_file(filename)
 
-        if not (name in self.uploaded_assets_list):
-            self.uploaded_assets_list.append(name)
+        if not (asset_name in self.uploaded_assets_list):
+            self.uploaded_assets_list.append(asset_name)
         return 0
 
-    def load_asset(self, load_dict={}):
-        """ Load an already hardware conform file, which was transferred to the
-            device on the with the provided name to the specified channel.
+    def load_asset(self, asset_name, load_dict={}):
+        """ Loads a sequence or waveform to the specified channel of the pulsing
+            device.
 
-        @param: dict load_dict: a dictionary with keys being one of the
+        @param str asset_name: The name of the asset to be loaded
+
+        @param dict load_dict:  a dictionary with keys being one of the
                                 available channel numbers and items being the
                                 name of the already sampled
-                                Pulse_Block_Ensemble.
+                                waveform/sequence files.
+                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
+                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                This parameter is optional. If none is given
+                                then the channel association is invoked from
+                                the sequence generation,
+                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
 
-        Example:
-            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
-            be loaded on channel 1 and 2 then it has to be passed like:
-                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
-            The pulse device should choose the proper file (which belongs to
-            channel 1 and 2) and load it.
-            You can e.g. also load just the file on channel two with:
-                upload_dict = {2: 'my-funny-stuff'}
-
         Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA). Waveforms and single channel sequences can be
-        assigned to each or both channels. Double channel sequences must be
-        assigned to channel 1. The AWG's file system is case-sensitive.
+        (PulseBlaster, FPGA).
         """
 
-        for channel in load_dict:
-            if load_dict[channel] in self.uploaded_assets_list:
-                # find out which files to load
-                with FTP(self.ip_address) as ftp:
-                    ftp.login() # login as default user anonymous, passwd anonymous@
-                    ftp.cwd(self.asset_directory)
-                    # get only the files from the dir and skip possible directories
-                    log =[]
-                    file_list = []
-                    filename = []
-                    ftp.retrlines('LIST', callback=log.append)
-                    for line in log:
-                        if not '<DIR>' in line:
-                            file_list.append(line.rsplit(None, 1)[1])
-                    for file in file_list:
-                        if file == load_dict[channel]+'.mat':
-                            filename.append(file)
-                            break
-                        elif file == load_dict[channel]+'_Ch1.WFMX':
-                            filename.append(file)
-                        elif file == load_dict[channel]+'_Ch2.WFMX':
-                            filename.append(file)
+        # Find all files associated with the specified asset name
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.asset_directory)
+            # get only the files from the dir and skip possible directories
+            log =[]
+            file_list = []
+            filename = []
+            ftp.retrlines('LIST', callback=log.append)
+        for line in log:
+            if not '<DIR>' in line:
+                file_list.append(line.rsplit(None, 1)[1])
 
-                #self.clear_all()
-                self.soc.settimeout(None)
-                for name in filename:
-                    # load files in AWG workspace
-                    file_path  = 'C:/inetpub/ftproot' + self.asset_directory + name
-                    if name.endswith('.mat'):
-                        self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
-                    else:
-                        self.tell('MMEM:OPEN "%s"\n' % file_path)
-                    self.ask('*OPC?\n')
-                    # load waveforms into channels
-                    wfm_name = load_dict[channel] + '_Ch1'
-                    self.tell('SOUR1:CASS:WAV "%s"\n' % wfm_name)
-                    wfm_name = load_dict[channel] + '_Ch2'
-                    self.tell('SOUR2:CASS:WAV "%s"\n' % wfm_name)
-                    self.current_loaded_asset = load_dict[channel]
-                    self.soc.settimeout(3)
-                return 0
-            else:
+        # find all assets wit file type .mat and .WFMX and name "asset_name"
+        # FIXME: Also include .SEQX later on
+        for file in file_list:
+            if file == asset_name+'.mat':
+                filename.append(file)
+            elif file == asset_name+'_Ch1.WFMX':
+                filename.append(file)
+            elif file == asset_name+'_Ch2.WFMX':
+                filename.append(file)
+
+        # Check if something could be found
+        if len(filename) == 0:
+            self.logMsg('No files associated with asset "{0}" were found on AWG70k.'
+                        'Load to channels failed!'.format(asset_name),
+                        msgType='error')
+            return -1
+
+        # Check if multiple file formats for a single asset_name are present and issue warning
+        tmp = filename[0][-4:]
+        for name in filename:
+            if not name.endswith(tmp):
+                self.logMsg('Multiple file formats associated with the asset "{0}" were found on AWG70k.'
+                            'Load to channels failed!'.format(asset_name),
+                        msgType='error')
                 return -1
+
+        self.logMsg('The following files associated with the asset "{0}" were found on AWG70k:\n'
+                    '"{1}"'.format(asset_name, filename), msgType='status')
+
+        # load files in AWG workspace
+        for asset in filename:
+            file_path  = 'C:/inetpub/ftproot' + self.asset_directory + asset
+            if asset.endswith('.mat'):
+                self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
+            else:
+                self.tell('MMEM:OPEN "%s"\n' % file_path)
+            self.ask('*OPC?\n')
+
+        # simply use the channel association of the filenames if no load_dict is given
+        if load_dict == {}:
+            for asset in filename:
+                # load waveforms into channels
+                name = asset_name + '_Ch1'
+                self.tell('SOUR1:CASS:WAV "%s"\n' % name)
+                name = asset_name + '_Ch2'
+                self.tell('SOUR2:CASS:WAV "%s"\n' % name)
+                self.current_loaded_asset = asset_name
+                # self.soc.settimeout(3)
+        else:
+            for channel in load_dict:
+                # load waveforms into channels
+                name = load_dict[channel]
+                self.tell('SOUR'+str(channel)+':CASS:WAV "%s"\n' % name)
+            self.current_loaded_asset = asset_name
+
+        return 0
+
+    def _send_file(self, filename):
+        """ Sends an already hardware specific waveform file to the pulse
+            generators waveform directory.
+
+        @param string filename: The file name of the source file
+
+        @return int: error code (0:OK, -1:error)
+
+        Unused for digital pulse generators without sequence storage capability
+        (PulseBlaster, FPGA).
+        """
+
+        filepath = os.path.join(self.host_waveform_directory, filename)
+
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.asset_directory)
+            with open(filepath, 'rb') as uploaded_file:
+                ftp.storbinary('STOR '+filename, uploaded_file)
 
     def clear_all(self):
         """ Clears the loaded waveform from the pulse generators RAM.

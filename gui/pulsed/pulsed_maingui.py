@@ -795,30 +795,27 @@ class PulsedMeasurementGui(GUIBase):
         This method is called when the user clicks on "upload to device"
         """
 
-        # Get the ensemble name to be uploaded from the ComboBox
-        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Get the asset name to be uploaded from the ComboBox
+        asset_name = self._mw.upload_ensemble_ComboBox.currentText()
 
-        # Upload the ensemble via logic module
-        self._seq_gen_logic.upload_file(ensemble_name)
+        # Upload the asset via logic module
+        self._seq_gen_logic.upload_asset(asset_name)
         return
 
     def load_into_channel_clicked(self):
         """
         This method is called when the user clicks on "load to channel"
         """
-        # Get the ensemble name to be uploaded from the ComboBox
-        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Get the asset name to be uploaded from the ComboBox
+        asset_name = self._mw.upload_ensemble_ComboBox.currentText()
 
         # Check out on which channel it should be uploaded:
-        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
-        # overwrite with the evaluated array:
-        channels = eval(channels)
-
+        # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
+        # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
         load_dict = {}
-        for ch in channels:
-            load_dict[ch] = ensemble_name
-        # Sample and upload the ensemble via logic module
-        self._seq_gen_logic.load_file(load_dict)
+
+        # Load asset into channles via logic module
+        self._seq_gen_logic.load_asset(asset_name, load_dict)
         return
 
     def update_block_list(self):

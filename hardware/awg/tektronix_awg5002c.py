@@ -302,46 +302,37 @@ class AWG5002C(Base, PulserInterface):
 
         return self.get_status()[0]
 
-    def upload_asset(self, upload_dict={}):
-        """ Upload an already hardware conform file to the device on the
-            specific channel(s).
+    def upload_asset(self, asset_name=None):
+        """ Upload an already hardware conform file to the device.
+        Does NOT load into channels.
 
-        @param: dict upload_dict: a dictionary with keys being one of the
-                                  available channel numbers and items being the
-                                  name of the already hardware conform file.
+        @param: str asset_name: The name of the asset to be uploaded to the AWG
 
         @return int: error code (0:OK, -1:error)
-
-        If nothing is passed, method will be skipped.
-
-        Example:
-            The created file with the generic name 'my-funny-stuff' should be
-            uploaded on channel 1 and 2:
-                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
-            The hardware will handle the proper file choice, like e.g. the file
-            with the name
-                my-funny-stuff_ch1.wfm
-            will be chosen for upload on channel 1.
         """
-
-        if upload_dict == {}:
-            self.logMsg('No file and channel provided for upload!\nCorrect '
+        if asset_name is None:
+            self.logMsg('No asset name provided for upload!\nCorrect '
                         'that!\nCommand will be ignored.', msgType='warning')
+            return -1
 
+        # create list of filenames to be uploaded
+        upload_names = []
         if self.current_sample_mode == self.sample_mode['wfm-file']:
-            # if len(waveform.analogue_samples)> 1:
-
-            for channel_num in upload_dict:
-                file_name = str(upload_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
-                self._send_file(file_name)
-                # load the file in appropriated channel:
-                self.load_asset({channel_num: upload_dict[channel_num]})
-
+            filelist = os.listdir(self.host_waveform_directory)
+            for filename in filelist:
+                is_wfm = filename.endswith('.wfm')
+                if is_wfm and (asset_name + '_ch') in filename:
+                    upload_names.append(filename)
         else:
             self.logMsg('Error in file upload:\nInvalid sample mode for '
                         'this device!\nSet a proper one for sample the '
                         'real data.',
                         msgType='error')
+            return -1
+
+        # upload files
+        for name in upload_names:
+            self._send_file(name)
         return 0
 
     def write_chunk_to_file(self, name, analogue_samples_chunk,
@@ -430,7 +421,7 @@ class AWG5002C(Base, PulserInterface):
         """ Sends an already hardware specific waveform file to the pulse
             generators waveform directory.
 
-        @param string filepath: The file path of the source file
+        @param string filename: The file name of the source file
 
         @return int: error code (0:OK, -1:error)
 
@@ -438,42 +429,35 @@ class AWG5002C(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        # for i in range(1,3,1):
         filepath = os.path.join(self.host_waveform_directory, filename)
-        # self.logMsg(('Uploaded: ', filepath))
 
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.asset_directory)
             with open(filepath, 'rb') as uploaded_file:
-                filename = filepath.rsplit('\\', 1)[1]
                 ftp.storbinary('STOR '+filename, uploaded_file)
-        pass
 
-    def load_asset(self, load_dict={}):
-        """ Load an already hardware conform file, which was transferred to the
-            device on the with the provided name to the specified channel.
+    def load_asset(self, asset_name, load_dict={}):
+        """ Loads a sequence or waveform to the specified channel of the pulsing
+            device.
 
-        @param: dict load_dict: a dictionary with keys being one of the
+        @param str asset_name: The name of the asset to be loaded
+
+        @param dict load_dict:  a dictionary with keys being one of the
                                 available channel numbers and items being the
                                 name of the already sampled
-                                Pulse_Block_Ensemble.
+                                waveform/sequence files.
+                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
+                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                This parameter is optional. If none is given
+                                then the channel association is invoked from
+                                the sequence generation,
+                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
 
-        Example:
-            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
-            be loaded on channel 1 and 2 then it has to be passed like:
-                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
-            The pulse device should choose the proper file (which belongs to
-            channel 1 and 2) and load it.
-            You can e.g. also load just the file on channel two with:
-                upload_dict = {2: 'my-funny-stuff'}
-
         Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA). Waveforms and single channel sequences can be
-        assigned to each or both channels. Double channel sequences must be
-        assigned to channel 1. The AWG's file system is case-sensitive.
+        (PulseBlaster, FPGA).
         """
 
         path = self.ftp_path + self.get_file_dir_on_device()
