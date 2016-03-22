@@ -196,7 +196,7 @@
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_18">
                  <item row="0" column="0">
-                  <widget class="PlotWidget" name="pulse_analysis_ft_PlotWidget"/>
+                  <widget class="PlotWidget" name="pulse_analysis_second_PlotWidget"/>
                  </item>
                 </layout>
                </item>
