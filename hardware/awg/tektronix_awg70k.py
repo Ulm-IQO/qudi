@@ -72,7 +72,6 @@ class AWG70K(Base, PulserInterface):
         self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
         self.offset_list = {1: 0, 2: 0, 3: 0, 4: 0} # for each analog channel one value, the offset voltage
 
-        self.uploaded_assets_list = []
         self.current_loaded_asset = None
         self.is_output_enabled = True
 
@@ -135,8 +134,6 @@ class AWG70K(Base, PulserInterface):
         self.input_buffer = int(2 * 1024)
 
         self.connected = True
-
-        self.uploaded_assets_list = self.get_uploaded_assets_names()
 
 
     def deactivation(self, e):
@@ -493,8 +490,6 @@ class AWG70K(Base, PulserInterface):
         for filename in upload_names:
             self._send_file(filename)
 
-        if not (asset_name in self.uploaded_assets_list):
-            self.uploaded_assets_list.append(asset_name)
         return 0
 
     def load_asset(self, asset_name, load_dict={}):
@@ -993,7 +988,7 @@ class AWG70K(Base, PulserInterface):
 
         return return_a_ch, return_d_ch
 
-    def get_uploaded_assets_names(self):
+    def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
 
         @return list: List of all uploaded asset name strings in the current
@@ -1006,11 +1001,13 @@ class AWG70K(Base, PulserInterface):
         name_list = []
         for filename in uploaded_files:
             if fnmatch(filename, '*_Ch?.WFMX'):
-                if filename[:-9] not in name_list:
-                    name_list.append(filename[:-9])
+                asset_name = filename.rsplit('_', 1)[0]
+                if asset_name not in name_list:
+                    name_list.append(asset_name)
             elif fnmatch(filename, '*.mat'):
-                if filename[:-4] not in name_list:
-                    name_list.append(filename[:-4])
+                asset_name = filename.rsplit('.', 1)[0]
+                if asset_name not in name_list:
+                    name_list.append(asset_name)
         return name_list
 
     def get_saved_asset_names(self):
@@ -1026,11 +1023,13 @@ class AWG70K(Base, PulserInterface):
         saved_assets = []
         for filename in file_list:
             if fnmatch(filename, '*_Ch?.WFMX'):
-                if filename[:-9] not in saved_assets:
-                    saved_assets.append(filename[:-9])
+                asset_name = filename.rsplit('_', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
             elif fnmatch(filename, '*.mat'):
-                if filename[:-4] not in saved_assets:
-                    saved_assets.append(filename[:-4])
+                asset_name = filename.rsplit('.', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
         return saved_assets
 
     def delete_asset(self, asset_name):
@@ -1050,26 +1049,24 @@ class AWG70K(Base, PulserInterface):
         uploaded_files = self._get_filenames_on_device()
 
         # list of uploaded files to be deleted
-        filess_to_delete = []
-        # determine files to delete and remove the asset names from the uploaded_assets_list
+        files_to_delete = []
+        # determine files to delete
         for name in asset_name:
-            self.uploaded_assets_list.remove(name)
             for filename in uploaded_files:
                 if fnmatch(filename, name+'_Ch?.WFMX') or fnmatch(filename, name+'.mat'):
-                    filess_to_delete.append(filename)
+                    files_to_delete.append(filename)
 
         # delete files
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
             ftp.cwd(self.asset_directory)
-            for filename in filess_to_delete:
+            for filename in files_to_delete:
                 ftp.delete(filename)
 
         # clear the AWG if the deleted asset is the currently loaded asset
         if self.current_loaded_asset == asset_name:
             self.clear_all()
         return 0
-
 
     def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
@@ -1201,7 +1198,7 @@ class AWG70K(Base, PulserInterface):
             file_list = []
             ftp.retrlines('LIST', callback=log.append)
             for line in log:
-                if not '<DIR>' in line:
+                if '<DIR>' not in line:
                     file_list.append(line.rsplit(None, 1)[1])
             for filename in file_list:
                 if (filename.endswith('.WFMX') or filename.endswith('.mat')):

@@ -25,6 +25,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 import numpy as np
 import os
 from collections import OrderedDict
+from fnmatch import fnmatch
 
 from core.base import Base
 from interface.pulser_interface import PulserInterface
@@ -1072,48 +1073,40 @@ class AWG5002C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-
-        with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.asset_directory)
-
-            # get only the files from the dir and skip possible directories
-            log =[]
-            file_list = []
-            ftp.retrlines('LIST', callback=log.append)
-            for line in log:
-                if not '<DIR>' in line:
-                    file_list.append(line.rsplit(None, 1)[1])
-        return file_list
+        uploaded_files = self._get_filenames_on_device()
+        name_list = []
+        for filename in uploaded_files:
+            if fnmatch(filename, '*_ch?.wfm'):
+                asset_name = filename.rsplit('_', 1)[0]
+                if asset_name not in name_list:
+                    name_list.append(asset_name)
+        return name_list
 
 
     def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved sequences on the host PC.
+        """ Retrieve the names of all sampled and saved assets on the host PC.
+        This is no list of the file names.
 
         @return list: List of all saved asset name strings in the current
                       directory of the host PC.
         """
-        # list of all files in the waveform directory ending with .mat or .WFMX
-        file_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfm'))]
-        # list of only the names without the file extension
-        file_names = [file.split('.')[0] for file in file_list]
+        # list of all files in the waveform directory ending with .wfm
+        file_list = self._get_filenames_on_host()
         # exclude the channel specifier for multiple analogue channels and create return list
-        saved_asset = []
-        for name in file_names:
-            if name.endswith('_Ch1'):
-                saved_asset.append(name[0:-4])
-            elif name.endswith('_Ch2'):
-                pass
-            else:
-                saved_asset.append(name)
+        saved_assets = []
+        for filename in file_list:
+            if fnmatch(filename, '*_ch?.wfm'):
+                asset_name = filename.rsplit('_', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
+        return saved_assets
 
-        return saved_asset
 
     def delete_asset(self, asset_name):
-        """ Delete a sequence with the passed seq_name from the device memory.
+        """ Delete all files associated with an asset with the passed asset_name from the device memory.
 
-        @param str asset_name: The full name of the file to be deleted.
-                               Optionally a list of file names can be passed.
+        @param str asset_name: The name of the asset to be deleted
+                               Optionally a list of asset names can be passed.
 
         @return int: error code (0:OK, -1:error)
 
@@ -1123,20 +1116,29 @@ class AWG5002C(Base, PulserInterface):
         if not isinstance(asset_name, list):
             asset_name = [asset_name]
 
-        file_list = self.get_sequence_names()
+        # get all uploaded files
+        uploaded_files = self._get_filenames_on_device()
 
+        # list of uploaded files to be deleted
+        files_to_delete = []
+        # determine files to delete
+        for name in asset_name:
+            for filename in uploaded_files:
+                if fnmatch(filename, name+'_ch?.wfm'):
+                    files_to_delete.append(filename)
+
+        # delete files
         with FTP(self.ip_address) as ftp:
             ftp.login() # login as default user anonymous, passwd anonymous@
-                        # FIXME: that should be changed at some point so that
-                        # ftp login is only possible with a proper username and
-                        # password.
             ftp.cwd(self.asset_directory)
+            for filename in files_to_delete:
+                ftp.delete(filename)
 
-            for entry in asset_name:
-                if entry in file_list:
-                    ftp.delete(entry)
-
+        # clear the AWG if the deleted asset is the currently loaded asset
+        # if self.current_loaded_asset == asset_name:
+        #     self.clear_all()
         return 0
+
 
     def set_asset_dir_on_device(self, dir_path):
         """ Change the directory where the assets are stored on the device.
@@ -1372,3 +1374,33 @@ class AWG5002C(Base, PulserInterface):
             os.makedirs(os.path.abspath(path))
 
         return os.path.abspath(path)
+
+    def _get_filenames_on_device(self):
+        """ Get the full filenames of all assets saved on the device.
+
+        @return: list, The full filenames of all assets saved on the device.
+        """
+        filename_list = []
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.asset_directory)
+            # get only the files from the dir and skip possible directories
+            log =[]
+            file_list = []
+            ftp.retrlines('LIST', callback=log.append)
+            for line in log:
+                if '<DIR>' not in line:
+                    file_list.append(line.rsplit(None, 1)[1])
+            for filename in file_list:
+                if filename.endswith('.wfm'):
+                    if filename not in filename_list:
+                        filename_list.append(filename)
+        return filename_list
+
+    def _get_filenames_on_host(self):
+        """ Get the full filenames of all assets saved on the host PC.
+
+        @return: list, The full filenames of all assets saved on the host PC.
+        """
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.wfm')]
+        return filename_list

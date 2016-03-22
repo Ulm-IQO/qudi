@@ -959,15 +959,14 @@ class PulserDummy(Base, PulserInterface):
         # exclude the channel specifier for multiple analogue channels and create return list
         saved_assets = []
         for name in file_list:
-            if fnmatch(name, '*_Ch?.WFMX'):
-                if name[0:-9] not in saved_assets:
-                    saved_assets.append(name[0:-9])
+            if fnmatch(name, '*_Ch?.WFMX') or fnmatch(name, '*_ch?.wfm'):
+                asset_name = name.rsplit('_', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
             elif fnmatch(name, '*.mat'):
-                if name[0:-4] not in saved_assets:
-                    saved_assets.append(name[0:-4])
-            elif fnmatch(name, '*_ch?.wfm'):
-                if name[0:-8] not in saved_assets:
-                    saved_assets.append(name[0:-8])
+                asset_name = name.rsplit('.', 1)[0]
+                if asset_name not in saved_assets:
+                    saved_assets.append(asset_name)
         return saved_assets
 
     def delete_asset(self, asset_name):
