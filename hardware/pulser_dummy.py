@@ -562,25 +562,41 @@ class PulserDummy(Base, PulserInterface):
                         'not assigned properly. Correct that!', msgType='error')
         return 0
 
-    def upload_asset(self, name):
-        """
-        Waveform or sequence with name "name" gets uploaded to the Hardware.
+    def upload_asset(self, asset_name=None):
+        """ Upload an already hardware conform file to the device.
+            Does NOT load it into channels.
 
-        @param str name: The name of the sequence/waveform to be transferred.
+        @param name: string, name of the ensemble/seqeunce to be uploaded
 
         @return int: error code (0:OK, -1:error)
+
+        If nothing is passed, method will be skipped.
         """
-        if name not in self.uploaded_assets_list:
-            self.uploaded_assets_list.append(name)
+        if asset_name is None:
+            self.logMsg('No asset name provided for upload!\nCorrect '
+                        'that!\nCommand will be ignored.', msgType='warning')
+            return -1
+
+        if asset_name not in self.uploaded_assets_list:
+            self.uploaded_assets_list.append(asset_name)
         return 0
 
-    def load_asset(self, asset_name, channel=None):
+    def load_asset(self, asset_name, load_dict={}):
         """ Loads a sequence or waveform to the specified channel of the pulsing
             device.
 
         @param str asset_name: The name of the asset to be loaded
-        @param int channel: The channel for the sequence to be loaded into if
-                            not already specified in the sequence itself
+
+        @param dict load_dict:  a dictionary with keys being one of the
+                                available channel numbers and items being the
+                                name of the already sampled
+                                waveform/sequence files.
+                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
+                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                This parameter is optional. If none is given
+                                then the channel association is invoked from
+                                the sequence generation,
+                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
 

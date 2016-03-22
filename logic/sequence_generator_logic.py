@@ -848,6 +848,36 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.signal_sequence_list_updated.emit()
         return
 
+    def upload_asset(self, asset_name):
+        """ Upload an already sampled Ensemble or Sequence object to the device.
+            Does NOT load it into channels.
+
+            @param asset_name: string, name of the ensemble/sequence to upload
+        """
+        err = self._pulse_generator_device.upload_asset(asset_name)
+        return err
+
+    def load_asset(self, asset_name, load_dict={}):
+        """ Loads a sequence or waveform to the specified channel of the pulsing
+            device.
+
+        @param str asset_name: The name of the asset to be loaded
+
+        @param dict load_dict:  a dictionary with keys being one of the
+                                available channel numbers and items being the
+                                name of the already sampled
+                                waveform/sequence files.
+                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
+                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                This parameter is optional. If none is given
+                                then the channel association is invoked from
+                                the sequence generation,
+                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+
+        @return int: error code (0:OK, -1:error)
+        """
+        err = self._pulse_generator_device.load_asset(asset_name, load_dict)
+        return err
 
     # =========================================================================
     # Depricated method, will be remove soon.
@@ -1249,15 +1279,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # return a status message with the time needed for sampling and writing the ensemble as a whole.
             self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             return
-
-    def upload_file(self, name):
-        """ Upload an already sampled PulseBlockEnsemble object to the device.
-            Does NOT load it into channels.
-
-            @param name: string, name of the ensemble/sequence to upload
-        """
-
-        self._pulse_generator_device.upload_asset(name)
 
 #-------------------------------------------------------------------------------
 #                    END sequence/block sampling
