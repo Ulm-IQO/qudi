@@ -183,6 +183,9 @@ class PulsedMeasurementLogic(GenericLogic):
             number_of_gates = 0
         actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth, record_length_s, number_of_gates)
         self.fast_counter_binwidth = actual_binwidth_s
+        #TODO: Where do get the expected duration from?
+        #self.expected_duration=self.aom_delay_s + self.sequence_length_s# in µs
+        self.expected_duration=732.0 # in µs
         return
 
     def start_pulsed_measurement(self):
@@ -199,6 +202,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 # initialize plots
                 self._initialize_signal_plot()
                 self._initialize_laser_plot()
+
 
                 # start microwave generator
                 # self.microwave_on()
@@ -270,7 +274,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.elapsed_time_str += str(int(self.elapsed_time)//60).zfill(2) + ':' # minutes
             self.elapsed_time_str += str(int(self.elapsed_time) % 60).zfill(2) # seconds
             # has to be changed. just for testing purposes
-            self.elapsed_sweeps = self.elapsed_time/3
+
+            self.elapsed_sweeps = self.elapsed_time/(self.expected_duration/1000000)
 
             # emit signals
             self.sigSinglePulsesUpdated.emit()
