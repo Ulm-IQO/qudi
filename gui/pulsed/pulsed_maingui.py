@@ -2289,6 +2289,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 
+        self._mw.time_param_expected_dur_DoubleSpinBox.setValue(99)
         self._mw.time_param_elapsed_time_LineEdit.setText('00:00:00:00')
 
         self._mw.time_param_elapsed_sweep_SpinBox.setValue(0)
@@ -2374,6 +2375,10 @@ class PulsedMeasurementGui(GUIBase):
 
         #Firstly stop any scan that might be in progress
         self._pulsed_meas_logic.stop_pulsed_measurement()
+
+
+
+
         #Then if enabled. start a new scan.
 
         # provide the logic, which buttons to switch on:
@@ -2407,6 +2412,9 @@ class PulsedMeasurementGui(GUIBase):
             self._pulsed_meas_logic.laser_length_s = 3e-6
 
             self._pulsed_meas_logic.configure_fast_counter()
+            # FIXME: Not sure if that belongs to here...
+            print('exp dur',self._pulsed_meas_logic.expected_duration)
+            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._pulsed_meas_logic.expected_duration)
 
             self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
