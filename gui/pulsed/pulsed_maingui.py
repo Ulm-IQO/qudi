@@ -2251,6 +2251,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_ft_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
+
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
         self.errorbars_present=False
 
@@ -2284,6 +2285,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.time_param_ana_periode_DoubleSpinBox.setValue(2)
         self._mw.ext_control_optimize_interval_DoubleSpinBox.setValue(500)
         self._mw.ext_control_redo_odmr_DoubleSpinBox.setValue(500)
+
+        # Configuration of the second plot ComboBox
+
+        self._mw.second_plot_ComboBox.addItem('None')
+        self._mw.second_plot_ComboBox.addItem('unchanged data')
+        self._mw.second_plot_ComboBox.addItem('FFT')
+        self._mw.second_plot_ComboBox.addItem('Log(x)')
+        self._mw.second_plot_ComboBox.addItem('Log(y)')
+        self._mw.second_plot_ComboBox.addItem('Log(x)&Log(y)')
 
         # Configuration of the fit ComboBox
         self._mw.fit_param_fit_func_ComboBox.addItem('No Fit')
@@ -2320,12 +2330,10 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.show_tau_editor)
-        self._mw.ana_param_show_ft_CheckBox.stateChanged.connect(self.show_ft_plot)
-        #FIXME: what is that doing?
-        self.show_ft_plot()
+        #self._mw.ana_param_show_ft_CheckBox.stateChanged.connect(self.show_ft_plot)
+
 
         # Connect InputWidgets to events
-        # pulsed measurement tab
         self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
         self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
@@ -2333,7 +2341,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_parameters_changed)
         self.analysis_parameters_changed()
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
-
+        self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
+        self.change_second_plot()
 
     def _deactivate_analysis_ui(self, e):
         """ Disconnects the configuration for 'Analysis' Tab.
@@ -2447,6 +2456,7 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the xy-matrix image
         '''
         #### dealing with the error bars
+        #FIXME: Does that belong into the logic?
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
             # calculate optimal beam width for the error bars
             beamwidth = 1e99
@@ -2460,7 +2470,7 @@ class PulsedMeasurementGui(GUIBase):
             if not self.errorbars_present:
                 self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
                 self.errorbars_present = True
-                
+
         else:
             if self.errorbars_present:
                 self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
@@ -2516,11 +2526,11 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
 
-    def show_ft_plot(self):
-        if self._mw.ana_param_show_ft_CheckBox.isChecked():
-            self._mw.fourier_transform_GroupBox.setVisible(True)
-        else:
+    def change_second_plot(self):
+        if self._mw.second_plot_ComboBox.currentText()=='None':
             self._mw.fourier_transform_GroupBox.setVisible(False)
+        else:
+            self._mw.fourier_transform_GroupBox.setVisible(True)
 
     def seq_parameters_changed(self):
 
