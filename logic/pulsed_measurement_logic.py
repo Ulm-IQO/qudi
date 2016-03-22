@@ -623,8 +623,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Take just the positive values
 
-        middle=corrected_y.shape[-1]/2
-        fft_x=np.fft.fftfreq(corrected_y.shape[-1])
+        middle = round(corrected_y.shape[-1]/2)
+        fft_x = np.fft.fftfreq(corrected_y.shape[-1])
 
         return fft_x[:middle],fft_y[:middle]
 
