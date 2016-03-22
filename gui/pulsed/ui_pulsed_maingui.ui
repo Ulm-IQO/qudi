@@ -327,13 +327,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="3">
-                  <widget class="QCheckBox" name="ana_param_show_ft_CheckBox">
-                   <property name="text">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="4" column="2">
                   <widget class="QLabel" name="show_errorbars_Label">
                    <property name="text">
@@ -347,6 +340,9 @@
                     <string/>
                    </property>
                   </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QComboBox" name="second_plot_ComboBox"/>
                  </item>
                 </layout>
                </item>
