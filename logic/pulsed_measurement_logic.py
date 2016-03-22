@@ -611,6 +611,24 @@ class PulsedMeasurementLogic(GenericLogic):
         # self._mycrowave_source_device.off()
         return
 
+    def compute_fft(self):
+        # FiXME: This is the first implementation. I am sure there are better options
+
+        # subtract baseline
+        mean_y=sum(self.signal_plot_y)/len(self.signal_plot_y)
+        corrected_y=self.signal_plot_y-mean_y
+
+        #FIXME: Not sure if real or imaginary part is the better choice here
+        fft_y=np.abs((np.fft.fft(corrected_y)).real)
+
+        # Take just the positive values
+
+        middle=corrected_y.shape[-1]/2
+        fft_x=np.fft.fftfreq(corrected_y.shape[-1])
+
+        return fft_x[:middle],fft_y[:middle]
+
+
     def do_fit(self,fit_function):
         """Performs the chosen fit on the measured data.
 
