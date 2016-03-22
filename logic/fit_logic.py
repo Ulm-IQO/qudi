@@ -839,6 +839,92 @@ class FitLogic(GenericLogic):
 
         return model, params
 
+#   Todo: implement estimator
+    def estimate_double_gaussian(self, x_axis=None, data=None):
+        """ This method provides a gaussian function.
+
+        @param array x_axis: x values
+        @param array data: value of each data point corresponding to
+                            x values
+
+        @return int error: error code (0:OK, -1:error)
+        @return float gaussian0_amplitude: estimated amplitude of 1st peak
+        @return float gaussian1_amplitude: estimated amplitude of 2nd peak
+        @return float gaussian0_center: estimated x value of 1st maximum
+        @return float gaussian1_center: estimated x value of 2nd maximum
+        @return float gaussian0_sigma: estimated sigma of 1st peak
+        @return float gaussian1_sigma: estimated sigma of 2nd peak
+        @return float offset: estimated offset
+        """
+
+        error = 0
+        gaussian0_amplitude = 0
+        gaussian1_amplitude = 0
+        gaussian0_center = 0
+        gaussian1_center = 0
+        gaussian0_sigma = 0
+        gaussian1_sigma = 0
+        offset = 0
+
+        return error, gaussian0_amplitude,gaussian1_amplitude, \
+               gaussian0_center,gaussian1_center, gaussian0_sigma, \
+               gaussian1_sigma, offset
+
+    def make_double_gaussian_fit(self, axis=None, data=None,
+                                   add_parameters=None):
+        """ This method performes a 1D double gaussian fit on the provided data.
+
+        @param array [] axis: axis values
+        @param array[]  x_data: data
+        @param dictionary add_parameters: Additional parameters
+
+        @return lmfit.model.ModelFit result: All parameters provided about
+                                             the fitting, like: success,
+                                             initial fitting values, best
+                                             fitting values, data with best
+                                             fit with given axis,...
+
+        """
+
+        error,              \
+        gaussian0_amplitude, \
+        gaussian1_amplitude, \
+        gaussian0_center,    \
+        gaussian1_center,    \
+        gaussian0_sigma,     \
+        gaussian1_sigma,     \
+        offset              = self.estimate_double_gaussian(axis, data)
+
+        model, params = self.make_multiple_gaussianian_model(no_of_lor=2)
+
+        # Auxiliary variables:
+        stepsize=axis[1]-axis[0]
+        n_steps=len(axis)
+
+        #Defining standard parameters
+        #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
+        params.add('gaussian0_amplitude', gaussian0_amplitude, True, None,                       -0.01,                       None)
+        params.add('gaussian0_sigma',     gaussian0_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
+        params.add('gaussian0_center',    gaussian0_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
+        params.add('gaussian1_amplitude', gaussian1_amplitude, True, None,                       -0.01,                       None)
+        params.add('gaussian1_sigma',     gaussian1_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
+        params.add('gaussian1_center',    gaussian1_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
+        params.add('c',                  offset,             True, None,                       None,                        None)
+
+        #redefine values of additional parameters
+        if add_parameters!=None:
+            params=self.substitute_parameter(parameters=params,
+                                             update_parameters=add_parameters)
+        try:
+            result=model.fit(data, x=axis,params=params)
+        except:
+            result=model.fit(data, x=axis,params=params)
+            self.logMsg('The double gaussian fit did not '
+                        'work:'+result.message,
+                        msgType='message')
+
+        return result
+
     ############################################################################
     #                                                                          #
     #                          Double Lorentzian Model                         #
@@ -1136,7 +1222,6 @@ class FitLogic(GenericLogic):
 
         @param array [] axis: axis values
         @param array[]  x_data: data
-        @param int no_of_lor: Number of lorentzians
         @param dictionary add_parameters: Additional parameters
 
         @return lmfit.model.ModelFit result: All parameters provided about
