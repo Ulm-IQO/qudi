@@ -33,6 +33,15 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     """ unstable: Nikolas Tomek
         This is the hardware class for the Spartan-6 (Opal Kelly XEM6310) FPGA
         based fast counter.
+        The command reference for the communicating via the OpalKelly Frontend
+        can be looked up here:
+
+            https://library.opalkelly.com/library/FrontPanelAPI/index.html
+
+        The Frontpanel is basically a C++ interface, where a wrapper was used
+        (SWIG) to access the dll library. Be aware that the wrapper is specified
+        for a specific version of python (here python 3.4), and it is not
+        guaranteed to be working with other versions.
     """
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
@@ -120,10 +129,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     def _connect(self):
         """ Connect host PC to FPGA module with the specified serial number. """
 
-        # check if a FPGA is connected to this host PC
+        # check if a FPGA is connected to this host PC. That method is used to
+        # determine also how many devices are available.
         if not self._fpga.GetDeviceCount():
             self.logMsg('No FPGA connected to host PC or FrontPanel.exe is '
-                        'running', msgType='error')
+                        'running.', msgType='error')
             return -1
 
         # open a connection to the FPGA with the specified serial number
@@ -132,6 +142,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # upload the proper fast counter configuration bitfile to the FPGA
         bitfile_name = 'fastcounter_' + self._fpga_type + '.bit'
 
+        # Load on the FPGA a configuration file (bit file).
         self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware',
                                               'fpga_fastcounter',
                                               bitfile_name))
