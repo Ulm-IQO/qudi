@@ -101,6 +101,16 @@ class AWG70K(Base, PulserInterface):
                         'will be taken instead.'.format(self.pulsed_file_dir),
                         msgType='warning')
 
+        if 'ftp_root_dir' in config.keys():
+            self.ftp_root_directory = config['ftp_root_dir']
+        else:
+            self.ftp_root_directory = 'C:/inetpub/ftproot'
+            self.logMsg('No parameter "ftp_root_dir" was specified in the '
+                        'config for tektronix_awg70k as directory for '
+                        'the FTP server root on the AWG!\nThe default root directory\n{0}\n'
+                        'will be taken instead.'.format(self.ftp_root_directory),
+                        msgType='warning')
+
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
         a_ch = {1: False, 2: False}
@@ -559,7 +569,7 @@ class AWG70K(Base, PulserInterface):
 
         # load files in AWG workspace
         for asset in filename:
-            file_path  = 'C:/inetpub/ftproot' + self.asset_directory + asset
+            file_path  = os.path.join(self.ftp_root_directory, self.asset_directory + asset)
             if asset.endswith('.mat'):
                 self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
             else:
