@@ -687,7 +687,7 @@ class APTStage(Base, MotorInterface):
                                 'limts [{2},{3}]. Movement is '
                                 'ignored!'.format(
                                         label_axis,
-                                        curr_pos,
+                                        desired_pos,
                                         constraints[label_axis]['pos_min'],
                                         constraints[label_axis]['pos_max']),
                                 msgType='warning')
@@ -887,7 +887,7 @@ class APTOneAxisStage(APTStage):
         super().__init__(manager, name, config, **kwargs)
 
         for label_axis in self._axis_dict:
-            self._axis_dict[label].blCorr = 0.10    # set the backlach
+            self._axis_dict[label_axis].blCorr = 0.10    # set the backlach
                                                     # correction since the
                                                     # forward movement is
                                                     # preciser than backwards
@@ -1126,7 +1126,8 @@ class APTThreeAxisStage(APTStage):
 
 
 class APTFourAxisStage(APTStage):
-    """ The module controlles three StepperStage56=NRT150 Enc Stage 150mm
+    """ The module controls three StepperStage56=NRT150 Enc Stage 150mm
+    together with CR1-Z7 rotation stage.
     """
 
     _modclass = 'APTThreeAxis'
@@ -1155,15 +1156,18 @@ class APTFourAxisStage(APTStage):
         for label_axis in self._axis_dict:
 
             # adapt the hardware controller to the proper unit set:
-            if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
+            if (limits_dict[label_axis]['unit'] == '°') or (limits_dict[label_axis]['unit'] == 'degree'):
                 unit = 2    # for rotation movement
+                pitch = 7.5
+                blCorr = 0.2
             else:
                 unit = 1    # default value for linear movement
-
+                pitch = 1
+                blCorr = 0.10
             self._axis_dict[label_axis].set_stage_axis_info(
                                                 limits_dict[label_axis]['pos_min'],
                                                 limits_dict[label_axis]['pos_max'],
-                                                pitch=1,
+                                                pitch=pitch,
                                                 unit=unit)
             self._axis_dict[label_axis].setVelocityParameters(
                                                 limits_dict[label_axis]['vel_min'],
@@ -1232,7 +1236,7 @@ class APTFourAxisStage(APTStage):
         axis1['label']    = 'y'     # That name must coincide with the given
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
-        axis0['unit']     = 'mm'    # the SI units, only possible mm or degree
+        axis1['unit']     = 'mm'    # the SI units, only possible mm or degree
         axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min']  = -65     # in mm
         axis1['pos_max']  = 65      # that is basically the traveling range
@@ -1265,13 +1269,13 @@ class APTFourAxisStage(APTStage):
         axis3['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis3['pos_min'] = 0     # in mm
         axis3['pos_max'] = 360       # that is basically the traveling range
-        axis3['pos_step'] = 0.001   # in mm
-        axis3['vel_min'] = 0.1      # in mm/s
-        axis3['vel_max'] = 2.0      # in mm/s
-        axis3['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
-        axis3['acc_min'] = 0.01     # in mm/s^2
-        axis3['acc_max'] = 0.5      # in mm/s^2
-        axis3['acc_step'] = 0.001   # in mm/s^2 (a rather arbitrary number)
+        axis3['pos_step'] = 0.01   # in mm
+        axis3['vel_min'] = 4.0      # in mm/s
+        axis3['vel_max'] = 6.0      # in mm/s
+        axis3['vel_step'] = 0.1   # in mm/s (a rather arbitrary number)
+        axis3['acc_min'] = 4.0     # in mm/s^2
+        axis3['acc_max'] = 5.0      # in mm/s^2
+        axis3['acc_step'] = 0.01   # in mm/s^2 (a rather arbitrary number)
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
