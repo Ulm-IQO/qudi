@@ -2480,7 +2480,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # dealing with the actual signal
         self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        #self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.change_second_plot()
 
 
 
@@ -2524,6 +2524,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
+
 
     def change_second_plot(self):
         if self._mw.second_plot_ComboBox.currentText()=='None':
