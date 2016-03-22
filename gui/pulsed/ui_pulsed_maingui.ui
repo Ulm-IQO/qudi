@@ -317,6 +317,13 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="0" column="4">
+                  <widget class="QLabel" name="ana_param_x_axis_name_Label">
+                   <property name="text">
+                    <string>x axis name:</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="1" column="4">
                   <widget class="QLabel" name="ana_param_x_axis_inc_Label">
                    <property name="text">
@@ -330,6 +337,13 @@
                  <item row="1" column="5">
                   <widget class="QDoubleSpinBox" name="ana_param_x_axis_inc_DoubleSpinBox"/>
                  </item>
+                 <item row="3" column="5">
+                  <widget class="QCheckBox" name="ana_param_errorbars_CheckBox">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="3" column="4">
                   <widget class="QLabel" name="show_errorbars_Label">
                    <property name="text">
@@ -337,12 +351,8 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="5">
-                  <widget class="QCheckBox" name="ana_param_errorbars_CheckBox">
-                   <property name="text">
-                    <string/>
-                   </property>
-                  </widget>
+                 <item row="0" column="5">
+                  <widget class="QLineEdit" name="ana_param_x_axis_name_LineEdit"/>
                  </item>
                 </layout>
                </item>
