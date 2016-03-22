@@ -46,7 +46,7 @@ class MotorStagePI(Base, MotorInterface):
         self._y_axis = '3'
         self._z_axis = '2'
 
-        #ranges of axis:
+        #ranges of axis:      factor 10000. needed to have everything in millimeters
         self._min_x = -100. * 10000.
         self._max_x = 100. * 10000.
         self._min_y = -100. * 10000.
@@ -60,16 +60,69 @@ class MotorStagePI(Base, MotorInterface):
         #!!!!NOTE:  vielleicht sollte überall .ask anstatt .write genommen werden, das die stage glaube ich immer was zurückgibt....
 
     def activation(self, e):
+        """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
+        # Read configs from config-file
+        config = self.getConfiguration()
+        
+        # get the right com-ports from config
+        if 'com_port_pi_xyz' in config.keys():
+            self._com_port_pi_xyz = config['com_port_pi_xyz']
+        else:
+            self.logMsg('No parameter "com_port_pi_xyz" found in config.\n'
+                        'Cannot connect to motorized stage!',
+                        msgType='error')
+        if 'com_port_rot' in config.keys():
+            self._com_port_rot = config['com_port_rot']
+        else:
+            self.logMsg('No parameter "com_port_rot" found in config.\n'
+                        'Cannot connect to motorized stage!',
+                        msgType='error')
+                        
+        # get the the right baud rate from config
+        if 'pi_xyz_baud_rate' in config.keys():
+            self._pi_xyz_baud_rate = config['pi_xyz_baud_rate']
+        else:
+            self._pi_xyz_baud_rate = 9600
+            self.logMsg('No parameter "pi_xyz_baud_rate" found in config!\n'
+                        'Taking the baud rate {0} '
+                        'instead.'.format(self._pi_xyz_baud_rate),
+                        msgType='warning')
+        if 'rot_baud_rate' in config.keys():
+            self._rot_baud_rate = config['rot_baud_rate']
+        else:
+            self._rot_baud_rate = 9600
+            self.logMsg('No parameter "rot_baud_rate" found in config!\n'
+                        'Taking the baud rate {0} '
+                        'instead.'.format(self._rot_baud_rate),
+                        msgType='warning')
+        
+        
         self.rm = visa.ResourceManager()
-        self._serial_connection_xyz = self.rm.open_resource('COM1', baud_rate=9600, timeout=1)            #magnet xyz-stage
-        self._serial_connection_rot = self.rm.open_resource("COM6", baud_rate=9600, timeout=5)            #magnet rot-stage   TIMEOUT shorter?
+        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, self._pi_xyz_baud_rate, timeout=1)
+        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, self._rot_baud_rate, timeout=5) #TIMEOUT shorter?
         self._serial_connection_xyz.term_chars = '\n'
         self._serial_connection_rot.term_chars = '\n'
 
+
     def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
         self._serial_connection_xyz.close()
         self._serial_connection_rot.close()
         self.rm.close()
+
 
     def step(self, x = None, y = None, z = None, phi = None):
         """Moves stage in given direction (relative movement)
