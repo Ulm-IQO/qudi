@@ -66,9 +66,9 @@ class TaskGui(GUIBase):
         self._mw.actionStart_Task.triggered.connect(self.manualStart)
         self._mw.actionPause_Task.triggered.connect(self.manualPause)
         self._mw.actionStop_Task.triggered.connect(self.manualStop)
-        self.sigRunTaskFromList.connect(self.logic.startTask)
-        self.sigPauseTaskFromList.connect(self.logic.pauseTask)
-        self.sigStopTaskFromList.connect(self.logic.stopTask)
+        self.sigRunTaskFromList.connect(self.logic.startTaskByIndex)
+        self.sigPauseTaskFromList.connect(self.logic.pauseTaskByIndex)
+        self.sigStopTaskFromList.connect(self.logic.stopTaskByIndex)
         self.logic.model.dataChanged.connect(lambda i1, i2: self.setRunToolState(None, i1))
         self.show()
 

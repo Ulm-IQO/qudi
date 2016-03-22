@@ -264,12 +264,25 @@ class TaskRunner(GenericLogic):
         # print('Inserted into task list: {} {}'.format(first, last))
         pass
 
-    def startTask(self, index):
+    def startTaskByIndex(self, index):
         """ Try starting a task identified by its list index.
           @param int index: index of task in task list
         """
-        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
+        self.startTask(task)
+
+    def startTaskByName(self, taskname):
+        """ Try starting a task identified by its configured name.
+          @param str name: name assigned to task
+        """
+        task = self.getTaskByName(taskname)
+        self.startTask(task)
+
+    def startTask(self, task):
+        """ Try starting a task identified by its task dictionary
+          @param dict task: dictionary that contains all information about task
+        """
+        # print('runner', QtCore.QThread.currentThreadId())
         if not task['ok']:
             self.logMsg('Task {} did not pass all its checks for required tasks and modules and cannot be run'.format(task['name']), msgType='error')
             return
@@ -284,23 +297,45 @@ class TaskRunner(GenericLogic):
         else:
             self.logMsg('This thing cannot be run:  {}'.format(task.name), msgType='error')
 
-    def pauseTask(self, index):
+    def pauseTaskByIndex(self, index):
         """ Try pausing a task identified by its list index.
           @param int index: index of task in task list
         """
-        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
+        self.pauseTask(task)
+
+    def pauseTaskByName(self, taskname):
+        """ Try pausing a task identified by its configured name.
+          @param str name: name assigned to task
+        """
+        task = self.getTaskByName(taskname)
+        self.pauseTask(task)
+
+    def pauseTask(self, task):
+        """
+        """
+        # print('runner', QtCore.QThread.currentThreadId())
         if task['object'].can('pause'):
             task['object'].pause()
         else:
             self.logMsg('This thing cannot be paused:  {}'.format(task['name']), msgType='error')
 
-    def stopTask(self, index):
+    def stopTaskByIndex(self, index):
         """ Try stopping a task identified by its list index.
           @param int index: index of task in task list
         """
-        # print('runner', QtCore.QThread.currentThreadId())
         task = self.model.storage[index.row()]
+        self.stopTask(task)
+
+    def stopTaskByName(self, taskname):
+        """ Try stopping a task identified by its configured name.
+          @param str name: name assigned to task
+        """
+        task = self.getTaskByName(taskname)
+        self.stopTask(task)
+
+    def stopTask(self, task):
+        # print('runner', QtCore.QThread.currentThreadId())
         if task['object'].can('finish'):
             task['object'].finish()
         else:
