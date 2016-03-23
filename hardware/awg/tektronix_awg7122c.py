@@ -146,10 +146,20 @@ class AWG7122C(Base, PulserInterface):
         self.input_buffer = int(2 * 1024)  # buffer length for received text
 
         #OPtions of AWG7000 series:
-        #           01:
-        #           06: Interleave mode
+        #              Option 01: Memory expansion to 64,8 M points (Million points)
+        #              Option 06: Interleave and extended analog output bandwidth
+        #              Option 08: Fast sequence switching
+        #              Option 09: Subsequence and Table Jump
+
         self.AWG_options=self.ask('*Opt?')
         self.interleave = self.get_interleave()
+
+        #Todo: inclulde proper routine to check and change
+        zeroing_int = int(self.ask('AWGControl:INTerleave:ZERoing?'))
+        if zeroing_int == 0:
+            self.zeroing = False
+        elif zeroing_int == 1:
+            self.zeroing = True
 
         #Set current directory on AWG
         self.tell('MMEMORY:CDIRECTORY "{0}"\n'.format(self.ftp_path+self.asset_directory))
@@ -208,44 +218,51 @@ class AWG7122C(Base, PulserInterface):
         # limitations if interleave was selected.
         constraints['sample_rate'] = self._get_sample_rate_constraints()
 
-        #TODO: Check those values:
+        #checked
         # the stepsize will be determined by the DAC in combination with the
         # maximal output amplitude (in Vpp):
-        constraints['a_ch_amplitude'] = {'min': 0.005, 'max': 1.0,
-                                         'step': 0.001, 'unit': 'Vpp'}
+        if self.zeroing:
+            constraints['a_ch_amplitude'] = {'min': 0.25, 'max': 1.0,
+                                             'step': 0.001, 'unit': 'Vpp'}
+        else:
+            constraints['a_ch_amplitude'] = {'min': 0.5, 'max': 1.0,
+                                             'step': 0.001, 'unit': 'Vpp'}
+        #checked
+        constraints['a_ch_offset'] = {'min': 0.0, 'max': 0.0,
+                                      'step': 0.0, 'unit': 'V'}
 
-        #TODO: Check those values:
-        constraints['a_ch_offset'] = {'min': -0.5, 'max': 0.5,
-                                      'step': 0.01, 'unit': 'V'}
-
-        #TODO: Check those values:
-        constraints['d_ch_low'] = {'min': -1, 'max': 2.6,
+        #checked
+        constraints['d_ch_low'] = {'min': -1.4, 'max': 0.9,
                                    'step': 0.01, 'unit': 'V'}
 
-        #TODO: Check those values:
-        constraints['d_ch_high'] = {'min': -0.9, 'max': 2.7,
+        #checked
+        constraints['d_ch_high'] = {'min': -0.9, 'max': 1.4,
                                       'step': 0.01, 'unit': 'V'}
 
-        #TODO: Check those values:
+        #checked
         # for arbitrary waveform generators, this values will be used. The
         # step value corresponds to the waveform granularity.
-        constraints['sampled_file_length'] = {'min': 1, 'max': 32e6,
-                                              'step': 1, 'unit': 'Samples'}
+        if '01' in self.AWG_options:
+            constraints['sampled_file_length'] = {'min': 1, 'max': 64.8e6,
+                                                  'step': 1, 'unit': 'Samples'}
+        else:
+            constraints['sampled_file_length'] = {'min': 1, 'max': 32e6,
+                                                  'step': 1, 'unit': 'Samples'}
 
         # if only digital bins can be saved, then their limitation is different
         # compared to a waveform file
         constraints['digital_bin_num'] = {'min': 0, 'max': 0,
                                           'step': 0, 'unit': '#'}
 
-        #TODO: Check those values:
+        #checked
         constraints['waveform_num'] = {'min': 1, 'max': 32000,
                                        'step': 1, 'unit': '#'}
 
-        #TODO: Check those values:
-        constraints['sequence_num'] = {'min': 1, 'max': 4000,
+        #checked
+        constraints['sequence_num'] = {'min': 1, 'max': 16000,
                                        'step': 1, 'unit': '#'}
 
-        #TODO: Check those values:
+        #TODO: Check those values: (Can not find it)
         constraints['subsequence_num'] = {'min': 1, 'max': 8000,
                                           'step': 1, 'unit': '#'}
 
@@ -261,10 +278,10 @@ class AWG7122C(Base, PulserInterface):
         # That configuration takes place here:
         available_ch = OrderedDict()
         available_ch['Interleave'] = {'a_ch': 1}
-        available_ch['ACH1'] = {'a_ch': 2}
+        available_ch['ACH1'] = {'a_ch': 1}
         available_ch['DCH1'] = {'d_ch': 1}
         available_ch['DCH2'] = {'d_ch': 2}
-        available_ch['ACH2'] = {'a_ch': 3}
+        available_ch['ACH2'] = {'a_ch': 2}
         available_ch['DCH3'] = {'d_ch': 3}
         available_ch['DCH4'] = {'d_ch': 4}
         constraints['available_ch'] = available_ch
@@ -322,10 +339,10 @@ class AWG7122C(Base, PulserInterface):
         @return dict: with keys 'min', 'max':, 'step' and 'unit' and the
                       assigned values for that keys.
         """
-        #TODO: Check those values:
+        #checked
         if self.interleave:
             return {'min': 12.0e9, 'max': 24.0e9,
-                    'step': 4, 'unit': 'Samples/s'}
+                    'step': 8, 'unit': 'Samples/s'}
         else:
             return {'min': 10.0e6, 'max': 12.0e9,
                     'step': 4, 'unit': 'Samples/s'}
@@ -545,10 +562,8 @@ class AWG7122C(Base, PulserInterface):
 
         # load files in AWG Waveform list
         for asset in filename:
-            file_path = self.ftp_path + self.get_asset_dir_on_device()
             if asset.endswith('.wfm'):
                 self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
-                print('MMEMORY',asset)
             else:
                 self.logMsg('Could not load asset {0} to AWG7122c:\n'
                     '"{1}"'.format(asset_name, filename), msgType='error')
