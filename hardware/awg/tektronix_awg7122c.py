@@ -28,6 +28,7 @@ import os
 from collections import OrderedDict
 from fnmatch import fnmatch
 
+
 from core.base import Base
 from interface.pulser_interface import PulserInterface
 
@@ -143,6 +144,15 @@ class AWG7122C(Base, PulserInterface):
         self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
         self.soc.connect((self.ip_address, self.port))
         self.input_buffer = int(2 * 1024)  # buffer length for received text
+
+        #OPtions of AWG7000 series:
+        #           01:
+        #           06: Interleave mode
+        self.AWG_options=self.ask('*Opt?')
+        self.interleave = self.get_interleave()
+
+        #Set current directory on AWG
+        self.tell('MMEMORY:CDIRECTORY "{0}"\n'.format(self.ftp_path+self.asset_directory))
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -295,7 +305,7 @@ class AWG7122C(Base, PulserInterface):
         # this information seems to be almost redundant but it can be that no
         # channel configuration exists, where not all available channels are
         # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 3, 'd_ch': 4}
+        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
 
         # number of independent channels on which you can load or upload
         # separately the created files. It does not matter how the channels
@@ -383,28 +393,31 @@ class AWG7122C(Base, PulserInterface):
             self._send_file(name)
         return 0
 
-    # TODO: test
-    def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples,
-                            is_first_chunk, is_last_chunk, sample_rate,
-                            pp_voltage, ):
+    def write_to_file(self, name, analogue_samples,
+                            digital_samples, total_number_of_samples,
+                            is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
 
-        @param name: string representing the name of the sampled ensemble
-        @param analogue_samples_chunk: float32 numpy ndarray containing the
-                                       samples for the analogue channels.
-        @param digital_samples_chunk: bool numpy ndarray containing the samples
-                                      for the digital channels.
-        @param total_number_of_samples: The total number of samples in the entire waveform
-        @param is_first_chunk: bool indicating if the current chunk is the
+        @param name: string, represents the name of the sampled ensemble
+        @param analogue_samples: float32 numpy ndarray, contains the
+                                       samples for the analogue channels that
+                                       are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the entire waveform.
+                                        Has to be known it advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
                                first write to this file.
-        @param is_last_chunk: bool indicating if the current chunk is the last
+        @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
+
         @return: error code (0: OK, -1: error)
         """
-
         if self.current_sample_mode == self.sample_mode['wfm-file']:
 
             # IMPORTANT: These numbers build the header in the wfm file. Needed
@@ -421,7 +434,7 @@ class AWG7122C(Base, PulserInterface):
             # and the marker are followed.
 
 
-            for channel_index, channel_arr in enumerate(analogue_samples_chunk):
+            for channel_index, channel_arr in enumerate(analogue_samples):
 
                 filename = name+'_ch'+str(channel_index+1) + '.wfm'
 
@@ -429,7 +442,7 @@ class AWG7122C(Base, PulserInterface):
                 with open(filepath, 'wb') as wfm_file:
 
                     # write the first line, which is the header file:
-                    num_bytes = str(len(digital_samples_chunk[channel_index*2])*5)
+                    num_bytes = str(len(analogue_samples[channel_index*2])*5)
                     num_digits = str(len(num_bytes))
                     header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
                     wfm_file.write(header)
@@ -447,7 +460,7 @@ class AWG7122C(Base, PulserInterface):
                     # The previously created array wavetmp contains one
                     # additional column, where the marker states will be written
                     # into:
-                    marker = digital_samples_chunk[channel_index*2] + digital_samples_chunk[channel_index*2+1]*2
+                    marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
                     marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
                     wavetmp[:, -1] = marker_byte
 
@@ -456,7 +469,7 @@ class AWG7122C(Base, PulserInterface):
 
                     # the footer encodes the sample rate, which was used for
                     # that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
+                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
                     wfm_file.write(footer)
 
         else:
@@ -512,25 +525,50 @@ class AWG7122C(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        path = self.ftp_path + self.get_file_dir_on_device()
+        file_list = self._get_filenames_on_device()
+        filename = []
+
+        for file in file_list:
+            if file == asset_name+'_ch1.wfm' or file == asset_name+'_ch2.wfm':
+                filename.append(file)
 
 
-        if load_dict == {}:
-            self.logMsg('No file and channel provided for load!\nCorrect '
-                        'that!\nCommand will be ignored.', msgType='warning')
+        # Check if something could be found
+        if len(filename) == 0:
+            self.logMsg('No files associated with asset {0} were found on AWG7122c.'
+                        'Load to channels failed!'.format(asset_name),
+                        msgType='error')
+            return -1
 
-        for channel_num in list(load_dict):
-            if channel_num == 1 or  channel_num == 2:
-                file_name = str(load_dict[channel_num]) + '_ch1.wfm'
-                self.tell('SOUR1:FUNC:USER "{1}/{2}"\n'.format(path, file_name))
-            elif channel_num == 3:
-                file_name = str(load_dict[channel_num]) + '_ch2.wfm'
-                self.tell('SOUR2:FUNC:USER "{1}/{2}"\n'.format(path, file_name))
+        self.logMsg('The following files associated with the asset {0} were found on AWG7122c:\n'
+                    '"{1}"'.format(asset_name, filename), msgType='status')
 
+        # load files in AWG Waveform list
+        for asset in filename:
+            file_path = self.ftp_path + self.get_asset_dir_on_device()
+            if asset.endswith('.wfm'):
+                self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
+                print('MMEMORY',asset)
             else:
-                self.logMsg('No analog channel with channel number "{0}" '
-                            'exists! Check the load '
-                            'routine!'.format(channel_num), msgType='error')
+                self.logMsg('Could not load asset {0} to AWG7122c:\n'
+                    '"{1}"'.format(asset_name, filename), msgType='error')
+
+        file_path = self.ftp_path + self.get_asset_dir_on_device()
+        # simply use the channel association of the filenames if no load_dict is given
+        if load_dict == {}:
+            for asset in filename:
+                # load waveforms into channels as given in filename
+                if asset.split("_")[-1][:3] == 'ch1':
+                    self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
+                if asset.split("_")[-1][:3] == 'ch2':
+                    self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
+                self.current_loaded_asset = asset_name
+        else:
+            for channel in load_dict:
+                # load waveforms into channels
+                name = load_dict[channel]
+                self.tell('SOUR'+str(channel)+':FUNC:USER "{0}/{1}"\n'.format(file_path, name))
+            self.current_loaded_asset = name
 
         return 0
 
@@ -589,29 +627,12 @@ class AWG7122C(Base, PulserInterface):
             return (message, status_dic)
 
     # works!
-    def get_sample_rate(self):
-        """ Get the sample rate of the pulse generator hardware
-
-        @return float: The current sample rate of the device (in Hz)
-
-        Do not return a saved sample rate in a class variable, but instead
-        retrieve the current sample rate directly from the device.
-        """
-
-        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
-        return self.sample_rate
-
-    # works!
     def set_sample_rate(self, sample_rate):
-        """ Set the sample rate of the pulse generator hardware.
+        """ Set the sample rate of the pulse generator hardware
 
-        @param float sample_rate: The sampling rate to be set (in Hz)
+        @param float sample_rate: The sample rate to be set (in Hz)
 
-        @return float: the sample rate returned from the device.
-
-        Note: After setting the sampling rate of the device, retrieve it again
-              for obtaining the actual set value and use that information for
-              further processing.
+        @return foat: the sample rate returned from the device (-1:error)
         """
 
         self.tell('SOURCE1:FREQUENCY {0:.4G}MHz\n'.format(sample_rate / 1e6))
@@ -620,6 +641,17 @@ class AWG7122C(Base, PulserInterface):
         # and therefore the ask in get_sample_rate will return an empty string.
         time.sleep(0.3)
         return self.get_sample_rate()
+
+    # works!
+    def get_sample_rate(self):
+        """ Set the sample rate of the pulse generator hardware
+
+        @return float: The current sample rate of the device (in Hz)
+        """
+
+        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?\n'))
+        return self.sample_rate
+
 
     def get_analog_level(self, amplitude=[], offset=[]):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -630,15 +662,10 @@ class AWG7122C(Base, PulserInterface):
         @param list offset: optional, if a specific high value (in Volt) of a
                             channel is desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Amplitude is always denoted in
-                               Volt-peak-to-peak and Offset in (absolute)
-                               Voltage.
-
-        Note: Do not return a saved amplitude and/or offset value but instead
-              retrieve the current amplitude and/or offset directly from the
-              device.
+        @return: ({}, {}): tuple of two dicts, with keys being the channel
+                           number and items being the values for those channels.
+                           Amplitude is always denoted in Volt-peak-to-peak and
+                           Offset in (absolute) Voltage.
 
         If no entries provided then the levels of all channels where simply
         returned. If no analog channels provided, return just an empty dict.
@@ -648,15 +675,11 @@ class AWG7122C(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        The major difference to digital signals is that analog signals are
+        Note, the major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal
-        oscillates, denoted by an (absolute) voltage).
-
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
         """
 
         amp = {}
@@ -670,8 +693,13 @@ class AWG7122C(Base, PulserInterface):
             amp[1] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
             amp[2] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
 
-            off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
-            off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
+            if '02' in self.AWG_options or '06' in self.AWG_options:
+                #In option 2 and 6 this can not be set
+                off[1] = float(0.0)
+                off[2] = float(0.0)
+            else:
+                off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
+                off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
         else:
 
@@ -719,24 +747,16 @@ class AWG7122C(Base, PulserInterface):
                             being the offset values (in absolute volt) for the
                             desired channel.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                              amplitude and offset.
+        If nothing is passed then the command is being ignored.
 
-        If nothing is passed then the command will return two empty dicts.
-
-        Note: After setting the analog and/or offset of the device, retrieve
-              them again for obtaining the actual set value(s) and use that
-              information for further processing.
-
-        The major difference to digital signals is that analog signals are
+        Note, the major difference to digital signals is that analog signals are
         always oscillating or changing signals, otherwise you can use just
         digital output. In contrast to digital output levels, analog output
         levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal
-        oscillates, denoted by an (absolute) voltage).
+        Voltage peak to peak) and an offset (denoted by an (absolute) voltage).
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
         constraints = self.get_constraints()
@@ -815,17 +835,12 @@ class AWG7122C(Base, PulserInterface):
         @param list high: optional, if a specific high value (in Volt) of a
                           channel is desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Both low and high value of a channel is
-                               denoted in (absolute) Voltage.
-
-        Note: Do not return a saved low and/or high value but instead retrieve
-              the current low and/or high value directly from the device.
+        @return: tuple of two dicts, with keys being the channel number and
+                 items being the values for those channels. Both low and high
+                 value of a channel is denoted in (absolute) Voltage.
 
         If no entries provided then the levels of all channels where simply
         returned. If no digital channels provided, return just an empty dict.
-
         Example of a possible input:
             low = [1,4]
         to obtain the low voltage values of digital channel 1 an 4. A possible
@@ -833,14 +848,14 @@ class AWG7122C(Base, PulserInterface):
             {1: -0.5, 4: 2.0} {}
         since no high request was performed.
 
-        The major difference to analog signals is that digital signals are
+        Note, the major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
         low_val = {}
@@ -913,24 +928,16 @@ class AWG7122C(Base, PulserInterface):
         @param dict high: dictionary, with key being the channel and items being
                          the high values (in volt) for the desired channel.
 
-        @return (dict, dict): tuple of two dicts where first dict denotes the
-                              current low value and the second dict the high
-                              value.
+        If nothing is passed then the command is being ignored.
 
-        If nothing is passed then the command will return two empty dicts.
-
-        Note: After setting the high and/or low values of the device, retrieve
-              them again for obtaining the actual set value(s) and use that
-              information for further processing.
-
-        The major difference to analog signals is that digital signals are
+        Note, the major difference to analog signals is that digital signals are
         either ON or OFF, whereas analog channels have a varying amplitude
         range. In contrast to analog output levels, digital output levels are
         defined by a voltage, which corresponds to the ON status and a voltage
         which corresponds to the OFF status (both denoted in (absolute) voltage)
 
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        In general there is not a bijective correspondence between
+        (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
         constraints = self.get_constraints()
@@ -1011,14 +1018,7 @@ class AWG7122C(Base, PulserInterface):
         @param dict d_ch: dictionary with keys being the digital channel numbers
                           and items being boolean values.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                active channels for analog (a_ch) and digital (d_ch) values.
-
-        If nothing is passed then the command will return two empty dicts.
-
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        @return int: error code (0:OK, -1:error)
 
         Example for possible input:
             a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
@@ -1303,12 +1303,14 @@ class AWG7122C(Base, PulserInterface):
                       None if non of both
         """
 
-        interleave = self.ask('AWGControl:INTerleave:STAT?\n')
+        interleave_val = self.ask('AWGControl:INTerleave:STAT?\n')
         # TODO: change constraints to allowed values depending on mode
 
-        if interleave == '1':
+        if interleave_val == '1':
+            self.interleave=True
             return True
-        elif interleave == '0':
+        elif interleave_val == '0':
+            self.interleave=False
             return False
         else:
             self.logMsg('State of interleave mode neither 1 nor 0. Returning false.\n',
