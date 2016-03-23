@@ -238,6 +238,18 @@ class PulsedMeasurementLogic(GenericLogic):
                 # self.odmr_optimize_timer.start()
         return
 
+    def change_parameter_for_pulsed_analysis(self,signal_start_bin,signal_width_bin,norm_start_bin,norm_width_bin,fc_binning):
+        self.signal_start_bin=signal_start_bin
+        self.signal_width_bin=signal_width_bin
+        self.norm_start_bin=norm_start_bin
+        self.norm_width_bin=norm_width_bin
+        self.fc_binning=fc_binning
+
+        self.tau_array = np.array(range(50))*self.fc_binning
+        self.signal_plot_x = self.tau_array
+
+        pass
+
 
     def _pulsed_analysis_loop(self):
         """ Acquires laser pulses from fast counter,
@@ -250,6 +262,7 @@ class PulsedMeasurementLogic(GenericLogic):
             sig_end = self.signal_start_bin + self.signal_width_bin
             norm_start = self.norm_start_bin
             norm_end = self.norm_start_bin + self.norm_width_bin
+
             # analyze pulses and get data points for signal plot
 
             self.signal_plot_y, \
@@ -261,7 +274,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                                             sig_end,
                                                                             self.number_of_lasers)
             # set x-axis of signal plot
-            self.signal_plot_x = self.tau_array
+
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time

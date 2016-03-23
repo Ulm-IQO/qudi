@@ -159,12 +159,5 @@ class PulseAnalysisLogic(GenericLogic):
 #        return self._binwidth_ns
 #
 #
-#    def do_fit(self, fit_function = None):
-#        '''Performs the chosen fit on the measured data.
-#
-#        @param string fit_function: name of the chosen fit function
-#        '''
-#        if fit_function == None:
-#            self.ODMR_fit_y = np.zeros(self._MW_frequency_list.shape)
-#            self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
+
 
