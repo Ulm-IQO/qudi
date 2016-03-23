@@ -2365,9 +2365,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
-        self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_parameters_changed)
-        self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_parameters_changed)
-        self.analysis_parameters_changed()
+        self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
+        self.analysis_timing_changed()
+        self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_fc_binning_changed)
+        self.analysis_fc_binning_changed()
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
         self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self.change_second_plot()
@@ -2629,18 +2630,16 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.microwave_power = mw_power
         return
 
-
-    def analysis_parameters_changed(self):
+    def analysis_timing_changed(self):
 
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.change_timer_interval(timer_interval)
 
-        start_bin_bin=self._mw.extract_param_ana_window_start_SpinBox.value()
-        start_width_bin=self._mw.extract_param_ana_window_width_SpinBox.value()
-        norm_start_bin=self._mw.extract_param_ref_window_start_SpinBox.value()
-        norm_width_bin=self._mw.extract_param_ref_window_width_SpinBox.value()
+
+    def analysis_fc_binning_changed(self):
+
         fc_binning=float(self._mw.ana_param_fc_bins_ComboBox.currentText())
-        self._pulsed_meas_logic.change_parameter_for_pulsed_analysis(start_bin_bin,start_width_bin,norm_start_bin,norm_width_bin,fc_binning)
+        self._pulsed_meas_logic.change_fc_binning_for_pulsed_analysis(fc_binning)
         return
 
     #FIXME:
