@@ -42,9 +42,14 @@ class MotorStagePI(Base, MotorInterface):
         Base.__init__(self, manager, name, config, cb_dict)
 
         #axis definition:
-        self._x_axis = '1'
-        self._y_axis = '3'
-        self._z_axis = '2'        
+        self._x_axis_label = 'x'
+        self._y_axis_label = 'y'
+        self._z_axis_label = 'z' 
+        self._phi_label = 'phi'
+        
+        self._x_axis_ID = '1'
+        self._y_axis_ID = '3'
+        self._z_axis_ID = '2'
 
         #!!!!NOTE:  vielleicht sollte überall .ask anstatt .write genommen werden, das die stage glaube ich immer was zurückgibt....
 
@@ -214,6 +219,71 @@ class MotorStagePI(Base, MotorInterface):
             (min_value, max_value, stepsize)
         """
         constraints = {}
+        
+        axis0 = {}
+        axis0['label'] = self._x_axis_label # '1'
+        axis0['ID'] = self._x_axis_number
+        axis0['unit'] = 'mm'                 # the SI units
+        axis0['ramp'] = None # a possible list of ramps
+        axis0['pos_min'] = self._min_x
+        axis0['pos_max'] = self._max_x
+        axis0['pos_step'] = None
+        axis0['vel_min'] = None
+        axis0['vel_max'] = None
+        axis0['vel_step'] = None
+        axis0['acc_min'] = None
+        axis0['acc_max'] = None
+        axis0['acc_step'] = None
+
+        axis1 = {}
+        axis1['label'] = self._x_axis_label # '3'
+        axis1['ID'] = self._y_axis_number
+        axis1['unit'] = 'mm'        # the SI units
+        axis1['ramp'] = None # a possible list of ramps
+        axis0['pos_min'] = self._min_y
+        axis0['pos_max'] = self._max_y
+        axis0['pos_step'] = None
+        axis0['vel_min'] = None
+        axis0['vel_max'] = None
+        axis0['vel_step'] = None
+        axis0['acc_min'] = None
+        axis0['acc_max'] = None
+        axis0['acc_step'] = None
+
+        axis2 = {}
+        axis2['label'] = self._x_axis_label # '2'
+        axis2['ID'] = self._z_axis_number
+        axis2['unit'] = 'mm'        # the SI units
+        axis2['ramp'] = None # a possible list of ramps
+        axis0['pos_min'] = self._min_z
+        axis0['pos_max'] = self._max_z
+        axis0['pos_step'] = None
+        axis0['vel_min'] = None
+        axis0['vel_max'] = None
+        axis0['vel_step'] = None
+        axis0['acc_min'] = None
+        axis0['acc_max'] = None
+        axis0['acc_step'] = None
+
+        axis3 = {}
+        axis3['label'] = self._phi_label
+        axis3['unit'] = '°'        # the SI units
+        axis3['ramp'] = None # a possible list of ramps
+        axis3['pos_min'] = 0
+        axis3['pos_max'] = 360
+        axis0['pos_step'] = None
+        axis0['vel_min'] = None
+        axis0['vel_max'] = None
+        axis0['vel_step'] = None
+        axis0['acc_min'] = None
+        axis0['acc_max'] = None
+        axis0['acc_step'] = None
+
+        # assign the parameter container for x to a name which will identify it
+        constraints[axis0['label']] = axis0
+        constraints[axis1['label']] = axis1
+        constraints[axis2['label']] = axis2
+        constraints[axis3['label']] = axis3
 
 
     def move_rel(self, param_dict):
@@ -231,38 +301,32 @@ class MotorStagePI(Base, MotorInterface):
         """
         try:
             if 'x' in param_dict:
-                a = int(param_dict['x']*10000)
-                current_pos = int(self._serial_connection_xyz.ask(self._x_axis+'TT')[8:])   # '1TT\n'
-                move = current_pos + a
-                if move > self._max_x or move < self._min_x:
-                    self.logMsg('x out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)                
+                step = int(param_dict['x']*10000)
+                self._do_move_rel('x', step)                
             if 'y' in param_dict:
-                a = int(param_dict['y']*10000)
-                current_pos = int(self._serial_connection_xyz.ask(self._y_axis+'TT')[8:])   # '3TT\n'
-                move = current_pos + a
-                if move > self._max_y or move < self._min_y:
-                    self.logMsg('y out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)                
+                step = int(param_dict['y']*10000)
+                self._do_move_rel('y', step)                 
             if 'z' in param_dict:
-                a = int(param_dict['z']*10000)
-                current_pos = int(self._serial_connection_xyz.ask(self._z_axis+'TT')[8:])   # '2TT\n'
-                move = current_pos + a
-                if move > self._max_z or move < self._min_z:
-                    self.logMsg('z out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)                
+                step = int(param_dict['z']*10000)
+                self._do_move_rel('z', step)  
             if 'phi' in param_dict:
                 movephi = param_dict['phi']
                 self._move_relative_rot(movephi)
             return 0
         except:
             return -1
+
+
+    def _do_move_rel(self, axis, step):
+        """internal method for the relative move
+        
+        @param axis string: name of the axis that should be moved
+        
+        @param float step: step in millimeter
+        """    
+        current_pos = self.internal_get_pos('z')
+        move = current_pos + step
+        self._do_move_abs(axis, move)
 
 
     def move_abs(self, param_dict):
@@ -281,25 +345,13 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if 'x' in param_dict:
                 move = int(param_dict['x']*10000)
-                if move > self._max_x or move < self._min_x:
-                    self.logMsg('x out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)
+                self._do_move_abs('x', move)                
             if 'y' in param_dict:
                 move = int(param_dict['y']*10000)
-                if move > self._max_y or move < self._min_y:
-                    self.logMsg('y out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)
+                self._do_move_abs('y', move)                 
             if 'z' in param_dict:
                 move = int(param_dict['z']*10000)
-                if move > self._max_z or move < self._min_z:
-                    self.logMsg('z out of range, choose smaller step',
-                                msgType='warning')
-                else:
-                    self._go_to_pos(self._x_axis, move)
+                self._do_move_abs('z', move)
     
             [a,b,c] = self._in_movement_xyz()
             while a != 0 or b != 0 or c != 0:
@@ -317,15 +369,48 @@ class MotorStagePI(Base, MotorInterface):
             return -1
 
 
+    def _do_move_abs(self, axis, move):
+        """internal method for the absolute move
+        
+        @param axis string: name of the axis that should be moved
+        
+        @param float move: desired position in millimeter
+        """
+        constraints = self.get_constraints()
+        if move > constraints[axis]['pos_max'] or move < constraints[axis]['pos_min']:
+            self.logMsg('Cannot make the movement of the axis "{0}"'
+                            'since the border [{1},{2}] '
+                            'would be crossed! Ignore '
+                            'command!'.format(axis, 
+                                    constraints[axis]['pos_min'],
+                                    constraints[axis]['pos_max']),
+                            msgType='warning')
+        else:
+            self._go_to_pos(axis, move)
+
+
+    def _go_to_pos(self, axis=None, move=None):
+        """moves one axis to an absolute position
+
+        @param axis string: name of the axis that should be moved
+        @param move int: absolute position
+        """
+        constraints = self.get_constraints()
+        axis_ID = constraints[axis]['ID']
+        self._serial_connection_xyz.write(axis_ID+'SP%s'%move)
+        self._serial_connection_xyz.write(axis_ID+'MP')
+
+
     def abort(self):
         """Stops movement of the stage
 
         @return int: error code (0:OK, -1:error)
         """
+        constraints = self.get_constraints()
         try:
-            self._serial_connection_xyz.write(self._x_axis+'AB\n')
-            self._serial_connection_xyz.write(self._y_axis+'AB\n')
-            self._serial_connection_xyz.write(self._z_axis+'AB\n')
+            self._serial_connection_xyz.write(constraints['x']['ID']+'AB\n')
+            self._serial_connection_xyz.write(constraints['y']['ID']+'AB\n')
+            self._serial_connection_xyz.write(constraints['z']['ID']+'AB\n')
             self._write_rot([1,23,0])  # abortion command for the rot stage
             return 0
         except:
@@ -347,13 +432,13 @@ class MotorStagePI(Base, MotorInterface):
         param_dict = {}
         try:
             if param_list != None and 'x' in param_list or param_list==None:
-                x_value = int(self._serial_connection_xyz.ask(self._x_axis+'TT')[8:])/100000.
+                x_value = self._internal_get_pos('x')
                 param_dict['x'] = x_value
             if param_list != None and 'y' in param_list or param_list==None:
-                y_value = int(self._serial_connection_xyz.ask(self._y_axis+'TT')[8:])/100000.
+                y_value = self.internal_get_pos('y')
                 param_dict['y'] = y_value
             if param_list != None and 'z' in param_list or param_list==None:
-                z_value = int(self._serial_connection_xyz.ask(self._z_axis+'TT')[8:])/100000.
+                z_value = self.internal_get_pos('z')
                 param_dict['z'] = z_value
             if param_list != None and 'phi' in param_list or param_list==None:
                 phi_temp = self._ask_rot([1,60,0])
@@ -362,6 +447,18 @@ class MotorStagePI(Base, MotorInterface):
             return param_dict
         except:
             return -1
+
+
+    def _internal_get_pos(self, axis):
+        """internal method to get the pos of a single axis
+        
+        @param axis string: name of the axis for which the position should be asked
+        
+        @return int: current position of the axis
+        """
+        constraints = self.get_constraints()
+        pos = int(self._serial_connection_xyz.ask(constraints[axis]['ID']+'TT')[8:])/100000.
+        return pos
 
 
     def get_status(self, param_list=None):
@@ -375,18 +472,19 @@ class MotorStagePI(Base, MotorInterface):
 
         @return dict: with the axis label as key and the status number as item.
         """
+        constraints = self.get_constraints()
         param_dict = {}
         try:
             if param_list != None and 'x' in param_list or param_list==None:
-                x_status = self._serial_connection_xyz.ask(self._x_axis+'TS')[8:]
+                x_status = self._serial_connection_xyz.ask(constraints['x']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['x'] = x_status
             if param_list != None and 'y' in param_list or param_list==None:
-                y_status = self._serial_connection_xyz.ask(self._y_axis+'TS')[8:]
+                y_status = self._serial_connection_xyz.ask(constraints['y']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['y'] = y_status
             if param_list != None and 'z' in param_list or param_list==None:
-                z_status = self._serial_connection_xyz.ask(self._z_axis+'TS')[8:]
+                z_status = self._serial_connection_xyz.ask(constraints['z']['ID']+'TS')[8:]
                 time.sleep(0.1)
                 param_dict['z'] = z_status
             if param_list != None and 'phi' in param_list or param_list==None:
@@ -441,16 +539,17 @@ class MotorStagePI(Base, MotorInterface):
 
         @return dict : with the axis label as key and the velocity as item.
         """
+        constraints = self.get_constraints()
         param_dict = {}
         try:
             if param_list != None and 'x' in param_list or param_list==None:
-                x_vel = int(self._serial_connection_xyz.ask(self._x_axis+'TY')[8:])/100000.
+                x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])/100000.
                 param_dict['x'] = x_vel
             if param_list != None and 'y' in param_list or param_list==None:
-                y_vel = int(self._serial_connection_xyz.ask(self._y_axis+'TY')[8:])/100000.
+                y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])/100000.
                 param_dict['y'] = y_vel
             if param_list != None and 'z' in param_list or param_list==None:
-                z_vel = int(self._serial_connection_xyz.ask(self._z_axis+'TY')[8:])/100000.
+                z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])/100000.
                 param_dict['z'] = z_vel
             if param_list != None and 'phi' in param_list or param_list==None:
                 data = self._ask_rot([1,53,42])
@@ -472,16 +571,17 @@ class MotorStagePI(Base, MotorInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        constraints = self.get_constraints()
         try:
             if 'x' in param_dict:
                 vel = param_dict['x']
-                self._serial_connection_xyz.write(self._x_axis+'SV%i\n'%(int(vel*10000)))
+                self._serial_connection_xyz.write(constraints['x']['ID']+'SV%i\n'%(int(vel*10000)))
             if 'y' in param_dict:
                 vel = param_dict['y']
-                self._serial_connection_xyz.write(self._y_axis+'SV%i\n'%(int(vel*10000)))
+                self._serial_connection_xyz.write(constraints['y']['ID']+'SV%i\n'%(int(vel*10000)))
             if 'z' in param_dict:
                 vel = param_dict['z']
-                self._serial_connection_xyz.write(self._z_axis+'SV%i\n'%(int(vel*10000)))
+                self._serial_connection_xyz.write(constraints['z']['ID']+'SV%i\n'%(int(vel*10000)))
             if 'phi' in param_dict:
                 vel = param_dict['phi']
                 data = self._speed_to_data_rot(vel)
@@ -596,22 +696,14 @@ class MotorStagePI(Base, MotorInterface):
 
 
     def _data_to_speed_rot(self, data):
-        speed = data * 9.375 * self._MicroStepSize
+        speed = data * 9.375 * self._MicroStepSize  # the value of 9.375 is taken from the manual for the zaber rot-stage
         return speed
 
 
     def _speed_to_data_rot(self, speed):
-        data = int(speed / 9.375 / self._MicroStepSize)
+        data = int(speed / 9.375 / self._MicroStepSize) # the value of 9.375 is taken from the manual for the zaber rot-stage
         return data
 
-    def _go_to_pos(self, axis = None, move = None):
-        """moves one axis to an absolute position
-
-        @param string axis: ID of the axis, '1', '2' or '3'
-        @param int move: absolute position
-        """
-        self._serial_connection_xyz.write(self._x_axis+'SP%s'%move)
-        self._serial_connection_xyz.write(self._x_axis+'MP')
 
 
 
