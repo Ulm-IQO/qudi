@@ -238,14 +238,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 # self.odmr_optimize_timer.start()
         return
 
-    def change_parameter_for_pulsed_analysis(self,signal_start_bin,signal_width_bin,norm_start_bin,norm_width_bin,fc_binning):
-        self.signal_start_bin=signal_start_bin
-        self.signal_width_bin=signal_width_bin
-        self.norm_start_bin=norm_start_bin
-        self.norm_width_bin=norm_width_bin
-        self.fc_binning=fc_binning
+    def change_fc_binning_for_pulsed_analysis(self,fc_binning):
 
-        self.tau_array = np.array(range(50))*self.fc_binning
+        self.tau_array = np.array(range(self.number_of_lasers))*fc_binning
         self.signal_plot_x = self.tau_array
 
         pass
