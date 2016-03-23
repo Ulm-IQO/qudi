@@ -21,7 +21,9 @@ Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import numpy as np
+import time
 import os
 
 from gui.guibase import GUIBase
@@ -202,7 +204,7 @@ class ODMRGui(GUIBase):
         # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
         # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
-        self._mw.action_Save.triggered.connect(self._odmr_logic.save_ODMR_Data)
+        self._mw.action_Save.triggered.connect(self.save_plots_and_data)
 
         self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
         self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
@@ -419,5 +421,18 @@ class ODMRGui(GUIBase):
         self._odmr_logic.RunTime = self._mw.runtime_DoubleSpinBox.value()
 
 
+    def save_plots_and_data(self):
+        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
+        filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_odmr'))
+
+        exporter_graph = pg.exporters.SVGExporter(self._mw.odmr_PlotWidget.plotItem.scene())
+        #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
+        exporter_graph.export(filename+'.svg')
+
+        exporter_matrix = pg.exporters.SVGExporter(self._mw.odmr_matrix_PlotWidget.plotItem.scene())
+        #exporter_matrix = pg.exporters.ImageExporter(self._mw.odmr_matrix_PlotWidget.plotItem)
+        exporter_matrix.export(filename + '_matrix' + '.svg')
 
 
+        # self._save_logic.
+        self._odmr_logic.save_ODMR_Data()
