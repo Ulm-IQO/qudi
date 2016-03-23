@@ -352,6 +352,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_PlotWidget.update()
 
     def refresh_elapsedtime(self):
+        """ Show current elapsed measurement time """
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
 
     def update_settings(self):
@@ -361,9 +362,11 @@ class ODMRGui(GUIBase):
         self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
 
     def update_fit_variable(self, txt):
+        """ Set current fit function """
         self._odmr_logic.current_fit_function = txt
 
     def update_fit(self):
+        """ Do the configured fit and show it in the sum plot """
         self._odmr_logic.do_fit(fit_function=self._odmr_logic.current_fit_function)
         self.refresh_plot()
 
@@ -387,6 +390,7 @@ class ODMRGui(GUIBase):
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
 
     def mw_stop(self, txt):
+        """ Stop frequency sweep and change to CW of off"""
         if txt == 'Off':
             self._odmr_logic.MW_off()
         if txt == 'CW':
@@ -395,33 +399,37 @@ class ODMRGui(GUIBase):
             self._odmr_logic.MW_on()
 
 
-
     ############################################################################
     ##                          Change Methods                                ##
     ############################################################################
 
     def change_frequency(self):
-        self.logMsg('test')
+        """ Change CW frequency of microwave source """
         self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value())
 
     def change_start_freq(self):
+        """ Change start frequency of frequency sweep """
         self._odmr_logic.MW_start = self._mw.start_freq_DoubleSpinBox.value()
 
     def change_step_freq(self):
+        """ Change step size in which frequency is changed """
         self._odmr_logic.MW_step = self._mw.step_freq_DoubleSpinBox.value()
 
     def change_stop_freq(self):
+        """ Change end of frequency sweep """
         self._odmr_logic.MW_stop = self._mw.stop_freq_DoubleSpinBox.value()
 
     def change_power(self):
+        """ Change microwave power """
         self._odmr_logic.MW_power = self._mw.power_DoubleSpinBox.value()
         self._odmr_logic.set_power(power=self._odmr_logic.MW_power)
 
     def change_runtime(self):
+        """ Change time after which microwave sweep is stopped """
         self._odmr_logic.RunTime = self._mw.runtime_DoubleSpinBox.value()
 
-
     def save_plots_and_data(self):
+        """ Save the sum plot, the scan marix plot and the scan data """
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_odmr'))
 
@@ -432,7 +440,6 @@ class ODMRGui(GUIBase):
         exporter_matrix = pg.exporters.SVGExporter(self._mw.odmr_matrix_PlotWidget.plotItem.scene())
         #exporter_matrix = pg.exporters.ImageExporter(self._mw.odmr_matrix_PlotWidget.plotItem)
         exporter_matrix.export(filename + '_matrix' + '.svg')
-
 
         # self._save_logic.
         self._odmr_logic.save_ODMR_Data()
