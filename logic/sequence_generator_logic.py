@@ -780,8 +780,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ensemble_files = [f for f in os.listdir(self.ensemble_dir) if '.ens' in f]
         ensembles = []
         for filename in ensemble_files:
-            ensembles.append(filename[:-4])
-        # ensembles.sort()
+            ensembles.append(filename.rsplit('.', 1)[0])
         self.saved_pulse_block_ensembles = ensembles
         self.signal_ensemble_list_updated.emit()
         return
@@ -1115,12 +1114,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                                               tau_array=tau_list,
                                               laser_channel_index=laser_channel_index,
                                               rotating_frame=rotating_frame)
-        # save block
-        # self.save_block(name, block)
-        # save ensemble
-        self.save_ensemble(ensemble_name, pulse_block_ensemble)
         # set current block ensemble
         self.current_ensemble = pulse_block_ensemble
+        # save ensemble
+        self.save_ensemble(ensemble_name, pulse_block_ensemble)
+
 
 
     def generate_sequence(self, sequence_matrix):
