@@ -1936,6 +1936,7 @@ class FitLogic():
                     plt.plot(x,result.init_fit,'-y')
                     plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
 #                    plt.plot(x,data_smooth,'-g')
+                    plt.show()
 
                 except:
                     print('exception')
