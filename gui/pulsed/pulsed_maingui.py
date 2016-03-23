@@ -24,9 +24,11 @@ import numpy as np
 import os
 from collections import OrderedDict
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import re
 import inspect
 import itertools
+import time
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
@@ -2332,8 +2334,8 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
-        self._mw.action_pull_data.toggled.connect(self.pull_data_clicked)
-        self._mw.action_save.toggled.connect(self.save_clicked)
+        self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
+        self._mw.action_save.triggered.connect(self.save_clicked)
 
 
         self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
@@ -2459,8 +2461,8 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def save_clicked(self):
+        self.save_plots()
         self._pulsed_meas_logic._save_data()
-        return
 
 
 
@@ -2866,10 +2868,19 @@ class PulsedMeasurementGui(GUIBase):
 
         self.lasertrace_image.setData(x=x_data, y=y_data)
 
-    def save_pulsed_plots(self):
+    def save_plots(self):
         """ Save plot from analysis graph as a picture. """
-        filepath = self._save_logic.get_path_for_module(module_name='Pulsed')
+        filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
         filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_pulsed'))
 
-        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem)
+        # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
+        # pulse plot
+        exporter = pg.exporters.SVGExporter(self._mw.pulse_analysis_PlotWidget.plotItem.scene())
         exporter.export(filename+'.svg')
+
+        # auxiliary plot
+        if 'None' not in self._mw.second_plot_ComboBox.currentText():
+            exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
+            exporter_aux.export(filename + '_aux' + '.svg')
+
+
