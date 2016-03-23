@@ -587,7 +587,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble)
         self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
         self._mw.laserchannel_ComboBox.currentIndexChanged.connect(self._update_current_pulse_block)
-        self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_pulse_block_ensemble_list)
         self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
         self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
         self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
@@ -844,6 +843,15 @@ class PulsedMeasurementGui(GUIBase):
         # update saved_ensembles_ComboBox items
         self._mw.saved_ensembles_ComboBox.clear()
         self._mw.saved_ensembles_ComboBox.addItems(new_list)
+        # Set active index of the ComboBoxes to the currently shown/last created ensemble
+        if self._seq_gen_logic.current_ensemble is not None:
+            # get last generated and currently shown ensemble name from logic
+            current_ensemble_name = self._seq_gen_logic.current_ensemble.name
+            # identify the corresponding index within the ComboBox
+            index_to_set = self._mw.upload_ensemble_ComboBox.findText(current_ensemble_name)
+            # Set index inside the ComboBox
+            self._mw.upload_ensemble_ComboBox.setCurrentIndex(index_to_set)
+            self._mw.saved_ensembles_ComboBox.setCurrentIndex(index_to_set)
         return
 
     def update_sequence_list(self):
@@ -1419,12 +1427,6 @@ class PulsedMeasurementGui(GUIBase):
                                                     rotating_frame)
 
 
-    def update_pulse_block_ensemble_list(self):
-        """ Update the Pulse Block Ensemble list.  """
-        self._mw.upload_ensemble_ComboBox.clear()
-        self._mw.upload_ensemble_ComboBox.addItems(self._seq_gen_logic.saved_pulse_block_ensembles)
-
-
     def insert_parameters(self, column):
 
         # insert parameter:
@@ -1666,6 +1668,11 @@ class PulsedMeasurementGui(GUIBase):
         """
         self._mw.laserchannel_ComboBox.clear()
         self._mw.laserchannel_ComboBox.addItems(channel_map)
+        # set laserchannel_ComboBox to first digital channel as default
+        for index, channel in enumerate(channel_map):
+            if 'D' in channel:
+                self._mw.laserchannel_ComboBox.setCurrentIndex(index)
+                break
         self._channel_map = channel_map
 
     def get_channel_map(self):
