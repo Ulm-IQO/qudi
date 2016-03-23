@@ -457,7 +457,7 @@ class MotorStagePI(Base, MotorInterface):
         @return int: current position of the axis
         """
         constraints = self.get_constraints()
-        pos = int(self._serial_connection_xyz.ask(constraints[axis]['ID']+'TT')[8:])/100000.
+        pos = int(self._serial_connection_xyz.ask(constraints[axis]['ID']+'TT')[8:])/10000.
         return pos
 
 
@@ -543,13 +543,13 @@ class MotorStagePI(Base, MotorInterface):
         param_dict = {}
         try:
             if param_list != None and 'x' in param_list or param_list==None:
-                x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])/100000.
+                x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])/10000.
                 param_dict['x'] = x_vel
             if param_list != None and 'y' in param_list or param_list==None:
-                y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])/100000.
+                y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])/10000.
                 param_dict['y'] = y_vel
             if param_list != None and 'z' in param_list or param_list==None:
-                z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])/100000.
+                z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])/10000.
                 param_dict['z'] = z_vel
             if param_list != None and 'phi' in param_list or param_list==None:
                 data = self._ask_rot([1,53,42])
