@@ -242,6 +242,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self.tau_array = np.array(range(self.number_of_lasers))*fc_binning
         self.signal_plot_x = self.tau_array
+        self.fast_counter_binwidth=fc_binning
+        self.configure_fast_counter()
+
 
         pass
 

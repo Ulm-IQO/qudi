@@ -85,7 +85,7 @@
             <item row="4" column="0">
              <widget class="QLabel" name="time_param_expected_dur_Label">
               <property name="text">
-               <string>Expected duration (µs):</string>
+               <string>Expected duration (ms):</string>
               </property>
              </widget>
             </item>
@@ -96,6 +96,9 @@
               </property>
               <property name="buttonSymbols">
                <enum>QAbstractSpinBox::NoButtons</enum>
+              </property>
+              <property name="decimals">
+               <number>8</number>
               </property>
               <property name="maximum">
                <double>999999999.000000000000000</double>
