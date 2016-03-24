@@ -2535,7 +2535,6 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
-        print(self._mw.time_param_expected_dur_DoubleSpinBox.value())
         self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1e3))
 
 
