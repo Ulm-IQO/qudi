@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -575,22 +575,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="8" column="1">
-                  <widget class="QPushButton" name="curr_ensemble_save_PushButton">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Save</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="6" column="0">
                   <widget class="QLabel" name="label_6">
                    <property name="text">
@@ -634,11 +618,11 @@
                  <item row="8" column="2">
                   <widget class="QPushButton" name="curr_ensemble_load_PushButton">
                    <property name="enabled">
-                    <bool>false</bool>
+                    <bool>true</bool>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>40</width>
+                     <width>100</width>
                      <height>20</height>
                     </size>
                    </property>
@@ -729,19 +713,6 @@
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="7" column="2">
-                  <widget class="QPushButton" name="curr_block_load_PushButton">
-                   <property name="maximumSize">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Load</string>
                    </property>
                   </widget>
                  </item>
@@ -883,22 +854,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="7" column="1">
-                  <widget class="QPushButton" name="curr_block_save_PushButton">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Save</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="5" column="1" colspan="2">
                   <widget class="QLineEdit" name="curr_block_name_LineEdit">
                    <property name="sizePolicy">
@@ -934,6 +889,25 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="7" column="2">
+                  <widget class="QPushButton" name="curr_block_load_PushButton">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>100</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Load</string>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </item>
               </layout>
@@ -959,7 +933,7 @@
               <layout class="QGridLayout" name="gridLayout_38">
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_36">
-                 <item row="0" column="6">
+                 <item row="0" column="5">
                   <widget class="QPushButton" name="pulser_on_PushButton">
                    <property name="minimumSize">
                     <size>
@@ -973,7 +947,7 @@ On</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="7">
+                 <item row="0" column="6">
                   <widget class="QPushButton" name="pulser_off_PushButton">
                    <property name="minimumSize">
                     <size>
@@ -987,7 +961,7 @@ Off</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="6" colspan="2">
+                 <item row="1" column="5" colspan="2">
                   <layout class="QHBoxLayout" name="RadioButtons_HorizontalLayout">
                    <item>
                     <widget class="QRadioButton" name="radioButton_3">
@@ -1111,13 +1085,6 @@ Off</string>
                    </item>
                   </layout>
                  </item>
-                 <item row="1" column="4">
-                  <widget class="QLabel" name="label_27">
-                   <property name="text">
-                    <string>To Channel:</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="1" column="3">
                   <widget class="QPushButton" name="upload_load_channel_PushButton">
                    <property name="minimumSize">
@@ -1127,7 +1094,7 @@ Off</string>
                     </size>
                    </property>
                    <property name="text">
-                    <string>load to channel</string>
+                    <string>load to channels</string>
                    </property>
                   </widget>
                  </item>
@@ -1138,11 +1105,8 @@ Off</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1" colspan="5">
+                 <item row="0" column="1" colspan="4">
                   <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
-                 </item>
-                 <item row="1" column="5">
-                  <widget class="QComboBox" name="upload_independ_ch_combi_ComboBox"/>
                  </item>
                  <item row="1" column="2">
                   <widget class="QPushButton" name="upload_to_device_PushButton">

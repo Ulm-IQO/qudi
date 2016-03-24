@@ -514,7 +514,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
 
         self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block)
-        self._mw.curr_block_save_PushButton.clicked.connect(self.block_editor_save_clicked)
         self._mw.curr_block_del_PushButton.clicked.connect(self.block_editor_delete_clicked)
 
         # connect the signals for the block organizer:
@@ -523,6 +522,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.organizer_add_sel_PushButton.clicked.connect(self.block_organizer_add_row_before_selected)
         self._mw.organizer_del_sel_PushButton.clicked.connect(self.block_organizer_delete_row_selected)
         self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
+
+        self._mw.curr_ensemble_load_PushButton.clicked.connect(self.load_pulse_block_ensemble)
+        self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
 
         # connect the signals for the "Upload on device" section
         self._mw.upload_sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
@@ -565,21 +567,10 @@ class PulsedMeasurementGui(GUIBase):
                 if subset != ():
                     channels_combi.append(str(list(subset)))
 
-        self._mw.upload_independ_ch_combi_ComboBox.clear()
-        self._mw.upload_independ_ch_combi_ComboBox.addItems(channels_combi)
-        index =  len(channels_combi)-1
-        self._mw.upload_independ_ch_combi_ComboBox.setCurrentIndex(index)
-
-
         # A dictionary containing the mathematical function names to choose
         # from in the block editor with corresponding lists of needed
         # parameters like phase, frequency etc. This should be provided by the
         #  "math logic".
-
-        # initialize the lists of available blocks, ensembles and sequences
-        self.update_block_list()
-        self.update_ensemble_list()
-        self.update_sequence_list()
 
         self.set_cfg_param_pbe()
         self._set_organizer_columns()
@@ -590,12 +581,14 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
         self._mw.laserchannel_ComboBox.currentIndexChanged.connect(self._update_current_pulse_block)
         self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
-        self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
         self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
         self._mw.pulser_off_PushButton.clicked.connect(self.pulser_off_clicked)
         self._mw.upload_clear_device_PushButton.clicked.connect(self.clear_device_clicked)
 
-
+        # initialize the lists of available blocks, ensembles and sequences
+        self.update_block_list()
+        self.update_ensemble_list()
+        self.update_sequence_list()
 
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -776,18 +769,8 @@ class PulsedMeasurementGui(GUIBase):
         ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
         # Sample the ensemble via logic module
 
-        #FIXME: According to the chosen value in the ComboBox
-        #       self._mw.upload_independ_ch_combi_ComboBox the sample file
-        #       should receive a dict, where all the channels are described,
-        #       which will receive that sampled file.
-        #       Here the already finished code sniplet for passed dict sample_ch:
-
-        sample_ch = {}
-        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
-        # evaluate to have a proper list:
-        channels = eval(channels)
-        for entry in channels:
-            sample_ch[entry] = ensemble_name
+        # FIXME: Implement a proper choosing of the channels to upload to.
+        # Right now the channels are invoked from the asset filenames
 
         self._seq_gen_logic.sample_ensemble(ensemble_name, True, False)
         return
@@ -854,6 +837,13 @@ class PulsedMeasurementGui(GUIBase):
             # Set index inside the ComboBox
             self._mw.upload_ensemble_ComboBox.setCurrentIndex(index_to_set)
             self._mw.saved_ensembles_ComboBox.setCurrentIndex(index_to_set)
+        else:
+            # set the current ensemble in the logic and all ComboBoxes to the currently
+            # shown ensemble in the upload_ensemble_ComboBox.
+            current_ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+            index_to_set = self._mw.saved_ensembles_ComboBox.findText(current_ensemble_name)
+            self._mw.saved_ensembles_ComboBox.setCurrentIndex(index_to_set)
+            self.load_pulse_block_ensemble()
         return
 
     def update_sequence_list(self):
@@ -1160,6 +1150,33 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
 
 
+    def load_pulse_block_ensemble(self):
+        """ Loads the current selected Pulse_Block_Ensemble object from the logic into
+            the editor.
+
+            Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
+            are looking like and cannot be that general.
+        """
+        # FIXME: Determine the column_index from this shady config dictionary, no ide how to do so
+        # get the current block name from the ComboBox
+        current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
+        # get the ensemble object and set as current ensemble
+        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name, set_as_current_ensemble=True)
+        # clear the block organizer table
+        self.block_organizer_clear_table()
+        # determine the number of rows, i.e. the number of blocks within the block_ensemble
+        rows = len(ensemble.block_list)
+        # add as many rows as there are blocks in the ensemble
+        # minus 1 because a single row is already present after clear
+        self.block_organizer_add_row_after_last(rows-1)
+        # run through all blocks in the block_elements block_list to fill in the row informations
+        for row_index, (block_name, repetitions) in enumerate(ensemble.block_list):
+            self.set_element_in_organizer_table(row_index, 0, block_name)
+            self.set_element_in_organizer_table(row_index, 1, repetitions)
+        # set the ensemble name LineEdit to the current ensemble
+        self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
+
+
 
     def block_editor_add_row_before_selected(self, insert_rows=1):
         """ Add row before selected element. """
@@ -1223,18 +1240,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self.initialize_cells_block_editor(start_row=0)
         self._mw.block_editor_TableWidget.blockSignals(False)
-
-    def block_editor_save_clicked(self):
-        """
-        Actions to perform when the save button in the block editor is clicked
-        """
-        objectname = self._mw.curr_block_name_LineEdit.text()
-        table_struct = self.get_block_table()
-        num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
-        self._seq_gen_logic.generate_pulse_block_object(objectname,
-                                                        table_struct,
-                                                        num_laser_pulses)
-        return
 
     def block_editor_delete_clicked(self):
         """
@@ -1300,6 +1305,35 @@ class PulsedMeasurementGui(GUIBase):
         access = tab.itemDelegateForColumn(column).model_data_access
         data = tab.model().index(row, column).data(access)
         return data
+
+    def set_element_in_organizer_table(self, row, column, value):
+        """ Simplified wrapper function to set the data to a specific cell
+            in the block organizer table.
+
+        @param int row: row index
+        @param int column: column index
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        A type check will be performed for the passed value argument. If the
+        type does not correspond to the delegate, then the value will not be
+        changed. You have to ensure that
+        """
+
+        tab = self._mw.block_organizer_TableWidget
+        model = tab.model()
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+
+        if type(data) == type(value):
+            model.setData(model.index(row,column), value, access)
+        else:
+            self.logMsg('The cell ({0},{1}) in block organizer table could not be '
+                        'assigned with the value="{2}", since the type "{3}" '
+                        'of the cell from the delegated type differs from '
+                        '"{4}" of the value!\nPrevious value will be '
+                        'kept.'.format(row, column, value, type(data),
+                                       type(value) ) , msgType='warning')
 
     def get_organizer_table(self):
         """ Convert organizer table data to numpy array.
