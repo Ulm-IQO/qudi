@@ -82,7 +82,7 @@ class PulseAnalysisLogic(GenericLogic):
                       signal_end_bin, num_of_lasers):
 
         # acquire data from the pulse extraction logic
-        laser_data, raw_data = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
+        laser_data, raw_data, is_gated = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
 
         # Initialize the signal and normalization mean data arrays
         reference_mean = np.zeros(num_of_lasers, dtype=float)
@@ -113,7 +113,7 @@ class PulseAnalysisLogic(GenericLogic):
 
         #return data
         #print (measuring_error)
-        return signal_data, laser_data, raw_data, measuring_error
+        return signal_data, laser_data, raw_data, measuring_error, is_gated
 
 
     def do_fit(self):

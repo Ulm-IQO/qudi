@@ -266,7 +266,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_plot_y, \
             self.laser_data,    \
             self.raw_data,      \
-            self.measuring_error = self._pulse_analysis_logic._analyze_data(norm_start,
+            self.measuring_error,\
+            self.is_gated        = self._pulse_analysis_logic._analyze_data(norm_start,
                                                                             norm_end,
                                                                             sig_start,
                                                                             sig_end,
@@ -301,10 +302,15 @@ class PulsedMeasurementLogic(GenericLogic):
         """
 
         if self.raw_laser_pulse:
-            if laser_num > 0:
-                self.laser_plot_y = self.raw_data[laser_num-1]
+
+            if self.is_gated:
+                if laser_num > 0:
+                    self.laser_plot_y = self.raw_data[laser_num-1]
+                else:
+                    self.laser_plot_y = np.sum(self.raw_data,0)
             else:
-                self.laser_plot_y = np.sum(self.raw_data,0)
+                self.laser_plot_y = self.raw_data
+
         else:
             # set laser plot
             if laser_num > 0:
