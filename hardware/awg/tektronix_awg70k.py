@@ -77,7 +77,7 @@ class AWG70K(Base, PulserInterface):
 
         self.use_sequencer = False
 
-        self.asset_directory = '/waves/'
+        self.asset_directory = 'waves'
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -104,7 +104,7 @@ class AWG70K(Base, PulserInterface):
         if 'ftp_root_dir' in config.keys():
             self.ftp_root_directory = config['ftp_root_dir']
         else:
-            self.ftp_root_directory = 'C:/inetpub/ftproot'
+            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
             self.logMsg('No parameter "ftp_root_dir" was specified in the '
                         'config for tektronix_awg70k as directory for '
                         'the FTP server root on the AWG!\nThe default root directory\n{0}\n'
@@ -486,7 +486,7 @@ class AWG70K(Base, PulserInterface):
                         'that!\nCommand will be ignored.', msgType='warning')
             return -1
 
-        filelist = os.listdir(self.host_waveform_directory)
+        filelist = self._get_filenames_on_host()
         upload_names = []
         for filename in filelist:
             is_wfmx = filename.endswith('.WFMX')
@@ -526,20 +526,11 @@ class AWG70K(Base, PulserInterface):
         """
 
         # Find all files associated with the specified asset name
-        with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.asset_directory)
-            # get only the files from the dir and skip possible directories
-            log =[]
-            file_list = []
-            filename = []
-            ftp.retrlines('LIST', callback=log.append)
-        for line in log:
-            if not '<DIR>' in line:
-                file_list.append(line.rsplit(None, 1)[1])
+        file_list = self._get_filenames_on_device()
 
         # find all assets wit file type .mat and .WFMX and name "asset_name"
         # FIXME: Also include .SEQX later on
+        filename = []
         for file in file_list:
             if file == asset_name+'.mat':
                 filename.append(file)
@@ -556,7 +547,7 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         # Check if multiple file formats for a single asset_name are present and issue warning
-        tmp = filename[0][-4:]
+        tmp = filename[0].rsplit('.',1)[1]
         for name in filename:
             if not name.endswith(tmp):
                 self.logMsg('Multiple file formats associated with the asset "{0}" were found on AWG70k.'
@@ -565,11 +556,11 @@ class AWG70K(Base, PulserInterface):
                 return -1
 
         self.logMsg('The following files associated with the asset "{0}" were found on AWG70k:\n'
-                    '"{1}"'.format(asset_name, filename), msgType='status')
+                    '{1}'.format(asset_name, filename), msgType='status')
 
         # load files in AWG workspace
         for asset in filename:
-            file_path  = os.path.join(self.ftp_root_directory, self.asset_directory + asset)
+            file_path  = os.path.join(self.ftp_root_directory, self.asset_directory, asset)
             if asset.endswith('.mat'):
                 self.tell('MMEM:OPEN:SASS:WAV "%s"\n' % file_path)
             else:
