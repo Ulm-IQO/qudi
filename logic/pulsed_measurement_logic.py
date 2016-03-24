@@ -312,7 +312,7 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 self.laser_plot_y = np.sum(self.laser_data,0)
 
-        self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, len(self.laser_plot_y)+1)
+        self.laser_plot_x = np.arange(1, len(self.laser_plot_y)+1)
 
         return self.laser_plot_x, self.laser_plot_y
 
@@ -465,8 +465,12 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.laser_plot_x = self.fast_counter_binwidth * np.arange(1, 3001, dtype=float)
-        self.laser_plot_y = np.zeros(3000, dtype=int)
+
+        print (self.laser_length_s)
+        number_of_bins_per_laser=int(self.laser_length_s/(self.fast_counter_binwidth))
+        print('number_of_bins_per_laser',number_of_bins_per_laser)
+        self.laser_plot_x = np.arange(1, number_of_bins_per_laser+1, dtype=int)
+        self.laser_plot_y = np.zeros(number_of_bins_per_laser, dtype=int)
 
     def _initialize_measuring_error_plot(self):
         '''Initializing the plot of the laser timetrace.
