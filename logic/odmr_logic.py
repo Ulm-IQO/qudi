@@ -84,7 +84,7 @@ class ODMRLogic(GenericLogic):
         self._odmrscan_counter = 0
         self._clock_frequency = 200
         self.fit_function = 'No Fit'
-        self.fit_result = ([])
+        self.fit_result = ''
 
         self.MW_frequency = 2870.    #in MHz
         self.MW_power = -30.         #in dBm
@@ -471,9 +471,15 @@ class ODMRLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Microwave Power (dBm)'] = self.MW_power
         parameters['Runtime (s)'] = self.RunTime
-        parameters['Star Frequency (MHz)'] = self.MW_start
+        parameters['Start Frequency (MHz)'] = self.MW_start
         parameters['Stop Frequency (MHz)'] = self.MW_stop
         parameters['Step size (MHz)'] = self.MW_step
+        parameters['Fit function'] = self.current_fit_function
+        
+        i = 0
+        for line in self.fit_result.splitlines():
+            parameters['Fit result {}'.format(i)] = line
+            i += 1
 
         if self.safeRawData:
             raw_data = self.ODMR_raw_data  # array cotaining ALL messured data
