@@ -2,36 +2,62 @@
 # unstable: Jochen Scheuer
 
 from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
-from collections import OrderedDict
 
 from lmfit.models import Model, ConstantModel, LorentzianModel, GaussianModel
 from lmfit import Parameters, minimize
-from scipy.signal import gaussian
 from scipy.ndimage import filters
 
 import numpy as np
-import scipy.optimize as opt#, scipy.stats
 
-
-#FIXME: In general is it needed for any purposes to use weighting?
-#FIXME: Don't understand exactly when you return error code...
+# FIXME: In general is it needed for any purposes to use weighting?
+# FIXME: Don't understand exactly when you return error code...
 
 """
 General procedure to create new fitting routines:
 
 A fitting routine consists out of three major parts:
     1. a (mathematical) Model you have for the passed data
+            * Here we use the lmfit package, which has a couple of standard
+              models like ConstantModel, LorentzianModel or GaussianModel.
+              These models can be used straight away and also can be added, like:
+              new_model = ConstantModel()+GaussianModel(), which yields a
+              Gaussian model with an offset.
+            * If there is no standard model one can define a customized model,
+              see make_sine_model()
+            * With model.make_params() one can create a set of parameters with
+              a value, min, max, vary and an expression. These parameters are
+              returned as a Parameters object which contains all variables
+              in a dictionary.
+            * The make_"..."_model method returns, the model and parameter
+              dictionary
     2. an Estimator, which can extract from the passed data initial values for
        the fitting routine.
-    3. The actual fit algorithm
+            * Here values have to be estimated from the raw data
+            * In many cases a clever convolution helps a lot
+            * Offsets can be retrieved from find_offset_parameter method
+            * All parameters are given via a Parameters object
+            * The estimated values are returned by a Parameters object
+    3. The actual fit method
+            * First the model and parameters are created with the make_model
+              method.
+            * The initial values are returned by the estimator method
+            * Constraints are set, e.g. param['offset'].min=0
+                                        param['offset'].max=data.max()
+            * Additional parameters given by inputs can be overwritten by
+              substitute_parameter method
+            * Finally fit is done via model.fit(data, x=axis,params=params)
+            * The fit routine from lmfit returns a dictionary with many
+              parameters like: results with errors and correlations,
+              best_values, initial_values, success flag,
+              an error message.
+            * With model.eval(...) one can generate high resolution data by
+              setting an x-axis with maby points
 
 The power of that general splitting is that you can write pretty independent
 fit algorithms, but their efficiency will (very often) rely on the quality of
 the estimator.
 """
-
 
 
 class FitLogic(GenericLogic):
@@ -48,19 +74,19 @@ class FitLogic(GenericLogic):
     """
     _modclass = 'fitlogic'
     _modtype = 'logic'
-    ## declare connectors
+    # declare connectors
     _out = {'fitlogic': 'FitLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
-        state_actions = {'onactivate':self.activation,
-                         'ondeactivate':self.deactivation}
+        # declare actions for state transitions
+        state_actions = {'onactivate': self.activation,
+                         'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions,
                               **kwargs)
-        #locking for thread safety
+        # locking for thread safety
         self.lock = Mutex()
 
-    def activation(self,e):
+    def activation(self, e):
         """ Initialisation performed during activation of the module.
 
         @param object e: Event class object from Fysom.
@@ -74,9 +100,8 @@ class FitLogic(GenericLogic):
 
         pass
 
-    def deactivation(self,e):
+    def deactivation(self, e):
         pass
-
 
     ############################################################################
     #                                                                          #
@@ -84,107 +109,107 @@ class FitLogic(GenericLogic):
     #                                                                          #
     ############################################################################
 
-        def substitute_parameter(self, parameters=None, update_parameters=None):
-            """ This method substitutes all parameters handed in the
-            update_parameters object in an initial set of parameters.
+    def substitute_parameter(self, parameters=None, update_parameters=None):
+        """ This method substitutes all parameters handed in the
+        update_parameters object in an initial set of parameters.
 
-            @param object parameters: lmfit.parameter.Parameters object, initial
-                                      parameters
-            @param object update_parameters: lmfit.parameter.Parameters object, new
-                                             parameters
+        @param object parameters: lmfit.parameter.Parameters object, initial
+                                  parameters
+        @param object update_parameters: lmfit.parameter.Parameters object, new
+                                         parameters
 
-            @return object parameters: lmfit.parameter.Parameters object, new object
-                                       with substituted parameters
-            """
+        @return object parameters: lmfit.parameter.Parameters object, new object
+                                   with substituted parameters
+        """
 
-            for para in update_parameters:
+        for para in update_parameters:
 
-                #first check if completely new parameter, which is added in the else
-                if para in parameters:
-                    #store value because when max,min is set the value is overwritten
-                    store_value=parameters[para].value
+            # first check if completely new parameter, which is added in the else
+            if para in parameters:
+                # store value because when max,min is set the value is overwritten
+                store_value = parameters[para].value
 
-                    # the Parameter object changes the value, min and max when the
-                    # value is called therefore the parameters have to be saved from
-                    # the reseted Parameter object therefore the Parameters have to be
-                    # saved also here
+                # the Parameter object changes the value, min and max when the
+                # value is called therefore the parameters have to be saved from
+                # the reseted Parameter object therefore the Parameters have to be
+                # saved also here
 
-                    para_temp=update_parameters
-                    if para_temp[para].value!=None:
-                        value_new=True
-                        value_value=para_temp[para].value
-                    else:
-                        value_new=False
-
-                    para_temp=update_parameters
-                    if para_temp[para].min!=None:
-                        min_new=True
-                        min_value=para_temp[para].min
-                    else:
-                        min_new=False
-
-                    para_temp=update_parameters
-                    if para_temp[para].max!=None:
-                        max_new=True
-                        max_value=para_temp[para].max
-                    else:
-                        max_new=False
-
-                    # vary is set by default to True
-                    parameters[para].vary=update_parameters[para].vary
-
-                    # if the min, max and expression and value are new overwrite
-                    # them here
-
-                    if min_new:
-                        parameters[para].min=update_parameters[para].min
-
-                    if max_new:
-                        parameters[para].max=update_parameters[para].max
-
-                    if update_parameters[para].expr!=None:
-                        parameters[para].expr=update_parameters[para].expr
-
-                    if value_new:
-                        parameters[para].value=value_value
-
-                    # if the min or max are changed they overwrite the value
-                    # therefore here the values have to be reseted to the initial
-                    # value also when no new value was set in the beginning
-
-                    if min_new:
-                        # in case the value is 0, devision by 0 has to be avoided
-                        if parameters[para].value<1e-12:
-                            if abs((min_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
-                                parameters[para].value=store_value
-                        else:
-                            if abs(min_value/parameters[para].value-1.)<1e-12:
-                                parameters[para].value=store_value
-                    if max_new:
-                        # in case the value is 0, devision by 0 has to be avoided
-                        if parameters[para].value<1e-12:
-                            if abs((max_value+1.)/(parameters[para].value+1.)-1.)<1e-12:
-                                parameters[para].value=store_value
-                        else:
-                            if abs(max_value/parameters[para].value-1.)<1e-12:
-                                parameters[para].value=store_value
-
-                    # check if the suggested value or the value in parameters is
-                    # smaller/bigger than min/max values and set then the value to
-                    # min or max
-
-                    if min_new:
-                        if parameters[para].value<min_value:
-                            parameters[para].value=min_value
-
-                    if max_new:
-                        if parameters[para].value>max_value:
-                            parameters[para].value=max_value
+                para_temp = update_parameters
+                if para_temp[para].value != None:
+                    value_new = True
+                    value_value = para_temp[para].value
                 else:
-                    #if parameter is new add here
-                    parameters.add(para)
+                    value_new = False
 
-            return parameters
+                para_temp = update_parameters
+                if para_temp[para].min != None:
+                    min_new = True
+                    min_value = para_temp[para].min
+                else:
+                    min_new = False
+
+                para_temp = update_parameters
+                if para_temp[para].max != None:
+                    max_new = True
+                    max_value = para_temp[para].max
+                else:
+                    max_new = False
+
+                # vary is set by default to True
+                parameters[para].vary = update_parameters[para].vary
+
+                # if the min, max and expression and value are new overwrite
+                # them here
+
+                if min_new:
+                    parameters[para].min = update_parameters[para].min
+
+                if max_new:
+                    parameters[para].max = update_parameters[para].max
+
+                if update_parameters[para].expr != None:
+                    parameters[para].expr = update_parameters[para].expr
+
+                if value_new:
+                    parameters[para].value = value_value
+
+                # if the min or max are changed they overwrite the value
+                # therefore here the values have to be reseted to the initial
+                # value also when no new value was set in the beginning
+
+                if min_new:
+                    # in case the value is 0, devision by 0 has to be avoided
+                    if parameters[para].value < 1e-12:
+                        if abs((min_value + 1.) / (parameters[para].value + 1.) - 1.) < 1e-12:
+                            parameters[para].value = store_value
+                    else:
+                        if abs(min_value / parameters[para].value - 1.) < 1e-12:
+                            parameters[para].value = store_value
+                if max_new:
+                    # in case the value is 0, devision by 0 has to be avoided
+                    if parameters[para].value < 1e-12:
+                        if abs((max_value + 1.) / (parameters[para].value + 1.) - 1.) < 1e-12:
+                            parameters[para].value = store_value
+                    else:
+                        if abs(max_value / parameters[para].value - 1.) < 1e-12:
+                            parameters[para].value = store_value
+
+                # check if the suggested value or the value in parameters is
+                # smaller/bigger than min/max values and set then the value to
+                # min or max
+
+                if min_new:
+                    if parameters[para].value < min_value:
+                        parameters[para].value = min_value
+
+                if max_new:
+                    if parameters[para].value > max_value:
+                        parameters[para].value = max_value
+            else:
+                # if parameter is new add here
+                parameters.add(para)
+
+        return parameters
 
     ############################################################################
     #                                                                          #
@@ -219,10 +244,10 @@ class FitLogic(GenericLogic):
         http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
         """
 
-        model=GaussianModel()+ConstantModel()
-        params=model.make_params()
+        model = GaussianModel() + ConstantModel()
+        params = model.make_params()
 
-        return model,params
+        return model, params
 
     def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
         """ This method performes a 1D gaussian fit on the provided data.
@@ -237,75 +262,76 @@ class FitLogic(GenericLogic):
                                with best fit with given axis,...
         """
 
-        error,      \
-        amplitude,  \
-        x_zero,     \
-        sigma,      \
-        offset      = self.estimate_gaussian(axis, data)
+        mod_final, params = self.make_gaussian_model()
 
-        mod_final,params = self.make_gaussian_model()
+        error, params = self.estimate_gaussian(axis, data, params)
 
-        #auxiliary variables
-        stepsize=abs(axis[1]-axis[0])
-        n_steps=len(axis)
+        # auxiliary variables
+        stepsize = abs(axis[1] - axis[0])
+        n_steps = len(axis)
 
-        #Defining standard parameters
-        #                  (Name,       Value,  Vary,         Min,                    Max,                                Expr)
-        params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),  None),
-                       (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),               None),
-                       (  'center',  x_zero,    True, (axis[0])-n_steps*stepsize,     (axis[-1])+n_steps*stepsize,        None),
-                       (    'c',      offset,   True,         100,                    data.max(),                         None))
+        # Define constraints
+        params['center'].min = (axis[0]) - n_steps * stepsize
+        params['center'].max = (axis[-1]) + n_steps * stepsize
+        params['amplitude'].min = 100  # that is already noise from APD
+        params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+        params['sigma'].min = stepsize
+        params['sigma'].max = 3 * (axis[-1] - axis[0])
+        params['c'].min = 100  # that is already noise from APD
+        params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
 
-
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+        # overwrite values of additional parameters
+        if add_parameters is not None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
-            result=mod_final.fit(data, x=axis,params=params)
+            result = mod_final.fit(data, x=axis, params=params)
         except:
             self.logMsg('The 1D gaussian fit did not work.',
                         msgType='message')
-            result=mod_final.fit(data, x=axis,params=params)
+            result = mod_final.fit(data, x=axis, params=params)
             print(result.message)
 
         return result
 
-    def estimate_gaussian(self, x_axis=None, data=None):
+    def estimate_gaussian(self, x_axis=None, data=None, params=None):
         """ This method provides a one dimensional gaussian function.
 
         @param array x_axis: x values
         @param array data: value of each data point corresponding to x values
+        @param Parameters object params: object includes parameter dictionary which can be set
 
-        @return tuple (error, amplitude, x_zero, sigma_x, offset):
+        @return tuple (error, params):
 
         Explanation of the return parameter:
             int error: error code (0:OK, -1:error)
-            float amplitude: estimated amplitude
-            float x_zero: estimated x value of maximum
-            float sigma_x: estimated standard deviation in x direction
-            float offset: estimated offset
+            Parameters object params: set parameters of initial values
         """
 
-        error=0
+        error = 0
         # check if parameters make sense
-        parameters=[x_axis,data]
+        parameters = [x_axis, data]
         for var in parameters:
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                self.logMsg('Given parameter is no array.', \
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+                self.logMsg('Given parameter is no array.',
                             msgType='error')
-                error=-1
-            elif len(np.shape(var))!=1:
-                self.logMsg('Given parameter is no one dimensional array.', \
+                error = -1
+            elif len(np.shape(var)) != 1:
+                self.logMsg('Given parameter is no one dimensional array.',
                             msgType='error')
-        #set paraameters
-        x_zero=x_axis[np.argmax(data)]
-        sigma = (x_axis.max()-x_axis.min())/3.
-        amplitude=(data.max()-data.min())*(sigma*np.sqrt(2*np.pi))
-        offset=data.min()
+                error = -1
+        if not isinstance(params, Parameters):
+            self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                        msgType='error')
+            error = -1
 
-        return error, amplitude, x_zero, sigma, offset
+        # set parameters
+        params['center'].value = x_axis[np.argmax(data)]
+        params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+        params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+        params['c'].value = data.min()
 
+        return error, params
 
     ############################################################################
     #                                                                          #
@@ -330,47 +356,48 @@ class FitLogic(GenericLogic):
 
         x_axis, y_axis = axis
 
-        error,      \
-        amplitude,  \
-        x_zero,     \
-        y_zero,     \
-        sigma_x,    \
-        sigma_y,    \
-        theta,      \
-        offset      = self.twoD_gaussian_estimator(x_axis=x_axis,
-                                                   y_axis=y_axis, data=data)
+        error, \
+        amplitude, \
+        x_zero, \
+        y_zero, \
+        sigma_x, \
+        sigma_y, \
+        theta, \
+        offset = self.twoD_gaussian_estimator(x_axis=x_axis,
+                                              y_axis=y_axis, data=data)
         mod, params = self.make_twoD_gaussian_model()
 
-        #auxiliary variables
-        stepsize_x=x_axis[1]-x_axis[0]
-        stepsize_y=y_axis[1]-y_axis[0]
-        n_steps_x=len(x_axis)
-        n_steps_y=len(y_axis)
+        # auxiliary variables
+        stepsize_x = x_axis[1] - x_axis[0]
+        stepsize_y = y_axis[1] - y_axis[0]
+        n_steps_x = len(x_axis)
+        n_steps_y = len(y_axis)
 
-        #When I was sitting in the train coding and my girlfiend was sitting next to me she said: "Look it looks like an animal!" - is it a fox or a rabbit???
+        # When I was sitting in the train coding and my girlfiend was sitting next to me she said: "Look it looks like an animal!" - is it a fox or a rabbit???
 
-        #Defining standard parameters
+        # Defining standard parameters
         #                  (Name,       Value,      Vary,           Min,                             Max,                       Expr)
-        params.add_many(('amplitude',   amplitude,  True,        100,                               1e7,                           None),
-                       (  'sigma_x',    sigma_x,    True,        1*(stepsize_x) ,              3*(x_axis[-1]-x_axis[0]),          None),
-                       (  'sigma_y',  sigma_y,      True,   1*(stepsize_y) ,                        3*(y_axis[-1]-y_axis[0]) ,   None),
-                       (  'x_zero',    x_zero,      True,     (x_axis[0])-n_steps_x*stepsize_x ,         x_axis[-1]+n_steps_x*stepsize_x,               None),
-                       (  'y_zero',     y_zero,     True,    (y_axis[0])-n_steps_y*stepsize_y ,         (y_axis[-1])+n_steps_y*stepsize_y,         None),
-                       (  'theta',       0.,        True,           0. ,                             np.pi,               None),
-                       (  'offset',      offset,    True,           0,                              1e7,                       None))
+        params.add_many(('amplitude', amplitude, True, 100, 1e7, None),
+                        ('sigma_x', sigma_x, True, 1 * (stepsize_x), 3 * (x_axis[-1] - x_axis[0]), None),
+                        ('sigma_y', sigma_y, True, 1 * (stepsize_y), 3 * (y_axis[-1] - y_axis[0]), None),
+                        ('x_zero', x_zero, True, (x_axis[0]) - n_steps_x * stepsize_x,
+                         x_axis[-1] + n_steps_x * stepsize_x, None),
+                        ('y_zero', y_zero, True, (y_axis[0]) - n_steps_y * stepsize_y,
+                         (y_axis[-1]) + n_steps_y * stepsize_y, None),
+                        ('theta', 0., True, 0., np.pi, None),
+                        ('offset', offset, True, 0, 1e7, None))
 
-
-#           redefine values of additional parameters
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+        #           redefine values of additional parameters
+        if add_parameters != None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
 
         try:
-            result=mod.fit(data, x=axis,params=params)
+            result = mod.fit(data, x=axis, params=params)
         except:
-            result=mod.fit(data, x=axis,params=params)
+            result = mod.fit(data, x=axis, params=params)
             self.logMsg('The 2D gaussian fit did not '
-                        'work:'+result.message, msgType='message')
+                        'work:' + result.message, msgType='message')
 
         return result
 
@@ -378,7 +405,7 @@ class FitLogic(GenericLogic):
     def twoD_gaussian_model(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
                             theta, offset):
 
-        #FIXME: x_data_tuple: dimension of arrays
+        # FIXME: x_data_tuple: dimension of arrays
 
         """ This method provides a two dimensional gaussian function.
 
@@ -396,31 +423,31 @@ class FitLogic(GenericLogic):
         """
 
         # check if parameters make sense
-        #FIXME: Check for 2D matrix
-        if not isinstance( x,(frozenset, list, set, tuple,\
-                            np.ndarray)):
+        # FIXME: Check for 2D matrix
+        if not isinstance(x, (frozenset, list, set, tuple, \
+                              np.ndarray)):
             self.logMsg('Given range of axes is no array type.',
                         msgType='error')
 
-        parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
+        parameters = [amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset]
         for var in parameters:
-            if not isinstance(var,(float,int)):
+            if not isinstance(var, (float, int)):
                 self.logMsg('Given range of parameter is no float or int.',
                             msgType='error')
 
-        (u,v) = x
+        (u, v) = x
         x_zero = float(x_zero)
         y_zero = float(y_zero)
 
-        a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                    + (np.sin(theta)**2)/(2*sigma_y**2)
-        b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                    + (np.sin(2*theta))/(4*sigma_y**2)
-        c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                    + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = offset + amplitude*np.exp( - (a*((u-x_zero)**2) \
-                                + 2*b*(u-x_zero)*(v-y_zero) \
-                                + c*((v-y_zero)**2)))
+        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
+            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
+        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
+        g = offset + amplitude * np.exp(- (a * ((u - x_zero) ** 2) \
+                                           + 2 * b * (u - x_zero) * (v - y_zero) \
+                                           + c * ((v - y_zero) ** 2)))
         return g.ravel()
 
     def make_twoD_gaussian_model(self):
@@ -438,14 +465,14 @@ class FitLogic(GenericLogic):
 
         """
 
-        model=Model(self.twoD_gaussian_model)
-        params=model.make_params()
+        model = Model(self.twoD_gaussian_model)
+        params = model.make_params()
 
-        return model,params
+        return model, params
 
     def twoD_gaussian_estimator(self, x_axis=None, y_axis=None, data=None):
-#            TODO:Make clever estimator
-        #FIXME: 1D array x_axis, y_axis, 2D data???
+        #            TODO:Make clever estimator
+        # FIXME: 1D array x_axis, y_axis, 2D data???
         """ This method provides a two dimensional gaussian function.
 
         @param array x_axis: x values
@@ -463,39 +490,39 @@ class FitLogic(GenericLogic):
         @return int error: error code (0:OK, -1:error)
         """
 
-#            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
-#            len_x=np.where(x_axis[0]==x_axis)[0][1]
-#            len_y=len(data)/len_x
+        #            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
+        #            len_x=np.where(x_axis[0]==x_axis)[0][1]
+        #            len_y=len(data)/len_x
 
 
-        amplitude=float(data.max()-data.min())
+        amplitude = float(data.max() - data.min())
 
         x_zero = x_axis[data.argmax()]
         y_zero = y_axis[data.argmax()]
 
-        sigma_x=(x_axis.max()-x_axis.min())/3.
-        sigma_y =(y_axis.max()-y_axis.min())/3.
-        theta=0.0
-        offset=float(data.min())
-        error=0
-        #check for sensible values
-        parameters=[x_axis,y_axis,data]
+        sigma_x = (x_axis.max() - x_axis.min()) / 3.
+        sigma_y = (y_axis.max() - y_axis.min()) / 3.
+        theta = 0.0
+        offset = float(data.min())
+        error = 0
+        # check for sensible values
+        parameters = [x_axis, y_axis, data]
         for var in parameters:
-            #FIXME: Why don't you check earlier?
-            #FIXME: Check for 1D array, 2D
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+            # FIXME: Why don't you check earlier?
+            # FIXME: Check for 1D array, 2D
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given parameter is not an array.', \
                             msgType='error')
-                amplitude=0.
-                x_zero=0.
-                y_zero=0.
-                sigma_x=0.
-                sigma_y =0.
-                theta=0.0
-                offset=0.
-                error=-1
+                amplitude = 0.
+                x_zero = 0.
+                y_zero = 0.
+                sigma_x = 0.
+                sigma_y = 0.
+                theta = 0.0
+                offset = 0.
+                error = -1
 
-        return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+        return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
 
     ############################################################################
     #                                                                          #
@@ -518,26 +545,26 @@ class FitLogic(GenericLogic):
 
 
         """
-        #lorentzian filter
-        mod,params = self.make_lorentzian_model()
+        # lorentzian filter
+        mod, params = self.make_lorentzian_model()
 
-        if len(x_values)<20.:
-            len_x=5
-        if len(x_values)>=100.:
-            len_x=10
+        if len(x_values) < 20.:
+            len_x = 5
+        if len(x_values) >= 100.:
+            len_x = 10
         else:
-            len_x=int(len(x_values)/10.)+1
+            len_x = int(len(x_values) / 10.) + 1
 
-        lorentz=mod.eval(x=np.linspace(0,len_x,len_x), amplitude=1, c=0.,
-                         sigma=len_x/4., center=len_x/2.)
-        data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),
+        lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, c=0.,
+                           sigma=len_x / 4., center=len_x / 2.)
+        data_smooth = filters.convolve1d(data, lorentz / lorentz.sum(),
                                          mode='constant', cval=data.max())
 
-        #finding most frequent value which is supposed to be the offset
-        hist=np.histogram(data_smooth,bins=10)
-        offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+        # finding most frequent value which is supposed to be the offset
+        hist = np.histogram(data_smooth, bins=10)
+        offset = (hist[1][hist[0].argmax()] + hist[1][hist[0].argmax() + 1]) / 2.
 
-        return data_smooth,offset
+        return data_smooth, offset
 
     ############################################################################
     #                                                                          #
@@ -559,12 +586,12 @@ class FitLogic(GenericLogic):
                                parameters for the lorentzian model.
         """
 
-        model=LorentzianModel()+ConstantModel()
-        params=model.make_params()
+        model = LorentzianModel() + ConstantModel()
+        params = model.make_params()
 
-        return model,params
+        return model, params
 
-    def estimate_lorentz(self,x_axis=None,data=None):
+    def estimate_lorentz(self, x_axis=None, data=None):
         """ This method provides a lorentzian function.
 
         @param array x_axis: x values
@@ -577,30 +604,30 @@ class FitLogic(GenericLogic):
         @return float sigma_x: estimated standard deviation in x direction
         @return float offset: estimated offset
         """
-#           TODO: make sigma and amplitude good, this is only a dirty fast solution
-        error=0
+        #           TODO: make sigma and amplitude good, this is only a dirty fast solution
+        error = 0
         # check if parameters make sense
-        parameters=[x_axis,data]
+        parameters = [x_axis, data]
         for var in parameters:
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given parameter is no array.', msgType='error')
-                error=-1
-            elif len(np.shape(var))!=1:
+                error = -1
+            elif len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional array.',
                             msgType='error')
-        #set paraameters
+        # set paraameters
 
-        data_smooth,offset=self.find_offset_parameter(x_axis,data)
+        data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
-        data_level=data-offset
-        data_min=data_level.min()
-        data_max=data_level.max()
+        data_level = data - offset
+        data_min = data_level.min()
+        data_max = data_level.max()
 
-        #estimate sigma
-        numerical_integral=np.sum(data_level) * \
-                           (abs(x_axis[-1] - x_axis[0])) / len(x_axis)
+        # estimate sigma
+        numerical_integral = np.sum(data_level) * \
+                             (abs(x_axis[-1] - x_axis[0])) / len(x_axis)
 
-        if data_max>abs(data_min):
+        if data_max > abs(data_min):
             try:
                 self.logMsg('The lorentzian estimator set the peak to the '
                             'minimal value, if you want to fit a peak instead '
@@ -612,11 +639,11 @@ class FitLogic(GenericLogic):
                             'of a dip rewrite the estimator.',
                             msgType='warning')
 
-        amplitude_median=data_min
-        x_zero=x_axis[np.argmin(data_smooth)]
+        amplitude_median = data_min
+        x_zero = x_axis[np.argmin(data_smooth)]
 
         sigma = numerical_integral / (np.pi * amplitude_median)
-        amplitude=amplitude_median * np.pi * sigma
+        amplitude = amplitude_median * np.pi * sigma
 
         return error, amplitude, x_zero, sigma, offset
 
@@ -634,45 +661,44 @@ class FitLogic(GenericLogic):
                               with best fit with given axis,...
         """
 
-        error,amplitude, x_zero, sigma, offset = self.estimate_lorentz(
-                                                                axis,data)
+        error, amplitude, x_zero, sigma, offset = self.estimate_lorentz(
+            axis, data)
 
-        model,params = self.make_lorentzian_model()
+        model, params = self.make_lorentzian_model()
 
-        #auxiliary variables
-        stepsize=axis[1]-axis[0]
-        n_steps=len(axis)
+        # auxiliary variables
+        stepsize = axis[1] - axis[0]
+        n_steps = len(axis)
 
         # TODO: Make sigma amplitude and x_zero better
         # Defining standard parameters
 
-        if axis[1]-axis[0]>0:
+        if axis[1] - axis[0] > 0:
             #                (Name,       Value,    Vary,  Min,                        Max,                         Expr)
-            params.add_many(('amplitude', amplitude, True, None,                       -1e-12,                      None),
-                            ('sigma',     sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*10,       None),
-                            ('center',    x_zero,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None),
-                            ('c',         offset,    True, None,                       None,                        None))
+            params.add_many(('amplitude', amplitude, True, None, -1e-12, None),
+                            ('sigma', sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 10, None),
+                            ('center', x_zero, True, (axis[0]) - n_steps * stepsize, (axis[-1]) + n_steps * stepsize,
+                             None),
+                            ('c', offset, True, None, None, None))
 
+        if axis[0] - axis[1] > 0:
+            #                   (Name,        Value,  Vary,    Min,                 Max,                  Expr)
+            params.add_many(('amplitude', amplitude, True, None, -1e-12, None),
+                            ('sigma', sigma, True, (axis[0] - axis[1]) / 2, (axis[0] - axis[1]) * 10, None),
+                            ('center', x_zero, True, (axis[-1]), (axis[0]), None),
+                            ('c', offset, True, None, None, None))
 
-        if axis[0]-axis[1]>0:
-
-        #                   (Name,        Value,  Vary,    Min,                 Max,                  Expr)
-            params.add_many(('amplitude', amplitude, True, None,                -1e-12,               None),
-                            ('sigma',     sigma,     True, (axis[0]-axis[1])/2, (axis[0]-axis[1])*10, None),
-                            ('center',    x_zero,    True, (axis[-1]),          (axis[0]),            None),
-                            ('c',         offset,    True, None,                None,                 None))
-
-    #TODO: Add logmessage when value is changed
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+            # TODO: Add logmessage when value is changed
+        # redefine values of additional parameters
+        if add_parameters != None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
         except:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
             self.logMsg('The 1D gaussian fit did not work. Error '
-                        'message:'+result.message,
+                        'message:' + result.message,
                         msgType='message')
         return result
 
@@ -682,7 +708,7 @@ class FitLogic(GenericLogic):
     #                                                                          #
     ############################################################################
 
-    def estimate_lorentz_peak (self, x_axis=None, data=None):
+    def estimate_lorentz_peak(self, x_axis=None, data=None):
         """ This method provides a lorentzian function to fit a peak.
 
         @param array x_axis: x values
@@ -696,36 +722,34 @@ class FitLogic(GenericLogic):
         @return float offset: estimated offset
         """
 
-#           TODO: make sigma and amplitude good, this is only a dirty fast solution
-        error=0
+        #           TODO: make sigma and amplitude good, this is only a dirty fast solution
+        error = 0
         # check if parameters make sense
 
-        parameters=[x_axis,data]
+        parameters = [x_axis, data]
         for var in parameters:
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given parameter is no array.',
                             msgType='error')
-                error=-1
-            elif len(np.shape(var))!=1:
+                error = -1
+            elif len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional array.',
                             msgType='error')
-        #set paraameters
-        #print('data',data)
-        data_smooth,offset=self.find_offset_parameter(x_axis,data)
-        #print('offset',offset)
-        data_level=data-offset
-        data_min=data_level.min()
-        data_max=data_level.max()
-        #print('data_min',data_min)
-        #print('data_max',data_max)
-        #estimate sigma
+        # set paraameters
+        # print('data',data)
+        data_smooth, offset = self.find_offset_parameter(x_axis, data)
+        # print('offset',offset)
+        data_level = data - offset
+        data_min = data_level.min()
+        data_max = data_level.max()
+        # print('data_min',data_min)
+        # print('data_max',data_max)
+        # estimate sigma
 
-        numerical_integral=np.sum(data_level) * \
-                           (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
+        numerical_integral = np.sum(data_level) * \
+                             (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
 
-
-
-        if data_max<abs(data_min):
+        if data_max < abs(data_min):
             try:
                 self.logMsg('This lorentzian estimator set the peak to the '
                             'maximum value, if you want to fit a dip '
@@ -736,15 +760,15 @@ class FitLogic(GenericLogic):
                       'maximum value, if you want to fit a dip instead of '
                       'a peak use estimate_lorentz.')
 
-        amplitude_median=data_max
-        #x_zero=x_axis[np.argmax(data_smooth)]
-        x_zero=x_axis[np.argmax(data)]
+        amplitude_median = data_max
+        # x_zero=x_axis[np.argmax(data_smooth)]
+        x_zero = x_axis[np.argmax(data)]
         sigma = np.abs(numerical_integral / (np.pi * amplitude_median))
-        amplitude=amplitude_median * np.pi * sigma
+        amplitude = amplitude_median * np.pi * sigma
 
-        #print('amplitude',amplitude)
-        #print('x_zero',x_zero)
-        #print('offset',offset)
+        # print('amplitude',amplitude)
+        # print('x_zero',x_zero)
+        # print('offset',offset)
 
         return error, amplitude, x_zero, sigma, offset
 
@@ -763,48 +787,46 @@ class FitLogic(GenericLogic):
                                              fit with given axis,...
         """
 
-        error,      \
-        amplitude,  \
-        x_zero,     \
-        sigma,      \
-        offset      = self.estimate_lorentz_peak(axis, data)
-
+        error, \
+        amplitude, \
+        x_zero, \
+        sigma, \
+        offset = self.estimate_lorentz_peak(axis, data)
 
         model, params = self.make_lorentzian_model()
 
         # auxiliary variables:
-        stepsize=np.abs(axis[1]-axis[0])
-        n_steps=len(axis)
+        stepsize = np.abs(axis[1] - axis[0])
+        n_steps = len(axis)
 
-#            TODO: Make sigma amplitude and x_zero better
+        #            TODO: Make sigma amplitude and x_zero better
 
-        #Defining standard parameters
+        # Defining standard parameters
 
-        if axis[1]-axis[0]>0:
+        if axis[1] - axis[0] > 0:
+            #                   (Name,        Value,     Vary, Min,                        Max,                         Expr)
+            params.add_many(('amplitude', amplitude, True, 2e-12, None, None),
+                            ('sigma', sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 10, None),
+                            ('center', x_zero, True, (axis[0]) - n_steps * stepsize, (axis[-1]) + n_steps * stepsize,
+                             None),
+                            ('c', offset, True, None, None, None))
+        if axis[0] - axis[1] > 0:
+            #                   (Name,        Value,     Vary, Min,                  Max,                  Expr)
+            params.add_many(('amplitude', amplitude, True, 2e-12, None, None),
+                            ('sigma', sigma, True, (axis[0] - axis[1]) / 2, (axis[0] - axis[1]) * 10, None),
+                            ('center', x_zero, True, (axis[-1]), (axis[0]), None),
+                            ('c', offset, True, None, None, None))
 
-        #                   (Name,        Value,     Vary, Min,                        Max,                         Expr)
-            params.add_many(('amplitude', amplitude, True, 2e-12,                      None,                        None),
-                            ('sigma',     sigma,     True, (axis[1]-axis[0])/2,        (axis[-1]-axis[0])*10,       None),
-                            ('center',    x_zero,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None),
-                            ('c',         offset,    True, None,                       None,                        None))
-        if axis[0]-axis[1]>0:
+        # TODO: Add logmessage when value is changed
+        # redefine values of additional parameters
 
-        #                   (Name,        Value,     Vary, Min,                  Max,                  Expr)
-            params.add_many(('amplitude', amplitude, True, 2e-12,                None,                 None),
-                            ('sigma',     sigma,     True, (axis[0]-axis[1])/2 , (axis[0]-axis[1])*10, None),
-                            ('center',    x_zero,    True, (axis[-1]),           (axis[0]),            None),
-                            ('c',         offset,    True, None,                 None,                 None))
-
-        #TODO: Add logmessage when value is changed
-        #redefine values of additional parameters
-
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+        if add_parameters != None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
         except:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
             self.logMsg('The 1D gaussian fit did not work. Error '
                         'message:' + result.message,
                         msgType='message')
@@ -831,15 +853,15 @@ class FitLogic(GenericLogic):
                                                    lorentzian model.
         """
 
-        model=ConstantModel()
+        model = ConstantModel()
         for ii in range(no_of_gauss):
-            model+=GaussianModel(prefix='gaussian{}_'.format(ii))
+            model += GaussianModel(prefix='gaussian{}_'.format(ii))
 
-        params=model.make_params()
+        params = model.make_params()
 
         return model, params
 
-#   Todo: implement estimator
+    #   Todo: implement estimator
     def estimate_double_gaussian(self, x_axis=None, data=None):
         """ This method provides a gaussian function.
 
@@ -866,12 +888,12 @@ class FitLogic(GenericLogic):
         gaussian1_sigma = 0
         offset = 0
 
-        return error, gaussian0_amplitude,gaussian1_amplitude, \
-               gaussian0_center,gaussian1_center, gaussian0_sigma, \
+        return error, gaussian0_amplitude, gaussian1_amplitude, \
+               gaussian0_center, gaussian1_center, gaussian0_sigma, \
                gaussian1_sigma, offset
 
     def make_double_gaussian_fit(self, axis=None, data=None,
-                                   add_parameters=None):
+                                 add_parameters=None):
         """ This method performes a 1D double gaussian fit on the provided data.
 
         @param array [] axis: axis values
@@ -886,41 +908,43 @@ class FitLogic(GenericLogic):
 
         """
 
-        error,              \
+        error, \
         gaussian0_amplitude, \
         gaussian1_amplitude, \
-        gaussian0_center,    \
-        gaussian1_center,    \
-        gaussian0_sigma,     \
-        gaussian1_sigma,     \
-        offset              = self.estimate_double_gaussian(axis, data)
+        gaussian0_center, \
+        gaussian1_center, \
+        gaussian0_sigma, \
+        gaussian1_sigma, \
+        offset = self.estimate_double_gaussian(axis, data)
 
         model, params = self.make_multiple_gaussianian_model(no_of_lor=2)
 
         # Auxiliary variables:
-        stepsize=axis[1]-axis[0]
-        n_steps=len(axis)
+        stepsize = axis[1] - axis[0]
+        n_steps = len(axis)
 
-        #Defining standard parameters
+        # Defining standard parameters
         #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-        params.add('gaussian0_amplitude', gaussian0_amplitude, True, None,                       -0.01,                       None)
-        params.add('gaussian0_sigma',     gaussian0_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-        params.add('gaussian0_center',    gaussian0_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
-        params.add('gaussian1_amplitude', gaussian1_amplitude, True, None,                       -0.01,                       None)
-        params.add('gaussian1_sigma',     gaussian1_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-        params.add('gaussian1_center',    gaussian1_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
-        params.add('c',                  offset,             True, None,                       None,                        None)
+        params.add('gaussian0_amplitude', gaussian0_amplitude, True, None, -0.01, None)
+        params.add('gaussian0_sigma', gaussian0_sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 4, None)
+        params.add('gaussian0_center', gaussian0_center, True, (axis[0]) - n_steps * stepsize,
+                   (axis[-1]) + n_steps * stepsize, None)
+        params.add('gaussian1_amplitude', gaussian1_amplitude, True, None, -0.01, None)
+        params.add('gaussian1_sigma', gaussian1_sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 4, None)
+        params.add('gaussian1_center', gaussian1_center, True, (axis[0]) - n_steps * stepsize,
+                   (axis[-1]) + n_steps * stepsize, None)
+        params.add('c', offset, True, None, None, None)
 
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+        # redefine values of additional parameters
+        if add_parameters != None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
         except:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
             self.logMsg('The double gaussian fit did not '
-                        'work:'+result.message,
+                        'work:' + result.message,
                         msgType='message')
 
         return result
@@ -945,14 +969,13 @@ class FitLogic(GenericLogic):
                                                    lorentzian model.
         """
 
-        model=ConstantModel()
+        model = ConstantModel()
         for ii in range(no_of_lor):
-            model+=LorentzianModel(prefix='lorentz{}_'.format(ii))
+            model += LorentzianModel(prefix='lorentz{}_'.format(ii))
 
-        params=model.make_params()
+        params = model.make_params()
 
         return model, params
-
 
     def estimate_double_lorentz(self, x_axis=None, data=None):
         """ This method provides a lorentzian function.
@@ -970,250 +993,248 @@ class FitLogic(GenericLogic):
         @return float lorentz1_sigma: estimated sigma of 2nd peak
         @return float offset: estimated offset
         """
-        make_prints=False
-        error=0
+        make_prints = False
+        error = 0
         # check if parameters make sense
-        parameters=[x_axis,data]
+        parameters = [x_axis, data]
         for var in parameters:
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given parameter is no array.', \
                             msgType='error')
-                error=-1
-            elif len(np.shape(var))!=1:
+                error = -1
+            elif len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional array.',
                             msgType='error')
 
+        # set paraameters
+        data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
-        #set paraameters
-        data_smooth,offset=self.find_offset_parameter(x_axis,data)
+        data_level = data_smooth - offset
 
-        data_level=data_smooth-offset
+        # search for double lorentzian
 
-        #search for double lorentzian
+        # first search for absolute minimum
+        absolute_min = data_level.min()
+        absolute_argmin = data_level.argmin()
 
-        #first search for absolute minimum
-        absolute_min=data_level.min()
-        absolute_argmin=data_level.argmin()
+        lorentz0_center = x_axis[absolute_argmin]
+        lorentz0_amplitude = data_level.min()
 
-        lorentz0_center=x_axis[absolute_argmin]
-        lorentz0_amplitude=data_level.min()
-
-        #TODO: make threshold,minimal_threshold and sigma_threshold value a
+        # TODO: make threshold,minimal_threshold and sigma_threshold value a
         # config variable
 
-        #set thresholds
-        self.threshold_fraction=0.3
-        threshold=self.threshold_fraction*absolute_min
-        self.minimal_threshold=0.01
-        self.sigma_threshold_fraction=0.5
-        sigma_threshold=self.sigma_threshold_fraction*absolute_min
+        # set thresholds
+        self.threshold_fraction = 0.3
+        threshold = self.threshold_fraction * absolute_min
+        self.minimal_threshold = 0.01
+        self.sigma_threshold_fraction = 0.5
+        sigma_threshold = self.sigma_threshold_fraction * absolute_min
 
-#       search for the left end of the dip
-        sigma_argleft=int(0)
-        ii=0
+        #       search for the left end of the dip
+        sigma_argleft = int(0)
+        ii = 0
 
-        #if the minimum is at the end set this as boarder
+        # if the minimum is at the end set this as boarder
         if absolute_argmin != 0:
             while True:
 
                 # if no minimum can be found decrease threshold
-                if absolute_argmin-ii<0:
-                    sigma_threshold*=0.9
-                    ii=0
+                if absolute_argmin - ii < 0:
+                    sigma_threshold *= 0.9
+                    ii = 0
                     if make_prints:
                         print('h1')
 
-                #if the dip is alsways over threshold the end is the 0 as
+                # if the dip is alsways over threshold the end is the 0 as
                 # set before
-                if abs(sigma_threshold)<abs(threshold):
+                if abs(sigma_threshold) < abs(threshold):
                     if make_prints:
                         print('h2')
                     break
 
-                 #check if value was changed and search is finished
-                if sigma_argleft==0:
+                    # check if value was changed and search is finished
+                if sigma_argleft == 0:
                     # check if if value is lower as threshold this is the
                     # searched value
                     if make_prints:
                         print('h3')
-                    if abs(data_level[absolute_argmin-ii])<abs(sigma_threshold):
-                        sigma_argleft=absolute_argmin-ii
+                    if abs(data_level[absolute_argmin - ii]) < abs(sigma_threshold):
+                        sigma_argleft = absolute_argmin - ii
                         if make_prints:
-                            print('sigma_argleft',x_axis[sigma_argleft])
+                            print('sigma_argleft', x_axis[sigma_argleft])
 
-                #if value is not zero the search was successful and finished
+                # if value is not zero the search was successful and finished
                 else:
                     if make_prints:
                         print('h5')
                     break
-                ii+=1
+                ii += 1
 
-        #search for the right end of the dip
-        sigma_argright=int(0)
+        # search for the right end of the dip
+        sigma_argright = int(0)
         ii = 0
 
-        #if the minimum is at the end set this as boarder
-        if absolute_argmin != len(data)-1:
+        # if the minimum is at the end set this as boarder
+        if absolute_argmin != len(data) - 1:
             while True:
 
                 # if no minimum can be found decrease threshold
-                if absolute_argmin+ii>len(data)-1:
-                    sigma_threshold*=0.9
-                    ii=0
+                if absolute_argmin + ii > len(data) - 1:
+                    sigma_threshold *= 0.9
+                    ii = 0
                     if make_prints:
                         print('h6')
                 # if the dip is alsways over threshold the end is the most
                 # right index
-                if abs(sigma_threshold)<abs(threshold):
-                    sigma_argright=len(data)-1
+                if abs(sigma_threshold) < abs(threshold):
+                    sigma_argright = len(data) - 1
                     if make_prints:
                         print('h7')
                     break
 
-                #check if value was changed and search is finished
-                if sigma_argright==0:
+                # check if value was changed and search is finished
+                if sigma_argright == 0:
 
                     if make_prints:
                         print('h8')
                     # check if if value is lower as threshold this is the
                     # searched value
-                    if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold):
+                    if abs(data_level[absolute_argmin + ii]) < abs(sigma_threshold):
                         if make_prints:
                             print('h9')
-                        sigma_argright=absolute_argmin+ii
+                        sigma_argright = absolute_argmin + ii
 
-                #if value is not zero the search was successful and finished
+                # if value is not zero the search was successful and finished
                 else:
                     if make_prints:
-                        print('sigma argright',x_axis[sigma_argright])
+                        print('sigma argright', x_axis[sigma_argright])
                     break
-                ii+=1
+                ii += 1
 
         # in this case the value is the last index and should be search set
         # as right argument
         else:
             if make_prints:
                 print('h10')
-            sigma_argright=absolute_argmin
+            sigma_argright = absolute_argmin
 
-        numerical_integral_0=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                           (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+        numerical_integral_0 = np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(
+            data_level[sigma_argleft:sigma_argright])
 
         lorentz0_sigma = abs(numerical_integral_0 /
-                             (np.pi * lorentz0_amplitude) )
+                             (np.pi * lorentz0_amplitude))
 
-#           ======== search for second lorentzian dip ========
-        left_index=int(0)
-        right_index=len(x_axis)-1
+        #           ======== search for second lorentzian dip ========
+        left_index = int(0)
+        right_index = len(x_axis) - 1
 
-        mid_index_left=sigma_argleft
-        mid_index_right=sigma_argright
+        mid_index_left = sigma_argleft
+        mid_index_right = sigma_argright
 
         # if main first dip covers the whole left side search on the right
         # side only
-        if sigma_argleft==left_index:
+        if sigma_argleft == left_index:
             if make_prints:
-                print('h11', left_index,mid_index_left,mid_index_right,right_index)
-            #if one dip is within the second they have to be set to one
-            if sigma_argright==right_index:
-                lorentz1_center=lorentz0_center
-                lorentz0_amplitude/=2.
-                lorentz1_amplitude=lorentz0_amplitude
+                print('h11', left_index, mid_index_left, mid_index_right, right_index)
+            # if one dip is within the second they have to be set to one
+            if sigma_argright == right_index:
+                lorentz1_center = lorentz0_center
+                lorentz0_amplitude /= 2.
+                lorentz1_amplitude = lorentz0_amplitude
             else:
-                lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
-                                       mid_index_right]
-                lorentz1_amplitude=data_level[mid_index_right:right_index].min()
+                lorentz1_center = x_axis[data_level[mid_index_right:right_index].argmin() +
+                                         mid_index_right]
+                lorentz1_amplitude = data_level[mid_index_right:right_index].min()
 
-        #if main first dip covers the whole right side search on the left
+        # if main first dip covers the whole right side search on the left
         # side only
-        elif sigma_argright==right_index:
+        elif sigma_argright == right_index:
             if make_prints:
                 print('h12')
-            #if one dip is within the second they have to be set to one
-            if sigma_argleft==left_index:
-                lorentz1_center=lorentz0_center
-                lorentz0_amplitude/=2.
-                lorentz1_amplitude=lorentz0_amplitude
+            # if one dip is within the second they have to be set to one
+            if sigma_argleft == left_index:
+                lorentz1_center = lorentz0_center
+                lorentz0_amplitude /= 2.
+                lorentz1_amplitude = lorentz0_amplitude
             else:
-                lorentz1_amplitude=data_level[left_index:mid_index_left].min()
-                lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
+                lorentz1_amplitude = data_level[left_index:mid_index_left].min()
+                lorentz1_center = x_axis[data_level[left_index:mid_index_left].argmin()]
 
         # search for peak left and right of the dip
         else:
             while True:
-                #set search area excluding the first dip
-                left_min=data_level[left_index:mid_index_left].min()
-                left_argmin=data_level[left_index:mid_index_left].argmin()
-                right_min=data_level[mid_index_right:right_index].min()
-                right_argmin=data_level[mid_index_right:right_index].argmin()
+                # set search area excluding the first dip
+                left_min = data_level[left_index:mid_index_left].min()
+                left_argmin = data_level[left_index:mid_index_left].argmin()
+                right_min = data_level[mid_index_right:right_index].min()
+                right_argmin = data_level[mid_index_right:right_index].argmin()
 
                 if abs(left_min) > abs(threshold) and \
-                   abs(left_min) > abs(right_min):
+                                abs(left_min) > abs(right_min):
                     if make_prints:
                         print('h13')
                     # there is a minimum on the left side which is higher
                     # than right side
-                    lorentz1_amplitude=left_min
-                    lorentz1_center=x_axis[left_argmin+left_index]
+                    lorentz1_amplitude = left_min
+                    lorentz1_center = x_axis[left_argmin + left_index]
                     break
-                elif abs(right_min)>abs(threshold):
+                elif abs(right_min) > abs(threshold):
                     # there is a minimum on the right side which is higher
                     # than on left side
-                    lorentz1_amplitude=right_min
-                    lorentz1_center=x_axis[right_argmin+mid_index_right]
+                    lorentz1_amplitude = right_min
+                    lorentz1_center = x_axis[right_argmin + mid_index_right]
                     if make_prints:
                         print('h14')
                     break
                 else:
                     # no minimum at all over threshold so lowering threshold
                     #  and resetting search area
-                    threshold=threshold*3./4.
-                    left_index=int(0)
-                    right_index=len(x_axis)-1
-                    mid_index_left=sigma_argleft
-                    mid_index_right=sigma_argright
+                    threshold = threshold * 3. / 4.
+                    left_index = int(0)
+                    right_index = len(x_axis) - 1
+                    mid_index_left = sigma_argleft
+                    mid_index_right = sigma_argright
                     if make_prints:
                         print('h15')
-                    #if no second dip can be found set both to same value
-                    if abs(threshold/absolute_min)<abs(self.minimal_threshold):
+                    # if no second dip can be found set both to same value
+                    if abs(threshold / absolute_min) < abs(self.minimal_threshold):
                         if make_prints:
                             print('h16')
                         self.logMsg('threshold to minimum ratio was too '
                                     'small to estimate two minima. So both '
                                     'are set to the same value',
                                     msgType='message')
-                        error=-1
-                        lorentz1_center=lorentz0_center
-                        lorentz0_amplitude/=2.
-                        lorentz1_amplitude=lorentz0_amplitude/2.
+                        error = -1
+                        lorentz1_center = lorentz0_center
+                        lorentz0_amplitude /= 2.
+                        lorentz1_amplitude = lorentz0_amplitude / 2.
                         break
 
+        numerical_integral_1 = np.sum(data_level[sigma_argleft:sigma_argright]) * \
+                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(
+            data_level[sigma_argleft:sigma_argright])
 
-        numerical_integral_1=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                           (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+        lorentz1_sigma = abs(numerical_integral_1
+                             / (np.pi * lorentz1_amplitude))
 
-        lorentz1_sigma = abs( numerical_integral_1
-                              / (np.pi * lorentz1_amplitude)  )
+        # esstimate amplitude
+        lorentz0_amplitude = -1 * abs(lorentz0_amplitude * np.pi * lorentz0_sigma)
+        lorentz1_amplitude = -1 * abs(lorentz1_amplitude * np.pi * lorentz1_sigma)
 
-        #esstimate amplitude
-        lorentz0_amplitude = -1*abs(lorentz0_amplitude*np.pi*lorentz0_sigma)
-        lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
-
-
-        if lorentz1_center < lorentz0_center :
+        if lorentz1_center < lorentz0_center:
             lorentz0_amplitude_temp = lorentz0_amplitude
             lorentz0_amplitude = lorentz1_amplitude
             lorentz1_amplitude = lorentz0_amplitude_temp
-            lorentz0_center_temp    = lorentz0_center
-            lorentz0_center    = lorentz1_center
-            lorentz1_center    = lorentz0_center_temp
-            lorentz0_sigma_temp= lorentz0_sigma
-            lorentz0_sigma     = lorentz1_sigma
-            lorentz1_sigma     = lorentz0_sigma_temp
+            lorentz0_center_temp = lorentz0_center
+            lorentz0_center = lorentz1_center
+            lorentz1_center = lorentz0_center_temp
+            lorentz0_sigma_temp = lorentz0_sigma
+            lorentz0_sigma = lorentz1_sigma
+            lorentz1_sigma = lorentz0_sigma_temp
 
-
-        return error, lorentz0_amplitude,lorentz1_amplitude, \
-               lorentz0_center,lorentz1_center, lorentz0_sigma, \
+        return error, lorentz0_amplitude, lorentz1_amplitude, \
+               lorentz0_center, lorentz1_center, lorentz0_sigma, \
                lorentz1_sigma, offset
 
     def make_double_lorentzian_fit(self, axis=None, data=None,
@@ -1232,41 +1253,43 @@ class FitLogic(GenericLogic):
 
         """
 
-        error,              \
+        error, \
         lorentz0_amplitude, \
         lorentz1_amplitude, \
-        lorentz0_center,    \
-        lorentz1_center,    \
-        lorentz0_sigma,     \
-        lorentz1_sigma,     \
-        offset              = self.estimate_double_lorentz(axis, data)
+        lorentz0_center, \
+        lorentz1_center, \
+        lorentz0_sigma, \
+        lorentz1_sigma, \
+        offset = self.estimate_double_lorentz(axis, data)
 
         model, params = self.make_multiple_lorentzian_model(no_of_lor=2)
 
         # Auxiliary variables:
-        stepsize=axis[1]-axis[0]
-        n_steps=len(axis)
+        stepsize = axis[1] - axis[0]
+        n_steps = len(axis)
 
-        #Defining standard parameters
+        # Defining standard parameters
         #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-        params.add('lorentz0_amplitude', lorentz0_amplitude, True, None,                       -0.01,                       None)
-        params.add('lorentz0_sigma',     lorentz0_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-        params.add('lorentz0_center',    lorentz0_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
-        params.add('lorentz1_amplitude', lorentz1_amplitude, True, None,                       -0.01,                       None)
-        params.add('lorentz1_sigma',     lorentz1_sigma,     True, (axis[1]-axis[0])/2 ,       (axis[-1]-axis[0])*4,        None)
-        params.add('lorentz1_center',    lorentz1_center,    True, (axis[0])-n_steps*stepsize, (axis[-1])+n_steps*stepsize, None)
-        params.add('c',                  offset,             True, None,                       None,                        None)
+        params.add('lorentz0_amplitude', lorentz0_amplitude, True, None, -0.01, None)
+        params.add('lorentz0_sigma', lorentz0_sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 4, None)
+        params.add('lorentz0_center', lorentz0_center, True, (axis[0]) - n_steps * stepsize,
+                   (axis[-1]) + n_steps * stepsize, None)
+        params.add('lorentz1_amplitude', lorentz1_amplitude, True, None, -0.01, None)
+        params.add('lorentz1_sigma', lorentz1_sigma, True, (axis[1] - axis[0]) / 2, (axis[-1] - axis[0]) * 4, None)
+        params.add('lorentz1_center', lorentz1_center, True, (axis[0]) - n_steps * stepsize,
+                   (axis[-1]) + n_steps * stepsize, None)
+        params.add('c', offset, True, None, None, None)
 
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+        # redefine values of additional parameters
+        if add_parameters != None:
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
         except:
-            result=model.fit(data, x=axis,params=params)
+            result = model.fit(data, x=axis, params=params)
             self.logMsg('The double lorentuab fit did not '
-                        'work:'+result.message,
+                        'work:' + result.message,
                         msgType='message')
 
         return result
@@ -1294,35 +1317,37 @@ class FitLogic(GenericLogic):
 
         """
 
-        data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+        data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
 
-        #filter should always have a length of approx linewidth 1MHz
-        stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
-        lorentz=np.ones(int(stepsize_in_x)+1)
-        x_filter=np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
-        lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
-                                        (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
-                                        (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
-                                        (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
-                                        (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
-        data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())
+        # filter should always have a length of approx linewidth 1MHz
+        stepsize_in_x = 1 / ((x_axis.max() - x_axis.min()) / len(x_axis))
+        lorentz = np.ones(int(stepsize_in_x) + 1)
+        x_filter = np.linspace(0, 5 * stepsize_in_x, 5 * stepsize_in_x)
+        lorentz = np.piecewise(x_filter, [(x_filter >= 0) * (x_filter < len(x_filter) / 5),
+                                          (x_filter >= len(x_filter) / 5) * (x_filter < len(x_filter) * 2 / 5),
+                                          (x_filter >= len(x_filter) * 2 / 5) * (x_filter < len(x_filter) * 3 / 5),
+                                          (x_filter >= len(x_filter) * 3 / 5) * (x_filter < len(x_filter) * 4 / 5),
+                                          (x_filter >= len(x_filter) * 4 / 5)], [1, 0, 1, 0, 1])
+        data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz / lorentz.sum(), mode='constant',
+                                         cval=data_smooth_lorentz.max())
 
-        parameters=Parameters()
+        parameters = Parameters()
 
         #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-        parameters.add('lorentz0_amplitude', value=data_smooth_lorentz.min()-offset,        max=-1e-6)
-        parameters.add('lorentz0_center',    value=x_axis[data_smooth.argmin()]-2.15)
-        parameters.add('lorentz0_sigma',     value=0.5,                                      min=0.01,    max=4.)
-        parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,   max=-1e-6)
-        parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15, expr='lorentz0_center+2.15')
-        parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,       min=0.01,  max=4.,expr='lorentz0_sigma')
-        parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,   max=-1e-6)
-        parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15, expr='lorentz0_center+4.3')
-        parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,       min=0.01,  max=4.,expr='lorentz0_sigma')
-        parameters.add('c',                  value=offset)
+        parameters.add('lorentz0_amplitude', value=data_smooth_lorentz.min() - offset, max=-1e-6)
+        parameters.add('lorentz0_center', value=x_axis[data_smooth.argmin()] - 2.15)
+        parameters.add('lorentz0_sigma', value=0.5, min=0.01, max=4.)
+        parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
+        parameters.add('lorentz1_center', value=parameters['lorentz0_center'].value + 2.15, expr='lorentz0_center+2.15')
+        parameters.add('lorentz1_sigma', value=parameters['lorentz0_sigma'].value, min=0.01, max=4.,
+                       expr='lorentz0_sigma')
+        parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
+        parameters.add('lorentz2_center', value=parameters['lorentz1_center'].value + 2.15, expr='lorentz0_center+4.3')
+        parameters.add('lorentz2_sigma', value=parameters['lorentz0_sigma'].value, min=0.01, max=4.,
+                       expr='lorentz0_sigma')
+        parameters.add('c', value=offset)
 
         return parameters
-
 
     def make_N14_fit(self, axis=None, data=None, add_parameters=None):
         """ This method performes a fit on the provided data where a N14
@@ -1340,17 +1365,16 @@ class FitLogic(GenericLogic):
 
         """
 
-        parameters=self.estimate_N14(axis,data)
+        parameters = self.estimate_N14(axis, data)
 
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            parameters=self.substitute_parameter(parameters=parameters,
-                                                 update_parameters=add_parameters)
+        # redefine values of additional parameters
+        if add_parameters != None:
+            parameters = self.substitute_parameter(parameters=parameters,
+                                                   update_parameters=add_parameters)
 
-        mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+        mod, params = self.make_multiple_lorentzian_model(no_of_lor=3)
 
-        result=mod.fit(data=data,x=axis,params=parameters)
-
+        result = mod.fit(data=data, x=axis, params=parameters)
 
         return result
 
@@ -1377,38 +1401,40 @@ class FitLogic(GenericLogic):
 
         """
 
-        data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+        data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
 
-        hf_splitting=3.03
-        #filter should always have a length of approx linewidth 1MHz
-        stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
-        lorentz=np.zeros(int(stepsize_in_x)+1)
-        x_filter=np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
-        lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
-                                        (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4),
-                                        (x_filter >= len(x_filter)*3/4)], [1, 0,1])
-        data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())
+        hf_splitting = 3.03
+        # filter should always have a length of approx linewidth 1MHz
+        stepsize_in_x = 1 / ((x_axis.max() - x_axis.min()) / len(x_axis))
+        lorentz = np.zeros(int(stepsize_in_x) + 1)
+        x_filter = np.linspace(0, 4 * stepsize_in_x, 4 * stepsize_in_x)
+        lorentz = np.piecewise(x_filter, [(x_filter >= 0) * (x_filter < len(x_filter) / 4),
+                                          (x_filter >= len(x_filter) / 4) * (x_filter < len(x_filter) * 3 / 4),
+                                          (x_filter >= len(x_filter) * 3 / 4)], [1, 0, 1])
+        data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz / lorentz.sum(), mode='constant',
+                                         cval=data_smooth_lorentz.max())
 
-#            plt.plot(x_axis[:len(lorentz)],lorentz)
-#            plt.show()
+        #            plt.plot(x_axis[:len(lorentz)],lorentz)
+        #            plt.show()
 
-#            plt.plot(x_axis,data)
-#            plt.plot(x_axis,data_smooth)
-#            plt.plot(x_axis,data_smooth_lorentz)
-#            plt.show()
+        #            plt.plot(x_axis,data)
+        #            plt.plot(x_axis,data_smooth)
+        #            plt.plot(x_axis,data_smooth_lorentz)
+        #            plt.show()
 
-        parameters=Parameters()
+        parameters = Parameters()
 
-        parameters.add('lorentz0_amplitude',value=data_smooth.min()-offset,max=-1e-6)
-        parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
-        parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
-        parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
-        parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+hf_splitting,expr='lorentz0_center+3.03')
-        parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
-        parameters.add('c',value=offset)
+        parameters.add('lorentz0_amplitude', value=data_smooth.min() - offset, max=-1e-6)
+        parameters.add('lorentz0_center', value=x_axis[data_smooth.argmin()] - hf_splitting / 2.)
+        parameters.add('lorentz0_sigma', value=0.5, min=0.01, max=4.)
+        parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
+        parameters.add('lorentz1_center', value=parameters['lorentz0_center'].value + hf_splitting,
+                       expr='lorentz0_center+3.03')
+        parameters.add('lorentz1_sigma', value=parameters['lorentz0_sigma'].value, min=0.01, max=4.,
+                       expr='lorentz0_sigma')
+        parameters.add('c', value=offset)
 
         return parameters
-
 
     def make_N15_fit(self, axis=None, data=None, add_parameters=None):
         """ This method performes a fit on the provided data where a N14
@@ -1426,17 +1452,16 @@ class FitLogic(GenericLogic):
 
         """
 
-        parameters=self.estimate_N15(axis,data)
+        parameters = self.estimate_N15(axis, data)
 
-        #redefine values of additional parameters
-        if add_parameters!=None:
-            parameters=self.substitute_parameter(parameters=parameters,
-                                                 update_parameters=add_parameters)
+        # redefine values of additional parameters
+        if add_parameters != None:
+            parameters = self.substitute_parameter(parameters=parameters,
+                                                   update_parameters=add_parameters)
 
-        mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+        mod, params = self.make_multiple_lorentzian_model(no_of_lor=2)
 
-        result=mod.fit(data=data, x=axis, params=parameters)
-
+        result = mod.fit(data=data, x=axis, params=parameters)
 
         return result
 
@@ -1464,35 +1489,35 @@ class FitLogic(GenericLogic):
 
         # check if parameters make sense
 
-        parameters=[x_axis,data]
+        parameters = [x_axis, data]
         for var in parameters:
-            if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+            if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
                 self.logMsg('Given parameter is no array.', msgType='error')
-                error=-1
-            elif len(np.shape(var))!=1:
+                error = -1
+            elif len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional '
                             'array.', msgType='error')
-                error=-1
+                error = -1
 
         # set parameters
 
         offset = np.average(data)
         data_level = data - offset
-        amplitude = max(data_level.max(),np.abs(data_level.min()))
+        amplitude = max(data_level.max(), np.abs(data_level.min()))
         fourier = np.fft.fft(data_level)
-        stepsize = x_axis[1]-x_axis[0]
-        freq = np.fft.fftfreq(data_level.size,stepsize)
-        tmp = freq,np.log(fourier)
-        omega = 1/(np.abs(tmp[0][tmp[1].argmax()]))
-        shift_tmp = (offset-data[0])/amplitude
+        stepsize = x_axis[1] - x_axis[0]
+        freq = np.fft.fftfreq(data_level.size, stepsize)
+        tmp = freq, np.log(fourier)
+        omega = 1 / (np.abs(tmp[0][tmp[1].argmax()]))
+        shift_tmp = (offset - data[0]) / amplitude
         shift = np.arccos(shift_tmp)
 
         # TODO: Improve decay estimation
-        if len(data) > omega/stepsize * 2.5:
-            pos01 = int((1-shift/(np.pi**2)) * omega/(2*stepsize))
-            pos02 = pos01 + int(omega/stepsize)
+        if len(data) > omega / stepsize * 2.5:
+            pos01 = int((1 - shift / (np.pi ** 2)) * omega / (2 * stepsize))
+            pos02 = pos01 + int(omega / stepsize)
             # print(pos01,pos02,data[pos01],data[pos02])
-            decay = np.log(data[pos02]/data[pos01])/omega
+            decay = np.log(data[pos02] / data[pos01]) / omega
             # decay = - np.log(0.2)/x_axis[-1]
         else:
             decay = 0.0
@@ -1500,13 +1525,13 @@ class FitLogic(GenericLogic):
         return amplitude, offset, shift, omega, decay
 
     # define objective function: returns the array to be minimized
-    def fcn2min(self,params, x, data):
+    def fcn2min(self, params, x, data):
         """ model decaying sine wave, subtract data"""
         v = params.valuesdict()
 
         model = v['amplitude'] * \
-                np.sin(x * 1/v['omega']*np.pi*2 + v['shift']) * \
-                np.exp(-x*v['decay']) + v['offset']
+                np.sin(x * 1 / v['omega'] * np.pi * 2 + v['shift']) * \
+                np.exp(-x * v['decay']) + v['offset']
 
         return model - data
 
@@ -1525,38 +1550,35 @@ class FitLogic(GenericLogic):
         @return float fit_y: y values to plot the fit
         """
 
-
-        amplitude,  \
-        offset,     \
-        shift,      \
-        omega,      \
-        decay       = self.estimate_sine(axis, data)
+        amplitude, \
+        offset, \
+        shift, \
+        omega, \
+        decay = self.estimate_sine(axis, data)
 
         params = Parameters()
 
-        #Defining standard parameters
+        # Defining standard parameters
         #               (Name,        Value,     Vary, Min,  Max,  Expr)
         params.add_many(('amplitude', amplitude, True, None, None, None),
-                        ('offset',    offset,    True, None, None, None),
-                        ('shift',     shift,     True, None, None, None),
-                        ('omega',     omega,     True, None, None, None),
-                        ('decay',     decay,     True, None, None, None))
+                        ('offset', offset, True, None, None, None),
+                        ('shift', shift, True, None, None, None),
+                        ('omega', omega, True, None, None, None),
+                        ('decay', decay, True, None, None, None))
 
-
-        #redefine values of additional parameters
+        # redefine values of additional parameters
         if add_parameters != None:
-            params=self.substitute_parameter(parameters=params,
-                                             update_parameters=add_parameters)
+            params = self.substitute_parameter(parameters=params,
+                                               update_parameters=add_parameters)
         try:
             result = minimize(self.fcn2min, params, args=(axis, data))
         except:
             result = minimize(self.fcn2min, params, args=(axis, data))
             self.logMsg('The sine fit did not work. Error '
-                        'message:'+result.message,
+                        'message:' + result.message,
                         msgType='message')
 
         fit_y = data + result.residual
         fit_x = axis
-
 
         return result, fit_x, fit_y
