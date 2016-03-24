@@ -18,7 +18,55 @@ import peakutils
 from peakutils.plot import plot as pplot
 #TODO:
 #Make Estimator, Fit method, comments, try smooth as estimator
-class FitLogic():        
+
+"""
+General procedure to create new fitting routines:
+
+A fitting routine consists out of three major parts:
+    1. a (mathematical) Model you have for the passed data
+            * Here we use the lmfit package, which has a couple of standard
+              models like ConstantModel, LorentzianModel or GaussianModel.
+              These models can be used straight away and also can be added, like:
+              new_model = ConstantModel()+GaussianModel(), which yields a
+              Gaussian model with an offset.
+            * If there is no standard model one can define a customized model,
+              see make_sine_model()
+            * With model.make_params() one can create a set of parameters with
+              a value, min, max, vary and an expression. These parameters are
+              returned as a Parameters object which contains all variables
+              in a dictionary.
+            * The make_"..."_model method returns, the model and parameter
+              dictionary
+    2. an Estimator, which can extract from the passed data initial values for
+       the fitting routine.
+            * Here values have to be estimated from the raw data
+            * In many cases a clever convolution helps a lot
+            * Offsets can be retrieved from find_offset_parameter method
+            * All parameters are given via a Parameters object
+            * The estimated values are returned by a Parameters object
+    3. The actual fit method
+            * First the model and parameters are created with the make_model
+              method.
+            * The initial values are returned by the estimator method
+            * Constraints are set, e.g. param['offset'].min=0
+                                        param['offset'].max=data.max()
+            * Additional parameters given by inputs can be overwritten by
+              substitute_parameter method
+            * Finally fit is done via model.fit(data, x=axis,params=params)
+            * The fit routine from lmfit returns a dictionary with many
+              parameters like: results with errors and correlations,
+              best_values, initial_values, success flag,
+              an error message.
+            * With model.eval(...) one can generate high resolution data by
+              setting an x-axis with maby points
+
+The power of that general splitting is that you can write pretty independent
+fit algorithms, but their efficiency will (very often) rely on the quality of
+the estimator.
+"""
+
+
+class FitLogic():
         """
         UNSTABLE:Jochen Scheuer
         This is the fitting class where fit models are defined and methods
@@ -135,23 +183,23 @@ class FitLogic():
 
             return parameters
 
-        ############################################################################
-        #                                                                          #
-        #                          1D gaussian model                               #
-        #                                                                          #
-        ############################################################################
-    
+    ############################################################################
+    #                                                                          #
+    #                          1D gaussian model                               #
+    #                                                                          #
+    ############################################################################
+
         def make_gaussian_model(self):
             """ This method creates a model of a gaussian with an offset.
-    
+
             @return tuple: (object model, object params)
-    
+
             Explanation of the objects:
                 object lmfit.model.CompositeModel model:
                     A model the lmfit module will use for that fit. Here a
                     gaussian model. Returns an object of the class
                     lmfit.model.CompositeModel.
-    
+
                 object lmfit.parameter.Parameters params:
                     It is basically an OrderedDict, so a dictionary, with keys
                     denoting the parameters as string names and values which are
@@ -163,98 +211,99 @@ class FitLogic():
                         'sigm'      : sigma
                         'fwhm'      : full width half maximum
                         'c'         : offset
-    
+
             For further information have a look in:
             http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
             """
-    
-            model=GaussianModel()+ConstantModel()
-            params=model.make_params()
-    
-            return model,params
-    
+
+            model = GaussianModel() + ConstantModel()
+            params = model.make_params()
+
+            return model, params
+
         def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
             """ This method performes a 1D gaussian fit on the provided data.
-    
+
             @param array[] axis: axis values
             @param array[]  x_data: data
             @param dict add_parameters: Additional parameters
-    
+
             @return object result: lmfit.model.ModelFit object, all parameters
                                    provided about the fitting, like: success,
                                    initial fitting values, best fitting values, data
                                    with best fit with given axis,...
             """
-    
-            error,      \
-            amplitude,  \
-            x_zero,     \
-            sigma,      \
-            offset      = self.estimate_gaussian(axis, data)
-    
-            mod_final,params = self.make_gaussian_model()
-    
-            #auxiliary variables
-            stepsize=abs(axis[1]-axis[0])
-            n_steps=len(axis)
-    
-            #Defining standard parameters
-            #                  (Name,       Value,  Vary,         Min,                    Max,                                Expr)
-            params.add_many(('amplitude',amplitude, True,         100,                    data.max()*sigma*np.sqrt(2*np.pi),  None),
-                           (  'sigma',    sigma,    True,     1*(stepsize) ,              3*(axis[-1]-axis[0]),               None),
-                           (  'center',  x_zero,    True, (axis[0])-n_steps*stepsize,     (axis[-1])+n_steps*stepsize,        None),
-                           (    'c',      offset,   True,         100,                    data.max(),                         None))
-    
-    
-            #redefine values of additional parameters
-            if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
-                                                 update_parameters=add_parameters)
+
+            mod_final, params = self.make_gaussian_model()
+
+            error, params = self.estimate_gaussian(axis, data, params)
+
+            # auxiliary variables
+            stepsize = abs(axis[1] - axis[0])
+            n_steps = len(axis)
+
+            # Define constraints
+            params['center'].min = (axis[0]) - n_steps * stepsize
+            params['center'].max = (axis[-1]) + n_steps * stepsize
+            params['amplitude'].min = 100  # that is already noise from APD
+            params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+            params['sigma'].min = stepsize
+            params['sigma'].max = 3 * (axis[-1] - axis[0])
+            params['c'].min = 100  # that is already noise from APD
+            params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+
+            # overwrite values of additional parameters
+            if add_parameters is not None:
+                params = self.substitute_parameter(parameters=params,
+                                                   update_parameters=add_parameters)
             try:
-                result=mod_final.fit(data, x=axis,params=params)
+                result = mod_final.fit(data, x=axis, params=params)
             except:
                 self.logMsg('The 1D gaussian fit did not work.',
                             msgType='message')
-                result=mod_final.fit(data, x=axis,params=params)
+                result = mod_final.fit(data, x=axis, params=params)
                 print(result.message)
-    
+
             return result
-    
-        def estimate_gaussian(self, x_axis=None, data=None):
+
+        def estimate_gaussian(self, x_axis=None, data=None, params=None):
             """ This method provides a one dimensional gaussian function.
-    
+
             @param array x_axis: x values
             @param array data: value of each data point corresponding to x values
-    
-            @return tuple (error, amplitude, x_zero, sigma_x, offset):
-    
+            @param Parameters object params: object includes parameter dictionary which can be set
+
+            @return tuple (error, params):
+
             Explanation of the return parameter:
                 int error: error code (0:OK, -1:error)
-                float amplitude: estimated amplitude
-                float x_zero: estimated x value of maximum
-                float sigma_x: estimated standard deviation in x direction
-                float offset: estimated offset
+                Parameters object params: set parameters of initial values
             """
-    
-            error=0
+
+            error = 0
             # check if parameters make sense
-            parameters=[x_axis,data]
+            parameters = [x_axis, data]
             for var in parameters:
-                if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-                    self.logMsg('Given parameter is no array.', \
+                if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.',
                                 msgType='error')
-                    error=-1
-                elif len(np.shape(var))!=1:
-                    self.logMsg('Given parameter is no one dimensional array.', \
+                    error = -1
+                elif len(np.shape(var)) != 1:
+                    self.logMsg('Given parameter is no one dimensional array.',
                                 msgType='error')
-            #set paraameters
-            x_zero=x_axis[np.argmax(data)]
-            sigma = (x_axis.max()-x_axis.min())/3.
-            amplitude=(data.max()-data.min())*(sigma*np.sqrt(2*np.pi))
-            offset=data.min()
-    
-            return error, amplitude, x_zero, sigma, offset
-    
+                    error = -1
+            if not isinstance(params, Parameters):
+                self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                            msgType='error')
+                error = -1
+
+            # set parameters
+            params['center'].value = x_axis[np.argmax(data)]
+            params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+            params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+            params['c'].value = data.min()
+
+            return error, params
     
         ############################################################################
         #                                                                          #
@@ -1244,7 +1293,7 @@ class FitLogic():
                 result=model.fit(data, x=axis,params=params)
             except:
                 result=model.fit(data, x=axis,params=params)
-                self.logMsg('The double lorentuab fit did not '
+                self.logMsg('The double lorentzian fit did not '
                             'work:'+result.message,
                             msgType='message')
     
@@ -1289,7 +1338,7 @@ class FitLogic():
             parameters=Parameters()
     
             #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-            parameters.add('lorentz0_amplitude', value=data_smooth_lorentz.min()-offset,        max=-1e-6)
+            parameters.add('lorentz0_amplitude', value=data_smooth_lorentz.min()-offset,         max=-1e-6)
             parameters.add('lorentz0_center',    value=x_axis[data_smooth.argmin()]-2.15)
             parameters.add('lorentz0_sigma',     value=0.5,                                      min=0.01,    max=4.)
             parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,   max=-1e-6)
@@ -2026,5 +2075,5 @@ class FitLogic():
             return count_data
                          
 test=FitLogic()
-# test.double_lorentzian_testing()
+#test.oneD_testing()
 test.double_gaussian_testing()
