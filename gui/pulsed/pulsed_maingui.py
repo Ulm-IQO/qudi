@@ -2432,8 +2432,10 @@ class PulsedMeasurementGui(GUIBase):
 
             self._pulsed_meas_logic.configure_fast_counter()
             # FIXME: Not sure if that belongs to here...
-            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(5765.0)
-            #self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._seq_gen_logic.current_ensemble.length_bins)
+            #self._mw.time_param_expected_dur_DoubleSpinBox.setValue(5765.0)
+            'FIXME: Not really sure if for two multiplication it is convenient to have an extra function in ulsed_measurment_logic'
+            #self.__pulsed_meas_logic.compute_expected_duration(self._seq_gen_logic.current_ensemble.length_bins,self.ana_param_fc_bins_ComboBox.value())
+            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._seq_gen_logic.current_ensemble.length_bins/self._seq_gen_logic.sample_rate*1e3) #computed expected duration in ms
 
             self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -2533,7 +2535,8 @@ class PulsedMeasurementGui(GUIBase):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1000000))
+        print(self._mw.time_param_expected_dur_DoubleSpinBox.value())
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1e3))
 
 
 
