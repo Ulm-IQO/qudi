@@ -20,11 +20,13 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from core.base import Base
-from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
 import numpy as np
+from PyQt4 import QtGui
+
+from core.base import Base
+from interface.fast_counter_interface import FastCounterInterface
 
 
 class InterfaceImplementationError(Exception):
@@ -54,7 +56,23 @@ class FastCounterDummy(Base, FastCounterInterface):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        self.gated = False
+        if 'gated' in config.keys():
+            self._gated = config['gated']
+        else:
+            self._gated = False
+            self.logMsg('No parameter "gated" was specified in the '
+                        'config. The default configuration gated={0} will be '
+                        'taken instead.'.format(self._gated), msgType='warning')
+
+        if 'choose_trace' in config.keys():
+            self._gated = config['choose_trace']
+        else:
+            self._choose_trace = False
+            self.logMsg('No parameter "choose_trace" was specified in the '
+                        'config. The default configuration choose_trace={0} '
+                        'will be taken instead.'.format(self._choose_trace),
+                        msgType='warning')
+
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -83,7 +101,7 @@ class FastCounterDummy(Base, FastCounterInterface):
         actual_binwidth = self._binwidth * 1000 / 950e9
         actual_length = self._gate_length_bins * actual_binwidth
         self.statusvar = 1
-        return (actual_binwidth, actual_length, number_of_gates)
+        return actual_binwidth, actual_length, number_of_gates
 
 
     def get_status(self):
@@ -96,6 +114,30 @@ class FastCounterDummy(Base, FastCounterInterface):
     def start_measure(self):
         time.sleep(1)
         self.statusvar = 2
+
+        if self._choose_trace:
+            defaultconfigpath = os.path.join(self.get_main_dir())
+
+            # choose the filename via the Qt Dialog window:
+            filename = QtGui.QFileDialog.getOpenFileName(None,
+                                                         'Load Pulsed File',
+                                                         defaultconfigpath)#,
+                                                         # 'Configuration files (*.cfg)')
+
+            if filename == '':
+                self._count_data = np.loadtxt(
+                    os.path.join(self.get_main_dir(), 'tools',
+                                 'FastComTec_demo_timetrace.asc'))
+            else:
+                # the file must have a standard structure (laser pulses in one
+                # or several columns) so that the load routine can open them:
+                self._count_data = np.loadtxt(filename).transpose()
+
+        else:
+            self._count_data = np.loadtxt(
+                os.path.join(self.get_main_dir(), 'tools',
+                             'FastComTec_demo_timetrace.asc'))
+
         return 0
 
     def pause_measure(self):
@@ -113,7 +155,7 @@ class FastCounterDummy(Base, FastCounterInterface):
         return 0
 
     def is_gated(self):
-        return self.gated
+        return self._gated
 
     def get_binwidth(self):
         """
@@ -123,52 +165,11 @@ class FastCounterDummy(Base, FastCounterInterface):
         return width_in_seconds
 
     def get_data_trace(self):
-        ''' params '''
-#        num_of_lasers = 100
-#        polarized_count = 200
-#        ground_noise = 50
-#        laser_length = 3000
-#        rise_length = 30
-#        tail_length = 1000
-#
-#        rising_edge = np.arctan(np.linspace(-10, 10, rise_length))
-#        rising_edge = rising_edge - rising_edge.min()
-#        falling_edge = np.flipud(rising_edge)
-#        low_count = np.full([tail_length], rising_edge.min())
-#        high_count = np.full([laser_length], rising_edge.max())
-#
-#        gate_length = laser_length + 2*(rise_length + tail_length)
-#        trace_length = num_of_lasers * gate_length
-#
-#        if self.gated:
-#            data = np.empty([num_of_lasers, gate_length], int)
-#        else:
-#            data = np.empty([trace_length], int)
-#
-#        for i in range(num_of_lasers):
-#            gauss = signal.gaussian(500,120) / (1 + 3*np.random.random())
-#            gauss = np.append(gauss, np.zeros([laser_length-500]))
-#            trace = np.concatenate((low_count, rising_edge, high_count+gauss, falling_edge, low_count))
-#            trace = polarized_count * (trace / rising_edge.max())
-#            trace = np.array(np.rint(trace), int)
-#            trace = trace + np.random.randint(-ground_noise, ground_noise, trace.size)
-#            for j in range(trace.size):
-#                if trace[j] <= 0:
-#                    trace[j] = 0
-#                else:
-#                    trace[j] = trace[j] + np.random.randint(-np.sqrt(trace[j]), np.sqrt(trace[j]))
-#                    if trace[j] < 0:
-#                        trace[j] = 0
-#            if self.gated:
-#                data[i] = trace
-#            else:
-#                data[i*gate_length:(i+1)*gate_length] = trace
-#        data = np.loadtxt('141222_Rabi_old_NV_-11.04dbm_01.asc')
-#        data = np.loadtxt('20150701_binning4.asc')
-        data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
-        time.sleep(0.5)
-        return data
+        """ Get the Data trace. """
 
+        # include an artificial waiting time
+        time.sleep(0.5)
+        return self._count_data
 
     def get_frequency(self):
         freq = 950.
