@@ -2,7 +2,7 @@
 ODMR GUI {#odmrgui}
 ========
 
-![ODMR window](odmrgui-capture-20150621132236-679-0.png "The main ODMR window")
+![ODMR window](/odmrgui-capture-20150621132236-679-0.png "The main ODMR window")
 
 File
 ----
@@ -14,11 +14,7 @@ Options
 
 By choosing `Options` and `Settings` this window shows up:
 
-![Settings window](https://qosvn2.physik.uni-ulm.de/svn/qudi/trunk/documentation/gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
-![Settings window](/trunk/documentation/gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
-![Settings window](/qudi/trunk/documentation/gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
-![Settings window](/documentation/gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
-![Settings window](/gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
+
 ![Settings window](/odmrgui-capture-20150621132437-349-1.png "The settings window")
 Here one can change the number of lines which are displayed in the matrix and the clock frequnecy.
 
