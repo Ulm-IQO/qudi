@@ -474,7 +474,7 @@ class AWG70K(Base, PulserInterface):
         """ Upload an already hardware conform file to the device.
             Does NOT load it into channels.
 
-        @param name: string, name of the ensemble/seqeunce to be uploaded
+        @param str name: name of the ensemble/sequence to be uploaded
 
         @return int: error code (0:OK, -1:error)
 

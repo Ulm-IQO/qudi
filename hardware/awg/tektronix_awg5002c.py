@@ -48,6 +48,28 @@ class AWG5002C(Base, PulserInterface):
 
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
+        self.connected = False
+
+        # AWG5002C has possibility for sequence output
+        # self.use_sequencer = True
+        self.sequence_mode = True
+
+        self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
+
+    def activation(self, e):
+        """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
+
+        config = self.getConfiguration()
+
         if 'awg_IP_address' in config.keys():
             self.ip_address = config['awg_IP_address']
         else:
@@ -61,21 +83,6 @@ class AWG5002C(Base, PulserInterface):
             self.logMsg('No port parameter "awg_port" found in the config for '
                         'the AWG5002C! Correct that!', msgType='error')
 
-        if 'default_sample_rate' in config.keys():
-            self.sample_rate = config['default_sample_rate']
-        else:
-            self.logMsg('No parameter "default_sample_rate" found in the '
-                        'config for the AWG5002C! The maximum sample rate is '
-                        'used instead.', msgType='warning')
-            self.sample_rate = self.get_constraints()['sample_rate'][1]
-
-        if 'awg_ftp_path' in config.keys():
-            self.ftp_path = config['awg_ftp_path']
-        else:
-            self.logMsg('No parameter "awg_ftp_path" found in the config for '
-                        'the AWG5002C! State the FTP folder of this device!',
-                        msgType='error')
-
         if 'timeout' in config.keys():
             self._timeout = config['timeout']
         else:
@@ -84,10 +91,35 @@ class AWG5002C(Base, PulserInterface):
                         msgType='error')
             self._timeout = 10
 
-        self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
+
+        # connect ethernet socket and FTP
+        self.soc = socket(AF_INET, SOCK_STREAM)
+        self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
+        self.soc.connect((self.ip_address, self.port))
+        self.connected = True
+        self.input_buffer = int(2 * 1024)   # buffer length for received text
+
+
+        if 'default_sample_rate' in config.keys():
+            self._sample_rate = self.set_sample_rate(config['default_sample_rate'])
+        else:
+            self.logMsg('No parameter "default_sample_rate" found in the '
+                        'config for the AWG5002C! The maximum sample rate is '
+                        'used instead.', msgType='warning')
+            self._sample_rate = self.get_constraints()['sample_rate'][1]
+
+        if 'awg_ftp_path' in config.keys():
+            self.ftp_path = config['awg_ftp_path']
+        else:
+            self.logMsg('No parameter "awg_ftp_path" found in the config for '
+                        'the AWG5002C! State the FTP folder of this device!',
+                        msgType='error')
+
+
+        self.sample_mode = {'matlab': 0, 'wfm-file': 1, 'wfmx-file': 2}
         self.current_sample_mode = self.sample_mode['wfm-file']
 
-        self.connected = False
+
 
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
@@ -116,31 +148,6 @@ class AWG5002C(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
-
-        # AWG5002C has possibility for sequence output
-        # self.use_sequencer = True
-        self.sequence_mode = True
-
-        self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
-
-    def activation(self, e):
-        """ Initialisation performed during activation of the module.
-
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
-        """
-
-        self.connected = True
-        # connect ethernet socket and FTP
-        self.soc = socket(AF_INET, SOCK_STREAM)
-        self.soc.settimeout(self._timeout)  # set the timeout to 5 seconds
-        self.soc.connect((self.ip_address, self.port))
-        self.input_buffer = int(2 * 1024)   # buffer length for received text
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -253,8 +260,8 @@ class AWG5002C(Base, PulserInterface):
         # keep an order in that dictionary. That is for now the easiest way to
         # determine the channel configuration:
         channel_config = OrderedDict()
-        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
+        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch']
         constraints['channel_config'] = channel_config
 
         # Now you can choose, how many channel activation pattern exists. You
@@ -307,9 +314,11 @@ class AWG5002C(Base, PulserInterface):
         """ Upload an already hardware conform file to the device.
         Does NOT load into channels.
 
-        @param: str asset_name: The name of the asset to be uploaded to the AWG
+        @param str name: name of the ensemble/sequence to be uploaded
 
         @return int: error code (0:OK, -1:error)
+
+        If nothing is passed, method will be skipped.
         """
         if asset_name is None:
             self.logMsg('No asset name provided for upload!\nCorrect '
@@ -334,88 +343,6 @@ class AWG5002C(Base, PulserInterface):
         # upload files
         for name in upload_names:
             self._send_file(name)
-        return 0
-
-    def write_chunk_to_file(self, name, analogue_samples_chunk,
-                            digital_samples_chunk, total_number_of_samples,
-                            is_first_chunk, is_last_chunk, sample_rate,
-                            pp_voltage, ):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-
-        @param name: string representing the name of the sampled ensemble
-        @param analogue_samples_chunk: float32 numpy ndarray containing the
-                                       samples for the analogue channels.
-        @param digital_samples_chunk: bool numpy ndarray containing the samples
-                                      for the digital channels.
-        @param total_number_of_samples: The total number of samples in the entire waveform
-        @param is_first_chunk: bool indicating if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool indicating if the current chunk is the last
-                              write to this file.
-        @return: error code (0: OK, -1: error)
-        """
-
-        if self.current_sample_mode == self.sample_mode['wfm-file']:
-
-            # IMPORTANT: These numbers build the header in the wfm file. Needed
-            # by the device program to understand wfm file. If it is wrong,
-            # AWG will not be able to understand the written file.
-
-            # The pure waveform has the number 1000, indicating that it is a
-            # *.wfm file. For sequence mode e.g. the number would be 3001 or
-            # 3002, depending on the number of channels in the sequence mode.
-            # (The last number indicates the channel numbers).
-            # Next line after the header tells the number of bins of the
-            # waveform file.
-            # After this number a 14bit binary representation of the channel
-            # and the marker are followed.
-
-
-            for channel_index, channel_arr in enumerate(analogue_samples_chunk):
-
-                filename = name+'_ch'+str(channel_index+1) + '.wfm'
-
-                filepath = os.path.join(self.host_waveform_directory,filename)
-                with open(filepath, 'wb') as wfm_file:
-
-                    # write the first line, which is the header file:
-                    num_bytes = str(len(digital_samples_chunk[channel_index*2])*5)
-                    num_digits = str(len(num_bytes))
-                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-                    wfm_file.write(header)
-
-                    # now write at once the whole file in binary representation:
-
-                    # convert the presampled numpy array of the analog channels
-                    # to a float number represented by 8bits:
-                    shape_for_wavetmp = np.shape(channel_arr)[0]
-                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-                    wavetmp = wavetmp.reshape((-1,5))
-                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-                    wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
-
-                    # The previously created array wavetmp contains one
-                    # additional column, where the marker states will be written
-                    # into:
-                    marker = digital_samples_chunk[channel_index*2] + digital_samples_chunk[channel_index*2+1]*2
-                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-                    wavetmp[:, -1] = marker_byte
-
-                    # now write everything to file:
-                    wfm_file.write(wavetmp.tobytes())
-
-                    # the footer encodes the sample rate, which was used for
-                    # that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(sample_rate))
-                    wfm_file.write(footer)
-
-        else:
-            self.logMsg('Sample mode not defined for the given pulser hardware.'
-                        '\nEither the mode does not exist or the sample mode is'
-                        'not assigned properly. Correct that!', msgType='error')
-
         return 0
 
     def _send_file(self, filename):
@@ -461,7 +388,7 @@ class AWG5002C(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
-        path = self.ftp_path + self.get_file_dir_on_device()
+        path = self.ftp_path + self.get_asset_dir_on_device()
 
 
         if load_dict == {}:
@@ -488,6 +415,117 @@ class AWG5002C(Base, PulserInterface):
 
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
         return
+
+
+    def write_to_file(self, name, analogue_samples,
+                            digital_samples, total_number_of_samples,
+                            is_first_chunk, is_last_chunk):
+        """
+        Appends a sampled chunk of a whole waveform to a file. Create the file
+        if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
+
+        @param name: string, represents the name of the sampled ensemble
+        @param analogue_samples: float32 numpy ndarray, contains the
+                                       samples for the analogue channels that
+                                       are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the entire waveform.
+                                        Has to be known it advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
+                               first write to this file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last
+                              write to this file.
+
+        @return: error code (0: OK, -1: error)
+        """
+
+
+
+    # def write_chunk_to_file(self, name, analogue_samples_chunk,
+    #                         digital_samples_chunk, total_number_of_samples,
+    #                         is_first_chunk, is_last_chunk, sample_rate,
+    #                         pp_voltage, ):
+    #     """
+    #     Appends a sampled chunk of a whole waveform to a file. Create the file
+    #     if it is the first chunk.
+    #
+    #     @param name: string representing the name of the sampled ensemble
+    #     @param analogue_samples_chunk: float32 numpy ndarray containing the
+    #                                    samples for the analogue channels.
+    #     @param digital_samples_chunk: bool numpy ndarray containing the samples
+    #                                   for the digital channels.
+    #     @param total_number_of_samples: The total number of samples in the entire waveform
+    #     @param is_first_chunk: bool indicating if the current chunk is the
+    #                            first write to this file.
+    #     @param is_last_chunk: bool indicating if the current chunk is the last
+    #                           write to this file.
+    #     @return: error code (0: OK, -1: error)
+    #     """
+
+        if self.current_sample_mode == self.sample_mode['wfm-file']:
+
+            # IMPORTANT: These numbers build the header in the wfm file. Needed
+            # by the device program to understand wfm file. If it is wrong,
+            # AWG will not be able to understand the written file.
+
+            # The pure waveform has the number 1000, indicating that it is a
+            # *.wfm file. For sequence mode e.g. the number would be 3001 or
+            # 3002, depending on the number of channels in the sequence mode.
+            # (The last number indicates the channel numbers).
+            # Next line after the header tells the number of bins of the
+            # waveform file.
+            # After this number a 14bit binary representation of the channel
+            # and the marker are followed.
+
+
+            for channel_index, channel_arr in enumerate(analogue_samples):
+
+                filename = name+'_ch'+str(channel_index+1) + '.wfm'
+
+                filepath = os.path.join(self.host_waveform_directory,filename)
+                with open(filepath, 'wb') as wfm_file:
+
+                    # write the first line, which is the header file:
+                    num_bytes = str(len(digital_samples[channel_index*2])*5)
+                    num_digits = str(len(num_bytes))
+                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
+                    wfm_file.write(header)
+
+                    # now write at once the whole file in binary representation:
+
+                    # convert the presampled numpy array of the analog channels
+                    # to a float number represented by 8bits:
+                    shape_for_wavetmp = np.shape(channel_arr)[0]
+                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
+                    wavetmp = wavetmp.reshape((-1,5))
+                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
+                    wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+
+                    # The previously created array wavetmp contains one
+                    # additional column, where the marker states will be written
+                    # into:
+                    marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
+                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
+                    wavetmp[:, -1] = marker_byte
+
+                    # now write everything to file:
+                    wfm_file.write(wavetmp.tobytes())
+
+                    # the footer encodes the sample rate, which was used for
+                    # that file:
+                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
+                    wfm_file.write(footer)
+
+        else:
+            self.logMsg('Sample mode not defined for the given pulser hardware.'
+                        '\nEither the mode does not exist or the sample mode is'
+                        'not assigned properly. Correct that!', msgType='error')
+
+        return 0
 
 
     def get_status(self):
@@ -538,8 +576,8 @@ class AWG5002C(Base, PulserInterface):
         retrieve the current sample rate directly from the device.
         """
 
-        self.sample_rate = float(self.ask('SOURCE1:FREQUENCY?'))
-        return self.sample_rate
+        self._sample_rate = float(self.ask('SOURCE1:FREQUENCY?'))
+        return self._sample_rate
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
