@@ -31,7 +31,7 @@ class Base(QtCore.QObject, Fysom):
 
     * Ensure that the program will not die during the load of modules in any case,
       and therefore do nothing!!!
-    * Initialise modules
+    * Initialize modules
     * Provides a self identification of the used module
     * Output redirection (instead of print)
     * Provides a self de-initialization of the used module
