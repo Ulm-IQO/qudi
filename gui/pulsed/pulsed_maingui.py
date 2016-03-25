@@ -671,8 +671,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def pulser_on_clicked(self):
-        """ Switch on the pulser output.
-        """
+        """ Switch on the pulser output. """
 
         # provide the logic, which buttons to switch on:
         # pulser_const = self.get_hardware_constraints()
@@ -798,6 +797,12 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
         # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
         load_dict = {}
+
+        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # evaluate to have a proper list:
+        channels = eval(channels)
+        for entry in channels:
+            load_dict[entry] = asset_name
 
         # Load asset into channles via logic module
         self._seq_gen_logic.load_asset(asset_name, load_dict)
@@ -970,6 +975,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def _update_current_pulse_block(self):
+        """ Update the current Pulse Block Info in the display. """
 
         length = 0.0 # in ns
         bin_length = 0
@@ -992,7 +998,7 @@ class PulsedMeasurementGui(GUIBase):
 
         for row_ind in range(self._mw.block_editor_TableWidget.rowCount()):
             curr_length = self.get_element_in_block_table(row_ind, col_ind)
-            curr_bin_length = int(np.round(curr_length*(self.get_sample_rate()/1e9)))
+            curr_bin_length = int(np.round(curr_length*(self.get_sample_rate())))
             length = length + curr_length
             bin_length = bin_length + curr_bin_length
 
@@ -2800,7 +2806,7 @@ class PulsedMeasurementGui(GUIBase):
         self.measuring_error_image = pg.PlotDataItem(self._pulsed_meas_logic.measuring_error_plot_x, self._pulsed_meas_logic.measuring_error_plot_y*1000)
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
-        self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tan', units='ns')
+        self._mw.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='ns')
 
 
         # prepare the combobox:
