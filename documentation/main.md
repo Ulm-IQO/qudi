@@ -4,6 +4,7 @@ Welcome to the Quantum Diamond Documentation                {#mainpage}
 * [License](@ref license)
 * [Installation](@ref installation)
 * [Required packages](@ref required-python-packages)
+* [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
 * GUI documentation
   * [Keyboard shortcuts](@ref shortcuts)
@@ -11,5 +12,5 @@ Welcome to the Quantum Diamond Documentation                {#mainpage}
   * [Confocal GUI](@ref confocalgui)
   * [ODMR GUI](@ref odmrgui)
 * Logic documentation
-  * [Task Usage](@ref task-usage)  
+  * [Task Usage](@ref task-usage)
 
