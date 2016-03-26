@@ -554,7 +554,9 @@ class PulsedMeasurementGui(GUIBase):
         # create all the needed control widgets on the fly and connect their a
         # actions to each other:
         self._create_control_for_prepared_methods()
+        self._create_pulser_on_off_buttons()
         self._create_radiobuttons_for_channels()
+        self._create_pushbutton_clear_device()
 
         self.keep_former_block_settings()
 
@@ -584,7 +586,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
         self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
         self._mw.pulser_off_PushButton.clicked.connect(self.pulser_off_clicked)
-        self._mw.upload_clear_device_PushButton.clicked.connect(self.clear_device_clicked)
+        self._mw.clear_device_PushButton.clicked.connect(self.clear_device_clicked)
 
         # initialize the lists of available blocks, ensembles and sequences
         self.update_block_list()
@@ -604,41 +606,77 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
 
+    def _create_pulser_on_off_buttons(self):
+        """ Create Buttons for Pulser on and Pulser Off and add to toolbar. """
+
+        self._mw.pulser_on_PushButton =  QtGui.QPushButton(self._mw)
+        self._mw.pulser_on_PushButton.setText('Pulser On')
+        self._mw.pulser_on_PushButton.setToolTip('Switch on the device.\n'
+                                                 'The channels, which will be activated\n'
+                                                 'are displayed on the right.')
+        self._mw.analysis_ToolBar.addWidget(self._mw.pulser_on_PushButton)
+
+
+        self._mw.pulser_off_PushButton = QtGui.QPushButton(self._mw)
+        self._mw.pulser_off_PushButton.setText('Pulser Off')
+        self._mw.pulser_off_PushButton.setToolTip('Switch off the device.\n'
+                                                  'The channels, which will be deactivated\n'
+                                                  'are displayed on the right.')
+        self._mw.analysis_ToolBar.addWidget(self._mw.pulser_off_PushButton)
+
     def _create_radiobuttons_for_channels(self):
         """ To display, which channels are on and active, create a row of
             Radiobuttons in a dedicated region in the gui.
 
         Procedure of construction:
-            Create RadioButtons Widgets and add them to the special Layout area
-            RadioButtons_HorizontalLayoutattach. Moreover, add them to the main
-            window object to be able to ask their status if needed.
-            Additionaly, each radiobutton with the Tooltip as the channel name,
-            chosen in the pulser constraints.
+            Create a raw QWidget radiobutton_container and use this as a
+            container for RadioButtons Widgets. Add the RadioButtonWidgets to
+            the Layout of the raw QWidget.
+            Moreover, attach them to the main window object to be able to ask
+            their status if needed.
+            Equip additionaly each radiobutton with a Tooltip as the channel
+            name, chosen in the pulser constraints.
         """
-        # that will be the parent object for proper inheritence:
-        parent = self._mw.upload_load_GroupBox
+
+        # Create container with layout
+        self._mw.radiobutton_container =  QtGui.QWidget(self._mw.analysis_ToolBar)
+        self._mw.radiobutton_container_layout = QtGui.QHBoxLayout()
+        self._mw.radiobutton_container.setLayout(self._mw.radiobutton_container_layout)
 
         pulser_const = self.get_hardware_constraints()
 
         # delete in the cleanest way at first all Widgets which are within the
         # RadioButtons_HorizontalLayout by dereferencing them:
-        for i in reversed(range(self._mw.RadioButtons_HorizontalLayout.count())):
-            self._mw.RadioButtons_HorizontalLayout.itemAt(i).widget().setParent(None)
+        # for i in reversed(range(self._mw.RadioButtons_HorizontalLayout.count())):
+        #     self._mw.RadioButtons_HorizontalLayout.itemAt(i).widget().setParent(None)
 
         for channel in pulser_const['available_ch']:
 
             radiobutton_obj_name = str(channel) + '_RadioButton'
 
-            radiobutton = CustomQRadioButton(parent)
+            radiobutton = CustomQRadioButton(self._mw.analysis_ToolBar)
             radiobutton.setEnabled(False)
             radiobutton.setText('')
             radiobutton.setAutoExclusive(False)
             radiobutton.setObjectName(radiobutton_obj_name)
             radiobutton.setToolTip(str(channel))
             radiobutton.setReadOnly(True)
-            self._mw.RadioButtons_HorizontalLayout.addWidget(radiobutton)
+            self._mw.radiobutton_container_layout.addWidget(radiobutton)
             # attach to the main object the radiobutton:
             setattr(self._mw, radiobutton_obj_name, radiobutton)
+
+        # add finally the container to the ToolBar:
+        self._mw.analysis_ToolBar.addWidget(self._mw.radiobutton_container)
+
+    def _create_pushbutton_clear_device(self):
+        """ Create the  Clear Button to clear the device. """
+
+        self._mw.clear_device_PushButton = QtGui.QPushButton(self._mw)
+        self._mw.clear_device_PushButton.setText('Clear Pulser')
+        self._mw.clear_device_PushButton.setToolTip('Clear the Pulser Device Memory\n'
+                                                    'from all loaded files.\n')
+        self._mw.analysis_ToolBar.addWidget(self._mw.clear_device_PushButton)
+
 
     def get_radiobutton_obj(self, channelname):
         """ Retrieve the reference to the Radiobutton with the passed name.
@@ -669,8 +707,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step/1e6)* -1) )
         self.set_sample_rate(sample_max)
 
-
-
     def pulser_on_clicked(self):
         """ Switch on the pulser output. """
 
@@ -688,7 +724,6 @@ class PulsedMeasurementGui(GUIBase):
                 d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
             radiobutton = self.get_radiobutton_obj(ch_name)
             radiobutton.setChecked(True)
-
 
         self._seq_gen_logic.pulser_on(a_ch, d_ch)
 
@@ -711,7 +746,6 @@ class PulsedMeasurementGui(GUIBase):
             radiobutton.setChecked(False)
 
         self._seq_gen_logic.pulser_off(a_ch, d_ch)
-
 
     def get_func_config(self):
         """ Retrieve the function configuration from the Logic.
