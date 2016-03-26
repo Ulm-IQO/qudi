@@ -29,9 +29,9 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
-        <widget class="QWidget" name="tab">
+        <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
           <string>Analysis</string>
          </attribute>
@@ -437,7 +437,7 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_2">
+        <widget class="QWidget" name="Pulse_Generator">
          <attribute name="title">
           <string>Pulse Generator</string>
          </attribute>
@@ -917,7 +917,7 @@
              <widget class="QGroupBox" name="upload_load_GroupBox">
               <property name="maximumSize">
                <size>
-                <width>700</width>
+                <width>600</width>
                 <height>16777215</height>
                </size>
               </property>
@@ -933,159 +933,10 @@
               <layout class="QGridLayout" name="gridLayout_38">
                <item row="0" column="0">
                 <layout class="QGridLayout" name="gridLayout_36">
-                 <item row="0" column="5">
-                  <widget class="QPushButton" name="pulser_on_PushButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>40</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Pulser
-On</string>
-                   </property>
-                  </widget>
+                 <item row="0" column="1" colspan="4">
+                  <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
                  </item>
-                 <item row="0" column="6">
-                  <widget class="QPushButton" name="pulser_off_PushButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>40</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>Pulser
-Off</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="5" colspan="2">
-                  <layout class="QHBoxLayout" name="RadioButtons_HorizontalLayout">
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_3">
-                     <property name="enabled">
-                      <bool>false</bool>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_2">
-                     <property name="enabled">
-                      <bool>false</bool>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_5">
-                     <property name="styleSheet">
-                      <string notr="true"/>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_6">
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="checkable">
-                      <bool>false</bool>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_4">
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="checkable">
-                      <bool>false</bool>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton">
-                     <property name="enabled">
-                      <bool>false</bool>
-                     </property>
-                     <property name="toolTip">
-                      <string>channel-something</string>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="checkable">
-                      <bool>false</bool>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="radioButton_7">
-                     <property name="font">
-                      <font>
-                       <kerning>true</kerning>
-                      </font>
-                     </property>
-                     <property name="mouseTracking">
-                      <bool>true</bool>
-                     </property>
-                     <property name="focusPolicy">
-                      <enum>Qt::StrongFocus</enum>
-                     </property>
-                     <property name="layoutDirection">
-                      <enum>Qt::LeftToRight</enum>
-                     </property>
-                     <property name="autoFillBackground">
-                      <bool>true</bool>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="iconSize">
-                      <size>
-                       <width>10</width>
-                       <height>10</height>
-                      </size>
-                     </property>
-                     <property name="checkable">
-                      <bool>false</bool>
-                     </property>
-                     <property name="autoExclusive">
-                      <bool>false</bool>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="1" column="3">
+                 <item row="1" column="4">
                   <widget class="QPushButton" name="upload_load_channel_PushButton">
                    <property name="minimumSize">
                     <size>
@@ -1098,17 +949,7 @@ Off</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_21">
-                   <property name="text">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block &lt;br/&gt;Ensemble for &lt;br/&gt;Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1" colspan="4">
-                  <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
-                 </item>
-                 <item row="1" column="2">
+                 <item row="1" column="3">
                   <widget class="QPushButton" name="upload_to_device_PushButton">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1127,23 +968,17 @@ Off</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="1" column="2">
                   <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
                    <property name="text">
                     <string>sample</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
-                  <widget class="QPushButton" name="upload_clear_device_PushButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>40</width>
-                     <height>0</height>
-                    </size>
-                   </property>
+                 <item row="0" column="0" rowspan="2">
+                  <widget class="QLabel" name="label_21">
                    <property name="text">
-                    <string>Clear Device</string>
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block &lt;br/&gt;Ensemble for &lt;br/&gt;Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
                   </widget>
                  </item>
@@ -1436,17 +1271,137 @@ sel.</string>
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_3">
+        <widget class="QWidget" name="Sequence_Generator">
          <attribute name="title">
           <string>Sequence Generator</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_8">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout"/>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="1">
+             <widget class="QGroupBox" name="groupBox_7">
+              <property name="title">
+               <string>Current Sequence Info</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_40">
+               <item row="0" column="0">
+                <layout class="QGridLayout" name="gridLayout_39">
+                 <item row="0" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_16">
+                   <property name="text">
+                    <string>TextLabel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_17">
+                   <property name="text">
+                    <string>TextLabel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="2">
+                  <widget class="QPushButton" name="pushButton">
+                   <property name="text">
+                    <string>PushButton</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QLineEdit" name="lineEdit"/>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QSpinBox" name="spinBox"/>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_13">
+                   <property name="text">
+                    <string>TextLabel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_14">
+                   <property name="text">
+                    <string>TextLabel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QComboBox" name="comboBox"/>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_19">
+                   <property name="text">
+                    <string>TextLabel</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="0">
+                  <widget class="QPushButton" name="pushButton_2">
+                   <property name="text">
+                    <string>PushButton</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QPushButton" name="pushButton_3">
+                   <property name="text">
+                    <string>PushButton</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QGroupBox" name="groupBox_5">
+              <property name="title">
+               <string>Sequence Editor</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_21">
+               <item row="0" column="0">
+                <layout class="QGridLayout" name="gridLayout_16">
+                 <item row="0" column="0">
+                  <widget class="QTableWidget" name="tableWidget"/>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="0" colspan="2">
+             <widget class="QGroupBox" name="groupBox_12">
+              <property name="title">
+               <string>Upload on Device</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_43">
+               <item row="0" column="0">
+                <widget class="QSpinBox" name="spinBox_2"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="pushButton_4">
+            <property name="text">
+             <string>PushButton</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_4">
+        <widget class="QWidget" name="Pulse_Extraction">
          <attribute name="title">
           <string>Pulse Extraction</string>
          </attribute>
@@ -1601,6 +1556,16 @@ sel.</string>
              </widget>
             </item>
            </layout>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="Upload_Center">
+         <attribute name="title">
+          <string>Upload Center</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_42">
+          <item row="0" column="0">
+           <layout class="QGridLayout" name="gridLayout_41"/>
           </item>
          </layout>
         </widget>
