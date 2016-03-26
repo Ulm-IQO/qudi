@@ -71,7 +71,6 @@ class Pulse_Block_Element(object):
                            for the later plot in the analysis.
         """
 
-
         self.init_length_bins   = init_length_bins
         self.analogue_channels  = analogue_channels
         self.digital_channels   = digital_channels
@@ -471,26 +470,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
-    def pulser_on(self):
-        """ Switch on the output of the Pulse Generator.
-        Does not change the active channels.
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        self._pulse_generator_device.pulser_on()
-        return 0
-
-    def pulser_off(self):
-        """ Switch off the output of the Pulse Generator.
-        Does not change the active channels.
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        self._pulse_generator_device.pulser_off()
-        return 0
-
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
 
@@ -567,8 +546,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.sample_rate = freq_Hz
         return 0
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
-        """ Set the active channels for the pulse generator hardware.
+
+    def pulser_on(self, a_ch={}, d_ch={}):
+        """ Switch on the output of the Pulse Generator and activates the
+            appropriate channels.
 
         @param dict a_ch: dictionary with keys being the analog channel numbers
                           and items being boolean values.
@@ -582,30 +563,78 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1.
 
-        Additionally the variables which hold this values are updated in the
-        logic.
+        If nothing is passed, no channel activation is performed and the pulser
+        is just switched on.
         """
 
         self._pulse_generator_device.set_active_channels(a_ch, d_ch)
-        # count all channels that are set to True
-        self.analogue_channels = len([x for x in a_ch.values() if x == True])
-        self.digital_channels = len([x for x in d_ch.values() if x == True])
+        self._pulse_generator_device.pulser_on()
         return 0
 
-    def get_active_channels(self):
-        """ Get the currently active channels from the pulse generator hardware.
 
-        @return dict tuple: (a_ch, d_ch) dictionary with keys being the channel numbers
-                            and items being boolean values.
+    def pulser_off(self, a_ch={}, d_ch={}):
+        """ Switch off the output of the Pulse Generator and deactivates the
+            appropriate channels.
 
-        Additionally the variables which hold this values are updated in the
-        logic.
+        @param dict a_ch: dictionary with keys being the analog channel numbers
+                          and items being boolean values.
+        @param dict d_ch: dictionary with keys being the digital channel numbers
+                          and items being boolean values.
+
+        @return int: error code (0:OK, -1:error)
+
+        If nothing is passed, no channel deactivation is performed and the
+        pulser is just switched off.
         """
 
-        active_channels = self._pulse_generator_device.get_active_channels()
-        self.analogue_channels = len([x for x in active_channels[0].values() if x == True])
-        self.digital_channels = len([x for x in active_channels[1].values() if x == True])
-        return active_channels
+        self._pulse_generator_device.pulser_off()
+        self._pulse_generator_device.set_active_channels(a_ch, d_ch)
+        return 0
+
+    # These methods are not needed, since other logic does not need to access
+    # the activation or deactivation of channels!
+    # Do not confuse the activation/deactivation of channels with the actual
+    # channels being used in the specified pulse_block_ensemble!
+    #
+    # def set_active_channels(self, a_ch={}, d_ch={}):
+    #     """ Set the active channels for the pulse generator hardware.
+    #
+    #     @param dict a_ch: dictionary with keys being the analog channel numbers
+    #                       and items being boolean values.
+    #     @param dict d_ch: dictionary with keys being the digital channel numbers
+    #                       and items being boolean values.
+    #
+    #     @return int: error code (0:OK, -1:error)
+    #
+    #     Example for possible input:
+    #         a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+    #     to activate analog channel 2 digital channel 3 and 4 and to deactivate
+    #     digital channel 1.
+    #
+    #     Additionally the variables which hold this values are updated in the
+    #     logic.
+    #     """
+    #
+    #     self._pulse_generator_device.set_active_channels(a_ch, d_ch)
+    #     # count all channels that are set to True
+    #     # self.analogue_channels = len([x for x in a_ch.values() if x == True])
+    #     # self.digital_channels = len([x for x in d_ch.values() if x == True])
+    #     return 0
+    #
+    # def get_active_channels(self):
+    #     """ Get the currently active channels from the pulse generator hardware.
+    #
+    #     @return dict tuple: (a_ch, d_ch) dictionary with keys being the channel numbers
+    #                         and items being boolean values.
+    #
+    #     Additionally the variables which hold this values are updated in the
+    #     logic.
+    #     """
+    #
+    #     active_channels = self._pulse_generator_device.get_active_channels()
+    #     # self.analogue_channels = len([x for x in active_channels[0].values() if x == True])
+    #     # self.digital_channels = len([x for x in active_channels[1].values() if x == True])
+    #     return active_channels
 
     def load_file(self, load_dict={}):
         """ Load an already sampled PulseBlockEnsemble object to the device.
@@ -784,7 +813,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.saved_pulse_block_ensembles = ensembles
         self.signal_ensemble_list_updated.emit()
         return
-
 
     def save_sequence(self, name, sequence):
         ''' saves a sequence generated by the sequence editor into a file
@@ -1143,7 +1171,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
-    def sample_ensemble(self, ensemble_name, write_to_file = True, chunkwise = True):
+    def sample_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True):
         """ General sampling of a PulseBlockEnsemble object, which serves as the
             construction plan.
 
@@ -1331,7 +1359,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     def generate_rabi(self, name='rabi', mw_freq_Hz=7784.13, mw_amp_V=1.0, aom_delay_bins=50,
                       laser_time_bins=3000, tau_start_bins=7, tau_end_bins=350,
-                      number_of_taus=49, use_seqtrig = True):
+                      number_of_taus=49, use_seqtrig=True):
 
         # create parameter dictionary list for MW signal
         mw_params = [{},{}]
