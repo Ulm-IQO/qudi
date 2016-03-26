@@ -1,6 +1,5 @@
+# Required Packages  {#required-python-packages}
 
-Required Packages  {#required-python-packages}
-=================
 
 These package have to be installed in order to run QuDi (easily installed with Anaconda console: pip install "packagename"):
 
@@ -18,10 +17,23 @@ These package have to be installed in order to run QuDi (easily installed with A
 | comtypes      | 1.1        | https://pypi.python.org/pypi/comtypes       | winspec_spectrometer (hardware) |
 | pythonnet     | 2.1.0.dev1 | https://pypi.python.org/pypi/pythonnet      | lightfield_spectrometer |
 
-How to install additional packages
-==================================
+# How to install additional packages
 
-Additional packages can be installed with pip from command line (you might need admin rights):
+Additional packages can be installed either via `conda` or via `pip` from command line (you might need admin rights).
 
-    pip install modulename
+Try at first to use the `conda` package manager (which comes together with the
+Anaconda distribution):
+
+    conda install <modulename>
+
+That is the most elegant way, since `conda` will handle all cross dependencies
+with other packages, will download all needed packages for that module and will
+try to resolve appearing issues. If `<modulename>` is not in the repository list
+of Anaconda, you can try to install the module via pip, the internal package
+manager for python:
+
+    pip install <modulename>
+
+Note that pip will not look for cross dependencies but just simply install and
+expand the desired package.
 

@@ -1,7 +1,7 @@
-Installation			{#installation}
-============
-Windows
--------
+# Installation        {#installation}
+
+## Windows
+
 Get TortoiseSVN from https://tortoisesvn.net/downloads.html and install it.
 Pay attention to install the command line tools.
 
@@ -20,8 +20,7 @@ Configuring the project interpreter is described on this site: https://www.jetbr
 
 Now you can open `start.py` in the PyCharm project and execute it by right clicking the file tab and choosing execute.
 
-Linux (Debian-based)
---------------------
+## Linux (Debian-based)
 
 Install subversion, do `svn co https://qosvn2.physik.uni-ulm.de/svn/qudi/trunk qudi` .
 
@@ -31,8 +30,8 @@ Install all Python packages listed in the file `tools/debian-jessie-pip.txt` wit
 
 You should now be able to run `python3 start.py` in the qudi folder.
 
-PyDAQmx fix
------------
+## PyDAQmx fix
+
 PyDAQMX does not need to be fixed anymore since version 1.3.2 .
 
 

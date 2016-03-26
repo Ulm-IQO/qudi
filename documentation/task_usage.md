@@ -1,5 +1,5 @@
-How to use and create tasks {#task-usage}
-==================
+# How to use and create tasks {#task-usage}
+
 
 In order to create a task you can choose between 2 different categories.
 

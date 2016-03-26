@@ -1,5 +1,5 @@
 How to use and understand a config file  {#config-explanation}
-==================
+===============
 
 Config files are essential in our software, since they tell basically which
 module you want to connect to each other. The config file is also the place
@@ -7,10 +7,10 @@ where needed parameter can be saved individually for a module of you needs.
 
 Each module is defined in a predetermined category i.e. in
 
-    global,
-    hardware,
-    logic or
-    gui.
+   - global,
+   - hardware,
+   - logic or
+   - gui.
 
 These categories (all except global) are folders in the trunk
 directory of our software.

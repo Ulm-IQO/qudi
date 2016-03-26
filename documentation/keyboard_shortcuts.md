@@ -1,11 +1,10 @@
+# Keyboard shortcuts  {#shortcuts}
 
-Keyboard shortcuts  {#shortcuts}
-==================
 
 Here all key shortcuts of QuDi are listed.
 
-For all GUIs
-------------
+## For all GUIs
+
 
 | Action                 | Key
 | ---------------------- | ----- |
@@ -14,8 +13,7 @@ For all GUIs
 |  Set Auto Range Image  |  ???  |
 
 
-Manager GUI
------------
+## Manager GUI
 
 | Action | key  |
 | ----- | ----- |
@@ -23,16 +21,15 @@ Manager GUI
 |  ???  |  ???  |
 
 
-Counter GUI
------------
+## Counter GUI
 
 | Action                | key   |
 | --------------------- | ----- |
 |  Start/Stop counting  |  ???  |
 |         Save          |  ???  |
 
-Confocal GUI
-------------
+## Confocal GUI
+
 
 | Action                        | key               | extras                                     |
 | ----------------------------- | ----------------- | ------------------------------------------ |
@@ -52,8 +49,8 @@ Confocal GUI
 |  Move cursor in -z-direction  |      Bild up      |                    :::                     |
 |  Move cursor in +z-direction  |     Bild down     |                    :::                     |
 
-Laser Scanning GUI
-------------------
+## Laser Scanning GUI
+
 
 | Action | key  |
 | ----- | ----- |
@@ -61,8 +58,9 @@ Laser Scanning GUI
 |  ???  |  ???  |
 
 
-Laser  Switch GUI
------------------
+## Laser  Switch GUI
+
+
 | Action           | key   |
 |------------------|-------|
 |    Start new     |  ???  |
@@ -70,8 +68,8 @@ Laser  Switch GUI
 |  Save Histogram  |  ???  |
 
 
-POI Manager GUI
----------------
+## POI Manager GUI
+
 
 | Action        | key   |
 |---------------|-------|
@@ -81,8 +79,8 @@ POI Manager GUI
 |  Refind POI   |  ???  |
 
 
-ODMR GUI
---------
+## ODMR GUI
+
 
 | Action     | key   |
 | ---------- | ----- |
