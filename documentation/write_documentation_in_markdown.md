@@ -1,5 +1,4 @@
-How to write easily documentations in markdown notation  {#write-markdown}
-==================
+# How to write easily documentations in markdown notation  {#write-markdown}
 
 In our main folder trunk, we have a folder 'documentation', where all
 (long and detailed) documentation about our code should be stored. The

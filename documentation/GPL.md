@@ -1,5 +1,5 @@
-The GNU General Public License  {#gpl}
-==============================
+# The GNU General Public License  {#gpl}
+
 
 ~~~~~~~~~~~~~
                     GNU GENERAL PUBLIC LICENSE

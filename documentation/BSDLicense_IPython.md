@@ -1,5 +1,4 @@
-Licensing terms  {#bsdlicense-ipython}
-===============
+# Licensing terms  {#bsdlicense-ipython}
 
 ~~~~~~~~~~~~~
 This project is licensed under the terms of the Modified BSD License
@@ -35,8 +34,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~~~~~~~~~~
 
-About the IPython Development Team
-==================================
+# About the IPython Development Team
 
 The IPython Development Team is the set of all contributors to the IPython project.
 This includes all of the IPython subprojects.

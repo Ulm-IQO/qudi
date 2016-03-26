@@ -1,11 +1,10 @@
-Licensing                {#license}
-============
+# Licensing                {#license}
 
 Some of the base structure and library usage decisions of QuDi were ws taken from
-the ACQ4 project (http://acq4.org and [1]), which is distributed under the 
+the ACQ4 project (http://acq4.org and [1]), which is distributed under the
 [MIT License](@ref mitlicense).
 
-Some functions in QuDi are adapted from or inspired by pi3diamond from the 
+Some functions in QuDi are adapted from or inspired by pi3diamond from the
 3. Institut für Physik of Stuttgart University and there is definitive evidence
 that pi3diamond is mostly licensed under the [GNU Public License Version 3](@ref gpl),
 it is the easiest solution for each author to also license their contribution
@@ -35,7 +34,7 @@ Copyright (C) <year> <Name of Author> <email address>
 ~~~~~~~~~~~~~
 
 Some parts of the code are originally from the IPython/jupyter projct
-(http://jupyter.org) and continue to be distributed under 
+(http://jupyter.org) and continue to be distributed under
 [BSD license](@ref bsdlicense-ipython) as well as [GPLv3](@ref gpl).
 
 [1] ACQ4: an open-source software platform for data acquisition and analysis in neurophysiology research.

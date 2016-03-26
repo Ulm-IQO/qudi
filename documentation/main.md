@@ -1,5 +1,5 @@
-Welcome to the Quantum Diamond Documentation                {#mainpage}
-============
+# Welcome to the Quantum Diamond Documentation  {#mainpage}
+
 
 * [License](@ref license)
 * [Installation](@ref installation)
@@ -7,10 +7,13 @@ Welcome to the Quantum Diamond Documentation                {#mainpage}
 * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
 * GUI documentation
-  * [Keyboard shortcuts](@ref shortcuts)
-  * [Manager GUI](@ref managergui)
-  * [Confocal GUI](@ref confocalgui)
-  * [ODMR GUI](@ref odmrgui)
+    * [Keyboard shortcuts](@ref shortcuts)
+    * [Manager GUI](@ref managergui)
+    * [Confocal GUI](@ref confocalgui)
+    * [ODMR GUI](@ref odmrgui)
+    * [Pulsed Main GUI](@ref pulsed_maingui)
 * Logic documentation
-  * [Task Usage](@ref task-usage)
+    * [Task Usage](@ref task-usage)
+* Interface documentation
+    * [Pulser Interface](@ref pulser_interface)
 
