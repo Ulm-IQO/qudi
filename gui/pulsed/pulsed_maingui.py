@@ -422,7 +422,8 @@ class PulsedMeasurementGui(GUIBase):
                 a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
             if 'd_ch' == ch_type:
                 d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
-        self._seq_gen_logic.set_active_channels(a_ch, d_ch)
+
+
 
 
     def show_block_settings(self):
@@ -674,39 +675,42 @@ class PulsedMeasurementGui(GUIBase):
         """ Switch on the pulser output. """
 
         # provide the logic, which buttons to switch on:
-        # pulser_const = self.get_hardware_constraints()
-        # curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
-        #
-        # a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
-        # d_ch = {}   # the various channel separetely on.
-        # for ch_name in pulser_const['activation_map'][curr_map]:
-        #     ch_type = list(pulser_const['available_ch'][ch_name])[0]
-        #     if 'a_ch' == ch_type:
-        #         a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
-        #     if 'd_ch' == ch_type:
-        #         d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
-        #     radiobutton = self.get_radiobutton_obj(ch_name)
-        #     radiobutton.setChecked(True)
-        self._seq_gen_logic.pulser_on()
+        pulser_const = self.get_hardware_constraints()
+        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        for ch_name in pulser_const['activation_map'][curr_map]:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = True
+            radiobutton = self.get_radiobutton_obj(ch_name)
+            radiobutton.setChecked(True)
+
+
+        self._seq_gen_logic.pulser_on(a_ch, d_ch)
 
     def pulser_off_clicked(self):
         """ Switch off the pulser output.
         """
 
-        # pulser_const = self.get_hardware_constraints()
-        # curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
-        #
-        # a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
-        # d_ch = {}   # the various channel separetely on.
-        # for ch_name in pulser_const['activation_map'][curr_map]:
-        #     ch_type = list(pulser_const['available_ch'][ch_name])[0]
-        #     if 'a_ch' == ch_type:
-        #         a_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
-        #     if 'd_ch' == ch_type:
-        #         d_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
-        #     radiobutton = self.get_radiobutton_obj(ch_name)
-        #     radiobutton.setChecked(False)
-        self._seq_gen_logic.pulser_off()
+        pulser_const = self.get_hardware_constraints()
+        curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
+
+        a_ch = {}   # create something like  a_ch = {1:True, 2:True} to switch
+        d_ch = {}   # the various channel separetely on.
+        for ch_name in pulser_const['activation_map'][curr_map]:
+            ch_type = list(pulser_const['available_ch'][ch_name])[0]
+            if 'a_ch' == ch_type:
+                a_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+            if 'd_ch' == ch_type:
+                d_ch[pulser_const['available_ch'][ch_name][ch_type]] = False
+            radiobutton = self.get_radiobutton_obj(ch_name)
+            radiobutton.setChecked(False)
+
+        self._seq_gen_logic.pulser_off(a_ch, d_ch)
 
 
     def get_func_config(self):
@@ -1083,16 +1087,26 @@ class PulsedMeasurementGui(GUIBase):
 
         return table
 
-    def load_pulse_block(self):
+    def load_pulse_block(self, block_name=None):
         """ Loads the current selected Pulse_Block object from the logic into
-            the editor.
+            the editor or a specified Pulse_Block with name block_name.
 
-            Unfortuanetly this method needs to know how Pulse_Block objects
-            are looking like and cannot be that general.
+        @param str block_name: optional, name of the Pulse_Block object, which
+                               should be loaded in the GUI Block Organizer. If
+                               no name passed, the current Pulse_Block from the
+                               Logic is taken to be loaded.
+
+        Unfortuanetly this method needs to know how Pulse_Block objects are
+        looking like and cannot be that general.
         """
 
-        current_block_name = self._mw.saved_blocks_ComboBox.currentText()
-        block = self._seq_gen_logic.get_block(current_block_name, set_as_current_block=True)
+        if block_name is not None:
+            current_block_name = block_name
+        else:
+            current_block_name = self._mw.saved_blocks_ComboBox.currentText()
+
+        block = self._seq_gen_logic.get_block(current_block_name,
+                                              set_as_current_block=True)
         self.block_editor_clear_table()
 
         rows = len(block.element_list)
@@ -1156,32 +1170,56 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
 
 
-    def load_pulse_block_ensemble(self):
-        """ Loads the current selected Pulse_Block_Ensemble object from the logic into
-            the editor.
+    def load_pulse_block_ensemble(self, ensemble_name=None):
+        """ Loads the current selected Pulse_Block_Ensemble object from the
+            logic into the editor or a specified object with name ensemble_name.
 
-            Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
-            are looking like and cannot be that general.
+        @param str ensemble_name: optional, name of the Pulse_Block_Element
+                                  object, which should be loaded in the GUI
+                                  Block Organizer. If no name passed, the
+                                  current Pulse_Block_Ensemble from the Logic is
+                                  taken to be loaded.
+
+
+        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
+        are looking like and cannot be that general.
         """
-        # FIXME: Determine the column_index from this shady config dictionary, no ide how to do so
-        # get the current block name from the ComboBox
-        current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
+
+        if ensemble_name is not None:
+            current_ensemble_name = ensemble_name
+        else:
+            current_ensemble_name = self._mw.saved_blocks_ComboBox.currentText()
+
         # get the ensemble object and set as current ensemble
-        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name, set_as_current_ensemble=True)
+        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
+                                                    set_as_current_ensemble=True)
         # clear the block organizer table
         self.block_organizer_clear_table()
-        # determine the number of rows, i.e. the number of blocks within the block_ensemble
+
+        # determine the number of rows, i.e. the number of blocks within the
+        # block_ensemble
         rows = len(ensemble.block_list)
+
         # add as many rows as there are blocks in the ensemble
         # minus 1 because a single row is already present after clear
         self.block_organizer_add_row_after_last(rows-1)
-        # run through all blocks in the block_elements block_list to fill in the row informations
-        for row_index, (block_name, repetitions) in enumerate(ensemble.block_list):
-            self.set_element_in_organizer_table(row_index, 0, block_name)
-            self.set_element_in_organizer_table(row_index, 1, repetitions)
+
+        # This dictionary has the information which column number describes
+        # which object.
+        organizer_config_dict = self.get_cfg_param_pb()
+
+        # run through all blocks in the block_elements block_list to fill in the
+        # row informations
+        for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
+
+            column = organizer_config_dict['pulse_block']
+            self.set_element_in_organizer_table(row_index, column, pulse_block.name)
+
+            column = organizer_config_dict['repetition']
+            self.set_element_in_organizer_table(row_index, column, int(repetitions))
+
         # set the ensemble name LineEdit to the current ensemble
         self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
-
 
 
     def block_editor_add_row_before_selected(self, insert_rows=1):
@@ -1270,8 +1308,6 @@ class PulsedMeasurementGui(GUIBase):
                                                   num_laser_pulses)
 
         self.update_block_organizer_list()
-
-
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
@@ -1588,7 +1624,6 @@ class PulsedMeasurementGui(GUIBase):
         if num_a_ch is None:
             num_a_ch = self._num_a_ch
 
-        #FIXME: that should be done properly with a channel map
         self._pulsed_meas_logic.analog = num_a_ch
         self._pulsed_meas_logic.digital = num_d_ch
         self._seq_gen_logic.analogue_channels = num_a_ch
@@ -1764,7 +1799,7 @@ class PulsedMeasurementGui(GUIBase):
                       the names of the column (as string) and the items
                       denoting the column number (int).
         """
-        return self._org_table_config
+        return self._cfg_param_pb
 
 
     def set_cfg_param_pb(self):
@@ -2423,8 +2458,8 @@ class PulsedMeasurementGui(GUIBase):
         self.run_stop_clicked(False)
 
         # disconnect signals
-        self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
-        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.disconnect()
+        # self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
+        # self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.disconnect()
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
