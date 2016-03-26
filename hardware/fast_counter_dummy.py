@@ -65,14 +65,13 @@ class FastCounterDummy(Base, FastCounterInterface):
                         'taken instead.'.format(self._gated), msgType='warning')
 
         if 'choose_trace' in config.keys():
-            self._gated = config['choose_trace']
+            self._choose_trace = config['choose_trace']
         else:
             self._choose_trace = False
             self.logMsg('No parameter "choose_trace" was specified in the '
                         'config. The default configuration choose_trace={0} '
                         'will be taken instead.'.format(self._choose_trace),
                         msgType='warning')
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.

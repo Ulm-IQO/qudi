@@ -114,8 +114,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_plot_y = None
 
         # raw data
-        self.laser_data = np.zeros((10,20))
-        self.raw_data = np.zeros((10,20))
+        self.laser_data = np.zeros((10, 20))
+        self.raw_data = np.zeros((10, 20))
         self.raw_laser_pulse=False
 
         # these parameters have to be set if specific channel activation or
