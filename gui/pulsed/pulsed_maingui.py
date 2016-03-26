@@ -728,8 +728,7 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.pulser_on(a_ch, d_ch)
 
     def pulser_off_clicked(self):
-        """ Switch off the pulser output.
-        """
+        """ Switch off the pulser output. """
 
         pulser_const = self.get_hardware_constraints()
         curr_map = self._bs.ch_activation_pattern_ComboBox.currentText()
@@ -774,9 +773,8 @@ class PulsedMeasurementGui(GUIBase):
 
         return self._seq_gen_logic.saved_pulse_blocks
 
-
     def update_sample_rate(self):
-        """Updates the current sample rate in the logic"""
+        """Updates the current sample rate in the logic """
         sample_rate = self._mw.sample_freq_DSpinBox.value()
         self._seq_gen_logic.set_sample_rate(sample_rate*1e6)
         self._update_current_pulse_block()
