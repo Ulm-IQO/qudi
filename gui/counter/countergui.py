@@ -242,12 +242,17 @@ class CounterGui(GUIBase):
         """
         # Show any hidden dock widgets
         self._mw.counter_trace_DockWidget.show()
-        self._mw.slow_counter_control_DockWidget.show()
+        # self._mw.slow_counter_control_DockWidget.show()
+        self._mw.slow_counter_parameters_DockWidget.show()
 
         # re-dock any floating dock widgets
         self._mw.counter_trace_DockWidget.setFloating(False)
-        self._mw.slow_counter_control_DockWidget.setFloating(False)
+        self._mw.slow_counter_parameters_DockWidget.setFloating(False)
 
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.counter_trace_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_control_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.slow_counter_parameters_DockWidget)
+
+        # Set the toolbar to its initial top area
+        self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
+                            self._mw.counting_control_ToolBar)
