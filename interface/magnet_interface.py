@@ -245,11 +245,37 @@ class MagnetInterface():
 
     def initialize(self):
         """
-        Acts as a switch. When all coils of the superconducting magnet are heated it cools them, else
-        the coils get heated.
+        Acts as a switch. When all coils of the superconducting magnet are
+        heated it cools them, else the coils get heated.
         @return int: (0: Ok, -1:error)
         """
         raise InterfaceImplementationError('magnet_interface>initialize')
+        return -1
+
+    def set_magnet_idle(self, magnet_idle=True):
+        """ Set the magnet to couple/decouple to/from the control.
+
+        @param bool magnet_idle: if True then magnet will be set to idle and
+                                 each movement command will be ignored from the
+                                 hardware file. If False the magnet will react
+                                 on movement changes of any kind.
+
+        @return bool: the actual state which was set in the magnet hardware.
+                        True = idle, decoupled from control
+                        False = Not Idle, coupled to control
+        """
+        raise InterfaceImplementationError('magnet_interface>set_magnet_idle')
+        return -1
+
+    def is_magnet_idle(self):
+        """ Retrieve the current state of the magnet, whether it is idle or not.
+
+        @return bool: the actual state which was set in the magnet hardware.
+                        True = idle, decoupled from control
+                        False = Not Idle, coupled to control
+        """
+
+        raise InterfaceImplementationError('magnet_interface>is_magnet_idle')
         return -1
 
 
