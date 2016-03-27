@@ -246,6 +246,8 @@ class PulserDummy(Base, PulserInterface):
         channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
         channel_config['conf3'] = ['d_ch', 'd_ch', 'd_ch', 'd_ch',
                                    'd_ch', 'd_ch', 'd_ch', 'd_ch']
+        channel_config['conf4'] = ['a_ch']
+        channel_config['conf5'] = ['a_ch', 'a_ch']
         constraints['channel_config'] = channel_config
 
         # Now you can choose, how many channel activation pattern exists:
@@ -258,8 +260,12 @@ class PulserDummy(Base, PulserInterface):
         # Usage of Interleave mode:
         activation_map['map4'] = ['Interleave', 'DCH1', 'DCH2']
         # make only digital channels visible:
-        activation_map['map4'] = ['DCH1', 'DCH2', 'DCH3', 'DCH4',
+        activation_map['map5'] = ['DCH1', 'DCH2', 'DCH3', 'DCH4',
                                   'DCH5', 'DCH6', 'DCH7', 'DCH8']
+        activation_map['map6'] = ['ACH1']
+        activation_map['map7'] = ['ACH2']
+        activation_map['map8'] = ['ACH1', 'ACH2']
+
         constraints['activation_map'] = activation_map
 
         # this information seems to be almost redundant but it can be that no
