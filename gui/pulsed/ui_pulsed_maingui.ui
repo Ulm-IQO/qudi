@@ -72,7 +72,6 @@
                 </spacer>
                </item>
               </layout>
-              <zorder>verticalSpacer</zorder>
              </widget>
             </item>
             <item row="4" column="2">
@@ -444,7 +443,7 @@
          <layout class="QGridLayout" name="gridLayout_5">
           <item row="0" column="1">
            <layout class="QGridLayout" name="gridLayout_7">
-            <item row="3" column="2">
+            <item row="3" column="5">
              <widget class="QGroupBox" name="groupBox_4">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -678,7 +677,7 @@
               </layout>
              </widget>
             </item>
-            <item row="2" column="2">
+            <item row="2" column="5">
              <widget class="QGroupBox" name="groupBox_2">
               <property name="maximumSize">
                <size>
@@ -776,7 +775,7 @@
                   </widget>
                  </item>
                  <item row="2" column="0">
-                  <widget class="QLabel" name="curr_block_size_DSpinBox">
+                  <widget class="QLabel" name="label_32">
                    <property name="text">
                     <string>Size (MB)</string>
                    </property>
@@ -830,7 +829,7 @@
                   </widget>
                  </item>
                  <item row="2" column="1" colspan="2">
-                  <widget class="QDoubleSpinBox" name="curr_block_size_DSpinBox_2">
+                  <widget class="QDoubleSpinBox" name="curr_block_size_DSpinBox">
                    <property name="enabled">
                     <bool>false</bool>
                    </property>
@@ -913,14 +912,18 @@
               </layout>
              </widget>
             </item>
+            <item row="1" column="5">
+             <widget class="QDoubleSpinBox" name="sample_freq_DSpinBox">
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="5">
+             <widget class="QComboBox" name="laserchannel_ComboBox"/>
+            </item>
             <item row="4" column="0" colspan="3">
              <widget class="QGroupBox" name="upload_load_GroupBox">
-              <property name="maximumSize">
-               <size>
-                <width>600</width>
-                <height>16777215</height>
-               </size>
-              </property>
               <property name="font">
                <font>
                 <weight>50</weight>
@@ -931,76 +934,72 @@
                <string>Upload on Device</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_38">
-               <item row="0" column="0">
-                <layout class="QGridLayout" name="gridLayout_36">
-                 <item row="0" column="1" colspan="4">
-                  <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
-                 </item>
-                 <item row="1" column="4">
-                  <widget class="QPushButton" name="upload_load_channel_PushButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>85</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>load to channels</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="3">
-                  <widget class="QPushButton" name="upload_to_device_PushButton">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="minimumSize">
-                    <size>
-                     <width>100</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>upload to device</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="2">
-                  <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
-                   <property name="text">
-                    <string>sample</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0" rowspan="2">
-                  <widget class="QLabel" name="label_21">
-                   <property name="text">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block &lt;br/&gt;Ensemble for &lt;br/&gt;Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+               <item row="1" column="2">
+                <widget class="QPushButton" name="upload_to_device_PushButton">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>100</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Upload to device</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QPushButton" name="upload_sample_ensemble_PushButton">
+                 <property name="text">
+                  <string>Sample Ensemble</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="3">
+                <widget class="QPushButton" name="upload_load_channel_PushButton">
+                 <property name="minimumSize">
+                  <size>
+                   <width>100</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Load to channels</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1" colspan="3">
+                <widget class="QComboBox" name="upload_ensemble_ComboBox"/>
+               </item>
+               <item row="0" column="0" rowspan="2">
+                <widget class="QLabel" name="label_21">
+                 <property name="text">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block &lt;br/&gt;Ensemble for &lt;br/&gt;Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
             </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_20">
-              <property name="maximumSize">
+            <item row="4" column="3">
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
                <size>
-                <width>100</width>
-                <height>16777215</height>
+                <width>40</width>
+                <height>20</height>
                </size>
               </property>
-              <property name="text">
-               <string>Laserchannel:</string>
-              </property>
-             </widget>
+             </spacer>
             </item>
-            <item row="1" column="1">
+            <item row="1" column="4">
              <widget class="QLabel" name="label_15">
               <property name="maximumSize">
                <size>
@@ -1013,14 +1012,20 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="2">
-             <widget class="QDoubleSpinBox" name="sample_freq_DSpinBox">
-              <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            <item row="0" column="4">
+             <widget class="QLabel" name="label_20">
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Laserchannel:</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="0" colspan="2">
+            <item row="3" column="0" colspan="5">
              <widget class="QGroupBox" name="groupBox_3">
               <property name="font">
                <font>
@@ -1111,8 +1116,8 @@ last</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
-                  <spacer name="verticalSpacer_7">
+                 <item row="6" column="1">
+                  <spacer name="verticalSpacer_8">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>
@@ -1124,8 +1129,8 @@ last</string>
                    </property>
                   </spacer>
                  </item>
-                 <item row="6" column="1">
-                  <spacer name="verticalSpacer_8">
+                 <item row="3" column="1">
+                  <spacer name="verticalSpacer_7">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>
@@ -1142,7 +1147,7 @@ last</string>
               </layout>
              </widget>
             </item>
-            <item row="2" column="0" colspan="2">
+            <item row="2" column="0" colspan="5">
              <widget class="QGroupBox" name="groupBox">
               <property name="font">
                <font>
@@ -1264,9 +1269,6 @@ sel.</string>
               </layout>
              </widget>
             </item>
-            <item row="0" column="2">
-             <widget class="QComboBox" name="laserchannel_ComboBox"/>
-            </item>
            </layout>
           </item>
          </layout>
@@ -1278,135 +1280,35 @@ sel.</string>
          <layout class="QGridLayout" name="gridLayout_8">
           <item row="0" column="0">
            <layout class="QGridLayout" name="gridLayout">
-            <item row="0" column="1">
-             <widget class="QGroupBox" name="groupBox_7">
-              <property name="title">
-               <string>Current Sequence Info</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_40">
-               <item row="0" column="0">
-                <layout class="QGridLayout" name="gridLayout_39">
-                 <item row="0" column="1">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="label_16">
-                   <property name="text">
-                    <string>TextLabel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_17">
-                   <property name="text">
-                    <string>TextLabel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0" colspan="2">
-                  <widget class="QPushButton" name="pushButton">
-                   <property name="text">
-                    <string>PushButton</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QLineEdit" name="lineEdit"/>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QSpinBox" name="spinBox"/>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_13">
-                   <property name="text">
-                    <string>TextLabel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_14">
-                   <property name="text">
-                    <string>TextLabel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1">
-                  <widget class="QComboBox" name="comboBox"/>
-                 </item>
-                 <item row="5" column="0">
-                  <widget class="QLabel" name="label_19">
-                   <property name="text">
-                    <string>TextLabel</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="0">
-                  <widget class="QPushButton" name="pushButton_2">
-                   <property name="text">
-                    <string>PushButton</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="1">
-                  <widget class="QPushButton" name="pushButton_3">
-                   <property name="text">
-                    <string>PushButton</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QGroupBox" name="groupBox_5">
-              <property name="title">
-               <string>Sequence Editor</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_21">
-               <item row="0" column="0">
-                <layout class="QGridLayout" name="gridLayout_16">
-                 <item row="0" column="0">
-                  <widget class="QTableWidget" name="tableWidget"/>
-                 </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="0" colspan="2">
+            <item row="1" column="0">
              <widget class="QGroupBox" name="groupBox_12">
               <property name="title">
                <string>Upload on Device</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_43">
                <item row="1" column="1">
-                <widget class="QPushButton" name="pushButton_5">
+                <widget class="QPushButton" name="upload_sample_seq_PushButton">
                  <property name="text">
-                  <string>PushButton</string>
+                  <string>Sample Sequence</string>
                  </property>
                 </widget>
                </item>
                <item row="1" column="2">
-                <widget class="QPushButton" name="pushButton_6">
+                <widget class="QPushButton" name="upload_seq_to_device_PushButton">
                  <property name="text">
-                  <string>PushButton</string>
+                  <string>Upload to device</string>
                  </property>
                 </widget>
                </item>
                <item row="1" column="3">
-                <widget class="QPushButton" name="pushButton_7">
+                <widget class="QPushButton" name="upload_load_seq_to_channel_PushButton">
                  <property name="text">
-                  <string>PushButton</string>
+                  <string>Load to channel</string>
                  </property>
                 </widget>
                </item>
                <item row="0" column="1" colspan="3">
-                <widget class="QComboBox" name="comboBox_2"/>
+                <widget class="QComboBox" name="upload_seq_ComboBox"/>
                </item>
                <item row="0" column="0" rowspan="2">
                 <widget class="QLabel" name="label_27">
@@ -1418,14 +1320,217 @@ sel.</string>
               </layout>
              </widget>
             </item>
+            <item row="1" column="1">
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="0" colspan="2">
+             <widget class="QGroupBox" name="groupBox_5">
+              <property name="title">
+               <string>Sequence Editor</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_16">
+               <item row="0" column="0">
+                <widget class="QTableWidget" name="seq_editor_TableWidget"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QGroupBox" name="groupBox_7">
+              <property name="title">
+               <string>Current Sequence Info</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_40">
+               <item row="5" column="1">
+                <widget class="QComboBox" name="saved_seq_ComboBox">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QLabel" name="label_19">
+                 <property name="text">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saved&lt;br/&gt;Ensembles:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QPushButton" name="curr_seq_load_PushButton">
+                 <property name="text">
+                  <string>Load</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QPushButton" name="curr_seq_del_PushButton">
+                 <property name="text">
+                  <string>Delete</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0" colspan="2">
+                <spacer name="verticalSpacer_4">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_13">
+                 <property name="text">
+                  <string>Length (ms):</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0" colspan="2">
+                <widget class="QPushButton" name="curr_seq_generate_PushButton">
+                 <property name="text">
+                  <string>Generate Sequence</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="curr_seq_length_DSpinBox">
+                 <property name="maximumSize">
+                  <size>
+                   <width>100</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LeftToRight</enum>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                 <property name="readOnly">
+                  <bool>true</bool>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="maximum">
+                  <double>100000000.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_14">
+                 <property name="text">
+                  <string>Length (bins):</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QSpinBox" name="curr_seq_bins_SpinBox">
+                 <property name="maximumSize">
+                  <size>
+                   <width>100</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                 <property name="readOnly">
+                  <bool>true</bool>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="maximum">
+                  <number>1000</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="label_16">
+                 <property name="text">
+                  <string>Size (MB):</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLineEdit" name="curr_seq_name_LineEdit">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>100</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_17">
+                 <property name="text">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sequence&lt;br/&gt;Name:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QDoubleSpinBox" name="curr_seq_size_DSpinBox">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>80</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>100</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                 <property name="readOnly">
+                  <bool>true</bool>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
            </layout>
-          </item>
-          <item row="2" column="0">
-           <widget class="QPushButton" name="pushButton_4">
-            <property name="text">
-             <string>PushButton</string>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>
@@ -1591,9 +1696,13 @@ sel.</string>
          <attribute name="title">
           <string>Upload Center</string>
          </attribute>
-         <layout class="QGridLayout" name="gridLayout_42">
+         <layout class="QGridLayout" name="gridLayout_21">
           <item row="0" column="0">
-           <layout class="QGridLayout" name="gridLayout_41"/>
+           <layout class="QGridLayout" name="gridLayout_36">
+            <item row="0" column="0">
+             <widget class="QTableView" name="tableView"/>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
