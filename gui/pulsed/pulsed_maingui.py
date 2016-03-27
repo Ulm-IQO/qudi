@@ -1042,8 +1042,11 @@ class PulsedMeasurementGui(GUIBase):
             if (laser_val=='DC') or (laser_val==2):
                 num_laser_ch = num_laser_ch +1
 
+        #FIXME: The display unit will be later on set in the settings, so that
+        #       one can choose which units are suiting the best. For now on it
+        #       will be fixed to microns.
 
-        self._mw.curr_block_length_DSpinBox.setValue(length/1000.0) # in microns
+        self._mw.curr_block_length_DSpinBox.setValue(length*1e6) # in microns
         self._mw.curr_block_bins_SpinBox.setValue(bin_length)
         self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
 
@@ -1132,17 +1135,27 @@ class PulsedMeasurementGui(GUIBase):
         looking like and cannot be that general.
         """
 
-        if block_name is not None:
+        # NOTE: This method will be connected to the CLICK event of a
+        #       QPushButton, which passes as an optional argument a a bool value
+        #       depending on the checked state of the QPushButton. Therefore
+        #       the passed boolean value has to be handled in addition!
+
+        if (block_name is not None) and (type(block_name) is not bool):
             current_block_name = block_name
         else:
             current_block_name = self._mw.saved_blocks_ComboBox.currentText()
 
         block = self._seq_gen_logic.get_block(current_block_name,
                                               set_as_current_block=True)
-        self.block_editor_clear_table()
 
-        rows = len(block.element_list)
+        # of no object was found then block has reference to None
+        if block is None:
+            return
 
+        self.block_editor_clear_table() # clear table
+        rows = len(block.element_list)  # get amout of rows needed for display
+
+        # configuration dict from the logic:
         block_config_dict = self.get_cfg_param_pbe()
 
         self.block_editor_add_row_after_last(rows-1) # since one is already present
@@ -1192,11 +1205,15 @@ class PulsedMeasurementGui(GUIBase):
             # and set the init_length_bins:
             column = block_config_dict['length']
             value = pulse_block_element.init_length_bins / (self.get_sample_rate() )
+            # the setter method will handle the proper unit for that value!
+            # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the increment parameter
             column = block_config_dict['increment']
             value = pulse_block_element.increment_bins / (self.get_sample_rate() )
+            # the setter method will handle the proper unit for that value!
+            # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
@@ -1212,32 +1229,37 @@ class PulsedMeasurementGui(GUIBase):
                                   current Pulse_Block_Ensemble from the Logic is
                                   taken to be loaded.
 
-
         Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
         are looking like and cannot be that general.
         """
 
-        if ensemble_name is not None:
+        # NOTE: This method will be connected to the CLICK event of a
+        #       QPushButton, which passes as an optional argument as a bool
+        #       value depending on the checked state of the QPushButton. The
+        #       passed boolean value has to be handled in addition!
+
+        if (ensemble_name is not None) and (type(ensemble_name) is not bool):
             current_ensemble_name = ensemble_name
         else:
-            current_ensemble_name = self._mw.saved_blocks_ComboBox.currentText()
+            current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
 
         # get the ensemble object and set as current ensemble
         ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
                                                     set_as_current_ensemble=True)
-        # clear the block organizer table
-        self.block_organizer_clear_table()
 
-        # determine the number of rows, i.e. the number of blocks within the
-        # block_ensemble
-        rows = len(ensemble.block_list)
+        # Check whether an ensemble is found, otherwise there will be None:
+        if ensemble is None:
+            return
+
+        self.block_organizer_clear_table() # clear the block organizer table
+        rows = len(ensemble.block_list) # get amout of rows needed for display
 
         # add as many rows as there are blocks in the ensemble
         # minus 1 because a single row is already present after clear
         self.block_organizer_add_row_after_last(rows-1)
 
         # This dictionary has the information which column number describes
-        # which object.
+        # which object, it is a configuration dict between GUI and logic
         organizer_config_dict = self.get_cfg_param_pb()
 
         # run through all blocks in the block_elements block_list to fill in the
@@ -1268,7 +1290,8 @@ class PulsedMeasurementGui(GUIBase):
 
         for rows in range(insert_rows):
             self._mw.block_editor_TableWidget.insertRow(selected_row)
-        self.initialize_cells_block_editor(start_row=selected_row,stop_row=selected_row+insert_rows)
+        self.initialize_cells_block_editor(start_row=selected_row,
+                                           stop_row=selected_row+insert_rows)
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
@@ -1286,7 +1309,8 @@ class PulsedMeasurementGui(GUIBase):
         number_of_rows = self._mw.block_editor_TableWidget.rowCount()
 
         self._mw.block_editor_TableWidget.setRowCount(number_of_rows+insert_rows)
-        self.initialize_cells_block_editor(start_row=number_of_rows,stop_row=number_of_rows+insert_rows)
+        self.initialize_cells_block_editor(start_row=number_of_rows,
+                                           stop_row=number_of_rows+insert_rows)
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
