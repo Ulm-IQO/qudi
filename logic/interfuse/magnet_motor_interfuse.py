@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Logic module base class.
+This file contains the QuDi Interfuse between Magnet Logic and Motor Hardware.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@ interface, and given the fact that it will convert a magnet logic call to a
 motor hardware call, that 'interfuse' file has to stick to the interfaces
 methods of the motor interface.
 
-Reimplement each call
+Reimplement each call from the magnet interface and use only the motor interface
+command to talk to the motor hardware.
 """
 
 from logic.generic_logic import GenericLogic
@@ -63,8 +64,6 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         # in the actual motor hardware device. Use this variable to decide
         # whether movement commands are passed to the hardware.
         self._magnet_idle = True
-
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -246,8 +245,9 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._motor_device.tell(param_dict)
-
+        self.logMsg('You can tell the motor much as you want, it has always '
+                    'an open ear. But do not expect an answer, it is very shy!',
+                    msgType='status')
 
     def ask(self, param_dict=None):
         """ Ask the magnet a question.
@@ -260,7 +260,19 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
 
         @return string: contains the answer coming from the magnet
         """
-        return self._motor_device.ask(param_dict)
+
+        self.logMsg('The Motor Hardware does not support an "ask" command and'
+                    'is not be able to answer the questions "{0}" to the axis '
+                    '"{1}"! If you want to talk to someone ask Siri, maybe '
+                    'she will listen to you and answer your questions '
+                    ':P.'.format(list(param_dict.values()), list(param_dict)),
+                    msgType='status')
+
+        return_val = {}
+        for entry in param_dict:
+            return_val[entry] = 'Nothing to say, Motor is quite.'
+
+        return return_val
 
 
     def initialize(self):
@@ -272,6 +284,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         self.logMsg('Motor Hardware does not need initialization for starting '
                     'or ending a movement. Nothing will happen.',
                     msgType='status')
+        pass
 
 
     def set_magnet_idle(self, magnet_idle=True):
