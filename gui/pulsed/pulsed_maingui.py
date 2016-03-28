@@ -558,6 +558,9 @@ class PulsedMeasurementGui(GUIBase):
         self._create_radiobuttons_for_channels()
         self._create_pushbutton_clear_device()
 
+        # filename tag input widget
+        self._create_save_tag_input()
+
         self.keep_former_block_settings()
 
         # create a list with all possible combinations of independant channels,
@@ -605,6 +608,12 @@ class PulsedMeasurementGui(GUIBase):
         """
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
+
+    def _create_save_tag_input(self):
+        """ Add save file tag input box. """
+        self._mw.save_tag_LineEdit = QtGui.QLineEdit()
+        self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
 
     def _create_pulser_on_off_buttons(self):
         """ Create Buttons for Pulser on and Pulser Off and add to toolbar. """
