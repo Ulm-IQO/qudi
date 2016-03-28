@@ -2,7 +2,8 @@
 
 import numpy as np
 import scipy.optimize as opt
-from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel
+from scipy.interpolate import InterpolatedUnivariateSpline
+from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
 import scipy
 import matplotlib.pylab as plt
@@ -10,14 +11,11 @@ import matplotlib.pylab as plt
 #for filters:
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
-import scipy.optimize as op
 import time
 import random
 
-import peakutils
-from peakutils.plot import plot as pplot
-#TODO:
-#Make Estimator, Fit method, comments, try smooth as estimator
+#import peakutils
+#from peakutils.plot import plot as pplot
 
 """
 General procedure to create new fitting routines:
@@ -51,7 +49,7 @@ A fitting routine consists out of three major parts:
             * Constraints are set, e.g. param['offset'].min=0
                                         param['offset'].max=data.max()
             * Additional parameters given by inputs can be overwritten by
-              substitute_parameter method
+              _substitute_parameter method
             * Finally fit is done via model.fit(data, x=axis,params=params)
             * The fit routine from lmfit returns a dictionary with many
               parameters like: results with errors and correlations,
@@ -81,7 +79,7 @@ class FitLogic():
     #                                                                          #
     ############################################################################
 
-        def substitute_parameter(self, parameters=None, update_parameters=None):
+        def _substitute_parameter(self, parameters=None, update_parameters=None):
             """ This method substitutes all parameters handed in the
             update_parameters object in an initial set of parameters.
 
@@ -254,7 +252,7 @@ class FitLogic():
 
             # overwrite values of additional parameters
             if add_parameters is not None:
-                params = self.substitute_parameter(parameters=params,
+                params = self._substitute_parameter(parameters=params,
                                                    update_parameters=add_parameters)
             try:
                 result = mod_final.fit(data, x=axis, params=params)
@@ -296,7 +294,10 @@ class FitLogic():
                 self.logMsg('Parameters object is not valid in estimate_gaussian.',
                             msgType='error')
                 error = -1
-
+            
+            # If the estimator is not good enough one can start improvement with
+            # a convolution
+            
             # set parameters
             params['center'].value = x_axis[np.argmax(data)]
             params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
@@ -335,8 +336,8 @@ class FitLogic():
             sigma_x,    \
             sigma_y,    \
             theta,      \
-            offset      = self.twoD_gaussian_estimator(x_axis=x_axis,
-                                                       y_axis=y_axis, data=data)
+            offset = self.twoD_gaussian_estimator(x_axis=x_axis,
+                                                  y_axis=y_axis, data=data)
             mod, params = self.make_twoD_gaussian_model()
     
             #auxiliary variables
@@ -360,7 +361,7 @@ class FitLogic():
     
     #           redefine values of additional parameters
             if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
     
             try:
@@ -502,7 +503,7 @@ class FitLogic():
         ############################################################################
     
         def make_multiple_gaussian_model(self, no_of_gauss=None):
-            """ This method creates a model of gaussian with an offset. The
+            """ This method creates a model of multiple gaussians with an offset. The
             parameters are: 'amplitude', 'center', 'sigma', 'fwhm' and offset
             'c'. For function see:
             http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.LorentzianModel
@@ -523,72 +524,85 @@ class FitLogic():
     
             return model, params
     
-    #   Todo: implement estimator
-        def estimate_double_gaussian(self, x_axis=None, data=None):
+        def estimate_double_gaussian(self, x_axis=None, data=None, params=None, 
+                                     threshold_fraction=0.3, 
+                                     minimal_threshold=0.01, 
+                                     sigma_threshold_fraction=0.3):
             """ This method provides a gaussian function.
     
             @param array x_axis: x values
             @param array data: value of each data point corresponding to
                                 x values
+            @param Parameters object params: Needed parameters
+            @param float threshold : Threshold to find second gaussian
+            @param float minimal_threshold: Threshold is lowerd to minimal this
+                                            value as a fraction
+            @param float sigma_threshold_fraction: Threshold for detecting 
+                                                   the end of the peak
     
             @return int error: error code (0:OK, -1:error)
-            @return float gaussian0_amplitude: estimated amplitude of 1st peak
-            @return float gaussian1_amplitude: estimated amplitude of 2nd peak
-            @return float gaussian0_center: estimated x value of 1st maximum
-            @return float gaussian1_center: estimated x value of 2nd maximum
-            @return float gaussian0_sigma: estimated sigma of 1st peak
-            @return float gaussian1_sigma: estimated sigma of 2nd peak
-            @return float offset: estimated offset
+            @return Parameters object params: estimated values
             """
 
-            gaus=gaussian(10,10)
-            data = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
-            
-            var=1/max(data)
-            dist=20
-            interations=0
-            while True:
-                indices= peakutils.indexes(data, thres=var, min_dist=dist)
-                print('Peakutils',x_axis[indices],var)
-            
-                
-                if len(indices)==2:
-                    break
-                elif len(indices)>2:
-                    var*=1.2
-                elif len(indices)<2:
-                    var*=0.8
-                if interations==1000:
-                    break
-                interations+=1                    
-            print('Number of iterations:',interations)
-            pplot(x_axis,data,indices)
-                       
-
-    
             error = 0
-            gaussian0_amplitude = 100000
-            gaussian1_amplitude = 100000
-            gaussian0_center = x_axis[indices[0]]
-            gaussian1_center = x_axis[indices[1]]
-            gaussian0_sigma = 30000
-            gaussian1_sigma = 30000
-            offset = 2
+            
+            #make the filter an extra function shared and usable for other functions
+            if len(x_axis)<20.:
+                len_x=5
+            elif len(x_axis)>=100.:
+                len_x=10
+            else:
+                len_x=int(len(x_axis)/10.)+1
+                
+            gaus=gaussian(len_x,len_x)
+            data_smooth = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
+            
+            #search for double gaussian
+            
+            error, \
+            sigma0_argleft, dip0_arg, sigma0_argright, \
+            sigma1_argleft, dip1_arg , sigma1_argright = \
+            self._search_double_dip(x_axis, data_smooth*(-1),threshold_fraction, minimal_threshold, sigma_threshold_fraction,make_prints=False)
+
+            #set offset to zero
+            params['c'].value = 0.0
+            
+            params['gaussian0_center'].value = x_axis[dip0_arg]
+            
+            #integral of data corresponds to sqrt(2) * Amplitude * Sigma
+            function = InterpolatedUnivariateSpline(x_axis, data_smooth, k=1)
+            Integral = function.integral(x_axis[0], x_axis[-1])
+            
+            amp_0 = data_smooth[dip0_arg]-params['c'].value
+            amp_1 = data_smooth[dip1_arg]-params['c'].value
+            
+            params['gaussian0_sigma'].value  = Integral / (amp_0+amp_1)  / np.sqrt(2*np.pi)
+            params['gaussian0_amplitude'].value = amp_0*params['gaussian0_sigma'].value*np.sqrt(2*np.pi)
+            
+            params['gaussian1_center'].value = x_axis[dip1_arg]
+            params['gaussian1_sigma'].value  = Integral / (amp_0+amp_1)  / np.sqrt(2*np.pi)
+            params['gaussian1_amplitude'].value = amp_1*params['gaussian1_sigma'].value*np.sqrt(2*np.pi)
     
-            return error, gaussian0_amplitude,gaussian1_amplitude, \
-                   gaussian0_center,gaussian1_center, gaussian0_sigma, \
-                   gaussian1_sigma, offset
+            return error, params
                    
                    
     
         def make_double_gaussian_fit(self, axis=None, data=None,
-                                       add_parameters=None):
+                                        add_parameters=None, 
+                                        threshold_fraction=0.4,
+                                        minimal_threshold=0.2,
+                                        sigma_threshold_fraction=0.3):
             """ This method performes a 1D double gaussian fit on the provided data.
     
             @param array [] axis: axis values
             @param array[]  x_data: data
             @param dictionary add_parameters: Additional parameters
-    
+            @param float threshold : Threshold to find second gaussian
+            @param float minimal_threshold: Threshold is lowerd to minimal this
+                                            value as a fraction
+            @param float sigma_threshold_fraction: Threshold for detecting 
+                                                   the end of the peak
+                                                   
             @return lmfit.model.ModelFit result: All parameters provided about
                                                  the fitting, like: success,
                                                  initial fitting values, best
@@ -596,35 +610,24 @@ class FitLogic():
                                                  fit with given axis,...
     
             """
-    
-            error,              \
-            gaussian0_amplitude, \
-            gaussian1_amplitude, \
-            gaussian0_center,    \
-            gaussian1_center,    \
-            gaussian0_sigma,     \
-            gaussian1_sigma,     \
-            offset              = self.estimate_double_gaussian(axis, data)
-    
+
             model, params = self.make_multiple_gaussian_model(no_of_gauss=2)
+
+            error, params = self.estimate_double_gaussian(axis, data, params,
+                                                          threshold_fraction, 
+                                                          minimal_threshold, 
+                                                          sigma_threshold_fraction)
     
-            # Auxiliary variables:
-            stepsize=axis[1]-axis[0]
-            n_steps=len(axis)
-    
-            #Defining standard parameters
-            #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-            params.add('gaussian0_amplitude', gaussian0_amplitude, True, None,                      None,                       None)
-            params.add('gaussian0_sigma',     gaussian0_sigma,     True, None ,       None,        None)
-            params.add('gaussian0_center',    gaussian0_center,    True, None, None, None)
-            params.add('gaussian1_amplitude', gaussian1_amplitude, True, None,                     None,                       None)
-            params.add('gaussian1_sigma',     gaussian1_sigma,     True, None ,       None,        None)
-            params.add('gaussian1_center',    gaussian1_center,    True, None, None, None)
-            params.add('c',                  offset,             True, None,                       None,                        None)
-    
+            #Defining constraints
+            params['c'].min=0.0
+            
+            params['gaussian0_amplitude'].min=0.0
+            params['gaussian1_amplitude'].min=0.0
+
+            
             #redefine values of additional parameters
             if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
             try:
                 result=model.fit(data, x=axis,params=params)
@@ -806,13 +809,13 @@ class FitLogic():
         #TODO: Add logmessage when value is changed
             #redefine values of additional parameters
             if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
             try:
                 result=model.fit(data, x=axis,params=params)
             except:
                 result=model.fit(data, x=axis,params=params)
-                self.logMsg('The 1D gaussian fit did not work. Error '
+                self.logMsg('The 1D lorentzian fit did not work. Error '
                             'message:'+result.message,
                             msgType='message')
             return result
@@ -940,7 +943,7 @@ class FitLogic():
             #redefine values of additional parameters
     
             if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
             try:
                 result=model.fit(data, x=axis,params=params)
@@ -980,9 +983,260 @@ class FitLogic():
             params=model.make_params()
     
             return model, params
+
+        def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigma_threshold, minimal_threshold, make_prints):
+            """
+            data has to be offset bereinigt
+            """
+            absolute_min  = data[peak_arg]  
+            
+            if direction == 'left':
+                mult = -1            
+                sigma_arg=start_arg
+            elif direction == 'right':
+                mult = +1
+                sigma_arg=end_arg
+            else:
+                print('No valid direction in search end of peak')
+            ii=0
     
+            #if the minimum is at the end set this as boarder
+            if (peak_arg != start_arg and direction=='left' or
+                peak_arg != end_arg   and direction=='right'):
+                while True:   
+                    # if no minimum can be found decrease threshold
+                    if ((peak_arg-ii<start_arg and direction == 'left') or
+                        (peak_arg+ii>end_arg   and direction=='right')):
+                        sigma_threshold*=0.9
+                        ii=0
+                        if make_prints:
+                            print('h1 sigma_threshold',sigma_threshold)
     
-        def estimate_double_lorentz(self, x_axis=None, data=None):
+                    #if the dip is always over threshold the end is as
+                    # set before
+                    if abs(sigma_threshold/absolute_min)<abs(minimal_threshold):
+                        if make_prints:
+                            print('h2')
+                        break
+    
+                     #check if value was changed and search is finished
+                    if ((sigma_arg == start_arg and direction == 'left') or
+                        (sigma_arg == end_arg   and direction=='right')):
+                        # check if if value is lower as threshold this is the
+                        # searched value
+                        if make_prints:
+                            print('h3')
+                        if abs(data[peak_arg+(mult*ii)])<abs(sigma_threshold):
+                            # value lower than threshold found - left end found
+                            sigma_arg=peak_arg+(mult*ii)
+                            if make_prints:
+                                print('h4')
+                            break
+                    ii+=1
+    
+            # in this case the value is the last index and should be search set
+            # as right argument
+            else:
+                if make_prints:
+                    print('neu h10')
+                sigma_arg=peak_arg
+                
+            return sigma_threshold,sigma_arg
+        
+            
+        def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_threshold=0.01, sigma_threshold_fraction=0.3, make_prints=False):
+            """ This method searches for a double dip. There are three values which can be set in order to adjust 
+            the search. A threshold which defines when  a minimum is a dip,
+            this threshold is then lowered if no dip can be found until the 
+            minimal threshold which sets the absolute boarder and a 
+            sigma_threshold_fraction which defines when the 
+    
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to
+                                x values
+            @param float threshold_fraction: x values
+            @param float minimal_threshold: x values
+            @param float sigma_threshold_fraction: x values
+                                
+    
+            @return int error: error code (0:OK, -1:error)
+            @return int sigma0_argleft: index of left side of 1st peak
+            @return int dip0_arg: index of max of 1st peak
+            @return int sigma0_argright: index of right side of 1st peak
+            @return int sigma1_argleft: index of left side of 2nd peak
+            @return int dip1_arg: index of max side of 2nd peak
+            @return int sigma1_argright: index of right side of 2nd peak
+            """
+            
+            if sigma_threshold_fraction is None:
+                sigma_threshold_fraction=threshold_fraction
+                
+            error=0
+            
+            #first search for absolute minimum
+            absolute_min=data.min()
+            absolute_argmin=data.argmin()
+
+            #adjust thresholds
+            threshold=threshold_fraction*absolute_min
+            sigma_threshold=sigma_threshold_fraction*absolute_min
+            
+            dip0_arg = absolute_argmin
+            
+            # ====== search for the left end of the dip ======
+
+            sigma_threshold, sigma0_argleft = self._search_end_of_dip(
+                                     direction='left', 
+                                     data=data,
+                                     peak_arg = absolute_argmin,
+                                     start_arg = 0, 
+                                     end_arg = len(data)-1, 
+                                     sigma_threshold = sigma_threshold, 
+                                     minimal_threshold = minimal_threshold, 
+                                     make_prints= make_prints)
+    
+            if make_prints:
+                print('Left sigma of main peak: ',x_axis[sigma0_argleft])
+                
+            # ====== search for the right end of the dip ======
+            # reset sigma_threshold
+
+            sigma_threshold, sigma0_argright = self._search_end_of_dip(
+                                     direction='right', 
+                                     data=data,
+                                     peak_arg = absolute_argmin,
+                                     start_arg = 0, 
+                                     end_arg = len(data)-1, 
+                                     sigma_threshold = sigma_threshold_fraction*absolute_min, 
+                                     minimal_threshold = minimal_threshold, 
+                                     make_prints= make_prints)
+
+            if make_prints:
+                print('Right sigma of main peak: ',x_axis[sigma0_argright])
+                
+            # ======== search for second lorentzian dip ========
+            left_index=int(0)
+            right_index=len(x_axis)-1
+    
+            mid_index_left=sigma0_argleft
+            mid_index_right=sigma0_argright
+    
+            # if main first dip covers the whole left side search on the right
+            # side only
+            if mid_index_left==left_index:
+                if make_prints:
+                    print('h11', left_index,mid_index_left,mid_index_right,right_index)
+                #if one dip is within the second they have to be set to one
+                if mid_index_right==right_index:
+                    dip1_arg=dip0_arg
+                else:
+                    dip1_arg=data[mid_index_right:right_index].argmin()+mid_index_right
+    
+            #if main first dip covers the whole right side search on the left
+            # side only
+            elif mid_index_right==right_index:
+                if make_prints:
+                    print('h12')
+                #if one dip is within the second they have to be set to one
+                if mid_index_left==left_index:
+                    dip1_arg=dip0_arg
+                else:
+                    dip1_arg=data[left_index:mid_index_left].argmin()
+    
+            # search for peak left and right of the dip
+            else:
+                while True:
+                    #set search area excluding the first dip
+                    left_min=data[left_index:mid_index_left].min()
+                    left_argmin=data[left_index:mid_index_left].argmin()
+                    right_min=data[mid_index_right:right_index].min()
+                    right_argmin=data[mid_index_right:right_index].argmin()
+    
+                    if abs(left_min) > abs(threshold) and \
+                       abs(left_min) > abs(right_min):
+                        if make_prints:
+                            print('h13')
+                        # there is a minimum on the left side which is higher
+                        # than the minimum on the right side
+                        dip1_arg = left_argmin+left_index
+                        break
+                    elif abs(right_min)>abs(threshold):
+                        # there is a minimum on the right side which is higher
+                        # than on left side
+                        dip1_arg=right_argmin+mid_index_right
+                        if make_prints:
+                            print('h14')
+                        break
+                    else:
+                        # no minimum at all over threshold so lowering threshold
+                        #  and resetting search area
+                        threshold*=0.9
+                        left_index=int(0)
+                        right_index=len(x_axis)-1
+                        mid_index_left=sigma0_argleft
+                        mid_index_right=sigma0_argright
+                        if make_prints:
+                            print('h15')
+                        #if no second dip can be found set both to same value
+                        if abs(threshold/absolute_min)<abs(minimal_threshold):
+                            if make_prints:
+                                print('h16')
+                            self.logMsg('threshold to minimum ratio was too '
+                                        'small to estimate two minima. So both '
+                                        'are set to the same value',
+                                        msgType='message')
+                            error=-1
+                            dip1_arg=dip0_arg
+                            break  
+             
+            # if the dip is exactly at one of the boarders that means
+            # the dips are most probably overlapping
+            if dip1_arg == sigma0_argleft or dip1_arg == sigma0_argright:
+                print('Dips are overlapping')
+                distance_left  = abs(dip0_arg - sigma0_argleft)
+                distance_right = abs(dip0_arg - sigma0_argright)
+                sigma1_argleft = sigma0_argleft
+                sigma1_argright = sigma0_argright                
+                if distance_left > distance_right:
+                    dip1_arg = dip0_arg - abs(distance_left-distance_right)
+                elif distance_left < distance_right:
+                    dip1_arg = dip0_arg + abs(distance_left-distance_right)
+                else:
+                    dip1_arg = dip0_arg
+                print(distance_left,distance_right,dip1_arg)
+            else:
+                # if the peaks are not overlapping search for left and right
+                # boarder of the dip
+            
+                # ====== search for the right end of the dip ======
+                sigma_threshold, sigma1_argleft = self._search_end_of_dip(
+                                         direction='left', 
+                                         data=data,
+                                         peak_arg = dip1_arg,
+                                         start_arg = 0, 
+                                         end_arg = len(data)-1, 
+                                         sigma_threshold = sigma_threshold_fraction*absolute_min, 
+                                         minimal_threshold = minimal_threshold, 
+                                         make_prints= make_prints)
+                                         
+                # ====== search for the right end of the dip ======
+                sigma_threshold, sigma1_argright = self._search_end_of_dip(
+                                         direction='right', 
+                                         data=data,
+                                         peak_arg = dip1_arg,
+                                         start_arg = 0, 
+                                         end_arg = len(data)-1, 
+                                         sigma_threshold = sigma_threshold_fraction*absolute_min, 
+                                         minimal_threshold = minimal_threshold, 
+                                         make_prints= make_prints)
+            
+            return error, sigma0_argleft, dip0_arg, sigma0_argright, sigma1_argleft, dip1_arg, sigma1_argright
+            
+            
+        def estimate_double_lorentz(self, x_axis=None, data=None,
+                                    threshold_fraction=0.3, 
+                                    minimal_threshold=0.01,
+                                    sigma_threshold_fraction=0.3):
             """ This method provides a lorentzian function.
     
             @param array x_axis: x values
@@ -998,7 +1252,6 @@ class FitLogic():
             @return float lorentz1_sigma: estimated sigma of 2nd peak
             @return float offset: estimated offset
             """
-            make_prints=False
             error=0
             # check if parameters make sense
             parameters=[x_axis,data]
@@ -1018,207 +1271,34 @@ class FitLogic():
             data_level=data_smooth-offset
     
             #search for double lorentzian
-    
-            #first search for absolute minimum
-            absolute_min=data_level.min()
-            absolute_argmin=data_level.argmin()
-    
-            lorentz0_center=x_axis[absolute_argmin]
-            lorentz0_amplitude=data_level.min()
-    
-            #TODO: make threshold,minimal_threshold and sigma_threshold value a
-            # config variable
-    
-            #set thresholds
-            self.threshold_fraction=0.3
-            threshold=self.threshold_fraction*absolute_min
-            self.minimal_threshold=0.01
-            self.sigma_threshold_fraction=0.5
-            sigma_threshold=self.sigma_threshold_fraction*absolute_min
-    
-    #       search for the left end of the dip
-            sigma_argleft=int(0)
-            ii=0
-    
-            #if the minimum is at the end set this as boarder
-            if absolute_argmin != 0:
-                while True:
-    
-                    # if no minimum can be found decrease threshold
-                    if absolute_argmin-ii<0:
-                        sigma_threshold*=0.9
-                        ii=0
-                        if make_prints:
-                            print('h1')
-    
-                    #if the dip is alsways over threshold the end is the 0 as
-                    # set before
-                    if abs(sigma_threshold)<abs(threshold):
-                        if make_prints:
-                            print('h2')
-                        break
-    
-                     #check if value was changed and search is finished
-                    if sigma_argleft==0:
-                        # check if if value is lower as threshold this is the
-                        # searched value
-                        if make_prints:
-                            print('h3')
-                        if abs(data_level[absolute_argmin-ii])<abs(sigma_threshold):
-                            sigma_argleft=absolute_argmin-ii
-                            if make_prints:
-                                print('sigma_argleft',x_axis[sigma_argleft])
-    
-                    #if value is not zero the search was successful and finished
-                    else:
-                        if make_prints:
-                            print('h5')
-                        break
-                    ii+=1
-    
-            #search for the right end of the dip
-            sigma_argright=int(0)
-            ii = 0
-    
-            #if the minimum is at the end set this as boarder
-            if absolute_argmin != len(data)-1:
-                while True:
-    
-                    # if no minimum can be found decrease threshold
-                    if absolute_argmin+ii>len(data)-1:
-                        sigma_threshold*=0.9
-                        ii=0
-                        if make_prints:
-                            print('h6')
-                    # if the dip is alsways over threshold the end is the most
-                    # right index
-                    if abs(sigma_threshold)<abs(threshold):
-                        sigma_argright=len(data)-1
-                        if make_prints:
-                            print('h7')
-                        break
-    
-                    #check if value was changed and search is finished
-                    if sigma_argright==0:
-    
-                        if make_prints:
-                            print('h8')
-                        # check if if value is lower as threshold this is the
-                        # searched value
-                        if abs(data_level[absolute_argmin+ii])<abs(sigma_threshold):
-                            if make_prints:
-                                print('h9')
-                            sigma_argright=absolute_argmin+ii
-    
-                    #if value is not zero the search was successful and finished
-                    else:
-                        if make_prints:
-                            print('sigma argright',x_axis[sigma_argright])
-                        break
-                    ii+=1
-    
-            # in this case the value is the last index and should be search set
-            # as right argument
+            
+            error, \
+            sigma0_argleft, dip0_arg, sigma0_argright, \
+            sigma1_argleft, dip1_arg , sigma1_argright = \
+            self._search_double_dip(x_axis, data_level, threshold_fraction, 
+                                   minimal_threshold, sigma_threshold_fraction)
+
+
+
+            if dip0_arg == dip1_arg:
+                lorentz0_amplitude = data_level[dip0_arg]/2.
+                lorentz1_amplitude = lorentz0_amplitude
             else:
-                if make_prints:
-                    print('h10')
-                sigma_argright=absolute_argmin
-    
-            numerical_integral_0=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+                lorentz0_amplitude=data_level[dip0_arg]
+                lorentz1_amplitude=data_level[dip1_arg]
+                        
+            lorentz0_center = x_axis[dip0_arg]
+            lorentz1_center = x_axis[dip1_arg]
+            
+            #Both sigmas are set to the same value
+            numerical_integral_0=(np.sum(data_level[sigma0_argleft:sigma0_argright]) * 
+                               (x_axis[sigma0_argright] - x_axis[sigma0_argleft]) / 
+                                len(data_level[sigma0_argleft:sigma0_argright]))
     
             lorentz0_sigma = abs(numerical_integral_0 /
-                                 (np.pi * lorentz0_amplitude) )
+                                 (np.pi * lorentz0_amplitude) )    
     
-    #           ======== search for second lorentzian dip ========
-            left_index=int(0)
-            right_index=len(x_axis)-1
-    
-            mid_index_left=sigma_argleft
-            mid_index_right=sigma_argright
-    
-            # if main first dip covers the whole left side search on the right
-            # side only
-            if sigma_argleft==left_index:
-                if make_prints:
-                    print('h11', left_index,mid_index_left,mid_index_right,right_index)
-                #if one dip is within the second they have to be set to one
-                if sigma_argright==right_index:
-                    lorentz1_center=lorentz0_center
-                    lorentz0_amplitude/=2.
-                    lorentz1_amplitude=lorentz0_amplitude
-                else:
-                    lorentz1_center=x_axis[data_level[mid_index_right:right_index].argmin()+
-                                           mid_index_right]
-                    lorentz1_amplitude=data_level[mid_index_right:right_index].min()
-    
-            #if main first dip covers the whole right side search on the left
-            # side only
-            elif sigma_argright==right_index:
-                if make_prints:
-                    print('h12')
-                #if one dip is within the second they have to be set to one
-                if sigma_argleft==left_index:
-                    lorentz1_center=lorentz0_center
-                    lorentz0_amplitude/=2.
-                    lorentz1_amplitude=lorentz0_amplitude
-                else:
-                    lorentz1_amplitude=data_level[left_index:mid_index_left].min()
-                    lorentz1_center=x_axis[data_level[left_index:mid_index_left].argmin()]
-    
-            # search for peak left and right of the dip
-            else:
-                while True:
-                    #set search area excluding the first dip
-                    left_min=data_level[left_index:mid_index_left].min()
-                    left_argmin=data_level[left_index:mid_index_left].argmin()
-                    right_min=data_level[mid_index_right:right_index].min()
-                    right_argmin=data_level[mid_index_right:right_index].argmin()
-    
-                    if abs(left_min) > abs(threshold) and \
-                       abs(left_min) > abs(right_min):
-                        if make_prints:
-                            print('h13')
-                        # there is a minimum on the left side which is higher
-                        # than right side
-                        lorentz1_amplitude=left_min
-                        lorentz1_center=x_axis[left_argmin+left_index]
-                        break
-                    elif abs(right_min)>abs(threshold):
-                        # there is a minimum on the right side which is higher
-                        # than on left side
-                        lorentz1_amplitude=right_min
-                        lorentz1_center=x_axis[right_argmin+mid_index_right]
-                        if make_prints:
-                            print('h14')
-                        break
-                    else:
-                        # no minimum at all over threshold so lowering threshold
-                        #  and resetting search area
-                        threshold=threshold*3./4.
-                        left_index=int(0)
-                        right_index=len(x_axis)-1
-                        mid_index_left=sigma_argleft
-                        mid_index_right=sigma_argright
-                        if make_prints:
-                            print('h15')
-                        #if no second dip can be found set both to same value
-                        if abs(threshold/absolute_min)<abs(self.minimal_threshold):
-                            if make_prints:
-                                print('h16')
-                            self.logMsg('threshold to minimum ratio was too '
-                                        'small to estimate two minima. So both '
-                                        'are set to the same value',
-                                        msgType='message')
-                            error=-1
-                            lorentz1_center=lorentz0_center
-                            lorentz0_amplitude/=2.
-                            lorentz1_amplitude=lorentz0_amplitude/2.
-                            break
-    
-    
-            numerical_integral_1=np.sum(data_level[sigma_argleft:sigma_argright]) * \
-                               (x_axis[sigma_argright] - x_axis[sigma_argleft]) / len(data_level[sigma_argleft:sigma_argright])
+            numerical_integral_1=numerical_integral_0
     
             lorentz1_sigma = abs( numerical_integral_1
                                   / (np.pi * lorentz1_amplitude)  )
@@ -1287,7 +1367,7 @@ class FitLogic():
     
             #redefine values of additional parameters
             if add_parameters!=None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
             try:
                 result=model.fit(data, x=axis,params=params)
@@ -1372,7 +1452,7 @@ class FitLogic():
     
             #redefine values of additional parameters
             if add_parameters!=None:
-                parameters=self.substitute_parameter(parameters=parameters,
+                parameters=self._substitute_parameter(parameters=parameters,
                                                      update_parameters=add_parameters)
     
             mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
@@ -1458,7 +1538,7 @@ class FitLogic():
     
             #redefine values of additional parameters
             if add_parameters!=None:
-                parameters=self.substitute_parameter(parameters=parameters,
+                parameters=self._substitute_parameter(parameters=parameters,
                                                      update_parameters=add_parameters)
     
             mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
@@ -1573,7 +1653,7 @@ class FitLogic():
     
             #redefine values of additional parameters
             if add_parameters != None:
-                params=self.substitute_parameter(parameters=params,
+                params=self._substitute_parameter(parameters=params,
                                                  update_parameters=add_parameters)
             try:
                 result = minimize(self.fcn2min, params, args=(axis, data))
@@ -1588,6 +1668,127 @@ class FitLogic():
     
     
             return result, fit_x, fit_y
+            
+    ############################################################################
+    #                                                                          #
+    #           Excitation power - fluorescence dependency                     #
+    #                                                                          #
+    ############################################################################
+        @staticmethod    
+        def powerfluorescence_function(x, I_saturation, P_saturation):
+            "powerfluorescence function: sine(x,amplitude,frequency,phase)"
+            
+            return (I_saturation * (x / (x + P_saturation)))
+
+
+        def make_powerfluorescence_model(self):
+            """ This method creates a model of a gaussian with an offset.
+
+            @return tuple: (object model, object params)
+
+            Explanation of the objects:
+                object lmfit.model.CompositeModel model:
+                    A model the lmfit module will use for that fit. Here a
+                    gaussian model. Returns an object of the class
+                    lmfit.model.CompositeModel.
+
+                object lmfit.parameter.Parameters params:
+                    It is basically an OrderedDict, so a dictionary, with keys
+                    denoting the parameters as string names and values which are
+                    lmfit.parameter.Parameter (without s) objects, keeping the
+                    information about the current value.
+                    The used model has the Parameter with the meaning:
+                        'amplitude' : amplitude
+                        'center'    : center
+                        'sigm'      : sigma
+                        'fwhm'      : full width half maximum
+                        'c'         : offset
+
+            For further information have a look in:
+            http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+            """
+            mod_sat = Model(self.powerfluorescence_function)
+            
+            model = mod_sat + LinearModel()
+            
+            params = model.make_params()
+            
+            return model, params
+
+        def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
+            """ This method performes a 1D gaussian fit on the provided data.
+
+            @param array[] axis: axis values
+            @param array[]  x_data: data
+            @param dict add_parameters: Additional parameters
+
+            @return object result: lmfit.model.ModelFit object, all parameters
+                                   provided about the fitting, like: success,
+                                   initial fitting values, best fitting values, data
+                                   with best fit with given axis,...
+            """
+
+            mod_final, params = self.make_powerfluorescence_model()
+
+            error, params = self.estimate_powerfluorescence(axis, data, params)
+
+
+            # overwrite values of additional parameters
+            if add_parameters is not None:
+                params = self._substitute_parameter(parameters=params,
+                                                   update_parameters=add_parameters)
+            try:
+                result = mod_final.fit(data, x=axis, params=params)
+            except:
+                self.logMsg('The 1D gaussian fit did not work.',
+                            msgType='message')
+                result = mod_final.fit(data, x=axis, params=params)
+                print(result.message)
+
+            return result
+
+        def estimate_powerfluorescence(self, x_axis=None, data=None, params=None):
+            """ This method provides a one dimensional gaussian function.
+
+            @param array x_axis: x values
+            @param array data: value of each data point corresponding to x values
+            @param Parameters object params: object includes parameter dictionary which can be set
+
+            @return tuple (error, params):
+
+            Explanation of the return parameter:
+                int error: error code (0:OK, -1:error)
+                Parameters object params: set parameters of initial values
+            """
+
+            error = 0
+            # check if parameters make sense
+            parameters = [x_axis, data]
+            for var in parameters:
+                if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+                    self.logMsg('Given parameter is no array.',
+                                msgType='error')
+                    error = -1
+                elif len(np.shape(var)) != 1:
+                    self.logMsg('Given parameter is no one dimensional array.',
+                                msgType='error')
+                    error = -1
+            if not isinstance(params, Parameters):
+                self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                            msgType='error')
+                error = -1
+            
+            # If the estimator is not good enough one can start improvement with
+            # a convolution
+            
+#            # set parameters
+#            params['center'].value = x_axis[np.argmax(data)]
+#            params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
+#            params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
+#            params['c'].value = data.min()
+
+            return error, params
+
 ##############################################################################
 ##############################################################################
 
@@ -1717,14 +1918,19 @@ class FitLogic():
 #            print(self.data_noisy)
             result=self.make_gaussian_fit(axis=self.x,data=self.data_noisy,add_parameters=p)
 
-#            print(len(self.data_noisy),len(self.x))
+
+            gaus=gaussian(3,5)
+            self.data_smooth = filters.convolve1d(self.data_noisy, gaus/gaus.sum(),mode='mirror')
+            
             plt.plot(self.x,self.data_noisy)
+            plt.plot(self.x,self.data_smooth,'-k')
             plt.plot(self.x,result.init_fit,'-g',label='init')
 #            plt.plot(self.x,result.best_fit,'-r',label='fit')
             plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r',label='fit')
             plt.show()
             
-            print(result.fit_report(show_correl=False))
+#            print(result.fit_report(show_correl=False))
+            
             
         def useful_object_variables(self):
             x = np.linspace(2800, 2900, 101)
@@ -1788,17 +1994,21 @@ class FitLogic():
 #                center=np.random.random(1)*50+2805
     #            p.add('center',max=-1)
                 p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-#                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
-#                p.add('lorentz0_center',value=2945)
                 p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
-#                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
-                p.add('lorentz0_sigma',value=abs(np.random.random(1)*5.+1.))
-                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
-#                p.add('lorentz1_center',value=2949)
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
                 p.add('lorentz1_center',value=np.random.random(1)*150.0+2800)
                 p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
-                p.add('c',value=100.)
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
 
+
+#                p.add('lorentz0_amplitude',value=-1500)
+#                p.add('lorentz0_center',value=2860)
+#                p.add('lorentz0_sigma',value=12)
+#                p.add('lorentz1_amplitude',value=-1500)
+#                p.add('lorentz1_center',value=2900)     
+#                p.add('lorentz1_sigma',value=12)
+                p.add('c',value=100.)
+                
 #                print(p)
 ##               von odmr dummy
 #                sigma=7.
@@ -1843,6 +2053,24 @@ class FitLogic():
 #                print(result.message)
 #                print(result.lmdif_message)
 #                print(result.fit_report(show_correl=False))
+        
+                data_level=data_smooth-offset
+        
+                #search for double lorentzian
+                
+                error, \
+                sigma0_argleft, dip0_arg, sigma0_argright, \
+                sigma1_argleft, dip1_arg , sigma1_argright = \
+                self._search_double_dip(x, data_level,make_prints=True)
+
+                print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
+                print(x[dip0_arg], x[dip1_arg])
+            
+                plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
+                plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
+                
+                plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+                plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
                 
                 try:
     #            print(result.fit_report()
@@ -1855,14 +2083,14 @@ class FitLogic():
     ##            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
                 plt.show()
                 
-                print('Peaks:',p['lorentz0_center'].value,p['lorentz1_center'].value)
-                print('Estimator:',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
-                
-                data=-1*data_smooth+data_smooth.max()
-#                print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
-                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
-                print('Peakutils',x[indices])
-                pplot(x,data,indices)
+#                print('Peaks:',p['lorentz0_center'].value,p['lorentz1_center'].value)
+#                print('Estimator:',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
+#                
+#                data=-1*data_smooth+data_smooth.max()
+##                print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
+#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
+#                print('Peakutils',x[indices])
+#                pplot(x,data,indices)
                 
                 
 #                if p['lorentz0_center'].value<p['lorentz1_center'].value:
@@ -1924,8 +2152,8 @@ class FitLogic():
         def double_gaussian_testing(self):
             for ii in range(1):
 #                time.sleep(0.51)
-                start=120000
-                stop=320000
+                start=100000
+                stop=400000
                 num_points=int((stop-start)/2000)
                 x = np.linspace(start, stop, num_points)
                 
@@ -1958,16 +2186,17 @@ class FitLogic():
                     plt.hist(data[0,:],20)
                     plt.show()
                     
-                amplitude=100000
-                sigma=30000
-                splitting=100* 1000
+                amplitude=75000+np.random.random(1)*50000
+                sigma0=25000+np.random.random(1)*20000
+                sigma1=25000+np.random.random(1)*20000
+                splitting=abs(np.random.random(1)*300000)
                 p.add('gaussian0_amplitude',value=amplitude)
-                p.add('gaussian0_center',value=180000)
-                p.add('gaussian0_sigma',value=sigma)
+                p.add('gaussian0_center',value=160000)
+                p.add('gaussian0_sigma',value=sigma0)
                 p.add('gaussian1_amplitude',value=amplitude*1.5)
-                p.add('gaussian1_center',value=180000+splitting)
-                p.add('gaussian1_sigma',value=sigma)
-                p.add('c',value=2.)
+                p.add('gaussian1_center',value=100000+splitting)
+                p.add('gaussian1_sigma',value=sigma1)
+                p.add('c',value=0.)
 
                 data_noisy=(mod.eval(x=x,params=p)
                                         + 0.3*np.random.normal(size=x.shape))
@@ -1978,14 +2207,56 @@ class FitLogic():
 #                para=Parameters()
 #                result=self.make_double_gaussianian_fit(axis=x,data=data_noisy,add_parameters=para)
 #                            
-                result=self.make_double_gaussian_fit(x,data_noisy)
+                #make the filter an extra function shared and usable for other functions
+                gaus=gaussian(10,10)
+                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+                
+#                set optimal thresholds
+                threshold_fraction=0.4
+                minimal_threshold=0.2
+                sigma_threshold_fraction=0.3
+                
+                error, \
+                sigma0_argleft, dip0_arg, sigma0_argright, \
+                sigma1_argleft, dip1_arg , sigma1_argright = \
+                self._search_double_dip(x, data_smooth*-1,
+                                        threshold_fraction=threshold_fraction, 
+                                        minimal_threshold=minimal_threshold, 
+                                        sigma_threshold_fraction=sigma_threshold_fraction, 
+                                        make_prints=False)
+
+                print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
+                print(x[dip0_arg], x[dip1_arg])
+            
+                plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
+                plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
+                
+                plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+                plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+
+                result=self.make_double_gaussian_fit(x,data_noisy,
+                                        threshold_fraction=threshold_fraction, 
+                                        minimal_threshold=minimal_threshold, 
+                                        sigma_threshold_fraction=sigma_threshold_fraction)
+                                        
+                plt.plot((result.init_values['gaussian0_center'], result.init_values['gaussian0_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')
+                plt.plot((result.init_values['gaussian1_center'], result.init_values['gaussian1_center']), ( data_noisy.min() ,data_noisy.max()), 'r-')                                    
+                print(result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+#                gaus=gaussian(20,10)
+#                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+#                data_der=np.gradient(data_smooth)
+#                print(result.fit_report())
+#                print(result.message)
+#                print(result.success)
                 try:
-                    plt.plot(x, data_noisy, '-')
-                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
+                    plt.plot(x, data_noisy, '-b')
+                    plt.plot(x, data_smooth, '-g')
+#                    plt.plot(x, data_der*10, '-r')
+#                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
                     plt.plot(x,result.init_fit,'-y')
                     plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
-#                    plt.plot(x,data_smooth,'-g')
                     plt.show()
+    
 
                 except:
                     print('exception')
@@ -2073,7 +2344,46 @@ class FitLogic():
             time.sleep(1./self._clock_frequency*samples)
     
             return count_data
-                         
+
+        def powerfluorescence_testing(self):
+#            x = np.linspace(1, 1000, 101)
+            mod,params = self.make_powerfluorescence_model()
+            print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
+            
+            params['I_saturation'].value=200.
+            params['slope'].value=0.25
+            params['intercept'].value=2.
+            params['P_saturation'].value=100.
+#            data_noisy=(mod.eval(x=x,params=params)
+#                                    + 10*np.random.normal(size=x.shape))
+                                    
+            para=Parameters()
+            para.add('I_saturation',value=152.)
+            para.add('slope',value=0.3,vary=True)
+            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
+            para.add('P_saturation',value=130.   )         
+            
+            
+            data=np.loadtxt('Po_Fl.txt')
+
+#            result=self.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
+            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
+
+            print(result.fit_report())
+            
+            x_nice= np.linspace(0,data[:,0].max(), 101)
+
+            plt.plot(data[:,0],data[:,2]/1000,'ob')
+            
+            plt.plot(x_nice,mod.eval(x=x_nice,params=para),'-g')
+            
+            plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')
+            plt.show()
+             
+            print(result.message)
+            
 test=FitLogic()
-#test.oneD_testing()
+#test.twoD_testing()
 test.double_gaussian_testing()
+#test.double_lorentzian_testing()
+#test.powerfluorescence_testing()
