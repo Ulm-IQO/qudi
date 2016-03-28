@@ -638,9 +638,9 @@ class PulsedMeasurementGui(GUIBase):
             Radiobuttons in a dedicated region in the gui.
 
         Procedure of construction:
-            Create a raw QWidget radiobutton_container and use this as a
-            container for RadioButtons Widgets. Add the RadioButtonWidgets to
-            the Layout of the raw QWidget.
+            Create a raw QWidget and use this as a container for RadioButtons
+            Widgets. Add the RadioButtonWidgets to the Layout of the raw
+            QWidget.
             Moreover, attach them to the main window object to be able to ask
             their status if needed.
             Equip additionaly each radiobutton with a Tooltip as the channel
@@ -663,6 +663,7 @@ class PulsedMeasurementGui(GUIBase):
 
             radiobutton_obj_name = str(channel) + '_RadioButton'
 
+            # Use a customized version of radiobuttons:
             radiobutton = CustomQRadioButton(self._mw.control_ToolBar)
             radiobutton.setEnabled(False)
             radiobutton.setText('')
@@ -683,7 +684,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.clear_device_PushButton = QtGui.QPushButton(self._mw)
         self._mw.clear_device_PushButton.setText('Clear Pulser')
         self._mw.clear_device_PushButton.setToolTip('Clear the Pulser Device Memory\n'
-                                                    'from all loaded files.\n')
+                                                    'from all loaded files.')
         self._mw.control_ToolBar.addWidget(self._mw.clear_device_PushButton)
 
 
@@ -2669,13 +2670,23 @@ class PulsedMeasurementGui(GUIBase):
 
         #print(self._pulsed_meas_logic.measuring_error)
 
-        self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x,self._pulsed_meas_logic.measuring_error*1000)
+        self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
         ''' This method refreshes the elapsed time and sweeps of the measurement
         '''
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1e3))
+
+
+        #FIXME: That is not a clean way! What if there is no waveform defined,
+        #       so that expected duration is actually zero??!! Handle that for
+        #       now in checking the parameter for zero, and if so, then using
+        #       just 1.0 instead.
+        if np.isclose(self._mw.time_param_expected_dur_DoubleSpinBox.value()/1e3,0):
+            expected_time = 1.0
+        else:
+            expected_time = self._mw.time_param_expected_dur_DoubleSpinBox.value()
+        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
 
 
 
@@ -2955,10 +2966,14 @@ class PulsedMeasurementGui(GUIBase):
     def num_of_lasers_changed(self):
         """ Handle what happens if number of laser pulses changes. """
 
+        self._mw.laserpulses_ComboBox.blockSignals(True)
+
         self._mw.laserpulses_ComboBox.clear()
         self._mw.laserpulses_ComboBox.addItem('sum')
         for ii in range(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()):
             self._mw.laserpulses_ComboBox.addItem(str(1+ii))
+
+        self._mw.laserpulses_ComboBox.blockSignals(True)
 
     def analysis_window_values_changed(self):
         """ If the boarders or the lines are changed update the other parameters
@@ -3008,6 +3023,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def refresh_laser_pulses_display(self):
         """ Refresh the extracted laser pulse display. """
+
 
         current_laser = self._mw.laserpulses_ComboBox.currentText()
 
