@@ -446,16 +446,23 @@ class ODMRLogic(GenericLogic):
                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '[%]'
                 )
 
-    def save_ODMR_Data(self):
+    def save_ODMR_Data(self, tag=None, timestamp=None):
         """ Saves the current ODMR data to a file. """
 
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
-        filelabel = 'ODMR_data'
         filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
-        filelabel2 = 'ODMR_data_matrix'
         filepath3 = self._save_logic.get_path_for_module(module_name='ODMR')
-        filelabel3 = 'ODMR_data_raw'
-        timestamp = datetime.datetime.now()
+        if tag is None or len(tag) == 0:
+            filelabel = 'ODMR_data'
+            filelabel2 = 'ODMR_data_matrix'
+            filelabel3 = 'ODMR_data_raw'
+        else:
+            filelabel = tag + '_ODMR_data'
+            filelabel2 = tag + '_ODMR_data_matrix'
+            filelabel3 = tag + '_ODMR_data_raw'
+            
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()

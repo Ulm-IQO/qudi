@@ -23,7 +23,7 @@ from pyqtgraph.Qt import QtCore, QtGui, uic
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import numpy as np
-import time
+import datetime
 import os
 
 from gui.guibase import GUIBase
@@ -103,6 +103,10 @@ class ODMRGui(GUIBase):
         self._mw = ODMRMainWindow()
         self._sd = ODMRSettingDialog()
 
+        # Add save file tag input box
+        self._mw.save_tag_LineEdit = QtGui.QLineEdit()
+        self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
@@ -430,16 +434,21 @@ class ODMRGui(GUIBase):
 
     def save_plots_and_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
+        timestamp = datetime.datetime.now()
+        filetag = self._mw.save_tag_LineEdit.text()
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
-        filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_odmr'))
+        if len(filetag) > 0:
+            filename = os.path.join(filepath, '{}_{}_ODMR'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+        else:
+            filename = os.path.join(filepath, '{}_ODMR'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
         exporter_graph = pg.exporters.SVGExporter(self._mw.odmr_PlotWidget.plotItem.scene())
         #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
-        exporter_graph.export(filename+'.svg')
+        exporter_graph.export(filename + '_sum' + '.svg')
 
         exporter_matrix = pg.exporters.SVGExporter(self._mw.odmr_matrix_PlotWidget.plotItem.scene())
         #exporter_matrix = pg.exporters.ImageExporter(self._mw.odmr_matrix_PlotWidget.plotItem)
         exporter_matrix.export(filename + '_matrix' + '.svg')
 
         # self._save_logic.
-        self._odmr_logic.save_ODMR_Data()
+        self._odmr_logic.save_ODMR_Data(filetag, timestamp)
