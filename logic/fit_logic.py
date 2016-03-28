@@ -4,7 +4,7 @@
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
-from lmfit.models import Model, ConstantModel, LorentzianModel, GaussianModel
+from lmfit.models import Model, ConstantModel, LinearModel, LorentzianModel, GaussianModel
 from lmfit import Parameters, minimize
 
 import numpy as np
@@ -1707,15 +1707,23 @@ class FitLogic(GenericLogic):
 #           Excitation power - fluorescence dependency                     #
 #                                                                          #
 ############################################################################
+
     @staticmethod
     def powerfluorescence_function(x, I_saturation, P_saturation):
-        "powerfluorescence function: sine(x,amplitude,frequency,phase)"
+        """
+        Function to describe the fluorescence depending on excitation power
+        @param x: variable variable - Excitation pwer
+        @param I_saturation: Saturation Intensity
+        @param P_saturation: Saturation power
 
-        return (I_saturation * (x / (x + P_saturation)))
+        @return: powerfluorescence function: for using it as a model
+        """
+
+        return I_saturation * (x / (x + P_saturation))
 
 
     def make_powerfluorescence_model(self):
-        """ This method creates a model of a gaussian with an offset.
+        """ This method creates a model of the fluorescence depending on excitation power with an linear offset.
 
         @return tuple: (object model, object params)
 
@@ -1730,12 +1738,6 @@ class FitLogic(GenericLogic):
                 denoting the parameters as string names and values which are
                 lmfit.parameter.Parameter (without s) objects, keeping the
                 information about the current value.
-                The used model has the Parameter with the meaning:
-                    'amplitude' : amplitude
-                    'center'    : center
-                    'sigm'      : sigma
-                    'fwhm'      : full width half maximum
-                    'c'         : offset
 
         For further information have a look in:
         http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
@@ -1749,7 +1751,8 @@ class FitLogic(GenericLogic):
         return model, params
 
     def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
-        """ This method performes a 1D gaussian fit on the provided data.
+        """ This method performes a fit of the fluorescence depending on power
+            on the provided data.
 
         @param array[] axis: axis values
         @param array[]  x_data: data
@@ -1811,13 +1814,6 @@ class FitLogic(GenericLogic):
                         msgType='error')
             error = -1
 
-        # If the estimator is not good enough one can start improvement with
-        # a convolution
-
-#            # set parameters
-#            params['center'].value = x_axis[np.argmax(data)]
-#            params['sigma'].value = (x_axis.max() - x_axis.min()) / 3.
-#            params['amplitude'].value = (data.max() - data.min()) * (params['sigma'].value * np.sqrt(2 * np.pi))
-#            params['c'].value = data.min()
+        #TODO: some estimated values should be input here
 
         return error, params
