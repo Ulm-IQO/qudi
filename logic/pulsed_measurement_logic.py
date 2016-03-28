@@ -485,13 +485,18 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
 
 
-    def _save_data(self):
+    def _save_data(self, tag=None, timestamp=None):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-        filelabel = 'laser_pulses'
-        timestamp = datetime.datetime.now()
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_laser_pulses'
+        else:
+            filelabel = 'laser_pulses'
 
         # prepare the data in a dict or in an OrderedDict:
         temp_arr = np.empty([self.laser_data.shape[1], self.laser_data.shape[0]+1])
@@ -512,7 +517,10 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
-        filelabel = 'pulsed_measurement'
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_pulsed_measurement'
+        else:
+            filelabel = 'pulsed_measurement'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -535,7 +543,10 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save raw data timetrace                      ####
         #####################################################################
-        filelabel = 'raw_timetrace'
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_raw_timetrace'
+        else:
+            filelabel = 'raw_timetrace'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()

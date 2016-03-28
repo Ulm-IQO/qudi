@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from PyQt4 import QtGui, QtCore, uic
@@ -28,7 +28,7 @@ import pyqtgraph.exporters
 import re
 import inspect
 import itertools
-import time
+import datetime
 
 from gui.guibase import GUIBase
 from core.util.mutex import Mutex
@@ -3027,8 +3027,13 @@ class PulsedMeasurementGui(GUIBase):
 
     def save_plots(self):
         """ Save plot from analysis graph as a picture. """
+        timestamp = datetime.datetime.now()
+        filetag = self._mw.save_tag_LineEdit.text()
         filepath = self._save_logic.get_path_for_module(module_name='PulsedMeasurement')
-        filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_pulsed'))
+        if len(filetag) > 0:
+            filename = os.path.join(filepath, '{}_{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+        else:
+            filename = os.path.join(filepath, '{}_pulsed'.format(timestamp.strftime('%Y%m%d-%H%M-%S')))
 
         # print(type(self._mw.second_plot_ComboBox.currentText()), self._mw.second_plot_ComboBox.currentText())
         # pulse plot
@@ -3039,5 +3044,7 @@ class PulsedMeasurementGui(GUIBase):
         if 'None' not in self._mw.second_plot_ComboBox.currentText():
             exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
             exporter_aux.export(filename + '_aux' + '.svg')
+    
+        self._pulsed_meas_logic._save_data(filetag, timestamp)
 
 

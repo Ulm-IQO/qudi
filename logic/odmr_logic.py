@@ -454,18 +454,19 @@ class ODMRLogic(GenericLogic):
         filepath = self._save_logic.get_path_for_module(module_name='ODMR')
         filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
         filepath3 = self._save_logic.get_path_for_module(module_name='ODMR')
-        if tag is None or len(tag) == 0:
-            filelabel = 'ODMR_data'
-            filelabel2 = 'ODMR_data_matrix'
-            filelabel3 = 'ODMR_data_raw'
-        else:
-            filelabel = tag + '_ODMR_data'
-            filelabel2 = tag + '_ODMR_data_matrix'
-            filelabel3 = tag + '_ODMR_data_raw'
-            
+
         if timestamp is None:
             timestamp = datetime.datetime.now()
 
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_ODMR_data'
+            filelabel2 = tag + '_ODMR_data_matrix'
+            filelabel3 = tag + '_ODMR_data_raw'
+        else:
+            filelabel = 'ODMR_data'
+            filelabel2 = 'ODMR_data_matrix'
+            filelabel3 = 'ODMR_data_raw'
+            
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data2 = OrderedDict()
