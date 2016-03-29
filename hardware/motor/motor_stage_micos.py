@@ -41,11 +41,11 @@ class MotorStageMicos(Base, MotorInterface):
 #    After moving files what has to be changed, where?
 
 #Christoph:
-#     make on activate method which asks for values with get_pos()
+#    make on activate method which asks for values with get_pos()
 #    checks for sensible values???
 #    default parameters should be none
 #    introduce dead-times while waiting?
-#     check if sensible value and check for float!!!! in interface
+#    check if sensible value and check for float!!!! in interface
 #    put together everything to one step???
 
 #Things to be changed in logic:
@@ -55,7 +55,7 @@ class MotorStageMicos(Base, MotorInterface):
 
 #changes:
 #    change time for waiting until next command is sent
-#     change prints to log messages
+#    change prints to log messages
 #    wait in calibrate or implement get_cal
 #    make subfolder with __init__ for subfolder check GUI
 #    change format string to new convention
@@ -94,12 +94,6 @@ class MotorStageMicos(Base, MotorInterface):
         if 'com_port_micos_xy' in config.keys():
             self._com_port_xy, label_x, label_y  = config['com_port_micos_xy']
         else:
-            # COMMENT ALEX: A the COM8 connection is very system specific.
-            #               Please display here rather an error then using a
-            #               default value which might not even work. A default
-            #               value should always work, but you cannot guarentee
-            #               that.
-#            self._micos_a = self.rm.open_resource('COM8') # x, y
             self.logMsg('No parameter "com_port_micos_xy" found in config.\n'
                         'Cannot connect to motorized stage! Enter the '
                         'parameter with the following scheme:/n'
@@ -110,7 +104,6 @@ class MotorStageMicos(Base, MotorInterface):
         if 'com_port_micos_zphi' in config.keys():
             self._com_port_zphi, label_z, label_phi  = config['com_port_micos_zphi']
         else:
-#            self._micos_b = self.rm.open_resource('COM5') # z, phi
             self.logMsg('No parameter "com_port_micos_zphi" found in config.\n'
                         'Cannot connect to motorized stage! Enter the '
                         'parameter with the following scheme:/n'
@@ -206,7 +199,7 @@ class MotorStageMicos(Base, MotorInterface):
         axis0['vel_max'] = 10
         axis0['vel_step'] = 0.01
         axis0['acc_min'] = 0.1
-        axis0['acc_max'] = 0.0
+        axis0['acc_max'] = 100.0
         axis0['acc_step'] = 0.0
 
         axis1 = {}
@@ -280,6 +273,8 @@ class MotorStageMicos(Base, MotorInterface):
         curr_pos_dict = self.get_pos()
         constraints = self.get_constraints()
 
+        # Check if value for the new x position is valid and move to the new x position, else return an error msg
+
         if param_dict.get(self._micos_a.label_x) is not None:
             move_x = param_dict[self._micos_a.label_x]
             curr_pos_x = curr_pos_dict[self._micos_a.label_x]
@@ -296,6 +291,8 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_a.write('{:f} 0.0 0.0 r'.format(move_x))
+
+        # Check if value for the new y position is valid and move to the new y position, else return an error msg
 
         if param_dict.get(self._micos_a.label_y) is not None:
             move_y = param_dict[self._micos_a.label_y]
@@ -314,6 +311,8 @@ class MotorStageMicos(Base, MotorInterface):
             else:
                 self._micos_a.write('0.0 {:f} 0.0 r'.format(move_y))
 
+        # Check if value for the new z position is valid and move to the new z position, else return an error msg
+
         if param_dict.get(self._micos_b.label_z) is not None:
             move_z = param_dict[self._micos_b.label_z]
             curr_pos_z = curr_pos_dict[self._micos_b.label_z]
@@ -330,6 +329,8 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_b.write('{:f} 0.0 0.0 r'.format(move_z))
+
+        # Check if value for the new phi position is valid and move to the new phi position, else return an error msg
 
         if param_dict.get(self._micos_b.label_phi) is not None:
             move_phi = param_dict[self._micos_b.label_phi]
@@ -385,6 +386,11 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_a.write('{:f} 0.0 0.0 move'.format(desired_pos) )
+                self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+            try:
+                statusA = int(self._micos_a.ask('st'))
+            except:
+                statusA = 0
 
 
         if param_dict.get(self._micos_a.label_y) is not None:
@@ -402,6 +408,11 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_a.write('0.0 {:f} 0.0 move'.format(desired_pos) )
+                self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+            try:
+                statusA = int(self._micos_a.ask('st'))
+            except:
+                statusA = 0
 
         if param_dict.get(self._micos_b.label_z) is not None:
             desired_pos = param_dict[self._micos_b.label_z]
@@ -418,6 +429,11 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_b.write('{:f} 0.0 0.0 move'.format(desired_pos) )
+                self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+            try:
+                statusB = int(self._micos_a.ask('st'))
+            except:
+                statusB = 0
 
         if param_dict.get(self._micos_b.label_phi) is not None:
             desired_pos = param_dict[self._micos_b.label_phi]
@@ -434,6 +450,11 @@ class MotorStageMicos(Base, MotorInterface):
                             msgType='warning')
             else:
                 self._micos_b.write('0.0 {:f} 0.0 move'.format(desired_pos) )
+                self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+            try:
+                statusB = int(self._micos_a.ask('st'))
+            except:
+                statusB = 0
 
 
         # ALEX COMMENT: Is there not a nicer way for that? If the axis does not
@@ -443,20 +464,20 @@ class MotorStageMicos(Base, MotorInterface):
         #               If the axis replies during movement, then think about
         #               a nicer way in waiting until the movement is done,
         #               because it will block the whole program.
-        while True:
-            try:
-                statusA = int(self._micos_a.ask('st'))
-                statusB = int(self._micos_b.ask('st'))
-            except:
-                statusA = 0
-                statusA = 0
-
-            if statusA ==0 or statusB == 0:
-                time.sleep(0.2)
-
-                break
-            time.sleep(0.2)
-        return 0
+        # while True:
+        #     try:
+        #         statusA = int(self._micos_a.ask('st'))
+        #         statusB = int(self._micos_b.ask('st'))
+        #     except:
+        #         statusA = 0
+        #         statusA = 0
+        #
+        #     if statusA ==0 or statusB == 0:
+        #         time.sleep(0.2)
+        #
+        #         break
+        #     time.sleep(0.2)
+        # return 0
 
 
 
@@ -467,9 +488,6 @@ class MotorStageMicos(Base, MotorInterface):
         """
         self._micos_a.write(chr(3))
         self._micos_b.write(chr(3))
-#   Should we use this not recommended abort or the normal abort which
-#    does not stop the Stage if there is more then one command in the
-#    queue
 #        self._micos_a.write('abort')
 #        self._micos_b.write('abort')
         self.logMsg('Movement of all the axis aborted! Stage stopped.',
@@ -587,35 +605,39 @@ class MotorStageMicos(Base, MotorInterface):
 
         if param_list is not None:
             if self._micos_a.label_x in param_list:
-                self._micos_a.write('1 1 setaxis')
-                self._micos_a.write('4 2 setaxis')
-                self._micos_a.write('cal')
+                # self._micos_a.write('1 1 setaxis')
+                # self._micos_a.write('4 2 setaxis')
+                # self._micos_a.write('cal')
+                self._micos_a.write('1 ncal')
 
             if self._micos_a.label_y in param_list:
-                self._micos_a.write('4 1 setaxis')
-                self._micos_a.write('1 2 setaxis')
-                self._micos_a.write('cal')
+                # self._micos_a.write('4 1 setaxis')
+                # self._micos_a.write('1 2 setaxis')
+                # self._micos_a.write('cal')
+                self._micos_a.write('2 ncal')
 
             if self._micos_b.label_z in param_list:
-                self._micos_b.write('1 1 setaxis')
-                self._micos_b.write('4 2 setaxis')
-                self._micos_b.write('cal')
+                # self._micos_b.write('1 1 setaxis')
+                # self._micos_b.write('4 2 setaxis')
+                # self._micos_b.write('cal')
+                self._micos_b.write('1 ncal')
 
             if self._micos_b.label_phi in param_list:
-                self._micos_b.write('4 1 setaxis')
-                self._micos_b.write('1 2 setaxis')
-                self._micos_b.write('cal')
+                # self._micos_b.write('4 1 setaxis')
+                # self._micos_b.write('1 2 setaxis')
+                # self._micos_b.write('cal')
+                self._micos_b.write('2 ncal')
 
         else:
 
             # ALEX COMMENT: Is that a valid way of calibrating both axis at once?
 
-            self._micos_a.write('4 1 setaxis')
-            self._micos_a.write('4 2 setaxis')
+            self._micos_a.write('1 1 setaxis')
+            self._micos_a.write('1 2 setaxis')
             self._micos_a.write('cal')
 
-            self._micos_b.write('4 1 setaxis')
-            self._micos_b.write('4 2 setaxis')
+            self._micos_b.write('1 1 setaxis')
+            self._micos_b.write('1 2 setaxis')
             self._micos_b.write('cal')
 
     def get_velocity(self, param_list=None):
