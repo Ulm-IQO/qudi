@@ -2615,8 +2615,6 @@ class PulsedMeasurementGui(GUIBase):
 
     def save_clicked(self):
         self.save_plots()
-        self._pulsed_meas_logic._save_data()
-
 
 
     def fit_clicked(self):
