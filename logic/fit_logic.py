@@ -6,7 +6,7 @@ from core.util.mutex import Mutex
 
 import importlib
 
-from os import listdir, getcwd
+from os import listdir, getcwd, chdir
 from os.path import isfile, join
 
 # FIXME: In general is it needed for any purposes to use weighting?
@@ -86,24 +86,66 @@ class FitLogic(GenericLogic):
         self.lock = Mutex()
 
         filenames = []
-#       for path in directories:
+        # for path in directories:
         path = join(getcwd(), 'logic', 'fitmethods')
         for f in listdir(path):
             if isfile(join(path,f)):
                 filenames.append(f[:-3])
-        #print(filenames)
+        current_path= getcwd()
+        chdir(path)
+
+
+        self.oneD_fit_methods = dict()
+        self.twoD_fit_methods = dict()
+
         for files in filenames:
+
             mod = importlib.import_module('logic.fitmethods.{}'.format(files))
             for method in dir(mod):
                 try:
                     if callable(getattr(mod, method)):
+                        # import methods in Fitlogic
                         setattr(FitLogic, method, getattr(mod, method))
-                        self.logMsg('The {} method was addad into FitLogic.'.format(method),
-                            msgType='message')
-                #print(method)
+                        # add method to dictionary and define what
+                        # estimators they have
+
+                        # check if it is a make_<own fuction>_fit method
+                        if (str(method).startswith('make_')
+                            and str(method).endswith('_fit')):
+                            # only add to dictionary if it is not already there
+                            if 'twoD' in str(method) and str(method).split('_')[1] not in self.twoD_fit_methods:
+                                self.twoD_fit_methods[str(method).split('_')[1]]=[]
+                            elif str(method).split('_')[1] not in self.oneD_fit_methods:
+                                self.oneD_fit_methods[str(method)[5:-4]]=[]
+                        # if there is an estimator add it to the dictionary
+                        if 'estimate' in str(method):
+                            if 'twoD' in str(method):
+                                try: # if there is a given estimator it will be set or added
+                                    if str(method).split('_')[1] in self.twoD_fit_methods:
+                                        self.twoD_fit_methods[str(method).split('_')[1]]=self.twoD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
+                                    else:
+                                        self.twoD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
+                                except:  # if there is no estimator but only a standard one the estimator is empty
+                                    if not str(method).split('_')[1] in self.twoD_fit_methods:
+                                        self.twoD_fit_methods[str(method).split('_')[1]]=[]
+                            else: # this is oneD case
+                                try: # if there is a given estimator it will be set or added
+                                    if (str(method).split('_')[1] in self.oneD_fit_methods and str(method).split('_')[2] is not None):
+                                        self.oneD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
+                                    elif str(method).split('_')[2] is not None:
+                                        self.oneD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
+                                except: # if there is no estimator but only a standard one the estimator is empty
+                                    if not str(method).split('_')[1] in self.oneD_fit_methods:
+                                        self.oneD_fit_methods[str(method).split('_')[1]]=[]
                 except:
                     self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
-                            msgType='error')
+                                msgType='error')
+        self.logMsg('Methods were included to FitLogic, but only if naming is right: ',
+                    'check the doxygen documentation if you added a new method and it does not show',
+                    msgType='message')
+
+
+        chdir(current_path)
 
 
     def activation(self, e):
