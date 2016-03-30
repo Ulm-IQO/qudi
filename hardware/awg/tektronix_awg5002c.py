@@ -417,7 +417,7 @@ class AWG5002C(Base, PulserInterface):
         return
 
 
-    def write_to_file(self, name, analogue_samples,
+    def write_to_file(self, name, analog_samples,
                             digital_samples, total_number_of_samples,
                             is_first_chunk, is_last_chunk):
         """
@@ -427,8 +427,8 @@ class AWG5002C(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that
@@ -445,7 +445,7 @@ class AWG5002C(Base, PulserInterface):
 
 
 
-    # def write_chunk_to_file(self, name, analogue_samples_chunk,
+    # def write_chunk_to_file(self, name, analog_samples_chunk,
     #                         digital_samples_chunk, total_number_of_samples,
     #                         is_first_chunk, is_last_chunk, sample_rate,
     #                         pp_voltage, ):
@@ -454,8 +454,8 @@ class AWG5002C(Base, PulserInterface):
     #     if it is the first chunk.
     #
     #     @param name: string representing the name of the sampled ensemble
-    #     @param analogue_samples_chunk: float32 numpy ndarray containing the
-    #                                    samples for the analogue channels.
+    #     @param analog_samples_chunk: float32 numpy ndarray containing the
+    #                                    samples for the analog channels.
     #     @param digital_samples_chunk: bool numpy ndarray containing the samples
     #                                   for the digital channels.
     #     @param total_number_of_samples: The total number of samples in the entire waveform
@@ -482,7 +482,7 @@ class AWG5002C(Base, PulserInterface):
             # and the marker are followed.
 
 
-            for channel_index, channel_arr in enumerate(analogue_samples):
+            for channel_index, channel_arr in enumerate(analog_samples):
 
                 filename = name+'_ch'+str(channel_index+1) + '.wfm'
 
@@ -995,7 +995,7 @@ class AWG5002C(Base, PulserInterface):
             active_a_ch[1] = bool(int(self.ask('OUTPUT1:STATE?')))
             active_a_ch[2] = bool(int(self.ask('OUTPUT2:STATE?')))
 
-            # For the AWG5000 series, the resolution of the DAC for the analogue
+            # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
             # always active and cannot be deactivated. For other AWG devices the
             # command
@@ -1130,7 +1130,7 @@ class AWG5002C(Base, PulserInterface):
         """
         # list of all files in the waveform directory ending with .wfm
         file_list = self._get_filenames_on_host()
-        # exclude the channel specifier for multiple analogue channels and create return list
+        # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for filename in file_list:
             if fnmatch(filename, '*_ch?.wfm'):

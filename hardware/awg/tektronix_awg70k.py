@@ -283,7 +283,7 @@ class AWG70K(Base, PulserInterface):
         # can only use the names, declared in the constraint 'available_ch'!
         activation_map = OrderedDict()
         activation_map['all'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
-        # Usage of both channels but reduced markers (higher analogue resolution)
+        # Usage of both channels but reduced markers (higher analog resolution)
         activation_map['ch1_2mrk_ch2_1mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3']
         activation_map['ch1_2mrk_ch2_0mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2']
         activation_map['ch1_1mrk_ch2_2mrk'] = ['ACH1', 'DCH1', 'ACH2', 'DCH3', 'DCH4']
@@ -320,7 +320,7 @@ class AWG70K(Base, PulserInterface):
     #FIXME: hdf5storage package is inefficient regarding memory usage and speed.
     #       Better dont use it for now until a better package is found. Use .WFMX instead.
     #       Once a better solution is found a case differentiation has to be implemented.
-    def write_to_file(self, name, analogue_samples,
+    def write_to_file(self, name, analog_samples,
                             digital_samples, total_number_of_samples,
                             is_first_chunk, is_last_chunk):
         """
@@ -330,8 +330,8 @@ class AWG70K(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that
@@ -360,7 +360,7 @@ class AWG70K(Base, PulserInterface):
 
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
-            for channel_number in range(analogue_samples.shape[0]):
+            for channel_number in range(analog_samples.shape[0]):
                 # create header
                 header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number+1], 0,
                                          int(total_number_of_samples))
@@ -376,23 +376,23 @@ class AWG70K(Base, PulserInterface):
                     for line in header_lines:
                         wfmxfile.write(bytes(line, 'UTF-8'))
 
-        # append analogue samples to the .WFMX files of each channel. Write
+        # append analog samples to the .WFMX files of each channel. Write
         # digital samples in temporary files.
-        for channel_number in range(analogue_samples.shape[0]):
-            # append analogue samples chunk to .WFMX file
+        for channel_number in range(analog_samples.shape[0]):
+            # append analog samples chunk to .WFMX file
             filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
             with open(filepath, 'ab') as wfmxfile:
-                # append analogue samples in binary format. One sample is 4
+                # append analog samples in binary format. One sample is 4
                 # bytes (np.float32). Write in chunks if array is very big to
                 # avoid large temporary copys in memory
-                number_of_full_chunks = int(analogue_samples.shape[1]//write_overhead)
+                number_of_full_chunks = int(analog_samples.shape[1]//write_overhead)
                 for i in range(number_of_full_chunks):
                     start_ind = i*write_overhead
                     stop_ind = (i+1)*write_overhead
-                    wfmxfile.write(analogue_samples[channel_number][start_ind:stop_ind])
+                    wfmxfile.write(analog_samples[channel_number][start_ind:stop_ind])
                 # write rest
                 rest_start_ind = number_of_full_chunks*write_overhead
-                wfmxfile.write(analogue_samples[channel_number][rest_start_ind:])
+                wfmxfile.write(analog_samples[channel_number][rest_start_ind:])
 
             # create the byte values corresponding to the marker states
             # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
@@ -400,10 +400,10 @@ class AWG70K(Base, PulserInterface):
             filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
             with open(filepath, 'ab') as tmpfile:
                 if digital_samples.shape[0] <= (2*channel_number):
-                    # no digital channels to write for this analogue channel
+                    # no digital channels to write for this analog channel
                     pass
                 elif digital_samples.shape[0] == (2*channel_number + 1):
-                    # one digital channels to write for this analogue channel
+                    # one digital channels to write for this analog channel
                     for i in range(number_of_full_chunks):
                         start_ind = i*write_overhead
                         stop_ind = (i+1)*write_overhead
@@ -414,7 +414,7 @@ class AWG70K(Base, PulserInterface):
                     rest_start_ind = number_of_full_chunks*write_overhead
                     tmpfile.write(digital_samples[2*channel_number][rest_start_ind:])
                 elif digital_samples.shape[0] >= (2*channel_number + 2):
-                    # two digital channels to write for this analogue channel
+                    # two digital channels to write for this analog channel
                     for i in range(number_of_full_chunks):
                         start_ind = i*write_overhead
                         stop_ind = (i+1)*write_overhead
@@ -430,7 +430,7 @@ class AWG70K(Base, PulserInterface):
         # append the digital sample tmp file to the .WFMX file and delete the
         # .tmp files if it was the last chunk to write.
         if is_last_chunk:
-            for channel_number in range(analogue_samples.shape[0]):
+            for channel_number in range(analog_samples.shape[0]):
                 tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
                 wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                 with open(wfmx_filepath, 'ab') as wfmxfile:
@@ -964,7 +964,7 @@ class AWG70K(Base, PulserInterface):
             active_d_ch[3] = True
             active_d_ch[4] = True
 
-        # check what analogue channels are active
+        # check what analog channels are active
         if bool(int(self.ask('OUTPUT1:STATE?\n'))):
             active_a_ch[1] = True
         else:
@@ -1020,7 +1020,7 @@ class AWG70K(Base, PulserInterface):
         """
         # list of all files in the waveform directory ending with .mat or .WFMX
         file_list = self._get_filenames_on_host()
-        # exclude the channel specifier for multiple analogue channels and create return list
+        # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for filename in file_list:
             if fnmatch(filename, '*_Ch?.WFMX'):

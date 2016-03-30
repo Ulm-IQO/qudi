@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This file contains a QuDi logic module for controlling scans of the
-fourth analogue output channel.  It was originally written for
+fourth analog output channel.  It was originally written for
 scanning laser frequency, but it can be used to control any parameter
 in the experiment that is voltage controlled.  The hardware
 range is typically -10 to +10 V.
@@ -34,7 +34,7 @@ import datetime
 
 
 class VoltageScanningLogic(GenericLogic):
-    """This logic module controls scans of DC voltage on the fourth analogue
+    """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
 

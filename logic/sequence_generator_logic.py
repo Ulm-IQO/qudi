@@ -38,41 +38,41 @@ class Pulse_Block_Element(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_bins, analogue_channels, digital_channels,
+    def __init__(self, init_length_bins, analog_channels, digital_channels,
                  increment_bins = 0, pulse_function = None,
-                 marker_active = None, parameters={}, use_as_tau=False):
+                 marker_active = None, parameters=[], use_as_tau=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
-        @param init_length_bins: int, an initial length of a bins, this
+        @param int init_length_bins: an initial length of a bins, this
                                  parameters should not be zero but must have a
                                  finite value.
-        @param analogue_channels: int, number of analogue channels
-        @param digital_channels: int, number of digital channels
-        @param increment_bins: int, the number which will be incremented during
+        @param int analog_channels: number of analog channels
+        @param int digital_channels: number of digital channels
+        @param int increment_bins: the number which will be incremented during
                                each repetition of this object
-        @param pulse_function: sting, name of the sampling function how to
+        @param str pulse_function: name of the sampling function how to
                                alter the points, the name of the function will
                                be one of the sampling functions
-        @param marker_active: list of digital channels, which are for the
+        @param list marker_active: list of digital channels, which are for the
                               length of this Pulse_Block_Element are set either
                               to True (high) or to False (low). The length of
                               the marker list depends on the number of (active)
                               digital channels. For 4 digital channel it may
                               look like:
                               [True, False, False, False]
-        @param parameters: a list of dictionaries. The number of dictionaries
-                           depends on the number of analogue channels. The
+        @param list parameters: a list of dictionaries. The number of dictionaries
+                           depends on the number of analog channels. The
                            number of entries within a dictionary depends on the
                            chosen sampling function. The key words of the
                            dictionary for the parameters will be those of the
                            sampling functions.
-        @param use_as_tau: bool, indicates, whether the set length should
+        @param bool use_as_tau: bool, indicates, whether the set length should
                            be used as tau (i.e. the parameter for the x axis)
                            for the later plot in the analysis.
         """
 
         self.init_length_bins   = init_length_bins
-        self.analogue_channels  = analogue_channels
+        self.analog_channels  = analog_channels
         self.digital_channels   = digital_channels
         self.increment_bins     = increment_bins
         self.pulse_function     = pulse_function
@@ -89,11 +89,11 @@ class Pulse_Block(object):
     def __init__(self, name, element_list, laser_channel_index):
         """ The constructor for a Pulse_Block needs to have:
 
-        @param name: str, chosen name for the Pulse_Block
-        @param element_list: list, which contains the Pulse_Block_Element
+        @param str name: chosen name for the Pulse_Block
+        @param list element_list: which contains the Pulse_Block_Element
                              Objects forming a Pulse_Block, e.g.
                              [Pulse_Block_Element, Pulse_Block_Element, ...]
-        @param laser_channel_index: int, The index of the digital channel representing the laser
+        @param int laser_channel_index: The index of the digital channel representing the laser
         """
         self.name = name
         self.element_list = element_list
@@ -110,7 +110,7 @@ class Pulse_Block(object):
         # the Pulse_Block parameter
         self.init_length_bins = 0
         self.increment_bins = 0
-        self.analogue_channels = 0
+        self.analog_channels = 0
         self.digital_channels = 0
         self.number_of_lasers = 0
 
@@ -124,13 +124,16 @@ class Pulse_Block(object):
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
             self.increment_bins += elem.increment_bins
+
             if elem.marker_active[self.laser_channel]:
                 self.number_of_lasers += 1
+
+
             if elem.use_as_tau:
                 self.tau = self.tau + elem.init_length_bins
                 self.tau_increment = self.tau_increment + elem.increment_bins
-            if elem.analogue_channels > self.analogue_channels:
-                self.analogue_channels = elem.analogue_channels
+            if elem.analog_channels > self.analog_channels:
+                self.analog_channels = elem.analog_channels
             if elem.digital_channels > self.digital_channels:
                 self.digital_channels = elem.digital_channels
 
@@ -144,7 +147,7 @@ class Pulse_Block(object):
         self.refresh_parameters()
         return
 
-    def append_element(self, element, at_beginning = False):
+    def append_element(self, element, at_beginning=False):
         if at_beginning:
             self.element_list.insert(0, element)
         else:
@@ -164,13 +167,13 @@ class Pulse_Block_Ensemble(object):
                  rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
-        @param name: name: str, chosen name for the Pulse_Block_Ensemble
-        @param block_list: list, which contains the Pulse_Block Objects with
+        @param str name: chosen name for the Pulse_Block_Ensemble
+        @param list block_list: contains the Pulse_Block Objects with
                            their number of repetitions, e.g.
                            [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
-        @param tau_array: list, the x-axis of the measurement. Not yet properly used.
-        @param laser_channel_index: int, the index of the digital channel representing the laser
-        @param rotating_frame: bool, indicates whether the phase should be
+        @param list tau_array: the x-axis of the measurement. Not yet properly used.
+        @param int laser_channel_index: the index of the digital channel representing the laser
+        @param bool rotating_frame: indicates whether the phase should be
                                preserved for all the functions.
         """
 
@@ -183,7 +186,7 @@ class Pulse_Block_Ensemble(object):
 
     def refresh_parameters(self):
         self.length_bins = 0
-        self.analogue_channels = 0
+        self.analog_channels = 0
         self.digital_channels = 0
         self.number_of_lasers = 0
 
@@ -191,15 +194,15 @@ class Pulse_Block_Ensemble(object):
             if block.laser_channel != self.laser_channel:
                 block.laser_channel = self.laser_channel
                 block.refresh_parameters()
-            if block.analogue_channels > self.analogue_channels:
-                self.analogue_channels = block.analogue_channels
+            if block.analog_channels > self.analog_channels:
+                self.analog_channels = block.analog_channels
                 block.refresh_parameters()
             if block.digital_channels > self.digital_channels:
                 self.digital_channels = block.digital_channels
                 block.refresh_parameters()
             self.number_of_lasers += (reps+1)*block.number_of_lasers
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
-        self.estimated_bytes = self.length_bins * (self.analogue_channels * 4 + self.digital_channels)
+        self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
         return
 
     def replace_block(self, position, block):
@@ -226,6 +229,8 @@ class Pulse_Sequence(object):
     Represents a playback procedure for a number of Pulse_Block_Ensembles.
     Unused for pulse generator hardware without sequencing functionality.
     """
+
+
     # FIXME: Class is totally out of date since it was unused until now.
     # Rework needed if you want to implement sequenced stuff.
     def __init__(self, name, ensemble_list, tau_array, analyse_laser_ind, rotating_frame = True):
@@ -238,15 +243,15 @@ class Pulse_Sequence(object):
 
     def refresh_parameters(self):
         self.length_bins = 0
-        self.analogue_channels = 0
+        self.analog_channels = 0
         self.digital_channels = 0
         for ensemble, reps in self.ensemble_list:
             self.length_bins += (ensemble.length_bins * reps)
-            if ensemble.analogue_channels > self.analogue_channels:
-                self.analogue_channels = ensemble.analogue_channels
+            if ensemble.analog_channels > self.analog_channels:
+                self.analog_channels = ensemble.analog_channels
             if ensemble.digital_channels > self.digital_channels:
                 self.digital_channels = ensemble.digital_channels
-        self.estimated_bytes = self.length_bins * (self.analogue_channels * 4 + self.digital_channels)
+        self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
         return
 
     def replace_ensemble(self, position, ensemble):
@@ -425,7 +430,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # at least this configuration should always be available, if other
         # configuration are available, they can be chosen and set from the GUI.
         channel_config = constraints['channel_config']['conf1']
-        self.analogue_channels =  channel_config.count('a_ch')
+        self.analog_channels =  channel_config.count('a_ch')
         self.digital_channels =  channel_config.count('d_ch')
 
         #FIXME: the pp_voltage should be at first renamed in amplitude and a
@@ -439,7 +444,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         #       set as the sampling amplitude.
         #self.pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
 
-        # lists with the pp-voltages and offsets corresponding to the analogue channels
+        # lists with the pp-voltages and offsets corresponding to the analog channels
         self.amplitude_list, self.offset_list = self._pulse_generator_device.get_analog_level()
 
         config = self.getConfiguration()
@@ -617,7 +622,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #
     #     self._pulse_generator_device.set_active_channels(a_ch, d_ch)
     #     # count all channels that are set to True
-    #     # self.analogue_channels = len([x for x in a_ch.values() if x == True])
+    #     # self.analog_channels = len([x for x in a_ch.values() if x == True])
     #     # self.digital_channels = len([x for x in d_ch.values() if x == True])
     #     return 0
     #
@@ -632,7 +637,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #     """
     #
     #     active_channels = self._pulse_generator_device.get_active_channels()
-    #     # self.analogue_channels = len([x for x in active_channels[0].values() if x == True])
+    #     # self.analog_channels = len([x for x in active_channels[0].values() if x == True])
     #     # self.digital_channels = len([x for x in active_channels[1].values() if x == True])
     #     return active_channels
 
@@ -916,7 +921,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         # each line in the matrix corresponds to one Pulse_Block_Element
         # Here these elements are created
-        analogue_func = [None]*self.analogue_channels
+        analog_func = [None]*self.analog_channels
         digital_flags = [None]*self.digital_channels
 
         # make an array where the length of each Pulse_Block_Element will be
@@ -931,15 +936,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             [ np.round( x[self.cfg_param_pbe['increment']]/(1e9/self.sample_rate))
             for x in block_matrix])
 
-        for chnl_num in range(self.analogue_channels):
+        for chnl_num in range(self.analog_channels):
             # Save all function names for channel number "chnl_num" in one
-            # column of "analogue_func". Also convert them to strings
-            analogue_func[chnl_num] = np.array(
+            # column of "analog_func". Also convert them to strings
+            analog_func[chnl_num] = np.array(
                 [ x[self.cfg_param_pbe['function_'+str(chnl_num)]].decode('utf-8')
                 for x in block_matrix]  )
 
         # convert to numpy ndarray
-        analogue_func = np.array(analogue_func)
+        analog_func = np.array(analog_func)
 
 
         for chnl_num in range(self.digital_channels):
@@ -955,11 +960,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         block_element_list = [None]*len(block_matrix)
 
         for elem_num in range(len(block_matrix)):
-            elem_func = analogue_func[:, elem_num]
+            elem_func = analog_func[:, elem_num]
             elem_marker = digital_flags[:, elem_num]
             elem_incr = increments[elem_num]
             elem_length = lengths[elem_num]
-            elem_parameters = [None]*self.analogue_channels
+            elem_parameters = [None]*self.analog_channels
 
             # create parameter dictionarys for each channel
             for chnl_num, func in enumerate(elem_func):
@@ -974,7 +979,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             block_element = Pulse_Block_Element(
                                 init_length_bins=elem_length,
-                                analogue_channels=len(analogue_func),
+                                analog_channels=len(analog_func),
                                 digital_channels=len(digital_flags),
                                 increment_bins=elem_incr,
                                 pulse_function=elem_func,
@@ -1012,7 +1017,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # list of all the pulse block element objects
         pbe_obj_list = [None]*len(block_matrix)
 
-        analogue_channels=self.analogue_channels
+        analog_channels=self.analog_channels
         digital_channels=self.digital_channels
 
         for row_index, row in enumerate(block_matrix):
@@ -1032,11 +1037,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             func_dict = self.get_func_config()
 
             # get the proper pulse_functions and its parameters:
-            pulse_function=[None]*self.analogue_channels
+            pulse_function=[None]*self.analog_channels
 
-            parameter_list =[None]*self.analogue_channels
+            parameter_list =[None]*self.analog_channels
 
-            for num in range(self.analogue_channels):
+            for num in range(self.analog_channels):
                 pulse_function[num] = row[self.cfg_param_pbe['function_'+str(num)]].decode('UTF-8')
 
                 # search for this function in the dictionary and get all the
@@ -1062,7 +1067,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             pbe_obj_list[row_index] = Pulse_Block_Element(
                         init_length_bins=init_length_bins,
-                        analogue_channels=analogue_channels,
+                        analog_channels=analog_channels,
                         digital_channels=digital_channels,
                         increment_bins=increment_bins,
                         pulse_function=pulse_function,
@@ -1134,7 +1139,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         laser_channel_index = int(laser_channel[-1]) - 1
         if 'A' in laser_channel:
-            self.logMsg('Use of analogue channels as laser trigger not implemented yet.', msgType='error')
+            self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
             laser_channel_index = 0
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
@@ -1180,18 +1185,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param bool write_to_file: Write either to RAM or to File (depends on
                                    the available space in RAM).
                                    If set to FALSE, this method will return
-                                   the samples (digital and analogue) as numpy arrays
+                                   the samples (digital and analog) as numpy arrays
         @param bool chunkwise: Decide, whether you want to write chunkwise,
                                which will reduce memory usage but will
                                increase vastly the amount of time needed.
 
-        @return (analogue_samples, digital_samples):    two numpy arrays containing
+        @return (analog_samples, digital_samples):    two numpy arrays containing
                                                         the sampled voltages/logic levels
                                                         Will only be returned if
                                                         write_to_file is set to FALSE
 
         This method is creating the actual samples (voltages and logic states)
-        for each time step of the analogue and digital channels specified in
+        for each time step of the analog and digital channels specified in
         the Pulse_Block_Ensemble.
         Therefore it iterates through all blocks, repetitions and elements of the
         ensemble and calculates the exact voltages (float64) according to the
@@ -1217,7 +1222,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ensemble = self.get_ensemble(ensemble_name)
         # Ensemble parameters to determine the shape of sample arrays
         number_of_samples = ensemble.length_bins
-        ana_channels = ensemble.analogue_channels
+        ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
@@ -1233,7 +1238,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             element_count = 0
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
-            analogue_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
+            analog_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
             digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
             # Starting index for the sample array entrys
             entry_ind = 0
@@ -1262,17 +1267,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             is_last_chunk = True
 
                         # allocate temporary sample arrays to contain the current element
-                        analogue_samples = np.empty([ana_channels, element_length_bins], dtype = 'float32')
+                        analog_samples = np.empty([ana_channels, element_length_bins], dtype = 'float32')
                         digital_samples = np.empty([dig_channels, element_length_bins], dtype = bool)
 
                         # actually fill the allocated sample arrays with values.
                         for i, state in enumerate(marker_active):
                             digital_samples[i] = np.full(element_length_bins, state, dtype = bool)
                         for i, func_name in enumerate(pulse_function):
-                            analogue_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
+                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
-                        self._pulse_generator_device.write_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
+                        self._pulse_generator_device.write_to_file(ensemble.name, analog_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
@@ -1280,7 +1285,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype = bool)
                         for i, func_name in enumerate(pulse_function):
-                            analogue_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
+                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
                         # increment the index offset of the overall sample array for the next element
                         entry_ind += element_length_bins
 
@@ -1292,7 +1297,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # return a status message with the time needed for sampling the entire ensemble as a whole without writing to file.
             self.logMsg('Time needed for sampling as a whole without writing to file: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             # return the sample arrays for write_to_file was set to FALSE
-            return analogue_samples, digital_samples
+            return analog_samples, digital_samples
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble chunkwise.
             self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
@@ -1301,7 +1306,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # If the sampling should not be chunkwise and write to file is enabled call the write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            self._pulse_generator_device.write_to_file(ensemble.name, analogue_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
+            self._pulse_generator_device.write_to_file(ensemble.name, analog_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as a whole.
             self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             return
@@ -1315,19 +1320,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def generate_laser_on(self, name='Laser_On'):
 
         laser_time_bins = self.sample_rate*3e-6 #3mus
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
 
         #Fixme: Check for channels
         laser_markers = [False, True, False, False]
 
         # generate elements
         # parameters of a Pulse_Block_Element:
-        #init_length_bins, analogue_channels, digital_channels,
+        #init_length_bins, analog_channels, digital_channels,
         #         increment_bins = 0, pulse_function = None,
         #         marker_active = None, parameters={}, use_as_tau=False
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0,
                                             ['Idle', 'Idle'], laser_markers,
-                                            no_analogue_params)
+                                            no_analog_params)
 
         # Create the Pulse_Block_Element objects and append them to the element
         # list.
@@ -1367,7 +1372,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         mw_params[0]['amplitude1'] = mw_amp_V
         mw_params[0]['phase1'] = 0
 
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [True, True, False, False]
         gate_markers = [False, True, False, False]
         idle_markers = [False, False, False, False]
@@ -1380,17 +1385,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0,
                                             ['Idle', 'Idle'], laser_markers,
-                                            no_analogue_params)
+                                            no_analog_params)
         aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0,
                                                ['Idle', 'Idle'], gate_markers,
-                                               no_analogue_params)
+                                               no_analog_params)
         waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-
                                               aom_delay_bins, 2, 4, 0,
                                               ['Idle', 'Idle'], idle_markers,
-                                              no_analogue_params)
+                                              no_analog_params)
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'],
                                               seqtrig_markers,
-                                              no_analogue_params)
+                                              no_analog_params)
 
         # Create the Pulse_Block_Element objects and append them to the element
         # list.
@@ -1434,7 +1439,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         mw_params = [{},{}]
         mw_params[0]['amplitude1'] = amp_V
         mw_params[0]['phase1'] = 0
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [True, True, False, False]
         gate_markers = [False, True, False, False]
         idle_markers = [False, False, False, False]
@@ -1444,10 +1449,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         freq_list = np.linspace(start_freq, stop_freq, number_of_points)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         # put elements in a list to create the block
         element_list = []
         for freq in freq_list:
@@ -1496,7 +1501,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         piy_params[0]['frequency1'] = mw_freq_Hz
         piy_params[0]['amplitude1'] = mw_amp_V
         piy_params[0]['phase1'] = 90
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [True, True, False, False]
         gate_markers = [False, True, False, False]
         idle_markers = [False, False, False, False]
@@ -1515,10 +1520,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tauhalf_list = np.array(np.rint(tauhalf_list), dtype=int)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
         pi_x_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_pix_params)
         pi_y_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, piy_params)
@@ -1527,8 +1532,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         blocks = []
         for tau_ind in range(len(tau_list_corr)):
             # create tau and tauhalf elements
-            tau_element = Pulse_Block_Element(tau_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-            tauhalf_element = Pulse_Block_Element(tauhalf_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
+            tau_element = Pulse_Block_Element(tau_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+            tauhalf_element = Pulse_Block_Element(tauhalf_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
 
             # actual XY8-N sequence
             # generate element list
@@ -1598,7 +1603,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         spinlock_params = [{},{}]
         spinlock_params[0]['frequency1'] = freq1
         spinlock_params[0]['phase1'] = slphase_deg
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [False, False, True, False]
         # gate_markers = [False, False, False, False]
         idle_markers = [False, False, False, False]
@@ -1608,10 +1613,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         amp_list = np.linspace(spinlock_start_V, spinlock_stop_V, number_of_points, dtype=int)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         pi3half_element = Pulse_Block_Element(pi3half_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         # put elements in a list to create the block
@@ -1674,7 +1679,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         spinlock_params[0]['frequency1'] = freq1
         spinlock_params[0]['amplitude1'] = spinlock_V
         spinlock_params[0]['phase1'] = slphase_deg
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [False, False, True, False]
         # gate_markers = [False, False, False, False]
         idle_markers = [False, False, False, False]
@@ -1684,10 +1689,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tau_list = np.linspace(spinlock_start_bins, spinlock_stop_bins, number_of_taus, dtype=int)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         pi3half_element = Pulse_Block_Element(pi3half_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         # put elements in a list to create the block
@@ -1746,7 +1751,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         spinlock_params[0]['amplitude1'] = spinlockamp_V
         spinlock_params[0]['frequency1'] = freq1
         spinlock_params[0]['phase1'] = slphase_deg
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [False, False, True, False]
         # gate_markers = [False, False, False, False]
         idle_markers = [False, False, False, False]
@@ -1756,10 +1761,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         # put elements in a list to create the block
         element_list = []
@@ -1811,7 +1816,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         mw_params[0]['phase1'] = 0
         mw_params[0]['phase2'] = 0
         mw_params[0]['phase3'] = 0
-        no_analogue_params = [{},{}]
+        no_analog_params = [{},{}]
         laser_markers = [False, False, True, False]
         gate_markers = [False, False, False, False]
         idle_markers = [False, False, False, False]
@@ -1821,10 +1826,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
 
         # generate elements
-        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analogue_params)
-        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analogue_params)
-        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analogue_params)
-        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analogue_params)
+        laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+        aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
+        waiting_element = Pulse_Block_Element((1e-6*self.sampling_freq)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+        seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         # put elements in a list to create the block
         element_list = []
         for tau in tau_list:

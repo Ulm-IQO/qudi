@@ -580,9 +580,8 @@ a
         raise InterfaceImplementationError('PulserInterface>has_sequence_mode')
         return -1
 
-    def write_to_file(self, name, analogue_samples,
-                            digital_samples, total_number_of_samples,
-                            is_first_chunk, is_last_chunk):
+    def write_to_file(self, name, analog_samples, digital_samples,
+                      total_number_of_samples, is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -590,8 +589,8 @@ a
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that
