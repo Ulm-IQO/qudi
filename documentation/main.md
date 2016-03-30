@@ -14,6 +14,7 @@
     * [Pulsed Main GUI](@ref pulsed_maingui)
 * Logic documentation
     * [Task Usage](@ref task-usage)
+    * [Fitting](@ref fit_logic)
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
 

@@ -142,6 +142,7 @@ class ODMRGui(GUIBase):
         self._mw.fit_methods_ComboBox.addItem('Double Lorentzian with fixed splitting')
         self._mw.fit_methods_ComboBox.addItem('N14')
         self._mw.fit_methods_ComboBox.addItem('N15')
+        self._mw.fit_methods_ComboBox.addItem('Double Gaussian')
 
 
         ########################################################################

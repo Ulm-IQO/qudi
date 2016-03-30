@@ -445,6 +445,21 @@ class ODMRLogic(GenericLogic):
                 + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 )
+        elif self.fit_function == 'Double Gaussian':
+            result = self._fit_logic.make_double_gaussian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None,estimator='odmr_dip')
+            double_gaussian, params=self._fit_logic.make_multiple_gaussian_model(no_of_gauss=2)
+            self.ODMR_fit_y = double_gaussian.eval(x=self.ODMR_fit_x, params=result.params)
+            self.fit_result = (   'f_0 : ' + str(np.round(result.params['gaussian0_center'].value,3)) + " \u00B1 "
+                                +  str(np.round(result.params['gaussian0_center'].stderr,2)) + ' (MHz)'
+                                + '  ,  lw_0 : ' + str(np.round(result.params['gaussian0_fwhm'].value,3)) + " \u00B1 "
+                                +  str(np.round(result.params['gaussian0_fwhm'].stderr,2)) + ' (MHz)'
+                                + 'f_1 : ' + str(np.round(result.params['gaussian1_center'].value,3)) + " \u00B1 "
+                                +  str(np.round(result.params['gaussian1_center'].stderr,2)) + ' (MHz)'
+                                + '  ,  lw_1 : ' + str(np.round(result.params['gaussian1_fwhm'].value,3)) + " \u00B1 "
+                                +  str(np.round(result.params['gaussian1_fwhm'].stderr,2)) + ' (MHz)'
+                                + 'con_0 : ' + str(np.round((result.params['gaussian0_amplitude'].value/(-1*np.pi*result.params['gaussian0_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
+                                + '  ,  con_1 : ' + str(np.round((result.params['gaussian1_amplitude'].value/(-1*np.pi*result.params['gaussian1_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
+                                )
 
     def save_ODMR_Data(self, tag=None, timestamp=None):
         """ Saves the current ODMR data to a file. """
