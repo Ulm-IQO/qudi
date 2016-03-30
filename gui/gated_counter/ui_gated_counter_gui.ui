@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>685</width>
-    <height>448</height>
+    <width>571</width>
+    <height>393</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>685</width>
+     <width>571</width>
      <height>21</height>
     </rect>
    </property>
@@ -109,18 +109,11 @@
        </item>
        <item row="1" column="0">
         <widget class="QSlider" name="hist_bins_Slider">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the amout of bins which are&lt;br/&gt;summed together to obtain a &lt;br/&gt;point  (as the summed value) in the &lt;br/&gt;histogram.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="fit_poisson_PushButton">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>Fit Poisson</string>
          </property>
         </widget>
        </item>
@@ -170,7 +163,7 @@ Threshold</string>
        <property name="spacing">
         <number>6</number>
        </property>
-       <item row="0" column="0">
+       <item row="1" column="0">
         <widget class="QLabel" name="label">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -183,7 +176,7 @@ Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
+       <item row="1" column="2">
         <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -196,7 +189,7 @@ Threshold</string>
          </property>
         </spacer>
        </item>
-       <item row="2" column="2">
+       <item row="3" column="2">
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -212,28 +205,28 @@ Threshold</string>
          </property>
         </spacer>
        </item>
-       <item row="1" column="0">
+       <item row="2" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Count per Readout (#)</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>Filename</string>
+          <string>Filetag</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="filename_LineEdit">
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="filetag_LineEdit">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the descriptive name for this&lt;br/&gt;measurement. The file will be saved with &lt;br/&gt;a date and timestamp prefix and the&lt;br/&gt;descriptive name will be append to that&lt;br/&gt;string.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
+       <item row="1" column="1">
         <widget class="QSpinBox" name="count_length_SpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -258,7 +251,7 @@ Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="2" column="1">
         <widget class="QSpinBox" name="count_per_readout_SpinBox">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many counts are read out&lt;br/&gt;at once per readout request to the &lt;br/&gt;hardware.&lt;br/&gt;This number won't affect the structure&lt;br/&gt;of the obtained data. With a higher &lt;br/&gt;number you will solely reduce the&lt;br/&gt;workload for the PC, since you descrease&lt;br/&gt;the readout processes per time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -270,6 +263,29 @@ Threshold</string>
           <number>20</number>
          </property>
         </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Fit Parameters</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <widget class="QPushButton" name="fit_PushButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Fit</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="5">
+        <widget class="QComboBox" name="fit_func_ComboBox"/>
+       </item>
+       <item row="1" column="3" rowspan="3" colspan="3">
+        <widget class="QTextEdit" name="fit_param_TextEdit"/>
        </item>
       </layout>
      </item>
