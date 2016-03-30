@@ -158,7 +158,7 @@ def estimate_gaussian(self, x_axis=None, data=None, params=None):
 ############################################################################
 
 
-def make_twoD_gaussian_fit(self, axis=None, data=None,
+def make_twoDgaussian_fit(self, axis=None, data=None,
                            add_parameters=None):
     """ This method performes a 2D gaussian fit on the provided data.
 
@@ -181,9 +181,9 @@ def make_twoD_gaussian_fit(self, axis=None, data=None,
     sigma_x,    \
     sigma_y,    \
     theta,      \
-    offset = self.twoD_gaussian_estimator(x_axis=x_axis,
+    offset = self.estimate_twoDgaussian(x_axis=x_axis,
                                           y_axis=y_axis, data=data)
-    mod, params = self.make_twoD_gaussian_model()
+    mod, params = self.make_twoDgaussian_model()
 
     #auxiliary variables
     stepsize_x=x_axis[1]-x_axis[0]
@@ -219,7 +219,7 @@ def make_twoD_gaussian_fit(self, axis=None, data=None,
     return result
 
 
-def make_twoD_gaussian_model(self):
+def make_twoDgaussian_model(self):
     """ This method creates a model of the 2D gaussian function.
 
     The parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
@@ -234,7 +234,7 @@ def make_twoD_gaussian_model(self):
 
     """
 
-    def twoD_gaussian_function(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
+    def twoDgaussian_function(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
                             theta, offset):
 
         #FIXME: x_data_tuple: dimension of arrays
@@ -282,14 +282,14 @@ def make_twoD_gaussian_model(self):
                                 + c*((v-y_zero)**2)))
         return g.ravel()
 
-    model = Model(twoD_gaussian_function)
+    model = Model(twoDgaussian_function)
     params = model.make_params()
 
     return model, params
 
-def twoD_gaussian_estimator(self, x_axis=None, y_axis=None, data=None):
-#            TODO:Make clever estimator
-    #FIXME: 1D array x_axis, y_axis, 2D data???
+def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
+    # TODO:Make clever estimator
+    # FIXME: 1D array x_axis, y_axis, 2D data???
     """ This method provides a two dimensional gaussian function.
 
     @param array x_axis: x values
@@ -347,7 +347,7 @@ def twoD_gaussian_estimator(self, x_axis=None, y_axis=None, data=None):
 #                                                                          #
 ############################################################################
 
-def make_multiple_gaussian_model(self, no_of_gauss=None):
+def make_multiplegaussian_model(self, no_of_gauss=None):
     """ This method creates a model of multiple gaussians with an offset. The
     parameters are: 'amplitude', 'center', 'sigma', 'fwhm' and offset
     'c'. For function see:
@@ -363,13 +363,13 @@ def make_multiple_gaussian_model(self, no_of_gauss=None):
 
     model=ConstantModel()
     for ii in range(no_of_gauss):
-        model+=GaussianModel(prefix='gaussian{}_'.format(ii))
+        model += GaussianModel(prefix='gaussian{}_'.format(ii))
 
     params=model.make_params()
 
     return model, params
 
-def estimate_double_gaussian_gated_counter(self, x_axis = None, data = None, params = None,
+def estimate_doublegaussian_gatedcounter(self, x_axis = None, data = None, params = None,
                              threshold_fraction = 0.4,
                              minimal_threshold = 0.1,
                              sigma_threshold_fraction = 0.2):
@@ -411,7 +411,7 @@ def estimate_double_gaussian_gated_counter(self, x_axis = None, data = None, par
     error, \
     sigma0_argleft, dip0_arg, sigma0_argright, \
     sigma1_argleft, dip1_arg , sigma1_argright = \
-    self._search_double_dip(x_axis, data_smooth*(-1),threshold_fraction, minimal_threshold, sigma_threshold_fraction,make_prints=False)
+    self._search_double_dip(x_axis, data_smooth*(-1),threshold_fraction, minimal_threshold, sigma_threshold_fraction, make_prints=False)
 
     #set offset to zero
     params['c'].value = 0.0
@@ -425,18 +425,53 @@ def estimate_double_gaussian_gated_counter(self, x_axis = None, data = None, par
     amp_0 = data_smooth[dip0_arg]-params['c'].value
     amp_1 = data_smooth[dip1_arg]-params['c'].value
 
-    params['gaussian0_sigma'].value  = Integral / (amp_0+amp_1)  / np.sqrt(2*np.pi)
+    params['gaussian0_sigma'].value = Integral / (amp_0+amp_1)/ np.sqrt(2*np.pi)
     params['gaussian0_amplitude'].value = amp_0*params['gaussian0_sigma'].value*np.sqrt(2*np.pi)
 
     params['gaussian1_center'].value = x_axis[dip1_arg]
-    params['gaussian1_sigma'].value  = Integral / (amp_0+amp_1)  / np.sqrt(2*np.pi)
+    params['gaussian1_sigma'].value = Integral / (amp_0+amp_1)/ np.sqrt(2*np.pi)
     params['gaussian1_amplitude'].value = amp_1*params['gaussian1_sigma'].value*np.sqrt(2*np.pi)
+
+    return error, params
+
+def estimate_doublegaussian_odmr(self, x_axis = None, data = None, params = None,
+                             threshold_fraction = 0.4,
+                             minimal_threshold = 0.1,
+                             sigma_threshold_fraction = 0.2):
+    """ This method provides a an estimator for a double gaussian fit with the parameters
+    coming from the physical properties of an experiment done in gated counter:
+                    - positive peak
+                    - no values below 0
+                    - rather broad overlapping funcitons
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to
+                        x values
+    @param Parameters object params: Needed parameters
+    @param float threshold : Threshold to find second gaussian
+    @param float minimal_threshold: Threshold is lowerd to minimal this
+                                    value as a fraction
+    @param float sigma_threshold_fraction: Threshold for detecting
+                                           the end of the peak
+
+    @return int error: error code (0:OK, -1:error)
+    @return Parameters object params: estimated values
+    """
+
+    error,\
+    params['gaussian0_amplitude'].value, \
+    params['gaussian1_amplitude'].value, \
+    params['gaussian0_center'].value,    \
+    params['gaussian1_center'].value,    \
+    params['gaussian0_sigma'].value,     \
+    params['gaussian1_sigma'].value,     \
+    params['c'].value = self.estimate_doublelorentz(x_axis, data)
 
     return error, params
 
 
 
-def make_double_gaussian_fit(self, axis = None, data = None,
+def make_doublegaussian_fit(self, axis = None, data = None,
                                 add_parameters = None,
                                 estimator = 'gated_counter',
                                 threshold_fraction = 0.4,
@@ -445,9 +480,9 @@ def make_double_gaussian_fit(self, axis = None, data = None,
     """ This method performes a 1D double gaussian fit on the provided data.
 
     @param array [] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dictionary add_parameters: Additional parameters
-    @param float threshold : Threshold to find second gaussian
+    @param float threshold_fraction : Threshold to find second gaussian
     @param float minimal_threshold: Threshold is lowerd to minimal this
                                     value as a fraction
     @param float sigma_threshold_fraction: Threshold for detecting
@@ -461,28 +496,25 @@ def make_double_gaussian_fit(self, axis = None, data = None,
 
     """
 
-    model, params = self.make_multiple_gaussian_model(no_of_gauss=2)
+    model, params = self.make_multiplegaussian_model(no_of_gauss=2)
 
     if estimator == 'gated_counter':
-        error, params = self.estimate_double_gaussian_gated_counter(axis, data, params,
+        error, params = self.estimate_doublegaussian_gatedcounter(axis, data, params,
                                                       threshold_fraction,
                                                       minimal_threshold,
                                                       sigma_threshold_fraction)
-        #Defining constraints
-        params['c'].min=0.0
+        # Defining constraints
+        params['c'].min = 0.0
 
-        params['gaussian0_amplitude'].min=0.0
-        params['gaussian1_amplitude'].min=0.0
+        params['gaussian0_amplitude'].min = 0.0
+        params['gaussian1_amplitude'].min = 0.0
 
     elif estimator == 'odmr_dip':
-        error,              \
-        params['gaussian0_amplitude'].value, \
-        params['gaussian1_amplitude'].value, \
-        params['gaussian0_center'].value,    \
-        params['gaussian1_center'].value,    \
-        params['gaussian0_sigma'].value,     \
-        params['gaussian1_sigma'].value,     \
-        params['c'].value              = self.estimate_double_lorentz(axis, data)
+        error, params = self.estimate_doublegaussian_odmr(axis, data, params,
+                                                      threshold_fraction,
+                                                      minimal_threshold,
+                                                      sigma_threshold_fraction)
+
 
 
 

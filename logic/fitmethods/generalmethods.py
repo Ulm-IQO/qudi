@@ -42,8 +42,6 @@ def _substitute_parameter(self, parameters=None, update_parameters=None):
     """
 
     for para in update_parameters:
-        print(para, parameters[para])
-
         #first check if completely new parameter, which is added in the else
         if para in parameters:
             #store value because when max,min is set the value is overwritten
@@ -344,7 +342,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
     # if the dip is exactly at one of the boarders that means
     # the dips are most probably overlapping
     if dip1_arg == sigma0_argleft or dip1_arg == sigma0_argright:
-        print('Dips are overlapping')
+        #print('Dips are overlapping')
         distance_left  = abs(dip0_arg - sigma0_argleft)
         distance_right = abs(dip0_arg - sigma0_argright)
         sigma1_argleft = sigma0_argleft
@@ -355,7 +353,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
             dip1_arg = dip0_arg + abs(distance_left-distance_right)
         else:
             dip1_arg = dip0_arg
-        print(distance_left,distance_right,dip1_arg)
+        #print(distance_left,distance_right,dip1_arg)
     else:
         # if the peaks are not overlapping search for left and right
         # boarder of the dip
