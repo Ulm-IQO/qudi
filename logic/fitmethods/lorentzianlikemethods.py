@@ -167,7 +167,7 @@ def make_lorentzian_fit(self, axis=None, data=None,
 #                                                                          #
 ############################################################################
 
-def estimate_lorentz_peak (self, x_axis=None, data=None):
+def estimate_lorentzpeak (self, x_axis=None, data=None):
     """ This method provides a lorentzian function to fit a peak.
 
     @param array x_axis: x values
@@ -233,7 +233,7 @@ def estimate_lorentz_peak (self, x_axis=None, data=None):
 
     return error, amplitude, x_zero, sigma, offset
 
-def make_lorentzian_peak_fit(self, axis=None, data=None,
+def make_lorentzianpeak_fit(self, axis=None, data=None,
                              add_parameters=None):
     """ Perform a 1D Lorentzian peak fit on the provided data.
 
@@ -252,7 +252,7 @@ def make_lorentzian_peak_fit(self, axis=None, data=None,
     amplitude,  \
     x_zero,     \
     sigma,      \
-    offset      = self.estimate_lorentz_peak(axis, data)
+    offset      = self.estimate_lorentzpeak(axis, data)
 
 
     model, params = self.make_lorentzian_model()
@@ -303,7 +303,7 @@ def make_lorentzian_peak_fit(self, axis=None, data=None,
 #                                                                          #
 ############################################################################
 
-def make_multiple_lorentzian_model(self, no_of_lor=None):
+def make_multiplelorentzian_model(self, no_of_lor=None):
     """ This method creates a model of lorentzian with an offset. The
     parameters are: 'amplitude', 'center', 'sigm, 'fwhm' and offset
     'c'. For function see:
@@ -328,7 +328,7 @@ def make_multiple_lorentzian_model(self, no_of_lor=None):
 
 
 
-def estimate_double_lorentz(self, x_axis=None, data=None,
+def estimate_doublelorentz(self, x_axis=None, data=None,
                             threshold_fraction=0.3,
                             minimal_threshold=0.01,
                             sigma_threshold_fraction=0.3):
@@ -419,7 +419,7 @@ def estimate_double_lorentz(self, x_axis=None, data=None,
            lorentz0_center,lorentz1_center, lorentz0_sigma, \
            lorentz1_sigma, offset
 
-def make_double_lorentzian_fit(self, axis=None, data=None,
+def make_doublelorentzian_fit(self, axis=None, data=None,
                                add_parameters=None):
     """ This method performes a 1D lorentzian fit on the provided data.
 
@@ -442,9 +442,9 @@ def make_double_lorentzian_fit(self, axis=None, data=None,
     lorentz1_center,    \
     lorentz0_sigma,     \
     lorentz1_sigma,     \
-    offset              = self.estimate_double_lorentz(axis, data)
+    offset              = self.estimate_doublelorentz(axis, data)
 
-    model, params = self.make_multiple_lorentzian_model(no_of_lor=2)
+    model, params = self.make_multiplelorentzian_model(no_of_lor=2)
 
     # Auxiliary variables:
     stepsize=axis[1]-axis[0]
@@ -550,7 +550,7 @@ def make_N14_fit(self, axis=None, data=None, add_parameters=None):
         parameters=self._substitute_parameter(parameters=parameters,
                                               update_parameters=add_parameters)
 
-    mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+    mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
 
     result=mod.fit(data=data, x=axis, params=parameters)
 
@@ -580,35 +580,28 @@ def estimate_N15(self, x_axis=None, data=None):
 
     """
 
-    data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+    data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
 
     hf_splitting=3.03
     #filter should always have a length of approx linewidth 1MHz
     stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
     lorentz=np.zeros(int(stepsize_in_x)+1)
-    x_filter=np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
-    lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
+    x_filter = np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
+    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
                                     (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4),
                                     (x_filter >= len(x_filter)*3/4)], [1, 0,1])
-    data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())
+    data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),
+                                     mode='constant', cval=data_smooth_lorentz.max())
 
-#            plt.plot(x_axis[:len(lorentz)],lorentz)
-#            plt.show()
+    parameters = Parameters()
 
-#            plt.plot(x_axis,data)
-#            plt.plot(x_axis,data_smooth)
-#            plt.plot(x_axis,data_smooth_lorentz)
-#            plt.show()
-
-    parameters=Parameters()
-
-    parameters.add('lorentz0_amplitude',value=data_smooth.min()-offset,max=-1e-6)
-    parameters.add('lorentz0_center',value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
-    parameters.add('lorentz0_sigma',value=0.5,min=0.01,max=4.)
-    parameters.add('lorentz1_amplitude',value=parameters['lorentz0_amplitude'].value,max=-1e-6)
-    parameters.add('lorentz1_center',value=parameters['lorentz0_center'].value+hf_splitting,expr='lorentz0_center+3.03')
-    parameters.add('lorentz1_sigma',value=parameters['lorentz0_sigma'].value,min=0.01,max=4.,expr='lorentz0_sigma')
-    parameters.add('c',value=offset)
+    parameters.add('lorentz0_amplitude', value=data_smooth.min()-offset,max=-1e-6)
+    parameters.add('lorentz0_center', value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
+    parameters.add('lorentz0_sigma', value=0.5, min=0.01, max=4.)
+    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,max=-1e-6)
+    parameters.add('lorentz1_center', value=parameters['lorentz0_center'].value+hf_splitting, expr='lorentz0_center+3.03')
+    parameters.add('lorentz1_sigma', value=parameters['lorentz0_sigma'].value,min=0.01,max=4., expr='lorentz0_sigma')
+    parameters.add('c', value=offset)
 
     return parameters
 
@@ -618,7 +611,7 @@ def make_N15_fit(self, axis=None, data=None, add_parameters=None):
     hyperfine interaction of 3.03 MHz is taken into accound.
 
     @param array [] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dictionary add_parameters: Additional parameters
 
     @return lmfit.model.ModelFit result: All parameters provided about
@@ -629,16 +622,15 @@ def make_N15_fit(self, axis=None, data=None, add_parameters=None):
 
     """
 
-    parameters=self.estimate_N15(axis,data)
+    parameters = self.estimate_N15(axis, data)
 
-    #redefine values of additional parameters
+    # redefine values of additional parameters
     if add_parameters is not None:
-        parameters=self._substitute_parameter(parameters=parameters,
-                                             update_parameters=add_parameters)
+        parameters = self._substitute_parameter(parameters=parameters,
+                                                update_parameters=add_parameters)
 
-    mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+    mod, params = self.make_multiplelorentzian_model(no_of_lor=2)
 
-    result=mod.fit(data=data, x=axis, params=parameters)
-
+    result = mod.fit(data=data, x=axis, params=parameters)
 
     return result

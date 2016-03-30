@@ -83,20 +83,64 @@ class FitLogic():
                     filenames.append(f[:-3])
             current_path= getcwd()
             os.chdir(path)
+            
+                        
+            oneD_fit_methods = dict()
+            twoD_fit_methods = dict()
+            
             for files in filenames:
                 
                 mod = importlib.import_module('{}'.format(files))
                 for method in dir(mod):
                     try:
                         if callable(getattr(mod,method)):
+                            #import methods in Fitlogic
                             setattr(FitLogic,method,getattr(mod,method)) 
-#                            print(method)
+                            #add method to dictionary and define what 
+                            #estimators they have
+                            
+                            # check if it is a make_<own fuction>_fit method
+                            if (str(method).startswith('make_') 
+                                and str(method).endswith('_fit')):
+                                # only add to dictionary if it is not already there
+                                if 'twoD' in str(method) and str(method).split('_')[1] not in twoD_fit_methods:
+                                    twoD_fit_methods[str(method).split('_')[1]]=[]
+                                elif str(method).split('_')[1] not in oneD_fit_methods:
+                                    oneD_fit_methods[str(method)[5:-4]]=[]
+                            # if there is an estimator add it to the dictionary
+                            if 'estimate' in str(method):
+                                if 'twoD' in str(method):
+                                    try: # if there is a given estimator it will be set or added
+                                        if str(method).split('_')[1] in twoD_fit_methods:
+                                            twoD_fit_methods[str(method).split('_')[1]]=twoD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])                                            
+                                        else:
+                                            twoD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
+                                    except:  # if there is no estimator but only a standard one the estimator is empty
+                                        if not str(method).split('_')[1] in twoD_fit_methods:
+                                            twoD_fit_methods[str(method).split('_')[1]]=[]
+                                else: # this is oneD case
+                                    try: # if there is a given estimator it will be set or added    
+                                        if (str(method).split('_')[1] in oneD_fit_methods and str(method).split('_')[2] is not None):
+                                            oneD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
+                                        elif str(method).split('_')[2] is not None:
+                                            oneD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
+                                    except: # if there is no estimator but only a standard one the estimator is empty
+                                        if not str(method).split('_')[1] in oneD_fit_methods:
+                                            oneD_fit_methods[str(method).split('_')[1]]=[]
                     except:
                         self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
                                 msgType='error')
-                                
+            try:                    
+                self.logMsg('Methods were included to FitLogic, but only if naming is right: ',
+                            'make_<own method>_fit. If estimator should be added, the name has',
+                                    msgType='message')
+            except:
+                pass
+            
             os.chdir(current_path)
 
+#            print(oneD_fit_methods)
+#            print(twoD_fit_methods)
 
 
 
@@ -111,7 +155,7 @@ class FitLogic():
         def N15_testing(self):
             x = np.linspace(2840, 2860, 101)
                 
-            mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+            mod,params = self.make_multiplelorentzian_model(no_of_lor=2)
 #            print('Parameters of the model',mod.param_names)
             
             p=Parameters()
@@ -137,7 +181,7 @@ class FitLogic():
         def N14_testing(self):
             x = np.linspace(2850, 2860, 101)
                 
-            mod,params = self.make_multiple_lorentzian_model(no_of_lor=3)
+            mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
 #            print('Parameters of the model',mod.param_names)
             
             p=Parameters()
@@ -184,12 +228,12 @@ class FitLogic():
             theta_here=10./360.*(2*np.pi)
             
 #            data=self.twoD_gaussian_function((xx,yy),*(amplitude,x_zero,y_zero,sigma_x,sigma_y,theta_here,offset)) 
-            gmod,params = self.make_twoD_gaussian_model()
+            gmod,params = self.make_twoDgaussian_model()
             
             data= gmod.eval(x=axes,amplitude=amplitude,x_zero=x_zero,y_zero=y_zero,sigma_x=sigma_x,sigma_y=sigma_y,theta=theta_here, offset=offset)
             data+=50000*np.random.random_sample(np.shape(data))
             
-            gmod,params = self.make_twoD_gaussian_model()
+            gmod,params = self.make_twoDgaussian_model()
             
             para=Parameters()
 #            para.add('theta',vary=False)
@@ -198,7 +242,7 @@ class FitLogic():
 #            para.add('sigma_y',min=0.2*((15.-13.)/12.) ,           max=   10*(y[-1]-y[0])) 
 #            para.add('x_zero',value=40,min=50,max=100)
             
-            result=self.make_twoD_gaussian_fit(axis=axes,data=data,add_parameters=para)
+            result=self.make_twoDgaussian_fit(axis=axes,data=data,add_parameters=para)
             
 #            print(result.fit_report())
 #            FIXME: What does "Tolerance seems to be too small." mean in message?
@@ -298,7 +342,7 @@ class FitLogic():
                 num_points=int((stop-start)/2)
                 x = np.linspace(start, stop, num_points)
                 
-                mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+                mod,params = self.make_multiplelorentzian_model(no_of_lor=2)
     #            print('Parameters of the model',mod.param_names)
                 
                 p=Parameters()
@@ -351,7 +395,7 @@ class FitLogic():
 #                error, lorentz0_amplitude,lorentz1_amplitude, lorentz0_center,lorentz1_center, lorentz0_sigma,lorentz1_sigma, offset = self.estimate_double_lorentz(x,data_noisy)
 
 #                print(lorentz0_center>lorentz1_center)
-                result=self.make_double_lorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+                result=self.make_doublelorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
 #                print(result)
 #                print('center 1 und 2',result.init_values['lorentz0_center'],result.init_values['lorentz1_center'])
                 
@@ -425,7 +469,64 @@ class FitLogic():
 #            plt.plot(runs[:],results[2,:],'-b')
 #            plt.plot(runs[:],results[3,:],'-y')
 #            plt.show()
+        def double_lorentzian_fixedsplitting_testing(self):
+            for ii in range(1):
+#                time.sleep(0.51)
+                start=2800
+                stop=2950
+                num_points=int((stop-start)/2)
+                x = np.linspace(start, stop, num_points)
+                
+                mod,params = self.make_multiplelorentzian_model(no_of_lor=2)
+                
+                p=Parameters()
+
+                #============ Create data ==========
+                p.add('c',value=100)
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
+                p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz1_center',value=p['lorentz0_center']+20)
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
+
+                data_noisy=(mod.eval(x=x,params=p)
+                                        + 2*np.random.normal(size=x.shape))
+
+                para=Parameters()
+
+                result=self.make_doublelorentzian_fit(axis=x,data=data_noisy,add_parameters=para)
+
+                
+                data_smooth, offset = self.find_offset_parameter(x,data_noisy)
+
+                data_level=data_smooth-offset
+        
+                #search for double lorentzian
+                
+                error, \
+                sigma0_argleft, dip0_arg, sigma0_argright, \
+                sigma1_argleft, dip1_arg , sigma1_argright = \
+                self._search_double_dip(x, data_level,make_prints=False)
+
+                print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
+                print(x[dip0_arg], x[dip1_arg])
             
+                plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_noisy.min() ,data_noisy.max()), 'b-')
+                plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_noisy.min() ,data_noisy.max()), 'b-')
+                
+                plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+                plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
+                
+                try:
+                    plt.plot(x,data_noisy,'o')
+                    plt.plot(x,result.init_fit,'-y')
+                    plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+                    plt.plot(x,data_smooth,'-g')
+                except:
+                    print('exception')
+                plt.show()
+                
         def lorentzian_testing(self):
             x = np.linspace(800, 1000, 301)
             
@@ -471,7 +572,7 @@ class FitLogic():
                 num_points=int((stop-start)/2000)
                 x = np.linspace(start, stop, num_points)
                 
-                mod,params = self.make_multiple_gaussian_model(no_of_gauss=2)
+                mod,params = self.make_multiplegaussian_model(no_of_gauss=2)
     #            print('Parameters of the model',mod.param_names)
                 
                 p=Parameters()
@@ -519,7 +620,7 @@ class FitLogic():
 
 #                data_noisy=np.loadtxt('data')
 #                para=Parameters()
-#                result=self.make_double_gaussianian_fit(axis=x,data=data_noisy,add_parameters=para)
+#                result=self.make_doublegaussian_fit(axis=x,data=data_noisy,add_parameters=para)
 #                            
                 #make the filter an extra function shared and usable for other functions
                 gaus=gaussian(10,10)
@@ -548,7 +649,7 @@ class FitLogic():
                 plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
                 plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
 
-                result=self.make_double_gaussian_fit(x,data_noisy,
+                result=self.make_doublegaussian_fit(x,data_noisy,estimator='gated_counter',
                                         threshold_fraction=threshold_fraction, 
                                         minimal_threshold=minimal_threshold, 
                                         sigma_threshold_fraction=sigma_threshold_fraction)
@@ -704,7 +805,7 @@ class FitLogic():
                 num_points=int((stop-start)/2)
                 x = np.linspace(start, stop, num_points)
                 
-                mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+                mod,params = self.make_multiplelorentzian_model(no_of_lor=2)
     #            print('Parameters of the model',mod.param_names)
                 
                 p=Parameters()
@@ -750,7 +851,7 @@ class FitLogic():
 #                plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_level.min() ,data_level.max()), 'k-')
 #                plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_level.min() ,data_level.max()), 'k-')
                 
-                mod, params = self.make_multiple_gaussian_model(no_of_gauss=2)
+                mod, params = self.make_multiplegaussian_model(no_of_gauss=2)
                 
 #                params['gaussian0_center'].value=x[dip0_arg]
 #                params['gaussian0_center'].min=x.min()
@@ -761,7 +862,7 @@ class FitLogic():
                 
                 
                 
-                result=self.make_double_gaussian_fit(x,data_noisy,add_parameters=params,
+                result=self.make_doublegaussian_fit(x,data_noisy,add_parameters=params,
                                         estimator='odmr_dip',
                                         threshold_fraction=threshold_fraction, 
                                         minimal_threshold=minimal_threshold, 
@@ -840,11 +941,14 @@ class FitLogic():
             print(result.message)
                         
 test=FitLogic()
+#test.N14_testing()
+#test.N15_testing()
 #test.oneD_testing()
 #test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
-test.double_gaussian_odmr_testing()
+#test.double_gaussian_odmr_testing()
 #test.double_lorentzian_testing()
+test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
 #test.sine_testing()

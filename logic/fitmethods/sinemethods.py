@@ -51,7 +51,7 @@ def make_sine_model(self):
     """
     def sine_function(x, amplitude, frequency,phase):
         """
-        Function of a sine
+        Function of a sine.
         @param x: variable variable - e.g. time
         @param amplitude: amplitude
         @param frequency: frequency

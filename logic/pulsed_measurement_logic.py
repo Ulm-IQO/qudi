@@ -718,7 +718,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
         elif fit_function == 'Lorentian (pos)':
-            result = self._fit_logic.make_lorentzian_peak_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            result = self._fit_logic.make_lorentzianpeak_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
             lorentzian,params=self._fit_logic.make_lorentzian_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
             fit_result = (   'Maximum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
@@ -731,7 +731,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            fitted_function, params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            fitted_function, params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
             fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
@@ -747,7 +747,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function =='N15':
             result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            fitted_function,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            fitted_function,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
             fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'

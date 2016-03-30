@@ -376,8 +376,8 @@ class ODMRLogic(GenericLogic):
                 + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 )
         elif self.fit_function =='Double Lorentzian':
-            result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            double_lorentzian,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
             self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' (MHz)'
@@ -395,7 +395,7 @@ class ODMRLogic(GenericLogic):
             # TODO: insert this in gui config of ODMR
             splitting_from_gui_config = 3.03 #in MHz
 
-            error, lorentz0_amplitude, lorentz1_amplitude, lorentz0_center, lorentz1_center, lorentz0_sigma, lorentz1_sigma, offset = self._fit_logic.estimate_double_lorentz(self._MW_frequency_list, self.ODMR_plot_y)
+            error, lorentz0_amplitude, lorentz1_amplitude, lorentz0_center, lorentz1_center, lorentz0_sigma, lorentz1_sigma, offset = self._fit_logic.estimate_doublelorentz(self._MW_frequency_list, self.ODMR_plot_y)
 
             if lorentz0_center < lorentz1_center:
                 p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
@@ -403,8 +403,8 @@ class ODMRLogic(GenericLogic):
                 splitting_from_gui_config *= -1
                 p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
 
-            result = self._fit_logic.make_double_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
-            double_lorentzian,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
+            double_lorentzian,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
             self.fit_result = (
                 'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + u" \u00B1 "
@@ -420,7 +420,7 @@ class ODMRLogic(GenericLogic):
                 )
         elif self.fit_function =='N14':
             result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=3)
+            fitted_funciton,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
             self.fit_result = (
                 'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
@@ -433,9 +433,9 @@ class ODMRLogic(GenericLogic):
                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 )
-        elif self.fit_function =='N15':
+        elif self.fit_function == 'N15':
             result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            fitted_funciton,params=self._fit_logic.make_multiple_lorentzian_model(no_of_lor=2)
+            fitted_funciton, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
             self.fit_result = (
                 'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
@@ -446,8 +446,8 @@ class ODMRLogic(GenericLogic):
                 + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
                 )
         elif self.fit_function == 'Double Gaussian':
-            result = self._fit_logic.make_double_gaussian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None,estimator='odmr_dip')
-            double_gaussian, params=self._fit_logic.make_multiple_gaussian_model(no_of_gauss=2)
+            result = self._fit_logic.make_doublegaussian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None, estimator='odmr_dip')
+            double_gaussian, params=self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
             self.ODMR_fit_y = double_gaussian.eval(x=self.ODMR_fit_x, params=result.params)
             self.fit_result = (   'f_0 : ' + str(np.round(result.params['gaussian0_center'].value,3)) + " \u00B1 "
                                 +  str(np.round(result.params['gaussian0_center'].stderr,2)) + ' (MHz)'
