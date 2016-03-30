@@ -29,48 +29,130 @@ class ExecutionTreeModel(QtCore.QAbstractItemModel):
     """ Hold a tree of different task parts. """
     def __init__(self):
         super().__init__()
-        self.rootItem = ExecTreeItem()
+        self.rootItem = ExecTreeItem(None, 'root')
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
-
-    def columnCount(self, parent = QtCore.QModelIndex()):
-
-    def flags(self, index): 
+    def _getItem(self, index):
+        if not index.isValid():
+            return index.internalPointer()
+        return self.rootItem
 
     def data(self, index, role):
+        if not index.isValid():
+            return None
+        if role != QtCore.Qt.DisplayRole and role != QtCore.Qt.EditRole:
+            return None
+        return self._getItem(index).data(index.column())
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return self.rootItem.data(section)
+        return None
 
     def index(self, row, column, parent = QtCore.QModelIndex()):
+        if not parent.isValid() and parent.column() =! 0:
+            return QtCore.QModelIndex()
+        item = self._getItem(parent).child(row)
+        if item is not None:
+            return self.createIndex(row, column, item)
+        return QtCore.QModelIndex()
 
     def parent(self, index):
+        if not index.isValid():
+            return QtCore.QModelIndex()
+        citem = self._getItem(index)
+        pitem = citem.parent()
+        if pitem is self.rootItem:
+            return QModelIndex()
+        return self.createIndex(pitem.childNumber(), 0, pitem)
 
-class ExecTreeItem():
-    def 
+    def rowCount(self, parent = QtCore.QModelIndex()):
+        return self._getItem(parent).childCount()
+
+    def columnCount(self, parent = QtCore.QModelIndex()):
+        return self.rootItem.columnCount()
+
+    def flags(self, index): 
+        if index.isValid():
+            return  QtCore.Qt.ItemIsEditable | QtCore.QAbstractItemModel::flags(index)
+        return 0
     
-class ExecutionResultStack:
-    """ Hold the results of task execution"""
-    def __init__(self, parent):
+    def setData(self, index, value, role=QtCore.Qt.EditRole):
+        
+
+    def setHeaderData(self, section, orientation, value, role=QtCore.Qt.EditRole):
+
+    def insertColumns(self, position, columns, parent):
+        self.beginInsertColumns(parent, position, position + columns - 1)
+        success = self.rootItem.insertColumns(position, columns)
+        self.endInsertColumns()
+        return success
+
+    def removeColumns(self, position, columns, parent):
+        self.beginRemoveColumns(parent, position, position + columns - 1)
+        success = self.rootItem.removeColumns(position, columns)
+        self.endemoveColumns()
+
+        if self.rootItem.columnCount() == 0:
+            self.removeRows(0, self.rowCount())
+        return success
+
+    def insertRows(self, ):
+
+    def removeRows(self, ):
+
+class ExecTreeItem:
+
+    def __init__(self, parent, data):
         self.parentItem = parent
-        self.childItem = None
+        self.childItems = []
+        self.data = data
+
+    def child(self, number):
+        return self.childItems[number]
+
+    def parent(self):
+        return self.parentItem
 
     def childCount(self):
+        return len(self.childItems)
 
     def columnCount(self):
+        return 1
 
-    def data(self, column)
-
-    def insertChildren(self, position, count, columns):
-
-    def insertColumns(self, position, columns):
-
-    def removeChildren(self, position, count):
-
-    def removeColumns(self, position, columns):
-
-    def childNumber(self):
+    def data(self, column):
+        return self.data
 
     def setData(self, column, value):
+        if position < 0 or position >= len(self.childItems):
+            return False
+        self.data = value
+        return True
+
+    def insertChildren(self, position, count, columns):
+        if position < 0 or position > len(self.childItems):
+            return False
+        for row in range(count):
+            item = ExecTreeItem(self, None)
+            self.childItems.insert(position, item)
+        return True
+
+    def removeChildren(self, position, count):
+        if position < 0 or position + count > len(self.childItems):
+            return False
+        for row in range(count):
+            childItems.pop(position)
+        return True
+
+    def insertColumns(self, position, columns):
+        return False
+
+    def removeColumns(self, position, columns):
+        return False
+
+    def childNumber(self):
+        if self.parentItem is not None:
+            return self.parentItem.childItems.index(self)
+        return 0
 
 class AutomationLogic(GenericLogic):        
     """ Logic module agreggating multiple hardware switches.
