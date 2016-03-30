@@ -312,7 +312,7 @@ class PulserDummy(Base, PulserInterface):
         self.logMsg('PulserDummy: Switch off the Output.', msgType='status')
         return self.current_status
 
-    def write_to_file(self, name, analogue_samples,
+    def write_to_file(self, name, analog_samples,
                             digital_samples, total_number_of_samples,
                             is_first_chunk, is_last_chunk):
         """
@@ -322,8 +322,8 @@ class PulserDummy(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that
@@ -351,14 +351,14 @@ class PulserDummy(Base, PulserInterface):
             else:
                 matcontent = {}
                 matcontent[u'Waveform_Name_1'] = name # each key must be a unicode string
-                matcontent[u'Waveform_Data_1'] = analogue_samples[0]
+                matcontent[u'Waveform_Data_1'] = analog_samples[0]
                 matcontent[u'Waveform_Sampling_Rate_1'] = self.sample_rate
                 matcontent[u'Waveform_Amplitude_1'] = self.pp_voltage
 
-                if analogue_samples.shape[0] == 2:
+                if analog_samples.shape[0] == 2:
                     matcontent[u'Waveform_Name_1'] = name + '_Ch1'
                     matcontent[u'Waveform_Name_2'] = name + '_Ch2'
-                    matcontent[u'Waveform_Data_2'] = analogue_samples[1]
+                    matcontent[u'Waveform_Data_2'] = analog_samples[1]
                     matcontent[u'Waveform_Sampling_Rate_2'] = self.sample_rate
                     matcontent[u'Waveform_Amplitude_2'] = self.pp_voltage
 
@@ -389,7 +389,7 @@ class PulserDummy(Base, PulserInterface):
 
             # if it is the first chunk, create the .WFMX file with header.
             if is_first_chunk:
-                for channel_number in range(analogue_samples.shape[0]):
+                for channel_number in range(analog_samples.shape[0]):
                     # create header
                     header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number+1], 0,
                                              int(total_number_of_samples))
@@ -405,23 +405,23 @@ class PulserDummy(Base, PulserInterface):
                         for line in header_lines:
                             wfmxfile.write(bytes(line, 'UTF-8'))
 
-            # append analogue samples to the .WFMX files of each channel. Write
+            # append analog samples to the .WFMX files of each channel. Write
             # digital samples in temporary files.
-            for channel_number in range(analogue_samples.shape[0]):
-                # append analogue samples chunk to .WFMX file
+            for channel_number in range(analog_samples.shape[0]):
+                # append analog samples chunk to .WFMX file
                 filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                 with open(filepath, 'ab') as wfmxfile:
-                    # append analogue samples in binary format. One sample is 4
+                    # append analog samples in binary format. One sample is 4
                     # bytes (np.float32). Write in chunks if array is very big to
                     # avoid large temporary copys in memory
-                    number_of_full_chunks = int(analogue_samples.shape[1]//write_overhead)
+                    number_of_full_chunks = int(analog_samples.shape[1]//write_overhead)
                     for i in range(number_of_full_chunks):
                         start_ind = i*write_overhead
                         stop_ind = (i+1)*write_overhead
-                        wfmxfile.write(analogue_samples[channel_number][start_ind:stop_ind])
+                        wfmxfile.write(analog_samples[channel_number][start_ind:stop_ind])
                     # write rest
                     rest_start_ind = number_of_full_chunks*write_overhead
-                    wfmxfile.write(analogue_samples[channel_number][rest_start_ind:])
+                    wfmxfile.write(analog_samples[channel_number][rest_start_ind:])
 
                 # create the byte values corresponding to the marker states
                 # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
@@ -429,10 +429,10 @@ class PulserDummy(Base, PulserInterface):
                 filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
                 with open(filepath, 'ab') as tmpfile:
                     if digital_samples.shape[0] <= (2*channel_number):
-                        # no digital channels to write for this analogue channel
+                        # no digital channels to write for this analog channel
                         pass
                     elif digital_samples.shape[0] == (2*channel_number + 1):
-                        # one digital channels to write for this analogue channel
+                        # one digital channels to write for this analog channel
                         for i in range(number_of_full_chunks):
                             start_ind = i*write_overhead
                             stop_ind = (i+1)*write_overhead
@@ -443,7 +443,7 @@ class PulserDummy(Base, PulserInterface):
                         rest_start_ind = number_of_full_chunks*write_overhead
                         tmpfile.write(digital_samples[2*channel_number][rest_start_ind:])
                     elif digital_samples.shape[0] >= (2*channel_number + 2):
-                        # two digital channels to write for this analogue channel
+                        # two digital channels to write for this analog channel
                         for i in range(number_of_full_chunks):
                             start_ind = i*write_overhead
                             stop_ind = (i+1)*write_overhead
@@ -459,7 +459,7 @@ class PulserDummy(Base, PulserInterface):
             # append the digital sample tmp file to the .WFMX file and delete the
             # .tmp files if it was the last chunk to write.
             if is_last_chunk:
-                for channel_number in range(analogue_samples.shape[0]):
+                for channel_number in range(analog_samples.shape[0]):
                     tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
                     wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
                     with open(wfmx_filepath, 'ab') as wfmxfile:
@@ -498,7 +498,7 @@ class PulserDummy(Base, PulserInterface):
                             'Nothing was written to file.', msgType='error')
                 return -1
             else:
-                for channel_index, channel_arr in enumerate(analogue_samples):
+                for channel_index, channel_arr in enumerate(analog_samples):
 
                     filename = name+'_ch'+str(channel_index+1) + '.wfm'
 
@@ -962,7 +962,7 @@ class PulserDummy(Base, PulserInterface):
         # list of all files in the waveform directory ending with .mat or .WFMX
         file_list = self._get_filenames_on_host()
 
-        # exclude the channel specifier for multiple analogue channels and create return list
+        # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for name in file_list:
             if fnmatch(name, '*_Ch?.WFMX') or fnmatch(name, '*_ch?.wfm'):

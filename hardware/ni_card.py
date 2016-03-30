@@ -194,7 +194,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
             self.logMsg('No "scanner_ao_channels" found in the configuration!\n'
                         'Assign to that parameter an appropriated channel '
                         'from your NI Card, otherwise you cannot control the '
-                        'analogue channels!', msgType='error')
+                        'analog channels!', msgType='error')
 
         if 'odmr_trigger_channel' in config.keys():
             self._odmr_trigger_channel=config['odmr_trigger_channel']

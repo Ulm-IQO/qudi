@@ -684,11 +684,11 @@ a
     def has_sequence_mode(self):
         """ Asks the pulse generator whether sequence mode exists.
 
-        @return: bool, True for yes, False for no.
+        @return: bool, True for y   es, False for no.
         """
         return False
 
-    def write_to_file(self, name, analogue_samples,
+    def write_to_file(self, name, analog_samples,
                             digital_samples, total_number_of_samples,
                             is_first_chunk, is_last_chunk):
         """
@@ -698,8 +698,8 @@ a
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that

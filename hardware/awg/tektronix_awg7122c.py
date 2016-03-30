@@ -410,7 +410,7 @@ class AWG7122C(Base, PulserInterface):
             self._send_file(name)
         return 0
 
-    def write_to_file(self, name, analogue_samples,
+    def write_to_file(self, name, analog_samples,
                             digital_samples, total_number_of_samples,
                             is_first_chunk, is_last_chunk):
         """
@@ -420,8 +420,8 @@ class AWG7122C(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analogue_samples: float32 numpy ndarray, contains the
-                                       samples for the analogue channels that
+        @param analog_samples: float32 numpy ndarray, contains the
+                                       samples for the analog channels that
                                        are to be written by this function call.
         @param digital_samples: bool numpy ndarray, contains the samples
                                       for the digital channels that
@@ -451,7 +451,7 @@ class AWG7122C(Base, PulserInterface):
             # and the marker are followed.
 
 
-            for channel_index, channel_arr in enumerate(analogue_samples):
+            for channel_index, channel_arr in enumerate(analog_samples):
 
                 filename = name+'_ch'+str(channel_index+1) + '.wfm'
 
@@ -459,7 +459,7 @@ class AWG7122C(Base, PulserInterface):
                 with open(filepath, 'wb') as wfm_file:
 
                     # write the first line, which is the header file:
-                    num_bytes = str(len(analogue_samples[channel_index*2])*5)
+                    num_bytes = str(len(analog_samples[channel_index*2])*5)
                     num_digits = str(len(num_bytes))
                     header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
                     wfm_file.write(header)
@@ -1117,7 +1117,7 @@ class AWG7122C(Base, PulserInterface):
             active_a_ch[1] = bool(int(self.ask('OUTPUT1:STATE?')))
             active_a_ch[2] = bool(int(self.ask('OUTPUT2:STATE?')))
 
-            # For the AWG5000 series, the resolution of the DAC for the analogue
+            # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
             # always active and cannot be deactivated. For other AWG devices the
             # command
@@ -1200,7 +1200,7 @@ class AWG7122C(Base, PulserInterface):
         """
         # list of all files in the waveform directory ending with .wfm
         file_list = self._get_filenames_on_host()
-        # exclude the channel specifier for multiple analogue channels and create return list
+        # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for filename in file_list:
             if fnmatch(filename, '*_ch?.wfm'):

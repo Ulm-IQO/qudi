@@ -1183,7 +1183,7 @@ class PulsedMeasurementGui(GUIBase):
                 self.set_element_in_block_table(row_index,column, value)
 
             # now set all parameters for the analog channels:
-            for analog_ch in range(pulse_block_element.analogue_channels):
+            for analog_ch in range(pulse_block_element.analog_channels):
 
                 # the function text:
                 column = block_config_dict['function_'+str(analog_ch)]
@@ -1588,7 +1588,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos+column)
             self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
             self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
-            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 80)
+            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 90)
 
             # Use only DoubleSpinBox  as delegate:
             if item_dict['unit'] == 'bool':
@@ -1673,7 +1673,7 @@ class PulsedMeasurementGui(GUIBase):
         """ General function which creates the needed columns in Pulse Block
             Editor.
 
-        @param num_a_ch: int, desired numbe of analogue channels
+        @param num_a_ch: int, desired numbe of analog channels
         @param num_d_ch: int, desired number of digital channels
 
         If no argument is passed, the table is simply renewed. Otherwise the
@@ -1692,7 +1692,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pulsed_meas_logic.analog = num_a_ch
         self._pulsed_meas_logic.digital = num_d_ch
-        self._seq_gen_logic.analogue_channels = num_a_ch
+        self._seq_gen_logic.analog_channels = num_a_ch
         self._seq_gen_logic.digital_channels = num_d_ch
 
         # Determine the function with the most parameters. Use also that
@@ -1707,7 +1707,7 @@ class PulsedMeasurementGui(GUIBase):
         # clear the number of columns:
         self._mw.block_editor_TableWidget.setColumnCount(0)
 
-        # total number of analogue and digital channels:
+        # total number of analog and digital channels:
         num_a_d_ch =  num_a_ch*(num_max_param +1) + num_d_ch
 
 
@@ -2536,9 +2536,6 @@ class PulsedMeasurementGui(GUIBase):
         #Firstly stop any scan that might be in progress
         self._pulsed_meas_logic.stop_pulsed_measurement()
 
-
-
-
         #Then if enabled. start a new scan.
 
         # provide the logic, which buttons to switch on:
@@ -3058,7 +3055,7 @@ class PulsedMeasurementGui(GUIBase):
         if 'None' not in self._mw.second_plot_ComboBox.currentText():
             exporter_aux = pg.exporters.SVGExporter(self._mw.pulse_analysis_second_PlotWidget.plotItem.scene())
             exporter_aux.export(filename + '_aux' + '.svg')
-    
+
         self._pulsed_meas_logic._save_data(filetag, timestamp)
 
 
