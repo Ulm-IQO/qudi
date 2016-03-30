@@ -234,7 +234,7 @@ def make_twoD_gaussian_model(self):
 
     """
 
-    def twoD_gaussian_model(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
+    def twoD_gaussian_function(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
                             theta, offset):
 
         #FIXME: x_data_tuple: dimension of arrays
@@ -282,10 +282,10 @@ def make_twoD_gaussian_model(self):
                                 + c*((v-y_zero)**2)))
         return g.ravel()
 
-    model=Model(twoD_gaussian_model)
-    params=model.make_params()
+    model = Model(twoD_gaussian_function)
+    params = model.make_params()
 
-    return model,params
+    return model, params
 
 def twoD_gaussian_estimator(self, x_axis=None, y_axis=None, data=None):
 #            TODO:Make clever estimator
@@ -369,11 +369,15 @@ def make_multiple_gaussian_model(self, no_of_gauss=None):
 
     return model, params
 
-def estimate_double_gaussian(self, x_axis = None, data = None, params = None,
+def estimate_double_gaussian_gated_counter(self, x_axis = None, data = None, params = None,
                              threshold_fraction = 0.4,
                              minimal_threshold = 0.1,
                              sigma_threshold_fraction = 0.2):
-    """ This method provides a gaussian function.
+    """ This method provides a an estimator for a double gaussian fit with the parameters
+    coming from the physical properties of an experiment done in gated counter:
+                    - positive peak
+                    - no values below 0
+                    - rather broad overlapping funcitons
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to
@@ -434,6 +438,7 @@ def estimate_double_gaussian(self, x_axis = None, data = None, params = None,
 
 def make_double_gaussian_fit(self, axis = None, data = None,
                                 add_parameters = None,
+                                estimator = 'gated_counter',
                                 threshold_fraction = 0.4,
                                 minimal_threshold = 0.2,
                                 sigma_threshold_fraction = 0.3):
@@ -458,16 +463,29 @@ def make_double_gaussian_fit(self, axis = None, data = None,
 
     model, params = self.make_multiple_gaussian_model(no_of_gauss=2)
 
-    error, params = self.estimate_double_gaussian(axis, data, params,
-                                                  threshold_fraction,
-                                                  minimal_threshold,
-                                                  sigma_threshold_fraction)
+    if estimator == 'gated_counter':
+        error, params = self.estimate_double_gaussian_gated_counter(axis, data, params,
+                                                      threshold_fraction,
+                                                      minimal_threshold,
+                                                      sigma_threshold_fraction)
+        #Defining constraints
+        params['c'].min=0.0
 
-    #Defining constraints
-    params['c'].min=0.0
+        params['gaussian0_amplitude'].min=0.0
+        params['gaussian1_amplitude'].min=0.0
 
-    params['gaussian0_amplitude'].min=0.0
-    params['gaussian1_amplitude'].min=0.0
+    elif estimator == 'odmr_dip':
+        error,              \
+        params['gaussian0_amplitude'].value, \
+        params['gaussian1_amplitude'].value, \
+        params['gaussian0_center'].value,    \
+        params['gaussian1_center'].value,    \
+        params['gaussian0_sigma'].value,     \
+        params['gaussian1_sigma'].value,     \
+        params['c'].value              = self.estimate_double_lorentz(axis, data)
+
+
+
 
 
     #redefine values of additional parameters

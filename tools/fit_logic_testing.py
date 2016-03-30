@@ -696,10 +696,155 @@ class FitLogic():
              
             print(result.message)
             
+        def double_gaussian_odmr_testing(self):
+            for ii in range(1):
+
+                start=2800
+                stop=2950
+                num_points=int((stop-start)/2)
+                x = np.linspace(start, stop, num_points)
+                
+                mod,params = self.make_multiple_lorentzian_model(no_of_lor=2)
+    #            print('Parameters of the model',mod.param_names)
+                
+                p=Parameters()
+
+                #============ Create data ==========
+                
+#                center=np.random.random(1)*50+2805
+                p.add('lorentz0_amplitude',value=-abs(np.random.random(1)*50+100))
+                p.add('lorentz0_center',value=np.random.random(1)*150.0+2800)
+                p.add('lorentz0_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz1_center',value=np.random.random(1)*150.0+2800)
+                p.add('lorentz1_sigma',value=abs(np.random.random(1)*2.+1.))
+                p.add('lorentz1_amplitude',value=-abs(np.random.random(1)*50+100))
+                p.add('c',value=100.)
+
+                data_noisy=(mod.eval(x=x,params=p)
+                                        + 2*np.random.normal(size=x.shape))
+
+                
+                data_smooth, offset = self.find_offset_parameter(x,data_noisy)
+                
+                data_level=(data_smooth-offset)
+#                set optimal thresholds
+                threshold_fraction=0.4
+                minimal_threshold=0.2
+                sigma_threshold_fraction=0.3
+                
+                error, \
+                sigma0_argleft, dip0_arg, sigma0_argright, \
+                sigma1_argleft, dip1_arg , sigma1_argright = \
+                self._search_double_dip(x, data_level,
+                                        threshold_fraction=threshold_fraction, 
+                                        minimal_threshold=minimal_threshold, 
+                                        sigma_threshold_fraction=sigma_threshold_fraction, 
+                                        make_prints=False)
+
+                print(x[sigma0_argleft], x[dip0_arg], x[sigma0_argright], x[sigma1_argleft], x[dip1_arg], x[sigma1_argright])
+                print(x[dip0_arg], x[dip1_arg])
+            
+#                plt.plot((x[sigma0_argleft], x[sigma0_argleft]), ( data_level.min() ,data_level.max()), 'b-')
+#                plt.plot((x[sigma0_argright], x[sigma0_argright]), (data_level.min() ,data_level.max()), 'b-')
+#                
+#                plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_level.min() ,data_level.max()), 'k-')
+#                plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_level.min() ,data_level.max()), 'k-')
+                
+                mod, params = self.make_multiple_gaussian_model(no_of_gauss=2)
+                
+#                params['gaussian0_center'].value=x[dip0_arg]
+#                params['gaussian0_center'].min=x.min()
+#                params['gaussian0_center'].max=x.max()
+#                params['gaussian1_center'].value=x[dip1_arg]
+#                params['gaussian1_center'].min=x.min()
+#                params['gaussian1_center'].max=x.max()
+                
+                
+                
+                result=self.make_double_gaussian_fit(x,data_noisy,add_parameters=params,
+                                        estimator='odmr_dip',
+                                        threshold_fraction=threshold_fraction, 
+                                        minimal_threshold=minimal_threshold, 
+                                        sigma_threshold_fraction=sigma_threshold_fraction)
+                                        
+#                plt.plot((result.init_values['gaussian0_center'], result.init_values['gaussian0_center']), ( data_level.min() ,data_level.max()), 'r-')
+#                plt.plot((result.init_values['gaussian1_center'], result.init_values['gaussian1_center']), ( data_level.min() ,data_level.max()), 'r-')                                    
+#                print(result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+
+#                print(result.fit_report())
+#                print(result.message)
+#                print(result.success)
+                try:
+#                    plt.plot(x, data_noisy, '-b')
+                    plt.plot(x, data_noisy, '-g')
+#                    plt.plot(x, data_der*10, '-r')
+#                    print(result.best_values['gaussian0_center']/1000,result.best_values['gaussian1_center']/1000)
+                    plt.plot(x,result.init_fit,'-y')
+                    plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+                    plt.show()
+    
+
+                except:
+                    print('exception')
+                        
+                        
+#                        
+#                plt.plot(x_nice,mod.eval(x=x_nice,params=result.params),'-r')#
+#                plt.show()
+#                
+#                print('Peaks:',p['gaussian0_center'].value,p['gaussian1_center'].value)
+#                print('Estimator:',result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
+#                
+#                data=-1*data_smooth+data_smooth.max()
+#                 print('peakutils',x[ peakutils.indexes(data, thres=1.1/max(data), min_dist=1)])
+#                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
+#                print('Peakutils',x[indices])
+#                pplot(x,data,indices)
+
+        def sine_testing(self):
+            
+            x = np.linspace(0, 6*np.pi, 101)
+            mod,params = self.make_powerfluorescence_model()
+            print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
+            
+            params['I_saturation'].value=200.
+            params['slope'].value=0.25
+            params['intercept'].value=2.
+            params['P_saturation'].value=100.
+            data_noisy=(mod.eval(x=x,params=params)
+                                    + 10*np.random.normal(size=x.shape))
+                                    
+            para=Parameters()
+            para.add('I_saturation',value=152.)
+            para.add('slope',value=0.3,vary=True)
+            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
+            para.add('P_saturation',value=130.   )         
+            
+            
+#            data=np.loadtxt('Po_Fl.txt')
+
+            result=self.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
+#            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
+
+            print(result.fit_report())
+            
+#            x_nice= np.linspace(0,data[:,0].max(), 101)
+
+#            plt.plot(data[:,0],data[:,2]/1000,'ob')
+            
+            plt.plot(x,mod.eval(x=x,params=para),'-g')
+            
+            plt.plot(x,mod.eval(x=x,params=result.params),'-r')
+            plt.show()
+             
+            print(result.message)
+                        
 test=FitLogic()
-test.oneD_testing()
-test.twoD_testing()
+#test.oneD_testing()
+#test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
+test.double_gaussian_odmr_testing()
 #test.double_lorentzian_testing()
 #test.powerfluorescence_testing()
+#test.sine_testing()

@@ -42,6 +42,7 @@ def _substitute_parameter(self, parameters=None, update_parameters=None):
     """
 
     for para in update_parameters:
+        print(para, parameters[para])
 
         #first check if completely new parameter, which is added in the else
         if para in parameters:
@@ -97,33 +98,37 @@ def _substitute_parameter(self, parameters=None, update_parameters=None):
             # value also when no new value was set in the beginning
 
             if min_new:
-                # in case the value is 0, devision by 0 has to be avoided
-                if parameters[para].value < 1e-12:
-                    if abs((min_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
-                        parameters[para].value = store_value
-                else:
-                    if abs(min_value/parameters[para].value-1.)<1e-12:
-                        parameters[para].value = store_value
+                if parameters[para].value is not None:
+                    # in case the value is 0, devision by 0 has to be avoided
+                    if parameters[para].value < 1e-12:
+                        if abs((min_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
+                            parameters[para].value = store_value
+                    else:
+                        if abs(min_value/parameters[para].value-1.)<1e-12:
+                            parameters[para].value = store_value
             if max_new:
                 # in case the value is 0, devision by 0 has to be avoided
-                if parameters[para].value < 1e-12:
-                    if abs((max_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
-                        parameters[para].value=store_value
-                else:
-                    if abs(max_value/parameters[para].value-1.) < 1e-12:
-                        parameters[para].value=store_value
+                if parameters[para].value is not None:
+                    if parameters[para].value < 1e-12:
+                        if abs((max_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
+                            parameters[para].value=store_value
+                    else:
+                        if abs(max_value/parameters[para].value-1.) < 1e-12:
+                            parameters[para].value=store_value
 
             # check if the suggested value or the value in parameters is
             # smaller/bigger than min/max values and set then the value to
             # min or max
 
             if min_new:
-                if parameters[para].value<min_value:
-                    parameters[para].value=min_value
+                if parameters[para].value is not None:
+                    if parameters[para].value<min_value:
+                        parameters[para].value=min_value
 
             if max_new:
-                if parameters[para].value>max_value:
-                    parameters[para].value=max_value
+                if parameters[para].value is not None:
+                    if parameters[para].value>max_value:
+                        parameters[para].value=max_value
         else:
             #if parameter is new add here
             parameters.add(para)
@@ -417,7 +422,7 @@ def find_offset_parameter(self, x_values=None, data=None):
                                      mode='constant', cval=data.max())
 
     #finding most frequent value which is supposed to be the offset
-    hist=np.histogram(data_smooth,bins=10)
-    offset=(hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
+    hist = np.histogram(data_smooth,bins=10)
+    offset = (hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
 
-    return data_smooth,offset
+    return data_smooth, offset

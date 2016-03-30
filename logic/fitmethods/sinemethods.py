@@ -19,14 +19,58 @@ Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import numpy as np
+from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import scipy
+from lmfit import minimize
 
 ############################################################################
 #                                                                          #
 #                               Sinus fitting                              #
 #                                                                          #
 ############################################################################
+
+def make_sine_model(self):
+    """ This method creates a model of sine.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+    def sine_function(x, amplitude, frequency,phase):
+        """
+        Function of a sine
+        @param x: variable variable - e.g. time
+        @param amplitude: amplitude
+        @param frequency: frequency
+        @param phase: phase
+
+        @return: sine function: in order to use it as a model
+        """
+
+        return amplitude*np.sin(2*np.pi*frequency*x+phase)
+
+    model = Model(sine_function, prefix='s0')
+
+    params = model.make_params()
+
+    return model, params
+
+
+
+####################### old stuff ################
 
 def estimate_sine(self, x_axis=None, data=None):
     """ This method provides a sine function.
