@@ -6,7 +6,7 @@ automatic import works properly!
 
 General procedure to create new fitting routines:
 
-A fitting routine consists out of three major parts:
+A fitting routine consists of three major parts:
 1. a (mathematical) Model you have for the passed data
     *  Here we use the lmfit package, which has a couple of standard
       models like ConstantModel, LorentzianModel or GaussianModel.
@@ -51,9 +51,11 @@ the estimator.
 # Naming convention:
 
 1. fit method: `make_<custom>_fit()` it is important to
-have no extra underscores, and that it starts with `make_` and ends with `_fit`, e.g.
+have no extra underscores, and that it starts with `make_` and ends with `_fit`.
+In order to distinguish between oneD and twoD models, every twoD model has to
+include the string twoD e.g.
 
-        def make_gaussian_fit()
+        def make_gaussian_fit() and def make_twoDgaussian_fit()
 
 2. estimate function: `estimate_<custom>()` e.g. `estimate_gaussian()` if you only have one estimator, if
 there are different estimators ``estimate_<custom>_<estimator name>``. it is important to have no extra
@@ -88,3 +90,16 @@ model from a custom (not built-in) funciton one can do that within the
                 params = model.make_params()
 
                 return model, params
+
+# Params and return values
+
+# Parameter
+
+
+# General functions
+
+# List of functions
+
+This list can be read out in the manager console:
+
+        fitlogic.oneD_fit_methods and fitlogic.twoD_fit_methods
