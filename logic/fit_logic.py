@@ -90,7 +90,8 @@ class FitLogic(GenericLogic):
         path = join(getcwd(), 'logic', 'fitmethods')
         for f in listdir(path):
             if isfile(join(path,f)):
-                filenames.append(f[:-3])
+                if f[-3:] == '.py': 
+                    filenames.append(f[:-3])
         current_path= getcwd()
         chdir(path)
 
@@ -140,8 +141,7 @@ class FitLogic(GenericLogic):
                 except:
                     self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
                                 msgType='error')
-        self.logMsg('Methods were included to FitLogic, but only if naming is right: ',
-                    'check the doxygen documentation if you added a new method and it does not show',
+        self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation if you added a new method and it does not show',
                     msgType='message')
 
 
