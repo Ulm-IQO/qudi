@@ -905,40 +905,40 @@ class FitLogic():
         def sine_testing(self):
             
             x = np.linspace(0, 6*np.pi, 101)
-            mod,params = self.make_powerfluorescence_model()
+            mod,params = self.make_sine_model()
             print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
             
-            params['I_saturation'].value=200.
-            params['slope'].value=0.25
-            params['intercept'].value=2.
-            params['P_saturation'].value=100.
+            params['amplitude'].value=1.
+            params['frequency'].value=0.25
+            params['phase'].value=0
             data_noisy=(mod.eval(x=x,params=params)
-                                    + 10*np.random.normal(size=x.shape))
+                                    + 1*np.random.normal(size=x.shape))
                                     
-            para=Parameters()
-            para.add('I_saturation',value=152.)
-            para.add('slope',value=0.3,vary=True)
-            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
-            para.add('P_saturation',value=130.   )         
-            
-            
-#            data=np.loadtxt('Po_Fl.txt')
-
-            result=self.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
-#            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
-
-            print(result.fit_report())
+#            para=Parameters()
+#            para.add('I_saturation',value=152.)
+#            para.add('slope',value=0.3,vary=True)
+#            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
+#            para.add('P_saturation',value=130.   )         
+#            
+#            
+##            data=np.loadtxt('Po_Fl.txt')
+#
+#            result=self.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
+##            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
+#
+#            print(result.fit_report())
             
 #            x_nice= np.linspace(0,data[:,0].max(), 101)
 
 #            plt.plot(data[:,0],data[:,2]/1000,'ob')
             
-            plt.plot(x,mod.eval(x=x,params=para),'-g')
+#            plt.plot(x,mod.eval(x=x,params=para),'-g')
             
-            plt.plot(x,mod.eval(x=x,params=result.params),'-r')
+            plt.plot(x,mod.eval(x=x,params=params),'-r')
+            plt.plot(x,data_noisy,'-b')
             plt.show()
              
-            print(result.message)
+#            print(result.message)
                         
 test=FitLogic()
 #test.N14_testing()
@@ -949,6 +949,6 @@ test=FitLogic()
 #test.double_gaussian_testing()
 #test.double_gaussian_odmr_testing()
 #test.double_lorentzian_testing()
-test.double_lorentzian_fixedsplitting_testing()
+#test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
-#test.sine_testing()
+test.sine_testing()
