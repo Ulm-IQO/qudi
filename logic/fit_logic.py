@@ -140,7 +140,7 @@ class FitLogic(GenericLogic):
                                 msgType='error')
         self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation'+
                     'if you added a new method and it does not show',
-                    msgType='message')
+                    msgType='warning')
 
 
     def activation(self, e):

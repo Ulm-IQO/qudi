@@ -93,7 +93,7 @@ def make_singlesine_fit(self, axis=None, data=None, add_parameters=None):
         result = sine.fit(data, x=axis, params=params)
     except:
         self.logMsg('The sine fit did not work.',
-                    msgType='message')
+                    msgType='warning')
         result = sine.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -267,7 +267,7 @@ def make_sine_fit(self, axis=None, data=None, add_parameters=None):
         result = minimize(self.fcn2min, params, args=(axis, data))
         self.logMsg('The sine fit did not work. Error '
                     'message:'+result.message,
-                    msgType='message')
+                    msgType='warning')
 
     fit_y = data + result.residual
     fit_x = axis

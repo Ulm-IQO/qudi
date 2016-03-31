@@ -158,7 +158,7 @@ def make_lorentzian_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
         self.logMsg('The 1D lorentzian fit did not work. Error '
                     'message:'+result.message,
-                    msgType='message')
+                    msgType='warning')
     return result
 
 ############################################################################
@@ -292,7 +292,7 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
         self.logMsg('The 1D gaussian fit did not work. Error '
                     'message:' + result.message,
-                    msgType='message')
+                    msgType='warning')
 
     return result
 
@@ -470,7 +470,7 @@ def make_doublelorentzian_fit(self, axis=None, data=None,
         result=model.fit(data, x=axis,params=params)
         self.logMsg('The double lorentzian fit did not '
                     'work:'+result.message,
-                    msgType='message')
+                    msgType='warning')
 
     return result
 
