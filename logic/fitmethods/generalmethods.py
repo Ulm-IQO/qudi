@@ -334,7 +334,7 @@ def _search_double_dip(self, x_axis, data, threshold_fraction=0.3, minimal_thres
                     self.logMsg('threshold to minimum ratio was too '
                                 'small to estimate two minima. So both '
                                 'are set to the same value',
-                                msgType='message')
+                                msgType='warning')
                     error=-1
                     dip1_arg=dip0_arg
                     break

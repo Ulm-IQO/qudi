@@ -103,7 +103,7 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
         result = mod_final.fit(data, x=axis, params=params)
     except:
         self.logMsg('The 1D gaussian fit did not work.',
-                    msgType='message')
+                    msgType='warning')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
@@ -214,7 +214,7 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
     except:
         result=mod.fit(data, x=axis,params=params)
         self.logMsg('The 2D gaussian fit did not '
-                    'work:'+result.message, msgType='message')
+                    'work:'+result.message, msgType='warning')
 
     return result
 
@@ -530,7 +530,7 @@ def make_doublegaussian_fit(self, axis = None, data = None,
         result=model.fit(data, x=axis,params=params)
         self.logMsg('The double gaussian fit did not '
                     'work:'+result.message,
-                    msgType='message')
+                    msgType='warning')
 
     return result
 

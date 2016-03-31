@@ -97,7 +97,7 @@ def make_powerfluorescence_fit(self, axis=None, data=None, add_parameters=None):
         result = mod_final.fit(data, x=axis, params=params)
     except:
         self.logMsg('The 1D gaussian fit did not work.',
-                    msgType='message')
+                    msgType='warning')
         result = mod_final.fit(data, x=axis, params=params)
         print(result.message)
 
