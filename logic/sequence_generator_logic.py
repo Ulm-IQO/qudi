@@ -25,6 +25,7 @@ import pickle
 import os
 import sys
 import time
+import importlib
 
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
@@ -40,7 +41,7 @@ class Pulse_Block_Element(object):
     """
     def __init__(self, init_length_bins, analog_channels, digital_channels,
                  increment_bins = 0, pulse_function = None,
-                 marker_active = None, parameters=[], use_as_tau=False):
+                 marker_active = None, parameters=[], use_as_tick=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
         @param int init_length_bins: an initial length of a bins, this
@@ -66,8 +67,8 @@ class Pulse_Block_Element(object):
                            chosen sampling function. The key words of the
                            dictionary for the parameters will be those of the
                            sampling functions.
-        @param bool use_as_tau: bool, indicates, whether the set length should
-                           be used as tau (i.e. the parameter for the x axis)
+        @param bool use_as_tick: bool, indicates, whether the set length should
+                           be used as a tick (i.e. the parameter for the x axis)
                            for the later plot in the analysis.
         """
 
@@ -78,7 +79,7 @@ class Pulse_Block_Element(object):
         self.pulse_function     = pulse_function
         self.marker_active      = marker_active
         self.parameters         = parameters
-        self.use_as_tau         = use_as_tau
+        self.use_as_tick         = use_as_tick
 
 
 class Pulse_Block(object):
@@ -114,12 +115,12 @@ class Pulse_Block(object):
         self.digital_channels = 0
         self.number_of_lasers = 0
 
-        # calculate the tau value for the whole block. Basically sum all the
-        # init_length_bins which have the use_as_tau attribute set to True.
-        self.tau = 0
+        # calculate the tick value for the whole block. Basically sum all the
+        # init_length_bins which have the use_as_tick attribute set to True.
+        self.measurement_tick = 0
         # make the same thing for the increment, to obtain the total increment
-        # number for the block. This facilitates in calculating the tau list.
-        self.tau_increment = 0
+        # number for the block. This facilitates in calculating the measurement tick list.
+        self.measurement_tick_increment = 0
 
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
@@ -129,9 +130,10 @@ class Pulse_Block(object):
                 self.number_of_lasers += 1
 
 
-            if elem.use_as_tau:
-                self.tau = self.tau + elem.init_length_bins
-                self.tau_increment = self.tau_increment + elem.increment_bins
+            if elem.use_as_tick:
+                self.measurement_tick = self.measurement_tick + elem.init_length_bins
+                self.measurement_tick_increment = self.measurement_tick_increment + elem.increment_bins
+
             if elem.analog_channels > self.analog_channels:
                 self.analog_channels = elem.analog_channels
             if elem.digital_channels > self.digital_channels:
@@ -163,7 +165,7 @@ class Pulse_Block_Ensemble(object):
     This object is used as a construction plan to create one sampled file.
     """
 
-    def __init__(self, name, block_list, laser_channel_index, tau_array = [],
+    def __init__(self, name, block_list, laser_channel_index, measurement_ticks_list = [],
                  rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
@@ -171,7 +173,7 @@ class Pulse_Block_Ensemble(object):
         @param list block_list: contains the Pulse_Block Objects with
                            their number of repetitions, e.g.
                            [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
-        @param list tau_array: the x-axis of the measurement. Not yet properly used.
+        @param list measurement_ticks_list: the x-axis of the measurement. Not yet properly used.
         @param int laser_channel_index: the index of the digital channel representing the laser
         @param bool rotating_frame: indicates whether the phase should be
                                preserved for all the functions.
@@ -179,7 +181,7 @@ class Pulse_Block_Ensemble(object):
 
         self.name = name                        # block name
         self.block_list = block_list        # List of AWG_Block objects with repetition number
-        self.tau_array = tau_array
+        self.measurement_ticks_list = measurement_ticks_list
         self.laser_channel = laser_channel_index
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
@@ -225,19 +227,31 @@ class Pulse_Block_Ensemble(object):
 
 
 class Pulse_Sequence(object):
-    """
+    """ Higher order object for sequence capability.
+
     Represents a playback procedure for a number of Pulse_Block_Ensembles.
     Unused for pulse generator hardware without sequencing functionality.
     """
 
 
-    # FIXME: Class is totally out of date since it was unused until now.
-    # Rework needed if you want to implement sequenced stuff.
-    def __init__(self, name, ensemble_list, tau_array, analyse_laser_ind, rotating_frame = True):
+    def __init__(self, name, ensemble_list, measurement_ticks_list,
+                 rotating_frame=True):
+        """ The constructor for a Pulse_Sequence objects needs to have:
+
+        @param str name: the actual name of the sequence
+        @param list ensemble_list: list of Pulse_Block_Ensemble objects
+        @param list measurement_ticks_list: 1d list, where each entry
+                                            corresponds to an tick on an the
+                                            x-axis of the measurement. Note,
+                                            that the x-axis does not have to be
+                                            always a time axis!
+        @param bool rotating_frame: indicates, whether the phase has to be
+                                    preserved in all oscillating functions.
+        """
+
         self.name = name
         self.ensemble_list = ensemble_list
-        self.tau_array = tau_array
-        self.analyse_laser_ind = analyse_laser_ind
+        self.measurement_ticks_list = measurement_ticks_list
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
 
@@ -378,7 +392,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._add_pbe_param = OrderedDict()
         self._add_pbe_param['length'] = length_def
         self._add_pbe_param['increment'] = length_def
-        self._add_pbe_param['use as tau?'] = bool_def
+        self._add_pbe_param['use as tick?'] = bool_def
         # self._add_pbe_param['repeat?'] = bool_def
 
 
@@ -487,6 +501,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             os.makedirs(os.path.abspath(path))
 
         return os.path.abspath(path)
+
+    def _insert_predefined_methods(self):
+        """ Add the predefined methods to the main sequence object
+
+        Procedure:
+            The file is imported, so that its name space becomes accessable to
+            this object. Then all callables function (also called methods)
+            are attached to the main object self.
+        """
+
+
+        # make here the import directory, going from trunk dir.
+        module = importlib.import_module('logic.pulsed.predefined_methods')
+
+        setattr(self, 'generate_laser_on',
+                module.generate_laser_on)
+        return module
 
 
     def get_hardware_constraints(self):
@@ -1061,7 +1092,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             for num in range(self.digital_channels):
                 marker_active[num] = bool(row[self.cfg_param_pbe['digital_'+str(num)]])
 
-            use_as_tau = bool(row[self.cfg_param_pbe['use']])
+            use_as_tick = bool(row[self.cfg_param_pbe['use']])
 
             # create here actually the object with all the obtained information:
 
@@ -1073,7 +1104,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         pulse_function=pulse_function,
                         marker_active=marker_active,
                         parameters=parameter_list,
-                        use_as_tau=use_as_tau)
+                        use_as_tick=use_as_tick)
 
         pb_obj = Pulse_Block(pb_name, pbe_obj_list, num_laser_pulses)
         self.save_block(pb_name, pb_obj)
@@ -1106,19 +1137,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # list of all the pulse block element objects
         pb_obj_list = [None]*len(ensemble_matrix)
 
-        #FIXME: The whole tau array can be created much more convenient using the
+        #FIXME: The whole measurement tick array can be created much more convenient using the
         #built-in metadata inside the Pulse_Block and Pulse_Block_Ensemble objects.
-        #Maybe it is even better to automatically calculate the tau_array inside
+        #Maybe it is even better to automatically calculate the measurement_ticks_list inside
         #the objects refresh_parameters() method
-        #FIXME: Obtain the tau_list size before, and do not append to it.
-        # it is not easy to estimate the tau_list. Therefore follow the simple
+        #FIXME: Obtain the measurement_ticks_list size before, and do not append to it.
+        # it is not easy to estimate the measurement_ticks_list. Therefore follow the simple
         # append to list approach. Later a nicer way can be implemented.
-        tau_list = []
+        measurement_ticks_list = []
 
-        # to make a resonable tau list, the last biggest tau value after all
+        # to make a resonable measurement tick list, the last biggest tick value after all
         # the repetitions of a block is used as the offset_time for the next
         # block.
-        offset_tau_bin = 0
+        offset_tick_bin = 0
 
         for row_index, row in enumerate(ensemble_matrix):
 
@@ -1128,11 +1159,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             block = self.get_block(pulse_block_name)
 
             for num in range(pulse_block_reps+1):
-                tau_list.append(offset_tau_bin + block.init_length_bins + num*block.increment_bins)
+                measurement_ticks_list.append(offset_tick_bin + block.init_length_bins + num*block.increment_bins)
 
-            # for the next block, add the biggest time as offset_tau_bin.
-            # Otherwise the tau_list will be a mess.
-            offset_tau_bin = offset_tau_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
+            # for the next block, add the biggest time as offset_tick_bin.
+            # Otherwise the measurement_ticks_list will be a mess.
+            offset_tick_bin = offset_tick_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
             pb_obj_list[row_index] = (block, pulse_block_reps)
 
 
@@ -1144,7 +1175,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
                                               block_list=pb_obj_list,
-                                              tau_array=tau_list,
+                                              measurement_ticks_list=measurement_ticks_list,
                                               laser_channel_index=laser_channel_index,
                                               rotating_frame=rotating_frame)
         # set current block ensemble
@@ -1329,7 +1360,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # parameters of a Pulse_Block_Element:
         #init_length_bins, analog_channels, digital_channels,
         #         increment_bins = 0, pulse_function = None,
-        #         marker_active = None, parameters={}, use_as_tau=False
+        #         marker_active = None, parameters={}, use_as_tick=False
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0,
                                             ['Idle', 'Idle'], laser_markers,
                                             no_analog_params)
@@ -1339,15 +1370,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         element_list = [ ]
         element_list.append(laser_element)
 
-        tau_list = [laser_time_bins]
+        measurement_ticks_list = [laser_time_bins]
 
         # create the Pulse_Block object.
         block = Pulse_Block(name, element_list)
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list,
-                                              len(tau_list),
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list,
+                                              len(measurement_ticks_list),
                                               rotating_frame=False)
         # save block
         self.save_block(name, block)
@@ -1379,7 +1410,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_markers = [False, False, True, False]
 
         # create tau list
-        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus,
+        measurement_ticks_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus,
                                dtype=int)
 
         # generate elements
@@ -1400,7 +1431,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # Create the Pulse_Block_Element objects and append them to the element
         # list.
         element_list = []
-        for tau in tau_list:
+        for tau in measurement_ticks_list:
             mw_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'],
                                              idle_markers, mw_params)
             element_list.append(laser_element)
@@ -1415,7 +1446,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list,
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list,
                                               number_of_taus,
                                               rotating_frame=False)
         # save block
@@ -1508,15 +1539,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_markers = [False, False, True, False]
 
         # create tau lists
-        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus)
-        tauhalf_list = tau_list/2
+        measurement_ticks_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus)
+        tauhalf_list = measurement_ticks_list/2
         # correct taus for nonzero-length pi- and pi/2-pulses
-        tau_list_corr = tau_list - pi_bins
+        measurement_ticks_list_corr = measurement_ticks_list - pi_bins
         tauhalf_list_corr = tauhalf_list - (pi_bins/2) - (pihalf_bins/2)
         # round lists to nearest integers
-        tau_list_corr = np.array(np.rint(tau_list), dtype=int)
+        measurement_ticks_list_corr = np.array(np.rint(measurement_ticks_list), dtype=int)
         tauhalf_list_corr = np.array(np.rint(tauhalf_list), dtype=int)
-        tau_list = np.array(np.rint(tau_list), dtype=int)
+        measurement_ticks_list = np.array(np.rint(measurement_ticks_list), dtype=int)
         tauhalf_list = np.array(np.rint(tauhalf_list), dtype=int)
 
         # generate elements
@@ -1530,9 +1561,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # generate block list
         blocks = []
-        for tau_ind in range(len(tau_list_corr)):
+        for tau_ind in range(len(measurement_ticks_list_corr)):
             # create tau and tauhalf elements
-            tau_element = Pulse_Block_Element(tau_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+            tau_element = Pulse_Block_Element(measurement_ticks_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
             tauhalf_element = Pulse_Block_Element(tauhalf_list_corr[tau_ind], 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
 
             # actual XY8-N sequence
@@ -1567,7 +1598,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             elements.append(waiting_element)
 
             # create a new block for this XY8-N sequence with fixed tau and add it to the block list
-            blocks.append(Pulse_Block('XY8_' + str(N) + '_taubins_' + str(tau_list[tau_ind]), elements))
+            blocks.append(Pulse_Block('XY8_' + str(N) + '_taubins_' + str(measurement_ticks_list[tau_ind]), elements))
 
         # seqeunce trigger for FPGA counter
         if use_seqtrig:
@@ -1578,8 +1609,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         block_list = []
         for block in blocks:
             block_list.append((block, 0))
-        # name = 'XY8_' + str(N) + '_taustart_' + str(tau_list[0]) + '_tauend_' + str(tau_list[-1]) + '_numtaus_' + str(len(tau_list))
-        XY8_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, True)
+        # name = 'XY8_' + str(N) + '_taustart_' + str(measurement_ticks_list[0]) + '_tauend_' + str(measurement_ticks_list[-1]) + '_numtaus_' + str(len(measurement_ticks_list))
+        XY8_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list, number_of_taus, True)
         # save ensemble
         self.save_ensemble(name, XY8_ensemble)
         # set current block ensemble
@@ -1686,7 +1717,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_markers = [False, False, False, True]
 
         # create tau list
-        tau_list = np.linspace(spinlock_start_bins, spinlock_stop_bins, number_of_taus, dtype=int)
+        measurement_ticks_list = np.linspace(spinlock_start_bins, spinlock_stop_bins, number_of_taus, dtype=int)
 
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
@@ -1697,7 +1728,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         pi3half_element = Pulse_Block_Element(pi3half_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         # put elements in a list to create the block
         element_list = []
-        for tau in tau_list:
+        for tau in measurement_ticks_list:
             # create actual spinlock-pulse element
             spinlock_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, spinlock_params)
             # create measurement elements for this frequency
@@ -1723,7 +1754,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus*2, True)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list, number_of_taus*2, True)
         # save block
         # self.save_block(name, block)
         # save ensemble
@@ -1758,7 +1789,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_markers = [False, False, False, True]
 
         # create tau list
-        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
+        measurement_ticks_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
 
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
@@ -1768,7 +1799,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         pihalf_element = Pulse_Block_Element(pihalf_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, pihalf_params)
         # put elements in a list to create the block
         element_list = []
-        for tau in tau_list:
+        for tau in measurement_ticks_list:
             # create actual spinlock-pulse element
             spinlock_element = Pulse_Block_Element(tau, 2, 4, 0, ['Sin', 'Idle'], idle_markers, spinlock_params)
             # create measurement elements for this frequency
@@ -1786,7 +1817,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, True)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list, number_of_taus, True)
         # save block
         # self.save_block(name, block)
         # save ensemble
@@ -1823,7 +1854,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_markers = [False, False, False, True]
 
         # create tau list
-        tau_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
+        measurement_ticks_list = np.linspace(tau_start_bins, tau_end_bins, number_of_taus, dtype=int)
 
         # generate elements
         laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
@@ -1832,7 +1863,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
         # put elements in a list to create the block
         element_list = []
-        for tau in tau_list:
+        for tau in measurement_ticks_list:
             mw_element = Pulse_Block_Element(tau, 2, 4, 0, ['TripleSin', 'Idle'], idle_markers, mw_params)
             element_list.append(laser_element)
             element_list.append(aomdelay_element)
@@ -1846,7 +1877,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, tau_list, number_of_taus, False)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list, number_of_taus, False)
         # save block
         # self.save_block(name, block)
         # save ensemble

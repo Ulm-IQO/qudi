@@ -75,7 +75,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_binwidth = 1e-9   # in seconds
 
         # parameters of the currently running sequence
-        self.tau_array = np.array(range(50))
+        self.measurement_ticks_list = np.array(range(50))
         self.number_of_lasers = 50
         self.sequence_length_s = 100e-6
 
@@ -240,8 +240,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def change_fc_binning_for_pulsed_analysis(self,fc_binning):
 
-        self.tau_array = np.array(range(self.number_of_lasers))*fc_binning
-        self.signal_plot_x = self.tau_array
+        self.measurement_ticks_list = np.array(range(self.number_of_lasers))*fc_binning
+        self.signal_plot_x = self.measurement_ticks_list
         self.fast_counter_binwidth=fc_binning
         self.configure_fast_counter()
 
@@ -464,7 +464,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
-        self.signal_plot_x = self.tau_array
+        self.signal_plot_x = self.measurement_ticks_list
         self.signal_plot_y = np.zeros(self.number_of_lasers, dtype=float)
 
 
@@ -481,11 +481,12 @@ class PulsedMeasurementLogic(GenericLogic):
     def _initialize_measuring_error_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-        self.measuring_error_plot_x = self.tau_array
+        self.measuring_error_plot_x = self.measurement_ticks_list
         self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
 
 
     def _save_data(self, tag=None, timestamp=None):
+
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
@@ -558,8 +559,8 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Bin size (ns)'] = self.fast_counter_binwidth*1e9
         parameters['Number of laser pulses'] = self.number_of_lasers
         parameters['laser length (ns)'] = self.fast_counter_binwidth*1e9 * self.laser_plot_x.size
-        parameters['Tau start'] = self.tau_array[0]
-        parameters['Tau increment'] = self.tau_array[1] - self.tau_array[0]
+        parameters['Measurement Ticks start'] = self.measurement_ticks_list[0]
+        parameters['Measurement Ticks increment'] = self.measurement_ticks_list[1] - self.measurement_ticks_list[0]
 
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
@@ -567,12 +568,12 @@ class PulsedMeasurementLogic(GenericLogic):
                                    as_text=True, precision=':')#, as_xml=False, precision=None, delimiter=None)
         return
 
-#    def get_tau_list(self):
+#    def get_measurement_ticks_list(self):
 #        """Get the list containing all tau values in ns for the current measurement.
 #
 #        @return numpy array: tau_vector_ns
 #        """
-#        return self._tau_vector_ns
+#        return self.measurement_ticks_list
 #
 #
 #    def get_number_of_laser_pulses(self):
