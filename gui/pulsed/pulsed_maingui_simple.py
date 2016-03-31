@@ -262,7 +262,7 @@ class PulsedMeasurementGui(GUIBase):
         # retrieve important sequence parameters from the sequence_generator_logic and pass it to the pulsed_measurement_logic
         self._pulsed_measurement_logic.sequence_length_s = self._seq_gen_logic.current_ensemble.length_bins / self._seq_gen_logic.sample_rate
         self._pulsed_measurement_logic.number_of_lasers = self._seq_gen_logic.current_ensemble.number_of_lasers
-        self._pulsed_measurement_logic.tau_array = self._seq_gen_logic.current_ensemble.tau_array/self._seq_gen_logic.sample_rate
+        self._pulsed_measurement_logic.measurement_ticks_list = self._seq_gen_logic.current_ensemble.measurement_ticks_list/self._seq_gen_logic.sample_rate
         # update the number of lasers in the analysis tab
         self._mw.numlaser_InputWidget.setText(str(self._seq_gen_logic.current_ensemble.number_of_lasers))
         self.lasernum_changed()
@@ -659,8 +659,8 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.show_errorbars_CheckBox.isChecked():
             # calculate optimal beam width for the error bars
             beamwidth = 1e99
-            for i in range(len(self._pulsed_measurement_logic.tau_array)-1):
-                width = self._pulsed_measurement_logic.tau_array[i+1] - self._pulsed_measurement_logic.tau_array[i]
+            for i in range(len(self._pulsed_measurement_logic.measurement_ticks_list)-1):
+                width = self._pulsed_measurement_logic.measurement_ticks_list[i+1] - self._pulsed_measurement_logic.measurement_ticks_list[i]
                 width = width/10
                 if width <= beamwidth:
                     beamwidth = width
@@ -762,8 +762,8 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.laser_to_show_ComboBox.setEditText('sum')
             laser_show = 0
 
-        tau_array = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
-        self._pulsed_measurement_logic.tau_array = tau_array
+        measurement_ticks_list = np.array(range(tau_start, tau_start + tau_incr*laser_num, tau_incr))
+        self._pulsed_measurement_logic.measurement_ticks_list = measurement_ticks_list
         self._pulsed_measurement_logic.number_of_lasers = laser_num
         self._pulsed_measurement_logic.display_pulse_no = laser_show
         self._pulsed_measurement_logic.mykrowave_freq = mw_frequency

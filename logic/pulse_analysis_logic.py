@@ -126,12 +126,12 @@ class PulseAnalysisLogic(GenericLogic):
 
         return measuring_error
 
-#    def get_tau_list(self):
+#    def get_measurement_ticks_list(self):
 #        """Get the list containing all tau values in ns for the current measurement.
 #
 #        @return numpy array: tau_vector_ns
 #        """
-#        return self._tau_vector_ns
+#        return self._measurement_ticks_list
 #
 #
 #    def get_number_of_laser_pulses(self):

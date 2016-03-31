@@ -1198,13 +1198,13 @@ class PulsedMeasurementGui(GUIBase):
                     self.set_element_in_block_table(row_index, column, value)
 
 
-            #FIXME: that is not really general, since the name 'use_as_tau' is
+            #FIXME: that is not really general, since the name 'use_as_tick' is
             #       directly taken. That must be more general! Right now it is
             #       hard to make it in a general way.
 
-            # now set use as tau parameter:
+            # now set use as tick parameter:
             column = block_config_dict['use']
-            value = pulse_block_element.use_as_tau
+            value = pulse_block_element.use_as_tick
             # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
             if value:
                 value=2
@@ -2498,7 +2498,7 @@ class PulsedMeasurementGui(GUIBase):
         # anaylsis tab
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
-        self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.show_tau_editor)
+        self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
 
 
         # Connect InputWidgets to events
@@ -2636,8 +2636,8 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
             # calculate optimal beam width for the error bars
             beamwidth = 1e99
-            for i in range(len(self._pulsed_meas_logic.tau_array)-1):
-                width = self._pulsed_meas_logic.tau_array[i+1] - self._pulsed_meas_logic.tau_array[i]
+            for i in range(len(self._pulsed_meas_logic.measurement_ticks_list)-1):
+                width = self._pulsed_meas_logic.measurement_ticks_list[i+1] - self._pulsed_meas_logic.measurement_ticks_list[i]
                 width = width/3
                 if width <= beamwidth:
                     beamwidth = width
@@ -2700,7 +2700,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(True)
 
 
-    def show_tau_editor(self):
+    def measurement_ticks_editor(self):
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
@@ -2762,8 +2762,8 @@ class PulsedMeasurementGui(GUIBase):
     def seq_parameters_changed(self):
 
         laser_num = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
-        tau_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
-        tau_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
+        measurement_tick_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
+        measurement_tick_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
         mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
         mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
@@ -2771,8 +2771,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-        tau_vector = np.arange(tau_start, tau_start + tau_incr*laser_num, tau_incr)
-        # self._pulsed_meas_logic.running_sequence_parameters['tau_vector'] = tau_vector
+        measurement_tick_vector = np.arange(measurement_tick_start, measurement_tick_start + measurement_tick_incr*laser_num, measurement_tick_incr)
+        # self._pulsed_meas_logic.running_sequence_parameters['tau_vector'] = measurement_tick_vector
 
         self._pulsed_meas_logic.microwave_freq = mw_frequency
         self._pulsed_meas_logic.microwave_power = mw_power

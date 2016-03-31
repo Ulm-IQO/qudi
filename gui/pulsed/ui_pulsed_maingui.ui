@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -241,7 +241,11 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QSpinBox" name="ana_param_fc_num_laser_pulse_SpinBox"/>
+                  <widget class="QSpinBox" name="ana_param_fc_num_laser_pulse_SpinBox">
+                   <property name="maximum">
+                    <number>10000000</number>
+                   </property>
+                  </widget>
                  </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_22">
