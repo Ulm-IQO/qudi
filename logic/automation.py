@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -49,7 +49,8 @@ class ExecutionTreeModel(QtCore.QAbstractItemModel):
         return None
 
     def index(self, row, column, parent = QtCore.QModelIndex()):
-        if not parent.isValid() and parent.column() =! 0:
+        #if not parent.isValid() and parent.column() =! 0:
+        if False:
             return QtCore.QModelIndex()
         item = self._getItem(parent).child(row)
         if item is not None:
@@ -73,13 +74,15 @@ class ExecutionTreeModel(QtCore.QAbstractItemModel):
 
     def flags(self, index): 
         if index.isValid():
-            return  QtCore.Qt.ItemIsEditable | QtCore.QAbstractItemModel::flags(index)
+            return  QtCore.Qt.ItemIsEditable | QtCore.QAbstractItemModel.flags(index)
         return 0
     
     def setData(self, index, value, role=QtCore.Qt.EditRole):
+        pass
         
 
     def setHeaderData(self, section, orientation, value, role=QtCore.Qt.EditRole):
+        pass
 
     def insertColumns(self, position, columns, parent):
         self.beginInsertColumns(parent, position, position + columns - 1)
@@ -96,16 +99,18 @@ class ExecutionTreeModel(QtCore.QAbstractItemModel):
             self.removeRows(0, self.rowCount())
         return success
 
-    def insertRows(self, ):
+    def insertRows(self, position, rows, parent):
+        pass
 
-    def removeRows(self, ):
+    def removeRows(self, position, rows, parent):
+        pass
 
 class ExecTreeItem:
 
-    def __init__(self, parent, data):
+    def __init__(self, parent, dat):
         self.parentItem = parent
         self.childItems = []
-        self.data = data
+        self.datastore = dat
 
     def child(self, number):
         return self.childItems[number]
@@ -120,7 +125,7 @@ class ExecTreeItem:
         return 1
 
     def data(self, column):
-        return self.data
+        return self.datastore
 
     def setData(self, column, value):
         if position < 0 or position >= len(self.childItems):
@@ -160,7 +165,7 @@ class AutomationLogic(GenericLogic):
     _modclass = 'AutomationLogic'
     _modtype = 'logic'
     _in = {'taskrunner': 'TaskRunner'}
-    _out = {'automationlogic': 'SimpleDataLogic'}
+    _out = {'automationlogic': 'AutomationLogic'}
         
     sigRepeat = QtCore.Signal()
 
@@ -182,7 +187,7 @@ class AutomationLogic(GenericLogic):
           @param object e: Fysom state change notification
         """
         self._taskrunner = self.connector['in']['taskrunner']['object']
-        self.execTree = ExecutionTreeModel()
+        self.model = ExecutionTreeModel()
 
     def deactivation(self, e):
         """ Deactivate modeule.
