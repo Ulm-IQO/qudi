@@ -176,6 +176,11 @@ class VoltageScanningLogic(GenericLogic):
 
         self.scan_matrix = np.zeros( (self.number_of_repeats, self.return_slowness) )
 
+
+    def get_current_voltage(self):
+        """returns current voltage of hardware device(atm NIDAQ 4th output)"""
+        return self._scanning_device.get_scanner_position()[3]
+
     def start_scanning(self, v_min = None, v_max = None):
         """Setting up the scanner device and starts the scanning procedure
 
