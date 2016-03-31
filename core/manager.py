@@ -877,7 +877,8 @@ class Manager(QtCore.QObject):
                 self.logger.logMsg('value for class key is not a string', msgType='error')
                 return None
             if not '.' in connections[c]:
-                self.logger.logMsg('wrong format for connection target: {0}'.format(connections[c]), msgType='error')
+                self.logger.logMsg('{}.{}: connection {}: {} has wrong format'
+                                    'for connection target'.format(base, key, c, connections[c]), msgType='error')
                 return None
             destmod = connections[c].split('.')[0]
             destbase = ''
