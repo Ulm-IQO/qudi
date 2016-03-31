@@ -6,7 +6,7 @@ from core.util.mutex import Mutex
 
 import importlib
 
-from os import listdir, getcwd, chdir
+from os import listdir
 from os.path import isfile, join
 
 # FIXME: In general is it needed for any purposes to use weighting?
@@ -87,14 +87,11 @@ class FitLogic(GenericLogic):
 
         filenames = []
         # for path in directories:
-        path = join(getcwd(), 'logic', 'fitmethods')
+        path = join(self.get_main_dir(), 'logic', 'fitmethods')
         for f in listdir(path):
             if isfile(join(path,f)):
                 if f[-3:] == '.py': 
                     filenames.append(f[:-3])
-        current_path= getcwd()
-        chdir(path)
-
 
         self.oneD_fit_methods = dict()
         self.twoD_fit_methods = dict()
@@ -144,9 +141,6 @@ class FitLogic(GenericLogic):
         self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation'+
                     'if you added a new method and it does not show',
                     msgType='message')
-
-
-        chdir(current_path)
 
 
     def activation(self, e):
