@@ -670,6 +670,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     # Do not confuse the activation/deactivation of channels with the actual
     # channels being used in the specified pulse_block_ensemble!
     #
+    # THESE METHODS WILL (AND SHOULD) BE REMOVED WITHIN THE REVIEW PROCESS.
+    #
     # def set_active_channels(self, a_ch={}, d_ch={}):
     #     """ Set the active channels for the pulse generator hardware.
     #
@@ -709,26 +711,26 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #     # self.analog_channels = len([x for x in active_channels[0].values() if x == True])
     #     # self.digital_channels = len([x for x in active_channels[1].values() if x == True])
     #     return active_channels
-
-    def load_file(self, load_dict={}):
-        """ Load an already sampled PulseBlockEnsemble object to the device.
-
-        @param: dict load_dict: a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                Pulse_Block_Ensemble.
-
-        Example:
-            If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
-            be loaded on channel 1 and 2 then it has to be passed like:
-                upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
-            The pulse device should choose the proper file (which belongs to
-            channel 1 and 2) and load it.
-            You can e.g. also load just the file on channel two with:
-                upload_dict = {2: 'my-funny-stuff'}
-        """
-
-        self._pulse_generator_device.load_asset(load_dict)
+    #
+    # def load_file(self, load_dict={}):
+    #     """ Load an already sampled PulseBlockEnsemble object to the device.
+    #
+    #     @param: dict load_dict: a dictionary with keys being one of the
+    #                             available channel numbers and items being the
+    #                             name of the already sampled
+    #                             Pulse_Block_Ensemble.
+    #
+    #     Example:
+    #         If the Pulse_Block_Ensemble with name 'my-funny-stuff' is going to
+    #         be loaded on channel 1 and 2 then it has to be passed like:
+    #             upload_dict = {1: 'my-funny-stuff', 2: 'my-funny-stuff'}
+    #         The pulse device should choose the proper file (which belongs to
+    #         channel 1 and 2) and load it.
+    #         You can e.g. also load just the file on channel two with:
+    #             upload_dict = {2: 'my-funny-stuff'}
+    #     """
+    #
+    #     self._pulse_generator_device.load_asset(load_dict)
 
 
     def clear_pulser(self):
@@ -746,8 +748,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def set_interleave(self,interleave_state=False):
         """ Set the interleave state.
 
-        @param bool interleave_state: If nothing passed, interleave will be
-                                      switched off.
+        @param bool interleave_state: If nothing passed, interleave will be switched off.
         """
         self._pulse_generator_device.set_interleave(interleave_state)
 
@@ -811,8 +812,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         'removed.'.format(name, self.block_dir),
                         msgType='warning')
 
-        return
-
     def refresh_block_list(self):
         """ Refresh the list of available (saved) blocks """
 
@@ -823,10 +822,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # blocks.sort()
         self.saved_pulse_blocks = blocks
         self.signal_block_list_updated.emit()
-        return
 
     def save_ensemble(self, name, ensemble):
-        """ Saves a Pulse_Block_Ensemble with name name to file."""
+        """ Saves a Pulse_Block_Ensemble with name name to file.
+
+        @param str name: name of the ensemble, which will be serialized.
+        @param obj ensemble: a Pulse_Block_Ensemble object
+        """
 
         # TODO: Overwrite handling
         ensemble.name = name
@@ -834,7 +836,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             pickle.dump(ensemble, outfile)
         self.refresh_ensemble_list()
         self.current_ensemble = ensemble
-        return
 
     def get_ensemble(self, name, set_as_current_ensemble=False):
         """ Deserialize a *.ens file into a Pulse_Block_Ensemble object.
@@ -929,8 +930,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return sequence
 
     def delete_sequence(self, name):
-        ''' remove the sequence "name" from the sequence list and HDD
-        '''
+        """ Remove the sequence "name" from the sequence list and HDD.
+
+        @param str name: name of the sequence object, which should be deleted.
+        """
+
         if name in self.saved_sequences:
             os.remove( os.path.join(self.sequence_dir, name + '.se'))
             self.refresh_sequence_list()
@@ -939,11 +943,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         'in\n{1}\nTherefore nothing is '
                         'removed.'.format(name, self.sequence_dir),
                         msgType='warning')
-        return
 
     def refresh_sequence_list(self):
-        ''' refresh the list of available (saved) sequences
-        '''
+        """ Refresh the list of available (saved) sequences. """
+
         sequence_files = [f for f in os.listdir(self.sequence_dir) if '.se' in f]
         sequences = []
         for filename in sequence_files:
@@ -957,27 +960,24 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """ Upload an already sampled Ensemble or Sequence object to the device.
             Does NOT load it into channels.
 
-            @param asset_name: string, name of the ensemble/sequence to upload
+        @param asset_name: string, name of the ensemble/sequence to upload
         """
         err = self._pulse_generator_device.upload_asset(asset_name)
         return err
 
     def load_asset(self, asset_name, load_dict={}):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
+        """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
         @param str asset_name: The name of the asset to be loaded
-
-        @param dict load_dict:  a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given
-                                then the channel association is invoked from
-                                the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+        @param dict load_dict:  a dictionary with keys being one of the available channel numbers
+                                and items being the name of the already sampled waveform/sequence
+                                files. Examples:
+                                    {1: rabi_Ch1, 2: rabi_Ch2}
+                                    {1: rabi_Ch2, 2: rabi_Ch1}
+                                This parameter is optional. If an empty dict is given then the
+                                channel association should be invoked from the sequence generation,
+                                i.e. the filename appendix (_Ch1, _Ch2 etc.). Note that is not in
+                                general an ambigous procedure!
 
         @return int: error code (0:OK, -1:error)
         """
@@ -1328,7 +1328,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (bin_offset + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
 
-                    if chunkwise and write_to_file:
+                    if chunkwise and write_samples_to_file:
                         # determine it the current element is the last one to be sampled.
                         # Toggle the is_last_chunk flag accordingly.
                         element_count += 1
@@ -1346,7 +1346,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
-                        self._pulse_generator_device.write_to_file(ensemble.name,
+                        self._pulse_generator_device.write_samples_to_file(ensemble.name,
                                                                    analog_samples,
                                                                    digital_samples,
                                                                    number_of_samples,
@@ -1392,7 +1392,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            self._pulse_generator_device.write_to_file(ensemble.name,
+            self._pulse_generator_device.write_samples_to_file(ensemble.name,
                                                        analog_samples,
                                                        digital_samples,
                                                        number_of_samples,
