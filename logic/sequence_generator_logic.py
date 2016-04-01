@@ -823,7 +823,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # blocks.sort()
         self.saved_pulse_blocks = blocks
         self.signal_block_list_updated.emit()
-        returns
+        return
 
     def save_ensemble(self, name, ensemble):
         """ Saves a Pulse_Block_Ensemble with name name to file."""
