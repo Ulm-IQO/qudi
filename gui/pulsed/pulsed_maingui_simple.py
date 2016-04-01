@@ -865,3 +865,9 @@ class PulsedMeasurementGui(GUIBase):
         @param Fysom.event e: Event Object of Fysom
         """
         pass
+
+
+
+
+
+
