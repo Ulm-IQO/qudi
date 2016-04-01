@@ -83,9 +83,7 @@ class Pulse_Block_Element(object):
 
 
 class Pulse_Block(object):
-    """ Represents one collection of Pulse_Block_Elements which is called a
-        Pulse_Block.
-    """
+    """ Collection of Pulse_Block_Elements which is called a Pulse_Block. """
 
     def __init__(self, name, element_list, laser_channel_index):
         """ The constructor for a Pulse_Block needs to have:
@@ -165,7 +163,7 @@ class Pulse_Block_Ensemble(object):
     This object is used as a construction plan to create one sampled file.
     """
 
-    def __init__(self, name, block_list, laser_channel_index, measurement_ticks_list = [],
+    def __init__(self, name, block_list, laser_channel_index, measurement_ticks_list=[],
                  rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
@@ -225,6 +223,11 @@ class Pulse_Block_Ensemble(object):
         self.refresh_parameters()
         return
 
+# one crucial thing about a list is that you needed to know the correspondance
+# i.e. in which entry which information is situated. Dictionaries assign to a
+# keyword a value, which is much more descriptive and which enables us to carry
+# a bigger information content.
+
 
 class Pulse_Sequence(object):
     """ Higher order object for sequence capability.
@@ -234,12 +237,22 @@ class Pulse_Sequence(object):
     """
 
 
-    def __init__(self, name, ensemble_list, measurement_ticks_list,
+    def __init__(self, name, ensemble_param_list, measurement_ticks_list=[],
                  rotating_frame=True):
         """ The constructor for a Pulse_Sequence objects needs to have:
 
         @param str name: the actual name of the sequence
-        @param list ensemble_list: list of Pulse_Block_Ensemble objects
+        @param list ensemble_param_list: list containing a tuple of two entries:
+                (Pulse_Block_Ensemble, seq_param), (Pulse_Block_Ensemble, seq_param), ...
+                The seq_param is a dictionary, where the various sequence
+                parameters are saved with their keywords and the according
+                parameter. Which parameter will be in this dictionary will
+                completely depend on the sequence parameter set of the pulsing
+                device. But most certain the parameter 'reps' meaning repetions
+                will be presesnt in the sequence parameters. If only 'reps' are
+                in the dictionary, than the dict will look like
+                    seq_param = {'reps': 12}
+                if 12 was chosen as the number of repetitions.
         @param list measurement_ticks_list: 1d list, where each entry
                                             corresponds to an tick on an the
                                             x-axis of the measurement. Note,
@@ -250,41 +263,66 @@ class Pulse_Sequence(object):
         """
 
         self.name = name
-        self.ensemble_list = ensemble_list
+        self.ensemble_param_list = ensemble_param_list
         self.measurement_ticks_list = measurement_ticks_list
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
 
     def refresh_parameters(self):
+        """ Generate the needed parameters from the passed object.
+
+        Baiscally, calculate the length_bins and number of analog and digital
+        channels.
+        """
         self.length_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
-        for ensemble, reps in self.ensemble_list:
-            self.length_bins += (ensemble.length_bins * reps)
+        for ensemble, seq_dict in self.ensemble_param_list:
+            self.length_bins += (ensemble.length_bins * seq_dict['reps'])
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels
             if ensemble.digital_channels > self.digital_channels:
                 self.digital_channels = ensemble.digital_channels
-        self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
-        return
 
-    def replace_ensemble(self, position, ensemble):
-        self.ensemble_list[position] = ensemble
+        self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
+
+    def replace_ensemble(self, position, ensemble_param):
+        """ Replace an ensemble at a given position.
+
+        @param int position: position in a the ensemble list
+        @param list ensemble_param: with entries
+                                        (Pulse_Block_Ensemble, seq_param)
+                                    which will replace the old one.
+        """
+        self.ensemble_param_list[position] = ensemble_param
         self.refresh_parameters()
         return
 
     def delete_ensemble(self, position):
+        """ Delete an ensemble at a given position
+
+        @param int position: position within the list self.ensemble_param_list.
+        """
         del(self.ensemble_list[position])
         self.refresh_parameters()
-        return
 
-    def append_ensemble(self, ensemble, at_beginning = False):
+    def append_ensemble(self, ensemble_param, at_beginning=False):
+        """ Append either at the front or at the back an ensemble_param
+
+        @param tuple ensemble_param: containing two entries:
+                                        (Pulse_Block_Ensemble, seq_param)
+                                     where Pulse_Block_Ensemble is the object
+                                     and seq_param is the parameter set for that
+                                     ensemble.
+        @param bool at_beginning: If flase append to end (default), if true then
+                                  inset at beginning.
+        """
+
         if at_beginning:
             self.ensemble_list.insert(0, ensemble)
         else:
             self.ensemble_list.append(ensemble)
         self.refresh_parameters()
-        return
 
 
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
@@ -776,8 +814,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return
 
     def refresh_block_list(self):
-        ''' refresh the list of available (saved) blocks
-        '''
+        """ Refresh the list of available (saved) blocks """
 
         block_files = [f for f in os.listdir(self.block_dir) if '.blk' in f]
         blocks = []
@@ -786,12 +823,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # blocks.sort()
         self.saved_pulse_blocks = blocks
         self.signal_block_list_updated.emit()
-        return
-
+        returns
 
     def save_ensemble(self, name, ensemble):
-        ''' saves a block ensemble generated by the block ensemble editor into a file
-        '''
+        """ Saves a Pulse_Block_Ensemble with name name to file."""
+
         # TODO: Overwrite handling
         ensemble.name = name
         with open(os.path.join(self.ensemble_dir, name + '.ens'), 'wb') as outfile:
@@ -827,8 +863,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return ensemble
 
     def delete_ensemble(self, name):
-        ''' remove the ensemble "name" from the ensemble list and HDD
-        '''
+        """ Remove the ensemble with 'name' from the ensemble list and HDD. """
+
         if name in self.saved_pulse_block_ensembles:
             os.remove( os.path.join(self.ensemble_dir, name + '.ens'))
             self.refresh_ensemble_list()
@@ -840,26 +876,32 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return
 
     def refresh_ensemble_list(self):
-        ''' Refresh the list of available (saved) ensembles.
-        '''
+        """ Refresh the list of available (saved) ensembles. """
+
         ensemble_files = [f for f in os.listdir(self.ensemble_dir) if '.ens' in f]
         ensembles = []
         for filename in ensemble_files:
             ensembles.append(filename.rsplit('.', 1)[0])
         self.saved_pulse_block_ensembles = ensembles
         self.signal_ensemble_list_updated.emit()
-        return
 
     def save_sequence(self, name, sequence):
-        ''' saves a sequence generated by the sequence editor into a file
-        '''
+        """ Serialize the Pulse_Sequence object with name 'name' to file.
+
+        @param str name: name of the sequence object.
+        @param object sequence: a Pulse_Sequence object, which is going to be
+                                serialized to file.
+
+        @return: str: name of the serialized object, if needed.
+        """
+
         # TODO: Overwrite handling
         sequence.name = name
         with open( os.path.join(self.sequence_dir, name + '.se'), 'wb') as outfile:
             pickle.dump(sequence, outfile)
         self.refresh_sequence_list()
         self.current_sequence = sequence
-        return
+        return sequence
 
     def get_sequence(self, name, set_as_current_sequence=False):
         """ Deserialize a *.se file into a Sequence object.
@@ -1201,11 +1243,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 #                    BEGIN sequence/block sampling
 #-------------------------------------------------------------------------------
-    def sample_sequence(self, sequence):
-        """
-        Samples the sequence to obtain the needed waveforms.
-        """
-        pass
+
 
     def sample_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True):
         """ General sampling of a PulseBlockEnsemble object, which serves as the
@@ -1342,9 +1380,22 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             return
 
-#-------------------------------------------------------------------------------
-#                    END sequence/block sampling
-#-------------------------------------------------------------------------------
+
+    def sample_sequence(self, sequence):
+        """
+        Samples the sequence to obtain the needed waveforms.
+        """
+        pass
+
+
+    #---------------------------------------------------------------------------
+    #                    END sequence/block sampling
+    #---------------------------------------------------------------------------
+
+
+    # --------------------------------------------------------------------------
+    #                    BEGIN predefined methods
+    # --------------------------------------------------------------------------
 
     #Fixme: This method has to be fixed
     #Question: How can I gate the samle_rate here.
@@ -1889,3 +1940,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # update ensemble list
         self.refresh_ensemble_list()
         return
+
+    # --------------------------------------------------------------------------
+    #                    END  predefined methods
+    # --------------------------------------------------------------------------
