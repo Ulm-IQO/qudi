@@ -410,9 +410,9 @@ class AWG7122C(Base, PulserInterface):
             self._send_file(name)
         return 0
 
-    def write_to_file(self, name, analog_samples,
-                            digital_samples, total_number_of_samples,
-                            is_first_chunk, is_last_chunk):
+    def write_sample_to_file(self, name, analog_samples, digital_samples,
+                                 total_number_of_samples,
+                                 is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -420,28 +420,26 @@ class AWG7122C(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
-                                       samples for the analog channels that
-                                       are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
-                                      for the digital channels that
-                                      are to be written by this function call.
+        @param analog_samples: float32 numpy ndarray, contains the samples for the analog channels
+                               that are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples for the digital channels
+                                that are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the entire waveform.
                                         Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last
-                              write to this file.
+        @param is_first_chunk: bool, indicates if the current chunk is the first write to this
+                               file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last write to this file.
 
         @return: error code (0: OK, -1: error)
         """
+
         if self.current_sample_mode == self.sample_mode['wfm-file']:
 
             # IMPORTANT: These numbers build the header in the wfm file. Needed
             # by the device program to understand wfm file. If it is wrong,
             # AWG will not be able to understand the written file.
 
-            # The pure waveform has the number 1000, idicating that it is a
+            # The pure waveform has the number 1000, indicating that it is a
             # *.wfm file. For sequence mode e.g. the number would be 3001 or
             # 3002, depending on the number of channels in the sequence mode.
             # (The last number indicates the channel numbers).
@@ -453,41 +451,48 @@ class AWG7122C(Base, PulserInterface):
 
             for channel_index, channel_arr in enumerate(analog_samples):
 
-                filename = name+'_ch'+str(channel_index+1) + '.wfm'
+                filename = name + '_ch' + str(channel_index + 1) + '.wfm'
 
-                filepath = os.path.join(self.host_waveform_directory,filename)
+                filepath = os.path.join(self.host_waveform_directory, filename)
                 with open(filepath, 'wb') as wfm_file:
 
-                    # write the first line, which is the header file:
-                    num_bytes = str(len(analog_samples[channel_index*2])*5)
-                    num_digits = str(len(num_bytes))
-                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-                    wfm_file.write(header)
+                    if is_first_chunk:
+                        # write the first line, which is the header file, if first chunk is passed:
+                        num_bytes = str(len(digital_samples[channel_index * 2]) * 5)
+                        num_digits = str(len(num_bytes))
+                        header = str.encode('MAGIC 1000\r\n#' + num_digits + num_bytes)
+                        wfm_file.write(header)
+                    else:
+
+                        # otherwise the file already exists and one has to append all the last
+                        # chunks to it, therefore go to the end of the file (whence=2) with
+                        # offset=0:
+                        wfm_file.seek(offset=0, whence=2)
 
                     # now write at once the whole file in binary representation:
 
                     # convert the presampled numpy array of the analog channels
                     # to a float number represented by 8bits:
                     shape_for_wavetmp = np.shape(channel_arr)[0]
-                    wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-                    wavetmp = wavetmp.reshape((-1,5))
-                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-                    wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+                    wavetmp = np.zeros(shape_for_wavetmp * 5, dtype='c')
+                    wavetmp = wavetmp.reshape((-1, 5))
 
-                    # The previously created array wavetmp contains one
-                    # additional column, where the marker states will be written
-                    # into:
-                    marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
+                    wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr / 4), dtype='c').reshape((-1, 4))
+
+                    # The previously created array wavetmp contains one additional column, where
+                    # the marker states will be written into:
+                    marker = digital_samples[channel_index * 2] + digital_samples[
+                                                                      channel_index * 2 + 1] * 2
                     marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
                     wavetmp[:, -1] = marker_byte
 
                     # now write everything to file:
                     wfm_file.write(wavetmp.tobytes())
 
-                    # the footer encodes the sample rate, which was used for
-                    # that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
-                    wfm_file.write(footer)
+                    if is_last_chunk:
+                        # the footer encodes the sample rate, which was used for that file:
+                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
+                        wfm_file.write(footer)
 
         else:
             self.logMsg('Sample mode not defined for the given pulser hardware.'
