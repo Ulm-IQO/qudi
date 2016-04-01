@@ -320,9 +320,9 @@ class AWG70K(Base, PulserInterface):
     #FIXME: hdf5storage package is inefficient regarding memory usage and speed.
     #       Better dont use it for now until a better package is found. Use .WFMX instead.
     #       Once a better solution is found a case differentiation has to be implemented.
-    def write_to_file(self, name, analog_samples,
-                            digital_samples, total_number_of_samples,
-                            is_first_chunk, is_last_chunk):
+    def write_samples_to_file(self, name, analog_samples,
+                             digital_samples, total_number_of_samples,
+                             is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.

@@ -119,8 +119,6 @@ class AWG5002C(Base, PulserInterface):
         self.sample_mode = {'matlab': 0, 'wfm-file': 1, 'wfmx-file': 2}
         self.current_sample_mode = self.sample_mode['wfm-file']
 
-
-
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
 
@@ -234,6 +232,18 @@ class AWG5002C(Base, PulserInterface):
 
         constraints['subsequence_num'] = {'min': 1, 'max': 8000,
                                           'step': 1, 'unit': '#'}
+
+        # If sequencer mode is enable than sequence_param should be not just an
+        # empty dictionary.
+        sequence_param = OrderedDict()
+        sequence_param['reps'] = {'min': 0, 'max': 65536, 'step': 1, 'unit': '#'}
+        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1,
+                                          'unit': 'bool'}
+        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1,
+                                           'unit': 'row'}
+        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1,
+                                   'unit': 'row'}
+        constraints['sequence_param'] = sequence_param
 
         # For the channel configuration, three information has to be set!
         #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
@@ -417,9 +427,8 @@ class AWG5002C(Base, PulserInterface):
         return
 
 
-    def write_to_file(self, name, analog_samples,
-                            digital_samples, total_number_of_samples,
-                            is_first_chunk, is_last_chunk):
+    def write_samples_to_file(self, name, analog_samples, digital_samples, total_number_of_samples,
+                              is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
@@ -427,44 +436,18 @@ class AWG5002C(Base, PulserInterface):
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
-                                       samples for the analog channels that
-                                       are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
-                                      for the digital channels that
-                                      are to be written by this function call.
+        @param analog_samples: float32 numpy ndarray, contains the samples for the analog channels
+                               that are to be written by this function call.
+        @param digital_samples: bool numpy ndarray, contains the samples for the digital channels
+                                that are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the entire waveform.
                                         Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the
-                               first write to this file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last
-                              write to this file.
+        @param is_first_chunk: bool, indicates if the current chunk is the first write to this
+                               file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last write to this file.
 
         @return: error code (0: OK, -1: error)
         """
-
-
-
-    # def write_chunk_to_file(self, name, analog_samples_chunk,
-    #                         digital_samples_chunk, total_number_of_samples,
-    #                         is_first_chunk, is_last_chunk, sample_rate,
-    #                         pp_voltage, ):
-    #     """
-    #     Appends a sampled chunk of a whole waveform to a file. Create the file
-    #     if it is the first chunk.
-    #
-    #     @param name: string representing the name of the sampled ensemble
-    #     @param analog_samples_chunk: float32 numpy ndarray containing the
-    #                                    samples for the analog channels.
-    #     @param digital_samples_chunk: bool numpy ndarray containing the samples
-    #                                   for the digital channels.
-    #     @param total_number_of_samples: The total number of samples in the entire waveform
-    #     @param is_first_chunk: bool indicating if the current chunk is the
-    #                            first write to this file.
-    #     @param is_last_chunk: bool indicating if the current chunk is the last
-    #                           write to this file.
-    #     @return: error code (0: OK, -1: error)
-    #     """
 
         if self.current_sample_mode == self.sample_mode['wfm-file']:
 
@@ -489,11 +472,19 @@ class AWG5002C(Base, PulserInterface):
                 filepath = os.path.join(self.host_waveform_directory,filename)
                 with open(filepath, 'wb') as wfm_file:
 
-                    # write the first line, which is the header file:
-                    num_bytes = str(len(digital_samples[channel_index*2])*5)
-                    num_digits = str(len(num_bytes))
-                    header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-                    wfm_file.write(header)
+
+                    if is_first_chunk:
+                        # write the first line, which is the header file, if first chunk is passed:
+                        num_bytes = str(len(digital_samples[channel_index*2])*5)
+                        num_digits = str(len(num_bytes))
+                        header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
+                        wfm_file.write(header)
+                    else:
+
+                        # otherwise the file already exists and one has to append all the last
+                        # chunks to it, therefore go to the end of the file (whence=2) with
+                        # offset=0:
+                        wfm_file.seek(offset=0,whence=2)
 
                     # now write at once the whole file in binary representation:
 
@@ -502,12 +493,11 @@ class AWG5002C(Base, PulserInterface):
                     shape_for_wavetmp = np.shape(channel_arr)[0]
                     wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
                     wavetmp = wavetmp.reshape((-1,5))
-                    # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
+
                     wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
 
-                    # The previously created array wavetmp contains one
-                    # additional column, where the marker states will be written
-                    # into:
+                    # The previously created array wavetmp contains one additional column, where
+                    # the marker states will be written into:
                     marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
                     marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
                     wavetmp[:, -1] = marker_byte
@@ -515,10 +505,10 @@ class AWG5002C(Base, PulserInterface):
                     # now write everything to file:
                     wfm_file.write(wavetmp.tobytes())
 
-                    # the footer encodes the sample rate, which was used for
-                    # that file:
-                    footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
-                    wfm_file.write(footer)
+                    if is_last_chunk:
+                        # the footer encodes the sample rate, which was used for that file:
+                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
+                        wfm_file.write(footer)
 
         else:
             self.logMsg('Sample mode not defined for the given pulser hardware.'
@@ -540,6 +530,7 @@ class AWG5002C(Base, PulserInterface):
                 2 indicates that the instrument is running.
                -1 indicates that the request of the status for AWG has failed.
         """
+
         status_dic = {}
         # the possible status of the AWG have the following meaning:
         status_dic[-1] = 'Failed Request or Failed Communication with device.'
