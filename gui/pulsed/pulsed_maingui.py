@@ -515,7 +515,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
 
         self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block)
-        self._mw.curr_block_del_PushButton.clicked.connect(self.block_editor_delete_clicked)
+        self._mw.curr_block_del_PushButton.clicked.connect(self.delete_pulse_block)
 
         # connect the signals for the block organizer:
         self._mw.organizer_add_last_PushButton.clicked.connect(self.block_organizer_add_row_after_last)
@@ -572,6 +572,11 @@ class PulsedMeasurementGui(GUIBase):
             for subset in itertools.combinations(maximum_ch_variation, entry):
                 if subset != ():
                     channels_combi.append(str(list(subset)))
+
+        self._mw.upload_independ_ch_combi_ComboBox.clear()
+        self._mw.upload_independ_ch_combi_ComboBox.addItems(channels_combi)
+        index = len(channels_combi) - 1
+        self._mw.upload_independ_ch_combi_ComboBox.setCurrentIndex(index)
 
         # A dictionary containing the mathematical function names to choose
         # from in the block editor with corresponding lists of needed
@@ -817,7 +822,7 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: Implement a proper choosing of the channels to upload to.
         # Right now the channels are invoked from the asset filenames
 
-        self._seq_gen_logic.sample_ensemble(ensemble_name, True, False)
+        self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
         return
 
     def upload_to_device_clicked(self):
@@ -911,11 +916,6 @@ class PulsedMeasurementGui(GUIBase):
         """ Delete all loaded files in the device's current memory. """
         self._seq_gen_logic.clear_pulser()
 
-    # -------------------------------------------------------------------------
-    #           Methods for the Pulse Block Editor
-    # -------------------------------------------------------------------------
-
-
     def get_current_channels(self):
         """ Get current number of analog and digial channels chosen by user.
 
@@ -926,7 +926,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         return (self._num_a_ch, self._num_d_ch)
 
-
     def get_hardware_constraints(self):
         """ Request the constrains from the logic, which are coming from the
             hardware.
@@ -934,7 +933,6 @@ class PulsedMeasurementGui(GUIBase):
         @return: dict where the keys in it are predefined in the interface.
         """
         return self._seq_gen_logic.get_hardware_constraints()
-
 
     def get_add_pbe_param(self):
         """ Retrieve the additional parameter configuration for the
@@ -952,6 +950,9 @@ class PulsedMeasurementGui(GUIBase):
         """
         return self._seq_gen_logic.get_add_pb_param()
 
+    # -------------------------------------------------------------------------
+    #           Methods for the Pulse Block Editor
+    # -------------------------------------------------------------------------
 
     def get_element_in_block_table(self, row, column):
         """ Simplified wrapper function to get the data from a specific cell
@@ -1059,40 +1060,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_length_DSpinBox.setValue(length*1e6) # in microns
         self._mw.curr_block_bins_SpinBox.setValue(bin_length)
         self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
-
-
-    def _update_current_pulse_block_ensemble(self):
-
-        length_mu = 0.0 # in microseconds
-        length_bin = 0
-        num_laser_pulses = 0
-        pulse_block_col = self._cfg_param_pb['pulse_block']
-
-        reps_col = self._cfg_param_pb['repetition']
-
-        if len(self._seq_gen_logic.saved_pulse_blocks) > 0:
-            for row_ind in range(self._mw.block_organizer_TableWidget.rowCount()):
-                pulse_block_name = self.get_element_in_organizer_table(row_ind, pulse_block_col)
-
-                block_obj = self._seq_gen_logic.get_block(pulse_block_name)
-
-
-
-                reps = self.get_element_in_organizer_table(row_ind, reps_col)
-
-                # Calculate the length via the gaussian summation formula:
-                length_bin = int(length_bin + block_obj.init_length_bins*(reps+1) + ((reps+1)*((reps+1)+1)/2)*block_obj.increment_bins)
-
-                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps+1)
-
-
-            length_mu = (length_bin/self.get_sample_rate())*1e6 # in microns
-
-        self._mw.curr_ensemble_length_DSpinBox.setValue(length_mu)
-
-        self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
-
-        self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
 
     def get_block_table(self):
         """ Convert block table data to numpy array.
@@ -1229,129 +1196,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
 
 
-    def load_pulse_block_ensemble(self, ensemble_name=None):
-        """ Loads the current selected Pulse_Block_Ensemble object from the
-            logic into the editor or a specified object with name ensemble_name.
-
-        @param str ensemble_name: optional, name of the Pulse_Block_Element
-                                  object, which should be loaded in the GUI
-                                  Block Organizer. If no name passed, the
-                                  current Pulse_Block_Ensemble from the Logic is
-                                  taken to be loaded.
-
-        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
-        are looking like and cannot be that general.
-        """
-
-        # NOTE: This method will be connected to the CLICK event of a
-        #       QPushButton, which passes as an optional argument as a bool
-        #       value depending on the checked state of the QPushButton. The
-        #       passed boolean value has to be handled in addition!
-
-        if (ensemble_name is not None) and (type(ensemble_name) is not bool):
-            current_ensemble_name = ensemble_name
-        else:
-            current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
-
-        # get the ensemble object and set as current ensemble
-        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
-                                                    set_as_current_ensemble=True)
-
-        # Check whether an ensemble is found, otherwise there will be None:
-        if ensemble is None:
-            return
-
-        self.block_organizer_clear_table() # clear the block organizer table
-        rows = len(ensemble.block_list) # get amout of rows needed for display
-
-        # add as many rows as there are blocks in the ensemble
-        # minus 1 because a single row is already present after clear
-        self.block_organizer_add_row_after_last(rows-1)
-
-        # This dictionary has the information which column number describes
-        # which object, it is a configuration dict between GUI and logic
-        organizer_config_dict = self.get_cfg_param_pb()
-
-        # run through all blocks in the block_elements block_list to fill in the
-        # row informations
-        for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
-
-            column = organizer_config_dict['pulse_block']
-            self.set_element_in_organizer_table(row_index, column, pulse_block.name)
-
-            column = organizer_config_dict['repetition']
-            self.set_element_in_organizer_table(row_index, column, int(repetitions))
-
-        # set the ensemble name LineEdit to the current ensemble
-        self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
-
-
-    def block_editor_add_row_before_selected(self, insert_rows=1):
-        """ Add row before selected element. """
-
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        selected_row = self._mw.block_editor_TableWidget.currentRow()
-
-        # the signal passes a boolean value, which overwrites the insert_rows
-        # parameter. Check that here and use the actual default value:
-        if type(insert_rows) is bool:
-            insert_rows = 1
-
-        for rows in range(insert_rows):
-            self._mw.block_editor_TableWidget.insertRow(selected_row)
-        self.initialize_cells_block_editor(start_row=selected_row,
-                                           stop_row=selected_row+insert_rows)
-
-        self._mw.block_editor_TableWidget.blockSignals(False)
-
-
-    def block_editor_add_row_after_last(self, insert_rows=1):
-        """ Add row after last row in the block editor. """
-
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        # the signal passes a boolean value, which overwrites the insert_rows
-        # parameter. Check that here and use the actual default value:
-        if type(insert_rows) is bool:
-            insert_rows = 1
-
-        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
-
-        self._mw.block_editor_TableWidget.setRowCount(number_of_rows+insert_rows)
-        self.initialize_cells_block_editor(start_row=number_of_rows,
-                                           stop_row=number_of_rows+insert_rows)
-
-        self._mw.block_editor_TableWidget.blockSignals(False)
-
-    def block_editor_delete_row_selected(self):
-        """ Delete row of selected element. """
-
-        # get the row number of the selected item(s). That will return the
-        # lowest selected row
-        row_to_remove = self._mw.block_editor_TableWidget.currentRow()
-        self._mw.block_editor_TableWidget.removeRow(row_to_remove)
-
-    def block_editor_delete_row_last(self):
-        """ Delete the last row in the block editor. """
-
-        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
-        # remember, the row index is started to count from 0 and not from 1,
-        # therefore one has to reduce the value by 1:
-        self._mw.block_editor_TableWidget.removeRow(number_of_rows-1)
-
-    def block_editor_clear_table(self):
-        """ Delete all rows in the block editor table. """
-
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        self._mw.block_editor_TableWidget.setRowCount(1)
-        self._mw.block_editor_TableWidget.clearContents()
-
-        self.initialize_cells_block_editor(start_row=0)
-        self._mw.block_editor_TableWidget.blockSignals(False)
-
-    def block_editor_delete_clicked(self):
+    def delete_pulse_block(self):
         """
         Actions to perform when the delete button in the block editor is clicked
         """
@@ -1390,6 +1235,43 @@ class PulsedMeasurementGui(GUIBase):
             if data not in self._seq_gen_logic.saved_pulse_blocks:
                 self.initialize_cells_block_organizer(start_row=row, stop_row=row+1,
                                                       start_col=column,stop_col=column+1)
+
+    def _update_current_pulse_block_ensemble(self):
+
+        length_mu = 0.0  # in microseconds
+        length_bin = 0
+        num_laser_pulses = 0
+        pulse_block_col = self._cfg_param_pb['pulse_block']
+
+        reps_col = self._cfg_param_pb['repetition']
+
+        if len(self._seq_gen_logic.saved_pulse_blocks) > 0:
+            for row_ind in range(
+                    self._mw.block_organizer_TableWidget.rowCount()):
+                pulse_block_name = self.get_element_in_organizer_table(row_ind,
+                                                                       pulse_block_col)
+
+                block_obj = self._seq_gen_logic.get_block(pulse_block_name)
+
+                reps = self.get_element_in_organizer_table(row_ind, reps_col)
+
+                # Calculate the length via the gaussian summation formula:
+                length_bin = int(
+                    length_bin + block_obj.init_length_bins * (reps + 1) + (
+                    (reps + 1) * (
+                    (reps + 1) + 1) / 2) * block_obj.increment_bins)
+
+                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (
+                reps + 1)
+
+            length_mu = (
+                        length_bin / self.get_sample_rate()) * 1e6  # in microns
+
+        self._mw.curr_ensemble_length_DSpinBox.setValue(length_mu)
+
+        self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
+
+        self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
 
 
     def get_element_in_organizer_table(self, row, column):
@@ -1481,7 +1363,125 @@ class PulsedMeasurementGui(GUIBase):
 
         return table
 
+    def block_editor_add_row_before_selected(self, insert_rows=1):
+        """ Add row before selected element. """
 
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
+        selected_row = self._mw.block_editor_TableWidget.currentRow()
+
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        for rows in range(insert_rows):
+            self._mw.block_editor_TableWidget.insertRow(selected_row)
+        self.initialize_cells_block_editor(start_row=selected_row,
+                                           stop_row=selected_row + insert_rows)
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def block_editor_add_row_after_last(self, insert_rows=1):
+        """ Add row after last row in the block editor. """
+
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
+
+        self._mw.block_editor_TableWidget.setRowCount(
+            number_of_rows + insert_rows)
+        self.initialize_cells_block_editor(start_row=number_of_rows,
+                                           stop_row=number_of_rows + insert_rows)
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def block_editor_delete_row_selected(self):
+        """ Delete row of selected element. """
+
+        # get the row number of the selected item(s). That will return the
+        # lowest selected row
+        row_to_remove = self._mw.block_editor_TableWidget.currentRow()
+        self._mw.block_editor_TableWidget.removeRow(row_to_remove)
+
+    def block_editor_delete_row_last(self):
+        """ Delete the last row in the block editor. """
+
+        number_of_rows = self._mw.block_editor_TableWidget.rowCount()
+        # remember, the row index is started to count from 0 and not from 1,
+        # therefore one has to reduce the value by 1:
+        self._mw.block_editor_TableWidget.removeRow(number_of_rows - 1)
+
+    def block_editor_clear_table(self):
+        """ Delete all rows in the block editor table. """
+
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
+        self._mw.block_editor_TableWidget.setRowCount(1)
+        self._mw.block_editor_TableWidget.clearContents()
+
+        self.initialize_cells_block_editor(start_row=0)
+        self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def load_pulse_block_ensemble(self, ensemble_name=None):
+        """ Loads the current selected Pulse_Block_Ensemble object from the
+            logic into the editor or a specified object with name ensemble_name.
+
+        @param str ensemble_name: optional, name of the Pulse_Block_Element
+                                  object, which should be loaded in the GUI
+                                  Block Organizer. If no name passed, the
+                                  current Pulse_Block_Ensemble from the Logic is
+                                  taken to be loaded.
+
+        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
+        are looking like and cannot be that general.
+        """
+
+        # NOTE: This method will be connected to the CLICK event of a
+        #       QPushButton, which passes as an optional argument as a bool
+        #       value depending on the checked state of the QPushButton. The
+        #       passed boolean value has to be handled in addition!
+
+        if (ensemble_name is not None) and (type(ensemble_name) is not bool):
+            current_ensemble_name = ensemble_name
+        else:
+            current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
+
+        # get the ensemble object and set as current ensemble
+        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
+                                                    set_as_current_ensemble=True)
+
+        # Check whether an ensemble is found, otherwise there will be None:
+        if ensemble is None:
+            return
+
+        self.block_organizer_clear_table()  # clear the block organizer table
+        rows = len(ensemble.block_list)  # get amout of rows needed for display
+
+        # add as many rows as there are blocks in the ensemble
+        # minus 1 because a single row is already present after clear
+        self.block_organizer_add_row_after_last(rows - 1)
+
+        # This dictionary has the information which column number describes
+        # which object, it is a configuration dict between GUI and logic
+        organizer_config_dict = self.get_cfg_param_pb()
+
+        # run through all blocks in the block_elements block_list to fill in the
+        # row informations
+        for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
+            column = organizer_config_dict['pulse_block']
+            self.set_element_in_organizer_table(row_index, column, pulse_block.name)
+
+            column = organizer_config_dict['repetition']
+            self.set_element_in_organizer_table(row_index, column, int(repetitions))
+
+        # set the ensemble name LineEdit to the current ensemble
+        self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
 
 
     def block_organizer_add_row_before_selected(self,insert_rows=1):
@@ -2629,8 +2629,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def refresh_signal_plot(self):
-        ''' This method refreshes the xy-matrix image
-        '''
+        """ This method refreshes the xy-matrix image """
+
         #### dealing with the error bars
         #FIXME: Does that belong into the logic?
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
@@ -2841,6 +2841,105 @@ class PulsedMeasurementGui(GUIBase):
 
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
+        """
+        pass
+
+
+
+    def _create_sequence_table(self):
+        """ Depending on the sequence parameters a table witll be created. """
+
+        constraint = self.get_hardware_constraints()
+
+        self._mw.seq_editor_TableWidget
+        pass
+
+    def load_pulse_sequence(self):
+        pass
+
+    def sequence_editor_add_row_before_selected(self, insert_rows=1):
+        """ Add row before selected element. """
+
+        # self._mw.block_editor_TableWidget.blockSignals(True)
+        #
+        # selected_row = self._mw.block_editor_TableWidget.currentRow()
+        #
+        # # the signal passes a boolean value, which overwrites the insert_rows
+        # # parameter. Check that here and use the actual default value:
+        # if type(insert_rows) is bool:
+        #     insert_rows = 1
+        #
+        # for rows in range(insert_rows):
+        #     self._mw.block_editor_TableWidget.insertRow(selected_row)
+        # self.initialize_cells_block_editor(start_row=selected_row,
+        #                                    stop_row=selected_row + insert_rows)
+        #
+        # self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def sequence_editor_add_row_after_last(self, insert_rows=1):
+        """ Add row after last row in the sequence editor. """
+
+        # self._mw.block_editor_TableWidget.blockSignals(True)
+        #
+        # # the signal passes a boolean value, which overwrites the insert_rows
+        # # parameter. Check that here and use the actual default value:
+        # if type(insert_rows) is bool:
+        #     insert_rows = 1
+        #
+        # number_of_rows = self._mw.block_editor_TableWidget.rowCount()
+        #
+        # self._mw.block_editor_TableWidget.setRowCount(
+        #     number_of_rows + insert_rows)
+        # self.initialize_cells_block_editor(start_row=number_of_rows,
+        #                                    stop_row=number_of_rows + insert_rows)
+        #
+        # self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def sequence_editor_delete_row_selected(self):
+        """ Delete row of selected element. """
+
+        # get the row number of the selected item(s). That will return the
+        # lowest selected row
+        # row_to_remove = self._mw.block_editor_TableWidget.currentRow()
+        # self._mw.block_editor_TableWidget.removeRow(row_to_remove)
+
+    def sequence_editor_delete_row_last(self):
+        """ Delete the last row in the sequence editor. """
+
+        # number_of_rows = self._mw.block_editor_TableWidget.rowCount()
+        # # remember, the row index is started to count from 0 and not from 1,
+        # # therefore one has to reduce the value by 1:
+        # self._mw.block_editor_TableWidget.removeRow(number_of_rows - 1)
+
+    def sequence_editor_clear_table(self):
+        """ Delete all rows in the sequence editor table. """
+
+        # self._mw.block_editor_TableWidget.blockSignals(True)
+        #
+        # self._mw.block_editor_TableWidget.setRowCount(1)
+        # self._mw.block_editor_TableWidget.clearContents()
+        #
+        # self.initialize_cells_block_editor(start_row=0)
+        # self._mw.block_editor_TableWidget.blockSignals(False)
+
+    def sequence_editor_delete_clicked(self):
+        """
+        Actions to perform when the delete button in the sequence editor is clicked
+        """
+        # name = self._mw.saved_blocks_ComboBox.currentText()
+        # self._seq_gen_logic.delete_block(name)
+        # self.update_block_organizer_list()
+        # return
+
+    def generate_pulse_sequence(self):
+        """ Generate a Pulse_Sequence object."""
+        pass
+
+
+    def sample_sequence(self):
+        """
+
+        @return:
         """
         pass
 

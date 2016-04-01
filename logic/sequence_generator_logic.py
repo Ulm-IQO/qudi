@@ -1269,7 +1269,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         the Pulse_Block_Ensemble.
         Therefore it iterates through all blocks, repetitions and elements of the
         ensemble and calculates the exact voltages (float64) according to the
-        specified math_function. The sampes are later on stored inside a float32 array.
+        specified math_function. The samples are later on stored inside a float32 array.
         So each element is calculated with high precision (float64) and then
         down-converted to float32 to be stored.
 
@@ -1336,48 +1336,72 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             is_last_chunk = True
 
                         # allocate temporary sample arrays to contain the current element
-                        analog_samples = np.empty([ana_channels, element_length_bins], dtype = 'float32')
-                        digital_samples = np.empty([dig_channels, element_length_bins], dtype = bool)
+                        analog_samples = np.empty([ana_channels, element_length_bins], dtype='float32')
+                        digital_samples = np.empty([dig_channels, element_length_bins], dtype=bool)
 
                         # actually fill the allocated sample arrays with values.
                         for i, state in enumerate(marker_active):
-                            digital_samples[i] = np.full(element_length_bins, state, dtype = bool)
+                            digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
-                        self._pulse_generator_device.write_to_file(ensemble.name, analog_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
+                        self._pulse_generator_device.write_to_file(ensemble.name,
+                                                                   analog_samples,
+                                                                   digital_samples,
+                                                                   number_of_samples,
+                                                                   is_first_chunk,
+                                                                   is_last_chunk)
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
-                        # if the ensemble should be sampled as a whole (chunkwise = False) fill the entries in the huge sample arrays
+
+                        # if the ensemble should be sampled as a whole (chunkwise = False) fill the
+                        # entries in the huge sample arrays
                         for i, state in enumerate(marker_active):
-                            digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype = bool)
+                            digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
                             analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
-                        # increment the index offset of the overall sample array for the next element
+
+                        # increment the index offset of the overall sample array for the next
+                        # element
                         entry_ind += element_length_bins
 
-                    # if the rotating frame should be preserved (default) increment the offset counter for the time array.
+                    # if the rotating frame should be preserved (default) increment the offset
+                    # counter for the time array.
                     if ensemble.rotating_frame:
                         bin_offset += element_length_bins
 
         if not write_to_file:
-            # return a status message with the time needed for sampling the entire ensemble as a whole without writing to file.
-            self.logMsg('Time needed for sampling as a whole without writing to file: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            # return a status message with the time needed for sampling the entire ensemble as a
+            # whole without writing to file.
+            self.logMsg('Time needed for sampling as a whole without writing to file: "{0}" '
+                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             # return the sample arrays for write_to_file was set to FALSE
+
+
             return analog_samples, digital_samples
         elif chunkwise:
-            # return a status message with the time needed for sampling and writing the ensemble chunkwise.
-            self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            # return a status message with the time needed for sampling and writing the ensemble
+            # chunkwise.
+            self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" '
+                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             return
         else:
-            # If the sampling should not be chunkwise and write to file is enabled call the write_to_file method only once with both flags set to TRUE
+            # If the sampling should not be chunkwise and write to file is enabled call the
+            # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            self._pulse_generator_device.write_to_file(ensemble.name, analog_samples, digital_samples, number_of_samples, is_first_chunk, is_last_chunk)
-            # return a status message with the time needed for sampling and writing the ensemble as a whole.
-            self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            self._pulse_generator_device.write_to_file(ensemble.name,
+                                                       analog_samples,
+                                                       digital_samples,
+                                                       number_of_samples,
+                                                       is_first_chunk,
+                                                       is_last_chunk)
+            # return a status message with the time needed for sampling and writing the ensemble as
+            # a whole.
+            self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" '
+                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
             return
 
 
