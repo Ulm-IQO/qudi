@@ -211,6 +211,19 @@ class PulserDummy(Base, PulserInterface):
         constraints['subsequence_num'] = {'min': 1, 'max': 4000,
                                           'step': 1, 'unit': '#'}
 
+        # If sequencer mode is enable than sequence_param should be not just an
+        # empty dictionary.
+        sequence_param = OrderedDict()
+        sequence_param['reps'] = {'min': 0, 'max': 65536, 'step': 1,
+                                  'unit': '#'}
+        sequence_param['trigger_wait'] = {'min': False, 'max': True, 'step': 1,
+                                          'unit': 'bool'}
+        sequence_param['event_jump_to'] = {'min': -1, 'max': 8000, 'step': 1,
+                                           'unit': 'row'}
+        sequence_param['go_to'] = {'min': 0, 'max': 8000, 'step': 1,
+                                   'unit': 'row'}
+        constraints['sequence_param'] = sequence_param
+
         # For the channel configuration, three information has to be set!
         #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
         #   by yourself.
@@ -312,9 +325,9 @@ class PulserDummy(Base, PulserInterface):
         self.logMsg('PulserDummy: Switch off the Output.', msgType='status')
         return self.current_status
 
-    def write_to_file(self, name, analog_samples,
-                            digital_samples, total_number_of_samples,
-                            is_first_chunk, is_last_chunk):
+    def write_samples_to_file(self, name, analog_samples,
+                              digital_samples, total_number_of_samples,
+                              is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.

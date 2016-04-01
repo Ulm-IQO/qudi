@@ -410,9 +410,9 @@ class AWG7122C(Base, PulserInterface):
             self._send_file(name)
         return 0
 
-    def write_sample_to_file(self, name, analog_samples, digital_samples,
-                                 total_number_of_samples,
-                                 is_first_chunk, is_last_chunk):
+    def write_samples_to_file(self, name, analog_samples, digital_samples,
+                              total_number_of_samples,
+                              is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a file. Create the file
         if it is the first chunk.
