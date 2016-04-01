@@ -788,6 +788,12 @@ class PulsedMeasurementGui(GUIBase):
 
         return self._seq_gen_logic.saved_pulse_blocks
 
+    def get_current_ensemble_list(self):
+        """ Retrieve the available Pulse_Block_Ensemble objects from the logic.
+
+        @return: list[] with strings descriping the available Pulse_Block_Ensemble objects.
+        """
+
     def update_sample_rate(self):
         """Updates the current sample rate in the logic """
         sample_rate = self._mw.sample_freq_DSpinBox.value()
@@ -1220,6 +1226,315 @@ class PulsedMeasurementGui(GUIBase):
 
         self.update_block_organizer_list()
 
+    def insert_parameters(self, column):
+        """ Insert additional parameters given in the dict add_pbe_param at specified column.
+
+        @param int column: a column number in the block editor table
+        """
+
+        # insert parameter:
+        insert_at_col_pos = column
+        for column, parameter in enumerate(self.get_add_pbe_param()):
+
+            # add the new properties to the whole column through delegate:
+            item_dict = self.get_add_pbe_param()[parameter]
+
+            if 'unit_prefix' in item_dict.keys():
+                unit_text = item_dict['unit_prefix'] + item_dict['unit']
+            else:
+                unit_text = item_dict['unit']
+
+            self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos + column)
+            self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos + column,
+                                                                      QtGui.QTableWidgetItem())
+            self._mw.block_editor_TableWidget.horizontalHeaderItem(
+                insert_at_col_pos + column).setText('{0} ({1})'.format(parameter, unit_text))
+            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos + column, 90)
+
+            # Use only DoubleSpinBox as delegate:
+            if item_dict['unit'] == 'bool':
+                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
+            else:
+                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
+            self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos + column,
+                                                                       delegate)
+
+            # initialize the whole row with default values:
+            for row_num in range(self._mw.block_editor_TableWidget.rowCount()):
+                # get the model, here are the data stored:
+                model = self._mw.block_editor_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, insert_at_col_pos + column)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = delegate.get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
+    def count_digital_channels(self):
+        """ Get the number of currently displayed digital channels.
+
+        @return int: number of digital channels
+
+        The number of digital channal are counted and return and additionally
+        the internal counter variable _num_d_ch is updated. The counting
+        procedure is based on the block_editor_TableWidget.
+        """
+        count_dch = 0
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
+                count_dch = count_dch + 1
+
+        self._num_d_ch = count_dch
+        return count_dch
+
+    def count_analog_channels(self):
+        """ Get the number of currently displayed analog channels.
+
+        @return int: number of analog channels
+
+        The number of analog channal are counted and return and additionally
+        the internal counter variable _num_a_ch is updated. The counting
+        procedure is based on the block_editor_TableWidget since it is assumed
+        that all operation on the block_editor_TableWidget is also applied on
+        block_organizer_TableWidget.
+        """
+
+        count_a_ch = 0
+        # there must be definitly less analog channels then available columns
+        # in the table, therefore the number of columns can be used as the
+        # upper border.
+        for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
+            for column in range(self._mw.block_editor_TableWidget.columnCount()):
+                if ('ACh' + str(
+                        poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(
+                        column).text():
+                    # analog channel found, break the inner loop to
+                    count_a_ch = count_a_ch + 1
+                    break
+
+        self._num_a_ch = count_a_ch
+        return self._num_a_ch
+
+    def set_a_d_ch(self, num_a_ch=None, num_d_ch=None):
+        """ Set amount of analog or/and digital channels.
+
+        @param num_a_ch: int, optional, number of analog channels.
+        @param num_d_ch: int, optional, number of digital channels.
+
+        This function wraps basically around the function
+        _set_block_editor_columns. It is more intuitive to set the number of
+        channels then the number of columns.
+        If no arguments are passed, the table is simple reinitialized to
+        default values.
+        """
+        self._set_block_editor_columns(num_a_ch=num_a_ch, num_d_ch=num_d_ch, )
+
+    def _determine_needed_parameters(self):
+        """ Determine the maximal number of needed parameters for desired functions.
+
+        @return ('<biggest_func_name>, number_of_parameters)
+        """
+
+        # FIXME: Reimplement this function such that it will return the
+        #       parameters of all needed functions and not take only the
+        #       parameters of the biggest function. Then the return should be
+        #       not the biggest function, but a set of all the needed
+        #       parameters which is obtained from get_func_config()!
+
+
+        curr_func_list = self.get_current_function_list()
+        complete_func_config = self.get_func_config()
+
+        num_max_param = 0
+        biggest_func = ''
+
+        for func in curr_func_list:
+            if num_max_param < len(complete_func_config[func]):
+                num_max_param = len(complete_func_config[func])
+                biggest_func = func
+
+        return (num_max_param, biggest_func)
+
+    def _set_block_editor_columns(self, num_a_ch=None, num_d_ch=None, ):
+        """ General function which creates the needed columns in Pulse Block
+            Editor.
+
+        @param num_a_ch: int, desired numbe of analog channels
+        @param num_d_ch: int, desired number of digital channels
+
+        If no argument is passed, the table is simply renewed. Otherwise the
+        desired number of channels are created.
+        Every time this function is executed all the table entries are erased
+        and created again to prevent wrong delegation.
+        """
+
+        self._mw.block_editor_TableWidget.blockSignals(True)
+
+        if num_d_ch is None:
+            num_d_ch = self._num_d_ch
+
+        if num_a_ch is None:
+            num_a_ch = self._num_a_ch
+
+        self._pulsed_meas_logic.analog = num_a_ch
+        self._pulsed_meas_logic.digital = num_d_ch
+        self._seq_gen_logic.analog_channels = num_a_ch
+        self._seq_gen_logic.digital_channels = num_d_ch
+
+        # Determine the function with the most parameters. Use also that
+        # function as a construction plan to create all the needed columns for
+        # the parameters.
+        (num_max_param, biggest_func) = self._determine_needed_parameters()
+
+        # Erase the delegate from the column, pass a None reference:
+        for column in range(self._mw.block_editor_TableWidget.columnCount()):
+            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, None)
+
+        # clear the number of columns:
+        self._mw.block_editor_TableWidget.setColumnCount(0)
+
+        # total number of analog and digital channels:
+        num_a_d_ch = num_a_ch * (num_max_param + 1) + num_d_ch
+
+        self._mw.block_editor_TableWidget.setColumnCount(num_a_d_ch)
+
+        num_a_to_create = num_a_ch
+        num_d_to_create = num_d_ch
+
+        channel_map = []
+
+        a_created = False
+        d_created = False
+
+        column = 0
+        while (column < num_a_d_ch):
+
+            if num_a_to_create == 0 or a_created:
+
+                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column,
+                                                                          QtGui.QTableWidgetItem())
+                self._mw.block_editor_TableWidget.horizontalHeaderItem(column).setText(
+                    'DCh{:d}'.format(num_d_ch - num_d_to_create))
+                self._mw.block_editor_TableWidget.setColumnWidth(column, 40)
+
+                channel_map.append('DCh{:d}'.format(num_d_ch - num_d_to_create))
+
+                # itemlist for checkbox
+                item_dict = {}
+                item_dict['init_val'] = QtCore.Qt.Unchecked
+                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
+                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
+
+                if not d_created and num_d_to_create != 1:
+                    d_created = True
+                else:
+                    a_created = False
+                    d_created = False
+
+                num_d_to_create = num_d_to_create - 1
+                column = column + 1
+
+            else:
+                if num_d_to_create > 0:
+                    a_created = True
+
+                param_pos = 0
+                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column + param_pos,
+                                                                          QtGui.QTableWidgetItem())
+                self._mw.block_editor_TableWidget.horizontalHeaderItem(column + param_pos).setText(
+                    'ACh{0:d}\nfunction'.format(num_a_ch - num_a_to_create))
+                self._mw.block_editor_TableWidget.setColumnWidth(column + param_pos, 70)
+
+                channel_map.append('ACh{0:d}'.format(num_a_ch - num_a_to_create))
+
+                item_dict = {}
+                item_dict['get_list_method'] = self.get_current_function_list
+
+                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
+                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column + param_pos,
+                                                                           delegate)
+
+                # create here all
+                for param_pos, parameter in enumerate(self.get_func_config()[biggest_func]):
+                    # initial block:
+
+                    item_dict = self.get_func_config()[biggest_func][parameter]
+
+                    unit_text = item_dict['unit_prefix'] + item_dict['unit']
+
+                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(
+                        column + param_pos + 1, QtGui.QTableWidgetItem())
+                    self._mw.block_editor_TableWidget.horizontalHeaderItem(
+                        column + param_pos + 1).setText(
+                        'ACh{0:d}\n{1} ({2})'.format(num_a_ch - num_a_to_create, parameter,
+                                                     unit_text))
+                    self._mw.block_editor_TableWidget.setColumnWidth(column + param_pos + 1, 100)
+
+                    # add the new properties to the whole column through delegate:
+
+                    # extract the classname from the _param_a_ch list to be able to deligate:
+                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
+                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(
+                        column + param_pos + 1, delegate)
+
+                column = column + (num_max_param + 1)
+                num_a_to_create = num_a_to_create - 1
+
+        self._num_a_ch = num_a_ch
+        self._num_d_ch = num_d_ch
+
+        self.insert_parameters(num_a_d_ch)
+
+        self.initialize_cells_block_editor(0, self._mw.block_editor_TableWidget.rowCount())
+
+        self.set_cfg_param_pbe()
+        self._mw.block_editor_TableWidget.blockSignals(False)
+        self.set_channel_map(channel_map)
+        self._update_current_pulse_block()
+
+    def initialize_cells_block_editor(self, start_row, stop_row=None,
+                                      start_col=None, stop_col=None):
+
+        """ Initialize the desired cells in the block editor table.
+
+        @param start_row: int, index of the row, where the initialization
+                          should start
+        @param stop_row: int, optional, index of the row, where the
+                         initalization should end.
+        @param start_col: int, optional, index of the column where the
+                          initialization should start
+        @param stop_col: int, optional, index of the column, where the
+                         initalization should end.
+
+        With this function it is possible to reinitialize specific elements or
+        part of a row or even the whole row. If start_row is set to 0 the whole
+        row is going to be initialzed to the default value.
+        """
+
+        if stop_row is None:
+            stop_row = start_row + 1
+
+        if start_col is None:
+            start_col = 0
+
+        if stop_col is None:
+            stop_col = self._mw.block_editor_TableWidget.columnCount()
+
+        for col_num in range(start_col, stop_col):
+
+            for row_num in range(start_row, stop_row):
+                # get the model, here are the data stored:
+                model = self._mw.block_editor_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(
+                    col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
+
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Organizer
     # -------------------------------------------------------------------------
@@ -1570,240 +1885,6 @@ class PulsedMeasurementGui(GUIBase):
                                                     self._mw.laserchannel_ComboBox.currentText(),
                                                     rotating_frame)
 
-
-    def insert_parameters(self, column):
-
-        # insert parameter:
-        insert_at_col_pos = column
-        for column, parameter in enumerate(self.get_add_pbe_param()):
-
-            # add the new properties to the whole column through delegate:
-            item_dict = self.get_add_pbe_param()[parameter]
-
-            if 'unit_prefix' in item_dict.keys():
-                unit_text = item_dict['unit_prefix'] + item_dict['unit']
-            else:
-                unit_text = item_dict['unit']
-
-            self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos+column)
-            self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
-            self._mw.block_editor_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
-            self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos+column, 90)
-
-            # Use only DoubleSpinBox  as delegate:
-            if item_dict['unit'] == 'bool':
-                delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-            else:
-                delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-            self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self._mw.block_editor_TableWidget.rowCount()):
-                # get the model, here are the data stored:
-                model = self._mw.block_editor_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, insert_at_col_pos+column)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
-
-    def count_digital_channels(self):
-        """ Get the number of currently displayed digital channels.
-
-        @return int: number of digital channels
-
-        The number of digital channal are counted and return and additionally
-        the internal counter variable _num_d_ch is updated. The counting
-        procedure is based on the block_editor_TableWidget.
-        """
-        count_dch = 0
-        for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
-                count_dch = count_dch + 1
-
-        self._num_d_ch = count_dch
-        return count_dch
-
-    def set_a_d_ch(self, num_a_ch=None, num_d_ch=None):
-        """ Set amount of analog or/and digital channels.
-
-        @param num_a_ch: int, optional, number of analog channels.
-        @param num_d_ch: int, optional, number of digital channels.
-
-        This function wraps basically around the function
-        _set_block_editor_columns. It is more intuitive to set the number of
-        channels then the number of columns.
-        If no arguments are passed, the table is simple reinitialized to
-        default values.
-        """
-        self._set_block_editor_columns(num_a_ch=num_a_ch, num_d_ch=num_d_ch,)
-
-    def _determine_needed_parameters(self):
-        """ Determine the maximal number of needed parameters for desired functions.
-
-        @return ('<biggest_func_name>, number_of_parameters)
-        """
-
-        #FIXME: Reimplement this function such that it will return the
-        #       parameters of all needed functions and not take only the
-        #       parameters of the biggest function. Then the return should be
-        #       not the biggest function, but a set of all the needed
-        #       parameters which is obtained from get_func_config()!
-
-
-        curr_func_list = self.get_current_function_list()
-        complete_func_config = self.get_func_config()
-
-        num_max_param = 0
-        biggest_func = ''
-
-        for func in curr_func_list:
-            if num_max_param < len(complete_func_config[func]):
-                num_max_param = len(complete_func_config[func])
-                biggest_func = func
-
-        return (num_max_param, biggest_func)
-
-
-
-    def _set_block_editor_columns(self, num_a_ch=None, num_d_ch=None,):
-        """ General function which creates the needed columns in Pulse Block
-            Editor.
-
-        @param num_a_ch: int, desired numbe of analog channels
-        @param num_d_ch: int, desired number of digital channels
-
-        If no argument is passed, the table is simply renewed. Otherwise the
-        desired number of channels are created.
-        Every time this function is executed all the table entries are erased
-        and created again to prevent wrong delegation.
-        """
-
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        if num_d_ch is None:
-            num_d_ch = self._num_d_ch
-
-        if num_a_ch is None:
-            num_a_ch = self._num_a_ch
-
-        self._pulsed_meas_logic.analog = num_a_ch
-        self._pulsed_meas_logic.digital = num_d_ch
-        self._seq_gen_logic.analog_channels = num_a_ch
-        self._seq_gen_logic.digital_channels = num_d_ch
-
-        # Determine the function with the most parameters. Use also that
-        # function as a construction plan to create all the needed columns for
-        # the parameters.
-        (num_max_param, biggest_func) = self._determine_needed_parameters()
-
-        # Erase the delegate from the column, pass a None reference:
-        for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, None)
-
-        # clear the number of columns:
-        self._mw.block_editor_TableWidget.setColumnCount(0)
-
-        # total number of analog and digital channels:
-        num_a_d_ch =  num_a_ch*(num_max_param +1) + num_d_ch
-
-
-        self._mw.block_editor_TableWidget.setColumnCount(num_a_d_ch)
-
-        num_a_to_create = num_a_ch
-        num_d_to_create = num_d_ch
-
-        channel_map = []
-
-        a_created = False
-        d_created = False
-
-        column = 0
-        while (column < num_a_d_ch):
-
-            if num_a_to_create == 0 or a_created:
-
-                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-                self._mw.block_editor_TableWidget.horizontalHeaderItem(column).setText('DCh{:d}'.format(num_d_ch-num_d_to_create))
-                self._mw.block_editor_TableWidget.setColumnWidth(column, 40)
-
-                channel_map.append('DCh{:d}'.format(num_d_ch-num_d_to_create))
-
-                # itemlist for checkbox
-                item_dict = {}
-                item_dict['init_val'] = QtCore.Qt.Unchecked
-                checkDelegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column, checkDelegate)
-
-
-                if not d_created and num_d_to_create != 1:
-                    d_created = True
-                else:
-                    a_created = False
-                    d_created = False
-
-                num_d_to_create = num_d_to_create - 1
-                column = column + 1
-
-            else:
-                if num_d_to_create>0:
-                    a_created = True
-
-                param_pos = 0
-                self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos, QtGui.QTableWidgetItem())
-                self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos).setText('ACh{0:d}\nfunction'.format(num_a_ch-num_a_to_create))
-                self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos, 70)
-
-                channel_map.append('ACh{0:d}'.format(num_a_ch-num_a_to_create))
-
-                item_dict = {}
-                item_dict['get_list_method'] = self.get_current_function_list
-
-                delegate = ComboBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos, delegate)
-
-                # create here all
-                for param_pos, parameter in enumerate(self.get_func_config()[biggest_func]):
-
-                    # initial block:
-
-                    item_dict = self.get_func_config()[biggest_func][parameter]
-
-
-                    unit_text = item_dict['unit_prefix'] + item_dict['unit']
-
-
-                    self._mw.block_editor_TableWidget.setHorizontalHeaderItem(column+param_pos+1, QtGui.QTableWidgetItem())
-                    self._mw.block_editor_TableWidget.horizontalHeaderItem(column+param_pos+1).setText('ACh{0:d}\n{1} ({2})'.format(num_a_ch-num_a_to_create, parameter, unit_text))
-                    self._mw.block_editor_TableWidget.setColumnWidth(column+param_pos+1, 100)
-
-                    # add the new properties to the whole column through delegate:
-
-                    # extract the classname from the _param_a_ch list to be able to deligate:
-                    delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-                    self._mw.block_editor_TableWidget.setItemDelegateForColumn(column+param_pos+1, delegate)
-
-                column = column + (num_max_param +1)
-                num_a_to_create = num_a_to_create - 1
-
-        self._num_a_ch = num_a_ch
-        self._num_d_ch = num_d_ch
-
-
-        self.insert_parameters(num_a_d_ch)
-
-
-        self.initialize_cells_block_editor(0,self._mw.block_editor_TableWidget.rowCount())
-
-        self.set_cfg_param_pbe()
-        self._mw.block_editor_TableWidget.blockSignals(False)
-        self.set_channel_map(channel_map)
-        self._update_current_pulse_block()
-
-
     def set_channel_map(self, channel_map):
         """ Set the possible channels
 
@@ -1892,7 +1973,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def _set_organizer_columns(self):
 
-        # Erase the delegate from the column, pass a None reference:
+        # Erase the delegate from the column, i.e. pass a None reference:
         for column in range(self._mw.block_organizer_TableWidget.columnCount()):
             self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, None)
 
@@ -1939,51 +2020,12 @@ class PulsedMeasurementGui(GUIBase):
                 delegate = DoubleSpinBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
             self._mw.block_organizer_TableWidget.setItemDelegateForColumn(insert_at_col_pos+column, delegate)
 
+            column += 1
+
         self.initialize_cells_block_organizer(0, self._mw.block_organizer_TableWidget.rowCount())
 
         self.set_cfg_param_pb()
         self._update_current_pulse_block_ensemble()
-
-
-    def initialize_cells_block_editor(self, start_row, stop_row=None,
-                                    start_col=None, stop_col=None):
-        """ Initialize the desired cells in the block editor table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
-        """
-
-        if stop_row is None:
-            stop_row = start_row +1
-
-        if start_col is None:
-            start_col = 0
-
-        if stop_col is None:
-            stop_col= self._mw.block_editor_TableWidget.columnCount()
-
-        for col_num in range(start_col, stop_col):
-
-            for row_num in range(start_row,stop_row):
-                # get the model, here are the data stored:
-                model = self._mw.block_editor_TableWidget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was
-                # uses for this column:
-                ini_values = self._mw.block_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
 
 
     def initialize_cells_block_organizer(self, start_row, stop_row=None,
@@ -2025,33 +2067,6 @@ class PulsedMeasurementGui(GUIBase):
                 ini_values = self._mw.block_organizer_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
-
-    def count_analog_channels(self):
-        """ Get the number of currently displayed analog channels.
-
-        @return int: number of analog channels
-
-        The number of analog channal are counted and return and additionally
-        the internal counter variable _num_a_ch is updated. The counting
-        procedure is based on the block_editor_TableWidget since it is assumed
-        that all operation on the block_editor_TableWidget is also applied on
-        block_organizer_TableWidget.
-        """
-
-        count_a_ch = 0
-        # there must be definitly less analog channels then available columns
-        # in the table, therefore the number of columns can be used as the
-        # upper border.
-        for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
-            for column in range(self._mw.block_editor_TableWidget.columnCount()):
-                if ('ACh'+str(poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
-                    # analog channel found, break the inner loop to
-                    count_a_ch = count_a_ch + 1
-                    break
-
-        self._num_a_ch = count_a_ch
-        return self._num_a_ch
-
 
     def _create_control_for_prepared_methods(self):
         """ Create the Control Elements in the Predefined Windows, depending
@@ -2846,12 +2861,51 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def _create_sequence_table(self):
+    def _set_sequence_editor_columns(self):
         """ Depending on the sequence parameters a table witll be created. """
 
-        constraint = self.get_hardware_constraints()
+        seq_param = self.get_hardware_constraints()['sequence_param']
 
         self._mw.seq_editor_TableWidget
+
+        # Erase the delegate from the column, pass a None reference:
+        for column in range(self._mw.seq_editor_TableWidget.columnCount()):
+            self._mw.seq_editor_TableWidget.setItemDelegateForColumn(column, None)
+
+        # clear the number of columns:
+        self._mw.seq_editor_TableWidget.setColumnCount(0)
+
+        # set the count to the desired length:
+        self._mw.seq_editor_TableWidget.setColumnCount(len(seq_param)+1)
+
+        column = 0
+        # set the name for the column:
+        self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+        self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText('Ensemble')
+        self._mw.seq_editor_TableWidget.setColumnWidth(column, 100)
+
+        item_dict = {}
+        item_dict['get_list_method'] = self.get_current_ensemble_list
+
+
+        comboDelegate = ComboBoxDelegate(self._mw.seq_editor_TableWidget, item_dict)
+        self._mw.seq_editor_TableWidget.setItemDelegateForColumn(column, comboDelegate)
+
+        # the first element was the ensemble combobox.
+        column = 1
+        for seq_param_name, param in enumerate(seq_param):
+
+
+
+            column += 1
+
+        # find out the types of the sequence parameters and create for them a proper viewbox in
+        # the table
+
+
+        # delegate the viewbox to the table
+
+
         pass
 
     def load_pulse_sequence(self):
