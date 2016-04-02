@@ -910,16 +910,6 @@ class PulsedMeasurementGui(GUIBase):
             self.load_pulse_block_ensemble()
         return
 
-    def update_sequence_list(self):
-        """
-        This method is called upon signal_sequence_list_updated emit of the sequence_generator_logic.
-        Updates all ComboBoxes showing generated sequences.
-        """
-        # updated list of all generated sequences
-        new_list = self._seq_gen_logic.saved_sequences
-        return
-
-
     def clear_device_clicked(self):
         """ Delete all loaded files in the device's current memory. """
         self._seq_gen_logic.clear_pulser()
@@ -2852,17 +2842,23 @@ class PulsedMeasurementGui(GUIBase):
         """
 
         # check for sequencer mode and then hide the tab.
-        if not self._seq_gen_logic.has_sequence_mode()
+        if not self._seq_gen_logic.has_sequence_mode():
             # save the tab for
             self._seq_editor_tab_Widget = self._mw.tabWidget.widget(2)
             self._mw.tabWidget.removeTab(2)
-            
+
             # with that command the saved tab can be again attached to the Tab Widget
             # self._mw.tabWidget.insertTab(2, self._seq_editor_tab_Widget ,'Sequence Editor')
 
         # create the table according to the passed values from the logic:
         self._set_sequence_editor_columns()
-        pass
+
+        # connect the signals for the block editor:
+        self._mw.seq_add_last_PushButton.clicked.connect(self.sequence_editor_add_row_after_last)
+        self._mw.seq_del_last_PushButton.clicked.connect(self.sequence_editor_delete_row_last)
+        self._mw.seq_add_sel_PushButton.clicked.connect(self.sequence_editor_add_row_before_selected)
+        self._mw.seq_del_sel_PushButton.clicked.connect(self.sequence_editor_delete_row_selected)
+        self._mw.seq_clear_PushButton.clicked.connect(self.sequence_editor_clear_table)
 
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
@@ -2943,7 +2939,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def initialize_cells_sequence_editor(self, start_row, stop_row=None,
                                          start_col=None, stop_col=None):
-        """ Initialize the desired cells in the sequence organizer table.
+        """ Initialize the desired cells in the pulse sequence table.
 
         @param int start_row: index of the row, where the initialization should start
         @param int stop_row: optional, index of the row, where the initalization should end
@@ -2983,88 +2979,184 @@ class PulsedMeasurementGui(GUIBase):
     def sequence_editor_add_row_before_selected(self, insert_rows=1):
         """ Add row before selected element. """
 
-        # self._mw.block_editor_TableWidget.blockSignals(True)
-        #
-        # selected_row = self._mw.block_editor_TableWidget.currentRow()
-        #
-        # # the signal passes a boolean value, which overwrites the insert_rows
-        # # parameter. Check that here and use the actual default value:
-        # if type(insert_rows) is bool:
-        #     insert_rows = 1
-        #
-        # for rows in range(insert_rows):
-        #     self._mw.block_editor_TableWidget.insertRow(selected_row)
-        # self.initialize_cells_block_editor(start_row=selected_row,
-        #                                    stop_row=selected_row + insert_rows)
-        #
-        # self._mw.block_editor_TableWidget.blockSignals(False)
+        self._mw.seq_editor_TableWidget.blockSignals(True)
+
+        selected_row = self._mw.seq_editor_TableWidget.currentRow()
+
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        for rows in range(insert_rows):
+            self._mw.seq_editor_TableWidget.insertRow(selected_row)
+        self.initialize_cells_sequence_editor(start_row=selected_row,
+                                              stop_row=selected_row + insert_rows)
+
+        self._mw.seq_editor_TableWidget.blockSignals(False)
 
     def sequence_editor_add_row_after_last(self, insert_rows=1):
         """ Add row after last row in the sequence editor. """
 
-        # self._mw.block_editor_TableWidget.blockSignals(True)
-        #
-        # # the signal passes a boolean value, which overwrites the insert_rows
-        # # parameter. Check that here and use the actual default value:
-        # if type(insert_rows) is bool:
-        #     insert_rows = 1
-        #
-        # number_of_rows = self._mw.block_editor_TableWidget.rowCount()
-        #
-        # self._mw.block_editor_TableWidget.setRowCount(
-        #     number_of_rows + insert_rows)
-        # self.initialize_cells_block_editor(start_row=number_of_rows,
-        #                                    stop_row=number_of_rows + insert_rows)
-        #
-        # self._mw.block_editor_TableWidget.blockSignals(False)
+        self._mw.seq_editor_TableWidget.blockSignals(True)
+
+        # the signal passes a boolean value, which overwrites the insert_rows
+        # parameter. Check that here and use the actual default value:
+        if type(insert_rows) is bool:
+            insert_rows = 1
+
+        number_of_rows = self._mw.seq_editor_TableWidget.rowCount()
+
+        self._mw.seq_editor_TableWidget.setRowCount(
+            number_of_rows + insert_rows)
+        self.initialize_cells_sequence_editor(start_row=number_of_rows,
+                                              stop_row=number_of_rows + insert_rows)
+
+        self._mw.seq_editor_TableWidget.blockSignals(False)
 
     def sequence_editor_delete_row_selected(self):
         """ Delete row of selected element. """
 
         # get the row number of the selected item(s). That will return the
         # lowest selected row
-        # row_to_remove = self._mw.block_editor_TableWidget.currentRow()
-        # self._mw.block_editor_TableWidget.removeRow(row_to_remove)
+        row_to_remove = self._mw.seq_editor_TableWidget.currentRow()
+        self._mw.seq_editor_TableWidget.removeRow(row_to_remove)
 
     def sequence_editor_delete_row_last(self):
         """ Delete the last row in the sequence editor. """
 
-        # number_of_rows = self._mw.block_editor_TableWidget.rowCount()
-        # # remember, the row index is started to count from 0 and not from 1,
-        # # therefore one has to reduce the value by 1:
-        # self._mw.block_editor_TableWidget.removeRow(number_of_rows - 1)
+        number_of_rows = self._mw.seq_editor_TableWidget.rowCount()
+        # remember, the row index is started to count from 0 and not from 1,
+        # therefore one has to reduce the value by 1:
+        self._mw.seq_editor_TableWidget.removeRow(number_of_rows - 1)
 
     def sequence_editor_clear_table(self):
         """ Delete all rows in the sequence editor table. """
 
-        # self._mw.block_editor_TableWidget.blockSignals(True)
-        #
-        # self._mw.block_editor_TableWidget.setRowCount(1)
-        # self._mw.block_editor_TableWidget.clearContents()
-        #
-        # self.initialize_cells_block_editor(start_row=0)
-        # self._mw.block_editor_TableWidget.blockSignals(False)
+        self._mw.seq_editor_TableWidget.blockSignals(True)
+
+        self._mw.seq_editor_TableWidget.setRowCount(1)
+        self._mw.seq_editor_TableWidget.clearContents()
+
+        self.initialize_cells_sequence_editor(start_row=0)
+        self._mw.seq_editor_TableWidget.blockSignals(False)
+
+
 
     def sequence_editor_delete_clicked(self):
         """
         Actions to perform when the delete button in the sequence editor is clicked
         """
-        # name = self._mw.saved_blocks_ComboBox.currentText()
-        # self._seq_gen_logic.delete_block(name)
-        # self.update_block_organizer_list()
-        # return
+        name = self._mw.saved_blocks_ComboBox.currentText()
+        self._seq_gen_logic.delete_block(name)
+        self.update_block_organizer_list()
+        return
 
     def generate_pulse_sequence(self):
         """ Generate a Pulse_Sequence object."""
         pass
 
+    def sample_sequence_clicked(self):
+        """
+        This method is called when the user clicks on "sample"
+        """
+        # # Get the ensemble name to be uploaded from the ComboBox
+        # ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # # Sample the ensemble via logic module
+        #
+        # # FIXME: Implement a proper choosing of the channels to upload to.
+        # # Right now the channels are invoked from the asset filenames
+        #
+        # self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
+        return
 
-    def sample_sequence(self):
+    def upload_seq_to_device_clicked(self):
+        """
+        This method is called when the user clicks on "upload to device"
         """
 
-        @return:
+        # # Get the asset name to be uploaded from the ComboBox
+        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
+        #
+        # # Upload the asset via logic module
+        # self._seq_gen_logic.upload_asset(asset_name)
+        return
+
+    def load_seq_into_channel_clicked(self):
         """
-        pass
+        This method is called when the user clicks on "load to channel"
+        """
+        # Get the asset name to be uploaded from the ComboBox
+        asset_name = self._mw.upload_ensemble_ComboBox.currentText()
+
+        # Check out on which channel it should be uploaded:
+        # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
+        # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
+        load_dict = {}
+
+        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # evaluate to have a proper list:
+        channels = eval(channels)
+        for entry in channels:
+            load_dict[entry] = asset_name
+
+        # Load asset into channles via logic module
+        self._seq_gen_logic.load_asset(asset_name, load_dict)
+        return
+
+    def update_sequence_list(self):
+        """
+        This method is called upon signal_block_list_updated emit of the sequence_generator_logic.
+        Updates all ComboBoxes showing generated blocks.
+        """
+        # # updated list of all generated blocks
+        # new_list = self._seq_gen_logic.saved_sequences
+        # # update saved_blocks_ComboBox items
+        # self._mw.saved_blocks_ComboBox.clear()
+        # self._mw.saved_blocks_ComboBox.addItems(new_list)
+        return
+
+    def _update_current_pulse_sequence(self):
+        """ Update the current Pulse Sequence Info in the display. """
+
+        # length = 0.0  # in ns
+        # bin_length = 0
+        # col_ind = self._cfg_param_pbe['length']
+        #
+        # laser_channel = self._mw.laserchannel_ComboBox.currentText()
+        # num_laser_ch = 0
+        #
+        # # Simple search routine:
+        # if 'A' in laser_channel:
+        #     # extract with regular expression module the number from the
+        #     # string:
+        #     num = re.findall('\d+', laser_channel)
+        #     laser_column = self._cfg_param_pbe['function_' + str(num[0])]
+        # elif 'D' in laser_channel:
+        #     num = re.findall('\d+', laser_channel)
+        #     laser_column = self._cfg_param_pbe['digital_' + str(num[0])]
+        # else:
+        #     return
+        #
+        # for row_ind in range(self._mw.block_editor_TableWidget.rowCount()):
+        #     curr_length = self.get_element_in_block_table(row_ind, col_ind)
+        #     curr_bin_length = int(np.round(curr_length * (self.get_sample_rate())))
+        #     length = length + curr_length
+        #     bin_length = bin_length + curr_bin_length
+        #
+        #     laser_val = self.get_element_in_block_table(row_ind, laser_column)
+        #     if (laser_val == 'DC') or (laser_val == 2):
+        #         num_laser_ch = num_laser_ch + 1
+        #
+        # # FIXME: The display unit will be later on set in the settings, so that
+        # #       one can choose which units are suiting the best. For now on it
+        # #       will be fixed to microns.
+        #
+        # self._mw.curr_block_length_DSpinBox.setValue(length * 1e6)  # in microns
+        # self._mw.curr_block_bins_SpinBox.setValue(bin_length)
+        # self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
+        return
+
 
     ###########################################################################
     ###    Methods related to Settings for the 'Pulse Extraction' Tab:      ###
