@@ -1053,6 +1053,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         err = self._pulse_generator_device.upload_asset(asset_name)
         return err
 
+    def has_sequence_mode(self):
+        """ Retrieve from the hardware, whether sequence mode is present or not.
+
+        @return bool: Sequence mode present = True, no sequence mode = False
+        """
+        return self._pulse_generator_device.has_sequence_mode()
+
     def load_asset(self, asset_name, load_dict={}):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
 
