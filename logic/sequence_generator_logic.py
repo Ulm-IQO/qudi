@@ -418,12 +418,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # Definition of this parameter. See fore more explanation in file
         # sampling_functions.py
         length_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                      'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n'}
+                      'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
 
         rep_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2**31 -1),
-                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': ''}
+                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type':int}
         bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
-                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': ''}
+                    'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': bool}
 
         # make a parameter constraint dict for the additional parameters of the
         # Pulse_Block_Ensemble objects:
@@ -457,6 +457,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # the same idea for Pulse_Block (pb) objects:
         self.cfg_param_pb = {'pulse_block' :    0, 'length':    1}
 
+        self.cfg_param_seq = dict()
+
     def activation(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -475,6 +477,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._pulse_generator_device = self.connector['in']['pulser']['object']
 
         self.sample_rate = self._pulse_generator_device.get_sample_rate()
+
+        # make together with the hardware a proper dictionary for the sequence parameter:
+        self.cfg_param_seq = self._create_cfg_param_seq()
 
 
         constraints = self.get_hardware_constraints()
@@ -526,6 +531,89 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                          explanation can be found in method activation.
         """
         pass
+
+    def _create_cfg_param_seq(self):
+        """ Create a configuration parameter dictionary for sequence parameters.
+
+        @return dict: the configuration parameter dictionary
+
+        Based on the information from the hardware, the logic will create an rather abstract
+        configuration dictionary, so that the GUI has no problems to build from that the proper
+        viewwidgets.
+        """
+
+        # predefined definition dicts:
+        float_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+                      'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
+
+        int_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2 ** 31 - 1),
+                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': int}
+
+        bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
+                    'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': bool}
+
+
+        seq_param = self.get_hardware_constraints()['sequence_param']
+        cfg_param_seq = OrderedDict()
+
+        # What follows now is a converion algorithm, which takes one of the valid above definition
+        # dicts. Then the keywords, which are given by the contraints are replaced with their
+        # proper value from the constraints. Furthermore an bool entry has to be converted to an
+        # integer expression (True=1, False=0). Then the parameter definition is appended to the
+        # sequence configuration parameters
+
+        for entry in seq_param:
+            param = {}
+
+            # check the type of the sequence parameter:
+            if type(seq_param[entry]['min']) == bool:
+                dict_def = bool_def
+            elif type(seq_param[entry]['min']) == int:
+                dict_def = int_def
+            elif type(seq_param[entry]['min']) == float:
+                dict_def = float_def
+            else:
+                self.logMsg('The configuration dict for sequence parameter could not be created, '
+                            'since the keyword "min" in the parameter {0} does not correspond to '
+                            'type of "bool", "int" nor "float" but has a type {1}. Cannot handle '
+                            'that, therefore this parameter is '
+                            'neglected.'.format(entry,type(seq_param[entry]['min'])),
+                            msgType='error')
+                dict_def = {}
+
+
+            # go through the dict_def and replace all given entries by the sequence parameter
+            # constraints from the hardware.
+            for element in dict_def:
+
+                if element == 'view_stepsize':
+                    param['view_stepsize'] = seq_param[entry]['step']
+                elif element == 'init_value':
+                    # convert an bool value into an integer value:
+                    if type(element) is bool:
+                        param[element] = int(seq_param[entry]['min'])
+                    else:
+                        param[element] = seq_param[entry]['min']
+                elif element in seq_param[entry]:
+                    # convert an bool value into an integer value:
+                    if type(seq_param[entry][element]) is bool:
+                        param[element] = int(seq_param[entry][element])
+                    else:
+                        param[element] = seq_param[entry][element]
+                else:
+                    param[element] = dict_def[element]
+
+            cfg_param_seq[entry] = param
+
+        return cfg_param_seq
+
+    def get_cfg_param_seq(self):
+        """ Retrieve the configuration parameters for sequences.
+
+        @return dict: with keywords being the sequence parameters and items their configuration
+                      dicts.
+        """
+        return self.cfg_param_seq
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
