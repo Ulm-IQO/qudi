@@ -2973,8 +2973,6 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-    def load_pulse_sequence(self):
-        pass
 
     def sequence_editor_add_row_before_selected(self, insert_rows=1):
         """ Add row before selected element. """
@@ -3042,6 +3040,62 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.seq_editor_TableWidget.blockSignals(False)
 
 
+    # load, delete, generate and update functionality for pulse sequence:
+
+    def load_pulse_sequence(self, ensemble_name=None):
+        """ Loads the current selected Pulse_Block_Ensemble object from the
+            logic into the editor or a specified object with name ensemble_name.
+
+        @param str ensemble_name: optional, name of the Pulse_Block_Element
+                                  object, which should be loaded in the GUI
+                                  Block Organizer. If no name passed, the
+                                  current Pulse_Block_Ensemble from the Logic is
+                                  taken to be loaded.
+
+        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
+        are looking like and cannot be that general.
+        """
+
+        # NOTE: This method will be connected to the CLICK event of a
+        #       QPushButton, which passes as an optional argument as a bool
+        #       value depending on the checked state of the QPushButton. The
+        #       passed boolean value has to be handled in addition!
+
+        # if (ensemble_name is not None) and (type(ensemble_name) is not bool):
+        #     current_ensemble_name = ensemble_name
+        # else:
+        #     current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
+        #
+        # # get the ensemble object and set as current ensemble
+        # ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
+        #                                             set_as_current_ensemble=True)
+        #
+        # # Check whether an ensemble is found, otherwise there will be None:
+        # if ensemble is None:
+        #     return
+        #
+        # self.block_organizer_clear_table()  # clear the block organizer table
+        # rows = len(ensemble.block_list)  # get amout of rows needed for display
+        #
+        # # add as many rows as there are blocks in the ensemble
+        # # minus 1 because a single row is already present after clear
+        # self.block_organizer_add_row_after_last(rows - 1)
+        #
+        # # This dictionary has the information which column number describes
+        # # which object, it is a configuration dict between GUI and logic
+        # organizer_config_dict = self.get_cfg_param_pb()
+        #
+        # # run through all blocks in the block_elements block_list to fill in the
+        # # row informations
+        # for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
+        #     column = organizer_config_dict['pulse_block']
+        #     self.set_element_in_organizer_table(row_index, column, pulse_block.name)
+        #
+        #     column = organizer_config_dict['repetition']
+        #     self.set_element_in_organizer_table(row_index, column, int(repetitions))
+        #
+        # # set the ensemble name LineEdit to the current ensemble
+        # self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
 
     def sequence_editor_delete_clicked(self):
         """
@@ -3056,53 +3110,6 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Sequence object."""
         pass
 
-    def sample_sequence_clicked(self):
-        """
-        This method is called when the user clicks on "sample"
-        """
-        # # Get the ensemble name to be uploaded from the ComboBox
-        # ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
-        # # Sample the ensemble via logic module
-        #
-        # # FIXME: Implement a proper choosing of the channels to upload to.
-        # # Right now the channels are invoked from the asset filenames
-        #
-        # self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
-        return
-
-    def upload_seq_to_device_clicked(self):
-        """
-        This method is called when the user clicks on "upload to device"
-        """
-
-        # # Get the asset name to be uploaded from the ComboBox
-        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
-        #
-        # # Upload the asset via logic module
-        # self._seq_gen_logic.upload_asset(asset_name)
-        return
-
-    def load_seq_into_channel_clicked(self):
-        """
-        This method is called when the user clicks on "load to channel"
-        """
-        # Get the asset name to be uploaded from the ComboBox
-        asset_name = self._mw.upload_ensemble_ComboBox.currentText()
-
-        # Check out on which channel it should be uploaded:
-        # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
-        # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
-        load_dict = {}
-
-        channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
-        # evaluate to have a proper list:
-        channels = eval(channels)
-        for entry in channels:
-            load_dict[entry] = asset_name
-
-        # Load asset into channles via logic module
-        self._seq_gen_logic.load_asset(asset_name, load_dict)
-        return
 
     def update_sequence_list(self):
         """
@@ -3155,6 +3162,128 @@ class PulsedMeasurementGui(GUIBase):
         # self._mw.curr_block_length_DSpinBox.setValue(length * 1e6)  # in microns
         # self._mw.curr_block_bins_SpinBox.setValue(bin_length)
         # self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
+        return
+
+
+
+
+    # Sample, Upload and Load functionality for Pulse Sequence
+
+    def sample_sequence_clicked(self):
+        """
+        This method is called when the user clicks on "sample"
+        """
+        # # Get the ensemble name to be uploaded from the ComboBox
+        # ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # # Sample the ensemble via logic module
+        #
+        # # FIXME: Implement a proper choosing of the channels to upload to.
+        # # Right now the channels are invoked from the asset filenames
+        #
+        # self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
+        return
+
+    def upload_seq_to_device_clicked(self):
+        """
+        This method is called when the user clicks on "upload to device"
+        """
+
+        # # Get the asset name to be uploaded from the ComboBox
+        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
+        #
+        # # Upload the asset via logic module
+        # self._seq_gen_logic.upload_asset(asset_name)
+        return
+
+    def load_seq_into_channel_clicked(self):
+        """
+        This method is called when the user clicks on "load to channel"
+        """
+        # Get the asset name to be uploaded from the ComboBox
+        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
+        #
+        # # Check out on which channel it should be uploaded:
+        # # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
+        # # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
+        # load_dict = {}
+        #
+        # channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
+        # # evaluate to have a proper list:
+        # channels = eval(channels)
+        # for entry in channels:
+        #     load_dict[entry] = asset_name
+        #
+        # # Load asset into channles via logic module
+        # self._seq_gen_logic.load_asset(asset_name, load_dict)
+        return
+
+    def get_element_in_sequence_table(self, row, column):
+        """ Simplified wrapper function to get the data from a specific cell
+            in the block table.
+
+        @param int row: row index
+        @param int column: column index
+        @return: the value of the corresponding cell, which can be a string, a
+                 float or an integer. Remember that the checkbox state
+                 unchecked corresponds to 0 and check to 2. That is Qt
+                 convention.
+
+        Note that the order of the arguments in this function (first row index
+        and then column index) was taken from the Qt convention.
+        """
+
+        # tab = self._mw.seq_editor_TableWidget
+        #
+        # # Get from the corresponding delegate the data access model
+        # access = tab.itemDelegateForColumn(column).model_data_access
+        # data = tab.model().index(row, column).data(access)
+        #
+        # # check whether the value has to be normalized to SI values.
+        # if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
+        #     unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
+        #     # access the method defined in base for unit prefix:
+        #     return data * self.get_unit_prefix_dict()[unit_prefix]
+        #
+        # return data
+        return
+
+    def get_sequence_table(self):
+        """ Convert block table data to numpy array.
+
+        @return: np.array[rows][columns] which has a structure, i.e. strings
+                 integer and float values are represented by this array.
+                 The structure was taken according to the init table itself.
+        """
+
+        # tab = self._mw.block_editor_TableWidget
+        #
+        # # create a structure for the output numpy array:
+        # structure = ''
+        # for column in range(tab.columnCount()):
+        #     elem = self.get_element_in_block_table(0, column)
+        #     if type(elem) is str:
+        #         structure = structure + '|S20, '
+        #     elif type(elem) is int:
+        #         structure = structure + '|i4, '
+        #     elif type(elem) is float:
+        #         structure = structure + '|f4, '
+        #     else:
+        #         self.logMsg('Type definition not found in the block table.'
+        #                     '\nType is neither a string, integer or float. '
+        #                     'Include that type in the get_block_table method!',
+        #                     msgType='error')
+        #
+        # # remove the last two elements since these are a comma and a space:
+        # structure = structure[:-2]
+        # table = np.zeros(tab.rowCount(), dtype=structure)
+        #
+        # # fill the table:
+        # for column in range(tab.columnCount()):
+        #     for row in range(tab.rowCount()):
+        #         # self.logMsg(, msgType='status')
+        #         table[row][column] = self.get_element_in_block_table(row, column)
+        #
+        # return table
         return
 
 
