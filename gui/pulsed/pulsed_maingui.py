@@ -539,6 +539,7 @@ class PulsedMeasurementGui(GUIBase):
         # emit a trigger event when for all mouse click and keyboard click events:
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
         self._mw.block_organizer_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
+        self._mw.seq_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
 
         # connect update signals of the sequence_generator_logic
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
@@ -779,7 +780,7 @@ class PulsedMeasurementGui(GUIBase):
         return list(self._seq_gen_logic.get_func_config())
 
 
-    def get_current_pb_list(self):
+    def get_current_pulse_block_list(self):
         """ Retrieve the available Pulse_Block objects from the logic.
 
         @return: list[] with strings descriping the available Pulse_Block
@@ -793,6 +794,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return: list[] with strings descriping the available Pulse_Block_Ensemble objects.
         """
+        return self._seq_gen_logic.saved_pulse_block_ensembles
 
     def update_sample_rate(self):
         """Updates the current sample rate in the logic """
@@ -1881,9 +1883,9 @@ class PulsedMeasurementGui(GUIBase):
             return
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
         self._seq_gen_logic.generate_pulse_block_ensemble(objectname,
-                                                    self.get_organizer_table(),
-                                                    self._mw.laserchannel_ComboBox.currentText(),
-                                                    rotating_frame)
+                                                          self.get_organizer_table(),
+                                                          self._mw.laserchannel_ComboBox.currentText(),
+                                                          rotating_frame)
 
     def set_channel_map(self, channel_map):
         """ Set the possible channels
@@ -1990,7 +1992,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.setColumnWidth(column, 100)
 
         item_dict = {}
-        item_dict['get_list_method'] = self.get_current_pb_list
+        item_dict['get_list_method'] = self.get_current_pulse_block_list
 
         comboDelegate = ComboBoxDelegate(self._mw.block_organizer_TableWidget, item_dict)
         self._mw.block_organizer_TableWidget.setItemDelegateForColumn(column, comboDelegate)
@@ -2020,14 +2022,15 @@ class PulsedMeasurementGui(GUIBase):
 
             column += 1
 
-        self.initialize_cells_block_organizer(0, self._mw.block_organizer_TableWidget.rowCount())
+        self.initialize_cells_block_organizer(start_row=0,
+                                              stop_row=self._mw.block_organizer_TableWidget.rowCount())
 
         self.set_cfg_param_pb()
         self._update_current_pulse_block_ensemble()
 
 
     def initialize_cells_block_organizer(self, start_row, stop_row=None,
-                                    start_col=None, stop_col=None):
+                                         start_col=None, stop_col=None):
         """ Initialize the desired cells in the block organizer table.
 
         @param start_row: int, index of the row, where the initialization
@@ -2849,9 +2852,13 @@ class PulsedMeasurementGui(GUIBase):
         """
 
         # check for sequencer mode and then hide the tab.
-        # self._seq_editor_tab_Widget = self._mw.tabWidget.widget(2)
-        # self._mw.tabWidget.removeTab(2)
-        # self._mw.tabWidget.insertTab(2, self._seq_editor_tab_Widget ,'Sequence Editor')
+        if not self._seq_gen_logic.has_sequence_mode()
+            # save the tab for
+            self._seq_editor_tab_Widget = self._mw.tabWidget.widget(2)
+            self._mw.tabWidget.removeTab(2)
+            
+            # with that command the saved tab can be again attached to the Tab Widget
+            # self._mw.tabWidget.insertTab(2, self._seq_editor_tab_Widget ,'Sequence Editor')
 
         # create the table according to the passed values from the logic:
         self._set_sequence_editor_columns()
@@ -2925,7 +2932,7 @@ class PulsedMeasurementGui(GUIBase):
             column += 1
 
         # at the end, initialize all the cells with the proper value:
-        self.initialize_cells_sequence_editor()
+        self.initialize_cells_sequence_editor(0)
 
         # find out the types of the sequence parameters and create for them a proper viewbox in
         # the table
@@ -2934,9 +2941,41 @@ class PulsedMeasurementGui(GUIBase):
         # delegate the viewbox to the table
 
 
-    def initialize_cells_sequence_editor(self):
-        pass
+    def initialize_cells_sequence_editor(self, start_row, stop_row=None,
+                                         start_col=None, stop_col=None):
+        """ Initialize the desired cells in the sequence organizer table.
 
+        @param int start_row: index of the row, where the initialization should start
+        @param int stop_row: optional, index of the row, where the initalization should end
+        @param int start_col: optional, index of the column where the initialization should start
+        @param int stop_col: optional, index of the column, where the initalization should end.
+
+        With this function it is possible to reinitialize specific elements or part of a row or
+        even the whole row. If start_row is set to 0 the whole row is going to be initialzed to the
+        default value.
+        """
+
+        if stop_row is None:
+            stop_row = start_row + 1
+
+        if start_col is None:
+            start_col = 0
+
+        if stop_col is None:
+            stop_col = self._mw.seq_editor_TableWidget.columnCount()
+
+        for col_num in range(start_col, stop_col):
+
+            for row_num in range(start_row, stop_row):
+                # get the model, here are the data stored:
+                model = self._mw.seq_editor_TableWidget.model()
+                # get the corresponding index of the current element:
+                index = model.index(row_num, col_num)
+                # get the initial values of the delegate class which was
+                # uses for this column:
+                ini_values = self._mw.seq_editor_TableWidget.itemDelegateForColumn(col_num).get_initial_value()
+                # set initial values:
+                model.setData(index, ini_values[0], ini_values[1])
 
     def load_pulse_sequence(self):
         pass
