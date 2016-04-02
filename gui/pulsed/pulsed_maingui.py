@@ -2004,8 +2004,6 @@ class PulsedMeasurementGui(GUIBase):
 
             unit_text = item_dict['unit_prefix'] + item_dict['unit']
 
-            print('insert_at_col_pos',insert_at_col_pos)
-            print('column',column)
             self._mw.block_organizer_TableWidget.insertColumn(insert_at_col_pos+column)
             self._mw.block_organizer_TableWidget.setHorizontalHeaderItem(insert_at_col_pos+column, QtGui.QTableWidgetItem())
             self._mw.block_organizer_TableWidget.horizontalHeaderItem(insert_at_col_pos+column).setText('{0} ({1})'.format(parameter,unit_text))
@@ -2849,6 +2847,14 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
+
+        # check for sequencer mode and then hide the tab.
+        # self._seq_editor_tab_Widget = self._mw.tabWidget.widget(2)
+        # self._mw.tabWidget.removeTab(2)
+        # self._mw.tabWidget.insertTab(2, self._seq_editor_tab_Widget ,'Sequence Editor')
+
+        # create the table according to the passed values from the logic:
+        self._set_sequence_editor_columns()
         pass
 
     def _deactivate_sequence_generator_ui(self, e):
@@ -2864,7 +2870,7 @@ class PulsedMeasurementGui(GUIBase):
     def _set_sequence_editor_columns(self):
         """ Depending on the sequence parameters a table witll be created. """
 
-        seq_param = self.get_hardware_constraints()['sequence_param']
+        seq_param = self._seq_gen_logic.get_cfg_param_seq()
 
         self._mw.seq_editor_TableWidget
 
@@ -2893,11 +2899,33 @@ class PulsedMeasurementGui(GUIBase):
 
         # the first element was the ensemble combobox.
         column = 1
-        for seq_param_name, param in enumerate(seq_param):
+        for seq_param_name in seq_param:
 
+            param = seq_param[seq_param_name]
 
+            # self._mw.seq_editor_TableWidget.insertColumn(column)
+            self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
+            header_name = seq_param_name.replace('_',' ')
+            self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText(header_name)
+            self._mw.seq_editor_TableWidget.setColumnWidth(column, 80)
+
+            # choose the proper delegate function:
+            if param['type'] == bool:
+                item_dict = param
+                delegate = CheckBoxDelegate(self._mw.seq_editor_TableWidget, item_dict)
+            elif param['type'] == int:
+                item_dict = param
+                delegate = SpinBoxDelegate(self._mw.seq_editor_TableWidget, item_dict)
+            elif param['type'] == float:
+                item_dict = param
+                delegate = DoubleSpinBoxDelegate(self._mw.seq_editor_TableWidget, item_dict)
+
+            self._mw.seq_editor_TableWidget.setItemDelegateForColumn(column, delegate)
 
             column += 1
+
+        # at the end, initialize all the cells with the proper value:
+        self.initialize_cells_sequence_editor()
 
         # find out the types of the sequence parameters and create for them a proper viewbox in
         # the table
@@ -2906,7 +2934,9 @@ class PulsedMeasurementGui(GUIBase):
         # delegate the viewbox to the table
 
 
+    def initialize_cells_sequence_editor(self):
         pass
+
 
     def load_pulse_sequence(self):
         pass
