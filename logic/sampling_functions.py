@@ -58,11 +58,11 @@ class SamplingFunctions():
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 1e3, 'dec': 8, 'unit_prefix': 'M'}
+                    'view_stepsize': 1e3, 'dec': 8, 'unit_prefix': 'M', 'type':float}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.001, 'dec': 3, 'unit_prefix': ''}
+                    'view_stepsize': 0.001, 'dec': 3, 'unit_prefix': '', 'type': float}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 0.1, 'dec': 3, 'unit_prefix': ''}
+                    'view_stepsize': 0.1, 'dec': 3, 'unit_prefix': '', 'type':float}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
@@ -84,7 +84,7 @@ class SamplingFunctions():
         #               [ 'p', 'n', 'micro','', 'm', 'k', 'M', 'G', 'T']
         #               with the obvious meaning:
         #        ['pico','nano','micro','milli','','kilo','Mega','Giga','Tera']
-
+        # 'type' : the type of the parameter, either int, float, bool
 
 
         self._unit_prefix={}
