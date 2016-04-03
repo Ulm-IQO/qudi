@@ -269,6 +269,7 @@ class Pulse_Sequence(object):
         self.measurement_ticks_list = np.array(measurement_ticks_list)
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
+        self.sampled_ensembles = OrderedDict()
 
     def refresh_parameters(self):
         """ Generate the needed parameters from the passed object.
@@ -342,6 +343,24 @@ class Pulse_Sequence(object):
         else:
             self.ensemble_list.append(ensemble)
         self.refresh_parameters()
+
+    #TODO: Experimental, check how necessary that method is and replace by other idea if needed:
+    def set_sampled_ensembles(self, sampled_dict):
+        """ Set the dict, containing the sampled ensembles of the sequence.
+
+        @param dict sampled_dict: the ordered dictionary with a list of strings telling about the
+                                  actual names of the created sequences
+        """
+        self.sampled_ensembles = sampled_dict
+
+    # TODO: Experimental, check how necessary that method is and replace by other idea if needed:
+    def get_sampled_ensembles(self):
+        """ Retrieve the dict, which tells into which names the ensembles have been sampled
+
+        @return dict: a dict with keys being the ensemble names and items being a list of string
+                      names, which were created by the hardware.
+        """
+        return self.sampled_ensembles
 
 
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
@@ -1064,6 +1083,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         err = self._pulse_generator_device.upload_asset(asset_name)
         return err
 
+    def upload_sequence(self, seq_name):
+        """ Upload a sequence and all its related files
+
+        @param str seq_name: name of the sequence to be uploaded
+        """
+
+        current_sequence = self.get_pulse_sequence(seq_name)
+
+        for ensemble_name in current_sequence.get_sampled_ensembles():
+            self.upload_asset(ensemble_name)
+
+        self.upload_asset(seq_name)
+
+
     def has_sequence_mode(self):
         """ Retrieve from the hardware, whether sequence mode is present or not.
 
@@ -1569,8 +1602,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if not write_to_file:
             # return a status message with the time needed for sampling the entire ensemble as a
             # whole without writing to file.
-            self.logMsg('Time needed for sampling as a whole without writing to file: "{0}" '
-                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
+                        'whole: "{0}" sec'.format(str(int(np.rint(time.time() - start_time)))),
+                        msgType='status')
             # return the sample arrays for write_to_file was set to FALSE
 
 
@@ -1594,8 +1628,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                                                                                is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
-            self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" '
-                        'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
+            self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
+                        'whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))),
+                        msgType='status')
+
             return analog_samples, digital_samples, created_files, offset_bin
 
 
@@ -1616,11 +1652,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         Only those Pulse_Block_Ensemble object where sampled that are different! These can be
         directly obtained from the internal attribute different_ensembles_dict of a Pulse_Sequence.
 
+        Right now two 'simple' methods of sampling where implemented, which reuse the sample
+        function for the Pulse_Block_Ensembles. One, which samples by preserving the phase (i.e.
+        staying in the rotating frame) and the other which samples without keep a phase
+        relationship between the different entries of the Pulse_Sequence object.
+
+        More sophisticated sequence sampling method can be implemented here.
         """
 
         start_time = time.time()
         # get ensemble
-        sequence_obj = self.get_pulse_sequence(sequence_name)
+        sequence_obj = self.get_pulse_sequence(sequence_name, set_as_current_sequence=True)
         sequence_param_dict_list = []
 
         # Here all the sampled ensembles with their result file name will be locally stored:
@@ -1629,12 +1671,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # if all the Pulse_Block_Ensembles should be in the rotating frame, then each ensemble
         # will be created in general with a different offset_bin. Therefore, in order to keep track
         # of the sampled Pulse_Block_Ensembles one has to introduce a running number as an
-        # additional name tag, so keep the samples files separate.
+        # additional name tag, so keep the sampled files separate.
         if sequence_obj.rotating_frame:
 
-
-            ensemble_index = 0
-            offset_bin = 0
+            ensemble_index = 0  # that will indicate the ensemble index
+            offset_bin = 0      # that will be used for phase preserving
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
 
                 name_tag = '_' + str(ensemble_index).zfill(3)  # to make something like 001
@@ -1648,48 +1689,65 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                                                                      offset_bin=offset_bin,
                                                                      name_tag=name_tag)
 
+                # the temp_dict is a format how the sequence parameter will be saved
                 temp_dict = dict()
                 temp_dict['name'] = created_files
 
+                # relate the created_files to a name identifier. Maybe this information will be
+                # needed later on about that sequence object
                 sampled_ensembles[ensemble_obj.name + name_tag] = created_files
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
-
+                # add the whole dict to the list of dicts, containing information about how to
+                # write the sequence properly in the hardware file:
                 sequence_param_dict_list.append(temp_dict)
 
+                # for the next run, the returned offset_bin will serve as starting point for
+                # phase preserving.
                 offset_bin = offset_bin_return
                 ensemble_index += 1
 
 
-            #FIXME: That is most propably not a good idea!!! But let's see whether that will work out
-            sequence_obj.sampled_ensembles = sampled_ensembles
+            #FIXME: That is most propably not a good idea!!! But let's see whether that will work
+            #       out and whether it will be necessary.
+            # sequence_obj.sampled_ensembles = sampled_ensembles
         else:
 
+            # if phase prevervation between the sequence entries is not needed, then only the
+            # different ensembles will be sampled, since the offset_bin does not matter for them:
             for ensemble_name in sequence_obj.different_ensembles_dict:
                 ensemble_obj = self.get_pulse_block_ensemble(ensemble_name)
 
-                a_samples, d_samples, created_files, offset_bin = self.sample_pulse_block_ensemble(ensemble_name,
-                                                                                                   write_to_file,
-                                                                                                   chunkwise,
-                                                                                                   offset_bin=0,
-                                                                                                   name_tag='')
+                a_samples, \
+                d_samples, \
+                created_files, \
+                offset_bin = self.sample_pulse_block_ensemble(ensemble_name, write_to_file,
+                                                              chunkwise, offset_bin=0, name_tag='')
+
+                # contains information about which file(s) was/were created for the specified
+                # ensemble:
                 sampled_ensembles[ensemble_name] = created_files
 
+            # go now through the sequence list and replace all the entries with the output of the
+            # sampled ensemble file:
             for ensemble_obj, seq_param  in sequence_obj.ensemble_param_list:
 
                 temp_dict = dict()
                 temp_dict['name'] = sampled_ensembles[ensemble_obj.name]
-
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
 
                 sequence_param_dict_list.append(temp_dict)
 
-                # create the list of dicts, which will be passed to the hardware. Replace each entry
-        #
+        sequence_obj.set_sampled_ensembles(sampled_ensembles)
+        self.save_sequence(sequence_name, sequence_obj)
 
+        # pass the whole information to the sequence creation method in the hardware:
         self._pulse_generator_device.write_seq_to_file(sequence_name,sequence_param_dict_list)
 
+        self.logMsg('Time needed for sampling and writing Pulse Sequence to file as a whole: "{0}" '
+                    'sec'.format(str(int(np.rint(time.time() - start_time)))), msgType='status')
+        return
 
 
     #---------------------------------------------------------------------------
