@@ -602,7 +602,8 @@ a
         @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
 
-        @return: error code (0: OK, -1: error)
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
         """
         raise InterfaceImplementationError('PulserInterface>write_samples_to_file')
         return -1

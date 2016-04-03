@@ -711,8 +711,13 @@ a
         @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
 
-        @return: error code (0: OK, -1: error)
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
         """
+
+        # record the name of the created files
+        created_files = []
+
         chunk_length_bins = digital_samples.shape[1]
         channel_number = digital_samples.shape[0]
         if channel_number != 8:
@@ -736,11 +741,15 @@ a
         del digital_samples # no longer needed
 
         # append samples to file
-        filepath = os.path.join(self.host_waveform_directory, name + '.fpga')
+
+        filename = name + '.fpga'
+        created_files.append(filename)
+
+        filepath = os.path.join(self.host_waveform_directory, filename)
         with open(filepath, 'ab') as fpgafile:
             fpgafile.write(encoded_samples)
 
-        return 0
+        return created_files
 
     def _connect_fpga(self):
         # connect to FPGA by serial number

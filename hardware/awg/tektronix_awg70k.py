@@ -343,8 +343,12 @@ class AWG70K(Base, PulserInterface):
         @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
 
-        @return: error code (0: OK, -1: error)
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
         """
+
+        # record the name of the created files
+        created_files = []
 
         # The overhead of the write process in bytes.
         # Making this value bigger will result in a faster write process
@@ -370,7 +374,11 @@ class AWG70K(Base, PulserInterface):
                     header_lines = header.readlines()
                 os.remove('header.xml')
                 # create .WFMX-file for each channel.
-                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                filename = name + '_Ch' + str(channel_number + 1) + '.WFMX'
+                created_files.append(filename)
+
+                filepath = os.path.join(self.host_waveform_directory, filename)
+
                 with open(filepath, 'wb') as wfmxfile:
                     # write header
                     for line in header_lines:
@@ -444,7 +452,7 @@ class AWG70K(Base, PulserInterface):
                             wfmxfile.write(tmp_data)
                 # delete tmp file
                 os.remove(tmp_filepath)
-        return 0
+        return created_files
 
     def pulser_on(self):
         """ Switches the pulsing device on.
