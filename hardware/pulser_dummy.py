@@ -348,8 +348,13 @@ class PulserDummy(Base, PulserInterface):
         @param is_last_chunk: bool, indicates if the current chunk is the last
                               write to this file.
 
-        @return: error code (0: OK, -1: error)
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
         """
+
+        # record the name of the created files
+        created_files = []
+
         if self.current_sample_mode == self.sample_mode['matlab']:
             #FIXME: chunkwise write to a .mat file not supported by the used
             #       hdf5storage package. This package is inefficient anyway and
@@ -386,6 +391,7 @@ class PulserDummy(Base, PulserInterface):
 
                 # create file in current directory
                 filename = name +'.mat'
+                created_files.append(filename)
                 hdf5storage.write(matcontent, '.', filename, matlab_compatible=True)
                 # check if file already exists and overwrite it
                 if os.path.isfile(os.path.join(self.host_waveform_directory, filename)):
@@ -412,7 +418,10 @@ class PulserDummy(Base, PulserInterface):
                         header_lines = header.readlines()
                     os.remove('header.xml')
                     # create .WFMX-file for each channel.
-                    filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                    filename = name + '_Ch' + str(channel_number+1) + '.WFMX'
+                    created_files.append(filename)
+
+                    filepath = os.path.join(self.host_waveform_directory, filename)
                     with open(filepath, 'wb') as wfmxfile:
                         # write header
                         for line in header_lines:
@@ -514,6 +523,7 @@ class PulserDummy(Base, PulserInterface):
                 for channel_index, channel_arr in enumerate(analog_samples):
 
                     filename = name+'_ch'+str(channel_index+1) + '.wfm'
+                    created_files.append(filename)
 
                     with open(os.path.join(self.host_waveform_directory, filename), 'wb') as wfm_file:
 
@@ -581,7 +591,8 @@ class PulserDummy(Base, PulserInterface):
             self.logMsg('Sample mode not defined for the given pulser hardware.'
                         '\nEither the mode does not exist or the sample mode is'
                         'not assigned properly. Correct that!', msgType='error')
-        return 0
+
+        return created_files
 
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
