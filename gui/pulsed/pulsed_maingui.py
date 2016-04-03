@@ -600,7 +600,6 @@ class PulsedMeasurementGui(GUIBase):
         # initialize the lists of available blocks, ensembles and sequences
         self.update_block_list()
         self.update_ensemble_list()
-        self.update_sequence_list()
 
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -802,6 +801,7 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.set_sample_rate(sample_rate*1e6)
         self._update_current_pulse_block()
         self._update_current_pulse_block_ensemble()
+        self._update_current_pulse_sequence()
 
     def set_sample_rate(self, sample_rate):
         """ Set the current sample rate in the spin_box and in the logic.
@@ -1059,7 +1059,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_bins_SpinBox.setValue(bin_length)
         self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
 
-    def get_block_table(self):
+    def get_pulse_block_table(self):
         """ Convert block table data to numpy array.
 
         @return: np.array[rows][columns] which has a structure, i.e. strings
@@ -1082,7 +1082,7 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 self.logMsg('Type definition not found in the block table.'
                             '\nType is neither a string, integer or float. '
-                            'Include that type in the get_block_table method!',
+                            'Include that type in the get_pulse_block_table method!',
                             msgType='error')
 
         # remove the last two elements since these are a comma and a space:
@@ -1120,7 +1120,7 @@ class PulsedMeasurementGui(GUIBase):
         else:
             current_block_name = self._mw.saved_blocks_ComboBox.currentText()
 
-        block = self._seq_gen_logic.get_block(current_block_name,
+        block = self._seq_gen_logic.get_pulse_block(current_block_name,
                                               set_as_current_block=True)
 
         # of no object was found then block has reference to None
@@ -1213,7 +1213,7 @@ class PulsedMeasurementGui(GUIBase):
             return
         num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
         self._seq_gen_logic.generate_pulse_block_object(objectname,
-                                                  self.get_block_table(),
+                                                  self.get_pulse_block_table(),
                                                   num_laser_pulses)
 
         self.update_block_organizer_list()
@@ -1553,31 +1553,23 @@ class PulsedMeasurementGui(GUIBase):
         reps_col = self._cfg_param_pb['repetition']
 
         if len(self._seq_gen_logic.saved_pulse_blocks) > 0:
-            for row_ind in range(
-                    self._mw.block_organizer_TableWidget.rowCount()):
-                pulse_block_name = self.get_element_in_organizer_table(row_ind,
-                                                                       pulse_block_col)
+            for row_ind in range(self._mw.block_organizer_TableWidget.rowCount()):
+                pulse_block_name = self.get_element_in_organizer_table(row_ind, pulse_block_col)
 
-                block_obj = self._seq_gen_logic.get_block(pulse_block_name)
+                block_obj = self._seq_gen_logic.get_pulse_block(pulse_block_name)
 
                 reps = self.get_element_in_organizer_table(row_ind, reps_col)
 
                 # Calculate the length via the gaussian summation formula:
-                length_bin = int(
-                    length_bin + block_obj.init_length_bins * (reps + 1) + (
-                    (reps + 1) * (
-                    (reps + 1) + 1) / 2) * block_obj.increment_bins)
+                length_bin = int(length_bin + block_obj.init_length_bins * (reps + 1) +
+                                 ((reps + 1) * ((reps + 1) + 1) / 2) * block_obj.increment_bins)
 
-                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (
-                reps + 1)
+                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps + 1)
 
-            length_mu = (
-                        length_bin / self.get_sample_rate()) * 1e6  # in microns
+            length_mu = (length_bin / self.get_sample_rate()) * 1e6  # in microns
 
         self._mw.curr_ensemble_length_DSpinBox.setValue(length_mu)
-
         self._mw.curr_ensemble_bins_SpinBox.setValue(length_bin)
-
         self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
 
 
@@ -1655,7 +1647,7 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 self.logMsg('Type definition not found in the organizer table.'
                             '\nType is neither a string, integer or float. '
-                            'Include that type in the get_block_table method!',
+                            'Include that type in the get_organizer_table method!',
                             msgType='error')
 
         # remove the last two elements since these are a comma and a space:
@@ -1760,7 +1752,7 @@ class PulsedMeasurementGui(GUIBase):
             current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
 
         # get the ensemble object and set as current ensemble
-        ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
+        ensemble = self._seq_gen_logic.get_pulse_block_ensemble(current_ensemble_name,
                                                     set_as_current_ensemble=True)
 
         # Check whether an ensemble is found, otherwise there will be None:
@@ -1899,7 +1891,7 @@ class PulsedMeasurementGui(GUIBase):
         self._channel_map
 
     def get_cfg_param_pbe(self):
-        """ Get the current parameter configuration of Pulse Block Element.
+        """ Get the current parameter configuration of Pulse Block Elements.
 
         @return dict: An abstract dictionary, which tells the logic the
                       configuration of a Pulse_Block_Element, i.e. how many
@@ -1930,7 +1922,7 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.cfg_param_pbe = cfg_param_pbe
 
     def get_cfg_param_pb(self):
-        """ Ask for the current configuration of the
+        """ Ask for the current configuration of the Pulse Blocks.
 
         @return dict: An abstract dictionary, which tells the logic the
                       configuration of a Pulse_Block, i.e. how many parameters
@@ -2841,6 +2833,16 @@ class PulsedMeasurementGui(GUIBase):
                          explanation can be found in the method initUI.
         """
 
+        # set viewboxes of the sequence length to proper minimum and top maximum
+        self._mw.curr_seq_bins_SpinBox.setMinimum(0)
+        self._mw.curr_seq_bins_SpinBox.setMaximum(2 ** 31 - 1)
+        self._mw.curr_seq_length_DSpinBox.setMinimum(0)
+        self._mw.curr_seq_length_DSpinBox.setMaximum(np.inf)
+        # self._mw.curr_seq_laserpulses_SpinBox.setMinimum(0)
+        # self._mw.curr_seq_laserpulses_SpinBox.setMaximum(2 ** 31 - 1)
+
+
+
         # check for sequencer mode and then hide the tab.
         if not self._seq_gen_logic.has_sequence_mode():
             # save the tab for
@@ -2852,6 +2854,9 @@ class PulsedMeasurementGui(GUIBase):
 
         # create the table according to the passed values from the logic:
         self._set_sequence_editor_columns()
+        # set to the logic the current sequence configuration:
+        self.set_cfg_param_seq()
+        self.update_sequence_list()
 
         # connect the signals for the block editor:
         self._mw.seq_add_last_PushButton.clicked.connect(self.sequence_editor_add_row_after_last)
@@ -2859,6 +2864,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.seq_add_sel_PushButton.clicked.connect(self.sequence_editor_add_row_before_selected)
         self._mw.seq_del_sel_PushButton.clicked.connect(self.sequence_editor_delete_row_selected)
         self._mw.seq_clear_PushButton.clicked.connect(self.sequence_editor_clear_table)
+
+        self._mw.seq_editor_TableWidget.itemChanged.connect(self._update_current_pulse_sequence)
 
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
@@ -2868,14 +2875,38 @@ class PulsedMeasurementGui(GUIBase):
         """
         pass
 
+    def get_cfg_param_seq(self):
+        """ Ask for the current configuration of the Pulse Sequence.
+
+        @return dict: An abstract dictionary, which tells the logic the configuration of a
+                      Pulse_Sequence, i.e. how many parameters are used for a Pulse_Sequence (seq)
+                      object. Keys describing the names of the column (as string) and the items
+                      denoting the column number (int).
+        """
+        return self._cfg_param_seq
+
+    def set_cfg_param_seq(self):
+        """ Set the parameter configuration of the Pulse_Sequence according to the current table
+            configuration and updates the dict in the logic.
+        """
+
+        cfg_param_seq = OrderedDict()
+
+        for column in range(self._mw.seq_editor_TableWidget.columnCount()):
+            # keep in mind that the underscore was deleted for nicer representation during creation
+            text = self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).text().replace(' ','_')
+            # split_text = text.split()
+
+            cfg_param_seq[text] = column
+
+        self._cfg_param_seq = cfg_param_seq
+        self._seq_gen_logic.cfg_param_seq = cfg_param_seq
 
 
     def _set_sequence_editor_columns(self):
         """ Depending on the sequence parameters a table witll be created. """
 
-        seq_param = self._seq_gen_logic.get_cfg_param_seq()
-
-        self._mw.seq_editor_TableWidget
+        seq_param = self._seq_gen_logic.get_seq_param()
 
         # Erase the delegate from the column, pass a None reference:
         for column in range(self._mw.seq_editor_TableWidget.columnCount()):
@@ -2890,7 +2921,7 @@ class PulsedMeasurementGui(GUIBase):
         column = 0
         # set the name for the column:
         self._mw.seq_editor_TableWidget.setHorizontalHeaderItem(column, QtGui.QTableWidgetItem())
-        self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText('Ensemble')
+        self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText('ensemble')
         self._mw.seq_editor_TableWidget.setColumnWidth(column, 100)
 
         item_dict = {}
@@ -2928,14 +2959,11 @@ class PulsedMeasurementGui(GUIBase):
             column += 1
 
         # at the end, initialize all the cells with the proper value:
-        self.initialize_cells_sequence_editor(0)
+        self.initialize_cells_sequence_editor(start_row=0,
+                                              stop_row=self._mw.seq_editor_TableWidget.rowCount())
 
-        # find out the types of the sequence parameters and create for them a proper viewbox in
-        # the table
-
-
-        # delegate the viewbox to the table
-
+        self.set_cfg_param_seq()
+        self._update_current_pulse_sequence()
 
     def initialize_cells_sequence_editor(self, start_row, stop_row=None,
                                          start_col=None, stop_col=None):
@@ -2992,6 +3020,7 @@ class PulsedMeasurementGui(GUIBase):
                                               stop_row=selected_row + insert_rows)
 
         self._mw.seq_editor_TableWidget.blockSignals(False)
+        self._update_current_pulse_sequence()
 
     def sequence_editor_add_row_after_last(self, insert_rows=1):
         """ Add row after last row in the sequence editor. """
@@ -3011,6 +3040,7 @@ class PulsedMeasurementGui(GUIBase):
                                               stop_row=number_of_rows + insert_rows)
 
         self._mw.seq_editor_TableWidget.blockSignals(False)
+        self._update_current_pulse_sequence()
 
     def sequence_editor_delete_row_selected(self):
         """ Delete row of selected element. """
@@ -3019,6 +3049,7 @@ class PulsedMeasurementGui(GUIBase):
         # lowest selected row
         row_to_remove = self._mw.seq_editor_TableWidget.currentRow()
         self._mw.seq_editor_TableWidget.removeRow(row_to_remove)
+        self._update_current_pulse_sequence()
 
     def sequence_editor_delete_row_last(self):
         """ Delete the last row in the sequence editor. """
@@ -3027,6 +3058,7 @@ class PulsedMeasurementGui(GUIBase):
         # remember, the row index is started to count from 0 and not from 1,
         # therefore one has to reduce the value by 1:
         self._mw.seq_editor_TableWidget.removeRow(number_of_rows - 1)
+        self._update_current_pulse_sequence()
 
     def sequence_editor_clear_table(self):
         """ Delete all rows in the sequence editor table. """
@@ -3038,6 +3070,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.initialize_cells_sequence_editor(start_row=0)
         self._mw.seq_editor_TableWidget.blockSignals(False)
+        self._update_current_pulse_sequence()
 
 
     # load, delete, generate and update functionality for pulse sequence:
@@ -3067,7 +3100,7 @@ class PulsedMeasurementGui(GUIBase):
         #     current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
         #
         # # get the ensemble object and set as current ensemble
-        # ensemble = self._seq_gen_logic.get_ensemble(current_ensemble_name,
+        # ensemble = self._seq_gen_logic.get_pulse_block_ensemble(current_ensemble_name,
         #                                             set_as_current_ensemble=True)
         #
         # # Check whether an ensemble is found, otherwise there will be None:
@@ -3101,15 +3134,25 @@ class PulsedMeasurementGui(GUIBase):
         """
         Actions to perform when the delete button in the sequence editor is clicked
         """
-        name = self._mw.saved_blocks_ComboBox.currentText()
-        self._seq_gen_logic.delete_block(name)
-        self.update_block_organizer_list()
+        name = self._mw.saved_seq_ComboBox.currentText()
+        self._seq_gen_logic.delete_sequence(name)
+        self.update_sequence_list()
         return
 
     def generate_pulse_sequence(self):
         """ Generate a Pulse_Sequence object."""
-        pass
+        objectname = self._mw.curr_seq_name_LineEdit.text()
+        if objectname == '':
+            self.logMsg('No Name for Pulse_Sequence specified. '
+                        'Generation aborted!', importance=7, msgType='warning')
+            return
+        rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
+        self._seq_gen_logic.generate_pulse_sequence(objectname,
+                                                    self.get_sequence_table(),
+                                                    rotating_frame)
 
+            # skip the option with the number of lasers for now
+            # self._mw.laserchannel_ComboBox.currentText(),
 
     def update_sequence_list(self):
         """
@@ -3117,51 +3160,45 @@ class PulsedMeasurementGui(GUIBase):
         Updates all ComboBoxes showing generated blocks.
         """
         # # updated list of all generated blocks
-        # new_list = self._seq_gen_logic.saved_sequences
-        # # update saved_blocks_ComboBox items
-        # self._mw.saved_blocks_ComboBox.clear()
-        # self._mw.saved_blocks_ComboBox.addItems(new_list)
+        new_list = self._seq_gen_logic.saved_pulse_sequences
+        # update saved_blocks_ComboBox items
+        self._mw.saved_seq_ComboBox.clear()
+        self._mw.saved_seq_ComboBox.addItems(new_list)
         return
 
     def _update_current_pulse_sequence(self):
         """ Update the current Pulse Sequence Info in the display. """
 
-        # length = 0.0  # in ns
-        # bin_length = 0
-        # col_ind = self._cfg_param_pbe['length']
-        #
-        # laser_channel = self._mw.laserchannel_ComboBox.currentText()
-        # num_laser_ch = 0
-        #
-        # # Simple search routine:
-        # if 'A' in laser_channel:
-        #     # extract with regular expression module the number from the
-        #     # string:
-        #     num = re.findall('\d+', laser_channel)
-        #     laser_column = self._cfg_param_pbe['function_' + str(num[0])]
-        # elif 'D' in laser_channel:
-        #     num = re.findall('\d+', laser_channel)
-        #     laser_column = self._cfg_param_pbe['digital_' + str(num[0])]
-        # else:
-        #     return
-        #
-        # for row_ind in range(self._mw.block_editor_TableWidget.rowCount()):
-        #     curr_length = self.get_element_in_block_table(row_ind, col_ind)
-        #     curr_bin_length = int(np.round(curr_length * (self.get_sample_rate())))
-        #     length = length + curr_length
-        #     bin_length = bin_length + curr_bin_length
-        #
-        #     laser_val = self.get_element_in_block_table(row_ind, laser_column)
-        #     if (laser_val == 'DC') or (laser_val == 2):
-        #         num_laser_ch = num_laser_ch + 1
-        #
-        # # FIXME: The display unit will be later on set in the settings, so that
-        # #       one can choose which units are suiting the best. For now on it
-        # #       will be fixed to microns.
-        #
-        # self._mw.curr_block_length_DSpinBox.setValue(length * 1e6)  # in microns
-        # self._mw.curr_block_bins_SpinBox.setValue(bin_length)
-        # self._mw.curr_block_laserpulses_SpinBox.setValue(num_laser_ch)
+        length_milli = 0.0  # in milliseconds
+        length_bin = 0
+        # num_laser_pulses = 0
+
+
+        pulse_block_col = self._cfg_param_seq['ensemble']
+
+        reps_col = self._cfg_param_seq.get('reps')
+
+        if len(self._seq_gen_logic.saved_pulse_block_ensembles) > 0:
+            for row_ind in range(self._mw.seq_editor_TableWidget.rowCount()):
+                pulse_block_ensemble_name = self.get_element_in_sequence_table(row_ind, pulse_block_col)
+
+                ensemble_obj = self._seq_gen_logic.get_pulse_block_ensemble(pulse_block_ensemble_name)
+
+                if reps_col is None:
+                    reps = 0
+                else:
+                    reps = self.get_element_in_sequence_table(row_ind, reps_col)
+
+                # Calculate the length via the gaussian summation formula:
+                length_bin = int(length_bin + ensemble_obj.length_bins * (reps + 1) )
+
+                # num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps + 1)
+
+            length_milli = (length_bin / self.get_sample_rate()) * 1e3  # in milliseconds
+
+        self._mw.curr_seq_length_DSpinBox.setValue(length_milli)
+        self._mw.curr_seq_bins_SpinBox.setValue(length_bin)
+        # self._mw.curr_ensemble_laserpulses_SpinBox.setValue(num_laser_pulses)
         return
 
 
@@ -3218,73 +3255,99 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def get_element_in_sequence_table(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell
-            in the block table.
+        """ Simplified wrapper function to get the data from a specific cell in the pulse sequence
+            table.
 
         @param int row: row index
         @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
+
+        @return: the value of the corresponding cell, which can be a string, a float or an integer.
+                 Remember that the checkbox state unchecked corresponds to 0 and check to 2. That
+                 is Qt convention.
 
         Note that the order of the arguments in this function (first row index
         and then column index) was taken from the Qt convention.
         """
 
-        # tab = self._mw.seq_editor_TableWidget
-        #
-        # # Get from the corresponding delegate the data access model
-        # access = tab.itemDelegateForColumn(column).model_data_access
-        # data = tab.model().index(row, column).data(access)
-        #
-        # # check whether the value has to be normalized to SI values.
-        # if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
-        #     unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
-        #     # access the method defined in base for unit prefix:
-        #     return data * self.get_unit_prefix_dict()[unit_prefix]
-        #
-        # return data
+        tab = self._mw.seq_editor_TableWidget
+
+        # Get from the corresponding delegate the data access model
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+
+        # check whether the value has to be normalized to SI values.
+        if hasattr(tab.itemDelegateForColumn(column), 'get_unit_prefix'):
+            unit_prefix = tab.itemDelegateForColumn(column).get_unit_prefix()
+            # access the method defined in base for unit prefix:
+            return data * self.get_unit_prefix_dict()[unit_prefix]
+
+        return data
+
+    def set_element_in_sequence_table(self, row, column, value):
+        """ Simplified wrapper function to set the data to a specific cell in the pulse sequence
+            table.
+
+        @param int row: row index
+        @param int column: column index
+
+        Note that the order of the arguments in this function (first row index and then column
+        index) was taken from the Qt convention.
+        A type check will be performed for the passed value argument. If the type does not
+        correspond to the delegate, then the value will not be changed. You have to ensure that!
+        """
+
+        tab = self._mw.seq_editor_TableWidget
+        model = tab.model()
+        access = tab.itemDelegateForColumn(column).model_data_access
+        data = tab.model().index(row, column).data(access)
+
+        if type(data) == type(value):
+            model.setData(model.index(row, column), value, access)
+        else:
+            self.logMsg('The cell ({0},{1}) in pulse sequence table could not be '
+                        'assigned with the value="{2}", since the type "{3}" '
+                        'of the cell from the delegated type differs from '
+                        '"{4}" of the value!\nPrevious value will be '
+                        'kept.'.format(row, column, value, type(data),
+                                       type(value)), msgType='warning')
         return
 
     def get_sequence_table(self):
-        """ Convert block table data to numpy array.
+        """ Convert sequence table data to numpy array.
 
         @return: np.array[rows][columns] which has a structure, i.e. strings
                  integer and float values are represented by this array.
-                 The structure was taken according to the init table itself.
         """
 
-        # tab = self._mw.block_editor_TableWidget
-        #
-        # # create a structure for the output numpy array:
-        # structure = ''
-        # for column in range(tab.columnCount()):
-        #     elem = self.get_element_in_block_table(0, column)
-        #     if type(elem) is str:
-        #         structure = structure + '|S20, '
-        #     elif type(elem) is int:
-        #         structure = structure + '|i4, '
-        #     elif type(elem) is float:
-        #         structure = structure + '|f4, '
-        #     else:
-        #         self.logMsg('Type definition not found in the block table.'
-        #                     '\nType is neither a string, integer or float. '
-        #                     'Include that type in the get_block_table method!',
-        #                     msgType='error')
-        #
-        # # remove the last two elements since these are a comma and a space:
-        # structure = structure[:-2]
-        # table = np.zeros(tab.rowCount(), dtype=structure)
-        #
-        # # fill the table:
-        # for column in range(tab.columnCount()):
-        #     for row in range(tab.rowCount()):
-        #         # self.logMsg(, msgType='status')
-        #         table[row][column] = self.get_element_in_block_table(row, column)
-        #
-        # return table
-        return
+        tab = self._mw.seq_editor_TableWidget
+
+        # create a structure for the output numpy array:
+        structure = ''
+        for column in range(tab.columnCount()):
+            elem = self.get_element_in_sequence_table(0, column)
+            if type(elem) is str:
+                structure = structure + '|S20, '
+            elif type(elem) is int:
+                structure = structure + '|i4, '
+            elif type(elem) is float:
+                structure = structure + '|f4, '
+            else:
+                self.logMsg('Type definition not found in the sequence table.'
+                            '\nType is neither a string, integer or float. '
+                            'Include that type in the get_sequence_table method!',
+                            msgType='error')
+
+        # remove the last two elements since these are a comma and a space:
+        structure = structure[:-2]
+        table = np.zeros(tab.rowCount(), dtype=structure)
+
+        # fill the return table:
+        for column in range(tab.columnCount()):
+            for row in range(tab.rowCount()):
+                # self.logMsg(, msgType='status')
+                table[row][column] = self.get_element_in_sequence_table(row, column)
+
+        return table
 
 
     ###########################################################################
