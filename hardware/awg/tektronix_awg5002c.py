@@ -523,6 +523,24 @@ class AWG5002C(Base, PulserInterface):
 
         return created_files
 
+    def write_seq_to_file(self, name, sequence_param):
+        """ Write a sequence to file
+
+        @param str name: name of the sequence to be created
+        @param list sequence_param: a list of dict, which contains all the information, which
+                                    parameters are to be taken to create a sequence. The dict will
+                                    have at least the entry
+                                        {'ensemble': [<list_of_sampled_ensemble_name>] }
+                                    All other parameters, which can be used in the sequence are
+                                    determined in the get_constraints method in the category
+                                    'sequence_param'.
+
+        In order to write sequence files a completely new method with respect to
+        write_samples_to_file is needed.
+        """
+        raise InterfaceImplementationError('PulserInterface>write_seq_to_file')
+        return -1
+
 
     def get_status(self):
         """ Retrieves the status of the pulsing hardware

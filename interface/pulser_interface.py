@@ -588,18 +588,18 @@ a
         If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
         that the whole ensemble is written as a whole in one big chunk.
 
-        @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
-                                       samples for the analog channels that
-                                       are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
-                                      for the digital channels that
-                                      are to be written by this function call.
-        @param total_number_of_samples: int, The total number of samples in the entire waveform.
+        @param str name: represents the name of the sampled ensemble
+        @param numpy.ndarray analog_samples: float32 numpy ndarray, contains the samples for the
+                                             analog channels that are to be written by this
+                                             function call.
+        @param numpy.ndarray digital_samples: bool numpy ndarray, contains the samples for the
+                                              digital channels that are to be written by this
+                                              function call.
+        @param int total_number_of_samples: int, The total number of samples in the entire waveform.
                                         Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the
+        @param bool is_first_chunk: bool, indicates if the current chunk is the
                                first write to this file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last
+        @param bool is_last_chunk: indicates if the current chunk is the last
                               write to this file.
 
         @return list: the list contains the string names of the created files for the passed

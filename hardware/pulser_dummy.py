@@ -594,6 +594,9 @@ class PulserDummy(Base, PulserInterface):
 
         return created_files
 
+    def write_seq_to_file(self, name, sequence_param):
+        pass
+
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
             Does NOT load it into channels.
