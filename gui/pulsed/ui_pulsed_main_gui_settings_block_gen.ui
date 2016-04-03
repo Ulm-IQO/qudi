@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>538</width>
-    <height>224</height>
+    <height>242</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,7 @@
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="5" column="0" colspan="7">
+     <item row="6" column="0" colspan="7">
       <widget class="QGroupBox" name="groupBox">
        <property name="title">
         <string>Available Functions</string>
@@ -193,6 +193,20 @@
       <widget class="QCheckBox" name="use_interleave_CheckBox">
        <property name="text">
         <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QCheckBox" name="use_saupload_CheckBox">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Replace Sample, Upload&lt;br/&gt;and Load Button by one&lt;br/&gt;SaUpLoad Button&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
