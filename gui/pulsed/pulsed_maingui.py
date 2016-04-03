@@ -515,7 +515,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
 
         self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block)
-        self._mw.curr_block_del_PushButton.clicked.connect(self.delete_pulse_block)
+        self._mw.curr_block_del_PushButton.clicked.connect(self.delete_pulse_block_clicked)
 
         # connect the signals for the block organizer:
         self._mw.organizer_add_last_PushButton.clicked.connect(self.block_organizer_add_row_after_last)
@@ -525,7 +525,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
 
         self._mw.curr_ensemble_load_PushButton.clicked.connect(self.load_pulse_block_ensemble)
-        self._mw.curr_ensemble_del_PushButton.clicked.connect(self.block_organizer_delete_clicked)
+        self._mw.curr_ensemble_del_PushButton.clicked.connect(self.delete_pulse_block_ensemble_clicked)
 
         # connect the signals for the "Upload on device" section
         self._mw.upload_sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
@@ -544,7 +544,7 @@ class PulsedMeasurementGui(GUIBase):
         # connect update signals of the sequence_generator_logic
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
-        self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
+
 
         pulser_constr = self.get_hardware_constraints()
         # Here just the number of analog or digital channels is needed:
@@ -830,7 +830,9 @@ class PulsedMeasurementGui(GUIBase):
         # FIXME: Implement a proper choosing of the channels to upload to.
         # Right now the channels are invoked from the asset filenames
 
-        self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
+        self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name=ensemble_name,
+                                                        write_to_file=True,
+                                                        chunkwise=True)
         return
 
     def upload_to_device_clicked(self):
@@ -1194,7 +1196,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
 
 
-    def delete_pulse_block(self):
+    def delete_pulse_block_clicked(self):
         """
         Actions to perform when the delete button in the block editor is clicked
         """
@@ -1847,7 +1849,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.blockSignals(False)
         self._update_current_pulse_block_ensemble()
 
-    def block_organizer_delete_clicked(self):
+    def delete_pulse_block_ensemble_clicked(self):
         """
         Actions to perform when the delete button in the block organizer is clicked
         """
@@ -2867,6 +2869,29 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.seq_editor_TableWidget.itemChanged.connect(self._update_current_pulse_sequence)
 
+        self._mw.curr_seq_generate_PushButton.clicked.connect(self.generate_pulse_sequence_clicked)
+
+        self._mw.curr_seq_del_PushButton.clicked.connect(self.delete_pulse_sequence_clicked)
+
+        self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
+        self.update_sequence_list()
+
+        # create a list with all possible combinations of independant channels, so that one can
+        # choose, which scenerio to take and to which channel to upload which created file:
+        pulser_constr = self.get_hardware_constraints()
+
+        maximum_ch_variation = range(1, pulser_constr['independent_ch'] + 1)
+        channels_combi = []
+        for entry in range(0, len(maximum_ch_variation) + 1):
+            for subset in itertools.combinations(maximum_ch_variation, entry):
+                if subset != ():
+                    channels_combi.append(str(list(subset)))
+
+        self._mw.upload_seq_independ_ch_combi_ComboBox.clear()
+        self._mw.upload_seq_independ_ch_combi_ComboBox.addItems(channels_combi)
+        index = len(channels_combi) - 1
+        self._mw.upload_seq_independ_ch_combi_ComboBox.setCurrentIndex(index)
+
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
 
@@ -3129,8 +3154,9 @@ class PulsedMeasurementGui(GUIBase):
         #
         # # set the ensemble name LineEdit to the current ensemble
         # self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
+        pass
 
-    def sequence_editor_delete_clicked(self):
+    def delete_pulse_sequence_clicked(self):
         """
         Actions to perform when the delete button in the sequence editor is clicked
         """
@@ -3139,7 +3165,7 @@ class PulsedMeasurementGui(GUIBase):
         self.update_sequence_list()
         return
 
-    def generate_pulse_sequence(self):
+    def generate_pulse_sequence_clicked(self):
         """ Generate a Pulse_Sequence object."""
         objectname = self._mw.curr_seq_name_LineEdit.text()
         if objectname == '':
@@ -3147,6 +3173,7 @@ class PulsedMeasurementGui(GUIBase):
                         'Generation aborted!', importance=7, msgType='warning')
             return
         rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
+
         self._seq_gen_logic.generate_pulse_sequence(objectname,
                                                     self.get_sequence_table(),
                                                     rotating_frame)
@@ -3164,6 +3191,28 @@ class PulsedMeasurementGui(GUIBase):
         # update saved_blocks_ComboBox items
         self._mw.saved_seq_ComboBox.clear()
         self._mw.saved_seq_ComboBox.addItems(new_list)
+
+        self._mw.upload_seq_ComboBox.clear()
+        self._mw.upload_seq_ComboBox.addItems(new_list)
+
+        # Set active index of the ComboBoxes to the currently shown/last created sequence
+        if self._seq_gen_logic.current_sequence is not None:
+
+            # get last generated and currently shown ensemble name from logic
+            current_sequence_name = self._seq_gen_logic.current_sequence.name
+            # identify the corresponding index within the ComboBox
+            index_to_set = self._mw.upload_seq_ComboBox.findText(current_sequence_name)
+
+            self._mw.saved_seq_ComboBox.setCurrentIndex(index_to_set)
+            self._mw.upload_seq_ComboBox.setCurrentIndex(index_to_set)
+        else:
+            # set the current sequence in the logic and all ComboBoxes to the currently
+            # shown sequence in the upload_seq_ComboBox.
+
+            current_sequence_name = self._mw.upload_seq_ComboBox.currentText()
+            index_to_set = self._mw.saved_seq_ComboBox.findText(current_sequence_name)
+            self._mw.saved_seq_ComboBox.setCurrentIndex(index_to_set)
+            self.load_pulse_sequence()
         return
 
     def _update_current_pulse_sequence(self):
@@ -3202,22 +3251,18 @@ class PulsedMeasurementGui(GUIBase):
         return
 
 
-
-
     # Sample, Upload and Load functionality for Pulse Sequence
 
     def sample_sequence_clicked(self):
         """
         This method is called when the user clicks on "sample"
         """
-        # # Get the ensemble name to be uploaded from the ComboBox
-        # ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
-        # # Sample the ensemble via logic module
-        #
-        # # FIXME: Implement a proper choosing of the channels to upload to.
-        # # Right now the channels are invoked from the asset filenames
-        #
-        # self._seq_gen_logic.sample_ensemble(ensemble_name, True, True)
+        # Get the ensemble name to be uploaded from the ComboBox
+        sequence_name = self._mw.upload_seq_ComboBox.currentText()
+        # Sample the ensemble via logic module
+
+        self._seq_gen_logic.sample_pulses_sequence(sequence_name, write_to_file=True,
+                                                   chunkwise=True)
         return
 
     def upload_seq_to_device_clicked(self):
