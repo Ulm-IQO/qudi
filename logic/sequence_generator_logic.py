@@ -168,18 +168,18 @@ class Pulse_Block_Ensemble(object):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
         @param str name: chosen name for the Pulse_Block_Ensemble
-        @param list block_list: contains the Pulse_Block Objects with
-                           their number of repetitions, e.g.
-                           [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
-        @param list measurement_ticks_list: the x-axis of the measurement. Not yet properly used.
+        @param list block_list: contains the Pulse_Block Objects with their number of repetitions,
+                                e.g.
+                                    [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
+        @param list measurement_ticks_list: the x-axis of the measurement.
         @param int laser_channel_index: the index of the digital channel representing the laser
-        @param bool rotating_frame: indicates whether the phase should be
-                               preserved for all the functions.
+        @param bool rotating_frame: indicates whether the phase should be preserved for all the
+                                    functions.
         """
 
-        self.name = name                        # block name
-        self.block_list = block_list        # List of AWG_Block objects with repetition number
-        self.measurement_ticks_list = measurement_ticks_list
+        self.name = name                    # Pulse_Block_Ensemble name
+        self.block_list = block_list
+        self.measurement_ticks_list = np.array(measurement_ticks_list)
         self.laser_channel = laser_channel_index
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
@@ -243,28 +243,30 @@ class Pulse_Sequence(object):
 
         @param str name: the actual name of the sequence
         @param list ensemble_param_list: list containing a tuple of two entries:
-                (Pulse_Block_Ensemble, seq_param), (Pulse_Block_Ensemble, seq_param), ...
-                The seq_param is a dictionary, where the various sequence
-                parameters are saved with their keywords and the according
-                parameter. Which parameter will be in this dictionary will
-                completely depend on the sequence parameter set of the pulsing
-                device. But most certain the parameter 'reps' meaning repetions
-                will be presesnt in the sequence parameters. If only 'reps' are
-                in the dictionary, than the dict will look like
-                    seq_param = {'reps': 12}
-                if 12 was chosen as the number of repetitions.
-        @param list measurement_ticks_list: 1d list, where each entry
-                                            corresponds to an tick on an the
-                                            x-axis of the measurement. Note,
-                                            that the x-axis does not have to be
-                                            always a time axis!
-        @param bool rotating_frame: indicates, whether the phase has to be
-                                    preserved in all oscillating functions.
+                    (Pulse_Block_Ensemble, seq_param), (Pulse_Block_Ensemble, seq_param), ...
+                                          The seq_param is a dictionary, where the various sequence
+                                          parameters are saved with their keywords and the
+                                          according parameter (as item). What parameter will be in
+                                          this dictionary will completely depend on the sequence
+                                          parameter set of the pulsing device. But most certain the
+                                          parameter 'reps' meaning repetitions will be presesnt in
+                                          the sequence parameters.
+                                          If only 'reps' are in the dictionary, than the dict will
+                                          look like
+                                                seq_param = {'reps': 12}
+                                          if 12 was chosen as the number of repetitions.
+        @param list measurement_ticks_list: 1d list, where each entry corresponds to an tick on an
+                                            the x-axis of the measurement.
+                                            Note, that the x-axis does not have to be always a time
+                                            axis! The entry can also be voltages or other stuffm
+                                            which varies between the different entries!
+        @param bool rotating_frame: indicates, whether the phase has to be preserved in all
+                                    oscillating functions.
         """
 
         self.name = name
         self.ensemble_param_list = ensemble_param_list
-        self.measurement_ticks_list = measurement_ticks_list
+        self.measurement_ticks_list = np.array(measurement_ticks_list)
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
 
@@ -277,14 +279,27 @@ class Pulse_Sequence(object):
         self.length_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
+
         for ensemble, seq_dict in self.ensemble_param_list:
-            self.length_bins += (ensemble.length_bins * seq_dict['reps'])
+
+            for param in seq_dict:
+                if 'reps' in param.lower() or 'repetition' in param.lower():
+                    reps = seq_dict[param]
+                    break
+                else:
+                    reps = 0
+
+            self.length_bins += (ensemble.length_bins * (reps+1))
+
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels
             if ensemble.digital_channels > self.digital_channels:
                 self.digital_channels = ensemble.digital_channels
 
         self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
+
+        # make a list with all DIFFERENT Pulse_Block_Ensemble objects
+
 
     def replace_ensemble(self, position, ensemble_param):
         """ Replace an ensemble at a given position.
@@ -1030,7 +1045,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         sequence_files = [f for f in os.listdir(self.sequence_dir) if '.se' in f]
         sequences = []
         for filename in sequence_files:
-            sequences.append(filename[:-4])
+            sequences.append(filename[:-3])
         sequences.sort()
         self.saved_pulse_sequences = sequences
         self.signal_sequence_list_updated.emit()
@@ -1245,20 +1260,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         Generates from an given table ensemble_matrix a ensemble object.
 
-        @param ensemble_name: string, Name of the created Pulse_Block_Ensemble
-                              Object
-        @param ensemble_matrix: structured np.array, matrix, in which the
-                                construction plan for Pulse_Block objects
-                                are displayed as rows.
-        @param laser_channel: string, the channel controlling the laser
-        @param rotating_frame: bool, optional, whether the phase preservation
-                               is mentained throughout the sequence.
+        @param str ensemble_name: Name of the created Pulse_Block_Ensemble object
+        @param np.array ensemble_matrix: structured 2D np.array, matrix, in which the construction
+                                         plan for Pulse_Block objects are displayed as rows.
+        @param str laser_channel: the channel controlling the laser
+        @param bool rotating_frame: optional, whether the phase preservation is mentained
+                                    throughout the sequence.
 
-        Three internal dict where used, to get all the needed information about
-        how parameters, functions are defined (_add_pb_param)
-
-        The dict cfg_param_pb (configuration parameter declaration dict for
-        Pulse_Block) stores how the objects are appearing in the GUI.
+        The dict cfg_param_pb (configuration parameter declaration dict for Pulse_Block) stores how
+        the objects are related to each other in a sequencial way. That relationship is used in the
+        GUI, where the parameters appear in columns.
         This dict enables the proper access to the desired element in the GUI.
         """
 
@@ -1267,12 +1278,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         pb_obj_list = [None]*len(ensemble_matrix)
 
         #FIXME: The whole measurement tick array can be created much more convenient using the
-        #built-in metadata inside the Pulse_Block and Pulse_Block_Ensemble objects.
-        #Maybe it is even better to automatically calculate the measurement_ticks_list inside
-        #the objects refresh_parameters() method
-        #FIXME: Obtain the measurement_ticks_list size before, and do not append to it.
-        # it is not easy to estimate the measurement_ticks_list. Therefore follow the simple
-        # append to list approach. Later a nicer way can be implemented.
+        #       built-in metadata inside the Pulse_Block and Pulse_Block_Ensemble objects.
+        #       Maybe it is even better to automatically calculate the measurement_ticks_list inside
+        #       the objects refresh_parameters() method
+
+        # here the measurement ticks will be saved:
         measurement_ticks_list = []
 
         # to make a resonable measurement tick list, the last biggest tick value after all
@@ -1303,10 +1313,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             laser_channel_index = 0
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
-                                              block_list=pb_obj_list,
-                                              measurement_ticks_list=measurement_ticks_list,
-                                              laser_channel_index=laser_channel_index,
-                                              rotating_frame=rotating_frame)
+                                                    block_list=pb_obj_list,
+                                                    measurement_ticks_list=measurement_ticks_list,
+                                                    laser_channel_index=laser_channel_index,
+                                                    rotating_frame=rotating_frame)
         # set current block ensemble
         self.current_ensemble = pulse_block_ensemble
         # save ensemble
@@ -1315,13 +1325,95 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
     def generate_pulse_sequence(self, sequence_name, sequence_matrix, rotating_frame=True):
+        """ Generates a Pulse_Sequence object out of the corresponding editor table/matrix.
+
+        @param str sequence_name: name of the created Pulse_Sequence object
+        @param np.array sequence_matrix: structured 2D np.array, matrix, in which the construction
+                                         plan for Pulse_Block_Ensemble objects are displayed as
+                                         rows.
+        @param bool rotating_frame: optional, whether the phase preservation is mentained
+                                    throughout the sequence.
+
+        Creates a collection of Pulse_Block_Ensemble objects.
         """
-        Generates a Pulse_Sequence object out of the corresponding editor
-        table/matrix. Creates a whole new structure of Block_Elements, Blocks
-        and Block_Ensembles so that the phase of the seqeunce is preserved.
-        NOT EASY!
-        """
-        return
+
+        # list of all the Pulse_Block_Ensemble objects and their parameters
+        ensemble_param_list = [None] * len(sequence_matrix)
+
+
+        # calculate the measurement ticks from all the previous measurement ticks in the
+        # Pulse_Block_Ensemble objects:
+        measurement_ticks_list = []
+
+
+        # to make a resonable measurement tick list, the last biggest tick value after all
+        # the repetitions of a block is used as the offset_time for the next
+        # block.
+        offset_tick_bin = 0
+
+        for row_index, row in enumerate(sequence_matrix):
+
+            # the ensemble entry must be always (!) present, therefore this entry in the
+            # configuration dict for the sequence parameter are taken for granted. Get from the
+            # cfg_param_seq the relative situation to the other parameters (which is in the table
+            # the column number)
+
+            column_index = self.cfg_param_seq['ensemble']
+            pulse_block_ensemble_name = row[column_index].decode('UTF-8')
+
+            # the rest must be obtained together with the actual sequence configuration parameter
+            # dict cfg_param_seq and the hardware constraints:
+            seq_param_hardware = self.get_hardware_constraints()['sequence_param']
+
+            # here the actual configuration will be save:
+            seq_param = dict()
+
+            for param in seq_param_hardware:
+                # get the the relative situation to the other parameters (which is in the table
+                # the column number):
+                column_index = self.cfg_param_seq[param]
+                # save in the sequenc parameter dict:
+                seq_param[param] = row[column_index]
+
+            # small and simple search routine, which tries to extract a repetition parameter
+            # (but the presence of such parameter is not assumed!):
+            # All the sequence parameter keywords are string identifiers.
+            for param in seq_param:
+                if 'reps' in param.lower() or 'repetition' in param.lower():
+                    pulse_block_ensemble_reps = seq_param[param]
+                    break
+                else:
+                    pulse_block_ensemble_reps = 0
+
+            # get the reference on the Pulse_Block_Ensemble object:
+            pulse_block_ensemble = self.get_pulse_block_ensemble(pulse_block_ensemble_name)
+
+            # append the measurement_ticks_list from the present pulse_block_ensemble depending
+            # on the amount of repetitions. Take also care about the offset_tick_bin.
+            for num in range(pulse_block_ensemble_reps + 1):
+                measurement_ticks_list = np.append(measurement_ticks_list,
+                                                   (offset_tick_bin + pulse_block_ensemble.measurement_ticks_list))
+
+                # for the next repetition or pulse_block_ensemble, add last number form the
+                # measurement_ticks_list as offset_tick_bin. Otherwise the measurement_ticks_list
+                # will be a mess.
+                offset_tick_bin = measurement_ticks_list[-1]
+
+            # save in the list the object and sequence parameter
+            ensemble_param_list[row_index] = (pulse_block_ensemble, seq_param)
+
+        pulse_sequence = Pulse_Sequence(name=sequence_name,
+                                        ensemble_param_list=ensemble_param_list,
+                                        measurement_ticks_list=measurement_ticks_list,
+                                        rotating_frame=rotating_frame)
+
+        # set current block ensemble
+        self.current_sequence = pulse_sequence
+        # save ensemble
+        self.save_sequence(sequence_name, pulse_sequence)
+
+
+
 #-------------------------------------------------------------------------------
 #                    END sequence/block generation
 #-------------------------------------------------------------------------------
@@ -1332,24 +1424,32 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 #-------------------------------------------------------------------------------
 
 
-    def sample_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True):
-        """ General sampling of a PulseBlockEnsemble object, which serves as the
-            construction plan.
+    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
+                                    offset_bin=0):
+        """ General sampling of a Pulse_Block_Ensemble object, which serves as the construction plan.
 
-        @param str ensemble_name: Name, which should correlate with the name of
-                                  on of the displayed ensembles.
-        @param bool write_to_file: Write either to RAM or to File (depends on
-                                   the available space in RAM).
-                                   If set to FALSE, this method will return
-                                   the samples (digital and analog) as numpy arrays
-        @param bool chunkwise: Decide, whether you want to write chunkwise,
-                               which will reduce memory usage but will
-                               increase vastly the amount of time needed.
+        @param str ensemble_name: Name, which should correlate with the name of on of the displayed
+                                  ensembles.
+        @param bool write_to_file: Write either to RAM or to File (depends on the available space
+                                   in RAM). If set to FALSE, this method will return the samples
+                                   (digital and analog) as numpy arrays
+        @param bool chunkwise: Decide, whether you want to write chunkwise, which will reduce
+                               memory usage but will increase vastly the amount of time needed.
+        @param int offset_bin: If many pulse ensembles are samples sequentially, then the
+                               offset_bin of the previous sampling can be passed to maintain
+                               rotating frame across pulse_block_ensembles
 
-        @return (analog_samples, digital_samples):    two numpy arrays containing
-                                                        the sampled voltages/logic levels
-                                                        Will only be returned if
-                                                        write_to_file is set to FALSE
+        @return tuple: of length 4 with
+                       (analog_samples, digital_samples, [<created_files>], offset_bin).
+                        analog_samples:
+                            numpy arrays containing the sampled voltages
+                        digital_samples:
+                            numpy arrays containing the sampled logic levels
+                        [<created_files>]:
+                            list of strings, with the actual created files through the pulsing
+                            device
+                        offset_bin:
+                            integer, which is used for maintaining the rotation frame.
 
         This method is creating the actual samples (voltages and logic states)
         for each time step of the analog and digital channels specified in
@@ -1382,7 +1482,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         dig_channels = ensemble.digital_channels
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
-        bin_offset = 0
+        # bin_offset = 0
 
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
@@ -1415,7 +1515,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (bin_offset + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
 
-                    if chunkwise and write_samples_to_file:
+                    if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
                         # Toggle the is_last_chunk flag accordingly.
                         element_count += 1
@@ -1433,12 +1533,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
-                        self._pulse_generator_device.write_samples_to_file(ensemble.name,
-                                                                   analog_samples,
-                                                                   digital_samples,
-                                                                   number_of_samples,
-                                                                   is_first_chunk,
-                                                                   is_last_chunk)
+                        created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name,
+                                                                                           analog_samples,
+                                                                                           digital_samples,
+                                                                                           number_of_samples,
+                                                                                           is_first_chunk,
+                                                                                           is_last_chunk)
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
@@ -1467,35 +1567,48 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # return the sample arrays for write_to_file was set to FALSE
 
 
-            return analog_samples, digital_samples
+            return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
             self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" '
                         'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
-            return
+            return analog_samples, digital_samples, created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
             # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            self._pulse_generator_device.write_samples_to_file(ensemble.name,
-                                                       analog_samples,
-                                                       digital_samples,
-                                                       number_of_samples,
-                                                       is_first_chunk,
-                                                       is_last_chunk)
+            created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name,
+                                                                               analog_samples,
+                                                                               digital_samples,
+                                                                               number_of_samples,
+                                                                               is_first_chunk,
+                                                                               is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
             self.logMsg('Time needed for sampling and writing to file as a whole: "{0}" '
                         'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
-            return
+            return analog_samples, digital_samples, created_files, offset_bin
 
 
-    def sample_sequence(self, sequence):
+    def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
+        """ Samples the Pulse_Sequence object, which serves as the construction plan.
+
+        @param str ensemble_name: Name, which should correlate with the name of on of the displayed
+                                  ensembles.
+        @param bool write_to_file: Write either to RAM or to File (depends on the available space
+                                   in RAM). If set to FALSE, this method will return the samples
+                                   (digital and analog) as numpy arrays
+        @param bool chunkwise: Decide, whether you want to write chunkwise, which will reduce
+                               memory usage but will increase vastly the amount of time needed.
+
+        The sequence object is sampled by call subsequently the sampling routine of the
+        pulse_block_element routine.
         """
-        Samples the sequence to obtain the needed waveforms.
-        """
+
+
+
         pass
 
 
@@ -1771,7 +1884,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         block_list = []
         for block in blocks:
             block_list.append((block, 0))
-        # name = 'XY8_' + str(N) + '_taustart_' + str(measurement_ticks_list[0]) + '_tauend_' + str(measurement_ticks_list[-1]) + '_numtaus_' + str(len(measurement_ticks_list))
+        # name = 'XY8_' + str(N) + '_taustart_' + str(measurement_ticks_list[0]) + '_tauend_' +
+        # str(measurement_ticks_list[-1]) + '_numtaus_' + str(len(measurement_ticks_list))
         XY8_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list, number_of_taus, True)
         # save ensemble
         self.save_ensemble(name, XY8_ensemble)
