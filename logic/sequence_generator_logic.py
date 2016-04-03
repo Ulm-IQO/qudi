@@ -279,6 +279,10 @@ class Pulse_Sequence(object):
         self.length_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
+        # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
+        # REMEMBER: A dict is hashable, that means, you will get its entry with the complexity of 1
+        #           without searching through the whole dict!
+        self.different_ensembles_dict = dict()
 
         for ensemble, seq_dict in self.ensemble_param_list:
 
@@ -296,10 +300,10 @@ class Pulse_Sequence(object):
             if ensemble.digital_channels > self.digital_channels:
                 self.digital_channels = ensemble.digital_channels
 
+            if self.different_ensembles_dict.get(ensemble.name) is None:
+                self.different_ensembles_dict[ensemble.name] = ensemble
+
         self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
-
-        # make a list with all DIFFERENT Pulse_Block_Ensemble objects
-
 
     def replace_ensemble(self, position, ensemble_param):
         """ Replace an ensemble at a given position.
@@ -1425,7 +1429,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
-                                    offset_bin=0):
+                                    offset_bin=0, name_tag=''):
         """ General sampling of a Pulse_Block_Ensemble object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
@@ -1438,6 +1442,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param int offset_bin: If many pulse ensembles are samples sequentially, then the
                                offset_bin of the previous sampling can be passed to maintain
                                rotating frame across pulse_block_ensembles
+        @param str name_tag: a name tag, which is used to keep the sampled files together, which
+                             where sampled from the same Pulse_Block_Ensemble object but where
+                             different offset_bins were used.
 
         @return tuple: of length 4 with
                        (analog_samples, digital_samples, [<created_files>], offset_bin).
@@ -1482,7 +1489,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         dig_channels = ensemble.digital_channels
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
-        # bin_offset = 0
+        # offset_bin = 0
 
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
@@ -1513,7 +1520,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     element_length_bins = init_length_bins + (rep_no*increment_bins)
 
                     # create floating point time array for the current element inside rotating frame
-                    time_arr = (bin_offset + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
+                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
 
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
@@ -1533,7 +1540,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
 
                         # write temporary sample array to file
-                        created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name,
+                        created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name+name_tag,
                                                                                            analog_samples,
                                                                                            digital_samples,
                                                                                            number_of_samples,
@@ -1557,7 +1564,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     # if the rotating frame should be preserved (default) increment the offset
                     # counter for the time array.
                     if ensemble.rotating_frame:
-                        bin_offset += element_length_bins
+                        offset_bin += element_length_bins
 
         if not write_to_file:
             # return a status message with the time needed for sampling the entire ensemble as a
@@ -1579,7 +1586,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name,
+            created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name+name_tag,
                                                                                analog_samples,
                                                                                digital_samples,
                                                                                number_of_samples,
@@ -1603,13 +1610,86 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param bool chunkwise: Decide, whether you want to write chunkwise, which will reduce
                                memory usage but will increase vastly the amount of time needed.
 
-        The sequence object is sampled by call subsequently the sampling routine of the
-        pulse_block_element routine.
+        The sequence object is sampled by call subsequently the sampling routine for the
+        Pulse_Block_Ensemble objects and passing if needed the rotating frame option.
+
+        Only those Pulse_Block_Ensemble object where sampled that are different! These can be
+        directly obtained from the internal attribute different_ensembles_dict of a Pulse_Sequence.
+
         """
 
+        start_time = time.time()
+        # get ensemble
+        sequence_obj = self.get_pulse_sequence(sequence_name)
+        sequence_param_dict_list = []
+
+        # Here all the sampled ensembles with their result file name will be locally stored:
+        sampled_ensembles = OrderedDict()
+
+        # if all the Pulse_Block_Ensembles should be in the rotating frame, then each ensemble
+        # will be created in general with a different offset_bin. Therefore, in order to keep track
+        # of the sampled Pulse_Block_Ensembles one has to introduce a running number as an
+        # additional name tag, so keep the samples files separate.
+        if sequence_obj.rotating_frame:
 
 
-        pass
+            ensemble_index = 0
+            offset_bin = 0
+            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
+
+                name_tag = '_' + str(ensemble_index).zfill(3)  # to make something like 001
+
+                a_samples, \
+                d_samples, \
+                created_files, \
+                offset_bin_return = self.sample_pulse_block_ensemble(ensemble_obj.name,
+                                                                     write_to_file,
+                                                                     chunkwise,
+                                                                     offset_bin=offset_bin,
+                                                                     name_tag=name_tag)
+
+                temp_dict = dict()
+                temp_dict['name'] = created_files
+
+                sampled_ensembles[ensemble_obj.name + name_tag] = created_files
+                # update the sequence parameter to the temp dict:
+                temp_dict.update(seq_param)
+
+                sequence_param_dict_list.append(temp_dict)
+
+                offset_bin = offset_bin_return
+                ensemble_index += 1
+
+
+            #FIXME: That is most propably not a good idea!!! But let's see whether that will work out
+            sequence_obj.sampled_ensembles = sampled_ensembles
+        else:
+
+            for ensemble_name in sequence_obj.different_ensembles_dict:
+                ensemble_obj = self.get_pulse_block_ensemble(ensemble_name)
+
+                a_samples, d_samples, created_files, offset_bin = self.sample_pulse_block_ensemble(ensemble_name,
+                                                                                                   write_to_file,
+                                                                                                   chunkwise,
+                                                                                                   offset_bin=0,
+                                                                                                   name_tag='')
+                sampled_ensembles[ensemble_name] = created_files
+
+            for ensemble_obj, seq_param  in sequence_obj.ensemble_param_list:
+
+                temp_dict = dict()
+                temp_dict['name'] = sampled_ensembles[ensemble_obj.name]
+
+                # update the sequence parameter to the temp dict:
+                temp_dict.update(seq_param)
+
+                sequence_param_dict_list.append(temp_dict)
+
+                # create the list of dicts, which will be passed to the hardware. Replace each entry
+        #
+
+        self._pulse_generator_device.write_seq_to_file(sequence_name,sequence_param_dict_list)
+
 
 
     #---------------------------------------------------------------------------

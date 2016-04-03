@@ -2873,6 +2873,10 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.curr_seq_del_PushButton.clicked.connect(self.delete_pulse_sequence_clicked)
 
+
+        self._mw.upload_sample_seq_PushButton.clicked.connect(self.sample_sequence_clicked)
+
+
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
         self.update_sequence_list()
 
@@ -3165,6 +3169,7 @@ class PulsedMeasurementGui(GUIBase):
         self.update_sequence_list()
         return
 
+
     def generate_pulse_sequence_clicked(self):
         """ Generate a Pulse_Sequence object."""
         objectname = self._mw.curr_seq_name_LineEdit.text()
@@ -3259,10 +3264,11 @@ class PulsedMeasurementGui(GUIBase):
         """
         # Get the ensemble name to be uploaded from the ComboBox
         sequence_name = self._mw.upload_seq_ComboBox.currentText()
+
         # Sample the ensemble via logic module
 
-        self._seq_gen_logic.sample_pulses_sequence(sequence_name, write_to_file=True,
-                                                   chunkwise=True)
+        self._seq_gen_logic.sample_pulse_sequence(sequence_name, write_to_file=True,
+                                                  chunkwise=True)
         return
 
     def upload_seq_to_device_clicked(self):
