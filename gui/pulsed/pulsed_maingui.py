@@ -449,6 +449,11 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
+        if self._bs.use_saupload_CheckBox.isChecked():
+            self._set_visibility_saupload_button_pulse_gen(state=True)
+        else:
+            self._set_visibility_saupload_button_pulse_gen(state=False)
+
         #FIXME: Think about whether this method should not make an instant
         #       action if an activation map is chosen, but rather be executed on
         #       on pressing the apply and cancel button:
@@ -461,11 +466,25 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.digital_channels_SpinBox.setValue(self._num_d_ch)
         self._bs.analog_channels_SpinBox.setValue(self._num_a_ch)
 
+        if self._mw.upload_sample_ensemble_PushButton.isHidden():
+            self._bs.use_saupload_CheckBox.setChecked(True)
+        else:
+            self._bs.use_saupload_CheckBox.setChecked(False)
+
         #FIXME: Think about whether this method should not make an instant
         #       action if an activation map is chosen, but rather be executed on
         #       on pressing the apply and cancel button:
         self._update_activation_map()
 
+
+    def _set_visibility_saupload_button_pulse_gen(self, state):
+        """ Set whether the sample Uplaod and load Buttons should be visible or not
+
+        @param bool state:
+        @return:
+        """
+        #FIXME: Implement that functionality
+        pass
 
     def get_current_function_list(self):
         """ Retrieve the functions, which are chosen by the user.
@@ -2876,25 +2895,29 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.upload_sample_seq_PushButton.clicked.connect(self.sample_sequence_clicked)
 
+        self._mw.upload_load_seq_to_channel_PushButton.clicked.connect(self.load_seq_into_channel_clicked)
+
+        self._mw.upload_seq_to_device_PushButton.clicked.connect(self.upload_seq_to_device_clicked)
+
 
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
         self.update_sequence_list()
 
-        # create a list with all possible combinations of independant channels, so that one can
-        # choose, which scenerio to take and to which channel to upload which created file:
-        pulser_constr = self.get_hardware_constraints()
-
-        maximum_ch_variation = range(1, pulser_constr['independent_ch'] + 1)
-        channels_combi = []
-        for entry in range(0, len(maximum_ch_variation) + 1):
-            for subset in itertools.combinations(maximum_ch_variation, entry):
-                if subset != ():
-                    channels_combi.append(str(list(subset)))
-
-        self._mw.upload_seq_independ_ch_combi_ComboBox.clear()
-        self._mw.upload_seq_independ_ch_combi_ComboBox.addItems(channels_combi)
-        index = len(channels_combi) - 1
-        self._mw.upload_seq_independ_ch_combi_ComboBox.setCurrentIndex(index)
+        # # create a list with all possible combinations of independant channels, so that one can
+        # # choose, which scenerio to take and to which channel to upload which created file:
+        # pulser_constr = self.get_hardware_constraints()
+        #
+        # maximum_ch_variation = range(1, pulser_constr['independent_ch'] + 1)
+        # channels_combi = []
+        # for entry in range(0, len(maximum_ch_variation) + 1):
+        #     for subset in itertools.combinations(maximum_ch_variation, entry):
+        #         if subset != ():
+        #             channels_combi.append(str(list(subset)))
+        #
+        # self._mw.upload_seq_independ_ch_combi_ComboBox.clear()
+        # self._mw.upload_seq_independ_ch_combi_ComboBox.addItems(channels_combi)
+        # index = len(channels_combi) - 1
+        # self._mw.upload_seq_independ_ch_combi_ComboBox.setCurrentIndex(index)
 
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
@@ -3276,11 +3299,11 @@ class PulsedMeasurementGui(GUIBase):
         This method is called when the user clicks on "upload to device"
         """
 
-        # # Get the asset name to be uploaded from the ComboBox
-        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
-        #
-        # # Upload the asset via logic module
-        # self._seq_gen_logic.upload_asset(asset_name)
+        # Get the asset name to be uploaded from the ComboBox
+        seq_name = self._mw.upload_seq_ComboBox.currentText()
+
+        # Upload the asset via logic module
+        self._seq_gen_logic.upload_sequence(seq_name)
         return
 
     def load_seq_into_channel_clicked(self):
@@ -3288,21 +3311,15 @@ class PulsedMeasurementGui(GUIBase):
         This method is called when the user clicks on "load to channel"
         """
         # Get the asset name to be uploaded from the ComboBox
-        # asset_name = self._mw.upload_ensemble_ComboBox.currentText()
-        #
-        # # Check out on which channel it should be uploaded:
-        # # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
-        # # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
-        # load_dict = {}
-        #
-        # channels = self._mw.upload_independ_ch_combi_ComboBox.currentText()
-        # # evaluate to have a proper list:
-        # channels = eval(channels)
-        # for entry in channels:
-        #     load_dict[entry] = asset_name
-        #
-        # # Load asset into channles via logic module
-        # self._seq_gen_logic.load_asset(asset_name, load_dict)
+        asset_name = self._mw.upload_seq_ComboBox.currentText()
+
+        # Check out on which channel it should be uploaded:
+        # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
+        # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
+        load_dict = {}
+
+        # Load asset into channles via logic module
+        self._seq_gen_logic.load_asset(asset_name, load_dict)
         return
 
     def get_element_in_sequence_table(self, row, column):

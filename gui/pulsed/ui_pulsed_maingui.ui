@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1009</width>
-    <height>836</height>
+    <height>946</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -450,7 +450,7 @@
             <item row="3" column="5">
              <widget class="QGroupBox" name="groupBox_4">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -613,6 +613,12 @@
                  </item>
                  <item row="5" column="0" colspan="3">
                   <widget class="QPushButton" name="curr_ensemble_generate_PushButton">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
                    <property name="text">
                     <string>Generate Pulse Block Ensemble</string>
                    </property>
@@ -1336,6 +1342,9 @@ sel.</string>
                </item>
                <item row="1" column="1">
                 <widget class="QPushButton" name="upload_seq_to_device_PushButton">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
                  <property name="text">
                   <string>Upload to device</string>
                  </property>
@@ -1343,22 +1352,18 @@ sel.</string>
                </item>
                <item row="1" column="2">
                 <widget class="QPushButton" name="upload_load_seq_to_channel_PushButton">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
                  <property name="text">
                   <string>Load to channel</string>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="0" colspan="2">
+               <item row="0" column="0" colspan="3">
                 <widget class="QComboBox" name="upload_seq_ComboBox">
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Sequence for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2">
-                <widget class="QComboBox" name="upload_seq_independ_ch_combi_ComboBox">
-                 <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of independant &lt;br/&gt;channels in which the already &lt;br/&gt;samples file(s) should be&lt;br/&gt;loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                 </widget>
                </item>
@@ -1543,6 +1548,9 @@ sel.</string>
                </item>
                <item row="7" column="1">
                 <widget class="QPushButton" name="curr_seq_load_PushButton">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="text">
                   <string>Load</string>
                  </property>
