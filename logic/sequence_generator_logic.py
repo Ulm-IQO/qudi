@@ -382,7 +382,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # saved here:
         self.saved_pulse_block_ensembles = []
         # The string names of the created Sequence objects are saved here:
-        self.saved_sequences = []
+        self.saved_pulse_sequences = []
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -436,6 +436,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._add_pb_param = OrderedDict()
         self._add_pb_param['repetition'] = rep_def
+
+        # Contains the Sequence parameter, but these are set in during the activation depending on
+        # the hardware configuration
+        self._seq_param = OrderedDict()
         # =====================================================================
 
         # An abstract dictionary, which tells the logic the configuration of a
@@ -457,7 +461,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # the same idea for Pulse_Block (pb) objects:
         self.cfg_param_pb = {'pulse_block' :    0, 'length':    1}
 
-        self.cfg_param_seq = dict()
+        self.cfg_param_seq = {'ensemble' : 0}
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -479,8 +483,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.sample_rate = self._pulse_generator_device.get_sample_rate()
 
         # make together with the hardware a proper dictionary for the sequence parameter:
-        self.cfg_param_seq = self._create_cfg_param_seq()
-
+        # self.cfg_param_seq =
+        self._seq_param =  self._create_seq_param()
 
         constraints = self.get_hardware_constraints()
 
@@ -489,17 +493,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         channel_config = constraints['channel_config']['conf1']
         self.analog_channels =  channel_config.count('a_ch')
         self.digital_channels =  channel_config.count('d_ch')
-
-        #FIXME: the pp_voltage should be at first renamed in amplitude and a
-        #       dict should be passed to the appropriated method in the device
-        #       to tell the amplitude for the specific channels, because they
-        #       are not nessesarily the same! If that is done, this should be
-        #       also included in the method get_func_config, so that each
-        #       displayed column of analog channels can have their own
-        #       amplitude.
-        #       Right now, the ampltude from the first channel will be asked and
-        #       set as the sampling amplitude.
-        #self.pp_voltage = list(self._pulse_generator_device.get_analog_level([1])[0])[0]
 
         # lists with the pp-voltages and offsets corresponding to the analog channels
         self.amplitude_list, self.offset_list = self._pulse_generator_device.get_analog_level()
@@ -532,10 +525,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         pass
 
-    def _create_cfg_param_seq(self):
-        """ Create a configuration parameter dictionary for sequence parameters.
+    def _create_seq_param(self):
+        """ Create a dictionary for sequence parameters.
 
-        @return dict: the configuration parameter dictionary
+        @return dict: the parameter dictionary for the sequence mode
 
         Based on the information from the hardware, the logic will create an rather abstract
         configuration dictionary, so that the GUI has no problems to build from that the proper
@@ -552,9 +545,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
                     'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': bool}
 
-
-        seq_param = self.get_hardware_constraints()['sequence_param']
-        cfg_param_seq = OrderedDict()
+        seq_param_hardware = self.get_hardware_constraints()['sequence_param']
+        seq_param = OrderedDict()
 
         # What follows now is a converion algorithm, which takes one of the valid above definition
         # dicts. Then the keywords, which are given by the contraints are replaced with their
@@ -562,22 +554,22 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # integer expression (True=1, False=0). Then the parameter definition is appended to the
         # sequence configuration parameters
 
-        for entry in seq_param:
+        for entry in seq_param_hardware:
             param = {}
 
             # check the type of the sequence parameter:
-            if type(seq_param[entry]['min']) == bool:
+            if type(seq_param_hardware[entry]['min']) == bool:
                 dict_def = bool_def
-            elif type(seq_param[entry]['min']) == int:
+            elif type(seq_param_hardware[entry]['min']) == int:
                 dict_def = int_def
-            elif type(seq_param[entry]['min']) == float:
+            elif type(seq_param_hardware[entry]['min']) == float:
                 dict_def = float_def
             else:
                 self.logMsg('The configuration dict for sequence parameter could not be created, '
                             'since the keyword "min" in the parameter {0} does not correspond to '
                             'type of "bool", "int" nor "float" but has a type {1}. Cannot handle '
                             'that, therefore this parameter is '
-                            'neglected.'.format(entry,type(seq_param[entry]['min'])),
+                            'neglected.'.format(entry,type(seq_param_hardware[entry]['min'])),
                             msgType='error')
                 dict_def = {}
 
@@ -587,33 +579,33 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             for element in dict_def:
 
                 if element == 'view_stepsize':
-                    param['view_stepsize'] = seq_param[entry]['step']
+                    param['view_stepsize'] = seq_param_hardware[entry]['step']
                 elif element == 'init_value':
                     # convert an bool value into an integer value:
                     if type(element) is bool:
-                        param[element] = int(seq_param[entry]['min'])
+                        param[element] = int(seq_param_hardware[entry]['min'])
                     else:
-                        param[element] = seq_param[entry]['min']
-                elif element in seq_param[entry]:
+                        param[element] = seq_param_hardware[entry]['min']
+                elif element in seq_param_hardware[entry]:
                     # convert an bool value into an integer value:
-                    if type(seq_param[entry][element]) is bool:
-                        param[element] = int(seq_param[entry][element])
+                    if type(seq_param_hardware[entry][element]) is bool:
+                        param[element] = int(seq_param_hardware[entry][element])
                     else:
-                        param[element] = seq_param[entry][element]
+                        param[element] = seq_param_hardware[entry][element]
                 else:
                     param[element] = dict_def[element]
 
-            cfg_param_seq[entry] = param
+            seq_param[entry] = param
 
-        return cfg_param_seq
+        return seq_param
 
-    def get_cfg_param_seq(self):
+    def get_seq_param(self):
         """ Retrieve the configuration parameters for sequences.
 
         @return dict: with keywords being the sequence parameters and items their configuration
                       dicts.
         """
-        return self.cfg_param_seq
+        return self._seq_param
 
     def _get_dir_for_name(self, name):
         """ Get the path to the pulsed sub-directory 'name'.
@@ -862,7 +854,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     importance=0)
         return
 
-    def get_block(self, name, set_as_current_block=False):
+    def get_pulse_block(self, name, set_as_current_block=False):
         """ Deserialize a *.blk file into a Pulse_Block object.
 
         @param name: string, name of the *.blk file.
@@ -925,7 +917,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.refresh_ensemble_list()
         self.current_ensemble = ensemble
 
-    def get_ensemble(self, name, set_as_current_ensemble=False):
+    def get_pulse_block_ensemble(self, name, set_as_current_ensemble=False):
         """ Deserialize a *.ens file into a Pulse_Block_Ensemble object.
 
         @param name: string, name of the *.ens file.
@@ -992,7 +984,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.current_sequence = sequence
         return sequence
 
-    def get_sequence(self, name, set_as_current_sequence=False):
+    def get_pulse_sequence(self, name, set_as_current_sequence=False):
         """ Deserialize a *.se file into a Sequence object.
 
         @param name: string, name of the *.se file.
@@ -1002,7 +994,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @return: Sequence object which belongs to the given name.
         """
 
-        if name in self.saved_sequences:
+        if name in self.saved_pulse_sequences:
             with open( os.path.join(self.sequence_dir, name + '.se'), 'rb') as infile:
                 sequence = pickle.load(infile)
         else:
@@ -1023,7 +1015,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param str name: name of the sequence object, which should be deleted.
         """
 
-        if name in self.saved_sequences:
+        if name in self.saved_pulse_sequences:
             os.remove( os.path.join(self.sequence_dir, name + '.se'))
             self.refresh_sequence_list()
         else:
@@ -1040,7 +1032,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         for filename in sequence_files:
             sequences.append(filename[:-4])
         sequences.sort()
-        self.saved_sequences = sequences
+        self.saved_pulse_sequences = sequences
         self.signal_sequence_list_updated.emit()
         return
 
@@ -1293,7 +1285,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             pulse_block_name = row[self.cfg_param_pb['pulse_block']].decode('UTF-8')
             pulse_block_reps = row[self.cfg_param_pb['repetition']]
 
-            block = self.get_block(pulse_block_name)
+            block = self.get_pulse_block(pulse_block_name)
 
             for num in range(pulse_block_reps+1):
                 measurement_ticks_list.append(offset_tick_bin + block.init_length_bins + num*block.increment_bins)
@@ -1322,7 +1314,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
 
-    def generate_sequence(self, sequence_matrix):
+    def generate_pulse_sequence(self, sequence_name, sequence_matrix, rotating_frame=True):
         """
         Generates a Pulse_Sequence object out of the corresponding editor
         table/matrix. Creates a whole new structure of Block_Elements, Blocks
@@ -1383,7 +1375,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         start_time = time.time()
         # get ensemble
-        ensemble = self.get_ensemble(ensemble_name)
+        ensemble = self.get_pulse_block_ensemble(ensemble_name)
         # Ensemble parameters to determine the shape of sample arrays
         number_of_samples = ensemble.length_bins
         ana_channels = ensemble.analog_channels
