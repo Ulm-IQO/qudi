@@ -215,7 +215,7 @@ class Pulse_Block_Ensemble(object):
         self.refresh_parameters()
         return
 
-    def append_block(self, block, at_beginning = False):
+    def append_block(self, block, at_beginning=False):
         if at_beginning:
             self.block_list.insert(0, block)
         else:
@@ -658,6 +658,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         return os.path.abspath(path)
 
+
+    #FIXME: Experimental feature: Try to outsource the sampling functions
     def _insert_predefined_methods(self):
         """ Add the predefined methods to the main sequence object
 
@@ -670,10 +672,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # make here the import directory, going from trunk dir.
         module = importlib.import_module('logic.pulsed.predefined_methods')
+        setattr(self, 'generate_laser_on', module.generate_laser_on)
 
-        setattr(self, 'generate_laser_on',
-                module.generate_laser_on)
         return module
+    # ========================================================================
 
 
     def get_hardware_constraints(self):
@@ -686,7 +688,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     def get_func_config(self):
         """ Retrieve func_config dict of the logic, including hardware constraints.
-
 
         @return dict: with all the defined functions and their corresponding
                       parameters and constraints.
@@ -1491,26 +1492,24 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         offset_bin:
                             integer, which is used for maintaining the rotation frame.
 
-        This method is creating the actual samples (voltages and logic states)
-        for each time step of the analog and digital channels specified in
-        the Pulse_Block_Ensemble.
-        Therefore it iterates through all blocks, repetitions and elements of the
-        ensemble and calculates the exact voltages (float64) according to the
-        specified math_function. The samples are later on stored inside a float32 array.
-        So each element is calculated with high precision (float64) and then
-        down-converted to float32 to be stored.
+        This method is creating the actual samples (voltages and logic states) for each time step
+        of the analog and digital channels specified in the Pulse_Block_Ensemble.
+        Therefore it iterates through all blocks, repetitions and elements of the ensemble and
+        calculates the exact voltages (float64) according to the specified math_function. The
+        samples are later on stored inside a float32 array.
+        So each element is calculated with high precision (float64) and then down-converted to
+        float32 to be stored.
 
-        To preserve the rotating frame, an offset counter is used to indicate
-        the absolute time within the ensemble.
-        All calculations are done with time bins (dtype=int) to avoid rounding errors.
-        Only in the last step when a single Pulse_Block_Element object is sampled
-        these integer bin values are translated into a floating point time.
+        To preserve the rotating frame, an offset counter is used to indicate the absolute time
+        within the ensemble. All calculations are done with time bins (dtype=int) to avoid rounding
+        errors. Only in the last step when a single Pulse_Block_Element object is sampled  these
+        integer bin values are translated into a floating point time.
 
-        The chunkwise write mode is used to save memory usage at the expense of time.
-        Here for each Pulse_Block_Element the write_to_file method in the HW module
-        is called to avoid large arrays inside the memory. In other words: The whole
-        sample arrays are never created at any time. This results in more function
-        calls and general overhead causing the much longer time to complete.
+        The chunkwise write mode is used to save memory usage at the expense of time. Here for each
+        Pulse_Block_Element the write_to_file method in the HW module is called to avoid large
+        arrays inside the memory. In other words: The whole sample arrays are never created at any
+        time. This results in more function calls and general overhead causing the much longer time
+        to complete.
         """
 
         start_time = time.time()
@@ -1707,10 +1706,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 offset_bin = offset_bin_return
                 ensemble_index += 1
 
-
-            #FIXME: That is most propably not a good idea!!! But let's see whether that will work
-            #       out and whether it will be necessary.
-            # sequence_obj.sampled_ensembles = sampled_ensembles
         else:
 
             # if phase prevervation between the sequence entries is not needed, then only the
@@ -1739,7 +1734,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
                 sequence_param_dict_list.append(temp_dict)
 
+        # FIXME: That is most propably not a good idea!!! But let's see whether that will work out
+        #        and whether it will be necessary (for the upload method it is!)
+
         sequence_obj.set_sampled_ensembles(sampled_ensembles)
+        # save the current object, since it has now a different attribute:
         self.save_sequence(sequence_name, sequence_obj)
 
         # pass the whole information to the sequence creation method in the hardware:

@@ -1549,7 +1549,7 @@ sel.</string>
                <item row="7" column="1">
                 <widget class="QPushButton" name="curr_seq_load_PushButton">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="text">
                   <string>Load</string>

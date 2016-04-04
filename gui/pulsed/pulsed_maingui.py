@@ -38,14 +38,9 @@ from .qradiobutton_custom import CustomQRadioButton
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
-#FIXME: insert warning text in choice of channels
-#FIXME: save the pattern of the table to a file. Think about possibilities to read in from file if number of channels is different. Therefore make also a load function.
-#FIXME: connect the current default value of length of the dspinbox with
-#       the minimal sequence length and the sampling rate.
 #FIXME: Later that should be able to round up the values directly within
 #       the entering in the dspinbox for a consistent display of the
 #       sequence length.
-#FIXME: Check whether as load_pulse_block_ensemble method is necessary.
 
 # =============================================================================
 #                       Define some delegate classes.
@@ -533,7 +528,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_del_sel_PushButton.clicked.connect(self.block_editor_delete_row_selected)
         self._mw.block_clear_PushButton.clicked.connect(self.block_editor_clear_table)
 
-        self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block)
+        self._mw.curr_block_load_PushButton.clicked.connect(self.load_pulse_block_clicked)
         self._mw.curr_block_del_PushButton.clicked.connect(self.delete_pulse_block_clicked)
 
         # connect the signals for the block organizer:
@@ -543,7 +538,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.organizer_del_sel_PushButton.clicked.connect(self.block_organizer_delete_row_selected)
         self._mw.organizer_clear_PushButton.clicked.connect(self.block_organizer_clear_table)
 
-        self._mw.curr_ensemble_load_PushButton.clicked.connect(self.load_pulse_block_ensemble)
+        self._mw.curr_ensemble_load_PushButton.clicked.connect(self.load_pulse_block_ensemble_clicked)
         self._mw.curr_ensemble_del_PushButton.clicked.connect(self.delete_pulse_block_ensemble_clicked)
 
         # connect the signals for the "Upload on device" section
@@ -928,7 +923,7 @@ class PulsedMeasurementGui(GUIBase):
             current_ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
             index_to_set = self._mw.saved_ensembles_ComboBox.findText(current_ensemble_name)
             self._mw.saved_ensembles_ComboBox.setCurrentIndex(index_to_set)
-            self.load_pulse_block_ensemble()
+            self.load_pulse_block_ensemble_clicked()
         return
 
     def clear_device_clicked(self):
@@ -1118,7 +1113,7 @@ class PulsedMeasurementGui(GUIBase):
 
         return table
 
-    def load_pulse_block(self, block_name=None):
+    def load_pulse_block_clicked(self, block_name=None):
         """ Loads the current selected Pulse_Block object from the logic into
             the editor or a specified Pulse_Block with name block_name.
 
@@ -1748,7 +1743,7 @@ class PulsedMeasurementGui(GUIBase):
         self.initialize_cells_block_editor(start_row=0)
         self._mw.block_editor_TableWidget.blockSignals(False)
 
-    def load_pulse_block_ensemble(self, ensemble_name=None):
+    def load_pulse_block_ensemble_clicked(self, ensemble_name=None):
         """ Loads the current selected Pulse_Block_Ensemble object from the
             logic into the editor or a specified object with name ensemble_name.
 
@@ -2645,8 +2640,6 @@ class PulsedMeasurementGui(GUIBase):
 
         return
 
-
-
     def refresh_signal_plot(self):
         """ This method refreshes the xy-matrix image """
 
@@ -2687,8 +2680,8 @@ class PulsedMeasurementGui(GUIBase):
         self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
-        ''' This method refreshes the elapsed time and sweeps of the measurement
-        '''
+        """ This method refreshes the elapsed time and sweeps of the measurement. """
+
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
 
 
@@ -2745,7 +2738,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
                 if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()=='':
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'FT-Amplitude')
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'frequency [GHz]')
+                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'frequency (GHz)')
                 else:
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_second_plot_x_axis_name_LineEdit.text())
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_second_plot_y_axis_name_LineEdit.text())
@@ -2862,11 +2855,9 @@ class PulsedMeasurementGui(GUIBase):
         # self._mw.curr_seq_laserpulses_SpinBox.setMinimum(0)
         # self._mw.curr_seq_laserpulses_SpinBox.setMaximum(2 ** 31 - 1)
 
-
-
         # check for sequencer mode and then hide the tab.
         if not self._seq_gen_logic.has_sequence_mode():
-            # save the tab for
+            # save the tab for later usage if needed in the instance variable:
             self._seq_editor_tab_Widget = self._mw.tabWidget.widget(2)
             self._mw.tabWidget.removeTab(2)
 
@@ -2888,36 +2879,19 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.seq_editor_TableWidget.itemChanged.connect(self._update_current_pulse_sequence)
 
+        # connect the buttons in the current sequence section:
         self._mw.curr_seq_generate_PushButton.clicked.connect(self.generate_pulse_sequence_clicked)
-
         self._mw.curr_seq_del_PushButton.clicked.connect(self.delete_pulse_sequence_clicked)
+        self._mw.curr_seq_load_PushButton.clicked.connect(self.load_pulse_sequence_clicked)
 
-
+        # connect the buttons in the upload section
         self._mw.upload_sample_seq_PushButton.clicked.connect(self.sample_sequence_clicked)
-
         self._mw.upload_load_seq_to_channel_PushButton.clicked.connect(self.load_seq_into_channel_clicked)
-
         self._mw.upload_seq_to_device_PushButton.clicked.connect(self.upload_seq_to_device_clicked)
 
 
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
         self.update_sequence_list()
-
-        # # create a list with all possible combinations of independant channels, so that one can
-        # # choose, which scenerio to take and to which channel to upload which created file:
-        # pulser_constr = self.get_hardware_constraints()
-        #
-        # maximum_ch_variation = range(1, pulser_constr['independent_ch'] + 1)
-        # channels_combi = []
-        # for entry in range(0, len(maximum_ch_variation) + 1):
-        #     for subset in itertools.combinations(maximum_ch_variation, entry):
-        #         if subset != ():
-        #             channels_combi.append(str(list(subset)))
-        #
-        # self._mw.upload_seq_independ_ch_combi_ComboBox.clear()
-        # self._mw.upload_seq_independ_ch_combi_ComboBox.addItems(channels_combi)
-        # index = len(channels_combi) - 1
-        # self._mw.upload_seq_independ_ch_combi_ComboBox.setCurrentIndex(index)
 
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
@@ -2976,9 +2950,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).setText('ensemble')
         self._mw.seq_editor_TableWidget.setColumnWidth(column, 100)
 
+        # give the delegated object the reference to the method:
         item_dict = {}
         item_dict['get_list_method'] = self.get_current_ensemble_list
-
 
         comboDelegate = ComboBoxDelegate(self._mw.seq_editor_TableWidget, item_dict)
         self._mw.seq_editor_TableWidget.setItemDelegateForColumn(column, comboDelegate)
@@ -3127,60 +3101,66 @@ class PulsedMeasurementGui(GUIBase):
 
     # load, delete, generate and update functionality for pulse sequence:
 
-    def load_pulse_sequence(self, ensemble_name=None):
-        """ Loads the current selected Pulse_Block_Ensemble object from the
-            logic into the editor or a specified object with name ensemble_name.
+    def load_pulse_sequence_clicked(self, sequence_name=None):
+        """ Loads the current selected Pulse_Sequence object from the logic into the editor or a
+            specified object with name sequence_name.
 
-        @param str ensemble_name: optional, name of the Pulse_Block_Element
-                                  object, which should be loaded in the GUI
-                                  Block Organizer. If no name passed, the
-                                  current Pulse_Block_Ensemble from the Logic is
-                                  taken to be loaded.
+        @param str sequence_name: optional, name of a Pulse_Sequence object, which should be loaded
+                                  into the GUI Sequence Editor. If no name passed, the current
+                                  Pulse_Sequence from the Logic is taken to be loaded.
 
-        Unfortuanetly this method needs to know how Pulse_Block_Ensemble objects
-        are looking like and cannot be that general.
+        Unfortuanetly this method needs to know how Pulse_Sequence objects are looking like and
+        cannot be that general, since it will load an object and a table, where the data have to be
+        converted.
         """
 
-        # NOTE: This method will be connected to the CLICK event of a
-        #       QPushButton, which passes as an optional argument as a bool
-        #       value depending on the checked state of the QPushButton. The
-        #       passed boolean value has to be handled in addition!
+        # NOTE: This method will be connected to the CLICK event of a QPushButton, which passes an
+        #       optional argument as a bool value depending on the checked state of the
+        #       QPushButton (that is called an overloaded routine). The passed boolean value has to
+        #       be handled in addition!
 
-        # if (ensemble_name is not None) and (type(ensemble_name) is not bool):
-        #     current_ensemble_name = ensemble_name
-        # else:
-        #     current_ensemble_name = self._mw.saved_ensembles_ComboBox.currentText()
-        #
-        # # get the ensemble object and set as current ensemble
-        # ensemble = self._seq_gen_logic.get_pulse_block_ensemble(current_ensemble_name,
-        #                                             set_as_current_ensemble=True)
-        #
-        # # Check whether an ensemble is found, otherwise there will be None:
-        # if ensemble is None:
-        #     return
-        #
-        # self.block_organizer_clear_table()  # clear the block organizer table
-        # rows = len(ensemble.block_list)  # get amout of rows needed for display
-        #
-        # # add as many rows as there are blocks in the ensemble
-        # # minus 1 because a single row is already present after clear
-        # self.block_organizer_add_row_after_last(rows - 1)
-        #
-        # # This dictionary has the information which column number describes
-        # # which object, it is a configuration dict between GUI and logic
-        # organizer_config_dict = self.get_cfg_param_pb()
-        #
-        # # run through all blocks in the block_elements block_list to fill in the
-        # # row informations
-        # for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
-        #     column = organizer_config_dict['pulse_block']
-        #     self.set_element_in_organizer_table(row_index, column, pulse_block.name)
-        #
-        #     column = organizer_config_dict['repetition']
-        #     self.set_element_in_organizer_table(row_index, column, int(repetitions))
-        #
-        # # set the ensemble name LineEdit to the current ensemble
-        # self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
+        if (sequence_name is not None) and (type(sequence_name) is not bool):
+            current_sequence_name = sequence_name
+        else:
+            current_sequence_name = self._mw.saved_seq_ComboBox.currentText()
+
+        # get the ensemble object and set as current ensemble
+        seq_obj = self._seq_gen_logic.get_pulse_sequence(current_sequence_name,
+                                                         set_as_current_sequence=True)
+
+        # Check whether an sequence is found, otherwise there will be None:
+        if seq_obj is None:
+            return
+
+        self.sequence_editor_clear_table()  # clear the block organizer table
+        rows = len(seq_obj.ensemble_param_list)  # get amout of rows needed for display
+
+        # add as many rows as there are blocks in the sequence minus 1 because a single row is
+        # already present after clear
+        self.sequence_editor_add_row_after_last(rows - 1)
+
+        # This dictionary has the information which column number describes which object, it is a
+        # configuration dict between GUI and logic.
+        seq_config_dict = self.get_cfg_param_seq()
+
+        # run through all blocks in the block_elements block_list to fill in the
+        # row informations
+        for row_index, (pulse_ensemble, seq_param) in enumerate(seq_obj.ensemble_param_list):
+
+            column = seq_config_dict['ensemble']
+            self.set_element_in_sequence_table(row_index, column, pulse_ensemble.name)
+
+            # boa... int is not equal to np.int32 that has to handled!
+            for entry in seq_param:
+                column = seq_config_dict[entry]
+                if type(seq_param[entry]) is np.int32:
+                    self.set_element_in_sequence_table(row_index, column, int(seq_param[entry]))
+                elif type(seq_param[entry]) is np.float32:
+                    self.set_element_in_sequence_table(row_index, column, float(seq_param[entry]))
+                else:
+                    self.set_element_in_sequence_table(row_index, column, seq_param[entry])
+        # set the ensemble name LineEdit to the current ensemble
+        self._mw.curr_seq_name_LineEdit.setText(current_sequence_name)
         pass
 
     def delete_pulse_sequence_clicked(self):
@@ -3197,8 +3177,8 @@ class PulsedMeasurementGui(GUIBase):
         """ Generate a Pulse_Sequence object."""
         objectname = self._mw.curr_seq_name_LineEdit.text()
         if objectname == '':
-            self.logMsg('No Name for Pulse_Sequence specified. '
-                        'Generation aborted!', importance=7, msgType='warning')
+            self.logMsg('No Name for Pulse_Sequence specified. Generation aborted!', importance=7,
+                        msgType='warning')
             return
         rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
 
@@ -3210,8 +3190,8 @@ class PulsedMeasurementGui(GUIBase):
             # self._mw.laserchannel_ComboBox.currentText(),
 
     def update_sequence_list(self):
-        """
-        This method is called upon signal_block_list_updated emit of the sequence_generator_logic.
+        """  Called upon signal_block_list_updated emit of the sequence_generator_logic.
+
         Updates all ComboBoxes showing generated blocks.
         """
         # # updated list of all generated blocks
@@ -3240,7 +3220,7 @@ class PulsedMeasurementGui(GUIBase):
             current_sequence_name = self._mw.upload_seq_ComboBox.currentText()
             index_to_set = self._mw.saved_seq_ComboBox.findText(current_sequence_name)
             self._mw.saved_seq_ComboBox.setCurrentIndex(index_to_set)
-            self.load_pulse_sequence()
+            self.load_pulse_sequence_clicked()
         return
 
     def _update_current_pulse_sequence(self):
@@ -3372,12 +3352,11 @@ class PulsedMeasurementGui(GUIBase):
         if type(data) == type(value):
             model.setData(model.index(row, column), value, access)
         else:
-            self.logMsg('The cell ({0},{1}) in pulse sequence table could not be '
-                        'assigned with the value="{2}", since the type "{3}" '
-                        'of the cell from the delegated type differs from '
-                        '"{4}" of the value!\nPrevious value will be '
-                        'kept.'.format(row, column, value, type(data),
-                                       type(value)), msgType='warning')
+            self.logMsg('The cell ({0},{1}) in pulse sequence table could not be assigned with '
+                        'the value="{2}", since the type "{3}" of the cell of the delegated '
+                        'column differs from the type "{4}" of the value!\n'
+                        'Previous value will be kept.'.format(row, column, value, type(data),
+                                                              type(value)), msgType='warning')
         return
 
     def get_sequence_table(self):
@@ -3396,9 +3375,9 @@ class PulsedMeasurementGui(GUIBase):
             if type(elem) is str:
                 structure = structure + '|S20, '
             elif type(elem) is int:
-                structure = structure + '|i4, '
+                structure = structure + '|int, '
             elif type(elem) is float:
-                structure = structure + '|f4, '
+                structure = structure + '|float, '
             else:
                 self.logMsg('Type definition not found in the sequence table.'
                             '\nType is neither a string, integer or float. '
