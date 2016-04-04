@@ -113,6 +113,8 @@ class AWG70K(Base, PulserInterface):
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
+        self._temp_folder = self._get_dir_for_name('temporary_files')
+
         a_ch = {1: False, 2: False}
         d_ch = {1: False, 2: False, 3: False, 4: False}
         self.active_channel = (a_ch, d_ch)
@@ -372,13 +374,17 @@ class AWG70K(Base, PulserInterface):
         if is_first_chunk:
             for channel_number in range(analog_samples.shape[0]):
                 # create header
-                header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number+1], 0,
-                                         int(total_number_of_samples))
+                header_obj = WFMX_header(self.sample_rate,
+                                         self.amplitude_list[channel_number+1],
+                                         0,
+                                         int(total_number_of_samples),
+                                         temp_dir=self._temp_folder)
 
                 header_obj.create_xml_file()
-                with open('header.xml','r') as header:
+                temp_file = os.path.join(self._temp_folder, 'header.xml')
+                with open(temp_file,'r') as header:
                     header_lines = header.readlines()
-                os.remove('header.xml')
+                os.remove(temp_file)
                 # create .WFMX-file for each channel.
                 filename = name + '_Ch' + str(channel_number + 1) + '.WFMX'
                 created_files.append(filename)
