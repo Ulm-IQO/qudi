@@ -256,15 +256,18 @@ class CounterLogic(GenericLogic):
 
         return 0
 
-    def save_data(self, save=True, postfix=''):
+    def save_data(self, to_file=True, postfix=''):
         """ Save the counter trace data and writes it to a file.
+
+        @param bool to_file: indicate, whether data have to be saved to file
+        @param str postfix: an additional tag, which will be added to the filename upon save
 
         @return int: error code (0:OK, -1:error)
         """
         self._saving = False
         self._saving_stop_time = time.time()
 
-        if save:
+        if to_file:
             filepath = self._save_logic.get_path_for_module(module_name='Counter')
 
             # If there is a postfix then add separating underscore
@@ -291,7 +294,8 @@ class CounterLogic(GenericLogic):
             #, as_xml=False, precision=None, delimiter=None)
 
             self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
-        return 0
+
+        return self._data_to_save
 
     def set_counting_mode(self, mode='continuous'):
         """Set the counting mode, to change between continuous and gated counting.
@@ -471,12 +475,11 @@ class CounterLogic(GenericLogic):
             else:
                 # append tuple to data stream (timestamp, average counts)
                 if self._counting_device._photon_source2 is not None:
-                    self._data_to_save.append(
-                        np.array(
-                            (time.time() - self._saving_start_time,
-                             self.countdata[-1],
-                             self.countdata2[-1]
-                             )))
+                    self._data_to_save.append(np.array(
+                                                       (time.time() - self._saving_start_time,
+                                                        self.countdata[-1],
+                                                        self.countdata2[-1])
+                                                        ))
                 else:
                     self._data_to_save.append(
                         np.array(
