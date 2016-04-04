@@ -1,14 +1,37 @@
 # How to use and create tasks {#task-usage}
 
+## General Task Concept
 
 In order to create a task you can choose between 2 different categories.
 
-InterruptableTask, PrePostTask
+**InterruptableTask** or **PrePostTask**
 
-You have to inherit one of those classes for your tasks and re-implement the
-class specific methods for your needs. The tasks basically contain a reference
-to the object you are aiming to manipulate. So now you have two possibilities to
-perform a manipulation.
+You have to inherit one of those classes (both are situated in `/logic/generic_tasks.py`) for your
+tasks and re-implement the class specific methods for your needs. The tasks basically contain a
+reference to the object you are aiming to manipulate.
+
+
+**InterruptableTask** are those, which are used to perform the actual task. According to the name of
+this class, you should design the task such, that it can be interrupted and stopped at any time.
+
+To manage the behaviour of that, a finite state machine construction is used, which defines all
+possible states of the InterruptableTask object **and** all valid state transitions (that is the
+essence of a state machine!). The Graph below shows an ASM (algorithmic state machine) chart
+of our underlying state machine:
+
+[Graph InterruptableTask here]
+
+**PrePostTask** are those which are done before or follow after the actual InterruptableTask.
+The state machine description of those tasks are quite simple, as it can be seen in the Graph below.
+
+[Graph PrePostTask here]
+
+In general, the PrePostTasks are quite small steps (like e.g. tilting the mirror, switching on or
+off of a device for the actual measurement).
+
+## Task Implementation Concept
+
+So now you have two possibilities to perform a manipulation.
 
 1. Either the task itself just calls a method in the specific object and .
        then the object itself is responsible how the task will run,..
@@ -40,5 +63,9 @@ If the way you are calling and controlling this object is general, then other
 people will potentially use it.
 
 
+## Where are tasks saved?
+
+Custom tasks are logic operations, and therefore saved in the folder `/logic/tasks` folder.
+There you can also get an idea how implementation of possible tasks can look like.
 
 
