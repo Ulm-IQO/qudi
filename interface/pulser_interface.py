@@ -609,7 +609,7 @@ a
         return -1
 
     def write_seq_to_file(self, name, sequence_param):
-        """ Write a sequence to file
+        """ Write a sequence to file.
 
         @param str name: name of the sequence to be created
         @param list sequence_param: a list of dict, which contains all the information, which
