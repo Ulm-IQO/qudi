@@ -44,22 +44,19 @@ class PulserDummy(Base, PulserInterface):
     # connectors
     _out = {'pulser': 'PulserInterface'}
 
-
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate'   : self.activation,
                          'ondeactivate' : self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        self.logMsg('The following configuration was found.',
-                    msgType='status')
+        self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        self.logMsg('Dummy Pulser: I will simulate an AWG :) !',
-                    msgType='status')
+        self.logMsg('Dummy Pulser: I will simulate an AWG :) !', msgType='status')
 
         # a dictionary with all the possible sample modes assigned to a number:
         self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
@@ -90,6 +87,9 @@ class PulserDummy(Base, PulserInterface):
                         msgType='warning')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
+
+        # a folder where all the temporary created files will be stored:
+        self._temp_folder = self._get_dir_for_name('temporary_files')
 
         self.connected = False
         self.sample_rate = 25e9
@@ -414,12 +414,14 @@ class PulserDummy(Base, PulserInterface):
                     header_obj = WFMX_header(self.sample_rate,
                                              self.amplitude_list[channel_number+1],
                                              0,
-                                             int(total_number_of_samples))
+                                             int(total_number_of_samples),
+                                             temp_dir=self._temp_folder)
 
                     header_obj.create_xml_file()
-                    with open('header.xml','r') as header:
+                    temp_file = os.path.join(self._temp_folder,'header.xml' )
+                    with open(temp_file,'r') as header:
                         header_lines = header.readlines()
-                    os.remove('header.xml')
+                    os.remove(temp_file)
                     # create .WFMX-file for each channel.
                     filename = name + '_Ch' + str(channel_number+1) + '.WFMX'
                     created_files.append(filename)
