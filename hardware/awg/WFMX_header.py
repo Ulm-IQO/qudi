@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi task runner module.
+This file contains the QuDi WFMX header file creator for pulsing devices.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,10 +52,6 @@ class WFMX_header():
         self.basic_waveform = 'Basic Waveform'
         self.software_version = '4.0.0075'
 
-
-        #
-
-
     def create_xml_file(self):
         """ This function creates the html file using etree. """
 
@@ -98,7 +94,6 @@ class WFMX_header():
 
         tree = ET.ElementTree(root)
         tree.write(filepath, pretty_print=True, xml_declaration=True)
-
 
         # Calculates the length of the header:
         # 40 is subtracted since the first line of the above created file has a length of 39 and is

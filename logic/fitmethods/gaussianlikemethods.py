@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+
 """
-This file contains the QuDi task runner module.
+This file contains the QuDi fitting logic functions needed for gaussian-like-methods.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
