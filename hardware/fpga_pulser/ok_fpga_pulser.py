@@ -159,6 +159,12 @@ class OkFpgaPulser(Base, PulserInterface):
         constraints['subsequence_num'] = {'min': 0, 'max': 0,
                                           'step': 0, 'unit': '#'}
 
+        # If sequencer mode is enable than sequence_param should be not just an
+        # empty dictionary. Insert here in the same fashion like above the parameters, which the
+        # device is needing for a creating sequences:
+        sequence_param = OrderedDict()
+        constraints['sequence_param'] = sequence_param
+
         # For the channel configuration, three information has to be set!
         #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
         #   by yourself.
@@ -750,6 +756,26 @@ a
             fpgafile.write(encoded_samples)
 
         return created_files
+
+    def write_seq_to_file(self, name, sequence_param):
+        """ Write a sequence to file.
+
+        @param str name: name of the sequence to be created
+        @param list sequence_param: a list of dict, which contains all the information, which
+                                    parameters are to be taken to create a sequence. The dict will
+                                    have at least the entry
+                                        {'ensemble': [<list_of_sampled_ensemble_name>] }
+                                    All other parameters, which can be used in the sequence are
+                                    determined in the get_constraints method in the category
+                                    'sequence_param'.
+
+        In order to write sequence files a completely new method with respect to
+        write_samples_to_file is needed.
+        """
+
+        self.logMsg('The FPGA pulsing device does not have a sequence capability!\n'
+                    'Method call will be ignored.', msgType='warning')
+        return
 
     def _connect_fpga(self):
         # connect to FPGA by serial number

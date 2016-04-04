@@ -63,7 +63,7 @@ class PulserDummy(Base, PulserInterface):
 
         # a dictionary with all the possible sample modes assigned to a number:
         self.sample_mode = {'matlab':0, 'wfm-file':1, 'wfmx-file':2}
-        self.current_sample_mode = self.sample_mode['wfmx-file']
+        self.current_sample_mode = self.sample_mode['wfm-file']
 
         self.awg_waveform_directory = '/waves'
 
@@ -396,7 +396,8 @@ class PulserDummy(Base, PulserInterface):
                 # check if file already exists and overwrite it
                 if os.path.isfile(os.path.join(self.host_waveform_directory, filename)):
                     os.remove(os.path.join(self.host_waveform_directory, filename))
-                os.rename(os.getcwd() + name +'.mat', os.path.join(self.host_waveform_directory, filename))
+                os.rename(os.getcwd() + name +'.mat', os.path.join(self.host_waveform_directory,
+                                                                   filename))
 
         elif self.current_sample_mode == self.sample_mode['wfmx-file']:
             # The overhead of the write process in bytes.
@@ -410,7 +411,9 @@ class PulserDummy(Base, PulserInterface):
             if is_first_chunk:
                 for channel_number in range(analog_samples.shape[0]):
                     # create header
-                    header_obj = WFMX_header(self.sample_rate, self.amplitude_list[channel_number+1], 0,
+                    header_obj = WFMX_header(self.sample_rate,
+                                             self.amplitude_list[channel_number+1],
+                                             0,
                                              int(total_number_of_samples))
 
                     header_obj.create_xml_file()
@@ -431,7 +434,9 @@ class PulserDummy(Base, PulserInterface):
             # digital samples in temporary files.
             for channel_number in range(analog_samples.shape[0]):
                 # append analog samples chunk to .WFMX file
-                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                filepath = os.path.join(self.host_waveform_directory,
+                                        name + '_Ch' + str(channel_number+1) + '.WFMX')
+
                 with open(filepath, 'ab') as wfmxfile:
                     # append analog samples in binary format. One sample is 4
                     # bytes (np.float32). Write in chunks if array is very big to
@@ -448,7 +453,9 @@ class PulserDummy(Base, PulserInterface):
                 # create the byte values corresponding to the marker states
                 # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
                 # and write them into a temporary file
-                filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+                filepath = os.path.join(self.host_waveform_directory,
+                                        name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+
                 with open(filepath, 'ab') as tmpfile:
                     if digital_samples.shape[0] <= (2*channel_number):
                         # no digital channels to write for this analog channel
@@ -482,8 +489,11 @@ class PulserDummy(Base, PulserInterface):
             # .tmp files if it was the last chunk to write.
             if is_last_chunk:
                 for channel_number in range(analog_samples.shape[0]):
-                    tmp_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
-                    wfmx_filepath = os.path.join(self.host_waveform_directory, name + '_Ch' + str(channel_number+1) + '.WFMX')
+                    tmp_filepath = os.path.join(self.host_waveform_directory,
+                                                name + '_Ch' + str(channel_number+1) + '_digi' + '.tmp')
+
+                    wfmx_filepath = os.path.join(self.host_waveform_directory,
+                                                 name + '_Ch' + str(channel_number+1) + '.WFMX')
                     with open(wfmx_filepath, 'ab') as wfmxfile:
                         with open(tmp_filepath, 'rb') as tmpfile:
                             # read and write files in max. write_overhead_bytes chunks to reduce
@@ -502,7 +512,7 @@ class PulserDummy(Base, PulserInterface):
             # by the device program to understand wfm file. If it is wrong,
             # AWG will not be able to understand the written file.
 
-            # The pure waveform has the number 1000, idicating that it is a
+            # The pure waveform has the number 1000, indicating that it is a
             # *.wfm file. For sequence mode e.g. the number would be 3001 or
             # 3002, depending on the number of channels in the sequence mode.
             # (The last number indicates the channel numbers).
@@ -511,80 +521,53 @@ class PulserDummy(Base, PulserInterface):
             # After this number a 14bit binary representation of the channel
             # and the marker are followed.
 
-            #FIXME: chunkwise write to a .wfm file not supported yet. Implement!
 
-            # check if chunkwise write is requested and issue error if this is the case.
-            # Do not write to file then.
-            if (not is_first_chunk) and (not is_last_chunk):
-                self.logMsg('Chunkwise write for sample mode wfm-file not supported.'
-                            'Nothing was written to file.', msgType='error')
-                return -1
-            else:
-                for channel_index, channel_arr in enumerate(analog_samples):
+            for channel_index, channel_arr in enumerate(analog_samples):
 
-                    filename = name+'_ch'+str(channel_index+1) + '.wfm'
-                    created_files.append(filename)
+                filename = name + '_ch' + str(channel_index + 1) + '.wfm'
 
-                    with open(os.path.join(self.host_waveform_directory, filename), 'wb') as wfm_file:
+                created_files.append(filename)
 
-                        num_bytes = str(len(digital_samples[channel_index*2])*5)
+                filepath = os.path.join(self.host_waveform_directory, filename)
+
+                # delete any previous file by just open it for writing process:
+                if is_first_chunk:
+                    with open(filepath, 'wb') as f:
+                        pass
+
+                with open(filepath, 'ab') as wfm_file:
+
+                    if is_first_chunk:
+                        # write the first line, which is the header file, if first chunk is passed:
+                        num_bytes = str(len(digital_samples[channel_index * 2]) * 5)
                         num_digits = str(len(num_bytes))
-                        header = str.encode('MAGIC 1000\r\n#'+num_digits+num_bytes)
-
+                        header = str.encode('MAGIC 1000\r\n#' + num_digits + num_bytes)
                         wfm_file.write(header)
 
-                        # for value_index, value in enumerate(channel_arr):
-                        #     byte_val = struct.pack('f',value)   # convert float to byte
-                        #                                         # representation
-                        #
-                        #
-                        #
-                        #     marker1 = digi_samples[channel_index*2][value_index]
-                        #     [value_index]
-                        #
-                        #     byte_marker = struct.pack('f',marker1+marker2)
-                        #
-                        #     wfm_file.write(byte_marker+byte_val)
+                    # now write at once the whole file in binary representation:
 
-                        shape_for_wavetmp = np.shape(channel_arr)[0]
-                        wavetmp = np.zeros(shape_for_wavetmp*5,dtype='c')
-                        wavetmp = wavetmp.reshape((-1,5))
-                        # wavetmp[:,:4] = np.frombuffer(bytes(channel_arr),dtype='c').reshape((-1,4))
-                        wavetmp[:,:4] = np.frombuffer(memoryview(channel_arr/4),dtype='c').reshape((-1,4))
+                    # convert the presampled numpy array of the analog channels
+                    # to a float number represented by 8bits:
+                    shape_for_wavetmp = np.shape(channel_arr)[0]
+                    wavetmp = np.zeros(shape_for_wavetmp * 5, dtype='c')
+                    wavetmp = wavetmp.reshape((-1, 5))
 
-                        # marker1 =
-                        # marker2 = digi_samples[channel_index*2+1]
+                    wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr / 4), dtype='c').reshape(
+                        (-1, 4))
 
-                        # marker = np.zeros(len(marker1),dtype='c')
+                    # The previously created array wavetmp contains one additional column, where
+                    # the marker states will be written into:
+                    marker = digital_samples[channel_index * 2] + digital_samples[
+                                                                      channel_index * 2 + 1] * 2
+                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
+                    wavetmp[:, -1] = marker_byte
 
-                        #FIXME: This is a very very ugly and inefficient way of
-                        #       appending the marker array. A much nicer way
-                        #       should be implemented!!!
+                    # now write everything to file:
+                    wfm_file.write(wavetmp.tobytes())
 
-                        marker = digital_samples[channel_index*2] + digital_samples[channel_index*2+1]*2
-
-                        marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-                        # for index in range(len(marker1)):
-                        #     test_val = marker1[index] + marker2[index]
-                        #     if marker1[index] and marker2[index]:
-                        #         wavetmp[index,-1] = b'\x03'
-                        #     elif marker1[index] and not marker2[index]:
-                        #         wavetmp[index,-1] = b'\x01'
-                        #     elif not marker1[index] and marker2[index]:
-                        #         wavetmp[index,-1] = b'\x02'
-                        #     else:
-                        #         wavetmp[index,-1] = b'\x00'
-
-                        # [marker]
-
-
-
-                        # wavetmp[:,-1] = np.repeat(marker,len(wavetmp))
-                        wavetmp[:,-1] = marker_byte
-
-                        wfm_file.write(wavetmp.tobytes())
-
-                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.sample_rate))
+                    if is_last_chunk:
+                        # the footer encodes the sample rate, which was used for that file:
+                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
                         wfm_file.write(footer)
 
         else:
@@ -595,7 +578,71 @@ class PulserDummy(Base, PulserInterface):
         return created_files
 
     def write_seq_to_file(self, name, sequence_param):
-        pass
+        """ Write a sequence to file.
+
+        @param str name: name of the sequence to be created
+        @param list sequence_param: a list of dict, which contains all the information, which
+                                    parameters are to be taken to create a sequence. The dict will
+                                    have at least the entry
+                                        {'ensemble': [<list_of_sampled_ensemble_name>] }
+                                    All other parameters, which can be used in the sequence are
+                                    determined in the get_constraints method in the category
+                                    'sequence_param'.
+
+        In order to write sequence files a completely new method with respect to
+        write_samples_to_file is needed.
+        """
+
+        filename = name + '.seq'
+        filepath = os.path.join(self.host_waveform_directory, filename)
+
+        with open(filepath, 'wb') as seq_file:
+
+            # write the header:
+            # determine the used channels according to how much files where created:
+            channels = len(sequence_param[0]['name'])
+            lines = len(sequence_param)
+            seq_file.write('MAGIC 300{0:d}\r\n'.format(channels).encode('UTF-8'))
+            seq_file.write('LINES {0:d}\r\n'.format(lines).encode('UTF-8'))
+
+            # write main part:
+            # in this order: 'waveform_name', repeat, wait, Goto, ejump
+            for seq_param_dict in sequence_param:
+
+                repeat = seq_param_dict['reps']
+                trigger_wait = seq_param_dict['trigger_wait']
+                go_to = seq_param_dict['go_to']
+                event_jump_to = seq_param_dict['event_jump_to']
+
+                # for one channel:
+                if len(seq_param_dict['name']) == 1:
+                    seq_file.write(
+                        '"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'.format(seq_param_dict['name'][0],
+                                                                       repeat,
+                                                                       trigger_wait,
+                                                                       go_to,
+                                                                       event_jump_to).encode(
+                            'UTF-8'))
+                # for two channel:
+                else:
+                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'.format(
+                        seq_param_dict['name'][0],
+                        seq_param_dict['name'][1],
+                        repeat,
+                        trigger_wait,
+                        go_to,
+                        event_jump_to).encode('UTF-8'))
+
+            # write the footer:
+            table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
+            logic_jump = 'LOGIC_JUMP -1, -1, -1, -1,\r\n'
+            jump_mode = 'JUMP_MODE TABLE\r\n'
+            jump_timing = 'JUMP_TIMING ASYNC\r\n'
+            strobe_option = 'STROBE 0\r\n'
+
+            footer = table_jump + logic_jump + jump_mode + jump_timing + strobe_option
+
+            seq_file.write(footer.encode('UTF-8'))
 
     def upload_asset(self, asset_name=None):
         """ Upload an already hardware conform file to the device.
@@ -616,7 +663,9 @@ class PulserDummy(Base, PulserInterface):
 
         for filename in saved_files:
             if filename not in self.uploaded_files_list:
-                if fnmatch(filename, asset_name+'_ch?.wfm'):
+                if (asset_name+'.seq') in filename:
+                    self.uploaded_files_list.append(filename)
+                elif fnmatch(filename, asset_name+'_ch?.wfm'):
                     self.uploaded_files_list.append(filename)
                 elif fnmatch(filename, asset_name+'_ch?.WFMX'):
                     self.uploaded_files_list.append(filename)
