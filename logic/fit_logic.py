@@ -9,6 +9,8 @@ import importlib
 from os import listdir
 from os.path import isfile, join
 
+import numpy as np
+
 # FIXME: In general is it needed for any purposes to use weighting?
 # FIXME: Don't understand exactly when you return error code...
 
@@ -89,8 +91,8 @@ class FitLogic(GenericLogic):
         # for path in directories:
         path = join(self.get_main_dir(), 'logic', 'fitmethods')
         for f in listdir(path):
-            if isfile(join(path,f)):
-                if f[-3:] == '.py': 
+            if isfile(join(path, f)):
+                if f[-3:] == '.py':
                     filenames.append(f[:-3])
 
         self.oneD_fit_methods = dict()
@@ -108,40 +110,42 @@ class FitLogic(GenericLogic):
                         # estimators they have
 
                         # check if it is a make_<own fuction>_fit method
-                        if (str(method).startswith('make_')
-                            and str(method).endswith('_fit')):
+                        if (str(method).startswith('make_') and
+                                str(method).endswith('_fit')):
                             # only add to dictionary if it is not already there
                             if 'twoD' in str(method) and str(method).split('_')[1] not in self.twoD_fit_methods:
-                                self.twoD_fit_methods[str(method).split('_')[1]]=[]
+                                self.twoD_fit_methods[str(method).split('_')[1]] = []
                             elif str(method).split('_')[1] not in self.oneD_fit_methods:
-                                self.oneD_fit_methods[str(method)[5:-4]]=[]
+                                self.oneD_fit_methods[str(method)[5:-4]] = []
                         # if there is an estimator add it to the dictionary
                         if 'estimate' in str(method):
                             if 'twoD' in str(method):
-                                try: # if there is a given estimator it will be set or added
+                                try:  # if there is a given estimator it will be set or added
                                     if str(method).split('_')[1] in self.twoD_fit_methods:
-                                        self.twoD_fit_methods[str(method).split('_')[1]]=self.twoD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
+                                        self.twoD_fit_methods[str(method).split('_')[1]] = self.twoD_fit_methods[
+                                            str(method).split('_')[1]].append(str(method).split('_')[2])
                                     else:
-                                        self.twoD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
+                                        self.twoD_fit_methods[str(method).split('_')[1]] = [str(method).split('_')[2]]
                                 except:  # if there is no estimator but only a standard one the estimator is empty
                                     if not str(method).split('_')[1] in self.twoD_fit_methods:
-                                        self.twoD_fit_methods[str(method).split('_')[1]]=[]
-                            else: # this is oneD case
-                                try: # if there is a given estimator it will be set or added
-                                    if (str(method).split('_')[1] in self.oneD_fit_methods and str(method).split('_')[2] is not None):
-                                        self.oneD_fit_methods[str(method).split('_')[1]].append(str(method).split('_')[2])
+                                        self.twoD_fit_methods[str(method).split('_')[1]] = []
+                            else:  # this is oneD case
+                                try:  # if there is a given estimator it will be set or added
+                                    if (str(method).split('_')[1] in self.oneD_fit_methods and str(method).split('_')[
+                                        2] is not None):
+                                        self.oneD_fit_methods[str(method).split('_')[1]].append(
+                                            str(method).split('_')[2])
                                     elif str(method).split('_')[2] is not None:
-                                        self.oneD_fit_methods[str(method).split('_')[1]]=[str(method).split('_')[2]]
-                                except: # if there is no estimator but only a standard one the estimator is empty
+                                        self.oneD_fit_methods[str(method).split('_')[1]] = [str(method).split('_')[2]]
+                                except:  # if there is no estimator but only a standard one the estimator is empty
                                     if not str(method).split('_')[1] in self.oneD_fit_methods:
-                                        self.oneD_fit_methods[str(method).split('_')[1]]=[]
+                                        self.oneD_fit_methods[str(method).split('_')[1]] = []
                 except:
                     self.logMsg('It was not possible to import element {} into FitLogic.'.format(method),
                                 msgType='error')
-        self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation'+
+        self.logMsg('Methods were included to FitLogic, but only if naming is right: check the doxygen documentation' +
                     'if you added a new method and it does not show',
                     msgType='warning')
-
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -158,3 +162,60 @@ class FitLogic(GenericLogic):
 
     def deactivation(self, e):
         pass
+
+    def create_fit_string(self, result, model, units=None, decimal_digits_value_given=None, decimal_digits_err_given=None):
+        """ This method can produces a well readable string from the results of a fitted model.
+        If units is not given or one unit missing there will be no unit in string.
+        If decimal_digits_value_given is not provided it will be set to precision of error and digits of error will
+        be set to 1.
+
+        @param lmfit object result: the fitting result
+        @param lmfit object model: the corresponding model
+        @param dict units: units for parameters of model
+        @param int decimal_digits_err_given: (optional) number of decimals displayed in output for error
+        @param int decimal_digits_value_given: (optional) number of decimals displayed in output for value
+
+        @return str fit_result: readable string
+        """
+
+        fit_result = ''
+        if units is None:
+            for variable in model.param_names:
+                # check order of number
+                exponent_error = int("{:e}".format(result.params[variable].stderr)[-3:])
+                exponent_value = int("{:e}".format(result.params[variable].value)[-3:])
+                if decimal_digits_value_given is None:
+                    decimal_digits_value = int(exponent_value-exponent_error)+1
+                if decimal_digits_err_given is None:
+                    decimal_digits_err = 1
+                fit_result += ("{0}{1} ± {2} \n".format(str(variable),
+                                                        " : {0:.{1}e}".format(result.params[variable].value,
+                                                                              decimal_digits_value),
+                                                        '{0:.{1}e}'.format(result.params[variable].stderr,
+                                                                           decimal_digits_err)))
+            self.logMsg('No units provided in create_fit_string, not printing any units.',
+                        msgType="message")
+        else:
+            for variable in model.param_names:
+                # check order of number
+                exponent_error = int("{:e}".format(result.params[variable].stderr)[-3:])
+                exponent_value = int("{:e}".format(result.params[variable].value)[-3:])
+                if decimal_digits_value_given is None:
+                    decimal_digits_value = int(exponent_value-exponent_error)+1
+                if decimal_digits_err_given is None:
+                    decimal_digits_err = 1
+                try:
+                    fit_result += ("{0}{1} ± {2} {3}\n".format(str(variable),
+                                                        " : ({0:.{1}e}".format(result.params[variable].value,
+                                                                              decimal_digits_value),
+                                                        '{0:.{1}e})'.format(result.params[variable].stderr,
+                                                                           decimal_digits_err),units[variable] ))
+                except:
+                    self.logMsg('No unit given for parameter {}, setting unit to empty string'.format(variable),
+                                msgType='warning')
+                    fit_result += ("{0}{1} ± {2} \n".format(str(variable),
+                                                        " : {0:.{1}e}".format(result.params[variable].value,
+                                                                              decimal_digits_value),
+                                                        '{0:.{1}e}'.format(result.params[variable].stderr,
+                                                                           decimal_digits_err)))
+        return fit_result
