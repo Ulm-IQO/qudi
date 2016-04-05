@@ -354,48 +354,92 @@ class ODMRLogic(GenericLogic):
         error_code = self._MW_device.off()
         return error_code
 
-    def do_fit(self, fit_function = None):
+    def do_fit(self, fit_function=None):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
         """
         self.fit_function = fit_function
 
+        # You have to know during implementation, how many parameters you are
+        # expecting. That can of course be retrieved from the model of the fit
+        # like:
+        #   model, params = self._fit_logic.make_lorentzian_model()
+
+        # specify here, locally for the ODMR module, which parameters you assign
+        # to which values (again you have to know how the parameters are called
+        # in the fit logic, the fitlogic does not have to find that out. That is
+        # the concept of our logic structure, i.e. the lowest one is the
+        # 'dumbest' but the most general one)
+
+        # this dict will be passed to the formatting method
+        param_dict = OrderedDict()
+
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
             self.signal_ODMR_plot_updated.emit()  #ist das hier nötig?
         elif self.fit_function == 'Lorentzian':
-            result = self._fit_logic.make_lorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+
+            result = self._fit_logic.make_lorentzian_fit(axis=self._MW_frequency_list,
+                                                         data=self.ODMR_plot_y,
+                                                         add_parameters=None)
             lorentzian, params = self._fit_logic.make_lorentzian_model()
             self.ODMR_fit_y = lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (
-                'frequency : ' + str(np.round(result.params['center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'linewidth : ' + str(np.round(result.params['fwhm'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['fwhm'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                )
+
+            # create the proper param_dict with the values:
+            param_dict['Frequency'] = {'value': np.round(result.params['center'].value, 3),
+                                       'error': np.round(result.params['center'].stderr, 2),
+                                       'unit' : 'MHz'}
+            param_dict['Linewidth'] = {'value': np.round(result.params['fwhm'].value, 3),
+                                       'error': np.round(result.params['fwhm'].stderr, 2),
+                                       'unit' : 'MHz'}
+            param_dict['Contrast'] = {'value': np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)), 3)*100,
+                                      'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+
         elif self.fit_function =='Double Lorentzian':
-            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            double_lorentzian,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list,
+                                                               data=self.ODMR_plot_y,
+                                                               add_parameters=None)
+            double_lorentzian, params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' (MHz)'
-                                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['lorentz0_fwhm'].stderr,2)) + ' (MHz)'  + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' (MHz)'
-                                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['lorentz1_fwhm'].stderr,2)) + ' (MHz)' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
-                                )
+
+            # create the proper param_dict with the values:
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value, 3),
+                                         'error': np.round(result.params['lorentz0_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Contrast 0'] = {'value': np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value, 3),
+                                         'error': np.round(result.params['lorentz1_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Contrast 1'] = {'value': np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+
         elif self.fit_function =='Double Lorentzian with fixed splitting':
             p = Parameters()
-            # TODO: insert this in gui config of ODMR
+
+            #TODO: insert this in gui config of ODMR
             splitting_from_gui_config = 3.03 #in MHz
 
-            error, lorentz0_amplitude, lorentz1_amplitude, lorentz0_center, lorentz1_center, lorentz0_sigma, lorentz1_sigma, offset = self._fit_logic.estimate_doublelorentz(self._MW_frequency_list, self.ODMR_plot_y)
+            error,              \
+            lorentz0_amplitude, \
+            lorentz1_amplitude, \
+            lorentz0_center,    \
+            lorentz1_center,    \
+            lorentz0_sigma,     \
+            lorentz1_sigma,     \
+            offset              = self._fit_logic.estimate_doublelorentz(self._MW_frequency_list,
+                                                                         self.ODMR_plot_y)
 
             if lorentz0_center < lorentz1_center:
                 p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
@@ -403,63 +447,138 @@ class ODMRLogic(GenericLogic):
                 splitting_from_gui_config *= -1
                 p.add('lorentz1_center', expr='lorentz0_center{:+f}'.format(splitting_from_gui_config))
 
-            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=p)
-            double_lorentzian,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
+            result = self._fit_logic.make_doublelorentzian_fit(axis=self._MW_frequency_list,
+                                                               data=self.ODMR_plot_y,
+                                                               add_parameters=p)
+            double_lorentzian, params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (
-                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + u" \u00B1 "
-                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' (MHz)'
-                + '  ,  lw_0 : ' + str(np.round(result.params['lorentz0_fwhm'].value, 3)) + u" \u00B1 "
-                + str(np.round(result.params['lorentz0_fwhm'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + u" \u00B1 "
-                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' (MHz)'
-                + '  ,  lw_1 : ' + str(np.round(result.params['lorentz1_fwhm'].value, 3)) + u" \u00B1 "
-                + str(np.round(result.params['lorentz1_fwhm'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                )
+
+            # create the proper param_dict with the values:
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value, 3),
+                                         'error': np.round(result.params['lorentz0_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value, 3),
+                                         'error': np.round(result.params['lorentz1_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Contrast 0'] = {'value': np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+            param_dict['Contrast 1'] = {'value': np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+
         elif self.fit_function =='N14':
-            result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
-            fitted_funciton,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
-            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (
-                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['lorentz2_center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                )
+            result = self._fit_logic.make_N14_fit(axis=self._MW_frequency_list,
+                                                  data=self.ODMR_plot_y,
+                                                  add_parameters=None)
+            fitted_funciton, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
+            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x,
+                                                   params=result.params)
+
+            # create the proper param_dict with the values:
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 2'] = {'value': np.round(result.params['lorentz2_center'].value, 3),
+                                     'error': np.round(result.params['lorentz2_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+
+            param_dict['Contrast 0'] = {'value': np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100,
+                                        'unit' : '%'}
+            param_dict['Contrast 1'] = {'value': np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100,
+                                        'unit' : '%'}
+            param_dict['Contrast 2'] = {'value': np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)), 3)*100,
+                                        'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+
         elif self.fit_function == 'N15':
-            result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None)
+            result = self._fit_logic.make_N15_fit(axis=self._MW_frequency_list,
+                                                  data=self.ODMR_plot_y,
+                                                  add_parameters=None)
             fitted_funciton, params = self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
-            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (
-                'f_0 : ' + str(np.round(result.params['lorentz0_center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['lorentz0_center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value, 3)) + " \u00B1 "
-                + str(np.round(result.params['lorentz1_center'].stderr, 2)) + ' (MHz)' + '\n'
-                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100) + '(%)'
-                )
+            self.ODMR_fit_y = fitted_funciton.eval(x=self.ODMR_fit_x,
+                                                   params=result.params)
+
+            # create the proper param_dict with the values:
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Contrast 0'] = {'value': np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)), 3)*100,
+                                        'unit' : '%'}
+            param_dict['Contrast 1'] = {'value': np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)), 3)*100,
+                                        'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+
         elif self.fit_function == 'Double Gaussian':
-            result = self._fit_logic.make_doublegaussian_fit(axis=self._MW_frequency_list, data=self.ODMR_plot_y, add_parameters=None, estimator='odmr_dip')
+            result = self._fit_logic.make_doublegaussian_fit(axis=self._MW_frequency_list,
+                                                             data=self.ODMR_plot_y,
+                                                             add_parameters=None, estimator='odmr_dip')
             double_gaussian, params=self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
-            self.ODMR_fit_y = double_gaussian.eval(x=self.ODMR_fit_x, params=result.params)
-            self.fit_result = (   'f_0 : ' + str(np.round(result.params['gaussian0_center'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['gaussian0_center'].stderr,2)) + ' (MHz)'
-                                + '  ,  lw_0 : ' + str(np.round(result.params['gaussian0_fwhm'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['gaussian0_fwhm'].stderr,2)) + ' (MHz)'
-                                + 'f_1 : ' + str(np.round(result.params['gaussian1_center'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['gaussian1_center'].stderr,2)) + ' (MHz)'
-                                + '  ,  lw_1 : ' + str(np.round(result.params['gaussian1_fwhm'].value,3)) + " \u00B1 "
-                                +  str(np.round(result.params['gaussian1_fwhm'].stderr,2)) + ' (MHz)'
-                                + 'con_0 : ' + str(np.round((result.params['gaussian0_amplitude'].value/(-1*np.pi*result.params['gaussian0_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
-                                + '  ,  con_1 : ' + str(np.round((result.params['gaussian1_amplitude'].value/(-1*np.pi*result.params['gaussian1_sigma'].value*result.params['c'].value)),3)*100) + '(%)'
-                                )
+            self.ODMR_fit_y = double_gaussian.eval(x=self.ODMR_fit_x,
+                                                   params=result.params)
+
+            # create the proper param_dict with the values:
+            param_dict['Freq. 0'] = {'value': np.round(result.params['gaussian0_center'].value, 3),
+                                     'error': np.round(result.params['gaussian0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['gaussian1_center'].value, 3),
+                                     'error': np.round(result.params['gaussian1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+
+
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['gaussian0_fwhm'].value, 3),
+                                         'error': np.round(result.params['gaussian0_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['gaussian1_fwhm'].value, 3),
+                                         'error': np.round(result.params['gaussian1_fwhm'].stderr, 2),
+                                         'unit' : 'MHz'}
+            param_dict['Contrast 0'] = {'value': np.round((result.params['gaussian0_amplitude'].value/(-1*np.pi*result.params['gaussian0_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+            param_dict['Contrast 1'] = {'value': np.round((result.params['gaussian1_amplitude'].value/(-1*np.pi*result.params['gaussian1_sigma'].value*result.params['c'].value)),3)*100,
+                                        'unit' : '%'}
+
+            self.fit_result = self._create_formatted_output(param_dict)
+        else:
+            self.logMsg('The Fit Function "{0}" is not implemented to be used in '
+                        'the ODMR Logic. Correct that! Fit Call will be '
+                        'skipped.'.format(fit_function), msgType='warning')
+
+
+    def _create_formatted_output(self, param_dict):
+        """ Display a parameter set nicely.
+
+        @param dict param: with two needed keywords 'value' and 'unit' and one
+                           optional keyword 'error'. Add the proper items to the
+                           specified keywords.
+
+        @return str: a sting list, which is nicely formatted.
+        """
+        output_str = ''
+        for entry in param_dict:
+            if param_dict[entry].get('error') is None:
+                output_str += '{0} : {1} {2} \n'.format(entry,
+                                                        param_dict[entry]['value'],
+                                                        param_dict[entry]['unit'])
+            else:
+                output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
+                                                                   param_dict[entry]['value'],
+                                                                   param_dict[entry]['error'],
+                                                                   param_dict[entry]['unit'])
+        return output_str
 
     def save_ODMR_Data(self, tag=None, timestamp=None):
         """ Saves the current ODMR data to a file. """
@@ -481,7 +600,7 @@ class ODMRLogic(GenericLogic):
             filelabel = 'ODMR_data'
             filelabel2 = 'ODMR_data_matrix'
             filelabel3 = 'ODMR_data_raw'
-            
+
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         data2 = OrderedDict()
