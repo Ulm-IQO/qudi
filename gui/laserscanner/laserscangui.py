@@ -142,6 +142,10 @@ class LaserScanningGui(GUIBase):
         self._curve3.setPen({'color': '00A', 'width': 0.2})
         self._top_axis.addItem(self._curve3)
 
+        self._curve4 = pg.PlotCurveItem()
+        self._curve4.setPen({'color': 'F0F', 'width': 1})
+        self._pw.addItem(self._curve4)
+
         self._save_PNG = True
 
         # scatter plot for time series
@@ -184,6 +188,7 @@ class LaserScanningGui(GUIBase):
         self._curve1.setData(y=self._scanning_logic.histogram, x=x_axis)
         self._curve2.setData(y=self._scanning_logic.sumhisto, x=x_axis)
         self._curve3.setData(y=self._scanning_logic.histogram, x=x_axis_hz)
+        self._curve4.setData(y=self._scanning_logic.envelope_histogram, x=x_axis)
 
         if self._scanning_logic.getState() == 'running':
             self._mw.actionStop_resume_scan.setText('Stop')
