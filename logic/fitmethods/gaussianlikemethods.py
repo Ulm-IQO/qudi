@@ -20,7 +20,7 @@ Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import numpy as np
-from lmfit.models import Model,GaussianModel, ConstantModel
+from lmfit.models import Model, GaussianModel, ConstantModel
 from lmfit import Parameters
 
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -236,9 +236,8 @@ def make_twoDgaussian_model(self):
     """
 
     def twoDgaussian_function(x, amplitude, x_zero, y_zero, sigma_x, sigma_y,
-                            theta, offset):
-
-        #FIXME: x_data_tuple: dimension of arrays
+                              theta, offset):
+        # FIXME: x_data_tuple: dimension of arrays
 
         """ This method provides a two dimensional gaussian function.
 
@@ -268,25 +267,26 @@ def make_twoDgaussian_model(self):
         #         self.logMsg('Given range of parameter is no float or int.',
         #                     msgType='error')
 
-        (u,v) = x
+        (u, v) = x
         x_zero = float(x_zero)
         y_zero = float(y_zero)
 
-        a = (np.cos(theta)**2)/(2*sigma_x**2) \
-                                    + (np.sin(theta)**2)/(2*sigma_y**2)
-        b = -(np.sin(2*theta))/(4*sigma_x**2) \
-                                    + (np.sin(2*theta))/(4*sigma_y**2)
-        c = (np.sin(theta)**2)/(2*sigma_x**2) \
-                                    + (np.cos(theta)**2)/(2*sigma_y**2)
-        g = offset + amplitude*np.exp( - (a*((u-x_zero)**2) \
-                                + 2*b*(u-x_zero)*(v-y_zero) \
-                                + c*((v-y_zero)**2)))
+        a = (np.cos(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.sin(theta) ** 2) / (2 * sigma_y ** 2)
+        b = -(np.sin(2 * theta)) / (4 * sigma_x ** 2) \
+            + (np.sin(2 * theta)) / (4 * sigma_y ** 2)
+        c = (np.sin(theta) ** 2) / (2 * sigma_x ** 2) \
+            + (np.cos(theta) ** 2) / (2 * sigma_y ** 2)
+        g = offset + amplitude * np.exp(- (a * ((u - x_zero) ** 2) \
+                                           + 2 * b * (u - x_zero) * (v - y_zero) \
+                                           + c * ((v - y_zero) ** 2)))
         return g.ravel()
 
     model = Model(twoDgaussian_function)
     params = model.make_params()
 
     return model, params
+
 
 def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
     # TODO:Make clever estimator
@@ -308,39 +308,40 @@ def estimate_twoDgaussian(self, x_axis=None, y_axis=None, data=None):
     @return int error: error code (0:OK, -1:error)
     """
 
-#            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
-#            len_x=np.where(x_axis[0]==x_axis)[0][1]
-#            len_y=len(data)/len_x
+    #            #needed me 1 hour to think about, but not needed in the end...maybe needed at a later point
+    #            len_x=np.where(x_axis[0]==x_axis)[0][1]
+    #            len_y=len(data)/len_x
 
 
-    amplitude=float(data.max()-data.min())
+    amplitude = float(data.max() - data.min())
 
     x_zero = x_axis[data.argmax()]
     y_zero = y_axis[data.argmax()]
 
-    sigma_x=(x_axis.max()-x_axis.min())/3.
-    sigma_y =(y_axis.max()-y_axis.min())/3.
-    theta=0.0
-    offset=float(data.min())
-    error=0
-    #check for sensible values
-    parameters=[x_axis,y_axis,data]
+    sigma_x = (x_axis.max() - x_axis.min()) / 3.
+    sigma_y = (y_axis.max() - y_axis.min()) / 3.
+    theta = 0.0
+    offset = float(data.min())
+    error = 0
+    # check for sensible values
+    parameters = [x_axis, y_axis, data]
     for var in parameters:
-        #FIXME: Why don't you check earlier?
-        #FIXME: Check for 1D array, 2D
-        if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+        # FIXME: Why don't you check earlier?
+        # FIXME: Check for 1D array, 2D
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is not an array.', \
                         msgType='error')
-            amplitude=0.
-            x_zero=0.
-            y_zero=0.
-            sigma_x=0.
-            sigma_y =0.
-            theta=0.0
-            offset=0.
-            error=-1
+            amplitude = 0.
+            x_zero = 0.
+            y_zero = 0.
+            sigma_x = 0.
+            sigma_y = 0.
+            theta = 0.0
+            offset = 0.
+            error = -1
 
-    return error,amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+    return error, amplitude, x_zero, y_zero, sigma_x, sigma_y, theta, offset
+
 
 ############################################################################
 #                                                                          #
@@ -362,18 +363,19 @@ def make_multiplegaussian_model(self, no_of_gauss=None):
                                                lorentzian model.
     """
 
-    model=ConstantModel()
+    model = ConstantModel()
     for ii in range(no_of_gauss):
         model += GaussianModel(prefix='gaussian{}_'.format(ii))
 
-    params=model.make_params()
+    params = model.make_params()
 
     return model, params
 
-def estimate_doublegaussian_gatedcounter(self, x_axis = None, data = None, params = None,
-                             threshold_fraction = 0.4,
-                             minimal_threshold = 0.1,
-                             sigma_threshold_fraction = 0.2):
+
+def estimate_doublegaussian_gatedcounter(self, x_axis=None, data=None, params=None,
+                                         threshold_fraction=0.4,
+                                         minimal_threshold=0.1,
+                                         sigma_threshold_fraction=0.2):
     """ This method provides a an estimator for a double gaussian fit with the parameters
     coming from the physical properties of an experiment done in gated counter:
                     - positive peak
@@ -396,55 +398,56 @@ def estimate_doublegaussian_gatedcounter(self, x_axis = None, data = None, param
 
     error = 0
 
-    #make the filter an extra function shared and usable for other functions
-    if len(x_axis)<20.:
-        len_x=5
-    elif len(x_axis)>=100.:
-        len_x=10
+    # make the filter an extra function shared and usable for other functions
+    if len(x_axis) < 20.:
+        len_x = 5
+    elif len(x_axis) >= 100.:
+        len_x = 10
     else:
-        len_x=int(len(x_axis)/10.)+1
+        len_x = int(len(x_axis) / 10.) + 1
 
-    gaus=gaussian(len_x,len_x)
-    data_smooth = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
+    gaus = gaussian(len_x, len_x)
+    data_smooth = filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
 
-    #search for double gaussian
+    # search for double gaussian
 
     error, \
     sigma0_argleft, dip0_arg, sigma0_argright, \
-    sigma1_argleft, dip1_arg , sigma1_argright = \
-    self._search_double_dip(x_axis,
-                            data_smooth*(-1),
-                            threshold_fraction,
-                            minimal_threshold,
-                            sigma_threshold_fraction,
-                            make_prints=False
-                            )
+    sigma1_argleft, dip1_arg, sigma1_argright = \
+        self._search_double_dip(x_axis,
+                                data_smooth * (-1),
+                                threshold_fraction,
+                                minimal_threshold,
+                                sigma_threshold_fraction,
+                                make_prints=False
+                                )
 
-    #set offset to zero
+    # set offset to zero
     params['c'].value = 0.0
 
     params['gaussian0_center'].value = x_axis[dip0_arg]
 
-    #integral of data corresponds to sqrt(2) * Amplitude * Sigma
+    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
     function = InterpolatedUnivariateSpline(x_axis, data_smooth, k=1)
     Integral = function.integral(x_axis[0], x_axis[-1])
 
-    amp_0 = data_smooth[dip0_arg]-params['c'].value
-    amp_1 = data_smooth[dip1_arg]-params['c'].value
+    amp_0 = data_smooth[dip0_arg] - params['c'].value
+    amp_1 = data_smooth[dip1_arg] - params['c'].value
 
-    params['gaussian0_sigma'].value = Integral / (amp_0+amp_1)/ np.sqrt(2*np.pi)
-    params['gaussian0_amplitude'].value = amp_0*params['gaussian0_sigma'].value*np.sqrt(2*np.pi)
+    params['gaussian0_sigma'].value = Integral / (amp_0 + amp_1) / np.sqrt(2 * np.pi)
+    params['gaussian0_amplitude'].value = amp_0 * params['gaussian0_sigma'].value * np.sqrt(2 * np.pi)
 
     params['gaussian1_center'].value = x_axis[dip1_arg]
-    params['gaussian1_sigma'].value = Integral / (amp_0+amp_1)/ np.sqrt(2*np.pi)
-    params['gaussian1_amplitude'].value = amp_1*params['gaussian1_sigma'].value*np.sqrt(2*np.pi)
+    params['gaussian1_sigma'].value = Integral / (amp_0 + amp_1) / np.sqrt(2 * np.pi)
+    params['gaussian1_amplitude'].value = amp_1 * params['gaussian1_sigma'].value * np.sqrt(2 * np.pi)
 
     return error, params
 
-def estimate_doublegaussian_odmr(self, x_axis = None, data = None, params = None,
-                             threshold_fraction = 0.4,
-                             minimal_threshold = 0.1,
-                             sigma_threshold_fraction = 0.2):
+
+def estimate_doublegaussian_odmr(self, x_axis=None, data=None, params=None,
+                                 threshold_fraction=0.4,
+                                 minimal_threshold=0.1,
+                                 sigma_threshold_fraction=0.2):
     """ This method provides a an estimator for a double gaussian fit with the parameters
     coming from the physical properties of an experiment done in gated counter:
                     - positive peak
@@ -465,25 +468,24 @@ def estimate_doublegaussian_odmr(self, x_axis = None, data = None, params = None
     @return Parameters object params: estimated values
     """
 
-    error,\
+    error, \
     params['gaussian0_amplitude'].value, \
     params['gaussian1_amplitude'].value, \
-    params['gaussian0_center'].value,    \
-    params['gaussian1_center'].value,    \
-    params['gaussian0_sigma'].value,     \
-    params['gaussian1_sigma'].value,     \
+    params['gaussian0_center'].value, \
+    params['gaussian1_center'].value, \
+    params['gaussian0_sigma'].value, \
+    params['gaussian1_sigma'].value, \
     params['c'].value = self.estimate_doublelorentz(x_axis, data)
 
     return error, params
 
 
-
-def make_doublegaussian_fit(self, axis = None, data = None,
-                                add_parameters = None,
-                                estimator = 'gated_counter',
-                                threshold_fraction = 0.4,
-                                minimal_threshold = 0.2,
-                                sigma_threshold_fraction = 0.3):
+def make_doublegaussian_fit(self, axis=None, data=None,
+                            add_parameters=None,
+                            estimator='gated_counter',
+                            threshold_fraction=0.4,
+                            minimal_threshold=0.2,
+                            sigma_threshold_fraction=0.3):
     """ This method performes a 1D double gaussian fit on the provided data.
 
     @param array [] axis: axis values
@@ -507,9 +509,9 @@ def make_doublegaussian_fit(self, axis = None, data = None,
 
     if estimator == 'gated_counter':
         error, params = self.estimate_doublegaussian_gatedcounter(axis, data, params,
-                                                      threshold_fraction,
-                                                      minimal_threshold,
-                                                      sigma_threshold_fraction)
+                                                                  threshold_fraction,
+                                                                  minimal_threshold,
+                                                                  sigma_threshold_fraction)
         # Defining constraints
         params['c'].min = 0.0
 
@@ -518,27 +520,20 @@ def make_doublegaussian_fit(self, axis = None, data = None,
 
     elif estimator == 'odmr_dip':
         error, params = self.estimate_doublegaussian_odmr(axis, data, params,
-                                                      threshold_fraction,
-                                                      minimal_threshold,
-                                                      sigma_threshold_fraction)
+                                                          threshold_fraction,
+                                                          minimal_threshold,
+                                                          sigma_threshold_fraction)
 
-
-
-
-
-
-    #redefine values of additional parameters
+    # redefine values of additional parameters
     if add_parameters is not None:
-        params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
+        params = self._substitute_parameter(parameters=params,
+                                            update_parameters=add_parameters)
     try:
-        result=model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=axis, params=params)
     except:
-        result=model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=axis, params=params)
         self.logMsg('The double gaussian fit did not '
-                    'work:'+result.message,
+                    'work:' + result.message,
                     msgType='warning')
 
     return result
-
-
