@@ -154,6 +154,7 @@ class LaserScanningLogic(GenericLogic):
         # create a new x axis from xmin to xmax with bins points
         self.histogram_axis=np.arange(self._xmin, self._xmax, (self._xmax-self._xmin)/self._bins)
         self.histogram = np.zeros(self.histogram_axis.shape)
+        self.envelope_histogram = np.zeros(self.histogram_axis.shape)
 
         self.sig_update_histogram_next.connect(self._update_histogram, QtCore.Qt.QueuedConnection)
 
@@ -201,9 +202,10 @@ class LaserScanningLogic(GenericLogic):
 
 #        print('New histogram', self._bins,self._xmin,self._xmax)
         # create a new x axis from xmin to xmax with bins points
-        self.rawhisto=np.zeros(self._bins)
-        self.sumhisto=np.ones(self._bins)*1.0e-10
-        self.histogram_axis=np.linspace(self._xmin, self._xmax, self._bins)
+        self.rawhisto = np.zeros(self._bins)
+        self.envelope_histogram = np.zeros(self._bins)
+        self.sumhisto = np.ones(self._bins)*1.0e-10
+        self.histogram_axis = np.linspace(self._xmin, self._xmax, self._bins)
         self.sig_update_histogram_next.emit(True)
 
 
@@ -256,7 +258,7 @@ class LaserScanningLogic(GenericLogic):
             self.stop()
 
         if self._counter_logic.get_saving_state():
-            self._counter_logic.save_data(save=False)
+            self._counter_logic.save_data(to_file=False)
 
 
         return 0
@@ -265,8 +267,13 @@ class LaserScanningLogic(GenericLogic):
         if complete_histogram:
             count_window = len(self._counter_logic._data_to_save)
             self._data_index = 0
-            self.logMsg('Recalcutating Laser Scanning Histogram for: {0:d} counts and {1:d} wavelength.'.format(count_window, len(self._wavelength_data)),
-                    msgType='status')
+            self.logMsg(('Recalcutating Laser Scanning Histogram for: '
+                         '{0:d} counts and {1:d} wavelength.').format(
+                            count_window,
+                            len(self._wavelength_data)
+                            ),
+                        msgType='status'
+                        )
         else:
             count_window = min(100, len(self._counter_logic._data_to_save))
 
@@ -296,6 +303,8 @@ class LaserScanningLogic(GenericLogic):
                 interpolation = np.interp(i[0], xp=temp[:,0], fp=temp[:,1])
                 self.rawhisto[newbin] += interpolation
                 self.sumhisto[newbin] += 1.0
+
+                self.envelope_histogram[newbin] = np.max([interpolation,self.envelope_histogram[newbin]])
 
                 datapoint = [i[1], i[0], interpolation]
                 if time.time() - self.last_point_time > 1:
