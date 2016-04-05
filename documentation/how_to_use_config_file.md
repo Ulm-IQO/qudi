@@ -87,7 +87,7 @@ To this `_in` connectors you can plug in other modules, which are represented by
 from the module with the `_out` connector, has to follow.
 
 
-Note that `'<keyword_out3>'` has to be declared as `_out` connector in the class
+Note that `<keyword_out3>` has to be declared as `_out` connector in the class
 `<classname>` like:
 
     class <classname>(...):
@@ -100,9 +100,10 @@ like stated above.
 The names `<itemname>`, `<itemname2>` and `<itemname3>` can be chosen freely,
 but for consistency reasons, we have chosen the following definition:
 
-* `_out` connectors of the hardware classes should have as itemnames the interface name through
-which you can access that hardware object.
+* `_out` connectors of the hardware classes should have the name of the interfaces through
+which you can access that hardware object as their itemnames,
+e.g. for a microwave source this would be `'MicrowaveInterface'`.
 * Consequently, the itemnames of `_in` connectors in the logic files should also have interface names.
-* The itemnames of the '_out' connectors in the Logic should be called after the present logic classname.
-* The itemnames of the '_in' connector in the GUI should be called after the logic class, which should be attached to it.
+* The itemnames of the `_out` connectors in the Logic should be called after the present logic classname.
+* The itemnames of the `_in` connector in the GUI should be called after the logic class, which should be attached to it.
 
