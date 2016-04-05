@@ -48,8 +48,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>887</width>
-             <height>289</height>
+             <width>892</width>
+             <height>311</height>
             </rect>
            </property>
           </widget>
@@ -72,8 +72,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>887</width>
-             <height>289</height>
+             <width>892</width>
+             <height>311</height>
             </rect>
            </property>
           </widget>
@@ -96,8 +96,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>887</width>
-             <height>289</height>
+             <width>892</width>
+             <height>311</height>
             </rect>
            </property>
           </widget>
@@ -115,7 +115,7 @@
      <x>0</x>
      <y>0</y>
      <width>1020</width>
-     <height>29</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -123,6 +123,7 @@
      <string>&amp;Menu</string>
     </property>
     <addaction name="actionLoad_configuration"/>
+    <addaction name="actionReload_current_configuration"/>
     <addaction name="actionSave_configuration"/>
     <addaction name="actionExport_log_as_HTML"/>
     <addaction name="separator"/>
@@ -372,6 +373,11 @@
    </property>
    <property name="text">
     <string>R&amp;emote</string>
+   </property>
+  </action>
+  <action name="actionReload_current_configuration">
+   <property name="text">
+    <string>Reload current configuration</string>
    </property>
   </action>
  </widget>
