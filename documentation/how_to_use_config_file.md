@@ -2,8 +2,8 @@ How to use and understand a config file  {#config-explanation}
 ===============
 
 Config files are essential in our software, since they tell basically which
-module you want to connect to each other. The config file is also the place
-where needed parameter can be saved individually for a module of you needs.
+modules you want to connect to each other. The config file is also the place
+where needed parameters can be saved individually for a module of you needs.
 
 Each module is defined in a predetermined category i.e. in
 
@@ -41,9 +41,9 @@ Let's have a look on an example scenario of an (incomplete) configuration:
             connect:
                 <keyword_in2>: '<identifier-other>.<keyword_out2>'
 
-Each of this categories contain `<identifier>`, i.e.
+Each of this categories contains an `<identifier>`, i.e.
 a name which is used for a module. This identifier is relevant in order to
-separate and distinguish between the different module. The `<identifier>`
+separate and distinguish between the different modules. The `<identifier>`
 represents a reference to the constructed object of the module. Therefore the
 keyword `module.Class` indicates the path to the construction class.
 
@@ -61,9 +61,9 @@ folder structure:
 where the class `NICard` should be situated within the file `ni_card.py`.
 
 Within the construction class, connectors ( `_in` and `_out`) must be declared.
-These connectors will allow that other modules can attach to it
-(via the `_in` connectors) and/or that the specific module can be connected to
-something else (via `_out` connectors).
+These connectors will allow other modules to attach to it
+(via the `_in` connectors) and/or allow the specific module to be connected to
+something else (via the `_out` connectors).
 
 Therefore, gui modules have by definition **only `_in` connectors**, since
 different logic outputs (`_out` connectors) can be 'plugged' into the gui. Due
@@ -79,7 +79,7 @@ Within a class, the connector is saved in a dictionary type, e.g.
         _in  = {'<keyword_in1>' : '<itemname1>'}
         _out = {'<keyword_out2>': '<itemname2>'}
 
-meaning that it has a `'<keyword>'` and an `'<item>'`. Only the `'<keywords>'` for
+meaning that it has a `<keyword>` and an `<item>`. Only the `<keywords>` for
 the `_in` connector will appear in the `connect` attribute of the `<identifier-other>`
 module. (See above in the configuration example).
 To this `_in` connectors you can plug in other modules, which are represented by an
