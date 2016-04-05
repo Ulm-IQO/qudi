@@ -412,7 +412,13 @@ def estimate_doublegaussian_gatedcounter(self, x_axis = None, data = None, param
     error, \
     sigma0_argleft, dip0_arg, sigma0_argright, \
     sigma1_argleft, dip1_arg , sigma1_argright = \
-    self._search_double_dip(x_axis, data_smooth*(-1),threshold_fraction, minimal_threshold, sigma_threshold_fraction, make_prints=False)
+    self._search_double_dip(x_axis,
+                            data_smooth*(-1),
+                            threshold_fraction,
+                            minimal_threshold,
+                            sigma_threshold_fraction,
+                            make_prints=False
+                            )
 
     #set offset to zero
     params['c'].value = 0.0
