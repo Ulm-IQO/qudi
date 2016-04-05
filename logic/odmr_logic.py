@@ -40,7 +40,8 @@ class ODMRLogic(GenericLogic):
     _in = {'odmrcounter': 'ODMRCounterInterface',
            'fitlogic': 'FitLogic',
            'microwave1': 'mwsourceinterface',
-           'savelogic': 'SaveLogic'
+           'savelogic': 'SaveLogic',
+           'taskrunner': 'TaskRunner'
             }
     _out = {'odmrlogic': 'ODMRLogic'}
 
@@ -70,12 +71,13 @@ class ODMRLogic(GenericLogic):
         self.stopRequested = False
 
     def activation(self, e):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
+
         self._MW_device = self.connector['in']['microwave1']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
         self._ODMR_counter = self.connector['in']['odmrcounter']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
+        self._taskrunner = self.connector['in']['taskrunner']['object']
 
         # default parameers for NV ODMR
         self.MW_trigger_source = 'EXT'

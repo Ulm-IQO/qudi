@@ -13,6 +13,7 @@ class Task(InterruptableTask):
         """ Get position from scanning device and do the refocus """
         pos = self.ref['optimizer']._scanning_device.get_scanner_position()
         self.ref['optimizer'].start_refocus(pos, 'task')
+        # self.ref['optimizer'].start_refocus(caller_tag='task')
 
     def runTaskStep(self):
         """ Wait for refocus to finish. """

@@ -206,7 +206,7 @@ class OptimizerLogic(GenericLogic):
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) == 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos
         elif initial_pos is None:
-            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = self._scanning_device.get_scanner_position()[0:2]
+            self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = self._scanning_device.get_scanner_position()[0:3]
         else:
             pass  # TODO: throw error
 

@@ -34,10 +34,10 @@ class Task(InterruptableTask):
         print('task cleaned up')
 
     def checkExtraStartPrerequisites(self):
-        print('things neede for task to start')
+        print('things needed for task to start')
         return True
 
     def checkExtraPausePrerequisites(self):
-        print('things neede for task to pause')
+        print('things needed for task to pause')
         return True
 

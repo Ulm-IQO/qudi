@@ -92,6 +92,7 @@ class ManagerGui(GUIBase):
         self._mw.loadAllButton.clicked.connect(self._manager.startAllConfiguredModules)
         self._mw.actionQuit.triggered.connect(self._manager.quit)
         self._mw.actionLoad_configuration.triggered.connect(self.getLoadFile)
+        self._mw.actionReload_current_configuration.triggered.connect(self.reloadConfig)
         self._mw.actionSave_configuration.triggered.connect(self.getSaveFile)
         self._mw.action_Load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
         self._mw.actionAbout_Qt.triggered.connect(QtGui.QApplication.aboutQt)
@@ -351,6 +352,21 @@ Go, play.
         """
         widget.clear()
         self.fillTreeItem(widget.invisibleRootItem(), value)
+
+    def reloadConfig(self):
+        """  Reload the current config. """
+
+        reply = QtGui.QMessageBox.question(
+                        self._mw,
+                        'Restart',
+                        'Do you want to restart the current configuration?',
+                        QtGui.QMessageBox.Yes,
+                        QtGui.QMessageBox.No
+                        )
+
+        configFile = self._manager._getConfigFile()
+        restart = (reply == QtGui.QMessageBox.Yes)
+        self.sigLoadConfig.emit(configFile, restart)
 
     def getLoadFile(self):
         """ Ask the user for a file where the configuration should be loaded from
