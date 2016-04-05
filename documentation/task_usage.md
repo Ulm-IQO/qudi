@@ -68,4 +68,170 @@ people will potentially use it.
 Custom tasks are logic operations, and therefore saved in the folder `/logic/tasks` folder.
 There you can also get an idea how implementation of possible tasks can look like.
 
+## How to add your personal tasks in the config
+
+Within a configuration file, a custom task configuration may look like that:
+
+    tasklogic:
+        module.Class: 'taskrunner.TaskRunner'
+        tasks:
+            dummytask:
+                module: 'dummy'
+                preposttasks: ['ppdummy']
+
+            dummyinterruptor:
+                module: 'dummy'
+                pausetasks: ['dummytask']
+                preposttasks: ['ppdummy2']
+
+            ppdummy:
+                module: 'prepostdummy'
+
+            ppdummy2:
+                module: 'prepostdummy'
+
+            scannerLocationRefocus:
+                module: 'refocus'
+                preposttasks: ['fliplasermirror']
+                pausetasks: ['scan', 'odmr']
+                needsmodules:
+                    optimizer: 'optimizerlogic'
+                config:
+                    initial: [1, 1, 1]
+
+            fliplasermirror:
+                module: 'flipmirror'
+                needsmodules:
+                    switchlogic: 'switch'
+                config:
+                    sequence: [('mydummyswitch1', 1, True), ('mydummyswitch1', 2, True), ('mydummyswitch2', 1, True)]
+
+Your individual tasks can be defined below the `tasks` keyword. The naming
+procedure is pretty similar to the working principle of our configuration files
+([=> How to use a configuration file](@ref config-explanation).
+
+    <identifier1>:
+        module: '<module_name1>'
+        preposttasks: ['<identifier2>']
+
+    <identifier2>:
+        module: '<module_name2>'
+
+You choose a name `<identifier1>`, how the task should be called, and define with the keyword `module`
+which task module you want to take. This module (a python file) with name
+`<module_name1>` must be present in the \trunk\logic\task directory.
+
+
+
+### Example for an InterruptableTask:
+
+Within the file `<module_name1>.py` a class must exist with the name `Task`,
+which inherits either the InterruptableTask or PrePostTask class. An example may
+look like that:
+
+    from logic.generic_task import InterruptableTask
+
+    class Task(InterruptableTask):
+
+        def __init__(self, name, runner, references, config):
+            """ A task has the following constructor:
+
+            @param str name: unique task name
+            @param object runner: reference to the TaskRunner managing this task
+            @param dict references: a dictionary of all required modules
+            @param dict config: configuration dictionary
+            """
+
+            super().__init__(name, runner, references, config)
+            print('Task {} added!'.format(self.name))
+            print(self.config)
+
+        def startTask(self)
+            # Reimplement that!
+            return
+
+        def runTaskStep(self)
+            # Reimplement that!
+            return
+
+        def pauseTask(self)
+            # Reimplement that!
+            return
+
+        def resumeTask(self)
+            # Reimplement that!
+            return
+
+        def cleanupTask(self)
+            # Reimplement that!
+            return
+
+
+This example above must reimplement each method of the class
+InterruptableTask. That would be right now the methods:
+
+  - startTask,
+  - runTaskStep,
+  - pauseTask,
+  - resumeTask,
+  - cleanupTask.
+
+The additional methods
+  - checkExtraStartPrerequisites,
+  - checkExtraPausePrerequisites
+
+**can** be, but have not to be reimplemented, if no special requirements are going
+to be set for that task. These methods are used to check, whether the present
+task can be paused if it is in the running state.
+
+Therefore, these methods provides you with e.g. an external checking procedure,
+which you can implement for the specific task. Consequently the **return value**
+has to be of **boolean** type, i.e. either `True` or `False`.
+
+### Example of PrePostTask
+
+The PrePostTask implementation is much simpler. An example of `<module_name2>`
+might look like that:
+
+    from logic.generic_task import PrePostTask
+
+    class Task(PrePostTask):
+
+        def __init__(self, name, runner, references, config):
+            """ A task has the following constructor:
+
+            @param str name: unique task name
+            @param object runner: reference to the TaskRunner managing this task
+            @param dict references: a dictionary of all required modules
+            @param dict config: configuration dictionary
+            """
+
+            super().__init__(name, runner, references, config)
+            print('PrePost init task {}'.format(name))
+            print(self.config)
+
+        def preExecute(self):
+            # Reimplement that!
+            return
+
+        def postExecute(self):
+            # Reimplement that!
+            return
+
+### The reference within a Task Class
+
+
+### The config within a
+
+
+## Example for the Confocal Optimizer Task
+
+
+
+## Where are the task run?
+
+All the tasks are handled by the Logic Module TaskRunner.py.
+
+
+## How to use tasks in other logic
 
