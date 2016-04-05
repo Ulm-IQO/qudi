@@ -138,8 +138,12 @@ class MotorStagePI(Base, MotorInterface):
                         msgType='warning')
 
         self.rm = visa.ResourceManager()
-        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, self._pi_xyz_baud_rate, self._pi_xyz_timeout)
-        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, self._rot_baud_rate, self._rot_timeout)
+        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, 
+                                                            self._pi_xyz_baud_rate, 
+                                                            self._pi_xyz_timeout)
+        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, 
+                                                            self._rot_baud_rate, 
+                                                            self._rot_timeout)
         self._serial_connection_xyz.term_chars = self._pi_xyz_term_char
         self._serial_connection_rot.term_chars = self._rot_term_char
 
@@ -544,14 +548,14 @@ class MotorStagePI(Base, MotorInterface):
         param_dict = {}
         try:
             if param_list != None and 'x' in param_list or param_list == None:
-                x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])/10000.
-                param_dict['x'] = x_vel
+                x_vel = int(self._serial_connection_xyz.ask(constraints['x']['ID']+'TY')[8:])
+                param_dict['x'] = x_vel/10000.
             if param_list != None and 'y' in param_list or param_list == None:
-                y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])/10000.
-                param_dict['y'] = y_vel
+                y_vel = int(self._serial_connection_xyz.ask(constraints['y']['ID']+'TY')[8:])
+                param_dict['y'] = y_vel/10000.
             if param_list != None and 'z' in param_list or param_list == None:
-                z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])/10000.
-                param_dict['z'] = z_vel
+                z_vel = int(self._serial_connection_xyz.ask(constraints['z']['ID']+'TY')[8:])
+                param_dict['z'] = z_vel/10000.
             if param_list != None and 'phi' in param_list or param_list == None:
                 data = self._ask_rot([1,53,42])
                 phi_vel = self._data_to_speed_rot(data)
@@ -575,14 +579,14 @@ class MotorStagePI(Base, MotorInterface):
         constraints = self.get_constraints()
         try:
             if 'x' in param_dict:
-                vel = param_dict['x']
-                self._serial_connection_xyz.write(constraints['x']['ID']+'SV%i\n'%(int(vel*10000)))
+                vel = int(param_dict['x']*10000)
+                self._serial_connection_xyz.write(constraints['x']['ID']+'SV%i\n'%(vel))
             if 'y' in param_dict:
-                vel = param_dict['y']
-                self._serial_connection_xyz.write(constraints['y']['ID']+'SV%i\n'%(int(vel*10000)))
+                vel = int(param_dict['y']*10000)
+                self._serial_connection_xyz.write(constraints['y']['ID']+'SV%i\n'%(vel))
             if 'z' in param_dict:
-                vel = param_dict['z']
-                self._serial_connection_xyz.write(constraints['z']['ID']+'SV%i\n'%(int(vel*10000)))
+                vel = int(param_dict['z']*10000)
+                self._serial_connection_xyz.write(constraints['z']['ID']+'SV%i\n'%(vel))
             if 'phi' in param_dict:
                 vel = param_dict['phi']
                 data = self._speed_to_data_rot(vel)
@@ -686,30 +690,30 @@ class MotorStagePI(Base, MotorInterface):
         '''moves the rotation stage to an absolut position; value in degrees'''
         data = int(value/self._MicroStepSize)
         self._write_rot([1,20,data])
-        self._in_movement_rot()      # waits until rot_stage finished its move
+        self._in_movement_rot()      # waits until the rot_stage finished its move
 
 
     def _move_relative_rot(self, value):
         '''moves the rotation stage by a relative value in degrees'''
         data = int(value/self._MicroStepSize)
         self._write_rot([1,21,data])
-        self._in_movement_rot()      # waits until rot_stage finished its move
+        self._in_movement_rot()      # waits until the rot_stage finished its move
 
 
     def _data_to_speed_rot(self, data):
-        speed = data * 9.375 * self._MicroStepSize  # the value of 9.375 is taken from the manual for the zaber rot-stage
+        speed = data * 9.375 * self._MicroStepSize  # 9.375 is from the rot-stage manual
         return speed
 
 
     def _speed_to_data_rot(self, speed):
-        data = int(speed / 9.375 / self._MicroStepSize) # the value of 9.375 is taken from the manual for the zaber rot-stage
+        data = int(speed / 9.375 / self._MicroStepSize) # 9.375 is from the rot-stage manual
         return data
 
 
 
-##################################################################################################################################################
-##################################################################################################################################################
-##################################################################################################################################################
+#########################################################################################
+#########################################################################################
+#########################################################################################
 
 # this is the calibration method from the old code
 
