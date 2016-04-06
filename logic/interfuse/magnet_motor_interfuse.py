@@ -46,11 +46,11 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _in = {'motor': 'MotorInterface'}
+    _in = {'motorstage': 'MotorInterface'}
 
     # And as a result, you will have an out connector, which is compatible to a
     # magnet interface, and which can be plug in to an appropriated magnet logic
-    _out = {'magnet': 'MagnetInterface'}
+    _out = {'magnetstage': 'MagnetInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -63,7 +63,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         # save the idle state in this class variable, since that is not present
         # in the actual motor hardware device. Use this variable to decide
         # whether movement commands are passed to the hardware.
-        self._magnet_idle = True
+        self._magnet_idle = False
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -77,7 +77,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                          had happened.
         """
 
-        self._motor_device = self.connector['in']['motor']['object']
+        self._motor_device = self.connector['in']['motorstage']['object']
 
 
     def deactivation(self, e):
@@ -116,8 +116,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         else:
             self.logMsg('Motor Device is in Idle state and cannot perform '
                         '"move_rel" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle(False)" to have control '
-                        'over its movement.', msgType='warning')
+                        'the command "set_magnet_idle_state(False)" to have '
+                        'control over its movement.', msgType='warning')
 
 
     def move_abs(self, param_dict):
@@ -134,8 +134,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         else:
             self.logMsg('Motor Device is in Idle state and cannot perform '
                         '"move_abs" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle(False)" to have control '
-                        'over its movement.', msgType='warning')
+                        'the command "set_magnet_idle_state (False)" to have '
+                        'control over its movement.', msgType='warning')
 
 
     def abort(self):
@@ -158,7 +158,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         @return dict: with keys being the axis labels and item the current
                       position.
         """
-        return self._motor_devic.get_pos(param_list)
+        return self._motor_device.get_pos(param_list)
 
 
     def get_status(self, param_list=None):
@@ -172,7 +172,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
 
         @return dict: with the axis label as key and the status number as item.
         """
-        return self._motor_device.get_status(param_list)
+        return self._motor_devicee.get_status(param_list)
 
 
     def calibrate(self, param_list=None):
@@ -195,8 +195,8 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         else:
             self.logMsg('Motor Device is in Idle state and cannot perform '
                         '"calibrate" commands. Couple the Motor to control via '
-                        'the command "set_magnet_idle(False)" to have control '
-                        'over its movement.', msgType='warning')
+                        'the command "set_magnet_idle_state(False)" to have '
+                        'control over its movement.', msgType='warning')
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
@@ -228,7 +228,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         else:
             self.logMsg('Motor Device is in Idle state and cannot perform '
                         '"set_velocity" commands. Couple the Motor to control '
-                        'via the command "set_magnet_idle(False)" to have '
+                        'via the command "set_magnet_idle_state(False)" to have '
                         'control over its movement.', msgType='warning')
 
 
@@ -241,12 +241,11 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
 
-
-
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('You can tell the motor much as you want, it has always '
-                    'an open ear. But do not expect an answer, it is very shy!',
+        self.logMsg('You can tell the motor dummy as much as you want, it has '
+                    'always an open ear for you. But do not expect an answer, '
+                    'it is very shy!',
                     msgType='status')
 
     def ask(self, param_dict=None):
@@ -258,7 +257,9 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
 
-        @return string: contains the answer coming from the magnet
+        @return dict: contains the answer to the specific axis coming from the
+                      magnet. Keywords are the axis names, item names are the
+                      string answers of the axis.
         """
 
         self.logMsg('The Motor Hardware does not support an "ask" command and'
@@ -287,7 +288,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         pass
 
 
-    def set_magnet_idle(self, magnet_idle=True):
+    def set_magnet_idle_state(self, magnet_idle=True):
         """ Set the magnet to couple/decouple to/from the control.
 
         @param bool magnet_idle: if True then magnet will be set to idle and
@@ -299,11 +300,12 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
                         True = idle, decoupled from control
                         False = Not Idle, coupled to control
         """
+
         self._magnet_idle = magnet_idle
         return self._magnet_idle
 
 
-    def is_magnet_idle(self):
+    def get_magnet_idle_state(self):
         """ Retrieve the current state of the magnet, whether it is idle or not.
 
         @return bool: the actual state which was set in the magnet hardware.
