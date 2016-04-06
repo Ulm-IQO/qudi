@@ -19,7 +19,10 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
+from PyQt4 import QtCore
+
 from logic.generic_logic import GenericLogic
+
 
 class MagnetLogic(GenericLogic):
     """This is the Interface class to define the controls for the simple
@@ -32,6 +35,17 @@ class MagnetLogic(GenericLogic):
     ## declare connectors
     _in = {'magnetstage': 'MagnetInterface'}
     _out = {'magnetlogic': 'MagnetLogic'}
+
+    # General Signals, used everywhere:
+    sigIdleStateChanged = QtCore.Signal(bool)
+    sigPosChanged = QtCore.Signal(dict)
+    sigVelChanged = QtCore.Signal(dict)
+
+    sigMeasurementStart = QtCore.Signal(dict)
+    sigMeasurementStop = QtCore.Signal(dict)
+
+    # Alignment Signals:
+    sigAlingmentNextPoint = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -124,3 +138,49 @@ class MagnetLogic(GenericLogic):
     def stop_movement(self):
         """ Stops movement of the stage. """
         self._magnet_device.abort()
+
+
+    def _create_1d_pathway(self, axis_name, axis_start, axis_step, axis_stop):
+        """  Create a path along with the magnet should move with one axis
+
+        @param str axis_name:
+        @param axis_start:
+        @param axis_step:
+        @param axis_stop:
+
+        @return:
+
+        Here you can also create fancy 1D pathways, not only linear but also
+        in any kind on nonlinear fashion.
+        """
+
+
+    def _create_2d_pathway(self, axis0_name, axis0_start, axis0_step, axis0_stop,
+                              axis1_name, axis1_start, axis1_step, axis1_stop):
+        """ Create a path along with the magnet should move.
+
+        @param str x_axis:
+        @param x_start:
+        @param x_step:
+        @param x_stop:
+        @param str y_axis:
+        @param y_start:
+        @param y_step:
+        @param y_stop:
+
+        @return array: 1D np.array, which has dictionary as entries. In this
+                       dictionary, it will be specified, how the magnet is going
+                       from the present point to the next.
+        """
+        pass
+
+
+
+    def _move_loop_body(self):
+        """ Go one by one through the created path
+
+        @return:
+
+        The loop body goes through the 1D array
+        """
+        pass
