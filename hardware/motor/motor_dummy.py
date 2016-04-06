@@ -39,7 +39,7 @@ class MotorDummy(Base, MotorInterface):
     _modtype = 'hardware'
 
     # connectors
-    _out = {'magnet': 'MotorInterface'}
+    _out = {'motorstage': 'MotorInterface'}
 
 
     def __init__(self, manager, name, config, **kwargs):
@@ -347,7 +347,7 @@ class MotorDummy(Base, MotorInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg('MotorInterfaceDummy: Movement stopped!', msgType='status')
+        self.logMsg('MotorDummy: Movement stopped!', msgType='status')
         return 0
 
     def get_pos(self, param_list=None):
@@ -485,7 +485,7 @@ class MotorDummy(Base, MotorInterface):
 
         return vel
 
-    def set_velocity(self, param_dict):
+    def set_velocity(self, param_dict=None):
         """ Write new value for velocity.
 
         @param dict param_dict: dictionary, which passes all the relevant
