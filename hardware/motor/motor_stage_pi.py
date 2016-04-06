@@ -34,7 +34,7 @@ class MotorStagePI(Base, MotorInterface):
     _modclass = 'MotorStagePI'
     _modtype = 'hardware'
     # connectors
-    _out = {'magnet': 'MotorInterface'}
+    _out = {'motorstage': 'MotorInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         cb_dict = {'onactivate': self.activation,
@@ -51,7 +51,7 @@ class MotorStagePI(Base, MotorInterface):
         self._y_axis_ID = '3'
         self._z_axis_ID = '2'
 
-#FIXME:  vielleicht sollte überall .ask anstatt .write genommen werden, 
+#FIXME:  vielleicht sollte überall .ask anstatt .write genommen werden,
 #        da die stage glaube ich immer was zurückgibt....
 
 
@@ -138,11 +138,11 @@ class MotorStagePI(Base, MotorInterface):
                         msgType='warning')
 
         self.rm = visa.ResourceManager()
-        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz, 
-                                                            self._pi_xyz_baud_rate, 
+        self._serial_connection_xyz = self.rm.open_resource(self._com_port_pi_xyz,
+                                                            self._pi_xyz_baud_rate,
                                                             self._pi_xyz_timeout)
-        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot, 
-                                                            self._rot_baud_rate, 
+        self._serial_connection_rot = self.rm.open_resource(self._com_port_rot,
+                                                            self._rot_baud_rate,
                                                             self._rot_timeout)
         self._serial_connection_xyz.term_chars = self._pi_xyz_term_char
         self._serial_connection_rot.term_chars = self._rot_term_char
@@ -674,7 +674,7 @@ class MotorStagePI(Base, MotorInterface):
 
     def _in_movement_xyz(self):
         '''this method checks if the magnet is still moving and returns
-        a list which of the axis are moving. 
+        a list which of the axis are moving.
         Ex: return is [1,1,0]-> x and y ax are moving and z axis is imobile.
         '''
         tmpx = self._serial_connection_xyz.ask(self._x_axis+'TS')[8:]

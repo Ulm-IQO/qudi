@@ -33,7 +33,7 @@ class MotorStageMicos(Base, MotorInterface):
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
     # connectors
-    _out = {'magnet': 'MotorInterface'}
+    _out = {'motorstage': 'MotorInterface'}
 
 #Questions:
 #    Are values put in the right way in config????
