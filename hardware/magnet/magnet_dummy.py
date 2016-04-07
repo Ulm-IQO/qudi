@@ -19,9 +19,11 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
+from collections import OrderedDict
 
 from core.base import Base
 from interface import magnet_interface
+
 
 class MagnetAxisDummy(object):
     """ Generic dummy magnet representing one axis. """
