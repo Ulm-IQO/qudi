@@ -541,59 +541,47 @@ class MotorStagePI(Base, MotorInterface):
 
     def _calibrate_xyz(self):
         """ internal method to calibrate xyz simultaneously """
-#        ser.write('123MA-2500000\n')
-#        time.sleep(1)
-#        ser.close()
-#
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('moving to the corner...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(0.5)
-#        ##############################################
-#        print('in edge')
-#        test_open()
-#        ser.write('123DH\n')
-#        ser.write('123MA900000\n')
-#        time.sleep(.1)
-#        print(str(ser.read(17)))
-#        print('define the tmps')
-#        ser.close()
-#        ###############################################
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('moving next to the centerposition...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(.5)
-#        ####################################################
-#        print('fast movement finished')
-#
-#        time.sleep(0.1)
-#        test_open()
-#        ser.write('13FE1\n')
-#        print(ser.read(6))
-#        ser.close()
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('find centerposition...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(.5)
-#        test_open()
-#        ser.write('123DH\n')
-#        ser.close()
-#        del [a, b, c]
-#        #######################################################
-#        print('calibration finished')
-#        GetPos()
+
+        self._serial_connection_xyz.write('123MA-2500000\n')
+
+        [a, b, c] = self._in_movement_xyz()
+        while a != 0 or b != 0 or c != 0:
+            print('moving to the corner...')
+            [a, b, c] = self._in_movement_xyz()
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
+            time.sleep(0.5)
+        print('in edge')
+
+        self._serial_connection_xyz.write('123DH\n')
+        self._serial_connection_xyz.write('123MA900000\n')
+        time.sleep(.1)
+        print(str(self._serial_connection_xyz.read(17)))
+        print('define the tmps')
+        [a, b, c] = self._in_movement_xyz()
+        while a != 0 or b != 0 or c != 0:
+            print('moving to the center...')
+            [a, b, c] = self._in_movement_xyz()
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
+            time.sleep(0.5)
+        print('fast movement finished')
+
+        time.sleep(0.1)
+        self._serial_connection_xyz.write('13FE1\n')
+        print(self._serial_connection_xyz.read(6))
+        [a, b, c] = self._in_movement_xyz()
+        while a != 0 or b != 0 or c != 0:
+            print('find centerposition...')
+            [a, b, c] = self._in_movement_xyz()
+            print('moving on x-Axis: ', a)
+            print('moving on y-Axis: ', b)
+            print('moving on z-Axis: ', c,'\n')
+        self._serial_connection_xyz.write('123DH\n')
+        print('calibration finished')
+        return 0    #maybe return the new position (0,0,0) here?
 
 
     def _calibrate_axis(self, axis):
