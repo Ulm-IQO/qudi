@@ -393,6 +393,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     signal_block_list_updated = QtCore.Signal()
     signal_ensemble_list_updated = QtCore.Signal()
     signal_sequence_list_updated = QtCore.Signal()
+    signal_loaded_asset_updated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -410,9 +411,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
 
+        # here the currently shown data objects of the editors should be stored
         self.current_block = None
         self.current_ensemble = None
         self.current_sequence = None
+        # the currently loaded asset (ensemble/sequence) in the pulser channels
+        self.loaded_asset = None
 
         # The string names of the created Pulse_Block objects are saved here:
         self.saved_pulse_blocks = []
@@ -1107,6 +1111,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     def load_asset(self, asset_name, load_dict={}):
         """ Loads a sequence or waveform to the specified channel of the pulsing device.
+        Emmits a signal that the current sequence/ensemble (asset) has changed.
 
         @param str asset_name: The name of the asset to be loaded
         @param dict load_dict:  a dictionary with keys being one of the available channel numbers
@@ -1121,7 +1126,22 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         @return int: error code (0:OK, -1:error)
         """
+        # load asset in channels
         err = self._pulse_generator_device.load_asset(asset_name, load_dict)
+        # set the loaded_asset variable. Get the ensemble or sequence object first.
+        if asset_name in self.saved_pulse_sequences:
+            asset_obj = self.get_pulse_sequence(asset_name)
+        elif asset_name in self.saved_pulse_block_ensembles:
+            asset_obj = self.get_pulse_block_ensemble(asset_name)
+        else:
+            self.logMsg('No Sequence or Ensemble object with name "{0}" could be '
+                        'found on host PC.'.format(asset_name),
+                        msgType='error')
+            self.loaded_asset = None
+            return -1
+        self.loaded_asset = asset_obj
+        # emit signal for pulse_analysis_logic and GUI
+        signal_loaded_asset_updated.emit()
         return err
 
     # =========================================================================
