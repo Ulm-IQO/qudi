@@ -112,10 +112,11 @@ class Pulse_Block(object):
         self.analog_channels = 0
         self.digital_channels = 0
         self.number_of_lasers = 0
+        self.use_as_tick = False
 
         # calculate the tick value for the whole block. Basically sum all the
         # init_length_bins which have the use_as_tick attribute set to True.
-        self.measurement_tick = 0
+        self.measurement_tick_start = 0
         # make the same thing for the increment, to obtain the total increment
         # number for the block. This facilitates in calculating the measurement tick list.
         self.measurement_tick_increment = 0
@@ -127,10 +128,10 @@ class Pulse_Block(object):
             if elem.marker_active[self.laser_channel]:
                 self.number_of_lasers += 1
 
-
             if elem.use_as_tick:
-                self.measurement_tick = self.measurement_tick + elem.init_length_bins
-                self.measurement_tick_increment = self.measurement_tick_increment + elem.increment_bins
+                self.use_as_tick = True
+                self.measurement_tick_start += elem.init_length_bins
+                self.measurement_tick_increment += elem.increment_bins
 
             if elem.analog_channels > self.analog_channels:
                 self.analog_channels = elem.analog_channels
@@ -163,15 +164,13 @@ class Pulse_Block_Ensemble(object):
     This object is used as a construction plan to create one sampled file.
     """
 
-    def __init__(self, name, block_list, laser_channel_index, measurement_ticks_list=[],
-                 rotating_frame=True):
+    def __init__(self, name, block_list, laser_channel_index, rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
         @param str name: chosen name for the Pulse_Block_Ensemble
         @param list block_list: contains the Pulse_Block Objects with their number of repetitions,
                                 e.g.
                                     [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
-        @param list measurement_ticks_list: the x-axis of the measurement.
         @param int laser_channel_index: the index of the digital channel representing the laser
         @param bool rotating_frame: indicates whether the phase should be preserved for all the
                                     functions.
@@ -179,7 +178,6 @@ class Pulse_Block_Ensemble(object):
 
         self.name = name                    # Pulse_Block_Ensemble name
         self.block_list = block_list
-        self.measurement_ticks_list = np.array(measurement_ticks_list)
         self.laser_channel = laser_channel_index
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
@@ -189,6 +187,8 @@ class Pulse_Block_Ensemble(object):
         self.analog_channels = 0
         self.digital_channels = 0
         self.number_of_lasers = 0
+        # calculate the tick values for the whole block_ensemble.
+        self.measurement_ticks_list = np.array([])
 
         for block, reps in self.block_list:
             if block.laser_channel != self.laser_channel:
@@ -202,6 +202,13 @@ class Pulse_Block_Ensemble(object):
                 block.refresh_parameters()
             self.number_of_lasers += (reps+1)*block.number_of_lasers
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
+
+            if block.use_as_tick:
+                start = block.measurement_tick_start
+                incr = block.measurement_tick_increment
+                arr = np.arange(start, start+(reps+1)*incr, incr)
+                self.measurement_ticks_list = np.append(self.measurement_ticks_list, arr)
+
         self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
         return
 
@@ -271,6 +278,8 @@ class Pulse_Sequence(object):
         self.refresh_parameters()
         self.sampled_ensembles = OrderedDict()
 
+    # FIXME: Calculate all parameters that are also present in the ensemble objects
+    # like number_of_lasers etc.
     def refresh_parameters(self):
         """ Generate the needed parameters from the passed object.
 
@@ -557,6 +566,20 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         else:
             self.logMsg('No prepared Methods are chosen, therefore none will '
                         'be displayed!', msgType='status')
+
+        loaded_asset_name = self._pulse_generator_device.current_loaded_asset
+        if loaded_asset_name is None:
+            self.logMsg('No asset loaded on device channel', msgType='status')
+            self.loaded_asset = None
+        elif loaded_asset_name in self.saved_pulse_sequences:
+            self.loaded_asset = self.get_pulse_sequence(loaded_asset_name)
+        elif loaded_asset_name in self.saved_pulse_block_ensembles:
+            self.loaded_asset = self.get_pulse_block_ensemble(loaded_asset_name)
+        else:
+            self.logMsg('No Sequence or Ensemble object with name "{0}" could be '
+                        'found on host PC.'.format(loaded_asset_name),
+                        msgType='error')
+            self.loaded_asset = None
 
 
     def deactivation(self, e):
@@ -1141,7 +1164,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             return -1
         self.loaded_asset = asset_obj
         # emit signal for pulse_analysis_logic and GUI
-        signal_loaded_asset_updated.emit()
+        self.signal_loaded_asset_updated.emit()
         return err
 
     # =========================================================================
@@ -1231,13 +1254,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     # =========================================================================
 
-    def generate_pulse_block_object(self, pb_name, block_matrix, num_laser_pulses):
+    def generate_pulse_block_object(self, pb_name, block_matrix, laser_channel):
         """ Generates from an given table block_matrix a block_object.
 
         @param pb_name: string, Name of the created Pulse_Block Object
         @param block_matrix: structured np.array, matrix, in which the
                              construction plan for Pulse_Block_Element objects
                              are displayed as rows.
+        @param laser_channel: a strin specifying the laser channel
 
         Three internal dict where used, to get all the needed information about
         how parameters, functions are defined (_add_pbe_param,func_config and
@@ -1308,7 +1332,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         parameters=parameter_list,
                         use_as_tick=use_as_tick)
 
-        pb_obj = Pulse_Block(pb_name, pbe_obj_list, num_laser_pulses)
+        # determine the index of the laser pulse, i.e. which digital channel is the laser pulse
+        laser_channel_index = int(laser_channel[-1])
+        if 'A' in laser_channel:
+            self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
+            laser_channel_index = 0
+
+        pb_obj = Pulse_Block(pb_name, pbe_obj_list, laser_channel_index)
         self.save_block(pb_name, pb_obj)
         self.current_block = pb_obj
 
@@ -1365,14 +1395,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
 
-        laser_channel_index = int(laser_channel[-1]) - 1
+        laser_channel_index = int(laser_channel[-1])
         if 'A' in laser_channel:
             self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
             laser_channel_index = 0
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
                                                     block_list=pb_obj_list,
-                                                    measurement_ticks_list=measurement_ticks_list,
                                                     laser_channel_index=laser_channel_index,
                                                     rotating_frame=rotating_frame)
         # set current block ensemble
@@ -1809,9 +1838,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list,
-                                              len(measurement_ticks_list),
-                                              rotating_frame=False)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, 0, rotating_frame=False)
         # save block
         self.save_block(name, block)
         # save ensemble
@@ -1878,9 +1905,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # put block in a list with repetitions
         block_list = [(block, 0),]
         # create ensemble out of the block(s)
-        block_ensemble = Pulse_Block_Ensemble(name, block_list, measurement_ticks_list,
-                                              number_of_taus,
-                                              rotating_frame=False)
+        block_ensemble = Pulse_Block_Ensemble(name, block_list, 0, rotating_frame=False)
         # save block
         # self.save_block(name, block)
         # save ensemble

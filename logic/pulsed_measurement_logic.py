@@ -239,13 +239,8 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def change_fc_binning_for_pulsed_analysis(self,fc_binning):
-
-        self.measurement_ticks_list = np.array(range(self.number_of_lasers))*fc_binning
-        self.signal_plot_x = self.measurement_ticks_list
         self.fast_counter_binwidth=fc_binning
         self.configure_fast_counter()
-
-
         pass
 
 
@@ -435,24 +430,18 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
 
     def set_num_of_lasers(self, num_of_lasers):
-        """ Set the number of laser pulses.
-
-        @param int num_of_lasers: number of expected laser pulsed. Number must
-                                  be greater then zero.
-
-        The number of laser pulses is quite necessary to configure some fast
-        counting hardware and to make the pulse extraction work properly.
+        """ Sets the number of lasers needed for the pulse extraction and the fast counter.
         """
-
         if num_of_lasers < 1:
             self.logMsg('Invalid number of laser pulses set in the '
                         'pulsed_measurement_logic! A value of {0} was provided '
                         'but an interger value in the range [0,inf) is '
                         'expected! Set number_of_pulses to '
                         '1.'.format(num_of_lasers), msgType='error')
-            num_of_lasers = 1
-
-        self.number_of_lasers = num_of_lasers
+            self.number_of_lasers = 1
+        else:
+            self.number_of_lasers = num_of_lasers
+        return
 
     def get_num_of_lasers(self):
         """ Retrieve the set number of laser pulses.
@@ -460,21 +449,35 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self.number_of_lasers
 
+    def set_measurement_ticks_list(self, ticks_array):
+        """ Sets the ticks for the x-axis of the pulsed measurement.
+
+        Handle with care to ensure that the number of ticks is the same as the number of
+        laser pulses to avoid array mismatch conflicts.
+
+        @param ticks_array: a numpy array containing the ticks
+        """
+        self.measurement_ticks_list = np.array(ticks_array)
+        return
+
+    def get_measurement_ticks_list(self):
+        """ Retrieve the set measurement_ticks_list, i.e. the x-axis of the measurement.
+        @return: list, list of the x-axis ticks
+        """
+        return self.measurement_ticks_list
+
 
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
         self.signal_plot_x = self.measurement_ticks_list
-        self.signal_plot_y = np.zeros(self.number_of_lasers, dtype=float)
+        self.signal_plot_y = np.zeros(self.measurement_ticks_list.size, dtype=float)
 
 
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
-
-        print (self.laser_length_s)
         number_of_bins_per_laser=int(self.laser_length_s/(self.fast_counter_binwidth))
-        print('number_of_bins_per_laser',number_of_bins_per_laser)
         self.laser_plot_x = np.arange(1, number_of_bins_per_laser+1, dtype=int)
         self.laser_plot_y = np.zeros(number_of_bins_per_laser, dtype=int)
 
