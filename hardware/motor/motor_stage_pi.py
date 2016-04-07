@@ -516,20 +516,19 @@ class MotorStagePI(Base, MotorInterface):
         """
         #TODO: implement calibration x, y and z
         try:
+            if param_list != None and set(['x','y','z']) <= set(param_list) or param_list == None:
+                self._calibrate_xyz()
             if param_list != None and 'x' in param_list or param_list == None:
-                self.logMsg('x calibration is not yet implemented!',
-                            msgType='error')
+                self._calibrate_axis('x')
             if param_list != None and 'y' in param_list or param_list == None:
-                self.logMsg('y calibration is not yet implemented!',
-                            msgType='error')
+                self._calibrate_axis('y')
             if param_list != None and 'z' in param_list or param_list == None:
-                self.logMsg('z calibration is not yet implemented!',
-                            msgType='error')
+                self._calibrate_axis('z')
             if param_list != None and 'phi' in param_list or param_list == None:
                 self._calibrate_rot()
             return 0
         except:
-            return -1
+            return -1 #maybe return the new position here?
 
 
     def _calibrate_rot(self):
@@ -579,14 +578,52 @@ class MotorStagePI(Base, MotorInterface):
             print('moving on x-Axis: ', a)
             print('moving on y-Axis: ', b)
             print('moving on z-Axis: ', c,'\n')
+            time.sleep(0.5)
+
         self._serial_connection_xyz.write('123DH\n')
         print('calibration finished')
-        return 0    #maybe return the new position (0,0,0) here?
 
 
     def _calibrate_axis(self, axis):
-        """ internal method to calibrate individual axis """
-        pass
+        """ internal method to calibrate individual axis
+
+        @param axis string: name of the axis that should be calibrated
+        """
+        constraints = self.get_constraints()
+        axis_ID = constraints[axis]['ID']
+
+        self._serial_connection_xyz.write(axis_ID+'MA-2500000\n')
+
+        [a, b, c] = self._in_movement_xyz()
+        while a != 0 or b != 0 or c != 0:
+            print('moving to the corner...')
+            [a, b, c] = self._in_movement_xyz()
+            time.sleep(0.5)
+        print('in edge')
+
+        self._serial_connection_xyz.write(axis_ID+'DH\n')
+        self._serial_connection_xyz.write(axis_ID+'MA900000\n')
+        time.sleep(.1)
+        print(str(self._serial_connection_xyz.read(17)))
+        print('define the tmps')
+        [a, b, c] = self._in_movement_xyz()
+        while a != 0 or b != 0 or c != 0:
+            print('moving to the center...')
+            [a, b, c] = self._in_movement_xyz()
+            time.sleep(0.5)
+        print('fast movement finished')
+
+        time.sleep(0.1)
+        if axis == 'x' or axis == 'y':
+            self._serial_connection_xyz.write(axis_ID+'FE1\n')
+            print(self._serial_connection_xyz.read(6))
+            [a, b, c] = self._in_movement_xyz()
+            while a != 0 or b != 0 or c != 0:
+                print('find centerposition...')
+                [a, b, c] = self._in_movement_xyz()
+    
+        self._serial_connection_xyz.write(axis_ID+'DH\n')
+        print('calibration finished')
 
 
     def get_velocity(self, param_list=None):
