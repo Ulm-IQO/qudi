@@ -526,11 +526,79 @@ class MotorStagePI(Base, MotorInterface):
                 self.logMsg('z calibration is not yet implemented!',
                             msgType='error')
             if param_list != None and 'phi' in param_list or param_list == None:
-                self._write_rot([1,1,0])      # moves the rot stage to its home position
-                self._in_movement_rot()       # waits until rot_stage finished its move
+                self._calibrate_rot()
             return 0
         except:
             return -1
+
+
+    def _calibrate_rot(self):
+        """ internal method that handles the calibration of the rot stage """
+        
+        self._write_rot([1,1,0])      # moves the rot stage to its home position
+        self._in_movement_rot()       # waits until rot_stage finished its move
+
+
+    def _calibrate_xyz(self):
+        """ internal method to calibrate xyz simultaneously """
+#        ser.write('123MA-2500000\n')
+#        time.sleep(1)
+#        ser.close()
+#
+#        [a, b, c] = in_movement()
+#        while a != 0 or b != 0 or c != 0:
+#            print('moving to the corner...')
+#            [a, b, c] = in_movement()
+#            print('moving on x-Axis: ', a)
+#            print('moving on y-Axis: ', b)
+#            print('moving on z-Axis: ', c,'\n')
+#            time.sleep(0.5)
+#        ##############################################
+#        print('in edge')
+#        test_open()
+#        ser.write('123DH\n')
+#        ser.write('123MA900000\n')
+#        time.sleep(.1)
+#        print(str(ser.read(17)))
+#        print('define the tmps')
+#        ser.close()
+#        ###############################################
+#        [a, b, c] = in_movement()
+#        while a != 0 or b != 0 or c != 0:
+#            print('moving next to the centerposition...')
+#            [a, b, c] = in_movement()
+#            print('moving on x-Axis: ', a)
+#            print('moving on y-Axis: ', b)
+#            print('moving on z-Axis: ', c,'\n')
+#            time.sleep(.5)
+#        ####################################################
+#        print('fast movement finished')
+#
+#        time.sleep(0.1)
+#        test_open()
+#        ser.write('13FE1\n')
+#        print(ser.read(6))
+#        ser.close()
+#        [a, b, c] = in_movement()
+#        while a != 0 or b != 0 or c != 0:
+#            print('find centerposition...')
+#            [a, b, c] = in_movement()
+#            print('moving on x-Axis: ', a)
+#            print('moving on y-Axis: ', b)
+#            print('moving on z-Axis: ', c,'\n')
+#            time.sleep(.5)
+#        test_open()
+#        ser.write('123DH\n')
+#        ser.close()
+#        del [a, b, c]
+#        #######################################################
+#        print('calibration finished')
+#        GetPos()
+
+
+    def _calibrate_axis(self, axis):
+        """ internal method to calibrate individual axis """
+        pass
 
 
     def get_velocity(self, param_list=None):
@@ -719,57 +787,4 @@ class MotorStagePI(Base, MotorInterface):
 
 
 #    def CalibrateXYZ():
-#        test_open()
-#        ser.write('123MA-2500000\n')
-#        time.sleep(1)
-#        ser.close()
-#
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('moving to the corner...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(0.5)
-#        ##############################################
-#        print('in edge')
-#        test_open()
-#        ser.write('123DH\n')
-#        ser.write('123MA900000\n')
-#        time.sleep(.1)
-#        print(str(ser.read(17)))
-#        print('define the tmps')
-#        ser.close()
-#        ###############################################
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('moving next to the centerposition...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(.5)
-#        ####################################################
-#        print('fast movement finished')
-#
-#        time.sleep(0.1)
-#        test_open()
-#        ser.write('13FE1\n')
-#        print(ser.read(6))
-#        ser.close()
-#        [a, b, c] = in_movement()
-#        while a != 0 or b != 0 or c != 0:
-#            print('find centerposition...')
-#            [a, b, c] = in_movement()
-#            print('moving on x-Axis: ', a)
-#            print('moving on y-Axis: ', b)
-#            print('moving on z-Axis: ', c,'\n')
-#            time.sleep(.5)
-#        test_open()
-#        ser.write('123DH\n')
-#        ser.close()
-#        del [a, b, c]
-#        #######################################################
-#        print('calibration finished')
-#        GetPos()
+
