@@ -559,7 +559,6 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.signal_block_list_updated.connect(self.update_block_list)
         self._seq_gen_logic.signal_ensemble_list_updated.connect(self.update_ensemble_list)
 
-
         pulser_constr = self.get_hardware_constraints()
         # Here just the number of analog or digital channels is needed:
         channel_config = pulser_constr['channel_config']['conf1']
@@ -1227,12 +1226,11 @@ class PulsedMeasurementGui(GUIBase):
             self.logMsg('No Name for Pulse_Block specified. Generation '
                         'aborted!', importance=7, msgType='warning')
             return
-        num_laser_pulses = self._mw.curr_block_laserpulses_SpinBox.value()
         self._seq_gen_logic.generate_pulse_block_object(objectname,
                                                   self.get_pulse_block_table(),
-                                                  num_laser_pulses)
-
+                                                  self._mw.laserchannel_ComboBox.currentText())
         self.update_block_organizer_list()
+        return
 
     def insert_parameters(self, column):
         """ Insert additional parameters given in the dict add_pbe_param at specified column.
@@ -1884,6 +1882,7 @@ class PulsedMeasurementGui(GUIBase):
                                                           self.get_organizer_table(),
                                                           self._mw.laserchannel_ComboBox.currentText(),
                                                           rotating_frame)
+        return
 
     def set_channel_map(self, channel_map):
         """ Set the possible channels
@@ -2444,7 +2443,7 @@ class PulsedMeasurementGui(GUIBase):
         # pulsed measurement tab
         self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(2870e6)
         self._mw.ext_control_mw_power_DoubleSpinBox.setValue(-30.)
-        self._mw.ana_param_fc_num_laser_pulse_SpinBox.setValue(self._pulsed_meas_logic.get_num_of_lasers())
+        self._mw.ana_param_num_laser_pulse_SpinBox.setValue(self._pulsed_meas_logic.get_num_of_lasers())
         self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
 
@@ -2500,6 +2499,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_signal_plot)
         self._pulsed_meas_logic.sigMeasuringErrorUpdated.connect(self.refresh_measuring_error_plot)
 
+        self._seq_gen_logic.signal_loaded_asset_updated.connect(self.update_loaded_asset_params)
+
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
 
 
@@ -2511,9 +2512,9 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # Connect InputWidgets to events
-        self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
-        self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
+        self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
+        self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.measurement_ticks_changed)
+        self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.measurement_ticks_changed)
 
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self.analysis_timing_changed()
@@ -2522,6 +2523,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
         self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
         self.change_second_plot()
+
+        self.mw_parameters_changed()
 
     def _deactivate_analysis_ui(self, e):
         """ Disconnects the configuration for 'Analysis' Tab.
@@ -2534,7 +2537,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # disconnect signals
         # self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
-        # self._mw.ana_param_fc_num_laser_pulse_SpinBox.editingFinished.disconnect()
+        # self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.disconnect()
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
@@ -2572,7 +2575,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(True)
 
             # set number of laser pulses:
-            self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value())
+            self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
 
             self._pulsed_meas_logic.aom_delay_s = 0.5e-6
             self._pulsed_meas_logic.laser_length_s = 3e-6
@@ -2690,12 +2693,8 @@ class PulsedMeasurementGui(GUIBase):
             expected_time = self._mw.time_param_expected_dur_DoubleSpinBox.value()
         self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
 
-
-
-
     def show_external_mw_source_checked(self):
         if not self._mw.ext_control_use_mw_CheckBox.isChecked():
-
             self._mw.ext_control_mw_freq_Label.setVisible(False)
             self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
             self._mw.ext_control_mw_power_Label.setVisible(False)
@@ -2711,9 +2710,54 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setEnabled(False)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setEnabled(False)
+            self.update_loaded_asset_params()
         else:
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setEnabled(True)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setEnabled(True)
+
+    def measurement_ticks_changed(self):
+        # only do something when the manual override of the measurement ticks is active
+        if not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+            ticks_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
+            ticks_increment = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
+            number_of_measurement_points = self._pulsed_meas_logic.get_num_of_lasers()
+            ticks_list = np.arange(ticks_start,
+                                   ticks_start+ticks_increment*number_of_measurement_points,
+                                   ticks_increment)
+            self._pulsed_meas_logic.set_measurement_ticks_list(ticks_list)
+
+
+    def update_loaded_asset_params(self):
+        """ Updates the currently loaded asset on the pulsing device in the
+        analysis logic.
+        Also updates all parameters in the GUI corresponding to the asset.
+        (number of laser pulses, x-axis ticks etc.)
+        """
+        # get the asset object (ensemble or sequence) from the sequence_generator_logic
+        asset = self._seq_gen_logic.loaded_asset
+        # check for errors
+        if asset is None:
+            self.logMsg('update_loaded_asset_params called but loaded_asset in sequence_generator_logic '
+                        'is None.', msgType='error')
+            return
+        # update GUI elements
+        self._mw.ana_param_num_laser_pulse_SpinBox.setValue(int(asset.number_of_lasers))
+        if asset.measurement_ticks_list is None:
+            self._mw.ana_param_x_axis_defined_CheckBox.setCheckState(False)
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(0)
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(0)
+        else:
+            # FIXME: The unit of the x ticks SpinBoxes are not adjustable. You cannot display
+            # for example one nanosecond
+            sample_rate = self.get_sample_rate()
+            start = 1e9*asset.measurement_ticks_list[0]/sample_rate
+            incr = 1e9*(asset.measurement_ticks_list[1]-asset.measurement_ticks_list[0])/sample_rate
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(float(start))
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(float(incr))
+        # Set the parameters in the pulsed_measurement_logic
+        self._pulsed_meas_logic.set_measurement_ticks_list(asset.measurement_ticks_list/sample_rate)
+        self._pulsed_meas_logic.set_num_of_lasers(asset.number_of_lasers)
+        return
 
 
     def change_second_plot(self):
@@ -2762,21 +2806,11 @@ class PulsedMeasurementGui(GUIBase):
 
 
 
-    def seq_parameters_changed(self):
-
-        laser_num = self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()
-        measurement_tick_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
-        measurement_tick_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
+    def mw_parameters_changed(self):
+        """ Sets the parameters for the external microwave in the pulsed_measurement logic.
+        """
         mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
         mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
-        #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
-
-
-
-
-        measurement_tick_vector = np.arange(measurement_tick_start, measurement_tick_start + measurement_tick_incr*laser_num, measurement_tick_incr)
-        # self._pulsed_meas_logic.running_sequence_parameters['tau_vector'] = measurement_tick_vector
-
         self._pulsed_meas_logic.microwave_freq = mw_frequency
         self._pulsed_meas_logic.microwave_power = mw_power
         return
@@ -3485,12 +3519,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
-
-        #FIXME: remove the dependency on the seq parameter changed for this
-        #       section!
-        self.seq_parameters_changed()
-
-
         #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
 
@@ -3509,7 +3537,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.laserpulses_ComboBox.clear()
         self._mw.laserpulses_ComboBox.addItem('sum')
-        for ii in range(self._mw.ana_param_fc_num_laser_pulse_SpinBox.value()):
+        for ii in range(self._mw.ana_param_num_laser_pulse_SpinBox.value()):
             self._mw.laserpulses_ComboBox.addItem(str(1+ii))
 
         self._mw.laserpulses_ComboBox.blockSignals(True)

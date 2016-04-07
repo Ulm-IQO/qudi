@@ -241,7 +241,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QSpinBox" name="ana_param_fc_num_laser_pulse_SpinBox">
+                  <widget class="QSpinBox" name="ana_param_num_laser_pulse_SpinBox">
                    <property name="maximum">
                     <number>10000000</number>
                    </property>
@@ -311,6 +311,9 @@
                    <property name="enabled">
                     <bool>false</bool>
                    </property>
+                   <property name="maximum">
+                    <double>999999999.000000000000000</double>
+                   </property>
                   </widget>
                  </item>
                  <item row="4" column="0">
@@ -351,6 +354,9 @@
                   <widget class="QDoubleSpinBox" name="ana_param_x_axis_inc_DoubleSpinBox">
                    <property name="enabled">
                     <bool>false</bool>
+                   </property>
+                   <property name="maximum">
+                    <double>999999999.000000000000000</double>
                    </property>
                   </widget>
                  </item>
