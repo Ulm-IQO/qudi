@@ -811,6 +811,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._pulse_generator_device.set_active_channels(a_ch, d_ch)
         return 0
 
+    # FIXME: NO!!!
     # These methods are not needed, since other logic does not need to access
     # the activation or deactivation of channels!
     # Do not confuse the activation/deactivation of channels with the actual
