@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>2</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -236,7 +236,7 @@
                  <item row="0" column="2">
                   <widget class="QLabel" name="label_29">
                    <property name="text">
-                    <string>x axis defined ?</string>
+                    <string>is x axis defined ?</string>
                    </property>
                   </widget>
                  </item>
@@ -307,7 +307,11 @@
                   </widget>
                  </item>
                  <item row="1" column="3">
-                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_start_DoubleSpinBox"/>
+                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_start_DoubleSpinBox">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
                  </item>
                  <item row="4" column="0">
                   <widget class="QLabel" name="label_25">
@@ -320,6 +324,9 @@
                   <widget class="QCheckBox" name="ana_param_x_axis_defined_CheckBox">
                    <property name="text">
                     <string/>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -341,7 +348,11 @@
                   </widget>
                  </item>
                  <item row="2" column="3">
-                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_inc_DoubleSpinBox"/>
+                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_inc_DoubleSpinBox">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
                  </item>
                  <item row="4" column="2">
                   <widget class="QLabel" name="show_errorbars_Label">
