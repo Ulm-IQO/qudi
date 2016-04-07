@@ -28,9 +28,9 @@ class GenericLogic(Base):
     """A generic logic interface class.
     """
     _modclass = 'GenericLogic'
-    _modtype = 'Logic'
+    _modtype = 'logic'
     _tasks = DictTableModel()
-    
+
     def __init__(self, manager, name, configuration, callbacks, **kwargs):
         """ Initialzize a logic module.
 
@@ -42,7 +42,7 @@ class GenericLogic(Base):
         """
         super().__init__(manager, name, configuration, callbacks, **kwargs)
         self.taskLock = Mutex()
-        
+
     def getModuleThread(self):
         """ Get the thread associated to this module.
 

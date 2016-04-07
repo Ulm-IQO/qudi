@@ -22,6 +22,7 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from collections import OrderedDict
+import time
 
 from core.base import Base
 from interface.motor_interface import MotorInterface
@@ -60,6 +61,8 @@ class MotorDummy(Base, MotorInterface):
         self._y_axis = MotorAxisDummy('y')
         self._z_axis = MotorAxisDummy('z')
         self._phi_axis = MotorAxisDummy('phi')
+
+        self._wait_after_movement = 1 #in seconds
 
     #TODO: Checks if configuration is set and is reasonable
 
@@ -212,6 +215,7 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._x_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._x_axis.pos = self._x_axis.pos + move_x
 
         if param_dict.get(self._y_axis.label) is not None:
@@ -229,6 +233,7 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._y_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._y_axis.pos = self._y_axis.pos + move_y
 
         if param_dict.get(self._z_axis.label) is not None:
@@ -246,7 +251,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._z_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._z_axis.pos = self._z_axis.pos + move_z
+
 
         if param_dict.get(self._phi_axis.label) is not None:
             move_phi = param_dict[self._phi_axis.label]
@@ -263,7 +270,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._phi_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._phi_axis.pos = self._phi_axis.pos + move_phi
+
 
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
@@ -291,7 +300,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._x_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._x_axis.pos = desired_pos
+
 
         if param_dict.get(self._y_axis.label) is not None:
             desired_pos = param_dict[self._y_axis.label]
@@ -307,7 +318,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._y_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._y_axis.pos = desired_pos
+
 
         if param_dict.get(self._z_axis.label) is not None:
             desired_pos = param_dict[self._z_axis.label]
@@ -323,7 +336,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._z_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._z_axis.pos = desired_pos
+
 
         if param_dict.get(self._phi_axis.label) is not None:
             desired_pos = param_dict[self._phi_axis.label]
@@ -339,7 +354,9 @@ class MotorDummy(Base, MotorInterface):
                                     constraints[self._phi_axis.label]['pos_max']),
                             msgType='warning')
             else:
+                self._make_wait_after_movement()
                 self._phi_axis.pos = desired_pos
+
 
 
     def abort(self):
@@ -561,3 +578,6 @@ class MotorDummy(Base, MotorInterface):
                 self._phi_axis.vel = desired_vel
 
 
+    def _make_wait_after_movement(self):
+        """ Define a time which the dummy should wait after each movement. """
+        time.sleep(self._wait_after_movement)
