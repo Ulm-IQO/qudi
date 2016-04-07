@@ -102,8 +102,8 @@ class VoltageScanningLogic(GenericLogic):
         self.upwards_scan = True
 
         # calculated number of points in a scan, depends on speed and max step size
-        self._num_of_steps = 50
-
+        self._num_of_steps = 50  # initialising.  This is calculated for a given ramp.
+        self.return_slowness=50
         #############################
         # Configurable parameters
 
@@ -116,7 +116,7 @@ class VoltageScanningLogic(GenericLogic):
         #slowness: steps during retrace line
         self._clock_frequency = 500.
         self._scan_speed = 0.01  # volt / second
-        self._scan_accel = 0.01  # volt / second^2
+        self._smoothing_steps = 10  # steps to accelerate between 0 and scan_speed
         self._max_step = 0.01  # volt
 
         ##############################
@@ -269,6 +269,49 @@ class VoltageScanningLogic(GenericLogic):
         self._scan_counter += 1
         self.signal_scan_next_line.emit()
 
+    def _generate_ramp(self, voltage1, voltage2):
+        """Generate a ramp vrom voltage1 to voltage2 that
+        satisfies the speed, step, accel parameters
+        """
+
+        # Calculate number of steps
+
+        accel_part = np.empty(self._smoothing_steps)
+        decel_part = np.empty(self._smoothing_steps)
+
+        v_range_of_accel = sum(n * (self._scan_speed / self._clock_frequency) / (self._smoothing_steps + 1)
+                               for n in range(0, self._smoothing_steps + 1)
+                               )
+
+        v1_at_linear = voltage1 + v_range_of_accel
+        v2_at_linear = voltage2 - v_range_of_accel
+
+        num_of_linear_steps = np.rint((v2_at_linear - v1_at_linear) * self._clock_frequency / self._scan_speed)
+
+        self._num_of_steps = num_of_linear_steps + 2*self._smoothing_steps
+
+        accel_part = voltage1 + np.array([sum(n*(self._scan_speed / self._clock_frequency)/(self._smoothing_steps+1) for n in range(1,N)) for N in range(1,self._smoothing_steps+1)])
+        decel_part = voltage2 - np.array(
+            [sum(n * (self._scan_speed / self._clock_frequency) / (self._smoothing_steps + 1) for n in range(1, N)) for N in
+             range(1, self._smoothing_steps + 1)])[::-1]
+
+        linear_part = np.linspace(v1_at_linear, v2_at_linear, num_of_linear_steps)
+
+        ramp = np.hstack((accel_part, linear_part, decel_part))
+
+        return(ramp)
+
+        # Design ideas:
+            # ramp[0] is always voltage1
+            # _smoothing_steps=0 should collapse back directly to the np.linspace "default" from confocal. ie ramp[1] is full speed step above voltage1
+            # _accel_steps=1 means the first interval is half of the scan_speed. ie ramp[1] is half speed above voltage 1
+            # _accel_steps=2 means that the first step is 1/3 of the scan_speed, 2nd step is 2/3 of the scan speed, and the next ones are 3/3 (ie full) scan_speed.
+            # _accel_steps=10 means that the first step is 1/11 of the scan speed, and the 10th step is
+
+        # TODO use acceleration to form first and last parts of the ramp
+        # (they should be symmetric but "upside down"
+
+        # TODO use np.linspace to fill the ramp with linear slope.
 
     def _scan_line(self, voltage1, voltage2):
         """do a single voltage scan from voltage1 to voltage2
