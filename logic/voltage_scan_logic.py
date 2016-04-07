@@ -77,10 +77,6 @@ class VoltageScanningLogic(GenericLogic):
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
-        self._clock_frequency = 1000.
-        self.return_slowness = 50
 
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
@@ -105,7 +101,8 @@ class VoltageScanningLogic(GenericLogic):
         # Keep track of scan direction
         self.upwards_scan = True
 
-
+        # calculated number of points in a scan, depends on speed and max step size
+        self._num_of_steps = 50
 
         #############################
         # Configurable parameters
@@ -114,6 +111,13 @@ class VoltageScanningLogic(GenericLogic):
 
         # TODO: allow configuration with respect to measurement duration
         self.acquire_time = 20  # seconds
+
+        #default values for clock frequency and slowness
+        #slowness: steps during retrace line
+        self._clock_frequency = 500.
+        self._scan_speed = 0.01  # volt / second
+        self._scan_accel = 0.01  # volt / second^2
+        self._max_step = 0.01  # volt
 
         ##############################
 
