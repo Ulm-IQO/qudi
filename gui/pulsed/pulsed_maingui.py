@@ -2436,11 +2436,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_mw_power_Label.setVisible(False)
         self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
 
-        self._mw.ana_param_x_axis_start_Label.setVisible(False)
-        self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
-        self._mw.ana_param_x_axis_inc_Label.setVisible(False)
-        self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
-
         # Set the state button as ready button as default setting.
 
         self._mw.action_continue_pause.setEnabled(False)
@@ -2714,15 +2709,11 @@ class PulsedMeasurementGui(GUIBase):
 
     def measurement_ticks_editor(self):
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
-            self._mw.ana_param_x_axis_start_Label.setVisible(True)
-            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
-            self._mw.ana_param_x_axis_inc_Label.setVisible(True)
-            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(True)
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setEnabled(False)
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setEnabled(False)
         else:
-            self._mw.ana_param_x_axis_start_Label.setVisible(False)
-            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
-            self._mw.ana_param_x_axis_inc_Label.setVisible(False)
-            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
+            self._mw.ana_param_x_axis_start_DoubleSpinBox.setEnabled(True)
+            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setEnabled(True)
 
 
     def change_second_plot(self):
