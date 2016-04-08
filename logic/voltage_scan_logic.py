@@ -34,6 +34,7 @@ import datetime
 
 
 class VoltageScanningLogic(GenericLogic):
+
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
     """
@@ -43,10 +44,10 @@ class VoltageScanningLogic(GenericLogic):
     _modclass = 'voltagescanninglogic'
     _modtype = 'logic'
 
-    ## declare connectors
-    _in = { 'confocalscanner1': 'ConfocalScannerInterface',
-            'savelogic': 'SaveLogic',
-            }
+    # declare connectors
+    _in = {'confocalscanner1': 'ConfocalScannerInterface',
+           'savelogic': 'SaveLogic',
+           }
     _out = {'voltagescanninglogic': 'VoltageScanningLogic'}
 
     signal_change_voltage = QtCore.Signal()
@@ -60,11 +61,11 @@ class VoltageScanningLogic(GenericLogic):
           @param dict config: module configuration
           @param dict kwargs: optional parameters
         """
-        ## declare actions for state transitions
+        # declare actions for state transitions
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
 
-        #locking for thread safety
+        # locking for thread safety
         self.threadlock = Mutex()
 
         self.stopRequested = False
@@ -77,7 +78,6 @@ class VoltageScanningLogic(GenericLogic):
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
-
         # Reads in the maximal scanning range. The unit of that scan range is
         # micrometer!
         self.a_range = self._scanning_device.get_position_range()[3]
@@ -86,7 +86,7 @@ class VoltageScanningLogic(GenericLogic):
         self.current_position = self._scanning_device.get_scanner_position()
 
         # initialise the range for scanning
-        self.scan_range = [self.a_range[0]/10, self.a_range[1]/10]
+        self.scan_range = [self.a_range[0] / 10, self.a_range[1] / 10]
 
         # Sets the current position to the center of the maximal scanning range
         self._current_a = (self.a_range[0] + self.a_range[1]) / 2.
@@ -103,7 +103,7 @@ class VoltageScanningLogic(GenericLogic):
 
         # calculated number of points in a scan, depends on speed and max step size
         self._num_of_steps = 50  # initialising.  This is calculated for a given ramp.
-        self.return_slowness=50
+        self.return_slowness=50  # TODO: remove this parameter
         #############################
         # Configurable parameters
 
@@ -112,8 +112,8 @@ class VoltageScanningLogic(GenericLogic):
         # TODO: allow configuration with respect to measurement duration
         self.acquire_time = 20  # seconds
 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
+        # default values for clock frequency and slowness
+        # slowness: steps during retrace line
         self._clock_frequency = 500.
         self._scan_speed = 0.01  # volt / second
         self._smoothing_steps = 10  # steps to accelerate between 0 and scan_speed
@@ -124,7 +124,6 @@ class VoltageScanningLogic(GenericLogic):
         # Initialie data matrix
         self._initialise_data_matrix()
 
-
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
@@ -132,7 +131,7 @@ class VoltageScanningLogic(GenericLogic):
         """
         pass
 
-    def set_voltage(self, a = None):
+    def set_voltage(self, a=None):
         """Forwarding the desired output voltage to the scanning device.
 
         @param string tag: TODO
@@ -143,10 +142,10 @@ class VoltageScanningLogic(GenericLogic):
         """
         # print(tag, x, y, z)
         # Changes the respective value
-        if a != None:
+        if a is not None:
             self._current_a = a
 
-        #Checks if the scanner is still running
+        # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
         else:
@@ -158,7 +157,7 @@ class VoltageScanningLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.scanner_set_position(a = self._current_a)
+        self._scanning_device.scanner_set_position(a=self._current_a)
         return 0
 
     def set_clock_frequency(self, clock_frequency):
@@ -169,7 +168,7 @@ class VoltageScanningLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self._clock_frequency = int(clock_frequency)
-        #checks if scanner is still running
+        # checks if scanner is still running
         if self.getState() == 'locked':
             return -1
         else:
@@ -178,22 +177,21 @@ class VoltageScanningLogic(GenericLogic):
     def _initialise_data_matrix(self):
         """ Initializing the ODMR matrix plot. """
 
-        self.scan_matrix = np.zeros( (self.number_of_repeats, self.return_slowness) )
-
+        self.scan_matrix = np.zeros((self.number_of_repeats, self.return_slowness))
 
     def get_current_voltage(self):
         """returns current voltage of hardware device(atm NIDAQ 4th output)"""
         return self._scanning_device.get_scanner_position()[3]
 
-    def start_scanning(self, v_min = None, v_max = None):
+    def start_scanning(self, v_min=None, v_max=None):
         """Setting up the scanner device and starts the scanning procedure
 
         @return int: error code (0:OK, -1:error)
         """
 
-        if v_min != None:
+        if v_min is not None:
             self.scan_range[0] = v_min
-        if v_max != None:
+        if v_max is not None:
             self.scan_range[1] = v_max
 
         self._scan_counter = 0
@@ -205,9 +203,7 @@ class VoltageScanningLogic(GenericLogic):
         self.lock()
         self._scanning_device.lock()
 
-
-
-        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         if returnvalue < 0:
             self._scanning_device.unlock()
             self.unlock()
@@ -234,7 +230,6 @@ class VoltageScanningLogic(GenericLogic):
                 self.stopRequested = True
 
         return 0
-
 
     def _do_next_line(self):
         """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
@@ -271,47 +266,56 @@ class VoltageScanningLogic(GenericLogic):
 
     def _generate_ramp(self, voltage1, voltage2):
         """Generate a ramp vrom voltage1 to voltage2 that
-        satisfies the speed, step, accel parameters
+        satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the 
+        ramp is just linear.
+
+        @param float voltage1: voltage at start of ramp.
+
+        @param float voltage2: voltage at end of ramp.
         """
 
-        # Calculate number of steps
+        # It is much easier to calculate the smoothed ramp for just one direction (upwards),
+        # and then to reverse it if a downwards ramp is required.
 
-        accel_part = np.empty(self._smoothing_steps)
-        decel_part = np.empty(self._smoothing_steps)
+        v_min = min(voltage1, voltage2)
+        v_max = max(voltage1, voltage2)
 
-        v_range_of_accel = sum(n * (self._scan_speed / self._clock_frequency) / (self._smoothing_steps + 1)
-                               for n in range(0, self._smoothing_steps + 1)
+        # These values help simplify some of the mathematical expressions
+        linear_v_step = self._scan_speed / self._clock_frequency
+        smoothing_range = self._smoothing_steps + 1
+
+        # The voltage range covered while accelerating in the smoothing steps
+        v_range_of_accel = sum(n * linear_v_step / smoothing_range
+                               for n in range(0, smoothing_range)
                                )
 
-        v1_at_linear = voltage1 + v_range_of_accel
-        v2_at_linear = voltage2 - v_range_of_accel
+        # Obtain voltage bounds for the linear part of the ramp
+        v_min_linear = v_min + v_range_of_accel
+        v_max_linear = v_max - v_range_of_accel
 
-        num_of_linear_steps = np.rint((v2_at_linear - v1_at_linear) * self._clock_frequency / self._scan_speed)
+        num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / linear_v_step)
 
-        self._num_of_steps = num_of_linear_steps + 2*self._smoothing_steps
+        # Calculate voltage step values for smooth acceleration part of ramp
+        smooth_curve = np.array([sum(n * linear_v_step / smoothing_range for n in range(1, N)) 
+                                 for N in range(1, smoothing_range)
+                                 ]
+                                )
 
-        accel_part = voltage1 + np.array([sum(n*(self._scan_speed / self._clock_frequency)/(self._smoothing_steps+1) for n in range(1,N)) for N in range(1,self._smoothing_steps+1)])
-        decel_part = voltage2 - np.array(
-            [sum(n * (self._scan_speed / self._clock_frequency) / (self._smoothing_steps + 1) for n in range(1, N)) for N in
-             range(1, self._smoothing_steps + 1)])[::-1]
+        accel_part = v_min + smooth_curve
+        decel_part = v_max - smooth_curve[::-1]
 
-        linear_part = np.linspace(v1_at_linear, v2_at_linear, num_of_linear_steps)
+        linear_part = np.linspace(v_min_linear, v_max_linear, num_of_linear_steps)
 
         ramp = np.hstack((accel_part, linear_part, decel_part))
 
+        # Reverse if downwards ramp is required
+        if voltage2 < voltage1:
+            ramp = ramp[::-1]
+
+        # Set the number of steps so that data arrays can be created.
+# TODO this is bad because hard to follow.  Better to return this and set it explicitly when _generate_ramp is called.
+        self._num_of_steps = num_of_linear_steps + (2 * self._smoothing_steps)
         return(ramp)
-
-        # Design ideas:
-            # ramp[0] is always voltage1
-            # _smoothing_steps=0 should collapse back directly to the np.linspace "default" from confocal. ie ramp[1] is full speed step above voltage1
-            # _accel_steps=1 means the first interval is half of the scan_speed. ie ramp[1] is half speed above voltage 1
-            # _accel_steps=2 means that the first step is 1/3 of the scan_speed, 2nd step is 2/3 of the scan speed, and the next ones are 3/3 (ie full) scan_speed.
-            # _accel_steps=10 means that the first step is 1/11 of the scan speed, and the 10th step is
-
-        # TODO use acceleration to form first and last parts of the ramp
-        # (they should be symmetric but "upside down"
-
-        # TODO use np.linspace to fill the ramp with linear slope.
 
     def _scan_line(self, voltage1, voltage2):
         """do a single voltage scan from voltage1 to voltage2
@@ -360,16 +364,15 @@ class VoltageScanningLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._saving_stop_time=time.time()
+        self._saving_stop_time = time.time()
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan'
         timestamp = datetime.datetime.now()
 
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Wavelength (nm), Signal (counts/s)':np.array([self.histogram_axis,self.histogram]).transpose()}
+        data = {'Wavelength (nm), Signal (counts/s)': np.array([self.histogram_axis, self.histogram]).transpose()}
 
         # write the parameters:
         parameters = OrderedDict()
@@ -381,14 +384,14 @@ class VoltageScanningLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_wavemeter'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s), Wavelength (nm)':self._wavelength_data}
+        data = {'Time (s), Wavelength (nm)': self._wavelength_data}
         # write the parameters:
         parameters = OrderedDict()
         parameters['Acquisition Timing (ms)'] = self._logic_acquisition_timing
@@ -397,15 +400,14 @@ class VoltageScanningLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
+                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
 
         filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
         filelabel = 'laser_scan_counts'
 
-
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data = {'Time (s),Signal (counts/s)':self._counter_logic._data_to_save}
+        data = {'Time (s),Signal (counts/s)': self._counter_logic._data_to_save}
 
         # write the parameters:
         parameters = OrderedDict()
@@ -418,8 +420,7 @@ class VoltageScanningLogic(GenericLogic):
 
         self._save_logic.save_data(data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
-                                   as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
-
+                                   as_text=True, precision=':.6f')  # , as_xml=False, precision=None, delimiter=None)
 
         self.logMsg('Laser Scan saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
