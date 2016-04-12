@@ -115,12 +115,13 @@ class AWG70K(Base, PulserInterface):
 
         self._temp_folder = self._get_dir_for_name('temporary_files')
 
-        a_ch = {1: False, 2: False}
-        d_ch = {1: False, 2: False, 3: False, 4: False}
-        self.active_channel = (a_ch, d_ch)
+        self.active_channel = {'a_ch1': False, 'a_ch2': False,
+                               'd_ch1': False, 'd_ch2': False,
+                               'd_ch3': False, 'd_ch4': False}
+
         self.interleave = False
 
-        self.current_status =  0
+        self.current_status = 0
 
 
     def activation(self, e):
@@ -172,10 +173,14 @@ class AWG70K(Base, PulserInterface):
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
         The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method). No other keys should be invented. If you
-        are not sure about the meaning, look in other hardware files to get an
-        impression. If still additional constraints are needed, then they have
-        to be add to all files containing this interface.
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
         The items of the keys are again dictionaries which have the generic
         dictionary form:
             {'min': <value>,
@@ -183,17 +188,19 @@ class AWG70K(Base, PulserInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'channel_config', 'available channels', 'available_ch_num'
-        'activation_map' and 'independent_ch' differ.
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
         dict. Note that there is a difference between float input (0.0) and
         integer input (0).
+
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
 
-        constraints = {}
+        constraints = dict()
+
         # if interleave option is available, then sample rate constraints must
         # be assigned to the output of a function called
         # _get_sample_rate_constraints()
@@ -243,85 +250,52 @@ class AWG70K(Base, PulserInterface):
                                           'step': 1, 'unit': '#'}
 
         # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary. Insert here in the same fashion like above the parameters, which the
-        # device is needing for a creating sequences:
+        # empty dictionary. Insert here in the same fashion like above the
+        # parameters, which the device is needing for a creating sequences:
         sequence_param = OrderedDict()
         constraints['sequence_param'] = sequence_param
 
-        # For the channel configuration, three information has to be set!
-        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
-        #   by yourself.
-        #   Second is whether the specified channel is an analog or digital
-        #   channel
-        #   Third is the channel number, which is assigned to that channel name.
-        #
-        # So in summary:
-        #       configuration: channel-name, channel-type, channelnumber
-        # That configuration takes place here:
+        # State here all available channels and here you have the possibility to
+        # assign to each generic channel name an individual channel name:
+
         available_ch = OrderedDict()
-        available_ch['ACH1'] = {'a_ch': 1}
-        available_ch['DCH1'] = {'d_ch': 1}
-        available_ch['DCH2'] = {'d_ch': 2}
-        available_ch['ACH2'] = {'a_ch': 2}
-        available_ch['DCH3'] = {'d_ch': 3}
-        available_ch['DCH4'] = {'d_ch': 4}
+        available_ch['a_ch1'] = 'ACH1'
+        available_ch['d_ch1'] = 'DCH1'
+        available_ch['d_ch2'] = 'DCH2'
+        available_ch['a_ch2'] = 'ACH2'
+        available_ch['d_ch3'] = 'DCH3'
+        available_ch['d_ch4'] = 'DCH4'
         constraints['available_ch'] = available_ch
+        # from this you will be able to count the number of available analog and
+        # digital channels
 
-        # State all possible DIFFERENT configurations, which the pulsing device
-        # may have. That concerns also the display of the chosen channels.
-        # Channel configuration for this device, use OrderedDictionaries to
-        # keep an order in that dictionary. That is for now the easiest way to
-        # determine the channel configuration:
-        channel_config = OrderedDict()
-        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch']
-        channel_config['conf3'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch']
-        channel_config['conf4'] = ['a_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
-        channel_config['conf5'] = ['a_ch', 'a_ch', 'd_ch', 'd_ch']
-        channel_config['conf6'] = ['a_ch', 'd_ch', 'a_ch', 'd_ch']
-        channel_config['conf7'] = ['a_ch', 'd_ch', 'a_ch']
-        channel_config['conf8'] = ['a_ch', 'a_ch', 'd_ch']
-        channel_config['conf9'] = ['a_ch', 'a_ch']
-        channel_config['conf10'] = ['a_ch', 'd_ch']
-        channel_config['conf11'] = ['a_ch']
+        # the name a_ch<num> and d_ch<num> are generic names, which describe
+        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
+        # are stated, where only the generic names should be used.
 
-        constraints['channel_config'] = channel_config
-
-        # Now you can choose, how many channel activation pattern exists. You
-        # can only use the names, declared in the constraint 'available_ch'!
-        activation_map = OrderedDict()
-        activation_map['all'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        activation_config = OrderedDict()
+        activation_config['all'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
         # Usage of both channels but reduced markers (higher analog resolution)
-        activation_map['ch1_2mrk_ch2_1mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3']
-        activation_map['ch1_2mrk_ch2_0mrk'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2']
-        activation_map['ch1_1mrk_ch2_2mrk'] = ['ACH1', 'DCH1', 'ACH2', 'DCH3', 'DCH4']
-        activation_map['ch1_0mrk_ch2_2mrk'] = ['ACH1', 'ACH2', 'DCH3', 'DCH4']
-        activation_map['ch1_1mrk_ch2_1mrk'] = ['ACH1', 'DCH1', 'ACH2', 'DCH3']
-        activation_map['ch1_0mrk_ch2_1mrk'] = ['ACH1', 'ACH2', 'DCH3']
-        activation_map['ch1_1mrk_ch2_0mrk'] = ['ACH1', 'DCH1', 'ACH2']
+        activation_config['ch1_2mrk_ch2_1mrk'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3']
+        activation_config['ch1_2mrk_ch2_0mrk'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2']
+        activation_config['ch1_1mrk_ch2_2mrk'] = ['a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['ch1_0mrk_ch2_2mrk'] = ['a_ch1', 'a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['ch1_1mrk_ch2_1mrk'] = ['a_ch1', 'd_ch1', 'a_ch2', 'd_ch3']
+        activation_config['ch1_0mrk_ch2_1mrk'] = ['a_ch1', 'a_ch2', 'd_ch3']
+        activation_config['ch1_1mrk_ch2_0mrk'] = ['a_ch1', 'd_ch1', 'a_ch2']
         # Usage of channel 1 only:
-        activation_map['ch1_2mrk'] = ['ACH1', 'DCH1', 'DCH2']
+        activation_config['ch1_2mrk'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of channel 2 only:
-        activation_map['ch2_2mrk'] = ['ACH2', 'DCH3', 'DCH4']
+        activation_config['ch2_2mrk'] = ['a_ch2', 'd_ch3', 'd_ch4']
         # Usage of only channel 1 with one marker:
-        activation_map['ch1_1mrk'] = ['ACH1', 'DCH1']
+        activation_config['ch1_1mrk'] = ['a_ch1', 'd_ch1']
         # Usage of only channel 2 with one marker:
-        activation_map['ch2_1mrk'] = ['ACH2', 'DCH3']
+        activation_config['ch2_1mrk'] = ['a_ch2', 'd_ch3']
         # Usage of only channel 1 with no marker:
-        activation_map['ch1_0mrk'] = ['ACH1']
+        activation_config['ch1_0mrk'] = ['a_ch1']
         # Usage of only channel 2 with no marker:
-        activation_map['ch2_0mrk'] = ['ACH2']
-        constraints['activation_map'] = activation_map
-
-        # this information seems to be almost redundant but it can be that no
-        # channel configuration exists, where not all available channels are
-        # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
-
-        # number of independent channels on which you can load or upload
-        # separately the created files. It does not matter how the channels
-        # are looking like.
-        constraints['independent_ch'] = 2
+        activation_config['ch2_0mrk'] = ['a_ch2']
+        constraints['activation_map'] = activation_config
 
         return constraints
 
@@ -382,7 +356,7 @@ class AWG70K(Base, PulserInterface):
 
                 header_obj.create_xml_file()
                 temp_file = os.path.join(self._temp_folder, 'header.xml')
-                with open(temp_file,'r') as header:
+                with open(temp_file, 'r') as header:
                     header_lines = header.readlines()
                 os.remove(temp_file)
                 # create .WFMX-file for each channel.
@@ -626,6 +600,14 @@ class AWG70K(Base, PulserInterface):
 
         return 0
 
+    def get_loaded_asset(self):
+        """ Retrieve the currently loaded asset name of the device.
+
+        @return str: Name of the current asset, that can be either a filename
+                     a waveform, a sequence ect.
+        """
+        return self.current_loaded_asset
+
     def _send_file(self, filename):
         """ Sends an already hardware specific waveform file to the pulse
             generators waveform directory.
@@ -733,7 +715,6 @@ class AWG70K(Base, PulserInterface):
         #       having now the possibility to set individual or a group of
         #       channels to the desired value. If in doubt, look at the
         #       hardware file of AWG5000 series.
-
 
         amp = {}
         off = {}
@@ -892,24 +873,94 @@ class AWG70K(Base, PulserInterface):
             # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
             pass
 
+    def get_active_channels(self, ch=[]):
+        """ Get the active channels of the pulse generator hardware.
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
+        @param list ch: optional, if specific analog or digital channels are
+                        needed to be asked without obtaining all the channels.
+
+        @return dict:  where keys denoting the channel number and items boolean
+                       expressions whether channel are active or not.
+
+        Example for an possible input (order is not important):
+            ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
+        then the output might look like
+            {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
+
+        If no parameters are passed to this method all channels will be asked
+        for their setting.
+        """
+
+        # If you want to check the input use the constraints:
+
+        active_ch = {}
+
+        # check how many markers are active on each channel, i.e. the DAC resolution
+        ch1_markers = 10-int(self.ask('SOURCE1:DAC:RESOLUTION?\n'))
+        ch2_markers = 10-int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
+
+        if ch1_markers == 0:
+            active_ch['d_ch1'] = False
+            active_ch['d_ch2'] = False
+        elif ch1_markers == 1:
+            active_ch['d_ch1'] = True
+            active_ch['d_ch2'] = False
+        else:
+            active_ch['d_ch1'] = True
+            active_ch['d_ch2'] = True
+
+        if ch2_markers == 0:
+            active_ch['d_ch3'] = False
+            active_ch['d_ch4'] = False
+        elif ch1_markers == 1:
+            active_ch['d_ch3'] = True
+            active_ch['d_ch4'] = False
+        else:
+            active_ch['d_ch3'] = True
+            active_ch['d_ch4'] = True
+
+        # check what analog channels are active
+        if bool(int(self.ask('OUTPUT1:STATE?\n'))):
+            active_ch['a_ch1'] = True
+        else:
+            active_ch['a_ch1'] = False
+
+        if bool(int(self.ask('OUTPUT2:STATE?\n'))):
+            active_ch['a_ch2'] = True
+        else:
+            active_ch['a_ch2'] = False
+
+        # return either all channel information of just the one asked for.
+        if ch == []:
+            return_ch = active_ch
+        else:
+            return_ch = dict()
+            for channel in ch:
+                return_ch[channel] = active_ch[channel]
+
+
+        return return_ch
+
+    def set_active_channels(self, ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+        @param dict ch: dictionary with keys being the analog or digital
+                          string generic names for the channels with items being
+                          a boolean value.
 
-        @return int: error code (0:OK, -1:error)
+        @return dict: with the actual set values for active channels for analog
+                      and digital values.
+
+        If nothing is passed then the command will return an empty dict.
+
+        Note: After setting the active channels of the device, retrieve them
+              again for obtaining the actual set value(s) and use that
+              information for further processing.
 
         Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
 
         AWG5000 Series instruments support only 14-bit resolution. Therefore
         this command will have no effect on the DAC for these instruments. On
@@ -917,117 +968,37 @@ class AWG70K(Base, PulserInterface):
         resolution of the analog channels.
         """
 
-        #If you want to check the input use the constraints:
-        constraints = self.get_constraints()
-
         # update active channels variable
-        for channel in a_ch:
-            self.active_channel[0][channel] = a_ch[channel]
-        for channel in d_ch:
-            self.active_channel[1][channel] = d_ch[channel]
-
-        # create marker list for the 4 available markers
-        marker_on = []
-        for digi_ch in self.active_channel[1].keys():
-            marker_on.append(self.active_channel[1][digi_ch])
+        for channel in ch:
+            self.active_channel[channel] = ch[channel]
 
         # count the markers per channel
-        ch1_marker = marker_on[0:2].count(True)
-        ch2_marker = marker_on[2:4].count(True)
+        ch1_marker = 0
+        ch2_marker = 0
+        for channel in self.active_channel:
+            if self.active_channel[channel]:
+                if ('d_ch1' in channel) or ('d_ch1' in channel):
+                        ch1_marker += 1
+                if ('d_ch3' in channel) or ('d_ch4' in channel):
+                        ch2_marker += 1
 
         # adjust the DAC resolution accordingly
         self.tell('SOURCE1:DAC:RESOLUTION ' + str(10-ch1_marker) + '\n')
         self.tell('SOURCE2:DAC:RESOLUTION ' + str(10-ch2_marker) + '\n')
 
         # switch on channels accordingly
-        if self.active_channel[0][1]:
+        if self.active_channel['a_ch1']:
             self.tell('OUTPUT1:STATE ON\n')
         else:
             self.tell('OUTPUT1:STATE OFF\n')
 
-        if self.active_channel[0][2]:
+        if self.active_channel['a_ch2']:
             self.tell('OUTPUT2:STATE ON\n')
         else:
             self.tell('OUTPUT2:STATE OFF\n')
 
         return 0
 
-    def get_active_channels(self, a_ch=[], d_ch=[]):
-        """ Get the active channels of the pulse generator hardware.
-
-        @param list a_ch: optional, if specific analog channels are needed to be
-                          asked without obtaining all the channels.
-        @param list d_ch: optional, if specific digital channels are needed to
-                          be asked without obtaining all the channels.
-
-        @return tuple of two dicts, where keys denoting the channel number and
-                items boolean expressions whether channel are active or not.
-                First dict contains the analog settings, second dict the digital
-                settings. If either digital or analog are not present, return
-                an empty dict.
-
-        Example for an possible input:
-            a_ch=[2, 1] d_ch=[2,1,5]
-        then the output might look like
-            {1: True, 2: False} {1: False, 2: True, 5: False}
-
-        If no parameters are passed to this method all channels will be asked
-        for their setting.
-        """
-
-        #If you want to check the input use the constraints:
-        constraints = self.get_constraints()
-        active_a_ch = {}
-        active_d_ch = {}
-
-        # check how many markers are active on each channel, i.e. the DAC resolution
-        ch1_markers = 10-int(self.ask('SOURCE1:DAC:RESOLUTION?\n'))
-        ch2_markers = 10-int(self.ask('SOURCE2:DAC:RESOLUTION?\n'))
-
-        if ch1_markers == 0:
-            active_d_ch[1] = False
-            active_d_ch[2] = False
-        elif ch1_markers == 1:
-            active_d_ch[1] = True
-            active_d_ch[2] = False
-        else:
-            active_d_ch[1] = True
-            active_d_ch[2] = True
-
-        if ch2_markers == 0:
-            active_d_ch[3] = False
-            active_d_ch[4] = False
-        elif ch1_markers == 1:
-            active_d_ch[3] = True
-            active_d_ch[4] = False
-        else:
-            active_d_ch[3] = True
-            active_d_ch[4] = True
-
-        # check what analog channels are active
-        if bool(int(self.ask('OUTPUT1:STATE?\n'))):
-            active_a_ch[1] = True
-        else:
-            active_a_ch[1] = False
-
-        if bool(int(self.ask('OUTPUT2:STATE?\n'))):
-            active_a_ch[2] = True
-        else:
-            active_a_ch[2] = False
-
-        # return either all channel information of just the one asked for.
-        if (a_ch == []) and (d_ch == []):
-            return_a_ch = active_a_ch
-            return_d_ch = active_d_ch
-        else:
-            return_a_ch = {}
-            return_d_ch = {}
-            for ana_chan in a_ch:
-                return_a_ch[ana_chan] = active_a_ch[ana_chan]
-            for digi_chan in d_ch:
-                return_d_ch[digi_chan] = active_d_ch[digi_chan]
-
-        return return_a_ch, return_d_ch
 
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.
