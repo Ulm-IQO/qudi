@@ -110,10 +110,18 @@ class ODMRGui(GUIBase):
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
-        self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
-        self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y,
-                                                    pen=QtGui.QPen(QtGui.QColor(255,255,255,255)))
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+                                                     0,
+                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
+                                                     self._odmr_logic.NumberofLines))
+
+
+        self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
+                                          self._odmr_logic.ODMR_plot_y)
+
+        self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,
+                                              self._odmr_logic.ODMR_fit_y,
+                                              pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
 
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
