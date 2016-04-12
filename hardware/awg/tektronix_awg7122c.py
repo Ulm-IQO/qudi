@@ -124,6 +124,8 @@ class AWG7122C(Base, PulserInterface):
         # AWG7122c has possibility for sequence output
         self.sequence_mode = True
 
+        self.current_loaded_asset = None
+
         self._marker_byte_dict = {0: b'\x00', 1: b'\x01', 2: b'\x02', 3: b'\x03'}
 
     def activation(self, e):
@@ -186,10 +188,14 @@ class AWG7122C(Base, PulserInterface):
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
         The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method). No other keys should be invented. If you
-        are not sure about the meaning, look in other hardware files to get an
-        impression. If still additional constraints are needed, then they have
-        to be add to all files containing this interface.
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
         The items of the keys are again dictionaries which have the generic
         dictionary form:
             {'min': <value>,
@@ -197,15 +203,17 @@ class AWG7122C(Base, PulserInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'channel_config', 'available channels', 'available_ch_num'
-        'activation_map' and 'independent_ch' differ.
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
         dict. Note that there is a difference between float input (0.0) and
         integer input (0).
+
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
+
 
         # Todo: Set values for AWG7122c
         constraints = {}
@@ -282,68 +290,43 @@ class AWG7122C(Base, PulserInterface):
         constraints['sequence_param'] = sequence_param
 
 
-        # For the channel configuration, three information has to be set!
-        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
-        #   by yourself.
-        #   Second is whether the specified channel is an analog or digital
-        #   channel
-        #   Third is the channel number, which is assigned to that channel name.
-        #
-        # So in summary:
-        #       configuration: channel-name, channel-type, channelnumber
-        # That configuration takes place here:
+        # State here all available channels and here you have the possibility to
+        # assign to each generic channel name an individual channel name:
+
         available_ch = OrderedDict()
-        available_ch['Interleave'] = {'a_ch': 1}
-        available_ch['ACH1'] = {'a_ch': 1}
-        available_ch['DCH1'] = {'d_ch': 1}
-        available_ch['DCH2'] = {'d_ch': 2}
-        available_ch['ACH2'] = {'a_ch': 2}
-        available_ch['DCH3'] = {'d_ch': 3}
-        available_ch['DCH4'] = {'d_ch': 4}
+        available_ch['a_ch1'] = 'Interleave'
+        available_ch['a_ch2'] = 'ACH1'
+        available_ch['d_ch1'] = 'DCH1'
+        available_ch['d_ch2'] = 'DCH2'
+        available_ch['a_ch3'] = 'ACH2'
+        available_ch['d_ch3'] = 'DCH3'
+        available_ch['d_ch4'] = 'DCH4'
         constraints['available_ch'] = available_ch
+        # from this you will be able to count the number of available analog and
+        # digital channels
 
-        # State all possible DIFFERENT configurations, which the pulsing device
-        # may have. That concerns also the display of the chosen channels.
-        # Channel configuration for this device, use OrderedDictionaries to
-        # keep an order in that dictionary. That is for now the easiest way to
-        # determine the channel configuration:
-        channel_config = OrderedDict()
-        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch']
-        channel_config['conf3'] = ['a_ch', 'a_ch']
-        channel_config['conf4'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
-        constraints['channel_config'] = channel_config
+        # the name a_ch<num> and d_ch<num> are generic names, which describe
+        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
+        # are stated, where only the generic names should be used.
 
-        # Now you can choose, how many channel activation pattern exists. You
-        # can only use the names, declared in the constraint 'available_ch'!
-        activation_map = OrderedDict()
-        activation_map['map1'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
+        activation_config = OrderedDict()
+        activation_config['All'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
         # Usage of channel 1 only:
-        activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
+        activation_config['A1_M1_M2'] = ['a_ch2', 'd_ch1', 'd_ch2']
         # Usage of channel 2 only:
-        activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
+        activation_config['A2_M3_M4'] = ['a_ch3', 'd_ch3', 'd_ch4']
         # Usage of Interleave configuration with digital channels:
-        activation_map['map4'] = ['Interleave', 'DCH1', 'DCH2']
+        activation_config['Interleave_M1_M2'] = ['a_ch1', 'd_ch1', 'd_ch2']
         # Usage of Interleave configuration only:
-        activation_map['map5'] = ['Interleave']
+        activation_config['Interleave_only'] = ['a_ch1']
         # usage of two analog channels only:
-        activation_map['map6'] = ['ACH1', 'ACH2']
+        activation_config['Two_Analog'] = ['a_ch2', 'a_ch3']
         # Usage of one analog channel without digital channel
-        activation_map['map7'] = ['ACH1']
+        activation_config['Analog1'] = ['a_ch2']
         # Usage of one analog channel without digital channel
-        activation_map['map8'] = ['ACH2']
+        activation_config['Analog2'] = ['a_ch3']
 
-        constraints['activation_map'] = activation_map
-
-        # this information seems to be almost redundant but it can be that no
-        # channel configuration exists, where not all available channels are
-        # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
-
-        # number of independent channels on which you can load or upload
-        # separately the created files. It does not matter how the channels
-        # are looking like.
-        constraints['independent_ch'] = 2
+        constraints['activation_config'] = activation_config
 
         return constraints
 
@@ -691,6 +674,14 @@ class AWG7122C(Base, PulserInterface):
 
         return 0
 
+    def get_loaded_asset(self):
+        """ Retrieve the currently loaded asset name of the device.
+
+        @return str: Name of the current asset, that can be either a filename
+                     a waveform, a sequence ect.
+        """
+        return self.current_loaded_asset
+
     def clear_all(self):
         """ Clears the loaded waveform from the pulse generators RAM.
 
@@ -703,6 +694,7 @@ class AWG7122C(Base, PulserInterface):
 
 
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
+        self.current_loaded_asset = None
         return
 
     # works!
@@ -830,7 +822,7 @@ class AWG7122C(Base, PulserInterface):
             #           ACH2       = 3
             #       for analog channels.
             for a_ch in amplitude:
-                if (a_ch <= constraints['available_ch_num']['a_ch']) and \
+                if (a_ch <= self._get_num_a_ch()) and \
                    (a_ch >= 0):
                     amp[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:AMPLITUDE?'.format(a_ch)))
                 else:
@@ -838,11 +830,11 @@ class AWG7122C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
-                                                                  constraints['available_ch_num']['a_ch']),
+                                                                  self._get_num_a_ch()),
                             msgType='warning')
 
             for a_ch in offset:
-                if (a_ch <= constraints['available_ch_num']['a_ch']) and \
+                if (a_ch <= self._get_num_a_ch()) and \
                    (a_ch >= 0):
                     off[a_ch] = float(self.ask('SOURCE{0}:VOLTAGE:OFFSET?'.format(a_ch)))
                 else:
@@ -850,7 +842,7 @@ class AWG7122C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(a_ch,
-                                                                  constraints['available_ch_num']['a_ch']),
+                                                                  self._get_num_a_ch()),
                             msgType='warning')
 
         return amp, off
@@ -889,7 +881,7 @@ class AWG7122C(Base, PulserInterface):
         #       for analog channels.
 
         for a_ch in amplitude:
-            if (a_ch <= constraints['available_ch_num']['a_ch']) and \
+            if (a_ch <= self._get_num_a_ch()) and \
                (a_ch >= 0):
 
                 if amplitude[a_ch] < constraints['a_ch_amplitude']['min'] or \
@@ -914,11 +906,11 @@ class AWG7122C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
-                                                 constraints['available_ch_num']['a_ch']),
+                                                 self._get_num_a_ch()),
                             msgType='warning')
 
         for a_ch in offset:
-            if (a_ch <= constraints['available_ch_num']['a_ch']) and \
+            if (a_ch <= self._get_num_a_ch()) and \
                (a_ch >= 0):
 
                 if offset[a_ch] < constraints['a_ch_offset']['min'] or \
@@ -941,7 +933,7 @@ class AWG7122C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(a_ch,
-                                                 constraints['available_ch_num']['a_ch']),
+                                                 self._get_num_a_ch()),
                             msgType='warning')
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
@@ -996,7 +988,7 @@ class AWG7122C(Base, PulserInterface):
         else:
 
             for d_ch in low:
-                if (d_ch <= constraints['available_ch_num']['d_ch']) and \
+                if (d_ch <= self._get_num_d_ch()) and \
                    (d_ch >= 0):
 
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
@@ -1012,12 +1004,12 @@ class AWG7122C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(d_ch,
-                                                                  constraints['available_ch_num']['d_ch']),
+                                                                  self._get_num_d_ch()),
                                 msgType='warning')
 
             for d_ch in high:
 
-                if (d_ch <= constraints['available_ch_num']['d_ch']) and \
+                if (d_ch <= self._get_num_d_ch()) and \
                    (d_ch >= 0):
 
                     # a fast way to map from a channel list [1, 2, 3, 4] to  a
@@ -1033,7 +1025,7 @@ class AWG7122C(Base, PulserInterface):
                                 'channels! A channel number "{0}" was passed, '
                                 'but only "{1}" channels are available!\n'
                                 'Command will be ignored.'.format(d_ch,
-                                                                  constraints['available_ch_num']['d_ch']),
+                                                                  self._get_num_d_ch()),
                                 msgType='warning')
 
         return low_val, high_val
@@ -1062,7 +1054,7 @@ class AWG7122C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for d_ch in low:
-            if (d_ch <= constraints['available_ch_num']['d_ch']) and \
+            if (d_ch <= self._get_num_d_ch()) and \
                (d_ch >=0):
 
                 if low[d_ch] < constraints['d_ch_low']['min'] or \
@@ -1090,11 +1082,11 @@ class AWG7122C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
-                                                 constraints['available_ch_num']['d_ch']),
+                                                 self._get_num_d_ch()),
                             msgType='warning')
 
         for d_ch in high:
-            if (d_ch <= constraints['available_ch_num']['d_ch']) and \
+            if (d_ch <= self._get_num_d_ch()) and \
                (d_ch >=0):
 
                 if high[d_ch] < constraints['d_ch_high']['min'] or \
@@ -1123,24 +1115,112 @@ class AWG7122C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(d_ch,
-                                                 constraints['available_ch_num']['d_ch']),
+                                                 self._get_num_d_ch()),
                             msgType='warning')
 
         return self.get_digital_level(low=list(low), high=list(high))
 
+    def get_active_channels(self, ch=[]):
+        """ Get the active channels of the pulse generator hardware.
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
+        @param list ch: optional, if specific analog or digital channels are
+                        needed to be asked without obtaining all the channels.
+
+        @return dict:  where keys denoting the channel number and items boolean
+                       expressions whether channel are active or not.
+
+        Example for an possible input (order is not important):
+            ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
+        then the output might look like
+            {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
+
+        If no parameters are passed to this method all channels will be asked
+        for their setting.
+        """
+
+        constraints = self.get_constraints()
+        active_a_ch = {}
+        active_d_ch = {}
+
+        if (a_ch == []) and (d_ch == []):
+
+            # because 0 = False and 1 = True
+            active_a_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
+            active_a_ch['a_ch2'] = bool(int(self.ask('OUTPUT2:STATE?')))
+
+            # For the AWG5000 series, the resolution of the DAC for the analog
+            # channel is fixed to 14bit. Therefore the digital channels are
+            # always active and cannot be deactivated. For other AWG devices the
+            # command
+            #   self.ask('SOURCE1:DAC:RESOLUTION?'))
+            # might be useful from which the active digital channels can be
+            # obtained.
+            active_d_ch['d_ch1'] = True
+            active_d_ch['d_ch2'] = True
+            active_d_ch['d_ch3'] = True
+            active_d_ch['d_ch4'] = True
+            #FIXME: The awg 7000 series has the opportuinity to run only in
+            #       analog mode by switching off the digital channels through
+            #       changing the DAC resolution. Adapt that possibility. Look
+            #       above in the comment.
+
+        else:
+            for ana_chan in a_ch:
+
+                if ana_chan <= self._get_num_a_ch() and \
+                   (ana_chan >= 0):
+
+                    # because 0 = False and 1 = True
+                    active_a_ch[ana_chan] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
+
+                else:
+                    self.logMsg('The device does not support that much analog '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(ana_chan,
+                                                                  self._get_num_a_ch()),
+                                msgType='warning')
+
+            for digi_chan in d_ch:
+
+                if digi_chan <= self._get_num_d_ch() and \
+                   (digi_chan >= 0):
+
+                    active_d_ch[digi_chan] = True
+                    #FIXME: The awg 7000 series has the opportuinity to run only in
+                    #       analog mode by switching off the digital channels through
+                    #       changing the DAC resolution. Adapt that possibility.
+                    #       Look above in the comment.
+
+                else:
+                    self.logMsg('The device does not support that much digital '
+                                'channels! A channel number "{0}" was passed, '
+                                'but only "{1}" channels are available!\n'
+                                'Command will be ignored.'.format(digi_chan,
+                                                                  self._get_num_d_ch()),
+                                msgType='warning')
+
+        return active_a_ch, active_d_ch
+
+
+    def set_active_channels(self, ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+        @param dict ch: dictionary with keys being the analog or digital
+                          string generic names for the channels with items being
+                          a boolean value.current_loaded_asset
 
-        @return int: error code (0:OK, -1:error)
+        @return dict: with the actual set values for active channels for analog
+                      and digital values.
+
+        If nothing is passed then the command will return an empty dict.
+
+        Note: After setting the active channels of the device, retrieve them
+              again for obtaining the actual set value(s) and use that
+              information for further processing.
 
         Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1.
 
@@ -1156,7 +1236,7 @@ class AWG7122C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         for ana_chan in a_ch:
-            if (ana_chan <= constraints['available_ch_num']['a_ch']) and \
+            if ana_chan <= self._get_num_a_ch() and \
                (ana_chan >= 0):
 
                 if a_ch[ana_chan]:
@@ -1172,7 +1252,7 @@ class AWG7122C(Base, PulserInterface):
                             'channels! A channel number "{0}" was passed, but '
                             'only "{1}" channels are available!\nCommand will '
                             'be ignored.'.format(ana_chan,
-                                                 constraints['available_ch_num']['a_ch']),
+                                                 self._get_num_a_ch()),
                             msgType='warning')
 
         if d_ch != {}:
@@ -1186,94 +1266,6 @@ class AWG7122C(Base, PulserInterface):
             #       adapt that possibility.
 
         return self.get_active_channels(a_ch=list(a_ch), d_ch=list(d_ch))
-
-
-    def get_active_channels(self, a_ch=[], d_ch=[]):
-        """ Get the active channels of the pulse generator hardware.
-
-        @param list a_ch: optional, if specific analog channels are needed to be
-                          asked without obtaining all the channels.
-        @param list d_ch: optional, if specific digital channels are needed to
-                          be asked without obtaining all the channels.
-
-        @return tuple of two dicts, where keys denoting the channel number and
-                items boolean expressions whether channel are active or not.
-                First dict contains the analog settings, second dict the digital
-                settings. If either digital or analog are not present, return
-                an empty dict.
-
-        Example for an possible input:
-            a_ch=[2, 1] d_ch=[2,1,5]
-        then the output might look like
-            {1: True, 2: False} {1: False, 2: True, 5: False}
-
-        If no parameters are passed to this method all channels will be asked
-        for their setting.
-        """
-
-        constraints = self.get_constraints()
-        active_a_ch = {}
-        active_d_ch = {}
-
-        if (a_ch == []) and (d_ch == []):
-
-            # because 0 = False and 1 = True
-            active_a_ch[1] = bool(int(self.ask('OUTPUT1:STATE?')))
-            active_a_ch[2] = bool(int(self.ask('OUTPUT2:STATE?')))
-
-            # For the AWG5000 series, the resolution of the DAC for the analog
-            # channel is fixed to 14bit. Therefore the digital channels are
-            # always active and cannot be deactivated. For other AWG devices the
-            # command
-            #   self.ask('SOURCE1:DAC:RESOLUTION?'))
-            # might be useful from which the active digital channels can be
-            # obtained.
-            active_d_ch[1] = True
-            active_d_ch[2] = True
-            active_d_ch[3] = True
-            active_d_ch[4] = True
-            #FIXME: The awg 7000 series has the opportuinity to run only in
-            #       analog mode by switching off the digital channels through
-            #       changing the DAC resolution. Adapt that possibility. Look
-            #       above in the comment.
-
-        else:
-            for ana_chan in a_ch:
-
-                if (ana_chan <= constraints['available_ch_num']['a_ch']) and \
-                   (ana_chan >= 0):
-
-                    # because 0 = False and 1 = True
-                    active_a_ch[ana_chan] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
-
-                else:
-                    self.logMsg('The device does not support that much analog '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(ana_chan,
-                                                                  constraints['available_ch_num']['a_ch']),
-                                msgType='warning')
-
-            for digi_chan in d_ch:
-
-                if (digi_chan <= constraints['available_ch_num']['d_ch']) and \
-                   (digi_chan >= 0):
-
-                    active_d_ch[digi_chan] = True
-                    #FIXME: The awg 7000 series has the opportuinity to run only in
-                    #       analog mode by switching off the digital channels through
-                    #       changing the DAC resolution. Adapt that possibility.
-                    #       Look above in the comment.
-
-                else:
-                    self.logMsg('The device does not support that much digital '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(digi_chan,
-                                                                  constraints['available_ch_num']['d_ch']),
-                                msgType='warning')
-
-        return active_a_ch, active_d_ch
 
 
     def get_uploaded_asset_names(self):
@@ -1627,3 +1619,23 @@ class AWG7122C(Base, PulserInterface):
         """
         filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.wfm')]
         return filename_list
+
+    def _get_num_a_ch(self):
+        """ Retrieve the number of available analog channels.
+
+        @return int: number of analog channels.
+        """
+        available_ch = self.get_constraints()['available_ch']
+
+        num_a_ch = len([entry for entry in available_ch if 'a_ch' in entry])
+        return num_a_ch
+
+    def _get_num_d_ch(self):
+        """ Retrieve the number of available digital channels.
+
+        @return int: number of digital channels.
+        """
+        available_ch = self.get_constraints()['available_ch']
+
+        num_d_ch = len([entry for entry in available_ch if 'd_ch' in entry])
+        return num_d_ch
