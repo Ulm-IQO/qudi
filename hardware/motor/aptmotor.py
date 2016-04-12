@@ -886,11 +886,6 @@ class APTOneAxisStage(APTStage):
         # pass the init to the inherited class APTStage and run its init:
         super().__init__(manager, name, config, **kwargs)
 
-        for label_axis in self._axis_dict:
-            self._axis_dict[label_axis].blCorr = 0.10    # set the backlach
-                                                    # correction since the
-                                                    # forward movement is
-                                                    # preciser than backwards
 
     def custom_activation(self, e):
         """ That activation method can be overwritten in the sub-classed file.
@@ -911,6 +906,11 @@ class APTOneAxisStage(APTStage):
         limits_dict = self.get_constraints()
 
         for label_axis in self._axis_dict:
+
+            self._axis_dict[label_axis].blCorr = 0.10    # set the backlach
+                                                    # correction since the
+                                                    # forward movement is
+                                                    # preciser than backwards
 
             # adapt the hardware controller to the proper unit set:
             if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
@@ -970,7 +970,7 @@ class APTOneAxisStage(APTStage):
 
         # set the constraints for the x axis:
         axis0 = {}
-        axis0['name']     = 'x'     # That name must coincide with the given
+        axis0['label']     = 'phi'     # That name must coincide with the given
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis0['unit']     = 'mm'    # the SI units, only possible mm or degree
@@ -1076,7 +1076,7 @@ class APTThreeAxisStage(APTStage):
         axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min']  = -65     # in mm
         axis0['pos_max']  = 65      # that is basically the traveling range
-        axis0['pos_step'] = 0.001   # in mm (a rather arbitrary number)
+        axis0['pos_step'] = 0.003   # in mm (a rather arbitrary number)
         axis0['vel_min']  = 0.1     # in mm/s
         axis0['vel_max']  = 2.0     # in mm/s
         axis0['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
@@ -1093,7 +1093,7 @@ class APTThreeAxisStage(APTStage):
         axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min']  = -65     # in mm
         axis1['pos_max']  = 65      # that is basically the traveling range
-        axis1['pos_step'] = 0.001   # in mm
+        axis1['pos_step'] = 0.003   # in mm
         axis1['vel_min']  = 0.1     # in mm/s
         axis1['vel_max']  = 2.0     # in mm/s
         axis1['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
@@ -1108,7 +1108,7 @@ class APTThreeAxisStage(APTStage):
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min'] = -65      # in mm
         axis2['pos_max'] = 65       # that is basically the traveling range
-        axis2['pos_step'] = 0.001   # in mm
+        axis2['pos_step'] = 0.003   # in mm
         axis2['vel_min'] = 0.1      # in mm/s
         axis2['vel_max'] = 2.0      # in mm/s
         axis2['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
@@ -1223,7 +1223,7 @@ class APTFourAxisStage(APTStage):
         axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min']  = -65     # in mm
         axis0['pos_max']  = 65      # that is basically the traveling range
-        axis0['pos_step'] = 0.001   # in mm (a rather arbitrary number)
+        axis0['pos_step'] = 0.003   # in mm (a rather arbitrary number)
         axis0['vel_min']  = 0.1     # in mm/s
         axis0['vel_max']  = 2.0     # in mm/s
         axis0['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
@@ -1240,7 +1240,7 @@ class APTFourAxisStage(APTStage):
         axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min']  = -65     # in mm
         axis1['pos_max']  = 65      # that is basically the traveling range
-        axis1['pos_step'] = 0.001   # in mm
+        axis1['pos_step'] = 0.003   # in mm
         axis1['vel_min']  = 0.1     # in mm/s
         axis1['vel_max']  = 2.0     # in mm/s
         axis1['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)
@@ -1255,7 +1255,7 @@ class APTFourAxisStage(APTStage):
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min'] = -65      # in mm
         axis2['pos_max'] = 65       # that is basically the traveling range
-        axis2['pos_step'] = 0.001   # in mm
+        axis2['pos_step'] = 0.003   # in mm
         axis2['vel_min'] = 0.1      # in mm/s
         axis2['vel_max'] = 2.0      # in mm/s
         axis2['vel_step'] = 0.001   # in mm/s (a rather arbitrary number)

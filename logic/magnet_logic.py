@@ -755,10 +755,13 @@ class MagnetLogic(GenericLogic):
 
 
         distance_init = 0.0
+        constraints = self.get_hardware_constraints()
+        minimal_distance = 0.0
         for axis_label in start_pos_dict:
             distance_init = (end_pos_dict[axis_label] - start_pos_dict[axis_label])**2
-
+            minimal_distance = minimal_distance + (constraints[axis_label]['pos_step'])**2
         distance_init = np.sqrt(distance_init)
+        minimal_distance = np.sqrt(minimal_distance)
 
         # take 97% distance tolerance:
         distance_tolerance = 0.03 * distance_init
@@ -777,7 +780,7 @@ class MagnetLogic(GenericLogic):
 
             self.sigPosChanged.emit(curr_pos)
 
-            if current_dist <= distance_tolerance or self._stop_measure:
+            if (current_dist <= distance_tolerance) or (current_dist <= minimal_distance) or self._stop_measure:
                 self.sigPosReached.emit()
                 break
 

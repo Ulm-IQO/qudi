@@ -177,7 +177,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         self._current_position = [0., 0., 0., 0.]
 
         self._max_counts = 3e7  # used as a default for expected maximum counts
-        self._RWTimeout = 5     # timeout for the Read or/and write process in s
+        self._RWTimeout = 10     # timeout for the Read or/and write process in s
 
         self._clock_frequency_default = 100             # in Hz
         self._scanner_clock_frequency_default = 100     # in Hz
@@ -1556,6 +1556,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         daq.DAQmxCfgImplicitTiming(
                 self._scanner_clock_daq_task,   # define task
                 daq.DAQmx_Val_FiniteSamps,      # only a limited number of counts
+                # 2*self._odmr_length)            # count twice for each voltage
                 self._odmr_length+1)            # count twice for each voltage
                                                 # +1 for starting this task.
                                                 # This first pulse will start
