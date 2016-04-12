@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015-2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 import numpy as np
@@ -206,7 +206,10 @@ class Pulse_Block_Ensemble(object):
             if block.use_as_tick:
                 start = block.measurement_tick_start
                 incr = block.measurement_tick_increment
-                arr = np.arange(start, start+(reps+1)*incr, incr)
+                if incr == 0:
+                    arr = np.array([])
+                else:
+                    arr = np.arange(start, start+(reps+1)*incr, incr)
                 self.measurement_ticks_list = np.append(self.measurement_ticks_list, arr)
 
         self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
@@ -539,11 +542,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         constraints = self.get_hardware_constraints()
 
-        # at least this configuration should always be available, if other
+        # at least one configuration should always be available, if other
         # configuration are available, they can be chosen and set from the GUI.
-        channel_config = constraints['channel_config']['conf1']
-        self.analog_channels =  channel_config.count('a_ch')
-        self.digital_channels =  channel_config.count('d_ch')
+        # Choose the first one in the config list:
+
+        channel_config = list(constraints['activation_config'])[0]
+        self.analog_channels =  len([entry for entry in channel_config if 'a_ch' in entry])
+        self.digital_channels =  len([entry for entry in channel_config if 'd_ch' in entry])
 
         # lists with the pp-voltages and offsets corresponding to the analog channels
         self.amplitude_list, self.offset_list = self._pulse_generator_device.get_analog_level()
@@ -567,7 +572,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             self.logMsg('No prepared Methods are chosen, therefore none will '
                         'be displayed!', msgType='status')
 
-        loaded_asset_name = self._pulse_generator_device.current_loaded_asset
+        loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         if loaded_asset_name is None:
             self.logMsg('No asset loaded on device channel', msgType='status')
             self.loaded_asset = None
@@ -602,7 +607,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # predefined definition dicts:
         float_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                      'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
+                     'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
 
         int_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2 ** 31 - 1),
                    'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': int}
@@ -767,49 +772,62 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return 0
 
 
-    def pulser_on(self, a_ch={}, d_ch={}):
-        """ Switch on the output of the Pulse Generator and activates the
-            appropriate channels.
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+    def pulser_on(self):
+        """ Switch on the output of the Pulse Generator.
 
         @return int: error code (0:OK, -1:error)
-
-        Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
-        to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        If nothing is passed, no channel activation is performed and the pulser
-        is just switched on.
         """
 
-        self._pulse_generator_device.set_active_channels(a_ch, d_ch)
         self._pulse_generator_device.pulser_on()
         return 0
 
 
-    def pulser_off(self, a_ch={}, d_ch={}):
-        """ Switch off the output of the Pulse Generator and deactivates the
-            appropriate channels.
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+    def pulser_off(self):
+        """ Switch off the output of the Pulse Generator.
 
         @return int: error code (0:OK, -1:error)
-
-        If nothing is passed, no channel deactivation is performed and the
-        pulser is just switched off.
         """
 
         self._pulse_generator_device.pulser_off()
-        self._pulse_generator_device.set_active_channels(a_ch, d_ch)
         return 0
+
+    def set_active_channels(self, ch={}):
+        """ Set the active channels for the pulse generator hardware.
+
+        @param dict ch: dictionary with keys being the string generic analog
+                          and digital names and items being its boolean value.
+
+        @return int: error code (0:OK, -1:error)
+
+        Example for possible input:
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1.
+
+        Additionally the variables which hold this values are updated in the
+        logic.
+        """
+
+        self._pulse_generator_device.set_active_channels(ch)
+        # count all channels that are set to True
+        # self.analog_channels = len([x for x in a_ch.values() if x == True])
+        # self.digital_channels = len([x for x in d_ch.values() if x == True])
+        return 0
+
+    def get_active_channels(self):
+        """ Get the currently active channels from the pulse generator hardware.
+
+        @return dict: dictionary with keys being the channel string generic
+                      names and items being boolean values.
+
+        Additionally the variables which hold this values are updated in the
+        logic.
+        """
+
+        active_channels = self._pulse_generator_device.get_active_channels()
+        # self.analog_channels = len([x for x in active_channels[0].values() if x == True])
+        # self.digital_channels = len([x for x in active_channels[1].values() if x == True])
+        return active_channels
 
     # FIXME: NO!!!
     # These methods are not needed, since other logic does not need to access
@@ -819,45 +837,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #
     # THESE METHODS WILL (AND SHOULD) BE REMOVED WITHIN THE REVIEW PROCESS.
     #
-    # def set_active_channels(self, a_ch={}, d_ch={}):
-    #     """ Set the active channels for the pulse generator hardware.
-    #
-    #     @param dict a_ch: dictionary with keys being the analog channel numbers
-    #                       and items being boolean values.
-    #     @param dict d_ch: dictionary with keys being the digital channel numbers
-    #                       and items being boolean values.
-    #
-    #     @return int: error code (0:OK, -1:error)
-    #
-    #     Example for possible input:
-    #         a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
-    #     to activate analog channel 2 digital channel 3 and 4 and to deactivate
-    #     digital channel 1.
-    #
-    #     Additionally the variables which hold this values are updated in the
-    #     logic.
-    #     """
-    #
-    #     self._pulse_generator_device.set_active_channels(a_ch, d_ch)
-    #     # count all channels that are set to True
-    #     # self.analog_channels = len([x for x in a_ch.values() if x == True])
-    #     # self.digital_channels = len([x for x in d_ch.values() if x == True])
-    #     return 0
-    #
-    # def get_active_channels(self):
-    #     """ Get the currently active channels from the pulse generator hardware.
-    #
-    #     @return dict tuple: (a_ch, d_ch) dictionary with keys being the channel numbers
-    #                         and items being boolean values.
-    #
-    #     Additionally the variables which hold this values are updated in the
-    #     logic.
-    #     """
-    #
-    #     active_channels = self._pulse_generator_device.get_active_channels()
-    #     # self.analog_channels = len([x for x in active_channels[0].values() if x == True])
-    #     # self.digital_channels = len([x for x in active_channels[1].values() if x == True])
-    #     return active_channels
     #
     # def load_file(self, load_dict={}):
     #     """ Load an already sampled PulseBlockEnsemble object to the device.
@@ -1170,90 +1149,90 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     # =========================================================================
     # Depricated method, will be remove soon.
-
-    def generate_block(self, name, block_matrix):
-        """
-        @param block_matrix: stuctured numpy array
-        Generates a Pulse_Block object out of the corresponding editor table/matrix.
-        """
-        # each line in the matrix corresponds to one Pulse_Block_Element
-        # Here these elements are created
-        analog_func = [None]*self.analog_channels
-        digital_flags = [None]*self.digital_channels
-
-        # make an array where the length of each Pulse_Block_Element will be
-        # converted to number of bins:
-        lengths = np.array(
-            [np.round( x[self.cfg_param_pbe['length']]/(1e9/self.sample_rate))
-            for x in block_matrix ])
-
-        # make an array where the increment value of each Pulse_Block_Element
-        #  will be converted to number of bins:
-        increments = np.array(
-            [ np.round( x[self.cfg_param_pbe['increment']]/(1e9/self.sample_rate))
-            for x in block_matrix])
-
-        for chnl_num in range(self.analog_channels):
-            # Save all function names for channel number "chnl_num" in one
-            # column of "analog_func". Also convert them to strings
-            analog_func[chnl_num] = np.array(
-                [ x[self.cfg_param_pbe['function_'+str(chnl_num)]].decode('utf-8')
-                for x in block_matrix]  )
-
-        # convert to numpy ndarray
-        analog_func = np.array(analog_func)
-
-
-        for chnl_num in range(self.digital_channels):
-            # Save the marker flag for channel number "chnl_num" in one column
-            # of "digital_flags". Also convert them to bools
-            digital_flags[chnl_num] = np.array(
-                [bool(x[self.cfg_param_pbe['digital_'+str(chnl_num)]])
-                for x in block_matrix ])
-
-        # convert to numpy ndarray
-        digital_flags = np.array(digital_flags)
-
-        block_element_list = [None]*len(block_matrix)
-
-        for elem_num in range(len(block_matrix)):
-            elem_func = analog_func[:, elem_num]
-            elem_marker = digital_flags[:, elem_num]
-            elem_incr = increments[elem_num]
-            elem_length = lengths[elem_num]
-            elem_parameters = [None]*self.analog_channels
-
-            # create parameter dictionarys for each channel
-            for chnl_num, func in enumerate(elem_func):
-                param_dict = {}
-                for param in self.func_config[func]:
-
-                    if 'frequency' in param:
-                        param_dict[param] = 1e6*block_matrix[elem_num][self.cfg_param_pbe[param+'_'+str(chnl_num)]]
-                    else:
-                        param_dict[param] = block_matrix[elem_num][self.cfg_param_pbe[param+'_'+str(chnl_num)]]
-                elem_parameters[chnl_num] = param_dict
-
-            block_element = Pulse_Block_Element(
-                                init_length_bins=elem_length,
-                                analog_channels=len(analog_func),
-                                digital_channels=len(digital_flags),
-                                increment_bins=elem_incr,
-                                pulse_function=elem_func,
-                                marker_active=elem_marker,
-                                parameters=elem_parameters)
-
-            block_element_list[elem_num] = block_element
-
-        # generate the Pulse_Block() object
-        block = Pulse_Block(name, block_element_list)
-        # save block to a file
-        self.save_block(name, block)
-        # set current block
-        self.current_block = block
-        return
-
-    # =========================================================================
+    #
+    # def generate_block(self, name, block_matrix):
+    #     """
+    #     @param block_matrix: stuctured numpy array
+    #     Generates a Pulse_Block object out of the corresponding editor table/matrix.
+    #     """
+    #     # each line in the matrix corresponds to one Pulse_Block_Element
+    #     # Here these elements are created
+    #     analog_func = [None]*self.analog_channels
+    #     digital_flags = [None]*self.digital_channels
+    #
+    #     # make an array where the length of each Pulse_Block_Element will be
+    #     # converted to number of bins:
+    #     lengths = np.array(
+    #         [np.round( x[self.cfg_param_pbe['length']]/(1e9/self.sample_rate))
+    #         for x in block_matrix ])
+    #
+    #     # make an array where the increment value of each Pulse_Block_Element
+    #     #  will be converted to number of bins:
+    #     increments = np.array(
+    #         [ np.round( x[self.cfg_param_pbe['increment']]/(1e9/self.sample_rate))
+    #         for x in block_matrix])
+    #
+    #     for chnl_num in range(self.analog_channels):
+    #         # Save all function names for channel number "chnl_num" in one
+    #         # column of "analog_func". Also convert them to strings
+    #         analog_func[chnl_num] = np.array(
+    #             [ x[self.cfg_param_pbe['function_'+str(chnl_num)]].decode('utf-8')
+    #             for x in block_matrix]  )
+    #
+    #     # convert to numpy ndarray
+    #     analog_func = np.array(analog_func)
+    #
+    #
+    #     for chnl_num in range(self.digital_channels):
+    #         # Save the marker flag for channel number "chnl_num" in one column
+    #         # of "digital_flags". Also convert them to bools
+    #         digital_flags[chnl_num] = np.array(
+    #             [bool(x[self.cfg_param_pbe['digital_'+str(chnl_num)]])
+    #             for x in block_matrix ])
+    #
+    #     # convert to numpy ndarray
+    #     digital_flags = np.array(digital_flags)
+    #
+    #     block_element_list = [None]*len(block_matrix)
+    #
+    #     for elem_num in range(len(block_matrix)):
+    #         elem_func = analog_func[:, elem_num]
+    #         elem_marker = digital_flags[:, elem_num]
+    #         elem_incr = increments[elem_num]
+    #         elem_length = lengths[elem_num]
+    #         elem_parameters = [None]*self.analog_channels
+    #
+    #         # create parameter dictionarys for each channel
+    #         for chnl_num, func in enumerate(elem_func):
+    #             param_dict = {}
+    #             for param in self.func_config[func]:
+    #
+    #                 if 'frequency' in param:
+    #                     param_dict[param] = 1e6*block_matrix[elem_num][self.cfg_param_pbe[param+'_'+str(chnl_num)]]
+    #                 else:
+    #                     param_dict[param] = block_matrix[elem_num][self.cfg_param_pbe[param+'_'+str(chnl_num)]]
+    #             elem_parameters[chnl_num] = param_dict
+    #
+    #         block_element = Pulse_Block_Element(
+    #                             init_length_bins=elem_length,
+    #                             analog_channels=len(analog_func),
+    #                             digital_channels=len(digital_flags),
+    #                             increment_bins=elem_incr,
+    #                             pulse_function=elem_func,
+    #                             marker_active=elem_marker,
+    #                             parameters=elem_parameters)
+    #
+    #         block_element_list[elem_num] = block_element
+    #
+    #     # generate the Pulse_Block() object
+    #     block = Pulse_Block(name, block_element_list)
+    #     # save block to a file
+    #     self.save_block(name, block)
+    #     # set current block
+    #     self.current_block = block
+    #     return
+    #
+    # # =========================================================================
 
     def generate_pulse_block_object(self, pb_name, block_matrix, laser_channel):
         """ Generates from an given table block_matrix a block_object.
@@ -1262,7 +1241,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param block_matrix: structured np.array, matrix, in which the
                              construction plan for Pulse_Block_Element objects
                              are displayed as rows.
-        @param laser_channel: a strin specifying the laser channel
+        @param laser_channel: a string specifying the laser channel
 
         Three internal dict where used, to get all the needed information about
         how parameters, functions are defined (_add_pbe_param,func_config and

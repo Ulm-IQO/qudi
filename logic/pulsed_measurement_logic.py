@@ -15,7 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015-2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -118,12 +119,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.raw_data = np.zeros((10, 20))
         self.raw_laser_pulse=False
 
-        # these parameters have to be set if specific channel activation or
-        # deactivation is needed.
-        self.active_analog = {}
-        self.active_digital = {}
-
-
     def activation(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -144,7 +139,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self._optimizer_logic = self.connector['in']['optimizer1']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
 
-        print("Confocal Logic is", self._confocal_logic)
         self._pulse_generator_device = self.connector['in']['pulsegenerator']['object']
         self._mycrowave_source_device = self.connector['in']['microwave']['object']
 
@@ -153,9 +147,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self._initialize_measuring_error_plot()
-
-        pulser_constr = self._pulse_generator_device.get_constraints()
-
 
     def deactivation(self, e):
         with self.threadlock:
@@ -605,21 +596,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
     def pulse_generator_on(self):
-        """Switching on the pulse generator.
-        """
+        """Switching on the pulse generator. """
 
-        self._pulse_generator_device.set_active_channels(self.active_analog, self.active_digital)
         self._pulse_generator_device.pulser_on()
         return 0
 
 
     def pulse_generator_off(self):
-        """Switching off the pulse generator.
-        """
+        """Switching off the pulse generator. """
 
         self._pulse_generator_device.pulser_off()
-        self._pulse_generator_device.set_active_channels(self.active_analog, self.active_digital)
-        # time.sleep(0.1)
         return 0
 
 
