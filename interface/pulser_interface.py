@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
-Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015-2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 
@@ -42,10 +42,14 @@ class PulserInterface():
         total_length_bins, channel_config, ...) related to the pulse generator
         hardware to the caller.
         The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method). No other keys should be invented. If you
-        are not sure about the meaning, look in other hardware files to get an
-        impression. If still additional constraints are needed, then they have
-        to be add to all files containing this interface.
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
         The items of the keys are again dictionaries which have the generic
         dictionary form:
             {'min': <value>,
@@ -53,13 +57,14 @@ class PulserInterface():
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'channel_config', 'available channels', 'available_ch_num'
-        'activation_map' and 'independent_ch' differ.
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
         dict. Note that there is a difference between float input (0.0) and
         integer input (0).
+
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
 
         # Example for configuration with default values:
@@ -95,55 +100,34 @@ class PulserInterface():
         constraints['subsequence_num'] = {'min': 0, 'max': 0,
                                           'step': 0, 'unit': '#'}
 
-        # For the channel configuration, three information has to be set!
-        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
-        #   by yourself.
-        #   Second is whether the specified channel is an analog or digital
-        #   channel
-        #   Third is the channel number, which is assigned to that channel name.
-        #
-        # So in summary:
-        #       configuration: channel-name, channel-type, channelnumber
-        # That configuration takes place here. A Setting for an AWG type
-        # configuration, where 2 analog and 4 digital channels are available.
+        # If sequencer mode is enable than sequence_param should be not just an
+        # empty dictionary.
+        sequence_param = OrderedDict()
+        constraints['sequence_param'] = sequence_param
+
+        # State here all available channels and here you have the possibility to
+        # assign to each generic channel name an individual channel name:
+
         available_ch = OrderedDict()
-        available_ch['ACH1'] = {'a_ch': 1}
-        available_ch['DCH1'] = {'d_ch': 1}
-        available_ch['DCH2'] = {'d_ch': 2}
-        available_ch['ACH2'] = {'a_ch': 2}
-        available_ch['DCH3'] = {'d_ch': 3}
-        available_ch['DCH4'] = {'d_ch': 4}
+        available_ch['a_ch1'] = 'ACH1'
+        available_ch['d_ch1'] = 'DCH1'
+        available_ch['d_ch2'] = 'DCH2'
+        available_ch['a_ch2'] = 'ACH2'
+        available_ch['d_ch3'] = 'DCH3'
+        available_ch['d_ch4'] = 'DCH4'
         constraints['available_ch'] = available_ch
+        # from this you will be able to count the number of available analog and
+        # digital channels
 
-        # State all possible DIFFERENT configurations, which the pulsing device
-        # may have. That concerns also the display of the chosen channels.
-        # Channel configuration for this device, use OrderedDictionaries to
-        # keep an order in that dictionary. That is for now the easiest way to
-        # determine the channel configuration:
-        channel_config = OrderedDict()
-        channel_config['conf1'] = ['a_ch', 'd_ch', 'd_ch']
-        channel_config['conf2'] = ['a_ch', 'd_ch', 'd_ch', 'a_ch', 'd_ch', 'd_ch']
-        constraints['channel_config'] = channel_config
+        # the name a_ch<num> and d_ch<num> are generic names, which describe
+        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
+        # are stated, where only the generic names should be used.
 
-        # Now you can choose, how many channel activation pattern exists. You
-        # can only use the names, declared in the constraint 'available_ch'!
-        activation_map = OrderedDict()
-        activation_map['map1'] = ['ACH1', 'DCH1', 'DCH2', 'ACH2', 'DCH3', 'DCH4']
-        # Usage of channel 1 only:
-        activation_map['map2'] = ['ACH1', 'DCH1', 'DCH2']
-        # Usage of channel 2 only:
-        activation_map['map3'] = ['ACH2', 'DCH3', 'DCH4']
-        constraints['activation_map'] = activation_map
-
-        # this information seems to be almost redundant but it can be that no
-        # channel configuration exists, where not all available channels are
-        # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 2, 'd_ch': 4}
-
-        # number of independent channels on which you can load or upload
-        # separately the created files. It does not matter how the channels
-        # are looking like.
-        constraints['independent_ch'] = 2
+        activation_config = OrderedDict()
+        activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
+        activation_config['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        constraints['activation_config'] = activation_config
         """
 
         raise InterfaceImplementationError('PulserInterface>get_constraints')
@@ -201,6 +185,15 @@ class PulserInterface():
         (PulseBlaster, FPGA).
         """
         raise InterfaceImplementationError('PulserInterface>load_asset')
+        return -1
+
+    def get_loaded_asset(self):
+        """ Retrieve the currently loaded asset name of the device.
+
+        @return str: Name of the current asset, that can be either a filename
+                     a waveform, a sequence ect.
+        """
+        raise InterfaceImplementationError('PulserInterface>get_loaded_asset')
         return -1
 
     def clear_all(self):
@@ -400,51 +393,44 @@ class PulserInterface():
         raise InterfaceImplementationError('PulserInterface>set_a_ch_offset')
         return -1
 
-    def get_active_channels(self, a_ch=[], d_ch=[]):
+    def get_active_channels(self, ch=[]):
         """ Get the active channels of the pulse generator hardware.
 
-        @param list a_ch: optional, if specific analog channels are needed to be
-                          asked without obtaining all the channels.
-        @param list d_ch: optional, if specific digital channels are needed to
-                          be asked without obtaining all the channels.
+        @param list ch: optional, if specific analog or digital channels are
+                        needed to be asked without obtaining all the channels.
 
-        @return (dict, dict): tuple of two dicts, where keys denoting the
-                              channel number and items boolean expressions
-                              whether channel are active or not. First dict
-                              contains the analog settings, second dict the
-                              digital settings. If either digital or analog are
-                              not present, return an empty dict.
+        @return dict:  where keys denoting the channel number and items boolean
+                       expressions whether channel are active or not.
 
-        Example for an possible input:
-            a_ch=[2, 1] d_ch=[2,1,5]
+        Example for an possible input (order is not important):
+            ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
         then the output might look like
-            {1: True, 2: False} {1: False, 2: True, 5: False}
+            {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
 
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
         raise InterfaceImplementationError('PulserInterface>get_active_channels')
-        return [-1], [-1]
+        return [-1]
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
+    def set_active_channels(self, ch={}):
         """ Set the active channels for the pulse generator hardware.
 
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
+        @param dict ch: dictionary with keys being the analog or digital
+                          string generic names for the channels with items being
+                          a boolean value.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                active channels for analog (a_ch) and digital (d_ch) values.
+        @return dict: with the actual set values for active channels for analog
+                      and digital values.
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return an empty dict.
 
         Note: After setting the active channels of the device, retrieve them
               again for obtaining the actual set value(s) and use that
               information for further processing.
 
         Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1.
 
