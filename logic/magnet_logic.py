@@ -22,6 +22,11 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 from PyQt4 import QtCore
 import numpy as np
 import time
+import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
+import datetime
+from collections import OrderedDict
 
 from logic.generic_logic import GenericLogic
 
@@ -35,7 +40,11 @@ class MagnetLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = {'magnetstage': 'MagnetInterface'}
+    _in = {'magnetstage': 'MagnetInterface',
+           'optimizerlogic': 'OptimizerLogic',
+           'counterlogic': 'CounterLogic',
+           'odmrlogic': 'ODMRLogic',
+           'savelogic': 'SaveLogic'}
     _out = {'magnetlogic': 'MagnetLogic'}
 
     # General Signals, used everywhere:
@@ -48,9 +57,9 @@ class MagnetLogic(GenericLogic):
     sigMeasurementStopped = QtCore.Signal()
     sigMeasurementFinished = QtCore.Signal()
 
+    # Signals for making the move_abs, move_rel and abort independent:
     sigMoveAbs = QtCore.Signal(dict)
     sigMoveRel = QtCore.Signal(dict)
-
     sigAbort = QtCore.Signal()
 
     # Alignment Signals, remember do not touch or connect from outer logic or
@@ -59,6 +68,16 @@ class MagnetLogic(GenericLogic):
     _sigContinuousAlignmentNext = QtCore.Signal()
     _sigInitializeMeasPos = QtCore.Signal(bool) # signal to go to the initial measurement position
     sigPosReached = QtCore.Signal()
+
+    # signals if new data are writen to the data arrays (during measurement):
+    sig1DMatrixChanged = QtCore.Signal()
+    sig2DMatrixChanged = QtCore.Signal()
+    sig3DMatrixChanged = QtCore.Signal()
+
+    # signals if the axis for the alignment are changed/renewed (before a measurement):
+    sig1DAxisChanged = QtCore.Signal()
+    sig2DAxisChanged = QtCore.Signal()
+    sig3DAxisChanged = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -78,6 +97,32 @@ class MagnetLogic(GenericLogic):
         self.curr_2d_pathway_mode = 'snake-wise'    # choose that as default
         self._checktime = 0.5 # in seconds
 
+
+        # The data matrices and arrays. For the 1D case, self._axis0_data
+        # is the actual data trace. Create also arrays for the additional
+        # data, which was measured during the alignment.
+
+        # for each axis, make a default value:
+        self._1D_axis0_data = np.zeros(2)
+
+        self._2D_axis0_data = np.zeros(2)
+        self._2D_axis1_data = np.zeros(2)
+
+        self._3D_axis0_data = np.zeros(2)
+        self._3D_axis1_data = np.zeros(2)
+        self._3D_axis2_data = np.zeros(2)
+
+        self._1D_add_data_matrix = np.zeros(shape=np.shape(self._1D_axis0_data), dtype=object)
+
+        self._2D_data_matrix = np.zeros((2, 2))
+        self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
+
+        self._3D_data_matrix = np.zeros((2, 2, 2))
+        self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
+
+
+
+
     def activation(self, e):
         """ Definition and initialisation of the GUI.
 
@@ -91,6 +136,14 @@ class MagnetLogic(GenericLogic):
         """
 
         self._magnet_device = self.connector['in']['magnetstage']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
+
+        #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
+        #       needed methods via the TaskRunner!
+        self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
+        self._counter_logic = self.connector['in']['counterlogic']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -103,6 +156,8 @@ class MagnetLogic(GenericLogic):
         # signal connect for alignment:
 
         self._sigInitializeMeasPos.connect(self._move_to_curr_pathway_index)
+        self._sigStepwiseAlignmentNext.connect(self._stepwise_loop_body,
+                                               QtCore.Qt.QueuedConnection)
 
 
     def deactivation(self, e):
@@ -174,6 +229,16 @@ class MagnetLogic(GenericLogic):
         # self._magnet_device.abort()
 
 
+    def set_velocity(self, param_dict=None):
+        """ Write new value for velocity.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-velocity-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+        """
+        self._magnet_device.set_velocity(param_dict)
 
 
 
@@ -191,8 +256,9 @@ class MagnetLogic(GenericLogic):
         """
         pass
 
-    def _create_2d_pathway(self, axis0_name, axis0_range, axis0_step, axis0_vel,
-                                 axis1_name, axis1_range, axis1_step, axis1_vel):
+    def _create_2d_pathway(self, axis0_name, axis0_range, axis0_step,
+                           axis1_name, axis1_range, axis1_step, init_pos,
+                           axis0_vel=None, axis1_vel=None):
         """ Create a path along with the magnet should move.
 
         @param str axis0_name:
@@ -230,8 +296,8 @@ class MagnetLogic(GenericLogic):
         """
 
         # calculate number of steps (those are NOT the number of points!)
-        axis0_num_of_steps = axis0_range//axis0_step
-        axis1_num_of_steps = axis1_range//axis1_step
+        axis0_num_of_steps = int(axis0_range//axis0_step)
+        axis1_num_of_steps = int(axis1_range//axis1_step)
 
         # make an array of movement steps
         axis0_steparray = [axis0_step] * (axis0_num_of_steps)
@@ -245,26 +311,75 @@ class MagnetLogic(GenericLogic):
                         'is not implemented yet!\nReturn an empty '
                         'patharray.'.format(self.curr_2d_pathway_mode),
                         msgType='error')
-            return []
+            return [], []
 
         elif self.curr_2d_pathway_mode == 'spiral-out':
             self.logMsg('The pathway creation method "{0}" through the matrix '
                         'is not implemented yet!\nReturn an empty '
                         'patharray.'.format(self.curr_2d_pathway_mode),
                         msgType='error')
-            return []
+            return [], []
 
         elif self.curr_2d_pathway_mode == 'diagonal-snake-wise':
             self.logMsg('The pathway creation method "{0}" through the matrix '
                         'is not implemented yet!\nReturn an empty '
                         'patharray.'.format(self.current_2d_pathway_mode),
                         msgType='error')
-            return []
+            return [], []
+
+        elif self.curr_2d_pathway_mode == 'selected-points':
+            self.logMsg('The pathway creation method "{0}" through the matrix '
+                        'is not implemented yet!\nReturn an empty '
+                        'patharray.'.format(self.current_2d_pathway_mode),
+                        msgType='error')
+            return [], []
+
         # choose the snake-wise as default for now.
-        #FIXME: make a handle of the situation if no method matches!
         else:
 
             # create a snake-wise stepping procedure through the matrix:
+            axis0_pos = round(init_pos[axis0_name] - axis0_range/2, 7)
+            axis1_pos = round(init_pos[axis1_name] - axis1_range/2, 7)
+
+            # append again so that the for loop later will run once again
+            # through the axis0 array but the last value of axis1_steparray will
+            # not be performed.
+            axis1_steparray.append(axis1_num_of_steps)
+
+            # step_config is the dict containing the commands for one pathway
+            # entry. Move at first to start position:
+            step_config = dict()
+
+            if axis0_vel is None:
+                step_config[axis0_name] = {'move_abs': axis0_pos}
+            else:
+                step_config[axis0_name] = {'move_abs': axis0_pos, 'move_vel': axis0_vel}
+
+            if axis1_vel is None:
+                step_config[axis1_name] = {'move_abs': axis1_pos}
+            else:
+                step_config[axis1_name] = {'move_abs': axis1_pos, 'move_vel': axis1_vel}
+
+            pathway.append(step_config)
+
+            path_index = 0
+
+            # these indices should be used to facilitate the mapping to a 2D
+            # array, since the
+            axis0_index = 0
+            axis1_index = 0
+
+            # that is a map to transform a pathway index value back to an
+            # absolute position and index. That will be important for saving the
+            # data corresponding to a certain path_index value.
+            back_map = dict()
+            back_map[path_index] = {axis0_name: axis0_pos,
+                                    axis1_name: axis1_pos,
+                                    'index': (axis0_index, axis1_index)}
+
+            path_index += 1
+            # axis0_index += 1
+
             go_pos_dir = True
             for step_in_axis1 in axis1_steparray:
 
@@ -276,33 +391,90 @@ class MagnetLogic(GenericLogic):
                     direction = -1
 
                 for step_in_axis0 in axis0_steparray:
+
+                    axis0_index += direction
                     # make move along axis0:
                     step_config = dict()
-                    step_config[axis0_name] = {'move_rel': direction*step_in_axis0}
+
+                    # relative movement:
+                    # step_config[axis0_name] = {'move_rel': direction*step_in_axis0}
+
+                    # absolute movement:
+                    axis0_pos =round( axis0_pos + direction*step_in_axis0, 7)
+
+                    if axis0_vel is None:
+                        step_config[axis0_name] = {'move_abs': axis0_pos}
+                    else:
+                        step_config[axis0_name] = {'move_abs': axis0_pos,
+                                                   'move_vel': axis0_vel}
+
+
+                    # append to the pathway
                     pathway.append(step_config)
+                    back_map[path_index] = {axis0_name: axis0_pos,
+                                            axis1_name: axis1_pos,
+                                            'index': (axis0_index, axis1_index)}
+                    path_index += 1
+
+                if (axis1_index+1) >= len(axis1_steparray):
+                    break
 
                 # make a move along axis1:
                 step_config = dict()
-                step_config[axis1_name] = {'move_rel' : step_in_axis1}
-                pathway.append(step_config)
 
-        return pathway
+                # relative movement:
+                # step_config[axis1_name] = {'move_rel' : step_in_axis1}
+
+                # absolute movement:
+                axis1_pos = round(axis1_pos + step_in_axis1, 7)
+                if axis1_vel is None:
+                    step_config[axis1_name] = {'move_abs': axis1_pos}
+                else:
+                    step_config[axis1_name] = {'move_abs': axis1_pos, 'move_vel': axis1_vel}
+
+                pathway.append(step_config)
+                axis1_index += 1
+                back_map[path_index] = {axis0_name: axis0_pos,
+                                        axis1_name: axis1_pos,
+                                        'index': (axis0_index, axis1_index)}
+                path_index += 1
+
+
+
+        return pathway, back_map
+
 
     def _create_2d_cont_pathway(self, pathway):
 
         # go through the passed 1D path and reduce the whole movement just to
         # corner points
 
-        pathway_cont =  dict()
+        pathway_cont = dict()
 
         return pathway_cont
 
-    def _prepare_2d_graph(self, axis0_range, axis0_step,
-                                axis1_range, axis1_step):
-
+    def _prepare_2d_graph(self, axis0_start, axis0_range, axis0_step,
+                          axis1_start, axis1_range, axis1_step):
         # set up a matrix where measurement points are save to
+        # general method to prepare 2d images, and their axes.
 
-        return
+        # that is for the matrix image. +1 because number of points and not
+        # number of steps are needed:
+        num_points_axis0 = (axis0_range//axis0_step) + 1
+        num_points_axis1 = (axis1_range//axis1_step) + 1
+        matrix = np.zeros((num_points_axis0, num_points_axis1))
+
+        # data axis0:
+
+        data_axis0 = np.arange(axis0_start, axis0_start + ((axis0_range//axis0_step)+1)*axis0_step, axis0_step)
+
+        # data axis1:
+        data_axis1 = np.arange(axis1_start, axis1_start + ((axis1_range//axis1_step)+1)*axis1_step, axis1_step)
+
+        return matrix, data_axis0, data_axis1
+
+
+
 
     def _prepare_1d_graph(self, axis_range, axis_step):
         pass
@@ -323,7 +495,6 @@ class MagnetLogic(GenericLogic):
             # to perform the '_do_measure_after_stop' routine from the beginning
             # (which means e.g. an optimize pos)
 
-            self._first_meas_point = True
             self._prepare_1d_graph()
 
             self._pathway = self._create_1d_pathway()
@@ -336,31 +507,29 @@ class MagnetLogic(GenericLogic):
                 # create from the path_points the continoues points
                 self._pathway_cont = self._create_1d_cont_pathway(self._pathway)
 
-
-
-
-        # start the proper loop for that:
-
-        if stepwise_meas:
-            # start the Stepwise alignment loop body:
-            self._sigStepwiseAlignmentNext.emit()
         else:
-            # start the Stepwise alignment loop body:
-            self._sigContinuousAlignmentNext.emit()
+            # tell all the connected instances that measurement is continuing:
+            self.sigMeasurementContinued.emit()
+
+        # run at first the _move_to_curr_pathway_index method to go to the
+        # index position:
+        self._sigInitializeMeasPos.emit(stepwise_meas)
 
 
 
     def start_2d_alignment(self, axis0_name, axis0_range, axis0_step,
                                  axis1_name, axis1_range, axis1_step,
                                  axis0_vel=None, axis1_vel=None,
-                                 stepwise_meas=True, continue_meas=False, ):
+                                 stepwise_meas=True, continue_meas=False):
 
-        # before starting the measurement you should convience yourself that the
+        # before starting the measurement you should convince yourself that the
         # passed traveling range is possible. Otherwise the measurement will be
         # aborted and an error is raised.
+        #
         # actual measurement routine, which is called to start the measurement
 
-
+        self._start_measurement_time = datetime.datetime.now()
+        self._stop_measurement_time = None
 
         self._stop_measure = False
 
@@ -373,20 +542,28 @@ class MagnetLogic(GenericLogic):
 
             self.sigMeasurementStarted.emit()
 
-            # to perform the '_do_measure_after_stop' routine from the beginning
-            # (which means e.g. an optimize pos)
-            self._first_meas_point = True
-
             # the index, which run through the _pathway list and selects the
             # current measurement point
             self._pathway_index = 0
 
-            self._prepare_2d_graph(axis0_range, axis0_step, axis1_range, axis1_step)
+            self._pathway, self._backmap = self._create_2d_pathway(axis0_name, axis0_range,
+                                                                   axis0_step, axis1_name, axis1_range,
+                                                                   axis1_step, self._saved_pos_before_align,
+                                                                   axis0_vel, axis1_vel)
 
-            self._pathway = self._create_2d_pathway(axis0_name, axis0_range,
-                                                    axis0_step, axis0_vel,
-                                                    axis1_name, axis1_range,
-                                                    axis1_step, axis1_vel)
+            # determine the start point, either relative or absolute!
+            # Now the absolute position will be used:
+            axis0_start = self._backmap[0][axis0_name]
+            axis1_start = self._backmap[0][axis1_name]
+
+            self._2D_data_matrix, \
+            self._2D_axis0_data,\
+            self._2D_axis1_data = self._prepare_2d_graph(axis0_start, axis0_range,
+                                                      axis0_step, axis1_start,
+                                                      axis1_range, axis1_step)
+
+            self._2D_add_data_matrix = np.zeros(shape=np.shape(self._2D_data_matrix), dtype=object)
+
 
             if stepwise_meas:
                 # just make it to an empty dict
@@ -396,17 +573,22 @@ class MagnetLogic(GenericLogic):
                 # create from the path_points the continuous points
                 self._pathway_cont = self._create_2d_cont_pathway(self._pathway)
 
+        # TODO: include here another mode, where a new defined pathway can be
+        #       created, along which the measurement should be repeated.
+        #       You have to follow the procedure:
+        #           - Create for continuing the measurement just a proper
+        #             pathway and a proper back_map in self._create_2d_pathway,
+        #       => Then the whole measurement can be just run with the new
+        #          pathway and back_map, and you do not have to adjust other
+        #          things.
+
         else:
             # tell all the connected instances that measurement is continuing:
             self.sigMeasurementContinued.emit()
 
-
         # run at first the _move_to_curr_pathway_index method to go to the
         # index position:
         self._sigInitializeMeasPos.emit(stepwise_meas)
-
-
-
 
 
     def _move_to_curr_pathway_index(self, stepwise_meas):
@@ -414,8 +596,25 @@ class MagnetLogic(GenericLogic):
         # move to the passed pathway index in the list _pathway and start the
         # proper loop for that:
 
+        # move absolute to the index position, which is currently given
+
+        move_dict_vel, \
+        move_dict_abs, \
+        move_dict_rel = self._move_to_index(self._pathway_index, self._pathway)
+
+        self.set_velocity(move_dict_vel)
+        self.move_abs(move_dict_abs)
+        self.move_rel(move_dict_rel)
+
         # this function will return to this function if position is reached:
-        self._check_position_reached_loop()
+        start_pos = self._saved_pos_before_align
+        end_pos = dict()
+        for axis_name in self._saved_pos_before_align:
+            end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
+
+        self._check_position_reached_loop(start_pos_dict=start_pos,
+                                          end_pos_dict=end_pos)
+
 
         if stepwise_meas:
             # start the Stepwise alignment loop body self._stepwise_loop_body:
@@ -436,10 +635,10 @@ class MagnetLogic(GenericLogic):
         """
 
 
-        if self._first_meas_point:
+        if self._stop_measure:
+            return
 
-            self._do_postmeasurement_proc()
-            self._first_meas_point = False
+        self._do_premeasurement_proc()
 
 
         # perform here one of the chosen alignment measurements
@@ -448,17 +647,34 @@ class MagnetLogic(GenericLogic):
         # set the measurement point to the proper array and the proper position:
         # save also all additional measurement information, which have been
         # done during the measurement in add_meas_val.
-        self._set_meas_point(meas_val, add_meas_val, self._pathway_index, self._pathway)
+        self._set_meas_point(meas_val, add_meas_val, self._pathway_index, self._backmap)
 
         # increase the index
         self._pathway_index += 1
 
 
-        if (self._pathway_index-1) < len(self._pathway):
+        if (self._pathway_index) < len(self._pathway):
 
+            #
             self._do_postmeasurement_proc()
+            move_dict_vel, \
+            move_dict_abs, \
+            move_dict_rel = self._move_to_index(self._pathway_index, self._pathway)
 
-            self._move_abs_to_index(self._pathway_index, self._pathway)
+            self.set_velocity(move_dict_vel)
+            self.move_abs(move_dict_abs)
+            self.move_rel(move_dict_rel)
+
+
+            # this function will return to this function if position is reached:
+            start_pos = dict()
+            end_pos = dict()
+            for axis_name in self._saved_pos_before_align:
+                start_pos[axis_name] = self._backmap[self._pathway_index-1][axis_name]
+                end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
+
+            self._check_position_reached_loop(start_pos_dict=start_pos,
+                                              end_pos_dict=end_pos)
 
             # rerun this loop again
             self._sigStepwiseAlignmentNext.emit()
@@ -482,13 +698,9 @@ class MagnetLogic(GenericLogic):
 
 
 
-    def stop_2d_measurement(self):
-        """ Stops the 2d measurement by setting the measurement flag.
-
-        That method should be called, if measurement has to be stopped.
+    def stop_alignment(self):
+        """ Stops any kind of ongoing alignment measurement by setting a flag.
         """
-
-
 
         self._stop_measure = True
 
@@ -504,15 +716,22 @@ class MagnetLogic(GenericLogic):
 
         # move back to the first position before the alignment has started:
         #
+        constraints = self.get_hardware_constraints()
+
+        last_pos = dict()
+        for axis_name in self._saved_pos_before_align:
+            last_pos[axis_name] = self._backmap[self._pathway_index-1][axis_name]
 
         self.move_abs(self._saved_pos_before_align)
 
-        self._check_position_reached_loop()
+        self._check_position_reached_loop(last_pos, self._saved_pos_before_align)
 
         self.sigMeasurementFinished.emit()
 
         self._pathway_index = 0
-        self._first_meas_point = True
+        self._stop_measurement_time = datetime.datetime.now()
+
+        self.logMsg('Alignment Complete!', msgType='status')
 
         pass
 
@@ -534,34 +753,143 @@ class MagnetLogic(GenericLogic):
         too fast or the magnet does not move further.
         """
 
-        # emit signal which is catched by _move_loop_body
-        time.sleep(self.checktime)
 
-        # calc pos:
+        distance_init = 0.0
+        for axis_label in start_pos_dict:
+            distance_init = (end_pos_dict[axis_label] - start_pos_dict[axis_label])**2
+
+        distance_init = np.sqrt(distance_init)
+
+        # take 97% distance tolerance:
+        distance_tolerance = 0.03 * distance_init
+
+        current_dist = 0.0
+
+        while True:
+            time.sleep(self._checktime)
+
+            curr_pos = self.get_pos(list(end_pos_dict))
+
+            for axis_label in start_pos_dict:
+                current_dist = (end_pos_dict[axis_label] - curr_pos[axis_label])**2
+
+            current_dist = np.sqrt(current_dist)
+
+            self.sigPosChanged.emit(curr_pos)
+
+            if current_dist <= distance_tolerance or self._stop_measure:
+                self.sigPosReached.emit()
+                break
 
         #return either pos reached signal of check position
 
 
-    def _set_meas_point(self, meas_val, pathway_index, pathway):
+    def _set_meas_point(self, meas_val, add_meas_val, pathway_index, back_map):
 
         # is it point for 1d meas or 2d meas?
 
         # map the point back to the position in the measurement array
+        index_array = back_map[pathway_index]['index']
+
+        # then index_array is actually no array, but just a number. That is the
+        # 1D case:
+        if np.shape(index_array) == ():
+
+            #FIXME: Implement the 1D save
+
+            self.sig1DMatrixChanged.emit()
+
+        elif np.shape(index_array)[0] == 2:
+
+            self._2D_data_matrix[index_array] = meas_val
+            self._2D_add_data_matrix[index_array] = add_meas_val
+
+            self.logMsg('Data "{0}", saved at intex "{1}"'.format(meas_val, index_array), msgType='status')
+
+            self.sig2DMatrixChanged.emit()
+
+        elif np.shape(index_array)[0] == 3:
+
+
+            #FIXME: Implement the 3D save
+            self.sig3DMatrixChanged.emit()
+        else:
+            self.logMsg('The measurement point "{0}" could not be set in the '
+                        '_set_meas_point routine, since either a 1D, a 2D or a '
+                        '3D index array was expected, but an index array "{1}" '
+                        'was given in the passed back_map. Correct the '
+                        'back_map creation in the routine '
+                        '_create_2d_pathway!'.format(meas_val, index_array),
+                        msgType='error')
+
+
+
+
         pass
 
-    def _do_postmeasurement_proc(self):
-
-        # do a selected post measurement procedure, like e.g. optimize position.
-
+    def _do_premeasurement_proc(self):
+        # do a selected pre measurement procedure, like e.g. optimize position.
         return
 
     def _do_alignment_measurement(self):
+        """ That is the main method which contains all functions with measurement routines.
+
+        Each measurement routine has to output the measurement value, but can
+        also provide a dictionary with additional measurement parameters, which
+        have been measured either as a pre-requisition for the measurement or
+        are results of the measurement.
+
+        Save each measured value as an item to a keyword string, i.e.
+            {'ODMR frequency (MHz)': <the_parameter>, ...}
+        The save routine will handle the additional information and save them
+        properly.
+
+
+        @return tuple(float, dict): the measured value is of type float and the
+                                    additional parameters are saved in a
+                                    dictionary form.
+        """
 
         # perform here one of the selected alignment measurements and return to
         # the loop body the measured values.
 
-        return
+        # self.meas_param_container = {}
+        #
+        # self.alignment_methods = ['fluorescence_pointwise',
+        #                           'fluorescence_continuous',
+        #                           'odmr_splitting',
+        #                           'odmr_hyperfine_splitting',
+        #                           'nuclear_spin_measurement']
+        #
+        # if self.curr_align_method == 'fluorescence_pointwise':
 
+        data, add_data = self._perform_fluorescence_measure(5)
+
+
+        # time.sleep(3)
+        value = np.random.random_sample()
+        self.logMsg('Alignment Done: {0}'.format(data), msgType='status')
+
+
+        return data, add_data
+
+
+    def _perform_fluorescence_measure(self, meas_time):
+        #FIXME: that should be run through the TaskRunner! Implement the call
+        #       by not using this connection!
+        self._counter_logic.start_saving()
+        time.sleep(meas_time)
+        data_array = self._counter_logic.save_data(to_file=False)
+
+        data_array = np.array(data_array)[:, 1]
+
+        return data_array.mean(), {}
+
+    def _do_postmeasurement_proc(self):
+
+        # do a selected post measurement procedure,
+
+        return
 
     def save_1d_data(self):
 
@@ -572,24 +900,87 @@ class MagnetLogic(GenericLogic):
         pass
 
 
-    def save_2d_data(self):
+    def save_2d_data(self, tag=None, timestamp=None):
+        """ Save the data of the  """
 
+        filepath = self._save_logic.get_path_for_module(module_name='Magnet')
+
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if tag is not None and len(tag) > 0:
+            filelabel = tag + '_magnet_alignment_data'
+            filelabel2 = tag + '_magnet_alignment_add_data'
+        else:
+            filelabel = 'magnet_alignment_data'
+            filelabel2 = 'magnet_alignment_add_data'
+
+        # prepare the data in a dict or in an OrderedDict:
+
+        # here is the matrix saved
+        matrix_data = OrderedDict()
+
+        # here are all the parameters, which are saved for a certain matrix
+        # entry, mainly coming from all the other logic modules except the magnet logic:
+        add_matrix_data = OrderedDict()
+
+        # here are all supplementary information about the measurement, mainly
+        # from the magnet logic
+        supplementary_data = OrderedDict()
+
+        axes_names = list(self._saved_pos_before_align)
+
+
+        matrix_data['Fluorescence Matrix'] = self._2D_data_matrix
+
+        parameters = OrderedDict()
+        parameters['Measurement start time'] = self._start_measurement_time
+        if self._stop_measurement_time is not None:
+            parameters['Measurement stop time'] = self._stop_measurement_time
+        parameters['Time at Data save'] = timestamp
+        parameters['Pathway of the magnet alignment'] = 'Snake-wise steps'
+
+        for index, entry in enumerate(self._pathway):
+            parameters['index_'+str(index)] = entry
+
+        parameters['Backmap of the magnet alignment'] = 'Index wise display'
+
+        for entry in self._backmap:
+            parameters['related_intex_'+str(entry)] = self._backmap[entry]
+
+        self._save_logic.save_data(matrix_data, filepath, parameters=parameters,
+                                   filelabel=filelabel, timestamp=timestamp,
+                                   as_text=True)
+
+        self.logMsg('Magnet 2D data saved to:\n{0}'.format(filepath),
+                    msgType='status', importance=3)
 
         # save also all kinds of data, which are the results during the
         # alignment measurements
 
-        pass
 
-
-    def _move_abs_to_index(self, pathway_index, pathway):
+    def _move_to_index(self, pathway_index, pathway):
 
         # make here the move and set also for the move the velocity, if
         # specified!
 
+        move_commmands = pathway[pathway_index]
 
-        self._check_position_reached_loop()
+        move_dict_abs = dict()
+        move_dict_rel = dict()
+        move_dict_vel = dict()
 
-        pass
+        for axis_name in move_commmands:
+
+            if move_commmands[axis_name].get('vel') is not None:
+                    move_dict_vel[axis_name] = move_commmands[axis_name]['vel']
+
+            if move_commmands[axis_name].get('move_abs') is not None:
+                move_dict_abs[axis_name] = move_commmands[axis_name]['move_abs']
+            elif move_commmands[axis_name].get('move_rel') is not None:
+                move_dict_rel[axis_name] = move_commmands[axis_name]['move_rel']
+
+        return move_dict_vel, move_dict_abs, move_dict_rel
 
     def set_pos_checktime(self, checktime):
         if not np.isclose(0, checktime) and checktime>0:
@@ -599,3 +990,10 @@ class MagnetLogic(GenericLogic):
                         'passed value "{0}" is either zero or negative!\n'
                         'Choose a proper checktime value in seconds, the old '
                         'value will be kept!', msgType='warning')
+
+
+    def get_2d_data_matrix(self):
+        return self._2D_data_matrix
+
+    def get_2d_axis_arrays(self):
+        return self._2D_axis0_data, self._2D_axis1_data
