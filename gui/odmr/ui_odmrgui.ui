@@ -22,6 +22,12 @@
      <layout class="QGridLayout" name="gridLayout">
       <item row="3" column="10" rowspan="2" colspan="2">
        <widget class="PlotWidget" name="odmr_cb_PlotWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="maximumSize">
          <size>
           <width>80</width>
@@ -173,7 +179,7 @@
      <x>0</x>
      <y>0</y>
      <width>891</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -566,7 +572,9 @@
   </action>
   <action name="action_Close">
    <property name="icon">
-    <iconset theme="application-exit"/>
+    <iconset theme="application-exit">
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
