@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
+Copyright (C) 2015 Florian Frank florian.frank@uni-ulm.de
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
@@ -28,6 +29,42 @@ from lmfit import minimize
 #                               Sinus fitting                              #
 #                                                                          #
 ############################################################################
+
+def make_constant_model(self):
+    """ This method creates a model of a constant model.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+    def constant_function(x, offset):
+        """
+        Function of a constant value.
+        @param x: variable variable
+        @param offset: independent variable - e.g. offset
+
+        @return: constant function: in order to use it as a model
+        """
+
+        return offset + 0.0 * x
+
+    model = Model(constant_function)
+    params = model.make_params()
+
+    return model, params
+
 
 def make_sine_model(self):
     """ This method creates a model of sine.
@@ -49,7 +86,7 @@ def make_sine_model(self):
     For further information have a look in:
     http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
     """
-    def sine_function(x, amplitude, frequency,phase):
+    def sine_function(x, amplitude, frequency, phase):
         """
         Function of a sine.
         @param x: variable variable - e.g. time
@@ -62,13 +99,15 @@ def make_sine_model(self):
 
         return amplitude*np.sin(2*np.pi*frequency*x+phase)
 
-    model = Model(sine_function)
+    constant_model, params = self.make_constant_model()
+    model = Model(sine_function) + constant_model
 
     params = model.make_params()
 
     return model, params
 
-def make_singlesine_fit(self, axis=None, data=None, add_parameters=None):
+
+def make_sine_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a sine fit on the provided data.
 
     @param array[] axis: axis values
@@ -83,7 +122,7 @@ def make_singlesine_fit(self, axis=None, data=None, add_parameters=None):
 
     sine, params = self.make_sine_model()
 
-    error, params = self.estimate_singlesine(axis, data, params)
+    error, params = self.estimate_sine(axis, data, params)
 
     # overwrite values of additional parameters
     if add_parameters is not None:
@@ -99,7 +138,8 @@ def make_singlesine_fit(self, axis=None, data=None, add_parameters=None):
 
     return result
 
-def estimate_singlesine(self, x_axis=None, data=None, params=None):
+
+def estimate_sine(self, x_axis=None, data=None, params=None):
     """ This method provides a one dimensional gaussian function.
 
     @param array x_axis: x values
@@ -132,146 +172,156 @@ def estimate_singlesine(self, x_axis=None, data=None, params=None):
 
     # set parameters
 
+    # set the offset as the average of the data
     offset = np.average(data)
-    data_level = data - offset
-    params['amplitude'].value = max(data_level.max(),np.abs(data_level.min()))
-    fourier = np.fft.fft(data_level)
-    stepsize = x_axis[1]-x_axis[0]
-    freq = np.fft.fftfreq(data_level.size,stepsize)
-    tmp = freq,np.log(fourier)
-    omega = 1/(np.abs(tmp[0][tmp[1].argmax()]))
-    shift_tmp = (offset-data[0])/params['amplitude'].value
-    shift = np.arccos(shift_tmp)
 
-    # TODO: Improve decay estimation
-    if len(data) > omega/stepsize * 2.5:
-        pos01 = int((1-shift/(np.pi**2)) * omega/(2*stepsize))
-        pos02 = pos01 + int(omega/stepsize)
-        # print(pos01,pos02,data[pos01],data[pos02])
-        decay = np.log(data[pos02]/data[pos01])/omega
-        # decay = - np.log(0.2)/x_axis[-1]
-    else:
-        decay = 0.0
+    # level data
+    data_level = data - offset
+
+    # estimate amplitude
+    params['amplitude'].value = max(np.abs(data_level.min()), np.abs(data_level.max()))
+
+    # perform fourier transform with zeropadding to get higher resolution
+    data_level_zeropaded=np.zeros(int(len(data_level)*2))
+    data_level_zeropaded[:len(data_level)]=data_level
+    fourier = np.fft.fft(data_level_zeropaded)
+    stepsize = x_axis[1]-x_axis[0]  # for frequency axis
+    freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+    frequency_max = np.abs(freq[np.log(fourier).argmax()])
+
+    # estimating the phase from the first point
+    # TODO: This only works when data starts at 0
+    phase_tmp = (data_level[0])/params['amplitude'].value
+    phase = abs(np.arcsin(phase_tmp))
+
+
+    if np.gradient(data)[0] < 0 and data_level[0] > 0:
+        phase = np.pi - phase
+    elif np.gradient(data)[0] < 0 and data_level[0] < 0:
+        phase += np.pi
+    elif np.gradient(data)[0] > 0 and data_level[0] < 0:
+        phase = 2.*np.pi - phase
     
-    params['frequency'].value = omega/2/np.pi
-    params['phase'].value=shift
-    
+    params['frequency'].value = frequency_max
+    params['phase'].value = phase
+    params['offset'].value = offset
+
     return error, params
     
 ####################### old stuff ################
-
-def estimate_sine(self, x_axis=None, data=None):
-    """ This method provides a sine function.
-
-    @param array x_axis: x values
-    @param array data: value of each data point corresponding to x values
-
-    @return int error: error code (0:OK, -1:error)
-    @return float amplitude: estimated amplitude
-    @return float omega: estimated period of the sine
-    @return float shift: estimated phase shift
-    @return float decay: estimated decay of the curve
-    @return float offset: estimated offset
-    """
-
-    error = 0
-
-    # check if parameters make sense
-
-    parameters=[x_axis,data]
-    for var in parameters:
-        if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.', msgType='error')
-            error=-1
-        elif len(np.shape(var))!=1:
-            self.logMsg('Given parameter is no one dimensional '
-                        'array.', msgType='error')
-            error=-1
-
-    # set parameters
-
-    offset = np.average(data)
-    data_level = data - offset
-    amplitude = max(data_level.max(),np.abs(data_level.min()))
-    fourier = np.fft.fft(data_level)
-    stepsize = x_axis[1]-x_axis[0]
-    freq = np.fft.fftfreq(data_level.size,stepsize)
-    tmp = freq,np.log(fourier)
-    omega = 1/(np.abs(tmp[0][tmp[1].argmax()]))
-    shift_tmp = (offset-data[0])/amplitude
-    shift = np.arccos(shift_tmp)
-
-    # TODO: Improve decay estimation
-    if len(data) > omega/stepsize * 2.5:
-        pos01 = int((1-shift/(np.pi**2)) * omega/(2*stepsize))
-        pos02 = pos01 + int(omega/stepsize)
-        # print(pos01,pos02,data[pos01],data[pos02])
-        decay = np.log(data[pos02]/data[pos01])/omega
-        # decay = - np.log(0.2)/x_axis[-1]
-    else:
-        decay = 0.0
-
-    return amplitude, offset, shift, omega, decay
-
-# define objective function: returns the array to be minimized
-def fcn2min(self,params, x, data):
-    """ model decaying sine wave, subtract data"""
-    v = params.valuesdict()
-
-    model = v['amplitude'] * \
-            np.sin(x * 1/v['omega']*np.pi*2 + v['shift']) * \
-            np.exp(-x*v['decay']) + v['offset']
-
-    return model - data
-
-def make_sine_fit(self, axis=None, data=None, add_parameters=None):
-    """ This method performes a sine fit on the provided data.
-
-    @param array[] axis: axis values
-    @param array[]  data: data
-    @param dictionary add_parameters: Additional parameters
-
-    @return result: All parameters provided about the fitting, like:
-                    success,
-                    initial fitting values, best fitting values, data
-                    with best fit with given axis,...
-    @return float fit_x: x values to plot the fit
-    @return float fit_y: y values to plot the fit
-    """
-
-
-    amplitude,  \
-    offset,     \
-    shift,      \
-    omega,      \
-    decay       = self.estimate_sine(axis, data)
-
-    params = Parameters()
-
-    #Defining standard parameters
-    #               (Name,        Value,     Vary, Min,  Max,  Expr)
-    params.add_many(('amplitude', amplitude, True, None, None, None),
-                    ('offset',    offset,    True, None, None, None),
-                    ('shift',     shift,     True, None, None, None),
-                    ('omega',     omega,     True, None, None, None),
-                    ('decay',     decay,     True, None, None, None))
-
-
-    #redefine values of additional parameters
-    if add_parameters is not None:
-        params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
-    try:
-        result = minimize(self.fcn2min, params, args=(axis, data))
-    except:
-        result = minimize(self.fcn2min, params, args=(axis, data))
-        self.logMsg('The sine fit did not work. Error '
-                    'message:'+result.message,
-                    msgType='warning')
-
-    fit_y = data + result.residual
-    fit_x = axis
-
-
-    return result, fit_x, fit_y
-
+#
+# def estimate_sine(self, x_axis=None, data=None):
+#     """ This method provides a sine function.
+#
+#     @param array x_axis: x values
+#     @param array data: value of each data point corresponding to x values
+#
+#     @return int error: error code (0:OK, -1:error)
+#     @return float amplitude: estimated amplitude
+#     @return float omega: estimated period of the sine
+#     @return float shift: estimated phase shift
+#     @return float decay: estimated decay of the curve
+#     @return float offset: estimated offset
+#     """
+#
+#     error = 0
+#
+#     # check if parameters make sense
+#
+#     parameters=[x_axis,data]
+#     for var in parameters:
+#         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+#             self.logMsg('Given parameter is no array.', msgType='error')
+#             error=-1
+#         elif len(np.shape(var))!=1:
+#             self.logMsg('Given parameter is no one dimensional '
+#                         'array.', msgType='error')
+#             error=-1
+#
+#     # set parameters
+#
+#     offset = np.average(data)
+#     data_level = data - offset
+#     amplitude = max(data_level.max(),np.abs(data_level.min()))
+#     fourier = np.fft.fft(data_level)
+#     stepsize = x_axis[1]-x_axis[0]
+#     freq = np.fft.fftfreq(data_level.size,stepsize)
+#     tmp = freq,np.log(fourier)
+#     omega = 1/(np.abs(tmp[0][tmp[1].argmax()]))
+#     shift_tmp = (offset-data[0])/amplitude
+#     shift = np.arccos(shift_tmp)
+#
+#     # TODO: Improve decay estimation
+#     if len(data) > omega/stepsize * 2.5:
+#         pos01 = int((1-shift/(np.pi**2)) * omega/(2*stepsize))
+#         pos02 = pos01 + int(omega/stepsize)
+#         # print(pos01,pos02,data[pos01],data[pos02])
+#         decay = np.log(data[pos02]/data[pos01])/omega
+#         # decay = - np.log(0.2)/x_axis[-1]
+#     else:
+#         decay = 0.0
+#
+#     return amplitude, offset, shift, omega, decay
+#
+# # define objective function: returns the array to be minimized
+# def fcn2min(self,params, x, data):
+#     """ model decaying sine wave, subtract data"""
+#     v = params.valuesdict()
+#
+#     model = v['amplitude'] * \
+#             np.sin(x * 1/v['omega']*np.pi*2 + v['shift']) * \
+#             np.exp(-x*v['decay']) + v['offset']
+#
+#     return model - data
+#
+# def make_sine_fit(self, axis=None, data=None, add_parameters=None):
+#     """ This method performes a sine fit on the provided data.
+#
+#     @param array[] axis: axis values
+#     @param array[]  data: data
+#     @param dictionary add_parameters: Additional parameters
+#
+#     @return result: All parameters provided about the fitting, like:
+#                     success,
+#                     initial fitting values, best fitting values, data
+#                     with best fit with given axis,...
+#     @return float fit_x: x values to plot the fit
+#     @return float fit_y: y values to plot the fit
+#     """
+#
+#
+#     amplitude,  \
+#     offset,     \
+#     shift,      \
+#     omega,      \
+#     decay       = self.estimate_sine(axis, data)
+#
+#     params = Parameters()
+#
+#     #Defining standard parameters
+#     #               (Name,        Value,     Vary, Min,  Max,  Expr)
+#     params.add_many(('amplitude', amplitude, True, None, None, None),
+#                     ('offset',    offset,    True, None, None, None),
+#                     ('shift',     shift,     True, None, None, None),
+#                     ('omega',     omega,     True, None, None, None),
+#                     ('decay',     decay,     True, None, None, None))
+#
+#
+#     #redefine values of additional parameters
+#     if add_parameters is not None:
+#         params=self._substitute_parameter(parameters=params,
+#                                          update_parameters=add_parameters)
+#     try:
+#         result = minimize(self.fcn2min, params, args=(axis, data))
+#     except:
+#         result = minimize(self.fcn2min, params, args=(axis, data))
+#         self.logMsg('The sine fit did not work. Error '
+#                     'message:'+result.message,
+#                     msgType='warning')
+#
+#     fit_y = data + result.residual
+#     fit_x = axis
+#
+#
+#     return result, fit_x, fit_y
+#

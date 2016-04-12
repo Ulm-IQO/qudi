@@ -77,13 +77,14 @@ class FitLogic():
             filenames=[]
 #            
 #            for path in directories:
-            path=join( getcwd()[:-5],'logic','fitmethods')
+            print(getcwd())
+            path=join(getcwd()[:-5],'logic','fitmethods')
             for f in listdir(path):
                 if isfile(join(path,f)):
                     filenames.append(f[:-3])
             current_path= getcwd()
             os.chdir(path)
-            
+            print(getcwd())
                         
             oneD_fit_methods = dict()
             twoD_fit_methods = dict()
@@ -93,9 +94,9 @@ class FitLogic():
                 mod = importlib.import_module('{}'.format(files))
                 for method in dir(mod):
                     try:
-                        if callable(getattr(mod,method)):
+                        if callable(getattr(mod, method)):
                             #import methods in Fitlogic
-                            setattr(FitLogic,method,getattr(mod,method)) 
+                            setattr(FitLogic, method, getattr(mod, method))
                             #add method to dictionary and define what 
                             #estimators they have
                             
@@ -904,17 +905,84 @@ class FitLogic():
 
         def sine_testing(self):
             
-            x = np.linspace(0, 6*np.pi, 101)
+            x_axis = np.linspace(0, 50, 151)
+            x_nice = np.linspace(x_axis[0],x_axis[-1], 1000)
             mod,params = self.make_sine_model()
             print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
             
-            params['amplitude'].value=1.
-            params['frequency'].value=0.25
-            params['phase'].value=0
-            data_noisy=(mod.eval(x=x,params=params)
-                                    + 1*np.random.normal(size=x.shape))
+            params['amplitude'].value=0.2
+            params['frequency'].value=0.1
+            params['phase'].value=np.pi*0.4
+            params['offset'].value=0.94
+            data_noisy=(mod.eval(x=x_axis,params=params)
+                                    + 0.01*np.random.normal(size=x_axis.shape))
                                     
-#            para=Parameters()
+                                    
+            # set the offset as the average of the data
+            offset = np.average(data_noisy)
+        
+            # level data
+            data_level = data_noisy - offset
+        
+            # estimate amplitude
+            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+        
+            # perform fourier transform
+            data_level_zeropaded=np.zeros(int(len(data_level)*2))
+            data_level_zeropaded[:len(data_level)]=data_level
+            fourier = np.fft.fft(data_level_zeropaded)
+            stepsize = x_axis[1]-x_axis[0]  # for frequency axis
+            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+            frequency_max = np.abs(freq[np.log(fourier).argmax()])
+            
+            print(params['frequency'].value,np.round(frequency_max,3))
+#            plt.xlim(0,freq.max())
+            plt.plot(freq[:int(len(freq)/2)],abs(fourier)[:int(len(freq)/2)])
+#            plt.plot(freq,np.log(abs(fourier)),'-r')
+            plt.show()
+
+            print('offset',offset)
+#            print((x_axis[-1]-x_axis[0])*frequency_max)
+
+            shift_tmp = (data_level[0])/params['amplitude'].value
+            shift = abs(np.arcsin(shift_tmp))
+            print('shift', shift)
+            if np.gradient(data_noisy)[0]<0 and data_level[0]>0:
+                shift=np.pi-shift
+                print('ho ', shift)
+            elif np.gradient(data_noisy)[0]<0 and data_level[0]<0:
+                shift+=np.pi
+                print('hi1')
+            elif np.gradient(data_noisy)[0]>0 and data_level[0]<0:
+                shift = 2.*np.pi - shift
+                print('hi2')
+                
+            print(params['phase'].value,shift)
+        
+            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+            function = InterpolatedUnivariateSpline(freq[:int(len(freq)/2)],abs(fourier)[:int(len(freq)/2)], k=1)
+            Integral = function.integral(x_axis[0], x_axis[-1])
+            
+            sigma = Integral / np.sqrt(2*np.pi) / abs(fourier).max()
+            
+            print('sigma', sigma)
+            # TODO: Improve decay estimation
+            if len(data_noisy) > stepsize/frequency_max * 2.5:
+                pos01 = int((1-shift/(np.pi**2)) / frequency_max/(2*stepsize))
+                pos02 = pos01 + int(frequency_max/stepsize)
+                # print(pos01,pos02,data[pos01],data[pos02])
+                decay = np.log(data_noisy[pos02]/data_noisy[pos01])*frequency_max
+                # decay = - np.log(0.2)/x_axis[-1]
+            else:
+                decay = 0.0
+            
+            params['frequency'].value = frequency_max
+            params['phase'].value = shift
+            params['offset'].value = offset
+            
+#            print(params.pretty_print())
+#            print(data_noisy)                     
+            para=Parameters()
 #            para.add('I_saturation',value=152.)
 #            para.add('slope',value=0.3,vary=True)
 #            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
@@ -923,7 +991,7 @@ class FitLogic():
 #            
 ##            data=np.loadtxt('Po_Fl.txt')
 #
-#            result=self.make_powerfluorescence_fit(axis=x,data=data_noisy,add_parameters=para)
+            result=self.make_sine_fit(axis=x_axis,data=data_noisy,add_parameters=para)
 ##            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
 #
 #            print(result.fit_report())
@@ -933,12 +1001,21 @@ class FitLogic():
 #            plt.plot(data[:,0],data[:,2]/1000,'ob')
             
 #            plt.plot(x,mod.eval(x=x,params=para),'-g')
-            
-            plt.plot(x,mod.eval(x=x,params=params),'-r')
-            plt.plot(x,data_noisy,'-b')
+            plt.plot(x_axis,data_noisy,'ob')
+            plt.plot(x_axis,result.init_fit,'-y')
+            plt.plot(x_axis,result.best_fit,'-r',linewidth=2.0,)
+            plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
+                    
             plt.show()
              
-#            print(result.message)
+#            print(result.fit_report())
+            
+            units=dict()
+            units['frequency']='GHz'
+            units['phase']='rad'
+            units['offset']='arb. u.'
+#            units['amplitude']='arb. u.'
+            print(self.create_fit_string(result,mod,units))
                         
 test=FitLogic()
 #test.N14_testing()

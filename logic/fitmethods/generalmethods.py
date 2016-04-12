@@ -134,9 +134,61 @@ def _substitute_parameter(self, parameters=None, update_parameters=None):
     return parameters
 
 
+def create_fit_string(self, result, model, units=dict(), decimal_digits_value_given=None,
+                      decimal_digits_err_given=None):
+    """ This method can produces a well readable string from the results of a fitted model.
+    If units is not given or one unit missing there will be no unit in string.
+    If decimal_digits_value_given is not provided it will be set to precision of error and digits
+    of error will be set to 1.
+
+    @param lmfit object result: the fitting result
+    @param lmfit object model: the corresponding model
+    @param dict units: units for parameters of model if not given all units are set to "arb. u."
+    @param int decimal_digits_err_given: (optional) number of decimals displayed in output for error
+    @param int decimal_digits_value_given: (optional) number of decimals displayed in output for value
+
+    @return str fit_result: readable string
+    """
+    # TODO: Add multiplicator
+    # TODO: Add decimal dict
+    # TODO: Add sensible output such that e only multiple of 3 and err and value have same exponent
+
+    fit_result = ''
+    for variable in model.param_names:
+        # check order of number
+        exponent_error = int("{:e}".format(result.params[variable].stderr)[-3:])
+        exponent_value = int("{:e}".format(result.params[variable].value)[-3:])
+        if decimal_digits_value_given is None:
+            decimal_digits_value = int(exponent_value-exponent_error)+1
+        if decimal_digits_err_given is None:
+            decimal_digits_err = 1
+        try:
+            fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
+                                                            units[variable],
+                                                            "{0:.{1}e}".format(
+                                                                result.params[variable].value,
+                                                                decimal_digits_value),
+                                                            "{0:.{1}e}".format(
+                                                                result.params[variable].stderr,
+                                                                decimal_digits_err)))
+        except:
+            # self.logMsg('No unit given for parameter {}, setting unit '
+            #             'to empty string'.format(variable),
+            #             msgType='warning')
+            fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
+                                                            "arb. u.",
+                                                            "{0:.{1}e}".format(
+                                                                result.params[variable].value,
+                                                                decimal_digits_value),
+                                                            "{0:.{1}e}".format(
+                                                                result.params[variable].stderr,
+                                                                decimal_digits_err)))
+    return fit_result
+
+
 def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigma_threshold, minimal_threshold, make_prints):
     """
-    data has to be offset bereinigt
+    data has to be offset leveled such that offset is substracted
     """
     absolute_min  = data[peak_arg]
 

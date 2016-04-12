@@ -2474,7 +2474,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configuration of the fit ComboBox
         self._mw.fit_param_fit_func_ComboBox.addItem('No Fit')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Rabi Decay')
+        self._mw.fit_param_fit_func_ComboBox.addItem('Rabi')
         self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (neg)')
         self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (pos)')
         self._mw.fit_param_fit_func_ComboBox.addItem('N14')

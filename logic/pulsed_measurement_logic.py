@@ -675,33 +675,29 @@ class PulsedMeasurementLogic(GenericLogic):
         pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0],self.signal_plot_x[-1],1000)
 
         if fit_function == 'No Fit':
-            pulsed_fit_x=[]
+            pulsed_fit_x = []
             pulsed_fit_y = []
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
-        elif fit_function == 'Rabi Decay':
-            result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+        elif fit_function == 'Rabi':
+            result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x,
+                                                   data=self.signal_plot_y,
+                                                   add_parameters=None)
+            sine, params = self._fit_logic.make_sine_model()
+            pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
 
-            ##### get the rabi fit parameters
-            rabi_amp = result[0].params['amplitude'].value
-            rabi_amp_error= result[0].params['amplitude'].stderr
-            rabi_freq = result[0].params['omega'].value
-            rabi_freq_error = result[0].params['omega'].stderr
-            rabi_offset = result[0].params['offset'].value
-            rabi_offset_error = result[0].params['offset'].stderr
-            rabi_decay = result[0].params['decay'].value
-            rabi_decay_error = result[0].params['decay'].stderr
-            rabi_shift = result[0].params['shift'].value
-            rabi_shift_error = result[0].params['shift'].stderr
+            #pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
 
-            pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
-
-            fit_result = str('Contrast: ' + str(np.abs(2*rabi_amp)) + " + " + str(rabi_amp_error) + "\n" +
-                             'Period [ns]: ' + str(rabi_freq) + " + " + str(rabi_freq_error) + "\n" +
-                             'Offset: ' + str(rabi_offset) + " + " + str(rabi_offset_error) + "\n" +
-                             'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
-                             'Shift [rad]: ' + str(rabi_shift) + " + " + str(rabi_shift_error) + "\n")
+            fit_result = str('Contrast: ' + str(np.round(np.abs(2*result.params['amplitude'].value), 3)) + u" \u00B1 " +
+                                            str(np.round(2 * result.params['amplitude'].stderr, 2)) + "\n" +
+                             'Frequency [MHz]: ' + str(np.round(1000*result.params['frequency'].value, 3)) + u" \u00B1 " +
+                                                   str(np.round(1000*result.params['frequency'].stderr, 2)) + "\n" +
+                             'Offset: ' + str(np.round(result.params['offset'].value,3)) + u" \u00B1 " +
+                                          str(np.round(result.params['offset'].stderr,2)) + "\n" +
+                             #'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
+                             'Phase [rad]: ' + str(np.round(result.params['phase'].value, 3)) + u" \u00B1 " +
+                                               str(np.round(result.params['frequency'].stderr, 2)) + "\n")
 
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
@@ -709,7 +705,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         elif fit_function == 'Lorentian (neg)':
             result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
-            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            lorentzian, params = self._fit_logic.make_lorentzian_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             fit_result = (   'Minimum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
