@@ -571,7 +571,7 @@ class AWG5002C(Base, PulserInterface):
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
             for seq_param_dict in sequence_param:
 
-                repeat = seq_param_dict['reps']
+                repeat = seq_param_dict['repetitions']
                 trigger_wait = seq_param_dict['trigger_wait']
                 go_to = seq_param_dict['go_to']
                 event_jump_to = seq_param_dict['event_jump_to']
