@@ -1839,19 +1839,22 @@ class PulsedMeasurementGui(GUIBase):
         self._update_current_pulse_block_ensemble()
 
 
-    def block_organizer_add_row_after_last(self,insert_rows=1):
+    def block_organizer_add_row_after_last(self, insert_rows=1):
         """ Add row after last row in the block editor. """
         self._mw.block_organizer_TableWidget.blockSignals(True)
 
-        # the signal passes a boolean value, which overwrites the insert_rows
-        # parameter. Check that here and use the actual default value:
+        # the signal of a QPushButton passes an optional boolean value to this
+        # method, which overwrites the insert_rows parameter. Check that here
+        # and use the actual default value:
         if type(insert_rows) is bool:
             insert_rows = 1
 
         number_of_rows = self._mw.block_organizer_TableWidget.rowCount()
         self._mw.block_organizer_TableWidget.setRowCount(number_of_rows+insert_rows)
 
-        self.initialize_cells_block_organizer(start_row=number_of_rows)
+        self.initialize_cells_block_organizer(start_row=number_of_rows,
+                                              stop_row=number_of_rows + insert_rows)
+
         self._mw.block_organizer_TableWidget.blockSignals(False)
         self._update_current_pulse_block_ensemble()
 
@@ -1880,7 +1883,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.blockSignals(True)
         self._mw.block_organizer_TableWidget.setRowCount(1)
         self._mw.block_organizer_TableWidget.clearContents()
-
         self.initialize_cells_block_organizer(start_row=0)
         self._mw.block_organizer_TableWidget.blockSignals(False)
         self._update_current_pulse_block_ensemble()
