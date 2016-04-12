@@ -22,9 +22,12 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 import os
 import numpy as np
 from collections import OrderedDict
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui, uic
+import datetime
 
 from gui.guibase import GUIBase
-from pyqtgraph.Qt import QtCore, QtGui, uic
+from gui.guiutils import ColorScale, ColorBar
 
 
 class MagnetMainWindow(QtGui.QMainWindow):
@@ -59,7 +62,8 @@ class MagnetGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _in = {'magnetlogic1': 'MagnetLogic'}
+    _in = {'magnetlogic1': 'MagnetLogic',
+           'savelogic': 'SaveLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -75,6 +79,8 @@ class MagnetGui(GUIBase):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
+        self._continue_2d_fluorescence_alignment = False
+
 
     def initUI(self, e=None):
         """ Definition and initialisation of the GUI.
@@ -88,6 +94,7 @@ class MagnetGui(GUIBase):
                          had happened.
         """
         self._magnet_logic = self.connector['in']['magnetlogic1']['object']
+        self._save_logic = self.connector['in']['savelogic']['object']
 
         self._mw = MagnetMainWindow()
 
@@ -102,6 +109,12 @@ class MagnetGui(GUIBase):
         # Configuring the dock widgets
         # Use the class 'MagnetMainWindow' to create the GUI window
 
+        axis_list = list(self._magnet_logic.get_hardware_constraints())
+        self._mw.align_2d_fluorescence_axes0_name_ComboBox.clear()
+        self._mw.align_2d_fluorescence_axes0_name_ComboBox.addItems(axis_list)
+
+        self._mw.align_2d_fluorescence_axes1_name_ComboBox.clear()
+        self._mw.align_2d_fluorescence_axes1_name_ComboBox.addItems(axis_list)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
@@ -127,9 +140,67 @@ class MagnetGui(GUIBase):
         self._mw.actionMagnet_Settings.triggered.connect(self.open_magnet_settings)
         self._mw.actionDefault_View.triggered.connect(self.set_default_view_main_window)
 
+        self.update_pos()
+        self._magnet_logic.sigPosChanged.connect(self.update_pos)
+
+        # Connect alignment GUI elements:
+        self._mw.align_2d_fluorescence_start_PushButton.clicked.connect(self.start_2d_fluorescence_alignment_clicked)
+        self._mw.align_2d_fluorescence_continue_PushButton.clicked.connect(self.continue_2d_fluorescence_alignment_clicked)
+        self._mw.align_2d_fluorescence_abort_PushButton.clicked.connect(self.abort_2d_fluorescence_alignment_clicked)
+
+        self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis0)
+        self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis1)
+        self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis0)
+        self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis1)
+
+
+        self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_high_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_low_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+
+
+        self._update_limits_axis0()
+        self._update_limits_axis1()
+        self._set_vel_display_axis0()
+        self._set_vel_display_axis1()
+
+        self._2d_alignment_ImageItem = pg.ImageItem(self._magnet_logic.get_2d_data_matrix())
+        axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
+        self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0[0],
+                                                           axis1[0],
+                                                           axis0[-1]-axis0[0],
+                                                           axis1[-1]-axis1[0],))
+
+        self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
+
+        # Get the colorscales at set LUT
+        my_colors = ColorScale()
+
+        self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
 
 
 
+        # Configuration of Colorbar:
+        self._2d_alignment_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
+
+        self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
+        self._mw.alignment_2d_cb_GraphicsView.hideAxis('bottom')
+        self._mw.alignment_2d_cb_GraphicsView.hideAxis('left')
+
+        self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
+
+        self._magnet_logic.sig2DAxisChanged.connect(self._update_2d_graph_axis)
+        self._magnet_logic.sig2DMatrixChanged.connect(self._update_2d_graph_data)
+
+        # Connect the buttons and inputs for the odmr colorbar
+        self._mw.alignment_2d_manual_RadioButton.clicked.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_centiles_RadioButton.clicked.connect(self._update_2d_graph_data)
+
+        self._update_2d_graph_data()
+        self._update_2d_graph_cb()
+
+        self._mw.alignment_2d_save_PushButton.clicked.connect(self.save_2d_plots_and_data)
 
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
@@ -166,14 +237,25 @@ class MagnetGui(GUIBase):
         self._mw.curr_pos_DockWidget.setFloating(False)
         self._mw.move_rel_DockWidget.setFloating(False)
         self._mw.move_abs_DockWidget.setFloating(False)
+        self._mw.alignment_DockWidget.setFloating(False)
+
+        # QtCore.Qt.LeftDockWidgetArea        0x1
+        # QtCore.Qt.RightDockWidgetArea       0x2
+        # QtCore.Qt.TopDockWidgetArea         0x4
+        # QtCore.Qt.BottomDockWidgetArea      0x8
+        # QtCore.Qt.AllDockWidgetAreas        DockWidgetArea_Mask
+        # QtCore.Qt.NoDockWidgetArea          0
 
         # align the widget
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(4),
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
                                self._mw.curr_pos_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
                                self._mw.move_rel_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
                                self._mw.move_abs_DockWidget)
+
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2),
+                               self._mw.alignment_DockWidget)
 
     def open_magnet_settings(self):
         """ This method opens the settings menu. """
@@ -525,8 +607,8 @@ class MagnetGui(GUIBase):
         movement = dspinbox.value() * direction
 
         self._magnet_logic.move_rel({axis_label:movement})
-        if self._interactive_mode:
-            self.update_pos()
+        # if self._interactive_mode:
+        #     self.update_pos()
 
     def move_abs(self, param_dict=None):
         """ Perform an absolute movement.
@@ -547,8 +629,8 @@ class MagnetGui(GUIBase):
 
             self._magnet_logic.move_abs(move_abs)
 
-        if self._interactive_mode:
-            self.update_pos()
+        # if self._interactive_mode:
+        #     self.update_pos()
 
 
     def get_ref_curr_pos_DoubleSpinBox(self, label):
@@ -601,6 +683,8 @@ class MagnetGui(GUIBase):
         curr_pos =  self._magnet_logic.get_pos()
 
         if (param_list is not None) and (type(param_list) is not bool):
+            param_list = list(param_list)
+            # param_list =list(param_list) # convert for safety to a list
             curr_pos =  self._magnet_logic.get_pos(param_list)
 
         for axis_label in curr_pos:
@@ -612,3 +696,199 @@ class MagnetGui(GUIBase):
             dspinbox_move_abs_ref = self.get_ref_move_abs_DoubleSpinBox(axis_label)
             dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
+
+    def start_2d_fluorescence_alignment_clicked(self):
+        """ Start the 2D fluorescence alignment. """
+
+        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+        axis0_range = self._mw.align_2d_fluorescence_axes0_range_DSpinBox.value()
+        axis0_step =  self._mw.align_2d_fluorescence_axes0_step_DSpinBox.value()
+
+        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+        axis1_range = self._mw.align_2d_fluorescence_axes1_range_DSpinBox.value()
+        axis1_step =  self._mw.align_2d_fluorescence_axes1_step_DSpinBox.value()
+
+        if axis0_name == axis1_name:
+            self.logMsg('Fluorescence Alignment cannot be started since the '
+                        'same axis with name "{0}" was chosen for axis0 and '
+                        'axis1!\n'
+                        'Alignment will not be started. Change the '
+                        'settings!'.format(axis0_name), msgType='error')
+            return
+
+        if self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.isChecked():
+            axis0_vel = self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.value()
+        else:
+            axis0_vel = None
+
+        if self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.isChecked():
+            axis1_vel = self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.value()
+        else:
+            axis1_vel = None
+
+        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Fluorescence', units='c/s')
+
+        self._magnet_logic.start_2d_alignment(axis0_name=axis0_name, axis0_range=axis0_range,
+                                              axis0_step=axis0_step, axis1_name=axis1_name,
+                                              axis1_range=axis1_range,axis1_step=axis1_step,
+                                              continue_meas=self._continue_2d_fluorescence_alignment)
+
+        self._continue_2d_fluorescence_alignment = False
+
+    def continue_2d_fluorescence_alignment_clicked(self):
+
+        self._continue_2d_fluorescence_alignment = True
+        self.start_2d_fluorescence_alignment_clicked()
+
+
+    def abort_2d_fluorescence_alignment_clicked(self):
+        """ Stops the current Fluorescence alignment. """
+
+        self._magnet_logic.stop_alignment()
+
+    def _update_limits_axis0(self):
+        """ Whenever a new axis name was chosen in axis0 config, the limits of the
+            viewboxes will be adjusted.
+        """
+
+        constraints = self._magnet_logic.get_hardware_constraints()
+        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+
+        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setMinimum(0)
+        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
+        # FIXME: obtain the decimals correctly:
+        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
+        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setDecimals(3)
+
+        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setMinimum(0)
+        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
+        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
+        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setDecimals(3)
+
+        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min'])
+        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max'])
+        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'])
+
+    def _update_limits_axis1(self):
+        """ Whenever a new axis name was chosen in axis0 config, the limits of the
+            viewboxes will be adjusted.
+        """
+
+        constraints = self._magnet_logic.get_hardware_constraints()
+        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+
+        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setMinimum(0)
+        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
+        # FIXME: obtain the decimals correctly:
+        # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
+        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setDecimals(3)
+
+        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setMinimum(0)
+        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
+        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
+        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setDecimals(3)
+
+        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min'])
+        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max'])
+        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'])
+
+    def _set_vel_display_axis0(self):
+        """ Set the visibility of the velocity display for axis 0. """
+
+        if self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.isChecked():
+            self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setVisible(True)
+        else:
+            self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setVisible(False)
+
+    def _set_vel_display_axis1(self):
+        """ Set the visibility of the velocity display for axis 1. """
+
+        if self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.isChecked():
+            self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setVisible(True)
+        else:
+            self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setVisible(False)
+
+    def _update_2d_graph_axis(self):
+
+        constraints = self._magnet_logic.get_hardware_constraints()
+
+        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+        axis0_unit = constraints[axis0_name]['unit']
+        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+        axis1_unit = constraints[axis1_name]['unit']
+
+        axis0_array, axis1_array = self._magnet_logic.get_2d_axis_arrays()
+
+        self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0_array[0],
+                                                           axis1_array[0],
+                                                           axis0_array[-1]-axis0_array[0],
+                                                           axis1_array[-1]-axis1_array[0],))
+
+        self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
+        self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
+
+    def _update_2d_graph_cb(self):
+        """ Update the colorbar to a new scaling."""
+
+        # If "Centiles" is checked, adjust colour scaling automatically to
+        # centiles. Otherwise, take user-defined values.
+
+        if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+            low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
+            high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
+
+            cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
+            cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+
+        else:
+            cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
+            cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
+
+        self._2d_alignment_cb.refresh_colorbar(cb_min, cb_max)
+        self._mw.alignment_2d_cb_GraphicsView.update()
+
+
+
+    def _update_2d_graph_data(self):
+        """ Refresh the 2D-matrix image. """
+        matrix_data = self._magnet_logic.get_2d_data_matrix()
+
+        if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+            low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
+            high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
+
+            cb_min = np.percentile(matrix_data, low_centile)
+            cb_max = np.percentile(matrix_data, high_centile)
+        else:
+            cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
+            cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
+
+
+        self._2d_alignment_ImageItem.setImage(image=matrix_data,
+                                              levels=(cb_min, cb_max))
+        self._update_2d_graph_axis()
+
+        self._update_2d_graph_cb()
+
+        # get data from logic
+
+
+    def save_2d_plots_and_data(self):
+        """ Save the sum plot, the scan marix plot and the scan data """
+        timestamp = datetime.datetime.now()
+        filetag = self._mw.alignment_2d_nametag_LineEdit.text()
+        filepath = self._save_logic.get_path_for_module(module_name='Magnet')
+
+        if len(filetag) > 0:
+            filename = os.path.join(filepath, '{0}_{1}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'), filetag))
+        else:
+            filename = os.path.join(filepath, '{0}_Magnet'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
+
+        exporter_graph = pg.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
+        exporter_graph.export(filename  + '.svg')
+
+        # self._save_logic.
+        self._magnet_logic.save_2d_data(filetag, timestamp)
