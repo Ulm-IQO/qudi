@@ -172,7 +172,7 @@ class PulsedMeasurementLogic(GenericLogic):
         elif not self.fast_counter_gated:
             record_length_s = self.aom_delay_s + self.sequence_length_s
             number_of_gates = 0
-        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth, record_length_s, number_of_gates)
+        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth/1e9 , record_length_s, number_of_gates)
         self.fast_counter_binwidth = actual_binwidth_s
         return
 
@@ -653,7 +653,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return fft_x[:middle],fft_y[:middle]
 
 
-    def do_fit(self,fit_function):
+    def do_fit(self, fit_function):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
@@ -666,7 +666,7 @@ class PulsedMeasurementLogic(GenericLogic):
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
-        elif fit_function == 'Rabi':
+        elif fit_function == 'Rabi Decay':
             result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x,
                                                    data=self.signal_plot_y,
                                                    add_parameters=None)
@@ -686,8 +686,6 @@ class PulsedMeasurementLogic(GenericLogic):
                                                str(np.round(result.params['frequency'].stderr, 2)) + "\n")
 
             return pulsed_fit_x, pulsed_fit_y, fit_result
-
-
 
         elif fit_function == 'Lorentian (neg)':
             result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
