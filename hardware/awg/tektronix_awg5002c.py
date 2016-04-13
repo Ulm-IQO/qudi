@@ -390,7 +390,11 @@ class AWG5002C(Base, PulserInterface):
 
         path = self.ftp_path + self.get_asset_dir_on_device()
 
-        if (asset_name + '.seq') in self._get_filenames_on_device():
+        # Find all files associated with the specified asset name
+        file_list = self._get_filenames_on_device()
+        filename = []
+
+        if (asset_name + '.seq') in file_list:
             file_name = asset_name + '.seq'
 
             self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, file_name))
@@ -399,7 +403,19 @@ class AWG5002C(Base, PulserInterface):
 
             self.current_loaded_asset = asset_name
         else:
-            if load_dict == {}:
+
+            for file in file_list:
+                if file == asset_name+'_ch1.wfm':
+                    self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch1.wfm'))
+
+
+                    filename.append(file)
+                elif file == asset_name+'_ch2.wfm':
+                    self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name+'_ch2.wfm'))
+                    filename.append(file)
+
+
+            if load_dict == {} and filename == []:
                 self.logMsg('No file and channel provided for load!\nCorrect '
                             'that!\nCommand will be ignored.', msgType='warning')
 

@@ -225,6 +225,18 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # one timebin of the data to read is 32 bit wide and the data is
         # transferred in bytes.
 
+        if self.statusvar != 2:
+            self.logMsg('The FPGA is currently not running! The current status '
+                        'is: "{0}". The running status would be 2. Start the '
+                        'FPGA to get the data_trace of the device. An emtpy '
+                        'numpy array[{1},{2}] filled with zeros will be '
+                        'returned.'.format(self.statusvar,
+                                           self._number_of_gates,
+                                           self._gate_length_bins),
+                        msgType='error')
+
+            return self.count_data
+
         data_buffer = bytearray(self._histogram_size*4)
         # check if the timetagger had an overflow.
         self._fpga.UpdateWireOuts()
