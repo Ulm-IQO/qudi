@@ -89,7 +89,7 @@ class VoltageScanningLogic(GenericLogic):
         self.scan_range = [self.a_range[0] / 10, self.a_range[1] / 10]
 
         # Sets the current position to the center of the maximal scanning range
-        self._current_a = (self.a_range[0] + self.a_range[1]) / 2.
+        self._current_v = (self.a_range[0] + self.a_range[1]) / 2.
 
         # Sets connections between signals and functions
         self.signal_change_voltage.connect(self._change_voltage, QtCore.Qt.QueuedConnection)
@@ -103,7 +103,6 @@ class VoltageScanningLogic(GenericLogic):
 
         # calculated number of points in a scan, depends on speed and max step size
         self._num_of_steps = 50  # initialising.  This is calculated for a given ramp.
-        self.return_slowness=50  # TODO: remove this parameter
         #############################
         # Configurable parameters
 
@@ -115,6 +114,7 @@ class VoltageScanningLogic(GenericLogic):
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
         self._clock_frequency = 500.
+        self._goto_speed = 0.01  # volt / second
         self._scan_speed = 0.01  # volt / second
         self._smoothing_steps = 10  # steps to accelerate between 0 and scan_speed
         self._max_step = 0.01  # volt
@@ -122,7 +122,7 @@ class VoltageScanningLogic(GenericLogic):
         ##############################
 
         # Initialie data matrix
-        self._initialise_data_matrix()
+        self._initialise_data_matrix(100)
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -131,19 +131,17 @@ class VoltageScanningLogic(GenericLogic):
         """
         pass
 
-    def set_voltage(self, a=None):
+    def goto_voltage(self, volts=None):
         """Forwarding the desired output voltage to the scanning device.
 
-        @param string tag: TODO
-
-        @param float a: if defined, changes to postion in a-direction (microns)
+        @param float volts: desired voltage (volts)
 
         @return int: error code (0:OK, -1:error)
         """
         # print(tag, x, y, z)
         # Changes the respective value
-        if a is not None:
-            self._current_a = a
+        if volts is not None:
+            self._current_v = volts
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
@@ -153,11 +151,18 @@ class VoltageScanningLogic(GenericLogic):
             return 0
 
     def _change_voltage(self):
-        """ Threaded method to change the hardware position.
+        """ Threaded method to change the hardware voltage for a goto.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.scanner_set_position(a=self._current_a)
+        ramp_scan = self._generate_ramp(self.get_current_voltage(), self._current_v, self._goto_speed)
+
+        self._initialise_scanner()
+
+        ignored_counts = self._scan_line(ramp_scan)
+
+        self._close_scanner()
+
         return 0
 
     def set_clock_frequency(self, clock_frequency):
@@ -174,14 +179,37 @@ class VoltageScanningLogic(GenericLogic):
         else:
             return 0
 
-    def _initialise_data_matrix(self):
+    def _initialise_data_matrix(self, scan_length):
         """ Initializing the ODMR matrix plot. """
 
-        self.scan_matrix = np.zeros((self.number_of_repeats, self.return_slowness))
+        self.scan_matrix = np.zeros((self.number_of_repeats, scan_length))
 
     def get_current_voltage(self):
         """returns current voltage of hardware device(atm NIDAQ 4th output)"""
         return self._scanning_device.get_scanner_position()[3]
+
+    def _initialise_scanner(self):
+        """Initialise the clock and locks for a scan"""
+
+        self.lock()
+        self._scanning_device.lock()
+
+        returnvalue = self._scanning_device.set_up_scanner_clock(
+            clock_frequency=self._clock_frequency)
+        if returnvalue < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
+        returnvalue = self._scanning_device.set_up_scanner()
+        if returnvalue < 0:
+            self._scanning_device.unlock()
+            self.unlock()
+            self.set_position('scanner')
+            return -1
+
+        return 0
 
     def start_scanning(self, v_min=None, v_max=None):
         """Setting up the scanner device and starts the scanning procedure
@@ -196,26 +224,17 @@ class VoltageScanningLogic(GenericLogic):
 
         self._scan_counter = 0
         self.upwards_scan = True
-        self._initialise_data_matrix()
+
+        # TODO: Generate Ramps
+        self._initialise_data_matrix(100)
 
         self.current_position = self._scanning_device.get_scanner_position()
 
-        self.lock()
-        self._scanning_device.lock()
-
-        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
+        # Lock and set up scanner
+        returnvalue = self._initialise_scanner()
         if returnvalue < 0:
-            self._scanning_device.unlock()
-            self.unlock()
-            self.set_position('scanner')
-            return
-
-        returnvalue = self._scanning_device.set_up_scanner()
-        if returnvalue < 0:
-            self._scanning_device.unlock()
-            self.unlock()
-            self.set_position('scanner')
-            return
+            # TODO: error message
+            return -1
 
         self.signal_scan_next_line.emit()
         return 0
@@ -231,6 +250,13 @@ class VoltageScanningLogic(GenericLogic):
 
         return 0
 
+    def _close_scanner(self):
+        """Close the scanner and unlock"""
+        with self.threadlock:
+            self.kill_scanner()
+            self.stopRequested = False
+            self.unlock()
+
     def _do_next_line(self):
         """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
 
@@ -242,15 +268,12 @@ class VoltageScanningLogic(GenericLogic):
                 ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
             else:
                 ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
-            with self.threadlock:
-                self.kill_scanner()
-                self.stopRequested = False
-                self.unlock()
-                return
+            self._close_scanner()
+            return
 
         if self._scan_counter == 0:
             # move from current voltage to start of scan range.
-            ignored_counts = self._scan_line(self.current_position[3], self.scan_range[0])
+            self.goto_voltage(self.scan_range[0])
 
         if self.upwards_scan:
             counts = self._scan_line(self.scan_range[0], self.scan_range[1])
@@ -264,7 +287,7 @@ class VoltageScanningLogic(GenericLogic):
         self._scan_counter += 1
         self.signal_scan_next_line.emit()
 
-    def _generate_ramp(self, voltage1, voltage2):
+    def _generate_ramp(self, voltage1, voltage2, speed):
         """Generate a ramp vrom voltage1 to voltage2 that
         satisfies the speed, step, smoothing_steps parameters.  Smoothing_steps=0 means that the 
         ramp is just linear.
@@ -281,7 +304,7 @@ class VoltageScanningLogic(GenericLogic):
         v_max = max(voltage1, voltage2)
 
         # These values help simplify some of the mathematical expressions
-        linear_v_step = self._scan_speed / self._clock_frequency
+        linear_v_step = speed / self._clock_frequency
         smoothing_range = self._smoothing_steps + 1
 
         # The voltage range covered while accelerating in the smoothing steps
@@ -312,25 +335,31 @@ class VoltageScanningLogic(GenericLogic):
         if voltage2 < voltage1:
             ramp = ramp[::-1]
 
-        # Set the number of steps so that data arrays can be created.
-# TODO this is bad because hard to follow.  Better to return this and set it explicitly when _generate_ramp is called.
-        self._num_of_steps = num_of_linear_steps + (2 * self._smoothing_steps)
-        return(ramp)
+        # Put the voltage ramp into a scan line for the hardware (4-dimension)
+        spatial_pos = self._scanning_device.get_scanner_position()
 
-    def _scan_line(self, voltage1, voltage2):
+        scan_line = np.vstack((
+            np.linspace(spatial_pos[0], spatial_pos[0],
+                        len(ramp)),
+            np.linspace(spatial_pos[1], spatial_pos[1],
+                        len(ramp)),
+            np.linspace(spatial_pos[2], spatial_pos[2],
+                        len(ramp)),
+            ramp
+            ))
+
+        return scan_line
+
+    def _scan_line(self, line_to_scan = None):
         """do a single voltage scan from voltage1 to voltage2
 
         """
+        if line_to_scan is None:
+            self.logMsg('Voltage scanning logic needs a line to scan!', msgType='error')
+            return -1
         try:
-            # defines trace of positions for single line scan
-            scan_line = np.vstack((
-                np.linspace(self.current_position[0], self.current_position[0], self.return_slowness),
-                np.linspace(self.current_position[1], self.current_position[1], self.return_slowness),
-                np.linspace(self.current_position[2], self.current_position[2], self.return_slowness),
-                np.linspace(voltage1, voltage2, self.return_slowness)
-                ))
             # scan of a single line
-            counts_on_scan_line = self._scanning_device.scan_line(scan_line)
+            counts_on_scan_line = self._scanning_device.scan_line(line_to_scan)
 
             return counts_on_scan_line
 
