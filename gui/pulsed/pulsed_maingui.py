@@ -178,6 +178,9 @@ class PulsedMeasurementGui(GUIBase):
         #locking for thread safety
         self.threadlock = Mutex()
 
+        # that variable is for testing issues and can be deleted if not needed:
+        self._write_chunkwise = False
+
     def initUI(self, e=None):
         """ Initialize, connect and configure the pulsed measurement GUI.
 
@@ -868,7 +871,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name=ensemble_name,
                                                         write_to_file=True,
-                                                        chunkwise=True)
+                                                        chunkwise=self._write_chunkwise)
         return
 
     def upload_to_device_clicked(self):
@@ -2588,10 +2591,14 @@ class PulsedMeasurementGui(GUIBase):
             # set number of laser pulses:
             self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
 
-            self._pulsed_meas_logic.aom_delay_s = 0.5e-6
+            self._pulsed_meas_logic.aom_delay_s = 1e-6
             self._pulsed_meas_logic.laser_length_s = 3e-6
 
-            self._pulsed_meas_logic.configure_fast_counter()
+            self.analysis_fc_binning_changed()
+
+            # No need for configuration if fc is changed:
+            # self._pulsed_meas_logic.configure_fast_counter()
+
             # FIXME: Not sure if that belongs to here...
             #self._mw.time_param_expected_dur_DoubleSpinBox.setValue(5765.0)
             'FIXME: Not really sure if for two multiplication it is convenient to have an extra function in ulsed_measurment_logic'
@@ -2811,7 +2818,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def analysis_fc_binning_changed(self):
 
-        fc_binning=float(self._mw.ana_param_fc_bins_ComboBox.currentText())
+        fc_binning = float(self._mw.ana_param_fc_bins_ComboBox.currentText())
         self._pulsed_meas_logic.change_fc_binning_for_pulsed_analysis(fc_binning)
         return
 

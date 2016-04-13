@@ -119,7 +119,7 @@ class PulseAnalysisLogic(GenericLogic):
     def do_fit(self):
         return
 
-    def calculate_measuring_error(self,signal_area,reference_area):
+    def calculate_measuring_error(self, signal_area, reference_area):
 
         #with respect to gaußian error 'evolution'
         measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
