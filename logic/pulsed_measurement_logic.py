@@ -308,6 +308,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
         return self.laser_plot_x, self.laser_plot_y
 
+    def get_fastcounter_constraints(self):
+        """ Request the constrains from the hardware, in order to pass them
+            to the GUI if necessary.
+
+        @return: dict where the keys in it are predefined in the interface.
+        """
+
+        return self._fast_counter_device.get_constraints()
+
+
     def stop_pulsed_measurement(self):
         """ Stop the measurement
           @return int: error code (0:OK, -1:error)

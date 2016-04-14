@@ -2490,14 +2490,17 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configuration of the second plot ComboBox
 
-        #FIXME: This should be given by the fast counter
-        self._mw.ana_param_fc_bins_ComboBox.addItem('1.0')
-        self._mw.ana_param_fc_bins_ComboBox.addItem('2.0')
-        self._mw.ana_param_fc_bins_ComboBox.addItem('3.0')
-        self._mw.ana_param_fc_bins_ComboBox.addItem('4.0')
-        self._mw.ana_param_fc_bins_ComboBox.addItem('5.0')
-        self._mw.ana_param_fc_bins_ComboBox.addItem('10.0')
+        # in order to keep the full precision (which is not needed in the
+        # display) an reference list variable self._binwidth_ref_list will be
+        # created where the values are stored with the absolute given presicion:
+        self._binwidth_ref_list = self._pulsed_meas_logic.get_fastcounter_constraints()['hardware_binwidth_list']
+        binwidth_str_list = []
+        for entry in self._binwidth_ref_list:
+            binwidth_str_list.append(str(round(entry,12)))
 
+        self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
+
+        #FIXME: This should be given by the logic
         self._mw.second_plot_ComboBox.addItem('None')
         self._mw.second_plot_ComboBox.addItem('unchanged data')
         self._mw.second_plot_ComboBox.addItem('FFT')
@@ -2540,7 +2543,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
-
+        self.measurement_ticks_editor()
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
@@ -2817,8 +2820,10 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def analysis_fc_binning_changed(self):
+        """ If a new binning value is selected, apply the change to the logic. """
 
-        fc_binning = float(self._mw.ana_param_fc_bins_ComboBox.currentText())
+        index = self._mw.ana_param_fc_bins_ComboBox.currentIndex()
+        fc_binning = self._binwidth_ref_list[index]
         self._pulsed_meas_logic.change_fc_binning_for_pulsed_analysis(fc_binning)
         return
 
