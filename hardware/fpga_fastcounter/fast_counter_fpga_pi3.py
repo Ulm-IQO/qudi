@@ -26,8 +26,8 @@ from core.base import Base
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 
-class FastCounterFPGAPi3(Base, FastCounterInterface):
-    _modclass = 'fastcounterfpgapi3'
+class FastCounterFGAPiP3(Base, FastCounterInterface):
+    _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 
     ## declare connectors
@@ -42,16 +42,16 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
 
 
     def activation(self, e):
-        """ Initialisation performed during activation of the module.
+        """ Connect and configure the access to the FPGA.
 
-        @param object e: Fysom.event object from Fysom class.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
-        """
+                @param object e: Event class object from Fysom.
+                                 An object created by the state machine module Fysom,
+                                 which is connected to a specific event (have a look in
+                                 the Base Class). This object contains the passed event
+                                 the state before the event happens and the destination
+                                 of the state which should be reached after the event
+                                 has happen.
+                """
 
         config = self.getConfiguration()
         if 'fpgacounter_serial' in config.keys():
@@ -60,124 +60,106 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
             self.logMsg('No serial number defined for fpga counter',
                         msgType='warning')
 
+        if 'fpgacounter_channel_apd_0' in config.keys():
+            self._channel_apd_0 = config['fpgacounter_channel_apd_0']
+        else:
+            self.logMsg('No apd0 channel defined for fpga counter',
+                        msgType='warning')
+
+        if 'fpgacounter_channel_apd_1' in config.keys():
+            self._channel_apd_1 = config['fpgacounter_channel_apd_1']
+        else:
+            self.logMsg('No apd1 channel defined for fpga counter',
+                        msgType='warning')
+
+        if 'fpgacounter_channel_detect' in config.keys():
+            self._channel_detect = config['fpgacounter_channel_detect']
+        else:
+            self.logMsg('No no detect channel defined for fpga counter',
+                        msgType='warning')
+
+        if 'fpgacounter_channel_sequence' in config.keys():
+            self._channel_sequence = config['fpgacounter_channel_sequence']
+        else:
+            self.logMsg('No sequence channel defined for fpga counter',
+                        msgType='warning')
+
         tt._Tagger_setSerial(self._fpgacounter_serial)
 
-        self._binwidth = 1
-        self._record_length = 4000
-        self._N_read = 100
+        self._number_of_gates = int(100)
+        self._bin_width = 1
+        self._record_length = int(4000)
 
-        self.channel_apd_1 = int(1)
-        self.channel_apd_0 = int(1)
-        self.channel_detect = int(2)
-        self.channel_sequence = int(6)
-        self.configure(1,1000,1)
+        self.configure(self._bin_width*1e-9,self._record_length*1e-9,self._number_of_gates)
 
         self.count_data = None
 
         self.stopRequested = False
 
+        self.statusvar = 0
+
         self.threadlock = Mutex()
 
         self.signal_get_data_next.connect(self._get_data_next,
                                           QtCore.Qt.QueuedConnection)
+        print('fpga_counter end of activation:')
 
     def deactivation(self, e):
-        """ Deinitialisation performed during deactivation of the module.
+        """ Deactivate the FPGA.
 
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method activation.
-        """
+                @param object e: Event class object from Fysom. A more detailed
+                                 explanation can be found in method activation.
+                """
         pass
 
-    def get_constraints(self):
-        """ Retrieve the hardware constrains from the Fast counting device.
+    def configure(self, bin_width_s, record_length_s, number_of_gates=0):
 
-        @return dict: dict with keys being the constraint names as string and
-                      items are the definition for the constaints.
-
-         The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method).
-
-                    NO OTHER KEYS SHOULD BE INVENTED!
-
-        If you are not sure about the meaning, look in other hardware files to
-        get an impression. If still additional constraints are needed, then they
-        have to be added to all files containing this interface.
-
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
-
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
-
-        If the constraints cannot be set in the fast counting hardware then
-        write just zero to each key of the generic dicts.
-        Note that there is a difference between float input (0.0) and
-        integer input (0), because some logic modules might rely on that
-        distinction.
-
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
-        """
-
-        constraints = dict()
-
-        # the unit of those entries are seconds per bin. In order to get the
-        # current binwidth in seonds use the get_binwidth method.
-        #FIXME: Enter here the proper numbers!
-        constraints['hardware_binwidth_list'] = [1e-9, 2e-9, 4e-9, 8e-9]
-
-        return constraints
-
-    def configure(self, N_read, record_length, bin_width):
         """ Configuration of the fast counter.
 
-        @param float bin_width_s: Length of a single time bin in the time trace
-                                  histogram in seconds.
-        @param float record_length_s: Total length of the timetrace/each single
-                                      gate in seconds.
-        @param int number_of_gates: optional, number of gates in the pulse
-                                    sequence. Ignore for not gated counter.
+                @param float bin_width_s: Length of a single time bin in the time trace
+                                          histogram in seconds.
+                @param float record_length_s: Total length of the timetrace/each single
+                                              gate in seconds.
+                @param int number_of_gates: optional, number of gates in the pulse
+                                            sequence. Ignore for not gated counter.
+                """
 
-        @return tuple(binwidth_s, gate_length_s, number_of_gates):
-                    binwidth_s: float the actual set binwidth in seconds
-                    gate_length_s: the actual set gate length in seconds
-                    number_of_gates: the number of gated, which are accepted
-        """
-
-        self._N_read = N_read
-        self._record_length = record_length
-        self._bin_width = bin_width
-        self.n_bins = int(self._record_length / self._bin_width)
+        self._number_of_gates = number_of_gates
+        self._bin_width = bin_width_s * 1e9
+        self._record_length = int(self.record_length_s / self._bin_width_s)
+        self.statusvar = 1
 
         self.pulsed = tt.Pulsed(
-            self.n_bins,
+            self._record_length,
             int(np.round(self._bin_width*1000)),
-            self._N_read,
-            self.channel_apd_0,
-            self.channel_detect,
-            self.channel_sequence
+            self._number_of_gates,
+            self._channel_apd_0,
+            self._channel_detect,
+            self._channel_sequence
         )
+        print('fpga_counter end of configure:')
+        return (bin_width_s, record_length_s, number_of_gates)
 
     def _get_data_next(self):
+        """ Read new count_data and add to existing count_data
+                        """
         if self.stopRequested:
             with self.threadlock:
-                self.kill_scanner()
                 self.stopRequested = False
                 self.unlock()
                 return
-        self.count_data = self.count_data + self.pulsed.getData()
+        np.add(self.count_data, self.pulsed.getData())
+
         self.signal_get_data_next.emit()
 
     def start_measure(self):
         """ Start the fast counter. """
 
         self.lock()
-        self.count_data = np.zeros((self._N_read,self._record_length))
+        self.count_data = np.zeros([self._number_of_gates,
+                                    self._gate_length_bins])
         self.pulsed.start()
+        self.statusvar = 2
         self.signal_get_data_next.emit()
         return 0
 
@@ -188,46 +170,53 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
             if self.getState() == 'locked':
                 self.stopRequested = True
         self.pulsed.stop()
+        self.statusvar = 1
         self.unlock()
         return 0
 
     def pause_measure(self):
         """ Pauses the current measurement.
 
-        Fast counter must be initially in the run state to make it pause.
-        """
+                Fast counter must be initially in the run state to make it pause.
+                """
+
         self.stop_measure()
+        self.statusvar = 3
         return 0
 
     def continue_measure(self):
         """ Continues the current measurement.
 
-        If fast counter is in pause state, then fast counter will be continued.
-        """
+                If fast counter is in pause state, then fast counter will be continued.
+                """
+        # exit the pause state in the FPGA
+
         self.signal_get_data_next.emit()
+        self.statusvar = 2
         return 0
 
     def is_gated(self):
         """ Check the gated counting possibility.
 
-        @return bool: Boolean value indicates if the fast counter is a gated
-                      counter (TRUE) or not (FALSE).
-        """
+                Boolean return value indicates if the fast counter is a gated counter
+                (TRUE) or not (FALSE).
+                """
 
         return True
 
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.
 
-        Return value is a numpy array (dtype = int64).
-        The binning, specified by calling configure() in forehand, must be
-        taken care of in this hardware class. A possible overflow of the
-        histogram bins must be caught here and taken care of.
-        If the counter is NOT GATED it will return a 1D-numpy-array with
-            returnarray[timebin_index]
-        If the counter is GATED it will return a 2D-numpy-array with
-            returnarray[gate_index, timebin_index]
-        """
+                @return numpy.array: 2 dimensional array of dtype = int64. This counter
+                                     is gated the the return array has the following
+                                     shape:
+                                        returnarray[gate_index, timebin_index]
+
+                The binning, specified by calling configure() in forehand, must be taken
+                care of in this hardware class. A possible overflow of the histogram
+                bins must be caught here and taken care of.
+                """
+
         return self.count_data
 
     def get_status(self):
@@ -240,12 +229,11 @@ class FastCounterFPGAPi3(Base, FastCounterInterface):
         3 = paused
         -1 = error state
         """
-        ready = self.pulsed.ready()
-        return {'binwidth_ns': self._bin_width*1000, 'is_gated': True, 'is_ready': ready}
+        return self.statusvar
 
     def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds.
+        """ Returns the width of a single timebin in the timetrace in seconds
+            """
 
-        @return float: current length of a single bin in seconds (seconds/bin)
-        """
-        return self._binwidth
+        width_in_seconds = self._binwidth * 1e-9
+        return width_in_seconds
