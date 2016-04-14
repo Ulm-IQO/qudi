@@ -130,7 +130,8 @@ class FastComtec(Base, FastCounterInterface):
 
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seonds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = [0.25e-9, 0.5e-9, 1e-9, 2e-9, 4e-9, 8e-9, 16e-9]
+        constraints['hardware_binwidth_list'] = list(self._minimal_binwidth * (2 ** np.array(
+                                                     np.linspace(0,24,25))))
 
         return constraints
 
