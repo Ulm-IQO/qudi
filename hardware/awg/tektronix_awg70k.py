@@ -500,6 +500,10 @@ class AWG70K(Base, PulserInterface):
                         'that!\nCommand will be ignored.', msgType='warning')
             return -1
 
+        # at first delete all the name, which might lead to confusions in the
+        # upload procedure:
+        self._check_and_delete_filename(asset_name)
+
         filelist = self._get_filenames_on_host()
         upload_names = []
         for filename in filelist:
