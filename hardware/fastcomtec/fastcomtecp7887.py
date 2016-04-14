@@ -66,6 +66,7 @@ class FastComtec(Base, FastCounterInterface):
                         msgType='status')
 
         self.gated = False
+        self._minimal_binwidth = 0.25e-9    # in seconds per bin
 
 
     def activation(self, e):
@@ -80,7 +81,6 @@ class FastComtec(Base, FastCounterInterface):
                          had happened.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
-        self._minimal_binwidth=0.25
 
         return
 
@@ -114,8 +114,8 @@ class FastComtec(Base, FastCounterInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the key 'hardware_binwidth_list' differs, since they
+        contain the list of possible binwidths.
 
         If the constraints cannot be set in the fast counting hardware then
         write just zero to each key of the generic dicts.
@@ -145,11 +145,13 @@ class FastComtec(Base, FastCounterInterface):
         @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
 
-        @return tuple(float, float int):
-        Returns the actually set values as tuple
+        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+                    binwidth_s: float the actual set binwidth in seconds
+                    gate_length_s: the actual set gate length in seconds
+                    number_of_gates: the number of gated, which are accepted
         """
 
-        self.set_binwidth(binwidth)
+        self.set_binwidth(bin_width_s)
         #self.set_length(duration)
 
         return (self.get_binwidth()/1e9, 4000e-9, 0)
@@ -177,13 +179,13 @@ class FastComtec(Base, FastCounterInterface):
     def set_bitshift(self, bitshift):
         """ Sets the bitshift properly for this card.
 
-          @param int bitshift
+        @param int bitshift
 
-          @return int: asks the actual bitshift and returns the red out value
-          """
+        @return int: asks the actual bitshift and returns the red out value
+        """
 
-        cmd='BITSHIFT=%i'%bitshift
-        self.dll.RunCmd(0,bytes(cmd,'ascii'))
+        cmd = 'BITSHIFT={0}'.format(bitshift)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_bitshift()
 
     def set_binwidth(self, binwidth):
@@ -196,10 +198,10 @@ class FastComtec(Base, FastCounterInterface):
         The binwidth is converted into to an appropiate bitshift defined as
         2**bitshift*minimal_binwidth.
         """
-        bitshift=np.log2(binwidth/self._minimal_binwidth)
+        bitshift = int(np.log2(binwidth/self._minimal_binwidth))
         new_bitshift=self.set_bitshift(bitshift)
 
-        return self._minimal_binwidth*(2**int(new_bitshift))
+        return self._minimal_binwidth*(2**new_bitshift)
 
     #TODO: Check such that only possible lengths are set.
     def set_length(self, N):
@@ -209,9 +211,9 @@ class FastComtec(Base, FastCounterInterface):
 
         @return float: Red out length of measurement
         """
-        cmd='RANGE=%i'%int(N)
+        cmd = 'RANGE={0}'.format(int(N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd='roimax=%i'%int(N)
+        cmd = 'roimax={0}'.format(int(N))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return self.get_length()
 

@@ -51,8 +51,8 @@ class FastCounterInterface():
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the key 'hardware_binwidth_list' differs, since they
+        contain the list of possible binwidths.
 
         If the constraints cannot be set in the fast counting hardware then
         write just zero to each key of the generic dicts.
