@@ -126,8 +126,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the key 'hardware_binwidth_list' differs, since they
+        contain the list of possible binwidths.
 
         If the constraints cannot be set in the fast counting hardware then
         write just zero to each key of the generic dicts.
@@ -153,22 +153,27 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def deactivation(self, e):
         """ Deactivate the FPGA.
 
-                @param object e: Event class object from Fysom. A more detailed
-                                 explanation can be found in method activation.
-                """
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
         pass
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
 
         """ Configuration of the fast counter.
 
-                @param float bin_width_s: Length of a single time bin in the time trace
-                                          histogram in seconds.
-                @param float record_length_s: Total length of the timetrace/each single
-                                              gate in seconds.
-                @param int number_of_gates: optional, number of gates in the pulse
-                                            sequence. Ignore for not gated counter.
-                """
+        @param float bin_width_s: Length of a single time bin in the time trace
+                                  histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single
+                                      gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse
+                                    sequence. Ignore for not gated counter.
+
+        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+                    binwidth_s: float the actual set binwidth in seconds
+                    gate_length_s: the actual set gate length in seconds
+                    number_of_gates: the number of gated, which are accepted
+        """
 
         self._number_of_gates = number_of_gates
         self._bin_width = bin_width_s * 1e9
@@ -187,8 +192,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         return (bin_width_s, record_length_s, number_of_gates)
 
     def _get_data_next(self):
-        """ Read new count_data and add to existing count_data
-                        """
+        """ Read new count_data and add to existing count_data. """
+
         if self.stopRequested:
             with self.threadlock:
                 self.stopRequested = False
@@ -223,8 +228,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def pause_measure(self):
         """ Pauses the current measurement.
 
-                Fast counter must be initially in the run state to make it pause.
-                """
+        Fast counter must be initially in the run state to make it pause.
+        """
 
         self.stop_measure()
         self.statusvar = 3
@@ -233,8 +238,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def continue_measure(self):
         """ Continues the current measurement.
 
-                If fast counter is in pause state, then fast counter will be continued.
-                """
+        If fast counter is in pause state, then fast counter will be continued.
+        """
         # exit the pause state in the FPGA
 
         self.signal_get_data_next.emit()
@@ -244,24 +249,24 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def is_gated(self):
         """ Check the gated counting possibility.
 
-                Boolean return value indicates if the fast counter is a gated counter
-                (TRUE) or not (FALSE).
-                """
+        Boolean return value indicates if the fast counter is a gated counter
+        (TRUE) or not (FALSE).
+        """
 
         return True
 
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.
 
-                @return numpy.array: 2 dimensional array of dtype = int64. This counter
-                                     is gated the the return array has the following
-                                     shape:
-                                        returnarray[gate_index, timebin_index]
+        @return numpy.array: 2 dimensional array of dtype = int64. This counter
+                             is gated the the return array has the following
+                             shape:
+                                returnarray[gate_index, timebin_index]
 
-                The binning, specified by calling configure() in forehand, must be taken
-                care of in this hardware class. A possible overflow of the histogram
-                bins must be caught here and taken care of.
-                """
+        The binning, specified by calling configure() in forehand, must be taken
+        care of in this hardware class. A possible overflow of the histogram
+        bins must be caught here and taken care of.
+        """
 
         return self.count_data
 
@@ -278,8 +283,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         return self.statusvar
 
     def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds
-            """
+        """ Returns the width of a single timebin in the timetrace in seconds. """
 
         width_in_seconds = self._binwidth * 1e-9
         return width_in_seconds
