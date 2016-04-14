@@ -313,12 +313,14 @@ class AWG5002C(Base, PulserInterface):
         If nothing is passed, method will be skipped.
         """
 
-        self.logMsg(('asset_name:', asset_name), msgType='status')
-
         if asset_name is None:
             self.logMsg('No asset name provided for upload!\nCorrect '
                         'that!\nCommand will be ignored.', msgType='warning')
             return -1
+
+        # at first delete all the name, which might lead to confusions in the
+        # upload procedure:
+        self._check_and_delete_filename(asset_name)
 
         # create list of filenames to be uploaded
         upload_names = []
@@ -1527,6 +1529,33 @@ class AWG5002C(Base, PulserInterface):
                         filename_list.append(filename)
 
         return filename_list
+
+    def _check_and_delete_filename(self, asset_name):
+        """ Check and delete filenames with asset_name.
+
+        @param str asset_name: name of the asset you want to look for.
+
+        @return list: with str entries denoting which files on the devices have
+                      been deleted.
+        """
+
+        filename_list = self._get_filenames_on_device()
+
+        to_delete_list = []
+        for filename in filename_list:
+            if  (filename == asset_name+'_ch1.wfm') or \
+                (filename == asset_name+'_ch2.wfm') or \
+                (filename == asset_name+'.seq'):
+
+                to_delete_list.append(filename)
+
+        with FTP(self.ip_address) as ftp:
+            ftp.login() # login as default user anonymous, passwd anonymous@
+            ftp.cwd(self.asset_directory)
+            for filename_to_delete in to_delete_list:
+                ftp.delete(filename_to_delete)
+
+        return to_delete_list
 
     def _get_filenames_on_host(self):
         """ Get the full filenames of all assets saved on the host PC.
