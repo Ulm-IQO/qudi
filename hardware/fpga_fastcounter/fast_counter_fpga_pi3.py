@@ -104,6 +104,52 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                                           QtCore.Qt.QueuedConnection)
         print('fpga_counter end of activation:')
 
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the Fast counting device.
+
+        @return dict: dict with keys being the constraint names as string and
+                      items are the definition for the constaints.
+
+         The keys of the returned dictionary are the str name for the constraints
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
+        The items of the keys are again dictionaries which have the generic
+        dictionary form:
+            {'min': <value>,
+             'max': <value>,
+             'step': <value>,
+             'unit': '<value>'}
+
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
+
+        If the constraints cannot be set in the fast counting hardware then
+        write just zero to each key of the generic dicts.
+        Note that there is a difference between float input (0.0) and
+        integer input (0), because some logic modules might rely on that
+        distinction.
+
+        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+        """
+
+        constraints = dict()
+
+        # the unit of those entries are seconds per bin. In order to get the
+        # current binwidth in seonds use the get_binwidth method.
+        constraints['hardware_binwidth_list'] = [1 / 1000e6]
+
+        # TODO: think maybe about a software_binwidth_list, which will
+        #      postprocess the obtained counts. These bins must be integer
+        #      multiples of the current hardware_binwidth
+
+        return constraints
+
     def deactivation(self, e):
         """ Deactivate the FPGA.
 
