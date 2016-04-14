@@ -446,7 +446,7 @@ def find_offset_parameter(self, x_values=None, data=None):
     offset which is supposed to be the most likely valy via a histogram.
     Additional the smoothed data is returned
 
-    @param array x_axis: x values
+    @param array x_values: x values
     @param array data: value of each data point corresponding to
                         x values
 
@@ -456,23 +456,23 @@ def find_offset_parameter(self, x_values=None, data=None):
 
 
     """
-    #lorentzian filter
-    mod,params = self.make_lorentzian_model()
+    # lorentzian filter
+    mod, params = self.make_lorentzian_model()
 
-    if len(x_values)<20.:
-        len_x=5
-    elif len(x_values)>=100.:
-        len_x=10
+    if len(x_values) < 20.:
+        len_x = 5
+    elif len(x_values) >= 100.:
+        len_x = 10
     else:
-        len_x=int(len(x_values)/10.)+1
+        len_x = int(len(x_values)/10.)+1
 
-    lorentz=mod.eval(x=np.linspace(0,len_x,len_x), amplitude=1, c=0.,
-                     sigma=len_x/4., center=len_x/2.)
+    lorentz = mod.eval(x=np.linspace(0, len_x, len_x), amplitude=1, c=0.,
+                       sigma=len_x/4., center=len_x/2.)
     data_smooth = filters.convolve1d(data, lorentz/lorentz.sum(),
                                      mode='constant', cval=data.max())
 
-    #finding most frequent value which is supposed to be the offset
-    hist = np.histogram(data_smooth,bins=10)
+    # finding most frequent value which is supposed to be the offset
+    hist = np.histogram(data_smooth, bins=10)
     offset = (hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
 
     return data_smooth, offset
