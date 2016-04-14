@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
@@ -70,6 +70,14 @@ class FastComtec(Base, FastCounterInterface):
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
         self._minimal_binwidth=0.25
@@ -78,39 +86,92 @@ class FastComtec(Base, FastCounterInterface):
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method activation.
         """
         return
 
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the Fast counting device.
+
+        @return dict: dict with keys being the constraint names as string and
+                      items are the definition for the constaints.
+
+         The keys of the returned dictionary are the str name for the constraints
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
+        The items of the keys are again dictionaries which have the generic
+        dictionary form:
+            {'min': <value>,
+             'max': <value>,
+             'step': <value>,
+             'unit': '<value>'}
+
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
+
+        If the constraints cannot be set in the fast counting hardware then
+        write just zero to each key of the generic dicts.
+        Note that there is a difference between float input (0.0) and
+        integer input (0), because some logic modules might rely on that
+        distinction.
+
+        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+        """
+
+        constraints = dict()
+
+        # the unit of those entries are seconds per bin. In order to get the
+        # current binwidth in seonds use the get_binwidth method.
+        constraints['hardware_binwidth_list'] = [0.25e-9, 0.5e-9, 1e-9, 2e-9, 4e-9, 8e-9, 16e-9]
+
+        return constraints
+
 
     def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
-        """
-        Configuration of the fast counter.
-        bin_width_s: Length of a single time bin in the time trace histogram in seconds.
-        record_length_s: Total length of the timetrace/each single gate in seconds.
-        number_of_gates: Number of gates in the pulse sequence. Ignore for ungated counter.
+        """ Configuration of the fast counter.
+
+        @param float bin_width_s: Length of a single time bin in the time trace
+                                  histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single
+                                      gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse
+                                    sequence. Ignore for not gated counter.
+
+        @return tuple(float, float int):
         Returns the actually set values as tuple
         """
 
-        #self.set_binwidth(binwidth)
-		#self.set_length(duration)
+        self.set_binwidth(binwidth)
+        #self.set_length(duration)
 
         return (self.get_binwidth()/1e9, 4000e-9, 0)
 
     def get_bitshift(self):
         """Get bitshift from Fastcomtec.
 
-		@return int settings.bitshift: the red out bitshift
-		"""
+        @return int settings.bitshift: the red out bitshift
+        """
 
         settings = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(settings), 0)
         return int(settings.bitshift)
 
     def get_binwidth(self):
-        """The binwidth is defined as 2**bitshift*minimal_binwidth
+        """ Returns the width of a single timebin in the timetrace in seconds.
 
-		@return float: Red out bitshift converted to binwidth
-		"""
+        @return float: current length of a single bin in seconds (seconds/bin)
+
+        The red out bitshift will be converted to binwidth. The binwidth is
+        defined as 2**bitshift*minimal_binwidth.
+        """
         return self._minimal_binwidth*(2**int(self.get_bitshift()))
 
     def set_bitshift(self, bitshift):
@@ -125,23 +186,29 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.RunCmd(0,bytes(cmd,'ascii'))
         return self.get_bitshift()
 
-    def set_binwidth(self,binwidth):
-        """Set defined binwidth in Card. Therefore the binwidth is converted into to 			appropiate bitshift defined as 2**bitshift*minimal_binwidth.
+    def set_binwidth(self, binwidth):
+        """ Set defined binwidth in Card.
 
-		@return float: Red out bitshift converted to binwidth
-		"""
+        @param float binwidth: the current binwidth in seconds
+
+        @return float: Red out bitshift converted to binwidth
+
+        The binwidth is converted into to an appropiate bitshift defined as
+        2**bitshift*minimal_binwidth.
+        """
         bitshift=np.log2(binwidth/self._minimal_binwidth)
         new_bitshift=self.set_bitshift(bitshift)
+
         return self._minimal_binwidth*(2**int(new_bitshift))
 
-#TODO: Check such that only possible lengths are set.
+    #TODO: Check such that only possible lengths are set.
     def set_length(self, N):
-        """Sets the length of the length of the actual measurement.
+        """ Sets the length of the length of the actual measurement.
 
-          @param int N: Length of the measurement
+        @param int N: Length of the measurement
 
-		  @return float: Red out length of measurement
-          """
+        @return float: Red out length of measurement
+        """
         cmd='RANGE=%i'%int(N)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         cmd='roimax=%i'%int(N)
@@ -212,8 +279,9 @@ class FastComtec(Base, FastCounterInterface):
         If the counter is UNgated it will return a 1D-numpy-array with returnarray[timebin_index]
         If the counter is gated it will return a 2D-numpy-array with returnarray[gate_index, timebin_index]
 
-		  @return arrray: Time trace.
+          @return arrray: Time trace.
         """
+
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         N = setting.range
@@ -230,8 +298,10 @@ class FastComtec(Base, FastCounterInterface):
         return data
 
     def is_gated(self):
-        """
-        Boolean return value indicates if the fast counter is a gated counter (TRUE) or not (FALSE).
+        """ Check the gated counting possibility.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
         """
         return self.gated
 

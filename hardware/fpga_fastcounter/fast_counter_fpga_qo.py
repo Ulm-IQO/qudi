@@ -161,6 +161,52 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
             self.statusvar = 0
         return 0
 
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the Fast counting device.
+
+        @return dict: dict with keys being the constraint names as string and
+                      items are the definition for the constaints.
+
+         The keys of the returned dictionary are the str name for the constraints
+        (which are set in this method).
+
+                    NO OTHER KEYS SHOULD BE INVENTED!
+
+        If you are not sure about the meaning, look in other hardware files to
+        get an impression. If still additional constraints are needed, then they
+        have to be added to all files containing this interface.
+
+        The items of the keys are again dictionaries which have the generic
+        dictionary form:
+            {'min': <value>,
+             'max': <value>,
+             'step': <value>,
+             'unit': '<value>'}
+
+        Only the keys 'activation_config' and 'available_ch' differ, since they
+        contain the channel name and configuration/activation information.
+
+        If the constraints cannot be set in the fast counting hardware then
+        write just zero to each key of the generic dicts.
+        Note that there is a difference between float input (0.0) and
+        integer input (0), because some logic modules might rely on that
+        distinction.
+
+        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
+        """
+
+        constraints = dict()
+
+        # the unit of those entries are seconds per bin. In order to get the
+        # current binwidth in seonds use the get_binwidth method.
+        constraints['hardware_binwidth_list'] = [1/950e6]
+
+        #TODO: think maybe about a software_binwidth_list, which will
+        #      postprocess the obtained counts. These bins must be integer
+        #      multiples of the current hardware_binwidth
+
+        return constraints
+
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
         """ Configuration of the fast counter.
 
@@ -170,6 +216,11 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
                                       gate in seconds.
         @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
+
+        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+                    binwidth_s: float the actual set binwidth in seconds
+                    gate_length_s: the actual set gate length in seconds
+                    number_of_gates: the number of gated, which are accepted
         """
 
         # set class variables
@@ -313,13 +364,15 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
     def is_gated(self):
         """ Check the gated counting possibility.
 
-        Boolean return value indicates if the fast counter is a gated counter
-        (TRUE) or not (FALSE).
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
         """
         return True
 
     def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds
+        """ Returns the width of a single timebin in the timetrace in seconds.
+
+        @return float: current length of a single bin in seconds (seconds/bin)
         """
         width_in_seconds = self._binwidth * 1e-6/950
         return width_in_seconds
