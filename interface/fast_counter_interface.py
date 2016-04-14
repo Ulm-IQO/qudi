@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
 """
 
 from core.util.customexceptions import InterfaceImplementationError

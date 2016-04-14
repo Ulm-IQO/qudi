@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
+Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015 Christoph Müller christoph-2.mueller@uni-ulm.de
 """
 
 from core.util.customexceptions import InterfaceImplementationError
