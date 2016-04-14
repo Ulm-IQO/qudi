@@ -36,11 +36,116 @@ import os
 import numpy as np
 import ctypes
 
-class InterfaceImplementationError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+
+"""
+Remark to the usage of ctypes:
+All Python types except integers (int), strings (str), and bytes (byte) objects
+have to be wrapped in their corresponding ctypes type, so that they can be
+converted to the required C data type.
+
+ctypes type     C type                  Python type
+----------------------------------------------------------------
+c_bool          _Bool                   bool (1)
+c_char          char                    1-character bytes object
+c_wchar         wchar_t                 1-character string
+c_byte          char                    int
+c_ubyte         unsigned char           int
+c_short         short                   int
+c_ushort        unsigned short          int
+c_int           int                     int
+c_uint          unsigned int            int
+c_long          long                    int
+c_ulong         unsigned long           int
+c_longlong      __int64 or
+                long long               int
+c_ulonglong     unsigned __int64 or
+                unsigned long long      int
+c_size_t        size_t                  int
+c_ssize_t       ssize_t or
+                Py_ssize_t              int
+c_float         float                   float
+c_double        double                  float
+c_longdouble    long double             float
+c_char_p        char *
+                (NUL terminated)        bytes object or None
+c_wchar_p       wchar_t *
+                (NUL terminated)        string or None
+c_void_p        void *                  int or None
+
+"""
+# Reconstruct the proper structure of the variables, which can be extracted
+# from the header file 'struct.h'.
+
+class AcqStatus(ctypes.Structure):
+    """ Create a structured Data type with ctypes where the dll can write into.
+
+    This object handles and retrieves the acquisition status data from the
+    Fastcomtec.
+
+    int started;                // acquisition status: 1 if running, 0 else
+    double runtime;             // running time in seconds
+    double totalsum;            // total events
+    double roisum;              // events within ROI
+    double roirate;             // acquired ROI-events per second
+    double nettosum;            // ROI sum with background subtracted
+    double sweeps;              // Number of sweeps
+    double stevents;            // Start Events
+    unsigned long maxval;       // Maximum value in spectrum
+    """
+    _fields_ = [('started', ctypes.c_int),
+                ('runtime', ctypes.c_double),
+                ('totalsum', ctypes.c_double),
+                ('roisum', ctypes.c_double),
+                ('roirate', ctypes.c_double),
+                ('ofls', ctypes.c_double),
+                ('sweeps', ctypes.c_double),
+                ('stevents', ctypes.c_double),
+                ('maxval', ctypes.c_ulong), ]
+
+class AcqSettings(ctypes.Structure):
+    """ Create a structured Data type with ctypes where the dll can write into.
+
+    This object handles and retrieves the acquisition settings of the Fastcomtec.
+    """
+
+    _fields_ = [('range',       ctypes.c_ulong),
+                ('prena',       ctypes.c_long),
+                ('cftfak',      ctypes.c_long),
+                ('roimin',      ctypes.c_ulong),
+                ('roimax',      ctypes.c_ulong),
+                ('eventpreset', ctypes.c_double),
+                ('timepreset',  ctypes.c_double),
+                ('savedata',    ctypes.c_long),
+                ('fmt',         ctypes.c_long),
+                ('autoinc',     ctypes.c_long),
+                ('cycles',      ctypes.c_long),
+                ('sweepmode',   ctypes.c_long),
+                ('syncout',     ctypes.c_long),
+                ('bitshift',    ctypes.c_long),
+                ('digval',      ctypes.c_long),
+                ('digio',       ctypes.c_long),
+                ('dac0',        ctypes.c_long),
+                ('dac1',        ctypes.c_long),
+                ('swpreset',    ctypes.c_double),
+                ('nregions',    ctypes.c_long),
+                ('caluse',      ctypes.c_long),
+                ('fstchan',     ctypes.c_double),
+                ('active',      ctypes.c_long),
+                ('calpoints',   ctypes.c_long), ]
+
+class ACQDATA(ctypes.Structure):
+    """ Create a structured Data type with ctypes where the dll can write into.
+
+    This object handles and retrieves the acquisition data of the Fastcomtec.
+    """
+    _fields_ = [('s0', ctypes.POINTER(ctypes.c_ulong)),
+                ('region', ctypes.POINTER(ctypes.c_ulong)),
+                ('comment', ctypes.c_char_p),
+                ('cnt', ctypes.POINTER(ctypes.c_double)),
+                ('hs0', ctypes.c_int),
+                ('hrg', ctypes.c_int),
+                ('hcm', ctypes.c_int),
+                ('hct', ctypes.c_int), ]
 
 class FastComtec(Base, FastCounterInterface):
     """
@@ -48,7 +153,7 @@ class FastComtec(Base, FastCounterInterface):
 
     Hardware Class for the FastComtec Card.
     """
-    _modclass = 'fastcounterinterface'
+    _modclass = 'FastComtec'
     _modtype = 'hardware'
     # connectors
     _out = {'fastcounter': 'FastCounterInterface'}
@@ -65,8 +170,8 @@ class FastComtec(Base, FastCounterInterface):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        self.gated = False
-        self._minimal_binwidth = 0.25e-9    # in seconds per bin
+        self.GATED = False
+        self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
 
 
     def activation(self, e):
@@ -130,7 +235,7 @@ class FastComtec(Base, FastCounterInterface):
 
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seonds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = list(self._minimal_binwidth * (2 ** np.array(
+        constraints['hardware_binwidth_list'] = list(self.MINIMAL_BINWIDTH * (2 ** np.array(
                                                      np.linspace(0,24,25))))
 
         return constraints
@@ -157,16 +262,6 @@ class FastComtec(Base, FastCounterInterface):
 
         return (self.get_binwidth()/1e9, 4000e-9, 0)
 
-    def get_bitshift(self):
-        """Get bitshift from Fastcomtec.
-
-        @return int settings.bitshift: the red out bitshift
-        """
-
-        settings = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(settings), 0)
-        return int(settings.bitshift)
-
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
 
@@ -175,58 +270,7 @@ class FastComtec(Base, FastCounterInterface):
         The red out bitshift will be converted to binwidth. The binwidth is
         defined as 2**bitshift*minimal_binwidth.
         """
-        return self._minimal_binwidth*(2**int(self.get_bitshift()))
-
-    def set_bitshift(self, bitshift):
-        """ Sets the bitshift properly for this card.
-
-        @param int bitshift
-
-        @return int: asks the actual bitshift and returns the red out value
-        """
-
-        cmd = 'BITSHIFT={0}'.format(bitshift)
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        return self.get_bitshift()
-
-    def set_binwidth(self, binwidth):
-        """ Set defined binwidth in Card.
-
-        @param float binwidth: the current binwidth in seconds
-
-        @return float: Red out bitshift converted to binwidth
-
-        The binwidth is converted into to an appropiate bitshift defined as
-        2**bitshift*minimal_binwidth.
-        """
-        bitshift = int(np.log2(binwidth/self._minimal_binwidth))
-        new_bitshift=self.set_bitshift(bitshift)
-
-        return self._minimal_binwidth*(2**new_bitshift)
-
-    #TODO: Check such that only possible lengths are set.
-    def set_length(self, N):
-        """ Sets the length of the length of the actual measurement.
-
-        @param int N: Length of the measurement
-
-        @return float: Red out length of measurement
-        """
-        cmd = 'RANGE={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd = 'roimax={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        return self.get_length()
-
-    def get_length(self):
-        """ Get the length of the current measurement.
-
-          @return int: length of the current measurement
-        """
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return int(setting.range)
-
+        return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
 
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as return value."""
@@ -306,56 +350,190 @@ class FastComtec(Base, FastCounterInterface):
         @return bool: Boolean value indicates if the fast counter is a gated
                       counter (TRUE) or not (FALSE).
         """
-        return self.gated
+        return self.GATED
+
+    # =========================================================================
+    #                           Non Interface methods
+    # =========================================================================
+
+    def get_bitshift(self):
+        """Get bitshift from Fastcomtec.
+
+        @return int settings.bitshift: the red out bitshift
+        """
+
+        settings = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(settings), 0)
+        return int(settings.bitshift)
+
+    def set_bitshift(self, bitshift):
+        """ Sets the bitshift properly for this card.
+
+        @param int bitshift:
+
+        @return int: asks the actual bitshift and returns the red out value
+        """
+
+        cmd = 'BITSHIFT={0}'.format(bitshift)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return self.get_bitshift()
+
+    def set_binwidth(self, binwidth):
+        """ Set defined binwidth in Card.
+
+        @param float binwidth: the current binwidth in seconds
+
+        @return float: Red out bitshift converted to binwidth
+
+        The binwidth is converted into to an appropiate bitshift defined as
+        2**bitshift*minimal_binwidth.
+        """
+        bitshift = int(np.log2(binwidth/self.MINIMAL_BINWIDTH))
+        new_bitshift=self.set_bitshift(bitshift)
+
+        return self.MINIMAL_BINWIDTH*(2**new_bitshift)
+
+    #TODO: Check such that only possible lengths are set.
+    def set_length(self, N):
+        """ Sets the length of the length of the actual measurement.
+
+        @param int N: Length of the measurement
+
+        @return float: Red out length of measurement
+        """
+        cmd = 'RANGE={0}'.format(int(N))
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        cmd = 'roimax={0}'.format(int(N))
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return self.get_length()
+
+    def get_length(self):
+        """ Get the length of the current measurement.
+
+          @return int: length of the current measurement
+        """
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return int(setting.range)
+
+    # =========================================================================
+    #   The following methods have to be carefully reviewed and integrated as
+    #   internal methods/function, because they might be important one day.
+    # =========================================================================
+
+#    def get_range(self):
+#        """Get the range of the current measurement.
+#
+#          @return list(length,bytelength): length is the current length of the
+#                                           measurement and bytelength is the
+#                                           length in byte.
+#        """
+#        return self.get_length(), self.MINIMAL_BINWIDTH * 2**self.get_bitshift()
 
 
+    def SetSoftwareStart(self,b):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        if b:
+            setting.sweepmode = setting.sweepmode |  int('10000',2)
+            setting.sweepmode = setting.sweepmode &~ int('10000000',2)
+        else:
+            setting.sweepmode = setting.sweepmode &~ int('10000',2)
+            setting.sweepmode = setting.sweepmode |  int('10000000',2)
+        self.dll.StoreSettingData(ctypes.byref(setting), 0)
+        self.dll.NewSetting(0)
 
-class AcqStatus(ctypes.Structure):
-    """
-    Retrieving the status data from Fastcomtec
+    def SetDelay(self, t):
+        #~ setting = AcqSettings()
+        #~ self.dll.GetSettingData(ctypes.byref(setting), 0)
+        #~ setting.fstchan = t/6.4
+        #~ self.dll.StoreSettingData(ctypes.byref(setting), 0)
+        #~ self.dll.NewSetting(0)
+        self.dll.RunCmd(0, 'DELAY=%f' % t)
+        return self.GetDelay()
 
-    int started;                // aquisition status: 1 if running, 0 else
-    double runtime;             // running time in seconds
-    double totalsum;            // total events
-    double roisum;              // events within ROI
-    double roirate;             // acquired ROI-events per second
-    double nettosum;            // ROI sum with background subtracted
-    double sweeps;              // Number of sweeps
-    double stevents;            // Start Events
-    unsigned long maxval;       // Maximum value in spectrum
-    """
-    _fields_ = [('started', ctypes.c_int),
-                ('runtime', ctypes.c_double),
-                ('totalsum', ctypes.c_double),
-                ('roisum', ctypes.c_double),
-                ('roirate', ctypes.c_double),
-                ('ofls', ctypes.c_double),
-                ('sweeps', ctypes.c_double),
-                ('stevents', ctypes.c_double),
-                ('maxval', ctypes.c_ulong), ]
+    def GetDelay(self):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return setting.fstchan * 6.4
 
-class AcqSettings(ctypes.Structure):
-    _fields_ = [('range',       ctypes.c_ulong),
-                ('prena',       ctypes.c_long),
-                ('cftfak',      ctypes.c_long),
-                ('roimin',      ctypes.c_ulong),
-                ('roimax',      ctypes.c_ulong),
-                ('eventpreset', ctypes.c_double),
-                ('timepreset',  ctypes.c_double),
-                ('savedata',    ctypes.c_long),
-                ('fmt',         ctypes.c_long),
-                ('autoinc',     ctypes.c_long),
-                ('cycles',      ctypes.c_long),
-                ('sweepmode',   ctypes.c_long),
-                ('syncout',     ctypes.c_long),
-                ('bitshift',    ctypes.c_long),
-                ('digval',      ctypes.c_long),
-                ('digio',       ctypes.c_long),
-                ('dac0',        ctypes.c_long),
-                ('dac1',        ctypes.c_long),
-                ('swpreset',    ctypes.c_double),
-                ('nregions',    ctypes.c_long),
-                ('caluse',      ctypes.c_long),
-                ('fstchan',     ctypes.c_double),
-                ('active',      ctypes.c_long),
-                ('calpoints',   ctypes.c_long), ]
+    # def Start(self):
+    #     self.dll.Start(0)
+    #     status = AcqStatus()
+    #     status.started = 0
+    #     while not status.started:
+    #         time.sleep(0.1)
+    #         self.dll.GetStatusData(ctypes.byref(status), 0)
+
+
+    def Erase(self):
+        self.dll.Erase(0)
+
+    def GetData2(self, bins, length):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        N = setting.range
+        data = np.empty((N,), dtype=np.uint32 )
+        self.dll.LVGetDat(data.ctypes.data, 0)
+        data2 = []
+        for bin in bins:
+            data2.append(data[bin:bin+length])
+        return np.array(data2)
+
+    def SaveData_fast(self, filename, laser_index):
+        # os.chdir(r'D:\data\FastComTec')
+        data = self.get_data()
+        fil = open(filename + '.asc', 'w')
+        for i in laser_index:
+            for n in data[i:i+int(round(3000/(0.25*2**self.GetBitshift())))+int(round(1000/(0.25*2**self.GetBitshift())))]:
+                fil.write('%s\n'%n)
+        fil.close()
+
+    def SaveData(self, filename):
+        # os.chdir(r'D:\data\FastComTec')
+        data = self.get_data()
+        fil = open(filename + '.asc', 'w')
+        for n in data:
+            fil.write('%s\n'%n)
+        fil.close()
+
+    def GetState(self):
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status.runtime, status.sweeps
+
+    def Running(self):
+        s = self.GetStatus()
+        return s.started
+
+    def SetLevel(self, start, stop):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        def FloatToWord(r):
+            return int((r+2.048)/4.096*int('ffff',16))
+        setting.dac0 = ( setting.dac0 & int('ffff0000',16) ) | FloatToWord(start)
+        setting.dac1 = ( setting.dac1 & int('ffff0000',16) ) | FloatToWord(stop)
+        self.dll.StoreSettingData(ctypes.byref(setting), 0)
+        self.dll.NewSetting(0)
+        return self.GetLevel()
+
+    def GetLevel(self):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        def WordToFloat(word):
+            return (word & int('ffff',16)) * 4.096 / int('ffff',16) - 2.048
+        return WordToFloat(setting.dac0), WordToFloat(setting.dac1)
+
+    def ReadSetting(self):
+        setting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(setting), 0)
+        return setting
+
+    def WriteSetting(self, setting):
+        self.dll.StoreSettingData(ctypes.byref(setting), 0)
+        self.dll.NewSetting(0)
+
+    def GetStatus(self):
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status
