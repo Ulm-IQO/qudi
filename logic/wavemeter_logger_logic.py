@@ -76,7 +76,7 @@ class HardwarePull(QtCore.QObject):
         if ( not self._parentclass._counter_logic.get_saving_state() ) or self._parentclass._counter_logic.getState() == 'idle':
             self._parentclass.stop_scanning()
 
-class LaserScanningLogic(GenericLogic):
+class WavemeterLoggerLogic(GenericLogic):
     """This logic module gathers data from wavemeter and the counter logic.
     """
 
@@ -93,10 +93,10 @@ class LaserScanningLogic(GenericLogic):
             'savelogic': 'SaveLogic',
             'counterlogic': 'CounterLogic'
             }
-    _out = {'laserscanninglogic': 'LaserScanningLogic'}
+    _out = {'wavemeterloggerlogic': 'WavemeterLoggerLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
-        """ Create LaserScanningLogic object with connectors.
+        """ Create WavemeterLoggerLogic object with connectors.
 
           @param object manager: Manager object thath loaded this module
           @param str name: unique module name
