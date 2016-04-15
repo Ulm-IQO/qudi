@@ -1,9 +1,26 @@
 # -*- coding: utf-8 -*-
+"""
+Parent poller mechanism from IPython.
 
-# Copyright (c) IPython Development Team.
-# See documentation/BSDLicense_IPython.md for details.
-# Distributed under the terms of the Modified BSD License.
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+
+Copyright (c) 2015 IPython Development Team.
+See documentation/BSDLicense_IPython.md for details.
+Also distributable under the terms of the Modified BSD License.
+"""
 import ctypes
 import os
 import platform
