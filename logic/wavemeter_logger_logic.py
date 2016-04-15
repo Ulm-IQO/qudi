@@ -337,8 +337,8 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self._saving_stop_time=time.time()
 
-        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
-        filelabel = 'laser_scan'
+        filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
+        filelabel = 'wavemeter_log_histogram'
         timestamp = datetime.datetime.now()
 
 
@@ -358,8 +358,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
 
-        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
-        filelabel = 'laser_scan_wavemeter'
+        filelabel = 'wavemeter_log_wavelength'
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
@@ -374,8 +373,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True, precision=':.6f')#, as_xml=False, precision=None, delimiter=None)
 
-        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
-        filelabel = 'laser_scan_counts'
+        filelabel = 'wavemeter_log_counts'
 
 
         # prepare the data in a dict or in an OrderedDict:
