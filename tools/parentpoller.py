@@ -1,5 +1,8 @@
-# Copyright (c) IPython Development Team.
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2016 IPython Development Team.
 # Distributed under the terms of the Modified BSD License.
+# See documentation/BSDLicense_IPython.md
 
 try:
     import ctypes
