@@ -19,7 +19,7 @@ Copyright (C) 2016 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
 """
 
 from core.base import Base
-from interface.slow_counter_interface import SlowCounterInterface
+from hardware.slow_counter_interface import SlowCounterInterface
 from interface.motor_interface import MotorInterface
 from pyqtgraph.Qt import QtCore
 import time
@@ -28,7 +28,7 @@ import numpy as np
 
 class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
 
-    """ This class wraps the slow-counter dummy and adds polarisation angle dependence in order to simulate dipole polarisation measurements.
+    """ This class wraps the slow-counter dummy and adds polarisation angle dependence in order to simulate dipole polarisation measurements.  
     """
 
     _modclass = 'polarizationdepsim'
@@ -44,7 +44,7 @@ class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
-
+        
     def activation(self, e):
         """ Activation of the class
         """
