@@ -79,11 +79,11 @@ class WavemeterLogGui(GUIBase):
                          had happened.
         """
 
-        self._wm_logger_logic = self.connector['in']['laserscanninglogic1']['object']
+        self._wm_logger_logic = self.connector['in']['wavemeterloggerlogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
 
         # setting up the window
-        self._mw = LaserScanWindow()
+        self._mw = WavemeterLogWindow()
 
         ## giving the plots names allows us to link their axes together
         self._pw = self._mw.plotWidget # pg.PlotWidget(name='Counter1')
