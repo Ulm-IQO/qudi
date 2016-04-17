@@ -19,49 +19,7 @@ import os
 #from peakutils.plot import plot as pplot
 
 """
-General procedure to create new fitting routines:
-
-A fitting routine consists out of three major parts:
-    1. a (mathematical) Model you have for the passed data
-            * Here we use the lmfit package, which has a couple of standard
-              models like ConstantModel, LorentzianModel or GaussianModel.
-              These models can be used straight away and also can be added, like:
-              new_model = ConstantModel()+GaussianModel(), which yields a
-              Gaussian model with an offset.
-            * If there is no standard model one can define a customized model,
-              see make_sine_model()
-            * With model.make_params() one can create a set of parameters with
-              a value, min, max, vary and an expression. These parameters are
-              returned as a Parameters object which contains all variables
-              in a dictionary.
-            * The make_"..."_model method returns, the model and parameter
-              dictionary
-    2. an Estimator, which can extract from the passed data initial values for
-       the fitting routine.
-            * Here values have to be estimated from the raw data
-            * In many cases a clever convolution helps a lot
-            * Offsets can be retrieved from find_offset_parameter method
-            * All parameters are given via a Parameters object
-            * The estimated values are returned by a Parameters object
-    3. The actual fit method
-            * First the model and parameters are created with the make_model
-              method.
-            * The initial values are returned by the estimator method
-            * Constraints are set, e.g. param['offset'].min=0
-                                        param['offset'].max=data.max()
-            * Additional parameters given by inputs can be overwritten by
-              _substitute_parameter method
-            * Finally fit is done via model.fit(data, x=axis,params=params)
-            * The fit routine from lmfit returns a dictionary with many
-              parameters like: results with errors and correlations,
-              best_values, initial_values, success flag,
-              an error message.
-            * With model.eval(...) one can generate high resolution data by
-              setting an x-axis with maby points
-
-The power of that general splitting is that you can write pretty independent
-fit algorithms, but their efficiency will (very often) rely on the quality of
-the estimator.
+Test bed in order to test performance of fits and estimators
 """
 
 
@@ -1016,7 +974,106 @@ class FitLogic():
             units['offset']='arb. u.'
 #            units['amplitude']='arb. u.'
             print(self.create_fit_string(result,mod,units))
+ 
+
+                                    
+        def twoD_gaussian_magnet(self):
+            gmod,params = self.make_twoDgaussian_model()
+            try:
+                datafile=np.loadtxt(join(getcwd(),'ODMR_alignment.asc'),delimiter=',')
+                data=datafile[1:,1:].flatten()
+                y=datafile[1:,0]
+                x=datafile[0,1:]                
+                xx, yy = np.meshgrid(x, y)
+                axes=(xx.flatten(),yy.flatten()) 
+            except:                
+                data = np.empty((121,1))
+                amplitude=50
+                x_zero=91+np.random.normal(0,0.4)
+                y_zero=14+np.random.normal(0,0.4)
+                sigma_x=0.4
+                sigma_y=1
+                offset=2820
+                x = np.linspace(90,92,11)
+                y = np.linspace(13,15,12)                        
+                xx, yy = np.meshgrid(x, y)
+                axes=(xx.flatten(),yy.flatten())   
+                theta_here= np.random.normal(0,100)/360.*(2*np.pi)
+                gmod,params = self.make_twoDgaussian_model()                
+                data= gmod.eval(x=axes,amplitude=amplitude,x_zero=x_zero,
+                                y_zero=y_zero,sigma_x=sigma_x,sigma_y=sigma_y,
+                                theta=theta_here, offset=offset)
+                data+=5*np.random.random_sample(np.shape(data))                
+                xx, yy = np.meshgrid(x, y)
+                axes=(xx.flatten(),yy.flatten()) 
+        
+            para=Parameters()
+            para.add('theta',value=-0.15/np.pi,vary=True)
+#            para.add('x_zero',expr='0.5*y_zero')
+#            para.add('sigma_x',value=0.05,vary=True )
+#            para.add('sigma_y',value=0.3,vary=True )
+            para.add('amplitude',min=0.0, max= 100)
+            para.add('offset',min=0.0, max= 3000)
+#            para.add('sigma_y',min=0.2*((15.-13.)/12.) , max=   10*(y[-1]-y[0])) 
+#            para.add('x_zero',value=40,min=50,max=100)
+            
+            result=self.make_twoDgaussian_fit(axis=axes,data=data,add_parameters=para)
+            print(result.params)
+           
+            print(result.fit_report())
+            print('Maximum after fit (GHz): ',result.params['offset'].value+result.params['amplitude'].value)
+#            FIXME: What does "Tolerance seems to be too small." mean in message?
+#            print(result.message)
+            plt.close('all')
+            fig, ax = plt.subplots(1, 1)
+            ax.hold(True)
                         
+            ax.imshow(result.data.reshape(len(y),len(x)), 
+                      cmap=plt.cm.jet, origin='bottom', extent=(x.min(), x.max(), 
+                                               y.min(), y.max()),interpolation="nearest")
+            ax.contour(x, y, result.best_fit.reshape(len(y),len(x)), 8
+                        , colors='w')
+            plt.show()
+
+#            print('Message:',result.message)
+
+        def poissonian_testing(self):
+            start=0.5
+            stop=140
+            num_points=int((stop-start))
+            x = np.linspace(start, stop, num_points)
+            
+            mod,params = self.make_poissonian_model()
+            print('Parameters of the model',mod.param_names)
+            
+            p=Parameters()
+            p.add('mu',value=70)
+    
+            data_noisy=(mod.eval(x=x,params=p)
+                                    + 0.01*np.random.normal(size=x.shape))   
+            
+            #make the filter an extra function shared and usable for other functions
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+    
+    
+            result=self.make_poissonian_fit(x,data_noisy)
+            print(result.fit_report())
+            try:
+                plt.plot(x, data_noisy, '-b')
+                plt.plot(x, data_smooth, '-g')
+                plt.plot(x,result.init_fit,'-y')
+                plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+                plt.show()
+    
+    
+            except:
+                print('exception')
+                    
+                    
+
+plt.rcParams['figure.figsize'] = (5,5)
+                       
 test=FitLogic()
 #test.N14_testing()
 #test.N15_testing()
@@ -1028,4 +1085,6 @@ test=FitLogic()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
-test.sine_testing()
+#test.sine_testing()
+#test.twoD_gaussian_magnet()
+test.poissonian_testing()
