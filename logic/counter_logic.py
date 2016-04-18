@@ -262,14 +262,20 @@ class CounterLogic(GenericLogic):
         @param bool to_file: indicate, whether data have to be saved to file
         @param str postfix: an additional tag, which will be added to the filename upon save
 
-        @return int: error code (0:OK, -1:error)
+        @return np.array([2 or 3][X]), OrderedDict: array with the
         """
         self._saving = False
         self._saving_stop_time = time.time()
 
-        if to_file:
-            filepath = self._save_logic.get_path_for_module(module_name='Counter')
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
+        parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
+        parameters['Count frequency (Hz)'] = self._count_frequency
+        parameters['Oversampling (Samples)'] = self._counting_samples
+        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
 
+        if to_file:
             # If there is a postfix then add separating underscore
             if postfix == '':
                 filelabel = 'count_trace'
@@ -282,20 +288,12 @@ class CounterLogic(GenericLogic):
             if self._counting_device._photon_source2 is not None:
                 data = {'Time (s),Signal 1 (counts/s),Signal 2 (counts/s)': self._data_to_save}
 
-            # write the parameters:
-            parameters = OrderedDict()
-            parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
-            parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
-            parameters['Count frequency (Hz)'] = self._count_frequency
-            parameters['Oversampling (Samples)'] = self._counting_samples
-            parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
-
+            filepath = self._save_logic.get_path_for_module(module_name='Counter')
             self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
             #, as_xml=False, precision=None, delimiter=None)
-
             self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
 
-        return self._data_to_save
+        return self._data_to_save, parameters
 
     def set_counting_mode(self, mode='continuous'):
         """Set the counting mode, to change between continuous and gated counting.
@@ -642,15 +640,48 @@ class CounterLogic(GenericLogic):
         self.sigCounterUpdated.emit()
         self.sigCountFiniteGatedNext.emit()
 
-    def save_count_trace(self, file_desc=''):
-        """ Call this method not during count, but after counting is done.
+    def save_current_count_trace(self, postfix=''):
+        """ The current displayed counttrace will be saved.
 
-        @param str file_desc: optional, personal description that will be
-                              appended to the file name
+        @param str postfix: optional, personal description that will be
+                            appended to the file name
 
         This method saves the already displayed counts to file and does not
         accumulate them. The counttrace variable will be saved to file with the
         provided name!
         """
+
+        # If there is a postfix then add separating underscore
+        if postfix == '':
+            filelabel = 'snapshot_count_trace'
+        else:
+            filelabel = 'snapshot_count_trace_'+postfix
+
+        stop_time = self._count_length/self._count_frequency
+        time_step_size = stop_time/len(self.countdata)
+        x_axis = np.arange(0, stop_time, time_step_size)
+
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        if self._counting_device._photon_source2 is None:
+            data = {'Time (s),Signal (counts/s)': np.array((x_axis,self.countdata)).transpose()}
+        else:
+            data = {'Time (s),Signal 1 (counts/s),Signal 2 (counts/s)': np.array((x_axis, self.countdata, self.countdata2)).transpose()}
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Saved at time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(time.time()))
+        parameters['Count frequency (Hz)'] = self._count_frequency
+        parameters['Oversampling (Samples)'] = self._counting_samples
+        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
+
+        filepath = self._save_logic.get_path_for_module(module_name='Counter')
+        self._save_logic.save_data(data, filepath, parameters=parameters,
+                                   filelabel=filelabel, as_text=True)
+        #, as_xml=False, precision=None, delimiter=None)
+        self.logMsg('Current Counter Trace saved to:\n'
+                    '{0}'.format(filepath), msgType='status', importance=3)
+
+
 
 
