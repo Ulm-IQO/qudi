@@ -26,11 +26,13 @@ import os
 import sys
 import time
 import importlib
+from pyqtgraph.Qt import QtCore
+from collections import OrderedDict
+import inspect
+from types import MethodType
 
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
-from pyqtgraph.Qt import QtCore
-from collections import OrderedDict
 
 class Pulse_Block_Element(object):
     """ Object representing a single atomic element in a pulse block.
@@ -374,7 +376,6 @@ class Pulse_Sequence(object):
         """
         return self.sampled_ensembles
 
-
 class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse (sequence) generation.
@@ -409,6 +410,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
+
         state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
@@ -422,6 +424,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
+
+        # method_list = [o for o in inspect.getmembers(predefined_methods) if hasattr(o[1], '__call__') ] # if inspect.isfunction(o[1]) or inspect.ismethod(o[1])
+        # for method in method_list:
+        #     setattr(self, method[0], MethodType(method[1], self) )
+            # MethodType(method[1], self)
 
         # here the currently shown data objects of the editors should be stored
         self.current_block = None
