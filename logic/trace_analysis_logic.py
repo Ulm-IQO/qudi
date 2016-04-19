@@ -22,6 +22,7 @@ from logic.generic_logic import GenericLogic
 from PyQt4 import QtCore
 import numpy as np
 import time
+import scipy.misc
 
 
 class TraceAnalysisLogic(GenericLogic):
@@ -149,10 +150,7 @@ class TraceAnalysisLogic(GenericLogic):
                 # a histogram with self defined number of bins
                 hist_y_val, hist_x_val = np.histogram(trace, num_bins)
 
-
         return hist_x_val, hist_y_val
-
-
 
 
     def analyze_flip_prob(self, trace, ):
@@ -161,6 +159,9 @@ class TraceAnalysisLogic(GenericLogic):
 
         @return:
         """
+        # # check whether the passed trace is a numpy array:
+        # if not type(trace).__module__ == np.__name__:
+        #     trace = np.array(trace)
         pass
 
 
@@ -174,39 +175,140 @@ class TraceAnalysisLogic(GenericLogic):
         pass
 
 
-    def do_gaussian_fit(self, trace):
+    def do_gaussian_fit(self, trace, threshold):
+        #use threshold as additional contraints for the fitting
         pass
 
-    def do_possonian_fit(self, trace):
+    def do_double_possonian_fit(self, hist_val, threshold):
+        #use threshold as additional contraints for the fitting
         pass
 
-    def guess_threshold(self, hist_y_val=None, trace=None, max_ratio_value=0.1):
+    def get_poissonian(self, sigma, x_val):
+        """ Calculate, bases on the passed values a poissonian distribution.
+
+        @param float sigma:
+        @param x_val:
+        @return np.array: a 2D array with the given x axis and the calculated
+                          values for the y axis.
+
+        Calculate a Poissonian Distribution according to:
+            P(k) =  sigma^k * exp(-sigma) / k!
+        """
+
+        # obviously that does not work:
+        # data = np.zeros((len(x_val), 2))
+        # for index, value in enumerate(x_val):
+        #     data[index][0] = value
+        #     data[index][1] = sigma**value * np.math.e**(-sigma)/scipy.misc.factorial(value)
+
+        return data
+
+    def guess_threshold(self, hist_val=None, trace=None, max_ratio_value=0.1):
         """ Assume a distribution between two values and try to guess the threshold.
 
-        The guess procedure tries to find the threshold by
+        @param np.array hist_val: 1D array whitch represent the y values of a
+                                    histogram of a trace. Optional, if None
+                                    is passed here, the passed trace will be
+                                    used for calculations.
+        @param np.array trace: optional, 1D array containing the y values of a
+                               meausured counter trace. If None is passed to
+                               hist_y_val then the threshold will be calculated
+                               from the trace.
+        @param float max_ration_value: the ratio how strong the lower y values
+                                       will be cut off. For max_ratio_value=0.1
+                                       all the data which are 10% or less in
+                                       amptitude compared to the maximal value
+                                       are neglected.
 
-        @return:
+        The guess procedure tries to find all values, which are
+        max_ratio_value * maximum value of the histogram of the trace and
+        selects those by indices. Then taking the first an the last might and
+        assuming that the threshold is in the middle, gives a first estimate
+        of the threshold value.
+
+        FIXME: That guessing procedure can be improved!
+
+        @return float: a guessed threshold
         """
-        if hist_y_val is None and trace is not None:
-            hist_y_val = self.calculate_histogram(trace)[1]
 
-        hist_y_val = np.array(hist_y_val)
+        if hist_val is None and trace is not None:
+            hist_val = self.calculate_histogram(trace)
 
-        # check whether the passed trace is a numpy array:
-        if not type(trace).__module__ == np.__name__:
-            trace = np.array(trace)
-
-        hist_binary = hist_y_val > hist_y_val.max() * max_ratio_value
-
-        indices = np.where(hist_y_val < hist_binary)[0]
-
-        guessed_threshold = hist_y_val[int((indices[-1] + indices[0])/2)]
+        hist_val = np.array(hist_val)   # just to be sure to have a np.array
+        indices_arr = np.where(hist_val[1] > hist_val[1].max() * max_ratio_value)[0]
+        guessed_threshold = hist_val[0][int((indices_arr[-1] + indices_arr[0])/2)]
 
         return guessed_threshold
 
 
-    def calculate_threshold(self, trace, threshold=None):
-        pass
+    def calculate_threshold(self, hist_val=None, trace=None, threshold=None):
+        """ Calculate the threshold by minimizing its overlap with the poissonian fits.
+
+        @param np.array hist_val: 1D array whitch represent the y values of a
+                                    histogram of a trace. Optional, if None
+                                    is passed here, the passed trace will be
+                                    used for calculations.
+        @param np.array trace: optional, 1D array containing the y values of a
+                               meausured counter trace. If None is passed to
+                               hist_y_val then the threshold will be calculated
+                               from the trace.
+        @param float threshold: optional, pass an estimated threshold, otherwise
+                                it will be calculated.
+        @return tuple(float, float):
+                    threshold: the calculated threshold between two overlapping
+                               poissonian distributed peaks.
+                    fidelity: the measure how good the two peaks are resolved
+                              according to the calculated threshold
+
+        The calculation of the threshold relies on fitting two possonian
+        distributions to the count histogram and minimize a threshold with
+        respect to the overlap area:
+
+
+        """
+
+        if threshold is None:
+            threshold = self.guess_threshold(hist_val=hist_val, trace=trace)
+
+        # perform the fit, maybe more fitting parameter will come
+        sigma1, sigma2 = self.do_double_possonian_fit(hist_val, threshold)
+
+        first_dist = self.get_poissonian(sigma=sigma1, x_val=hist_val)
+        sec_dist = self.get_poissonian(sigma=sigma1, x_val=hist_val)
+
+        # create a two poissonian array, where the second poissonian
+        # distribution is add as negative values. Now the transition from
+        # positive to negative values will get the threshold:
+        difference_poissonian = first_dist[1] - sec_dist[1]
+
+        trans_index = 0
+        for i in range(len(difference_poissonian)-1):
+            # go through the combined histogram array and the point which
+            # changes the sign. The transition from positive to negative values
+            # will get the threshold:
+            if difference_poissonian[i] < 0 and difference_poissonian[i+1] >= 0:
+                trans_index = i+1
+                break
+            elif difference_poissonian[i] > 0 and difference_poissonian[i+1] <= 0:
+                trans_index = i+1
+                break
+
+        threshold_fit = hist_val[trans_index]
+
+        # Calculate also the readout fidelity, i.e. sum the area under the
+        # first peak before the threshold and after it and sum also the area
+        # under the second peak before the threshold and after it:
+        area1_low = self.get_poissonian(sigma1, hist_val[0:trans_index]).sum()
+        area1_high = self.get_poissonian(sigma1, hist_val[trans_index:]).sum()
+        area2_low = self.get_poissonian(sigma2, hist_val[0:trans_index]).sum()
+        area2_high = self.get_poissonian(sigma2, hist_val[trans_index:]).sum()
+
+        # Now calculate how big is the overlap relative to the sum of the other
+        # part of the area, that will give the normalized fidelity:
+        fidelity = 1 - (area2_low / area1_low + area1_high / area2_high) / 2
+
+        return threshold, fidelity
+
 
 
 
