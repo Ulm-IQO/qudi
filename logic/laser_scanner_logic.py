@@ -50,7 +50,7 @@ class LaserScannerLogic(GenericLogic):
            }
     _out = {'laserscannerlogic': 'LaserScannerLogic'}
 
-    signal_change_voltage = QtCore.Signal()
+    signal_change_voltage = QtCore.Signal(float)
     signal_scan_next_line = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
@@ -88,8 +88,11 @@ class LaserScannerLogic(GenericLogic):
         # initialise the range for scanning
         self.scan_range = [self.a_range[0] / 10, self.a_range[1] / 10]
 
-        # Sets the current position to the center of the maximal scanning range
-        self._current_v = (self.a_range[0] + self.a_range[1]) / 2.
+        # Keep track of the current static voltage even while a scan may cause the real-time
+        # voltage to change.
+        self._static_v = (self.a_range[0] + self.a_range[1]) / 2.0
+
+        self.goto_voltage(self._static_v)
 
         # Sets connections between signals and functions
         self.signal_change_voltage.connect(self._change_voltage, QtCore.Qt.QueuedConnection)
@@ -114,8 +117,8 @@ class LaserScannerLogic(GenericLogic):
         # default values for clock frequency and slowness
         # slowness: steps during retrace line
         self._clock_frequency = 500.
-        self._goto_speed = 0.01  # volt / second
-        self._scan_speed = 0.01  # volt / second
+        self._goto_speed = 10#0.01  # volt / second
+        self._scan_speed = 10#0.01  # volt / second
         self._smoothing_steps = 10  # steps to accelerate between 0 and scan_speed
         self._max_step = 0.01  # volt
 
@@ -141,27 +144,39 @@ class LaserScannerLogic(GenericLogic):
         # print(tag, x, y, z)
         # Changes the respective value
         if volts is not None:
-            self._current_v = volts
+            self._static_v = volts
 
         # Checks if the scanner is still running
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
+            self.logMsg('Cannot goto, because scanner is locked!', msgType='error')
             return -1
         else:
-            self.signal_change_voltage.emit()
+            self.signal_change_voltage.emit(volts)
             return 0
 
-    def _change_voltage(self):
+    def _change_voltage(self, new_voltage):
         """ Threaded method to change the hardware voltage for a goto.
 
         @return int: error code (0:OK, -1:error)
         """
-        ramp_scan = self._generate_ramp(self.get_current_voltage(), self._current_v, self._goto_speed)
+
+        ramp_scan = self._generate_ramp(self.get_current_voltage(), new_voltage, self._goto_speed)
 
         self._initialise_scanner()
 
         ignored_counts = self._scan_line(ramp_scan)
 
         self._close_scanner()
+
+        return 0
+
+    def _goto_during_scan(self, voltage = None):
+
+        if voltage is None:
+            return -1
+
+        goto_ramp = self._generate_ramp(self.get_current_voltage(), voltage, self._goto_speed)
+        ignored_counts = self._scan_line(goto_ramp)
 
         return 0
 
@@ -217,6 +232,9 @@ class LaserScannerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
+        self.current_position = self._scanning_device.get_scanner_position()
+        print(self.current_position)
+
         if v_min is not None:
             self.scan_range[0] = v_min
         if v_max is not None:
@@ -226,9 +244,11 @@ class LaserScannerLogic(GenericLogic):
         self.upwards_scan = True
 
         # TODO: Generate Ramps
-        self._initialise_data_matrix(100)
+        self._upwards_ramp = self._generate_ramp(v_min, v_max, self._scan_speed)
+        self._downwards_ramp = self._generate_ramp(v_max, v_min, self._scan_speed)
 
-        self.current_position = self._scanning_device.get_scanner_position()
+        self._initialise_data_matrix(len(self._upwards_ramp[3]))
+
 
         # Lock and set up scanner
         returnvalue = self._initialise_scanner()
@@ -264,22 +284,20 @@ class LaserScannerLogic(GenericLogic):
 
         # stops scanning
         if self.stopRequested or self._scan_counter == self.number_of_repeats:
-            if self.upwards_scan:
-                ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
-            else:
-                ignored_counts = self._scan_line(self.scan_range[0], self.current_position[3])
+            print(self.current_position)
+            self._goto_during_scan(self._static_v)
             self._close_scanner()
             return
 
         if self._scan_counter == 0:
             # move from current voltage to start of scan range.
-            self.goto_voltage(self.scan_range[0])
+            self._goto_during_scan(self.scan_range[0])
 
         if self.upwards_scan:
-            counts = self._scan_line(self.scan_range[0], self.scan_range[1])
+            counts = self._scan_line(self._upwards_ramp)
             self.upwards_scan = False
         else:
-            counts = self._scan_line(self.scan_range[1], self.scan_range[0])
+            counts = self._scan_line(self._downwards_ramp)
             self.upwards_scan = True
 
         self.scan_matrix[self._scan_counter] = counts
@@ -303,33 +321,51 @@ class LaserScannerLogic(GenericLogic):
         v_min = min(voltage1, voltage2)
         v_max = max(voltage1, voltage2)
 
-        # These values help simplify some of the mathematical expressions
-        linear_v_step = speed / self._clock_frequency
-        smoothing_range = self._smoothing_steps + 1
+        if v_min == v_max:
+            ramp = np.array([v_min, v_max])
 
-        # The voltage range covered while accelerating in the smoothing steps
-        v_range_of_accel = sum(n * linear_v_step / smoothing_range
-                               for n in range(0, smoothing_range)
-                               )
+        else:
+            # These values help simplify some of the mathematical expressions
+            linear_v_step = speed / self._clock_frequency
+            smoothing_range = self._smoothing_steps + 1
 
-        # Obtain voltage bounds for the linear part of the ramp
-        v_min_linear = v_min + v_range_of_accel
-        v_max_linear = v_max - v_range_of_accel
+            # Sanity check in case the range is too short
 
-        num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / linear_v_step)
 
-        # Calculate voltage step values for smooth acceleration part of ramp
-        smooth_curve = np.array([sum(n * linear_v_step / smoothing_range for n in range(1, N)) 
-                                 for N in range(1, smoothing_range)
-                                 ]
-                                )
+            # The voltage range covered while accelerating in the smoothing steps
+            v_range_of_accel = sum(n * linear_v_step / smoothing_range
+                                   for n in range(0, smoothing_range)
+                                   )
 
-        accel_part = v_min + smooth_curve
-        decel_part = v_max - smooth_curve[::-1]
+            # Obtain voltage bounds for the linear part of the ramp
+            v_min_linear = v_min + v_range_of_accel
+            v_max_linear = v_max - v_range_of_accel
 
-        linear_part = np.linspace(v_min_linear, v_max_linear, num_of_linear_steps)
+            if v_min_linear > v_max_linear:
+                self.logMsg('Voltage ramp too short to apply the configured smoothing_steps.'
+                            'A simple linear ramp was created instead.'
+                            )
+                num_of_linear_steps = np.rint((v_max - v_min) / linear_v_step)
+                ramp = np.linspace(v_min, v_max, num_of_linear_steps)
 
-        ramp = np.hstack((accel_part, linear_part, decel_part))
+            else:
+
+                num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / linear_v_step)
+
+                # Calculate voltage step values for smooth acceleration part of ramp
+                smooth_curve = np.array([sum(n * linear_v_step / smoothing_range
+                                             for n in range(1, N)
+                                             )
+                                         for N in range(1, smoothing_range)
+                                         ]
+                                        )
+
+                accel_part = v_min + smooth_curve
+                decel_part = v_max - smooth_curve[::-1]
+
+                linear_part = np.linspace(v_min_linear, v_max_linear, num_of_linear_steps)
+
+                ramp = np.hstack((accel_part, linear_part, decel_part))
 
         # Reverse if downwards ramp is required
         if voltage2 < voltage1:
