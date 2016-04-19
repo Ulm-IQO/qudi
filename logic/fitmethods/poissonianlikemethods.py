@@ -20,12 +20,19 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
+
+"""
+Acknoledgments: scipy project https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
+"""
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
 from scipy.signal import gaussian
 from scipy.ndimage import filters
-from scipy.stats import poisson
+#from scipy.stats import poisson
+
+from scipy import special
+from scipy.special import gammaln as gamln
 
 ############################################################################
 #                                                                          #
@@ -33,6 +40,12 @@ from scipy.stats import poisson
 #                                                                          #
 ############################################################################
 
+def poisson(self,x,mu):
+    """
+    Poisson function see https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
+    """
+    return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+            
 def make_poissonian_model(self, no_of_functions=None):
     """ This method creates a model of a poissonian with an offset.
     @param no_of_functions: if None or 1 there is one poissonian, else 
@@ -61,7 +74,7 @@ def make_poissonian_model(self, no_of_functions=None):
 
         @return: poisson function: in order to use it as a model
         """
-        return poisson.pmf(x,mu)
+        return self.poisson(x,mu)
         
     def amplitude_function(x, amplitude):
         """
@@ -99,13 +112,7 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    
-
-    if not all(isinstance(item, (np.int32, int, np.int64)) for item in axis):
-        if not all(float(item).is_integer() for item in axis):
-            self.logMsg('Given x_axis does not consist of integers.'
-                        'Poissonian fit did not work!',
-                        msgType='error')   
+     
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
@@ -152,11 +159,7 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     # check if parameters make sense
     parameters = [x_axis, data]
     for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
-            error = -1
-        elif len(np.shape(var)) != 1:
+        if len(np.shape(var)) != 1:
             self.logMsg('Given parameter is no one dimensional array.',
                         msgType='error')
             error = -1
@@ -173,7 +176,7 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     # set parameters
     mu = x_axis[np.argmax(data_smooth)]
     params['poissonian_mu'].value = mu
-    params['poissonian_amplitude'].value = data_smooth.max()/poisson.pmf(mu,mu)
+    params['poissonian_amplitude'].value = data_smooth.max()/self.poisson(mu,mu)
 
     return error, params
     
@@ -191,12 +194,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-    
-    if not all(isinstance(item, (np.int32, int, np.int64)) for item in axis):
-        if not all(float(item).is_integer() for item in axis):
-            self.logMsg('Given x_axis does not consist of integers.'
-                        'Poissonian fit did not work!',
-                        msgType='error')   
+      
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
@@ -301,11 +299,11 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
     
     params['poissonian0_mu'].value = x_axis[dip0_arg]
     params['poissonian0_amplitude'].value = ( data[dip0_arg] / 
-                   poisson.pmf(x_axis[dip0_arg],x_axis[dip0_arg]) )
+                  self.poisson(x_axis[dip0_arg],x_axis[dip0_arg]) )
 
 
     params['poissonian1_mu'].value = x_axis[dip1_arg]
     params['poissonian1_amplitude'].value = ( data[dip1_arg] / 
-                   poisson.pmf(x_axis[dip1_arg],x_axis[dip1_arg]) )
+                  self.poisson(x_axis[dip1_arg],x_axis[dip1_arg]) )
 
     return error, params
