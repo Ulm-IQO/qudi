@@ -23,20 +23,20 @@ Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
-from scipy.special  import factorial
 from scipy.signal import gaussian
 from scipy.ndimage import filters
-
+from scipy.stats import poisson
 
 ############################################################################
 #                                                                          #
-#                          1D poissonian model                             #
+#                           poissonian model                               #
 #                                                                          #
 ############################################################################
 
-def make_poissonian_model(self):
+def make_poissonian_model(self, no_of_functions=None):
     """ This method creates a model of a poissonian with an offset.
-
+    @param no_of_functions: if None or 1 there is one poissonian, else 
+                            more functions are added
     @return tuple: (object model, object params)
 
     Explanation of the objects:
@@ -52,9 +52,6 @@ def make_poissonian_model(self):
             information about the current value.
             The used model has the Parameter with the meaning:
                 'mu' : expected value mu
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
     """
     def poisson_function(x, mu):
         """
@@ -64,15 +61,34 @@ def make_poissonian_model(self):
 
         @return: poisson function: in order to use it as a model
         """
-        return (mu**x / factorial(x)  )* np.exp(-mu)
+        return poisson.pmf(x,mu)
+        
+    def amplitude_function(x, amplitude):
+        """
+        Function of a amplitude value.
+        @param x: variable variable
+        @param offset: independent variable - amplitude
+
+        @return: amplitude function: in order to use it as a model
+        """
+
+        return amplitude + 0.0 * x
     
-    model = Model(poisson_function)
+    if no_of_functions is None or no_of_functions == 1:
+        model = ( Model(poisson_function,prefix='poissonian_') *
+                  Model(amplitude_function,prefix='poissonian_') )
+    else:
+        model = ( Model(poisson_function,prefix='poissonian{}_'.format('0')) *
+                Model(amplitude_function,prefix='poissonian{}_'.format('0')))
+        for ii in range(no_of_functions-1):
+            model += (Model(poisson_function,prefix='poissonian{}_'.format(ii+1)) *
+                    Model(amplitude_function,prefix='poissonian{}_'.format(ii+1)))
     params = model.make_params()
 
     return model, params
 
 def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
-    """ This method performes a 1D gaussian fit on the provided data.
+    """ This method performes a poissonian fit on the provided data.
 
     @param array[] axis: axis values
     @param array[]  x_data: data
@@ -83,25 +99,23 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
+    
 
+    if not all(isinstance(item, (np.int32, int, np.int64)) for item in axis):
+        if not all(float(item).is_integer() for item in axis):
+            self.logMsg('Given x_axis does not consist of integers.'
+                        'Poissonian fit did not work!',
+                        msgType='error')   
+    parameters = [axis, data]
+    for var in parameters:
+        if len(np.shape(var)) != 1:
+                self.logMsg('Given parameter is no one dimensional array.',
+                            msgType='error')    
+                        
     mod_final, params = self.make_poissonian_model()
 
     error, params = self.estimate_poissonian(axis, data, params)
-
-    if params['mu']>80:
-        self.logMsg('The poissonian fit is not written to fit data with higher'
-                    ' then 80 counts. Please use a gaussian fit, which is'
-                    ' from 10 counts on a valid approximation.',
-                    msgType='warning')
-    if axis.max()>150:
-        self.logMsg('The poissonian fit is not written to fit data with a '
-                    'higher counts value of 150. Most probable the fit can'
-                    ' not work, because for big numbers standard calculation'
-                    ' for the fit is not written appropriately. For poissonian'
-                    ' distributions with higher values than 10 a normal '
-                    ' distribution is a good approximation.',
-                    msgType='warning')
-        
+                        
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
@@ -121,7 +135,7 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     return result
 
 def estimate_poissonian(self, x_axis=None, data=None, params=None):
-    """ This method provides a one dimensional gaussian function.
+    """ This method provides a poissonian function.
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to x values
@@ -157,6 +171,141 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     data_smooth = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
 
     # set parameters
-    params['mu'].value = x_axis[np.argmax(data_smooth)]
+    mu = x_axis[np.argmax(data_smooth)]
+    params['poissonian_mu'].value = mu
+    params['poissonian_amplitude'].value = data_smooth.max()/poisson.pmf(mu,mu)
+
+    return error, params
+    
+    
+    
+def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
+    """ This method performes a double poissonian fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+    
+    if not all(isinstance(item, (np.int32, int, np.int64)) for item in axis):
+        if not all(float(item).is_integer() for item in axis):
+            self.logMsg('Given x_axis does not consist of integers.'
+                        'Poissonian fit did not work!',
+                        msgType='error')   
+    parameters = [axis, data]
+    for var in parameters:
+        if len(np.shape(var)) != 1:
+                self.logMsg('Given parameter is no one dimensional array.',
+                            msgType='error')  
+
+    mod_final, params = self.make_poissonian_model(no_of_functions=2)
+
+    error, params = self.estimate_doublepoissonian(axis, data, params)
+
+    # TODO: check if we have integers
+        
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_parameters=add_parameters)
+                                            
+    try:
+        result = mod_final.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The poissonian fit did not work. Check if a poisson '
+                    'distribution is needed or a normal approximation can be'
+                    'used. For values above 10 a normal/ gaussian distribution'
+                    ' is a good approximation.',
+                    msgType='warning')
+        result = mod_final.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
+
+############################################################################
+#                                                                          #
+#                     double  poissonian model                             #
+#                                                                          #
+############################################################################
+
+def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
+                                         threshold_fraction=0.4,
+                                         minimal_threshold=0.1,
+                                         sigma_threshold_fraction=0.2):
+    """ This method provides a an estimator for a double poissonian fit 
+    with the parameters coming from the physical properties of an experiment 
+    done in gated counter:
+                    - positive peak
+                    - no values below 0
+                    - rather broad overlapping funcitons
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to
+                        x values
+    @param Parameters object params: Needed parameters
+    @param float threshold : Threshold to find second gaussian
+    @param float minimal_threshold: Threshold is lowerd to minimal this
+                                    value as a fraction
+    @param float sigma_threshold_fraction: Threshold for detecting
+                                           the end of the peak
+
+    @return int error: error code (0:OK, -1:error)
+    @return Parameters object params: estimated values
+    """
+
+    error = 0
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+
+    # make the filter an extra function shared and usable for other functions
+    if len(x_axis) < 20.:
+        len_x = 5
+    elif len(x_axis) >= 100.:
+        len_x = 10
+    else:
+        len_x = int(len(x_axis) / 10.) + 1
+
+    gaus = gaussian(len_x, len_x)
+    data_smooth = filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
+
+    # search for double gaussian
+
+    error, \
+    sigma0_argleft, dip0_arg, sigma0_argright, \
+    sigma1_argleft, dip1_arg, sigma1_argright = \
+        self._search_double_dip(x_axis,
+                                data_smooth * (-1),
+                                threshold_fraction,
+                                minimal_threshold,
+                                sigma_threshold_fraction,
+                                make_prints=False
+                                )
+
+    
+    params['poissonian0_mu'].value = x_axis[dip0_arg]
+    params['poissonian0_amplitude'].value = ( data[dip0_arg] / 
+                   poisson.pmf(x_axis[dip0_arg],x_axis[dip0_arg]) )
+
+
+    params['poissonian1_mu'].value = x_axis[dip1_arg]
+    params['poissonian1_amplitude'].value = ( data[dip1_arg] / 
+                   poisson.pmf(x_axis[dip1_arg],x_axis[dip1_arg]) )
 
     return error, params
