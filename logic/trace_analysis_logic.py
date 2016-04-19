@@ -180,13 +180,17 @@ class TraceAnalysisLogic(GenericLogic):
     def do_possonian_fit(self, trace):
         pass
 
-    def guess_threshold(self, trace, hist_y_val=None, max_ratio_value=0.1):
+    def guess_threshold(self, hist_y_val=None, trace=None, max_ratio_value=0.1):
         """ Assume a distribution between two values and try to guess the threshold.
 
         The guess procedure tries to find the threshold by
 
         @return:
         """
+        if hist_y_val is None and trace is not None:
+            hist_y_val = self.calculate_histogram(trace)[1]
+
+        hist_y_val = np.array(hist_y_val)
 
         # check whether the passed trace is a numpy array:
         if not type(trace).__module__ == np.__name__:
