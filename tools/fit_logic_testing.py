@@ -1038,26 +1038,32 @@ class FitLogic():
 #            print('Message:',result.message)
 
         def poissonian_testing(self):
-            start=0.5
-            stop=140
-            num_points=int((stop-start))
-            x = np.linspace(start, stop, num_points)
-            
+            start=100
+            stop=400
+            mu=300.
+            num_points=int((stop-start)+1)
+            x = np.array(np.linspace(start, stop, num_points))
+            x = np.array(x,dtype=np.int64)
             mod,params = self.make_poissonian_model()
             print('Parameters of the model',mod.param_names)
             
             p=Parameters()
-            p.add('mu',value=70)
+            p.add('poissonian_mu',value=mu)
+            p.add('poissonian_amplitude',value=3000.)
     
-            data_noisy=(mod.eval(x=x,params=p)
-                                    + 0.01*np.random.normal(size=x.shape))   
+            data_noisy=(mod.eval(x=x,params=p) + 
+                        0.001*np.random.normal(size=x.shape) *
+                        p['poissonian_amplitude'].value )   
             
+            print('all int',all(isinstance(item, (np.int32,int, np.int64)) for item in x))
+            print('int',isinstance(x[1], int),float(x[1]).is_integer())
+            print(type(x[1]))
             #make the filter an extra function shared and usable for other functions
             gaus=gaussian(10,10)
             data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
     
     
-            result=self.make_poissonian_fit(x,data_noisy)
+            result = self.make_poissonian_fit(x,data_noisy)
             print(result.fit_report())
             try:
                 plt.plot(x, data_noisy, '-b')
@@ -1069,10 +1075,47 @@ class FitLogic():
     
             except:
                 print('exception')
-                    
-                    
+ 
+        def double_poissonian_testing(self):
+            start=100
+            stop=400
+            num_points=int((stop-start)+1)
+            x = np.linspace(start, stop, num_points)
+            
+            # double poissonian
+            mod,params = self.make_poissonian_model(no_of_functions=2)
+            print('Parameters of the model',mod.param_names)
+            parameter=Parameters()
+            parameter.add('poissonian0_mu',value=200)
+            parameter.add('poissonian1_mu',value=240)
+            parameter.add('poissonian0_amplitude',value=100)
+            parameter.add('poissonian1_amplitude',value=300)
+            data_noisy = ( np.array(mod.eval(x=x,params=parameter)) * 
+                           np.array((1+0.2*np.random.normal(size=x.shape) )*
+                           parameter['poissonian1_amplitude'].value) )
+           
+            
+            #make the filter an extra function shared and usable for other functions
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
 
-plt.rcParams['figure.figsize'] = (5,5)
+            result = self.make_doublepoissonian_fit(x,data_noisy)
+            print(result.fit_report())
+            
+            try:
+                plt.plot(x, data_noisy, '-b')
+                plt.plot(x, data_smooth, '-g')
+                plt.plot(x,result.init_fit,'-y')
+                plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+                plt.show()
+    
+    
+            except:
+                print('exception')
+                    
+                  
+
+plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
 #test.N14_testing()
@@ -1088,3 +1131,4 @@ test=FitLogic()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
 test.poissonian_testing()
+test.double_poissonian_testing()
