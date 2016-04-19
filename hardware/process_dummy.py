@@ -40,10 +40,7 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
 
     def activation(self, e):
-        data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'copper.dat'))
-        self.x = data[:,0]
-        self.y = data[:,1]
-        self.temperature = 111.0
+        self.temperature = 300.0
         self.pwmpower = 0
 
         self.recalctimer = QtCore.QTimer()
@@ -71,9 +68,22 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     def getControlLimits(self):
         return (-100, 100)
 
-
     def _recalcTemp(self):
-        pfactor = 0.01
-        heatCapacity = np.interp(self.temperature, self.x, self.y)
-        self.temperature = self.temperature + self.pwmpower * pfactor * heatCapacity
+        pfactor = 1
+        heatCapacity = self.metalHeatCapacity(self.temperature)
+        dt = self.pwmpower * abs((self.temperature - 4)/self.temperature) * pfactor / heatCapacity
+        if abs(dt) > 10:
+            dt = 10*np.sign(dt)
+        self.temperature = self.temperature + dt
         print(self.temperature, self.pwmpower, heatCapacity)
+
+    def metalHeatCapacity(self, T):
+        NA = 6.02214086 * 10**23  # Avogadro constant
+        k = 1.38064852 * 10**(-23)  # Boltzmann constant
+        TD = 343.5 # Debye temperatre of copper
+        Ef = 7 * 1.602176565 * 10**(-19) # fermi energy of copper (7eV)
+        heatcapacity = np.pi**2 * NA * k**2 * T / (2*Ef) + 12 * np.pi**4 * NA * k * T**3 / (5 * TD**3)
+        if heatcapacity < 0.0005:
+            return 0.0005
+        return heatcapacity
+
