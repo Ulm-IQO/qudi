@@ -19,7 +19,7 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtCore
 import numpy as np
 import time
 
@@ -27,13 +27,14 @@ import time
 class TraceAnalysisLogic(GenericLogic):
     """ Perform a gated counting measurement with the hardware.  """
 
-    _modclass = 'traceanalysislogic'
+    _modclass = 'TraceAnalysisLogic'
     _modtype = 'logic'
 
     ## declare connectors
     _in = { 'counterlogic1': 'CounterLogic',
             'savelogic': 'SaveLogic'
             }
+
     _out = {'traceanalysislogic1': 'TraceAnalysisLogic'}
 
     sigHistogramUpdated = QtCore.Signal()
@@ -42,10 +43,10 @@ class TraceAnalysisLogic(GenericLogic):
     def __init__(self, manager, name, config, **kwargs):
         """ Create CounterLogic object with connectors.
 
-          @param object manager: Manager object thath loaded this module
-          @param str name: unique module name
-          @param dict config: module configuration
-          @param dict kwargs: optional parameters
+        @param object manager: Manager object thath loaded this module
+        @param str name: unique module name
+        @param dict config: module configuration
+        @param dict kwargs: optional parameters
         """
         ## declare actions for state transitions
         state_actions = {'onactivate': self.activation,
@@ -59,14 +60,6 @@ class TraceAnalysisLogic(GenericLogic):
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
 
-        # empty_trace = np.zeros((100,))
-        # empty_trace = np.random.randint(1000, size=100)
-        # self.trace_obj = None   # the new trace object will be saved here
-        # self.histogram = np.zeros((2,100))
-        # self.create_new_trace(empty_trace)
-        #
-        # self._trace
-
         self.hist_data = None
         self._hist_num_bins = None
 
@@ -76,10 +69,10 @@ class TraceAnalysisLogic(GenericLogic):
         @param object e: Event class object from Fysom.
                          An object created by the state machine module Fysom,
                          which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event
-                         the state before the event happens and the destination
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
                          of the state which should be reached after the event
-                         has happen.
+                         had happened.
         """
 
         self._counter_logic = self.connector['in']['counterlogic1']['object']
@@ -94,9 +87,6 @@ class TraceAnalysisLogic(GenericLogic):
                          explanation can be found in method activation.
         """
         return
-
-
-
 
     def set_num_bins_histogram(self, num_bins, update=True):
         """ Set the number of bins
@@ -118,11 +108,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         self.hist_data = self.calculate_histogram(self._counter_logic.countdata,
                                                   self._hist_num_bins)
-
-
         self.sigHistogramUpdated.emit()
-
-
 
     def calculate_histogram(self, trace, num_bins=None, custom_bin_arr=None):
         """ Calculate the histogram of a given trace.
@@ -151,9 +137,11 @@ class TraceAnalysisLogic(GenericLogic):
                                                   density=False)
         else:
 
-            # analyze the trace,
+            # analyze the trace, and check whether all values are the same
             difference = trace.max() - trace.min()
 
+            # if all values are the same, run at least the method with an zero
+            # array. That will ensure at least an output:
             if np.isclose(0, difference) or num_bins is None:
                 # numpy can handle an array of zeros
                 hist_y_val, hist_x_val = np.histogram(trace)
@@ -167,6 +155,78 @@ class TraceAnalysisLogic(GenericLogic):
 
 
 
+    def analyze_flip_prob(self, trace, ):
+        """ General method, which analysis how often a value was changed from
+            one data point to another in relation to a certain threshold.
+
+        @return:
+        """
+        pass
+
+
+    def analyze_flip_prob_postselect(self):
+        """ Post select the data trace so that the flip probability is only
+            calculated from a jump from below a threshold value to an value
+            above threshold.
+
+        @return:
+        """
+        pass
+
+
+    def do_gaussian_fit(self, trace):
+        pass
+
+    def do_possonian_fit(self, trace):
+        pass
+
+    def guess_threshold(self, trace, hist_y_val=None, max_ratio_value=0.1):
+        """ Assume a distribution between two values and try to guess the threshold.
+
+        The guess procedure tries to find the threshold by
+
+        @return:
+        """
+
+        # check whether the passed trace is a numpy array:
+        if not type(trace).__module__ == np.__name__:
+            trace = np.array(trace)
+
+        hist_binary = hist_y_val > hist_y_val.max() * max_ratio_value
+
+        indices = np.where(hist_y_val < hist_binary)[0]
+
+        guessed_threshold = hist_y_val[int((indices[-1] + indices[0])/2)]
+
+        return guessed_threshold
+
+
+    def calculate_threshold(self, trace, threshold=None):
+        pass
+
+
+
+    def calculate_binary_trace(self, trace, threshold):
+        """ Calculate for a given threshold all the trace values und output a
+            binary array, where
+                True = Below or equal Threshold
+                False = Above Threshold.
+
+        @param trace:
+        @param threshold:
+        @return:
+        """
+        pass
+
+
+    def extract_filtered_values(self, trace, threshold, as_binary=False):
+        """ Extract only those values, which are below a certain Threshold.
+
+        @param trace:
+        @param threshold:
+        @return:
+        """
+        pass
 
 
 
