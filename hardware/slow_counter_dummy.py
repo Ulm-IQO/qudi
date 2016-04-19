@@ -2,7 +2,6 @@
 
 import numpy as np
 
-from collections import OrderedDict
 import random
 import time
 
@@ -13,38 +12,56 @@ class SlowCounterDummy(Base,SlowCounterInterface):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-    _modclass = 'slowcounterinterface'
+    _modclass = 'SlowCounterDummy'
     _modtype = 'hardware'
     # connectors
     _out = {'counter': 'SlowCounterInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
-        Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
+        c_dict = {'onactivate': self.activation,
+                  'ondeactivate': self.deactivation}
+
+        Base.__init__(self, manager, name, configuration=config, callbacks=c_dict)
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
     def activation(self, e):
+        """ Initialisation performed during activation of the module.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+        """
+
         config = self.getConfiguration()
+
         if 'clock_frequency' in config.keys():
             self._clock_frequency=config['clock_frequency']
         else:
-            self._clock_frequency=100
-            self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
-            msgType='warning')
+            self._clock_frequency = 100
+            self.logMsg('No parameter "clock_frequency" configured in Slow '
+                        'Counter Dummy, taking the default value of {0} Hz '
+                        'instead.'.format(self._clock_frequency),
+                        msgType='warning')
 
         if 'samples_number' in config.keys():
-            self._samples_number=config['samples_number']
+            self._samples_number = config['samples_number']
         else:
-            self._samples_number=10
-            self.logMsg('No samples_number configured taking 10 instead.', \
-            msgType='warning')
+            self._samples_number = 10
+            self.logMsg('No parameter "samples_number" configured in Slow '
+                        'Counter Dummy, taking the default value of {0} '
+                        'instead.'.format(self._samples_number),
+                        msgType='warning')
 
         if 'photon_source2' in config.keys():
             self._photon_source2 = 1
@@ -52,19 +69,36 @@ class SlowCounterDummy(Base,SlowCounterInterface):
             self._photon_source2 = None
 
 
-        self.dist = 'dark_bright_gaussian'
+        if 'count_distribution' in config.keys():
+            self.dist = config['count_distribution']
+        else:
+            self.dist = 'dark_bright_gaussian'
+            self.logMsg('No parameter "count_distribution" given in the '
+                        'configuration for the Slow Counter Dummy. Possible '
+                        'distributions are "dark_bright_gaussian", "uniform", '
+                        '"exponential", "single_poisson", '
+                        '"dark_bright_poisson" and "single_gaussian". Taking '
+                        'the default distribution "{0}".'.format(self.dist),
+                        msgType='warning')
+
 
         # possibilities are:
         # dark_bright_gaussian, uniform, exponential, single_poisson,
         # dark_bright_poisson, single_gaussian
 
         # parameters
-        self.mean_signal = 260*1000
-        self.contrast = 0.3
+        if self.dist == 'dark_bright_poisson':
+            self.mean_signal = 250
+            self.contrast = 0.2
+        else:
+            self.mean_signal = 260*1000
+            self.contrast = 0.3
+
+
         self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
         self.noise_amplitude = self.mean_signal*0.1
 
-        self.life_time_bright = 0.08 # 60 millisecond
+        self.life_time_bright = 0.08 # 80 millisecond
         self.life_time_dark    = 0.04 # 40 milliseconds
 
         # needed for the life time simulation
@@ -73,6 +107,11 @@ class SlowCounterDummy(Base,SlowCounterInterface):
         self.total_time = 0.0
 
     def deactivation(self, e):
+        """ Deinitialisation performed during deactivation of the module.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method activation.
+        """
         pass
 
     def set_up_clock(self, clock_frequency = None, clock_channel = None):
