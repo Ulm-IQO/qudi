@@ -24,7 +24,7 @@ Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.base import Base
-from hardware.spectrometer.spectrometer_interface import SpectrometerInterface
+from interface.spectrometer_interface import SpectrometerInterface
 from collections import OrderedDict
 from core.util.mutex import Mutex
 
