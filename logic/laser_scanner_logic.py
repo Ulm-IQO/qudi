@@ -33,7 +33,7 @@ import time
 import datetime
 
 
-class VoltageScanningLogic(GenericLogic):
+class LaserScannerLogic(GenericLogic):
 
     """This logic module controls scans of DC voltage on the fourth analog
     output channel of the NI Card.  It collects countrate as a function of voltage.
@@ -41,14 +41,14 @@ class VoltageScanningLogic(GenericLogic):
 
     sig_data_updated = QtCore.Signal()
 
-    _modclass = 'voltagescanninglogic'
+    _modclass = 'laserscannerlogic'
     _modtype = 'logic'
 
     # declare connectors
     _in = {'confocalscanner1': 'ConfocalScannerInterface',
            'savelogic': 'SaveLogic',
            }
-    _out = {'voltagescanninglogic': 'VoltageScanningLogic'}
+    _out = {'laserscannerlogic': 'LaserScannerLogic'}
 
     signal_change_voltage = QtCore.Signal()
     signal_scan_next_line = QtCore.Signal()
