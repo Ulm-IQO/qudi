@@ -20,7 +20,6 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 from logic.generic_logic import GenericLogic
-from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import os
@@ -29,37 +28,40 @@ import inspect
 import time
 import numpy as np
 
+
 class FunctionImplementationError(Exception):
+
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
 
 class SaveLogic(GenericLogic):
+
     """
     UNSTABLE: Alexander Stark
     A general class which saves all kinds of data in a general sense.
     """
     _modclass = 'savelogic'
     _modtype = 'logic'
-    
-    ## declare connectors
-    _out = {'savelogic': 'SaveLogic'}
 
+    # declare connectors
+    _out = {'savelogic': 'SaveLogic'}
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
                          'ondeactivate': self.deactivation}
         GenericLogic.__init__(self, manager, name, config, state_actions, **kwargs)
 
-        #locking for thread safety
+        # locking for thread safety
         self.lock = Mutex()
 
         self.logMsg('The following configuration was found.',
                     msgType='status')
-        
-        # name of active POI, default to empty string   
+
+        # name of active POI, default to empty string
         self.active_poi_name = ''
 
         # Some default variables concerning the operating system:
@@ -76,7 +78,7 @@ class SaveLogic(GenericLogic):
             else:
                 self.data_dir = self.default_unix_data_dir
 
-        elif 'win32' in sys.platform or 'AMD64' in sys.platform :
+        elif 'win32' in sys.platform or 'AMD64' in sys.platform:
             self.os_system = 'win'
             if 'win_data_directory' in config.keys():
                 self.data_dir = config['win_data_directory']
@@ -84,14 +86,12 @@ class SaveLogic(GenericLogic):
                 self.data_dir = self.default_win_data_dir
         else:
             self.logMsg('Identify the operating system.',
-                    msgType='error')
-
+                        msgType='error')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
-
 
     def activation(self, e=None):
         """ Definition, configuration and initialisation of the SaveLogic.
@@ -109,10 +109,8 @@ class SaveLogic(GenericLogic):
     def deactivation(self, e=None):
         pass
 
-
-
     def save_data(self, data, filepath, parameters=None, filename=None,
-                  filelabel=None, timestamp = None, as_text=True, as_xml=False,
+                  filelabel=None, timestamp=None, as_text=True, as_xml=False,
                   precision=':.3f', delimiter='\t'):
             """ General save routine for data.
 
@@ -227,33 +225,31 @@ class SaveLogic(GenericLogic):
             SAVED TIME TRACE/MATRIX.
             """
 
-
             try:
                 frm = inspect.stack()[1]    # try to trace back the functioncall to
                                             # the class which was calling it.
-                mod = inspect.getmodule(frm[0]) # this will get the object, which
-                                                # called the save_data function.
-                module_name =  mod.__name__.split('.')[-1]  # that will extract the
-                                                            # name of the class.
+                mod = inspect.getmodule(frm[0])  # this will get the object, which
+                                                 # called the save_data function.
+                module_name = mod.__name__.split('.')[-1]  # that will extract the
+                                                           # name of the class.
             except:
                 # Sometimes it is not possible to get the object which called the save_data function (such as when calling this from the console).
                 module_name = 'NaN'
-            
 
             # check whether the given directory path does exist. If not, the
             # file will be saved anyway in the unspecified directory.
 
             if not os.path.exists(filepath):
-                filepath = self.get_daily_directory('UNSPECIFIED_'+str(module_name))
+                filepath = self.get_daily_directory('UNSPECIFIED_' + str(module_name))
                 self.logMsg('No Module name specified! Please correct this! '
                             'Data are saved in the \'UNSPECIFIED_<module_name>\' folder.',
                             msgType='warning', importance=7)
-            
+
             # Produce a filename tag from the active POI name
             if self.active_poi_name == '':
                 poi_tag = ''
             else:
-                poi_tag = '_'+self.active_poi_name.replace(" ","_")
+                poi_tag = '_' + self.active_poi_name.replace(" ", "_")
 
             # create a unique name for the file, if no name was passed:
             if filename is None:
@@ -261,40 +257,38 @@ class SaveLogic(GenericLogic):
                 if timestamp is not None:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+module_name+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
                     else:
-                        filename = timestamp.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+filelabel+'.dat')
+                        filename = timestamp.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
                 else:
                     # use the filelabel if that is specified:
                     if filelabel is None:
-                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+module_name+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + module_name + '.dat')
                     else:
-                        filename = time.strftime('%Y%m%d-%H%M-%S'+poi_tag+'_'+filelabel+'.dat')
+                        filename = time.strftime('%Y%m%d-%H%M-%S' + poi_tag + '_' + filelabel + '.dat')
 
             # open the file
-            textfile = open(os.path.join(filepath, filename),'w')
-
+            textfile = open(os.path.join(filepath, filename), 'w')
 
             # write the paramters if specified:
-            textfile.write('# Saved Data from the class ' +module_name+ ' on '
-                           + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n') )
+            textfile.write('# Saved Data from the class ' + module_name + ' on '
+                           + time.strftime('%d.%m.%Y at %Hh%Mm%Ss.\n')
+                           )
             textfile.write('#\n')
             textfile.write('# Parameters:\n')
             textfile.write('# ===========\n')
             textfile.write('#\n')
 
-            # Include the active POI name (if not empty) as a parameter in the header 
+            # Include the active POI name (if not empty) as a parameter in the header
             if self.active_poi_name != '':
-                textfile.write('# Measured at POI: '+self.active_poi_name+'\n')
+                textfile.write('# Measured at POI: ' + self.active_poi_name + '\n')
 
-
-            if parameters != None:
+            if parameters is not None:
 
                 # check whether the format for the parameters have a dict type:
                 if type(parameters) is dict or OrderedDict:
                     for entry in parameters:
-                        textfile.write('# '+str(entry)+':'+delimiter+str(parameters[entry])+'\n')
-
+                        textfile.write('# ' + str(entry) + ':' + delimiter + str(parameters[entry]) + '\n')
 
                 # make a hardcore string convertion and try to save the
                 # parameters directly:
@@ -302,34 +296,32 @@ class SaveLogic(GenericLogic):
                     self.logMsg('The parameters are not passed as a dictionary! '
                                 'The SaveLogic will try to save the paramters '
                                 'directely.', msgType='error', importance=9)
-                    textfile.write('# not specified parameters: '+str(parameters)+'\n')
-
+                    textfile.write('# not specified parameters: ' + str(parameters) + '\n')
 
             textfile.write('#\n')
             textfile.write('# Data:\n')
             textfile.write('# =====\n')
             # check the input data:
 
-
             # go through each data in t
-            if len(data)==1:
+            if len(data) == 1:
                 key_name = list(data.keys())[0]
 
                 # check whether the data is only a 1d trace
                 if len(np.shape(data[key_name])) == 1:
 
-                    self.save_1d_trace_as_text(trace_data = data[key_name],
-                                                trace_name=key_name,
-                                                opened_file = textfile,
-                                                precision=precision)
+                    self.save_1d_trace_as_text(trace_data=data[key_name],
+                                               trace_name=key_name,
+                                               opened_file=textfile,
+                                               precision=precision)
 
                 # check whether the data is only a 2d array
                 elif len(np.shape(data[key_name])) == 2:
 
                     key_name_array = key_name.split(',')
 
-                    self.save_2d_points_as_text(trace_data = data[key_name],
-                                                trace_name = key_name_array,
+                    self.save_2d_points_as_text(trace_data=data[key_name],
+                                                trace_name=key_name_array,
                                                 opened_file=textfile,
                                                 precision=precision,
                                                 delimiter=delimiter)
@@ -347,7 +339,6 @@ class SaveLogic(GenericLogic):
                                 'raw fashion.', msgType='warning', importance=7)
                     textfile.write(+str(data[key_name]))
 
-
             else:
                 key_list = list(data)
 
@@ -359,11 +350,10 @@ class SaveLogic(GenericLogic):
                     if len(np.shape(data[entry])) > 1:
                         trace_1d_flag = False
 
-
                 if trace_1d_flag:
 
-                    self.save_N_1d_traces_as_text(trace_data = data_traces,
-                                                  trace_name = key_list,
+                    self.save_N_1d_traces_as_text(trace_data=data_traces,
+                                                  trace_name=key_list,
                                                   opened_file=textfile,
                                                   precision=precision,
                                                   delimiter=delimiter)
@@ -373,10 +363,10 @@ class SaveLogic(GenericLogic):
                     # That is an recursive procedure:
 
                     for entry in key_list:
-                        self.save_data(data = {entry:data[entry]},
-                                       filepath = filepath,
+                        self.save_data(data={entry: data[entry]},
+                                       filepath=filepath,
                                        parameters=parameters,
-                                       filename=filename[:-4]+'_'+entry+'.dat',
+                                       filename=filename[:-4] + '_' + entry + '.dat',
                                        as_text=True, as_xml=False,
                                        precision=precision, delimiter=delimiter)
 
@@ -391,29 +381,26 @@ class SaveLogic(GenericLogic):
 
         close_file_flag = False
 
-        if opened_file == None:
-            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
+        if opened_file is None:
+            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
             close_file_flag = True
 
-
-        opened_file.write('# '+str(trace_name)+'\n')
+        opened_file.write('# ' + str(trace_name) + '\n')
 
         for entry in trace_data:
             # If entry is a string, then print directly
             if isinstance(entry, str):
-                opened_file.write(entry+'\n')
+                opened_file.write(entry + '\n')
             # Otherwise, format number to requested precision
             else:
-                opened_file.write(str('{0'+precision+'}\n').format(entry))
-
+                opened_file.write(str('{0' + precision + '}\n').format(entry))
 
         if close_file_flag:
             opened_file.close()
 
-
     def save_N_1d_traces_as_text(self, trace_data, trace_name, opened_file=None,
-                              filepath=None, filename=None, precision=':.3f',
-                              delimiter='\t'):
+                                 filepath=None, filename=None, precision=':.3f',
+                                 delimiter='\t'):
         """An Independent method, which can save a N 1d trace.
 
         If you call this method but you are respondible, that the passed
@@ -421,14 +408,14 @@ class SaveLogic(GenericLogic):
 
         close_file_flag = False
 
-        if opened_file == None:
-            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
+        if opened_file is None:
+            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
             close_file_flag = True
 
-        if trace_name != None:
+        if trace_name is not None:
             opened_file.write('# ')
             for name in trace_name:
-                opened_file.write(name + delimiter )
+                opened_file.write(name + delimiter)
             opened_file.write('\n')
 
         max_trace_length = max(np.shape(trace_data))
@@ -436,23 +423,25 @@ class SaveLogic(GenericLogic):
         for row in range(max_trace_length):
             for column in range(len(trace_data)):
                 try:
-                #TODO: Lachlan has inserted the if-else in here, but it should be properly integrated with the try
+                    # TODO: Lachlan has inserted the if-else in here,
+                    # but it should be properly integrated with the try
+
                     # If entry is a string, then print directly
                     if isinstance(trace_data[column][row], str):
-                        opened_file.write(str('{0}'+delimiter).format(trace_data[column][row]))
+                        opened_file.write(str('{0}' + delimiter).format(trace_data[column][row]))
                     # Otherwise, format number to requested precision
                     else:
-                        opened_file.write(str('{0'+precision+'}'+delimiter).format(trace_data[column][row]))
+                        opened_file.write(str('{0' + precision + '}' + delimiter).format(trace_data[column][row]))
                 except:
-                    opened_file.write(str('{0}'+delimiter).format('NaN'))
+                    opened_file.write(str('{0}' + delimiter).format('NaN'))
             opened_file.write('\n')
 
         if close_file_flag:
             opened_file.close()
 
-    def save_2d_points_as_text(self,trace_data, trace_name=None, opened_file=None,
-                              filepath=None, filename=None, precision=':.3f',
-                              delimiter='\t'):
+    def save_2d_points_as_text(self, trace_data, trace_name=None, opened_file=None,
+                               filepath=None, filename=None, precision=':.3f',
+                               delimiter='\t'):
         """An Independent method, which can save a matrix like array to file.
 
         If you call this method but you are respondible, that the passed
@@ -460,26 +449,24 @@ class SaveLogic(GenericLogic):
 
         close_file_flag = False
 
-        if opened_file == None:
-            opened_file = open(os.path.join(filepath, filename+'.dat'),'wb')
+        if opened_file is None:
+            opened_file = open(os.path.join(filepath, filename + '.dat'), 'wb')
             close_file_flag = True
 
         # write the trace names:
-        if trace_name != None:
+        if trace_name is not None:
             opened_file.write('# ')
             for name in trace_name:
-                opened_file.write(name + delimiter )
+                opened_file.write(name + delimiter)
             opened_file.write('\n')
 
         for row in trace_data:
             for entry in row:
-                opened_file.write(str('{0'+precision+'}'+delimiter).format(entry))
+                opened_file.write(str('{0' + precision + '}' + delimiter).format(entry))
             opened_file.write('\n')
 
         if close_file_flag:
             opened_file.close()
-
-
 
     def _save_1d_traces_as_xml():
         """ Save 1d data trace in xml conding. """
@@ -553,15 +540,9 @@ class SaveLogic(GenericLogic):
 #            tree = ET.ElementTree(root)
 #            tree.write('output.xml', pretty_print=True, xml_declaration=True)
 
-
-
     def _save_2d_data_as_xml():
         """ Save 2d data in xml conding."""
         pass
-
-
-
-
 
     def get_daily_directory(self):
         """
@@ -600,13 +581,11 @@ class SaveLogic(GenericLogic):
                     self.logMsg('The specified Data Directory in the config '
                                 'file does not exist. Using default for {0} '
                                 'system instead. The directory\n{1} was '
-                                'created'.format(self.os_system,self.data_dir),
+                                'created'.format(self.os_system, self.data_dir),
                                 msgType='status', importance=3)
 
         # That is now the current directory:
         current_dir = os.path.join(self.data_dir, time.strftime("%Y"), time.strftime("%m"))
-
-
 
         folder_exists = False   # Flag to indicate that the folder does not exist.
         if os.path.exists(current_dir):
@@ -622,16 +601,16 @@ class SaveLogic(GenericLogic):
 
         if not folder_exists:
             current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
-            self.logMsg('Creating directory for today\'s data in \n'+current_dir,
-                                msgType='status', importance=5)
+            self.logMsg('Creating directory for today\'s data in \n' + current_dir,
+                        msgType='status', importance=5)
 
             # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
             # Details at http://stackoverflow.com/questions/12468022/python-fileexists-error-when-making-directory
-            os.makedirs(current_dir,exist_ok=True)
+            os.makedirs(current_dir, exist_ok=True)
 
         return current_dir
 
-    def get_path_for_module(self,module_name=None):
+    def get_path_for_module(self, module_name=None):
         """
         Method that creates a path for 'module_name' where data are stored.
 
@@ -645,7 +624,7 @@ class SaveLogic(GenericLogic):
         folders!
 
         """
-        if module_name == None:
+        if module_name is None:
             self.logMsg('No Module name specified! Please correct this! Data '
                         'are saved in the \'UNSPECIFIED_<module_name>\' folder.',
                         msgType='warning', importance=7)
@@ -656,11 +635,10 @@ class SaveLogic(GenericLogic):
                                             # called the save_data function.
             module_name =  mod.__name__.split('.')[-1]  # that will extract the
                                                         # name of the class.
-            module_name = 'UNSPECIFIED_'+module_name
+            module_name = 'UNSPECIFIED_' + module_name
 
         dir_path = os.path.join(self.get_daily_directory(), module_name)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         return dir_path
-
