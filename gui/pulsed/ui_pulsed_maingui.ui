@@ -43,6 +43,9 @@
               <property name="maximum">
                <double>999999999.000000000000000</double>
               </property>
+              <property name="value">
+               <double>3.000000000000000</double>
+              </property>
              </widget>
             </item>
             <item row="2" column="0" colspan="8">
@@ -124,6 +127,9 @@
                    <property name="maximum">
                     <double>20000.000000000000000</double>
                    </property>
+                   <property name="value">
+                    <double>500.000000000000000</double>
+                   </property>
                   </widget>
                  </item>
                  <item row="4" column="1">
@@ -131,10 +137,23 @@
                    <property name="maximum">
                     <double>20000.000000000000000</double>
                    </property>
+                   <property name="value">
+                    <double>500.000000000000000</double>
+                   </property>
                   </widget>
                  </item>
                  <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="ext_control_mw_power_DoubleSpinBox"/>
+                  <widget class="QDoubleSpinBox" name="ext_control_mw_power_DoubleSpinBox">
+                   <property name="minimum">
+                    <double>-999999.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>999999.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>-30.000000000000000</double>
+                   </property>
+                  </widget>
                  </item>
                  <item row="2" column="0">
                   <widget class="QLabel" name="ext_control_mw_power_Label">
@@ -153,7 +172,7 @@
                  <item row="1" column="0">
                   <widget class="QLabel" name="ext_control_mw_freq_Label">
                    <property name="text">
-                    <string>MW Freq (Hz)</string>
+                    <string>MW Freq (MHz)</string>
                    </property>
                   </widget>
                  </item>
@@ -166,8 +185,14 @@
                  </item>
                  <item row="1" column="1">
                   <widget class="QDoubleSpinBox" name="ext_control_mw_freq_DoubleSpinBox">
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
                    <property name="maximum">
-                    <double>500000000.000000000000000</double>
+                    <double>2100000044.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>2870.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -197,7 +222,7 @@
              </widget>
             </item>
             <item row="3" column="0" colspan="8">
-             <widget class="QGroupBox" name="fourier_transform_GroupBox">
+             <widget class="QGroupBox" name="second_plot_GroupBox">
               <property name="title">
                <string>Fourier Transform</string>
               </property>
@@ -242,6 +267,9 @@
                  </item>
                  <item row="1" column="1">
                   <widget class="QSpinBox" name="ana_param_num_laser_pulse_SpinBox">
+                   <property name="minimum">
+                    <number>50</number>
+                   </property>
                    <property name="maximum">
                     <number>10000000</number>
                    </property>
@@ -314,6 +342,9 @@
                    <property name="maximum">
                     <double>999999999.000000000000000</double>
                    </property>
+                   <property name="value">
+                    <double>1.000000000000000</double>
+                   </property>
                   </widget>
                  </item>
                  <item row="4" column="0">
@@ -357,6 +388,9 @@
                    </property>
                    <property name="maximum">
                     <double>999999999.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>1.000000000000000</double>
                    </property>
                   </widget>
                  </item>
@@ -451,7 +485,11 @@
              </widget>
             </item>
             <item row="4" column="3">
-             <widget class="QLineEdit" name="time_param_elapsed_time_LineEdit"/>
+             <widget class="QLineEdit" name="time_param_elapsed_time_LineEdit">
+              <property name="text">
+               <string>00:00:00:00</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -2032,6 +2070,9 @@ sel.</string>
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>
@@ -2054,6 +2095,9 @@ sel.</string>
    </property>
   </action>
   <action name="action_pull_data">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>

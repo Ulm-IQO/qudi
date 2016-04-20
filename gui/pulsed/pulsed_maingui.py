@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2016 Simon Schmitt simon.schmitt@uni-ulm.de
 """
 
 from PyQt4 import QtGui, QtCore, uic
@@ -2432,13 +2433,14 @@ class PulsedMeasurementGui(GUIBase):
         # Configure the main pulse analysis display:
         self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self._mw.pulse_analysis_PlotWidget.setLabel('left', 'Counts')
+        self._mw.pulse_analysis_PlotWidget.setLabel('left', self._as.ana_param_y_axis_name_LineEdit.text())
         self._mw.pulse_analysis_PlotWidget.setLabel('bottom', self._as.ana_param_x_axis_name_LineEdit.text())
+        self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
         self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image, pen='r')
-        self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_meas_logic.signal_plot_x,
@@ -2446,11 +2448,10 @@ class PulsedMeasurementGui(GUIBase):
                                                      top=self._pulsed_meas_logic.measuring_error_plot_y,
                                                      bottom=self._pulsed_meas_logic.measuring_error_plot_y,pen='b')
 
-        # Configure the fourier transform of the main pulse analysis display:
-        self.fft_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
-        self._mw.pulse_analysis_second_PlotWidget.addItem(self.fft_image)
+        # Configure the second pulse analysis display:
+        self.second_plot_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self._mw.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
         self._mw.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-
 
 
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
@@ -2468,28 +2469,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_x_axis_inc_Label.setVisible(False)
         self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
 
-        # Set the state button as ready button as default setting.
 
-        self._mw.action_continue_pause.setEnabled(False)
-        self._mw.action_pull_data.setEnabled(False)
-
-        # pulsed measurement tab
-        self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(2870e6)
-        self._mw.ext_control_mw_power_DoubleSpinBox.setValue(-30.)
-        self._mw.ana_param_num_laser_pulse_SpinBox.setValue(self._pulsed_meas_logic.get_num_of_lasers())
-        self._mw.ana_param_x_axis_start_DoubleSpinBox.setValue(1)
-        self._mw.ana_param_x_axis_inc_DoubleSpinBox.setValue(1)
-
-        self._mw.time_param_expected_dur_DoubleSpinBox.setValue(0)
-        self._mw.time_param_elapsed_time_LineEdit.setText('00:00:00:00')
-
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(0)
-        self._mw.time_param_ana_periode_DoubleSpinBox.setValue(2)
-        self._mw.ext_control_optimize_interval_DoubleSpinBox.setValue(500)
-        self._mw.ext_control_redo_odmr_DoubleSpinBox.setValue(500)
-
-        # Configuration of the second plot ComboBox
-
+        # Get the possible binwidth setting from the hardware constraints
         # in order to keep the full precision (which is not needed in the
         # display) an reference list variable self._binwidth_ref_list will be
         # created where the values are stored with the absolute given presicion:
@@ -2497,9 +2478,9 @@ class PulsedMeasurementGui(GUIBase):
         binwidth_str_list = []
         for entry in self._binwidth_ref_list:
             binwidth_str_list.append(str(round(entry,12)))
-
         self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
 
+        # Configuration of the second plot ComboBox
         #FIXME: This should be given by the logic
         self._mw.second_plot_ComboBox.addItem('None')
         self._mw.second_plot_ComboBox.addItem('unchanged data')
@@ -2509,15 +2490,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.second_plot_ComboBox.addItem('Log(x)&Log(y)')
 
         # Configuration of the fit ComboBox
-        self._mw.fit_param_fit_func_ComboBox.addItem('No Fit')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Rabi Decay')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (neg)')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Lorentian (pos)')
-        self._mw.fit_param_fit_func_ComboBox.addItem('N14')
-        self._mw.fit_param_fit_func_ComboBox.addItem('N15')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Stretched Exponential')
-        self._mw.fit_param_fit_func_ComboBox.addItem('Exponential')
-        self._mw.fit_param_fit_func_ComboBox.addItem('XY8')
+        fit_functions=self._pulsed_meas_logic.get_available_fit_functions()
+        for ii in fit_functions:
+            self._mw.fit_param_fit_func_ComboBox.addItem(ii)
 
 
         # ---------------------------------------------------------------------
@@ -2581,11 +2556,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.stop_pulsed_measurement()
 
 
-
         if isChecked:
             # Activate the needed channels:
             self._set_channel_activation(active=True, apply_to_device=True)
 
+            # Enable and disable buttons
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
@@ -2594,6 +2569,7 @@ class PulsedMeasurementGui(GUIBase):
             # set number of laser pulses:
             self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
 
+            #FIXME: Should not be hardcoded here
             self._pulsed_meas_logic.aom_delay_s = 1e-6
             self._pulsed_meas_logic.laser_length_s = 3e-6
 
@@ -2602,10 +2578,6 @@ class PulsedMeasurementGui(GUIBase):
             # No need for configuration if fc is changed:
             # self._pulsed_meas_logic.configure_fast_counter()
 
-            # FIXME: Not sure if that belongs to here...
-            #self._mw.time_param_expected_dur_DoubleSpinBox.setValue(5765.0)
-            'FIXME: Not really sure if for two multiplication it is convenient to have an extra function in ulsed_measurment_logic'
-            #self.__pulsed_meas_logic.compute_expected_duration(self._seq_gen_logic.current_ensemble.length_bins,self.ana_param_fc_bins_ComboBox.value())
             self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._seq_gen_logic.current_ensemble.length_bins/self._seq_gen_logic.sample_rate*1e3) #computed expected duration in ms
 
             self._pulsed_meas_logic.start_pulsed_measurement()
@@ -2620,12 +2592,14 @@ class PulsedMeasurementGui(GUIBase):
             # be active on the device:
             self._set_channel_activation(active=False, apply_to_device=False)
 
+            #Enables and disables buttons
             self._pulsed_meas_logic.stop_pulsed_measurement()
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
+
 
 
     #ToDo: I think that is not really working yet
@@ -2636,32 +2610,33 @@ class PulsedMeasurementGui(GUIBase):
             #self._mw.action_continue_pause.toggle()
 
             self._mw.action_run_stop.setChecked(True)
+            #self._pulsed_meas_logic.continue_pulsed_measurement()
         else:
             #self._mw.action_continue_pause.toggle
-
+            #self._pulsed_meas_logic.pause_pulsed_measurement()
             self._mw.action_run_stop.setChecked(False)
 
 
 
     def pull_data_clicked(self):
+        """Pulls and analysis the data when the 'action_pull_data'-button is clicked"""
         self._pulsed_meas_logic.manually_pull_data()
         return
 
     def save_clicked(self):
+        """Saves the current data"""
         self.save_plots()
 
 
     def fit_clicked(self):
+        """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
-
         current_fit_function = self._mw.fit_param_fit_func_ComboBox.currentText()
-
         fit_x, fit_y, fit_result = self._pulsed_meas_logic.do_fit(current_fit_function)
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
-
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
-
         return
+
 
     def refresh_signal_plot(self):
         """ This method refreshes the xy-matrix image """
@@ -2669,13 +2644,7 @@ class PulsedMeasurementGui(GUIBase):
         #### dealing with the error bars
         #FIXME: Does that belong into the logic?
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
-            # calculate optimal beam width for the error bars
-            beamwidth = 1e99
-            for i in range(len(self._pulsed_meas_logic.measurement_ticks_list)-1):
-                width = self._pulsed_meas_logic.measurement_ticks_list[i+1] - self._pulsed_meas_logic.measurement_ticks_list[i]
-                width = width/3
-                if width <= beamwidth:
-                    beamwidth = width
+            beamwidth=self._pulsed_meas_logic.compute_width_of_errorbars()
             # create ErrorBarItem
             self.signal_image_error_bars.setData(x=self._pulsed_meas_logic.signal_plot_x, y=self._pulsed_meas_logic.signal_plot_y, top=self._pulsed_meas_logic.measuring_error,bottom=self._pulsed_meas_logic.measuring_error,beam=beamwidth)
             if not self.errorbars_present:
@@ -2687,24 +2656,20 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
                 self.errorbars_present = False
 
-            else:
-                pass
 
         # dealing with the actual signal
         self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
         self.change_second_plot()
+        return
 
 
 
     def refresh_measuring_error_plot(self):
-
         #print(self._pulsed_meas_logic.measuring_error)
-
         self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
         """ This method refreshes the elapsed time and sweeps of the measurement. """
-
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
 
 
@@ -2722,6 +2687,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def show_external_mw_source_checked(self):
+        """ This method shows or hides input widgets which are necessary if an external mw is turned on"""
         if not self._mw.ext_control_use_mw_CheckBox.isChecked():
 
             self._mw.ext_control_mw_freq_Label.setVisible(False)
@@ -2733,9 +2699,11 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
             self._mw.ext_control_mw_power_Label.setVisible(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(True)
+        return
 
 
     def measurement_ticks_editor(self):
+        """ This method shows or hides input widgets which are necessary if the x axis id defined or not"""
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
@@ -2746,18 +2714,21 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
+        return
 
 
     def change_second_plot(self):
+
+        """ This method handles the second plot"""
         if self._mw.second_plot_ComboBox.currentText()=='None':
-            self._mw.fourier_transform_GroupBox.setVisible(False)
+            self._mw.second_plot_GroupBox.setVisible(False)
         else:
-            self._mw.fourier_transform_GroupBox.setVisible(True)
+            self._mw.second_plot_GroupBox.setVisible(True)
 
             #Here FFT is seperated from the other option. The reason for that is preventing of code doubling
             if self._mw.second_plot_ComboBox.currentText()=='FFT':
                 fft_x,fft_y=self._pulsed_meas_logic.compute_fft()
-                self.fft_image.setData(fft_x, fft_y)
+                self.second_plot_image.setData(fft_x, fft_y)
                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
                 if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()=='':
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'FT-Amplitude')
@@ -2769,7 +2740,7 @@ class PulsedMeasurementGui(GUIBase):
 
             else:
                 #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
-                self.fft_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
+                self.second_plot_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
 
                 if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()=='':
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_y_axis_name_LineEdit.text())
@@ -2795,6 +2766,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def seq_parameters_changed(self):
+        """ This method changes the sequence parameters"""
 
         laser_num = self._mw.ana_param_num_laser_pulse_SpinBox.value()
         measurement_tick_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
@@ -2802,8 +2774,6 @@ class PulsedMeasurementGui(GUIBase):
         mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
         mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
-
-
 
 
         measurement_tick_vector = np.arange(measurement_tick_start, measurement_tick_start + measurement_tick_incr*laser_num, measurement_tick_incr)
@@ -2814,7 +2784,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def analysis_timing_changed(self):
-
+        """ This method handles the analysis timing"""
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.change_timer_interval(timer_interval)
 
@@ -3452,7 +3422,6 @@ class PulsedMeasurementGui(GUIBase):
     ###          Methods related to the Tab 'Pulse Extraction':             ###
     ###########################################################################
 
-    #FIXME: Implement the 'Pulse Extraction' tab.
 
     def _activate_pulse_extraction_ui(self, e):
         """ Initialize, connect and configure the 'Pulse Extraction' Tab.
@@ -3463,7 +3432,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configure all objects for laserpulses_PlotWidget and also itself:
 
-        # The infinite lines:
+        # Adjust settings for the moveable lines in the pulses plot:
         self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
         self.sig_start_line.setHoverPen(QtGui.QPen(QtGui.QColor(255,0,255,255)))
         self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(QtGui.QColor(255,0,0,255)), movable=True)
@@ -3482,11 +3451,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.laserpulses_PlotWidget.addItem(self.ref_start_line)
         self._mw.laserpulses_PlotWidget.addItem(self.ref_end_line)
 
-        self._mw.laserpulses_PlotWidget.setLabel('bottom', 'tau', units='s')
+        #self._mw.laserpulses_PlotWidget.setLabel('bottom', 'tau', units='s')
         self._mw.laserpulses_PlotWidget.setLabel('bottom', 'bins')
 
         # Configure all objects for measuring_error_PlotWidget and also itself:
-
         self.measuring_error_image = pg.PlotDataItem(self._pulsed_meas_logic.measuring_error_plot_x, self._pulsed_meas_logic.measuring_error_plot_y*1000)
         self._mw.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._mw.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
