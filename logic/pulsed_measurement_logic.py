@@ -17,6 +17,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015-2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
+Copyright (C) 2015-2016 Simon Schmitt simon.schmitt@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -661,6 +662,9 @@ class PulsedMeasurementLogic(GenericLogic):
         fft_x = np.fft.fftfreq(corrected_y.shape[-1])
 
         return fft_x[:middle],fft_y[:middle]
+
+    def get_available_fit_functions(self):
+        return ['No Fit','Rabi Decay','Lorentian (neg)','Lorentian (pos)','N14','N15','Stretched Exponential','Exponential','XY8']
 
 
     def do_fit(self, fit_function):
