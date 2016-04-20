@@ -24,9 +24,9 @@ import numpy as np
 import time
 import scipy.misc
 from scipy.stats import poisson
-from lmfit import Parameters
-
-
+from scipy.signal import  gaussian
+from scipy.ndimage import filters
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 class TraceAnalysisLogic(GenericLogic):
     """ Perform a gated counting measurement with the hardware.  """
@@ -227,17 +227,37 @@ class TraceAnalysisLogic(GenericLogic):
                         msgType='warning')
         else:
             parameters_to_substitute = dict()
-            parameters_to_substitute['c'] = {'value': 0, 'vary': False}
+            update_dict=dict()
+
+            #Todo: move this to "gated counter" estimator in fitlogic
+            #make the filter an extra function shared and usable for other functions
+            gaus = gaussian(10, 10)
+            data_smooth = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
+
+            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+            function = InterpolatedUnivariateSpline(axis, data_smooth, k=1)
+            Integral = function.integral(axis[0], axis[-1])
+            amp = data_smooth.max()
+            sigma = Integral / (amp) / np.sqrt(2 * np.pi)
+            amplitude = amp * sigma * np.sqrt(2 * np.pi)
+
+            update_dict['c'] = {'min': 0, 'max': data.max(), 'value': 0, 'vary': False}
+            update_dict['center'] = {'min': axis.min(), 'max': axis.max(), 'value': axis[np.argmax(data)]}
+            update_dict['sigma'] = {'min': -np.inf, 'max': np.inf, 'value': sigma}
+            update_dict['amplitude'] = {'min': 0, 'max': np.inf, 'value': amplitude}
+
             result = self._fit_logic.make_gaussian_fit(axis=axis,
-                                                               data=data,
-                                                               add_parameters=parameters_to_substitute)
+                                                       data=data,
+                                                       add_parameters=update_dict)
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
 
-            # units = {'poissonian0_mu', 'Counts/s',
-            #          'poissonian1_mu', 'kCounts/s'}
-            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            # units = {'center': 'cts/s',
+            #          'c': '#',
+            #          'amplitude': '#',
+            #          'sigma': 'cts/s'}
+            # fit_result = self._fit_logic.create_fit_string(result, model, units=units)
             fit_result = str("Center (Counts/s): {:.1f} \n".format(result.best_values['center']))
             return hist_fit_x, hist_fit_y, fit_result
 
@@ -257,9 +277,14 @@ class TraceAnalysisLogic(GenericLogic):
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
 
-            # units = {'poissonian0_mu', 'Counts/s',
-            #          'poissonian1_mu', 'kCounts/s'}
-            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            # units = {'gaussian0_center': 'cts/s',
+            #          'gaussian1_center': 'cts/s',
+            #          'gaussian0_sigma': 'cts/s',
+            #          'gaussian1_sigma': 'cts/s',
+            #          'gaussian0_amplitude': '#',
+            #          'gaussian1_amplitude': '#',
+            #          'c': '#'}
+            # fit_result = self._fit_logic.create_fit_string(result, model, units=units)
             fit_result = str("Center 1 (kCounts/s): {:.1f} \nCenter 2 (kCounts/s): {:.1f}".format(
                 result.best_values['gaussian0_center']/1e3, result.best_values['gaussian1_center']/1e3))
             return hist_fit_x, hist_fit_y, fit_result

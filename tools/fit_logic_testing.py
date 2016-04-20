@@ -1117,9 +1117,9 @@ class FitLogic():
 
         def gaussian_testing(self):
             start=0
-            stop=30
-            mu=8
-            num_points=100
+            stop=300
+            mu=100
+            num_points=1000
             x = np.array(np.linspace(start, stop, num_points))
 #            x = np.array(x,dtype=np.int64)
             mod,params = self.make_poissonian_model()
@@ -1130,7 +1130,7 @@ class FitLogic():
             p.add('poissonian_amplitude',value=200.)
 
             data_noisy=(mod.eval(x=x,params=p) *
-                        np.array((1+0.001*np.random.normal(size=x.shape) *
+                        np.array((1+0.00*np.random.normal(size=x.shape) *
                         p['poissonian_amplitude'].value ) ) )
             
             #make the filter an extra function shared and usable for other functions
@@ -1160,7 +1160,18 @@ class FitLogic():
             params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
 
             update_dict=dict()
-            update_dict['c']={'min':0,'max':120,'value':0.1}
+            
+            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+            function = InterpolatedUnivariateSpline(axis, data_smooth, k=1)
+            Integral = function.integral(axis[0], axis[-1])
+            amp = data_smooth.max()        
+            sigma = Integral / (amp) / np.sqrt(2 * np.pi)
+            amplitude = amp * sigma * np.sqrt(2 * np.pi)
+
+            update_dict['c']={'min':-np.inf,'max':np.inf,'value':0.1}
+            update_dict['center']={'min':-np.inf,'max':np.inf,'value':axis[np.argmax(data_noisy)]}
+            update_dict['sigma']={'min':-np.inf,'max':np.inf,'value':sigma}
+            update_dict['amplitude']={'min':-np.inf,'max':np.inf,'value':amplitude}
             print('params',params['c'])
             print('dict',update_dict['c'])
             params = self._substitute_parameter(parameters=params, update_dict=update_dict)
@@ -1194,6 +1205,9 @@ class FitLogic():
     
             except:
                 print('exception')
+                
+            units={'center': 'counts/s','sigma': 'counts','amplitude': 'counts/s','c': 'N'}
+            print(self.create_fit_string(result,mod_final,units=units))
 
 plt.rcParams['figure.figsize'] = (10,5)
                        
