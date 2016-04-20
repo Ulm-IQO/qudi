@@ -294,7 +294,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         flags = self._fpga.GetWireOutValue(0x20)
         if flags != 0:
             # send acknowledge signal to FPGA
-            self._fpga.SetWireInValue(0x00, 0x8000000 + self._histogram_size)
+            self._fpga.SetWireInValue(0x00, 0x08000000 + self._histogram_size)
             self._fpga.UpdateWireIns()
             self._fpga.SetWireInValue(0x00, self._histogram_size)
             self._fpga.UpdateWireIns()
