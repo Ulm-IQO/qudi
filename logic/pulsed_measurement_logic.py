@@ -174,7 +174,7 @@ class PulsedMeasurementLogic(GenericLogic):
             record_length_s = self.aom_delay_s + self.sequence_length_s
             number_of_gates = 0
         actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth/1e9 , record_length_s, number_of_gates)
-        self.fast_counter_binwidth = actual_binwidth_s
+        #self.fast_counter_binwidth = actual_binwidth_s
         return
 
     def start_pulsed_measurement(self):
@@ -231,9 +231,14 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def change_fc_binning_for_pulsed_analysis(self,fc_binning):
+        """ If the FC binning has be changed in the GUI, inform analysis
+
+        @param float fc_binning: Binning of fast counter in s
+
+        """
         self.fast_counter_binwidth=fc_binning
         self.configure_fast_counter()
-        pass
+        return
 
 
     def _pulsed_analysis_loop(self):
@@ -278,6 +283,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigPulseAnalysisUpdated.emit()
             self.sigMeasuringErrorUpdated.emit()
             self.signal_time_updated.emit()
+
+            return
 
     def get_laserpulse(self, laser_num=0):
         """ Get the laserpulse with the appropriate number.
@@ -403,6 +410,11 @@ class PulsedMeasurementLogic(GenericLogic):
         return 0
 
     def change_timer_interval(self, interval):
+        """ Change the interval of the timer
+
+        @param int interval: Interval of the timer in s
+
+        """
         with self.threadlock:
             self.timer_interval = interval
             if self.timer != None:
@@ -410,6 +422,11 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def change_confocal_optimize_timer_interval(self, interval):
+        """ Change the timer interval for confocal refocus
+
+        @param int interval: Interval of the timer in s
+
+        """
         with self.threadlock:
             self.confocal_optimize_timer_interval = interval
             if self.confocal_optimize_timer != None:
@@ -420,6 +437,11 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def change_odmr_optimize_timer_interval(self, interval):
+        """ Change the timer interval for odmr refocus
+
+        @param int interval: Interval of the timer in s
+
+        """
         with self.threadlock:
             self.odmr_optimize_timer_interval = interval
             if self.odmr_optimize_timer != None:
@@ -428,11 +450,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
 
     def manually_pull_data(self):
+        """ Analyse and display the data
+        """
         if self.getState() == 'locked':
             self._pulsed_analysis_loop()
+        return
 
     def set_num_of_lasers(self, num_of_lasers):
         """ Sets the number of lasers needed for the pulse extraction and the fast counter.
+
+        @param int num_of_lasers: Number of laser pulses
         """
         if num_of_lasers < 1:
             self.logMsg('Invalid number of laser pulses set in the '
@@ -474,6 +501,7 @@ class PulsedMeasurementLogic(GenericLogic):
         '''
         self.signal_plot_x = self.measurement_ticks_list
         self.signal_plot_y = np.zeros(self.measurement_ticks_list.size, dtype=float)
+        return
 
 
     def _initialize_laser_plot(self):
@@ -482,12 +510,14 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins_per_laser=int(self.laser_length_s/(self.fast_counter_binwidth))
         self.laser_plot_x = np.arange(1, number_of_bins_per_laser+1, dtype=int)
         self.laser_plot_y = np.zeros(number_of_bins_per_laser, dtype=int)
+        return
 
     def _initialize_measuring_error_plot(self):
         '''Initializing the plot of the laser timetrace.
         '''
         self.measuring_error_plot_x = self.measurement_ticks_list
         self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
+        return
 
 
     def _save_data(self, tag=None, timestamp=None):
@@ -647,8 +677,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def compute_fft(self):
-        # FiXME: This is the first implementation. I am sure there are better options
+        """Computing the fourier transform of the data
 
+        @return fft_x[:middle]: returns the frequencies for the FFT, middle makes sure that only positive values are displayed
+        @return fft_y[:middle]: returns the FFT spectrum, middle makes sure that only positive values are displayed
+        """
+        # FiXME: This is the first implementation. It is working, but there is probably a lot room for improvement
         # subtract baseline
         mean_y=sum(self.signal_plot_y)/len(self.signal_plot_y)
         corrected_y=self.signal_plot_y-mean_y
@@ -657,13 +691,17 @@ class PulsedMeasurementLogic(GenericLogic):
         fft_y=np.abs((np.fft.fft(corrected_y)).real)
 
         # Take just the positive values
-
         middle = round(corrected_y.shape[-1]/2)
         fft_x = np.fft.fftfreq(corrected_y.shape[-1])
 
         return fft_x[:middle],fft_y[:middle]
 
     def get_available_fit_functions(self):
+        """Giving the available fit functions
+
+        @return list of strings with all available fit functions
+
+        """
         return ['No Fit','Rabi Decay','Lorentian (neg)','Lorentian (pos)','N14','N15','Stretched Exponential','Exponential','XY8']
 
 
@@ -671,6 +709,10 @@ class PulsedMeasurementLogic(GenericLogic):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
+
+        @return float array pulsed_fit_x: Array containing the x-values of the fit
+        @return float array pulsed_fit_y: Array containing the y-values of the fit
+        @return str array pulsed_fit_result: String containing the fit parameters displayed in a nice form
         """
         pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0],self.signal_plot_x[-1],1000)
 
@@ -768,9 +810,28 @@ class PulsedMeasurementLogic(GenericLogic):
             fit_result = ('XY8 not yet implemented')
             return pulsed_fit_x, pulsed_fit_x, fit_result
 
+    def compute_width_of_errorbars(self):
+        """calculate optimal beam width for the error bars
+
+        @return float beamwidth: Computed width of the errorbars
+        """
+        beamwidth = 1e99
+        for i in range(len(self.measurement_ticks_list)-1):
+            width = self.measurement_ticks_list[i+1] - self.measurement_ticks_list[i]
+            width = width/3
+            if width <= beamwidth:
+                beamwidth = width
+        return beamwidth
 
     def compute_x_for_fit(self, x_start, x_end, number_of_points):
+        """compute the number of x-ticks for the fit
 
+        @param float x_start: smallest vvalue for x
+        @param float x_end: largest value for x
+        @param float number_of_points: number of x-ticks
+
+        @return float array x_for_fit: Array containing the x-ticks for the fit
+        """
         step = (x_end-x_start)/(number_of_points-1)
 
         x_for_fit = np.arange(x_start,x_end,step)
