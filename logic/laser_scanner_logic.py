@@ -21,7 +21,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Kay D. Jahnke
 Copyright (C) 2015 Jan M. Binder
-Copyright (C) 2016 Lachlan J. Rogers
+Copyright (C) 2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 from logic.generic_logic import GenericLogic
