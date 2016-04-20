@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
+Copyright (C) 2016 Simon Schmitt simon.schmitt@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -81,6 +82,20 @@ class PulseAnalysisLogic(GenericLogic):
     def _analyze_data(self, norm_start_bin, norm_end_bin, signal_start_bin,
                       signal_end_bin, num_of_lasers):
 
+        """ Analysis the laser,pulses and computes the measuring error given by photon shot noise
+
+        @param int norm_start_bin: Bin where the data for reference starts
+        @param int norm_end_bin: Bin where the data for reference ends
+        @param int signal_start_bin: Bin where the signal starts
+        @param int signal_end_bin: Bin where the signal stops
+        @param int number_of_lasers: Number of laser pulses
+
+        @return: float array signal_data: Array with the computed signal
+        @return: float array laser_data: Array with the laser data
+        @return: float array raw_data: Array with the raw data
+        @return: bool is_gated: True if gated counter, otherwise ungated counter
+        """
+
         # acquire data from the pulse extraction logic
         laser_data, raw_data, is_gated = self._pulse_extraction_logic.get_data_laserpulses(num_of_lasers)
 
@@ -103,23 +118,25 @@ class PulseAnalysisLogic(GenericLogic):
             # update the signal plot y-data
             signal_data[ii] = 1. + (signal_mean[ii]/reference_mean[ii])
 
-
+        # Compute the measuring error
         for jj in range(num_of_lasers):
             signal_area[jj] = laser_data[jj][signal_start_bin:signal_end_bin].sum()
             reference_area[jj] = laser_data[jj][norm_start_bin:norm_end_bin].sum()
 
             measuring_error[jj] = self.calculate_measuring_error(signal_area[jj], reference_area[jj])
-            #print(measuring_error[jj])
 
-        #return data
-        #print (measuring_error)
         return signal_data, laser_data, raw_data, measuring_error, is_gated
 
 
-    def do_fit(self):
-        return
 
     def calculate_measuring_error(self, signal_area, reference_area):
+        """ Computes the measuring error given by photon shot noise.
+
+        @param float signal_area: Numerical integral over the photon count in the signal area
+        @param float reference_area: Numerical integral over the photon count in the reference area
+
+        @return: float measuring_error: Computed error
+        """
 
         #with respect to gaußian error 'evolution'
         measuring_error=signal_area/reference_area*np.sqrt(1/signal_area+1/reference_area)
