@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
-Copyright (C) 2016 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
+Copyright (C) 2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 #from PyQt4 import QtCore, QtGui

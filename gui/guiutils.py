@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 
     Florian S. Frank florian.frank@uni-ulm.de
     Alexander Stark alexander.stark@uni-ulm.de
-    Lachlan J. Rogers lachlan.rogers@uni-ulm.de
+    Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 import pyqtgraph as pg
