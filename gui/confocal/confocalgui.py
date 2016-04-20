@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
 Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
-Copyright (C) 2015-2016 Lachlan J. Rogers lachlan.rogers@uni-ulm.de
+Copyright (C) 2015-2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
