@@ -70,7 +70,8 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
 
     @param array[] axis: axis values
     @param array[]  x_data: data
-    @param dict add_parameters: Additional parameters
+    @param dict add_parameters: Additional parameters which will substitute the
+                                estimated parameters/bounds
 
     @return object result: lmfit.model.ModelFit object, all parameters
                            provided about the fitting, like: success,
@@ -99,7 +100,7 @@ def make_gaussian_fit(self, axis=None, data=None, add_parameters=None):
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
-                                            update_parameters=add_parameters)
+                                            update_dict=add_parameters)
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
@@ -208,7 +209,7 @@ def make_twoDgaussian_fit(self, axis=None, data=None,
 #           redefine values of additional parameters
     if add_parameters is not None:
         params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
+                                         update_dict=add_parameters)
 
     try:
         result=mod.fit(data, x=axis,params=params)
@@ -527,7 +528,7 @@ def make_doublegaussian_fit(self, axis=None, data=None,
     # redefine values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
-                                            update_parameters=add_parameters)
+                                            update_dict=add_parameters)
     try:
         result = model.fit(data, x=axis, params=params)
     except:

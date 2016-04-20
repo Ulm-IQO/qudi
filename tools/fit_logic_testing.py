@@ -38,14 +38,12 @@ class FitLogic():
             filenames=[]
 #            
 #            for path in directories:
-            print(getcwd())
             path=join(getcwd()[:-5],'logic','fitmethods')
             for f in listdir(path):
                 if isfile(join(path,f)):
                     filenames.append(f[:-3])
             current_path= getcwd()
             os.chdir(path)
-            print(getcwd())
                         
             oneD_fit_methods = dict()
             twoD_fit_methods = dict()
@@ -248,7 +246,7 @@ class FitLogic():
 #            plt.plot(self.x,result.best_fit,'-r',label='fit')
             plt.plot(x_nice,mod_final.eval(x=x_nice,params=result.params),'-r',label='fit')
             plt.show()
-            
+            print(result.init_params)
 #            print(result.fit_report(show_correl=False))
             
             
@@ -566,12 +564,12 @@ class FitLogic():
                 amplitude=75000+np.random.random(1)*50000
                 sigma0=25000+np.random.random(1)*20000
                 sigma1=25000+np.random.random(1)*20000
-                splitting=abs(np.random.random(1)*300000)
+                splitting=100000  # abs(np.random.random(1)*300000)
                 p.add('gaussian0_amplitude',value=amplitude)
                 p.add('gaussian0_center',value=160000)
                 p.add('gaussian0_sigma',value=sigma0)
                 p.add('gaussian1_amplitude',value=amplitude*1.5)
-                p.add('gaussian1_center',value=100000+splitting)
+                p.add('gaussian1_center',value=300000)
                 p.add('gaussian1_sigma',value=sigma1)
                 p.add('c',value=0.)
 
@@ -1040,13 +1038,13 @@ class FitLogic():
 
 #            print('Message:',result.message)
 
- 
+
         def double_poissonian_testing(self):
             start=100
             stop=300
             num_points=int((stop-start)+1)*100
             x = np.linspace(start, stop, num_points)
-            
+
             # double poissonian
             mod,params = self.make_poissonian_model(no_of_functions=2)
             print('Parameters of the model',mod.param_names)
@@ -1055,18 +1053,18 @@ class FitLogic():
             parameter.add('poissonian1_mu',value=240)
             parameter.add('poissonian0_amplitude',value=1)
             parameter.add('poissonian1_amplitude',value=1)
-            data_noisy = ( np.array(mod.eval(x=x,params=parameter)) * 
+            data_noisy = ( np.array(mod.eval(x=x,params=parameter)) *
                            np.array((1+0.2*np.random.normal(size=x.shape) )*
                            parameter['poissonian1_amplitude'].value) )
-           
-            
+
+
             #make the filter an extra function shared and usable for other functions
             gaus=gaussian(10,10)
             data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
 
             result = self.make_doublepoissonian_fit(x,data_noisy)
             print(result.fit_report())
-            
+
             try:
                 plt.plot(x, data_noisy, '-b')
                 plt.plot(x, data_smooth, '-g')
@@ -1087,14 +1085,14 @@ class FitLogic():
 #            x = np.array(x,dtype=np.int64)
             mod,params = self.make_poissonian_model()
             print('Parameters of the model',mod.param_names)
-            
+
             p=Parameters()
             p.add('poissonian_mu',value=mu)
             p.add('poissonian_amplitude',value=200.)
-    
-            data_noisy=(mod.eval(x=x,params=p) * 
+
+            data_noisy=(mod.eval(x=x,params=p) *
                         np.array((1+0.001*np.random.normal(size=x.shape) *
-                        p['poissonian_amplitude'].value ) ) ) 
+                        p['poissonian_amplitude'].value ) ) )
             
             print('all int',all(isinstance(item, (np.int32,int, np.int64)) for item in x))
             print('int',isinstance(x[1], int),float(x[1]).is_integer())
@@ -1102,8 +1100,8 @@ class FitLogic():
             #make the filter an extra function shared and usable for other functions
             gaus=gaussian(10,10)
             data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
-            
-    
+
+
             result = self.make_poissonian_fit(x,data_noisy)
             print(result.fit_report())
             try:
@@ -1116,15 +1114,94 @@ class FitLogic():
     
             except:
                 print('exception')
-                
 
+        def gaussian_testing(self):
+            start=0
+            stop=30
+            mu=8
+            num_points=100
+            x = np.array(np.linspace(start, stop, num_points))
+#            x = np.array(x,dtype=np.int64)
+            mod,params = self.make_poissonian_model()
+#            print('Parameters of the model',mod.param_names)
+
+            p=Parameters()
+            p.add('poissonian_mu',value=mu)
+            p.add('poissonian_amplitude',value=200.)
+
+            data_noisy=(mod.eval(x=x,params=p) *
+                        np.array((1+0.001*np.random.normal(size=x.shape) *
+                        p['poissonian_amplitude'].value ) ) )
+            
+            #make the filter an extra function shared and usable for other functions
+            gaus=gaussian(10,10)
+            data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
+
+            axis=x
+            data=data_noisy
+            add_parameters=None
+            
+            mod_final, params = self.make_gaussian_model()
         
+            error, params = self.estimate_gaussian(axis, data, params)
+        
+            # auxiliary variables
+            stepsize = abs(axis[1] - axis[0])
+            n_steps = len(axis)
+        
+            # Define constraints
+            params['center'].min = (axis[0]) - n_steps * stepsize
+            params['center'].max = (axis[-1]) + n_steps * stepsize
+            params['amplitude'].min = 100  # that is already noise from APD
+            params['amplitude'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+            params['sigma'].min = stepsize
+            params['sigma'].max = 3 * (axis[-1] - axis[0])
+            params['c'].min = 100  # that is already noise from APD
+            params['c'].max = data.max() * params['sigma'].value * np.sqrt(2 * np.pi)
+
+            update_dict=dict()
+            update_dict['c']={'min':0,'max':120,'value':0.1}
+            print('params',params['c'])
+            print('dict',update_dict['c'])
+            params = self._substitute_parameter(parameters=params, update_dict=update_dict)
+            print('params',params['c'])
+
+            # overwrite values of additional parameters
+#            if add_parameters is not None:
+#                params = self._substitute_parameter(parameters=params,
+#                                                    update_parameters=add_parameters)
+            try:
+                result = mod_final.fit(data, x=axis, params=params)
+            except:
+                self.logMsg('The 1D gaussian fit did not work.',
+                            msgType='warning')
+                result = mod_final.fit(data, x=axis, params=params)
+                print(result.message)
+                
+#            print(params['center'])
+#            print(params['c'])
+#            print(params['sigma'])
+            print(len(params))
+#            
+            print(result.init_params)
+            try:
+                plt.plot(x, data_noisy, '-b')
+                plt.plot(x, data_smooth, '-g')
+                plt.plot(x,result.init_fit,'-y')
+                plt.plot(x,result.best_fit,'-r',linewidth=2.0,)
+                plt.show()
+    
+    
+            except:
+                print('exception')
+
 plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
 #test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
+test.gaussian_testing()
 #test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
@@ -1134,5 +1211,41 @@ test=FitLogic()
 #test.powerfluorescence_testing()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
-test.poissonian_testing()
+#test.poissonian_testing()
 #test.double_poissonian_testing()
+
+
+#class FitConstraints(OrderedDict):        
+#    def __init__(self):
+#        print('Fitconstraints')
+#        
+#    def add(self, name, value=None, vary=True, min=-inf, max=inf, expr=None):
+#        """
+#        Convenience function for adding a Parameter:
+#        Example
+#        -------
+#        p = Parameters()
+#        p.add(name, value=XX, ...)
+#        is equivalent to:
+#        p[name] = Parameter(name=name, value=XX, ....
+#        """
+#        if isinstance(name, Parameter):
+#            self.__setitem__(name.name, name)
+#        else:
+#            self.__setitem__(name, Parameter(value=value, name=name, vary=vary,
+#                                             min=min, max=max, expr=expr))
+#                                             
+#                                             
+#class FitConstraint():        
+#    def __init__(self, name, value=None, vary=None, minimum=None, maximum=None, expr=None): 
+#        print(name)
+#        self.name = name 
+#        self.value = value 
+#        self.vary = vary 
+#        self.minimum = minimum
+#        self.maximum = maximum
+#        self.expr = expr
+#    def values(self):
+#        return self.name, self.value
+#    
+#    

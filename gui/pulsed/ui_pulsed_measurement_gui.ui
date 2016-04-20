@@ -440,7 +440,7 @@
             <height>161</height>
            </rect>
           </property>
-          <layout class="QGridLayout" name="gridLayout_5" rowstretch="0,0,0,0" rowminimumheight="0,0,0,0">
+          <layout class="QGridLayout" name="gridLayout_5" rowstretch="0,0,0" rowminimumheight="0,0,0">
            <item row="0" column="4">
             <widget class="QLineEdit" name="rabi_waittime_InputWidget">
              <property name="minimumSize">
@@ -657,8 +657,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>929</width>
-           <height>237</height>
+           <width>98</width>
+           <height>28</height>
           </rect>
          </property>
          <attribute name="label">
@@ -666,7 +666,7 @@
          </attribute>
         </widget>
        </widget>
-       <widget class="QWidget" name="">
+       <widget class="QWidget" name="layoutWidget">
         <property name="geometry">
          <rect>
           <x>10</x>

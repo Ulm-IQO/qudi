@@ -126,7 +126,7 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
-                                            update_parameters=add_parameters)
+                                            update_dict=add_parameters)
                                             
     try:
         result = mod_final.fit(data, x=axis, params=params)
@@ -210,7 +210,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
-                                            update_parameters=add_parameters)
+                                            update_dict=add_parameters)
                                             
     try:
         result = mod_final.fit(data, x=axis, params=params)

@@ -23,6 +23,9 @@ from PyQt4 import QtCore
 import numpy as np
 import time
 import scipy.misc
+from scipy.stats import poisson
+from lmfit import Parameters
+
 
 
 class TraceAnalysisLogic(GenericLogic):
@@ -32,8 +35,9 @@ class TraceAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _in = { 'counterlogic1': 'CounterLogic',
-            'savelogic': 'SaveLogic'
+    _in = {'counterlogic1': 'CounterLogic',
+           'savelogic': 'SaveLogic',
+           'fitlogic': 'FitLogic',
             }
 
     _out = {'traceanalysislogic1': 'TraceAnalysisLogic'}
@@ -78,8 +82,11 @@ class TraceAnalysisLogic(GenericLogic):
 
         self._counter_logic = self.connector['in']['counterlogic1']['object']
         self._save_logic = self.connector['in']['savelogic']['object']
+        self._fit_logic = self.connector['in']['fitlogic']['object']
 
         self._counter_logic.sigGatedCounterFinished.connect(self.do_calculate_histogram)
+
+        self.current_fit_function = 'No Fit'
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -174,19 +181,136 @@ class TraceAnalysisLogic(GenericLogic):
         """
         pass
 
+    def do_fit(self, fit_function=None):
+        """
+            Makes the a fit of the current fit funciton.
 
-    def do_gaussian_fit(self, trace, threshold):
-        #use threshold as additional contraints for the fitting
-        pass
+            @param string fit_function: name of the chosen fit function
+        """
+        if self.hist_data is None:
+            hist_fit_x = []
+            hist_fit_y = []
+            fit_result = 'No data to fit in histogram.'
+            return hist_fit_x, hist_fit_y, fit_result
+        else:
+            # shift x axis to middle of bin
+            axis = self.hist_data[0][:-1]+(self.hist_data[0][1]-self.hist_data[0][0])/2.
+            data = self.hist_data[1]
+            if fit_function == 'No Fit':
+                hist_fit_x, hist_fit_y, fit_result = self.do_NO_fit()
+                return hist_fit_x, hist_fit_y, fit_result
+            elif fit_function == 'Gaussian':
+                hist_fit_x, hist_fit_y, fit_result = self.do_gaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_result
+            elif fit_function == 'Double Gaussian':
+                hist_fit_x, hist_fit_y, fit_result = self.do_doublegaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_result
+            elif fit_function == 'Poisson':
+                hist_fit_x, hist_fit_y, fit_result = self.do_possonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_result
+            elif fit_function == 'Double Poisson':
+                hist_fit_x, hist_fit_y, fit_result = self.do_doublepossonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_result
 
-    def do_double_possonian_fit(self, hist_val, threshold):
-        #use threshold as additional contraints for the fitting
-        pass
+    def do_NO_fit(self):
+        hist_fit_x = []
+        hist_fit_y = []
+        fit_result = 'No Fit'
+        return hist_fit_x, hist_fit_y, fit_result
 
-    def get_poissonian(self, sigma, x_val):
+
+    def do_gaussian_fit(self, axis, data):
+        model, params = self._fit_logic.make_gaussian_model()
+        if len(axis) < len(params):
+            return self.do_NO_fit()
+            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+                        msgType='warning')
+        else:
+            parameters_to_substitute = dict()
+            parameters_to_substitute['c'] = {'value': 0, 'vary': False}
+            result = self._fit_logic.make_gaussian_fit(axis=axis,
+                                                               data=data,
+                                                               add_parameters=parameters_to_substitute)
+            # 1000 points in x axis for smooth fit data
+            hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
+            hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
+
+            # units = {'poissonian0_mu', 'Counts/s',
+            #          'poissonian1_mu', 'kCounts/s'}
+            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            fit_result = str("Center (Counts/s): {:.1f} \n".format(result.best_values['center']))
+            return hist_fit_x, hist_fit_y, fit_result
+
+    def do_doublegaussian_fit(self, axis, data):
+        model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
+        if len(axis) < len(params):
+            return self.do_NO_fit()
+            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+                        msgType='warning')
+        else:
+            result = self._fit_logic.make_doublegaussian_fit(axis=axis,
+                                                               data=data,
+                                                               add_parameters=None)
+
+
+            # 1000 points in x axis for smooth fit data
+            hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
+            hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
+
+            # units = {'poissonian0_mu', 'Counts/s',
+            #          'poissonian1_mu', 'kCounts/s'}
+            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            fit_result = str("Center 1 (kCounts/s): {:.1f} \nCenter 2 (kCounts/s): {:.1f}".format(
+                result.best_values['gaussian0_center']/1e3, result.best_values['gaussian1_center']/1e3))
+            return hist_fit_x, hist_fit_y, fit_result
+
+    def do_doublepossonian_fit(self, axis, data):
+        model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
+        if len(axis) < len(params):
+            return self.do_NO_fit()
+            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+                        msgType='warning')
+        else:
+            result = self._fit_logic.make_doublepoissonian_fit(axis=axis,
+                                                               data=data,
+                                                               add_parameters=None)
+
+            # 1000 points in x axis for smooth fit data
+            hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
+            hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
+
+            # units = {'poissonian0_mu', 'Counts/s',
+            #          'poissonian1_mu', 'kCounts/s'}
+            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            fit_result = str("poissonian0_mu (kCounts/s): {:.1f} \npoissonian1_mu (kCounts/s): {:.1f}".format(
+                result.best_values['poissonian0_mu']/1e3, result.best_values['poissonian1_mu']/1e3))
+            return hist_fit_x, hist_fit_y, fit_result
+
+    def do_possonian_fit(self, axis, data):
+        model, params = self._fit_logic.make_poissonian_model()
+        if len(axis) < len(params):
+            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+                        msgType='error')
+            return self.do_NO_fit()
+        else:
+            result = self._fit_logic.make_poissonian_fit(axis=axis,
+                                                               data=data,
+                                                               add_parameters=None)
+
+            # 1000 points in x axis for smooth fit data
+            hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
+            hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
+
+            # units = {'poissonian0_mu', 'Counts/s',
+            #          'poissonian1_mu', 'kCounts/s'}
+            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
+            fit_result = str("poissonian_mu (Counts/s): {:.1f}".format(result.best_values['poissonian_mu']))
+            return hist_fit_x, hist_fit_y, fit_result
+
+    def get_poissonian(self, mu, x_val):
         """ Calculate, bases on the passed values a poissonian distribution.
 
-        @param float sigma:
+        @param float mu:
         @param x_val:
         @return np.array: a 2D array with the given x axis and the calculated
                           values for the y axis.
@@ -195,15 +319,7 @@ class TraceAnalysisLogic(GenericLogic):
             P(k) =  sigma^k * exp(-sigma) / k!
         """
 
-        # obviously that does not work:
-        # data = np.zeros((len(x_val), 2))
-        # for index, value in enumerate(x_val):
-        #     data[index][0] = value
-        #     data[index][1] = sigma**value * np.math.e**(-sigma)/scipy.misc.factorial(value)
-
-
-
-        return data
+        return poisson.pmf(x_val, mu)
 
     def guess_threshold(self, hist_val=None, trace=None, max_ratio_value=0.1):
         """ Assume a distribution between two values and try to guess the threshold.
@@ -272,6 +388,7 @@ class TraceAnalysisLogic(GenericLogic):
             threshold = self.guess_threshold(hist_val=hist_val, trace=trace)
 
         # perform the fit, maybe more fitting parameter will come
+        #Fixme: This won't work, defitinion of fit and get_poissonian is not appropriate
         sigma1, sigma2 = self.do_double_possonian_fit(hist_val, threshold)
 
         first_dist = self.get_poissonian(sigma=sigma1, x_val=hist_val)

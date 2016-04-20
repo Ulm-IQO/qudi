@@ -102,8 +102,13 @@ class GatedCounterGui(GUIBase):
         self._hp.setLabel('bottom', 'Counts', units='counts/s')
 
         self._histoplot1 = PlotCurveItem()
-        self._hp.addItem(self._histoplot1)
+        self._hp.addItem(self._histoplot1, pen='r')
         self._histoplot1.setPen((37,87,238,255))
+
+
+        # Configure the fit of the data in the main pulse analysis display:
+        self._fit_image = PlotCurveItem()
+        self._hp.addItem(self._fit_image)
 
         # setting the x axis length correctly
         self._gp.setXRange(0, self._counter_logic.get_count_length())
@@ -134,6 +139,8 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_SpinBox.valueChanged.connect(self.num_bins_changed)
         self._trace_analysis.sigHistogramUpdated.connect(self.update_histogram)
 
+
+
         # starting the physical measurement:
         self.sigStartGatedCounter.connect(self._counter_logic.startCount)
         self.sigStopGatedCounter.connect(self._counter_logic.stopCount)
@@ -142,6 +149,15 @@ class GatedCounterGui(GUIBase):
         self._counter_logic.sigCounterUpdated.connect(self.update_trace)
         self._counter_logic.sigGatedCounterFinished.connect(self.reset_toolbar_display)
 
+        # configuration of the combo widget
+        self._mw.fit_methods_ComboBox.addItem('No Fit')
+        self._mw.fit_methods_ComboBox.addItem('Gaussian')
+        self._mw.fit_methods_ComboBox.addItem('Double Gaussian')
+        self._mw.fit_methods_ComboBox.addItem('Poisson')
+        self._mw.fit_methods_ComboBox.addItem('Double Poisson')
+
+        # Push buttons
+        self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
 
     def deactivation(self, e=None):
@@ -250,3 +266,17 @@ class GatedCounterGui(GUIBase):
         self._trace_analysis.set_num_bins_histogram(num_bins)
         self._mw.hist_bins_SpinBox.setValue(num_bins)
         self._mw.hist_bins_Slider.setValue(num_bins)
+
+
+    def fit_clicked(self):
+        """ Do the configured fit and show it in the sum plot """
+        self._mw.fit_param_TextEdit.clear()
+
+        current_fit_function = self._mw.fit_methods_ComboBox.currentText()
+
+        fit_x, fit_y, fit_result = self._trace_analysis.do_fit(fit_function=current_fit_function)
+        self._fit_image.setData(x=fit_x, y=fit_y, pen='r')
+
+        self._mw.fit_param_TextEdit.setPlainText(fit_result)
+
+        return
