@@ -623,18 +623,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                                 'SequenceGenerationLogic.'.format(method,filename),
                                 msgType='error')
 
-        # self.prepared_method_list=[]
-        # if 'prepared_methods' in config.keys():
-        #     prep_methods_list = config['prepared_methods']
-        #     self.prepared_method_list = [None]*len(prep_methods_list)
-        #
-        #     # evaluate the name of the method to get the reference to it.
-        #     for index, method in enumerate(prep_methods_list):
-        #         self.prepared_method_list[index] = eval('self.'+method)
-        # else:
-        #     self.logMsg('No prepared Methods are chosen, therefore none will '
-        #                 'be displayed!', msgType='status')
-
     def _create_seq_param(self):
         """ Create a dictionary for sequence parameters.
 
