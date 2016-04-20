@@ -201,6 +201,8 @@ class TraceAnalysisLogic(GenericLogic):
         #     data[index][0] = value
         #     data[index][1] = sigma**value * np.math.e**(-sigma)/scipy.misc.factorial(value)
 
+
+
         return data
 
     def guess_threshold(self, hist_val=None, trace=None, max_ratio_value=0.1):
@@ -260,10 +262,9 @@ class TraceAnalysisLogic(GenericLogic):
                     fidelity: the measure how good the two peaks are resolved
                               according to the calculated threshold
 
-        The calculation of the threshold relies on fitting two possonian
+        The calculation of the threshold relies on fitting two poissonian
         distributions to the count histogram and minimize a threshold with
         respect to the overlap area:
-
 
         """
 
@@ -308,7 +309,6 @@ class TraceAnalysisLogic(GenericLogic):
         fidelity = 1 - (area2_low / area1_low + area1_high / area2_high) / 2
 
         return threshold, fidelity
-
 
 
 

@@ -2102,8 +2102,7 @@ class PulsedMeasurementGui(GUIBase):
         The following procedure was chosen:
             1. At first the method is inspected and all the parameters are
               investigated. Depending on the type of the default value of the
-              keyword, a ControlBox (CheckBox, DoubleSpinBox, ...) is created.
-            2. Then callable methods are created in the GUI like
+              keyword, a ControlBox (CheckBox, DoubleSpinBox, ...) is created.laserchannel_ComboBox
                 _<method_name>_generate()
                 which are connected to the generate button and passes all the
                 parameters to the method in the logic.
@@ -2218,19 +2217,19 @@ class PulsedMeasurementGui(GUIBase):
         @return QtGui.QDoubleSpinBox: a predefined QDoubleSpinBox for the GUI.
         """
 
-        doublespinBox = QtGui.QDoubleSpinBox(parent)
-        doublespinBox.setMaximum(np.inf)
-        doublespinBox.setMinimum(-np.inf)
+        doublespinbox = QtGui.QDoubleSpinBox(parent)
+        doublespinbox.setMaximum(np.inf)
+        doublespinbox.setMinimum(-np.inf)
 
         # set a size for vertivcal an horizontal dimensions
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(doublespinBox.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(doublespinbox.sizePolicy().hasHeightForWidth())
 
-        doublespinBox.setMinimumSize(QtCore.QSize(80, 0))
-
-        return doublespinBox
+        doublespinbox.setMinimumSize(QtCore.QSize(80, 0))
+        doublespinbox.setValue(default_val)
+        return doublespinbox
 
     def _create_QSpinBox(self, parent, default_val=0):
         """ Helper method for _create_control_for_prepared_methods.
@@ -2243,7 +2242,8 @@ class PulsedMeasurementGui(GUIBase):
 
         spinBox = QtGui.QSpinBox(parent)
         spinBox.setMaximum(2**31 -1)
-        spinBox.setMinimum(-2**31 -1)
+        spinBox.setMinimum(-2**31 +1)
+        spinBox.setValue(default_val)
         return spinBox
 
     def _create_QCheckBox(self, parent, default_val=False):
@@ -2639,7 +2639,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def refresh_signal_plot(self):
-        """ This method refreshes the xy-matrix image """
+        """ Refreshes the xy-matrix image """
 
         #### dealing with the error bars
         #FIXME: Does that belong into the logic?
@@ -2669,7 +2669,7 @@ class PulsedMeasurementGui(GUIBase):
         self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
-        """ This method refreshes the elapsed time and sweeps of the measurement. """
+        """ Refreshes the elapsed time and sweeps of the measurement. """
         self._mw.time_param_elapsed_time_LineEdit.setText(self._pulsed_meas_logic.elapsed_time_str)
 
 
@@ -2687,7 +2687,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def show_external_mw_source_checked(self):
-        """ This method shows or hides input widgets which are necessary if an external mw is turned on"""
+        """ Shows or hides input widgets which are necessary if an external mw is turned on"""
         if not self._mw.ext_control_use_mw_CheckBox.isChecked():
 
             self._mw.ext_control_mw_freq_Label.setVisible(False)
@@ -2703,7 +2703,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def measurement_ticks_editor(self):
-        """ This method shows or hides input widgets which are necessary if the x axis id defined or not"""
+        """ Shows or hides input widgets which are necessary if the x axis id defined or not"""
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
@@ -2718,7 +2718,6 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def change_second_plot(self):
-
         """ This method handles the second plot"""
         if self._mw.second_plot_ComboBox.currentText()=='None':
             self._mw.second_plot_GroupBox.setVisible(False)
@@ -3603,5 +3602,6 @@ class PulsedMeasurementGui(GUIBase):
             exporter_aux.export(filename + '_aux' + '.svg')
 
         self._pulsed_meas_logic._save_data(filetag, timestamp)
+
 
 

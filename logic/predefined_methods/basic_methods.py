@@ -26,24 +26,42 @@ from logic.sequence_generator_logic import Pulse_Block_Ensemble
 from logic.sequence_generator_logic import Pulse_Sequence
 
 
-def generate_laser_on(self, name='Laser_On', laser_time_bins=3000):
+def generate_laser_on(self, name='Laser_On', laser_time_bins=3000,
+                      laser_channel=1):
+    """ Generates Laser on.
 
+    @param str name:
+    @param int laser_time_bins: number of bins
+    @param int laser_channel: channel number, positive number are digitals,
+                              negative number are positive channels
+    @return:
+    """
     # laser_time_bins = self.sample_rate*3e-6 #3mus
-    no_analog_params = [{},{}]
+    no_analog_params = [{}]*self.analog_channels
+    laser_markers = [False]*self.digital_channels
+    pulse_function = ['Idle']*self.analog_channels
 
-    #Fixme: Check for channels
-    laser_markers = [False, True, False, False]
+    # Choose digital channesl to be positive, analog channels negative
+    # Zero is not defined.
+    if laser_channel > 0 and laser_channel <= self.digital_channels:
+        laser_markers[laser_channel+1] = True
+    elif laser_channel < 0 and laser_channel >= -self.analog_channels:
+        pulse_function[abs(laser_channel)-1] = 'DC'
+    else:
+        self.logMsg('Value of {0} is not a proper laser channel. Digital laser '
+                    'channels are positive values 1=d_ch1, 2=d_ch2, '
+                    '... and analog channel numbers are chosen by a negative '
+                    'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
+                    'invalid input. Make your choise!', msgType='error')
+        return
 
-    # generate elements
-    # parameters of a Pulse_Block_Element:
-    #init_length_bins, analog_channels, digital_channels,
-    #         increment_bins = 0, pulse_function = None,
-    #         marker_active = None, parameters={}, use_as_tau=False
+    # generate elements parameters of a Pulse_Block_Element:
+
     laser_element = Pulse_Block_Element(init_length_bins=laser_time_bins,
-                                        analog_channels=2,
-                                        digital_channels=4,
+                                        analog_channels=self.analog_channels,
+                                        digital_channels=self.digital_channels,
                                         increment_bins=0,
-                                        pulse_function=['Idle', 'Idle'],
+                                        pulse_function=pulse_function,
                                         marker_active=laser_markers,
                                         parameters=no_analog_params)
 
@@ -52,12 +70,13 @@ def generate_laser_on(self, name='Laser_On', laser_time_bins=3000):
     element_list = []
     element_list.append(laser_element)
 
-    laser_channel_index = 1
+    #FIXME: that has to be fixed in the generation
+    laser_channel_index = abs(laser_channel)
 
     # create the Pulse_Block object.
     block = Pulse_Block(name, element_list, laser_channel_index)
     # put block in a list with repetitions
-    block_list = [(block, 0),]
+    block_list = [(block, 0)]
     # create ensemble out of the block(s)
     block_ensemble = Pulse_Block_Ensemble(name, block_list,
                                           laser_channel_index,
@@ -73,6 +92,84 @@ def generate_laser_on(self, name='Laser_On', laser_time_bins=3000):
     # update ensemble list
     self.refresh_ensemble_list()
     return
+
+
+def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
+                         laser_channel=1, mw_channel=-1, mw_freq_MHz=100,
+                         mw_amp=1.0):
+    if laser_channel == mw_channel:
+        self.logMsg('Laser and Microwave channel cannot be the same. Change '
+                    'that!', msgType='error')
+        return
+
+    analog_params = [{}]*self.analog_channels
+    laser_markers = [False]*self.digital_channels
+    pulse_function = ['Idle']*self.analog_channels
+
+    # Choose digital channel to be positive, analog channels negative
+    # Zero is not defined.
+    if laser_channel > 0 and laser_channel <= self.digital_channels:
+        laser_markers[laser_channel+1] = True
+    elif laser_channel < 0 and laser_channel >= -self.analog_channels:
+        pulse_function[abs(laser_channel)-1] = 'DC'
+    else:
+        self.logMsg('Value of {0} is not a proper laser channel. Digital laser '
+                    'channels are positive values 1=d_ch1, 2=d_ch2, '
+                    '... and analog channel numbers are chosen by a negative '
+                    'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
+                    'invalid input. Make your choise!', msgType='error')
+        return
+
+    if mw_channel > 0 and mw_channel <= self.digital_channels:
+        laser_markers[mw_channel+1] = True
+    elif mw_channel < 0 and mw_channel >= -self.analog_channels:
+        pulse_function[abs(mw_channel)-1] = 'Sin'
+        mw_freq = mw_freq_MHz*1e6
+        analog_params[abs(mw_channel)-1] = {'amplitude1':mw_amp, 'frequency1':mw_freq}
+    else:
+        self.logMsg('Value of {0} is not a proper mw channel. Digital laser '
+                    'channels are positive values 1=d_ch1, 2=d_ch2, '
+                    '... and analog channel numbers are chosen by a negative '
+                    'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
+                    'invalid input. Make your choise!', msgType='error')
+        return
+
+    # generate elements parameters of a Pulse_Block_Element:
+
+    laser_element = Pulse_Block_Element(init_length_bins=time_bins,
+                                        analog_channels=self.analog_channels,
+                                        digital_channels=self.digital_channels,
+                                        increment_bins=0,
+                                        pulse_function=pulse_function,
+                                        marker_active=laser_markers,
+                                        parameters=analog_params)
+
+    # Create the Pulse_Block_Element objects and append them to the element
+    # list.
+    element_list = []
+    element_list.append(laser_element)
+
+    #FIXME: that has to be fixed in the generation
+    laser_channel_index = abs(laser_channel)
+
+    # create the Pulse_Block object.
+    block = Pulse_Block(name, element_list, laser_channel_index)
+    # put block in a list with repetitions
+    block_list = [(block, 0)]
+    # create ensemble out of the block(s)
+    block_ensemble = Pulse_Block_Ensemble(name, block_list,
+                                          laser_channel_index,
+                                          rotating_frame=False)
+    # save block
+    self.save_block(name, block)
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    # set current block
+    self.current_block = block
+    # set current block ensemble
+    self.current_ensemble = block_ensemble
+    # update ensemble list
+    self.refresh_ensemble_list()
 
 
 def generate_rabi(self, name='rabi', mw_freq_Hz=7784.13, mw_amp_V=1.0, aom_delay_bins=50,
