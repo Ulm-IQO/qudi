@@ -211,10 +211,10 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             units[variable],
                                                             "{0:.{1}e}".format(
-                                                                result.params[variable].value,
+                                                                float(result.params[variable].value),
                                                                 decimal_digits_value),
                                                             "{0:.{1}e}".format(
-                                                                result.params[variable].stderr,
+                                                                float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
         except:
             # self.logMsg('No unit given for parameter {}, setting unit '
@@ -223,10 +223,10 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             "arb. u.",
                                                             "{0:.{1}e}".format(
-                                                                result.params[variable].value,
+                                                                float(result.params[variable].value),
                                                                 decimal_digits_value),
                                                             "{0:.{1}e}".format(
-                                                                result.params[variable].stderr,
+                                                                float(result.params[variable].stderr),
                                                                 decimal_digits_err)))
     return fit_result
 
