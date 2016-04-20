@@ -151,7 +151,7 @@ def make_lorentzian_fit(self, axis=None, data=None,
     #redefine values of additional parameters
     if add_parameters is not None :
         params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
+                                         update_dict=add_parameters)
     try:
         result=model.fit(data, x=axis,params=params)
     except:
@@ -285,7 +285,7 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
 
     if add_parameters is not None :
         params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
+                                         update_dict=add_parameters)
     try:
         result=model.fit(data, x=axis,params=params)
     except:
@@ -463,7 +463,7 @@ def make_doublelorentzian_fit(self, axis=None, data=None,
     #redefine values of additional parameters
     if add_parameters is not None:
         params=self._substitute_parameter(parameters=params,
-                                         update_parameters=add_parameters)
+                                         update_dict=add_parameters)
     try:
         result=model.fit(data, x=axis,params=params)
     except:
@@ -548,7 +548,7 @@ def make_N14_fit(self, axis=None, data=None, add_parameters=None):
     # redefine values of additional parameters
     if add_parameters is not None:
         parameters=self._substitute_parameter(parameters=parameters,
-                                              update_parameters=add_parameters)
+                                              update_dict=add_parameters)
 
     mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
 
@@ -627,7 +627,7 @@ def make_N15_fit(self, axis=None, data=None, add_parameters=None):
     # redefine values of additional parameters
     if add_parameters is not None:
         parameters = self._substitute_parameter(parameters=parameters,
-                                                update_parameters=add_parameters)
+                                                update_dict=add_parameters)
 
     mod, params = self.make_multiplelorentzian_model(no_of_lor=2)
 

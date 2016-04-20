@@ -127,7 +127,7 @@ def make_sine_fit(self, axis=None, data=None, add_parameters=None):
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
-                                            update_parameters=add_parameters)
+                                            update_dict=add_parameters)
     try:
         result = sine.fit(data, x=axis, params=params)
     except:
@@ -310,7 +310,7 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 #     #redefine values of additional parameters
 #     if add_parameters is not None:
 #         params=self._substitute_parameter(parameters=params,
-#                                          update_parameters=add_parameters)
+#                                          update_dict=add_parameters)
 #     try:
 #         result = minimize(self.fcn2min, params, args=(axis, data))
 #     except:
