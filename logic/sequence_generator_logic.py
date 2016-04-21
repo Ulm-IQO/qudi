@@ -971,7 +971,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         blocks = []
         for filename in block_files:
             blocks.append(filename[:-4])
-        # blocks.sort()
+        blocks.sort()
         self.saved_pulse_blocks = blocks
         self.signal_block_list_updated.emit()
 
@@ -1036,6 +1036,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         for filename in ensemble_files:
             ensembles.append(filename.rsplit('.', 1)[0])
         self.saved_pulse_block_ensembles = ensembles
+        ensembles.sort()
         self.signal_ensemble_list_updated.emit()
 
     def save_sequence(self, name, sequence):
@@ -1624,7 +1625,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
+                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list['a_ch'+str(i+1)])
 
                         # write temporary sample array to file
                         created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name+name_tag,
@@ -1642,7 +1643,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[i+1])
+                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list['a_ch'+str(i+1)])
 
                         # increment the index offset of the overall sample array for the next
                         # element
