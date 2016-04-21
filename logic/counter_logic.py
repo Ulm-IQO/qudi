@@ -343,10 +343,12 @@ class CounterLogic(GenericLogic):
         self.countdata_smoothed = np.zeros((self._count_length,))
         self._sampling_data = np.empty((self._counting_samples, 2))
 
-        if self._counting_device._photon_source2 is not None:
-            self.countdata2 = np.zeros((self._count_length,))
-            self.countdata_smoothed2 = np.zeros((self._count_length,))
-            self._sampling_data2 = np.empty((self._counting_samples, 2))
+        # It is robust to check whether the photon_source2 even exists first.
+        if hasattr(self._counting_device, '_photon_source2'):
+            if self._counting_device._photon_source2 is not None:
+                self.countdata2 = np.zeros((self._count_length,))
+                self.countdata_smoothed2 = np.zeros((self._count_length,))
+                self._sampling_data2 = np.empty((self._counting_samples, 2))
 
         self.sigCountContinuousNext.emit()
 
@@ -445,14 +447,16 @@ class CounterLogic(GenericLogic):
         # calculate the median and save it
         self.countdata_smoothed[-int(self._smooth_window_length/2)-1:]=np.median(self.countdata[-self._smooth_window_length:])
 
-        if self._counting_device._photon_source2 is not None:
-            self.countdata2[0] = np.average(self.rawdata[1])
-            # move the array to the left to make space for the new data
-            self.countdata2 = np.roll(self.countdata2, -1)
-            # also move the smoothing array
-            self.countdata_smoothed2 = np.roll(self.countdata_smoothed2, -1)
-            # calculate the median and save it
-            self.countdata_smoothed2[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata2[-self._smooth_window_length:])
+        # It is robust to check whether the photon_source2 even exists first.
+        if hasattr(self._counting_device, '_photon_source2'):
+            if self._counting_device._photon_source2 is not None:
+                self.countdata2[0] = np.average(self.rawdata[1])
+                # move the array to the left to make space for the new data
+                self.countdata2 = np.roll(self.countdata2, -1)
+                # also move the smoothing array
+                self.countdata_smoothed2 = np.roll(self.countdata_smoothed2, -1)
+                # calculate the median and save it
+                self.countdata_smoothed2[-int(self._smooth_window_length/2)-1:] = np.median(self.countdata2[-self._smooth_window_length:])
 
         # save the data if necessary
         if self._saving:
