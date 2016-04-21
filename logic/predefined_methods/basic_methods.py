@@ -178,22 +178,22 @@ def generate_rabi(self, name='Rabi', tau_start_ns=5, tau_step_ns=10,
     """ Converter function to use ns input instead of bins. """
 
     tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
-    tau_step_bin = int(self.sample_rate/1e9 * tau_step_ns)
-    laser_time_bin = int(self.sample_rate/1e9 * laser_time_ns)
+    tau_step_bins = int(self.sample_rate/1e9 * tau_step_ns)
+    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
     aom_delay_bin = int(self.sample_rate/1e9 * aom_delay_ns)
     wait_time_bin = int(self.sample_rate/1e9 * wait_time_ns)
 
-    self.generate_rabi_bins(name, tau_start_bins, tau_step_bin, number_of_taus,
-                            mw_freq_MHz, mw_amp_V, mw_channel, laser_time_bin,
+    self.generate_rabi_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
+                            mw_freq_MHz, mw_amp_V, mw_channel, laser_time_bins,
                             laser_channel, channel_amp_V, aom_delay_bin,
                             open_count_channel, seq_channel, wait_time_bin)
 
 
-def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
+def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70,
                   number_of_taus=50, mw_freq_MHz=7784.13,  mw_amp_V=1.0,
-                  mw_channel=-1, laser_time_bin=3000, laser_channel=1,
-                  channel_amp_V=1, aom_delay_bin=50, open_count_channel=2,
-                  seq_channel=3, wait_time_bin=500):
+                  mw_channel=-1, laser_time_bins=3000, laser_channel=1,
+                  channel_amp_V=1, aom_delay_bins=50, open_count_channel=2,
+                  seq_channel=3, wait_time_bins=500):
 
     if laser_channel == mw_channel:
         self.logMsg('Laser and Microwave channel cannot be the same. Change '
@@ -223,7 +223,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
     mw_element = Pulse_Block_Element(init_length_bins=tau_start_bins,
                                      analog_channels=self.analog_channels,
                                      digital_channels=self.digital_channels,
-                                     increment_bins=tau_step_bin,
+                                     increment_bins=tau_step_bins,
                                      pulse_function=pulse_function,
                                      marker_active=markers,
                                      parameters=analog_params,
@@ -254,7 +254,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
         pulse_function[abs(open_count_channel)-1] = 'DC'
         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
 
-    laser_element = Pulse_Block_Element(laser_time_bin, self.analog_channels,
+    laser_element = Pulse_Block_Element(laser_time_bins, self.analog_channels,
                                         self.digital_channels, 0,
                                         pulse_function, markers,
                                         analog_params)
@@ -269,7 +269,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
         pulse_function[abs(open_count_channel)-1] = 'DC'
         analog_params[abs(open_count_channel)-1] = {'amplitude1': channel_amp_V}
 
-    aomdelay_element = Pulse_Block_Element(aom_delay_bin, self.analog_channels,
+    aomdelay_element = Pulse_Block_Element(aom_delay_bins, self.analog_channels,
                                            self.digital_channels, 0,
                                            pulse_function, markers,
                                            analog_params)
@@ -278,7 +278,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
     pulse_function = ['Idle']*self.analog_channels
     markers = [False]*self.digital_channels
 
-    waiting_element = Pulse_Block_Element(wait_time_bin, self.analog_channels,
+    waiting_element = Pulse_Block_Element(wait_time_bins, self.analog_channels,
                                           self.digital_channels, 0,
                                           pulse_function, markers,
                                           analog_params)
@@ -332,62 +332,176 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bin=70,
     self.refresh_ensemble_list()
     return
 
-def generate_pulsedodmr(self, name='', start_freq=0.0, stop_freq=0.0,
-                        number_of_points=0, amp_V=0.0, pi_bins=0,
-                        aom_delay_bins=0, laser_time_bins=0,
-                        use_seqtrig=True):
+def generate_pulsedodmr(self, name='PulsedODMR', mw_time_ns=1000,
+                        mw_freq_MHz=100.0,  mw_amp_V=1.0, mw_channel=-1,
+                        laser_time_ns=3000, laser_channel=1, laser_amp_V=1,
+                        wait_time_ns=1500):
 
-    # create parameter dictionary list for MW signal
-    mw_params = [{},{}]
-    mw_params[0]['amplitude1'] = amp_V
-    mw_params[0]['phase1'] = 0
-    no_analog_params = [{},{}]
-    laser_markers = [True, True, False, False]
-    gate_markers = [False, True, False, False]
-    idle_markers = [False, False, False, False]
-    seqtrig_markers = [False, False, True, False]
+    mw_time_bins = int(self.sample_rate/1e9 * mw_time_ns)
+    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
+    wait_time_bins = int(self.sample_rate/1e9 * wait_time_ns)
 
-    # create frequency list
-    freq_list = np.linspace(start_freq, stop_freq, number_of_points)
+    self.generate_pulsedodmr_bins(name, mw_time_bins, mw_freq_MHz, mw_amp_V,
+                                  mw_channel, laser_time_bins, laser_channel,
+                                  laser_amp_V, wait_time_bins)
+    """ Converter function to use ns input instead of bins. """
 
-    # generate elements
-    laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
-    aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
-    waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
-    seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
-    # put elements in a list to create the block
-    element_list = []
-    for freq in freq_list:
-        # create copy of parameter dict to use for this frequency
-        temp_params = [mw_params[0].copy(),{}]
-        temp_params[0]['frequency1'] = freq
-        # create actual pi-pulse element
-        pi_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, temp_params)
-        # create measurement elements for this frequency
-        element_list.append(laser_element)
-        element_list.append(aomdelay_element)
-        element_list.append(waiting_element)
-        element_list.append(pi_element)
-    if use_seqtrig:
-        element_list.append(seqtrig_element)
+def generate_pulsedodmr_bins(self, name='PulsedODMR', mw_time_bins=1000,
+                        mw_freq_MHz=100.0,  mw_amp_V=1.0, mw_channel=-1,
+                        laser_time_bins=3000, laser_channel=1, laser_amp_V=1,
+                        wait_time_bins=1500):
 
-    # create block
-    block = Pulse_Block(name, element_list)
-    # put block in a list with repetitions
-    block_list = [(block, 0),]
-    # create ensemble out of the block(s)
-    block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, number_of_points, False)
+
+    if laser_channel == mw_channel:
+        self.logMsg('Laser and Microwave channel cannot be the same. Change '
+                    'that!', msgType='error')
+        return
+
+    analog_params = [{}]*self.analog_channels
+    markers = [False]*self.digital_channels
+    pulse_function = ['Idle']*self.analog_channels
+
+    # Choose digital channel to be positive, analog channels negative
+    # Zero is not defined.
+    if mw_channel > 0 and mw_channel <= self.digital_channels:
+        markers[mw_channel-1] = True
+    elif mw_channel < 0 and mw_channel >= -self.analog_channels:
+        pulse_function[abs(mw_channel)-1] = 'Sin'
+        mw_freq = mw_freq_MHz*1e6
+        analog_params[abs(mw_channel)-1] = {'amplitude1': mw_amp_V, 'frequency1': mw_freq}
+    else:
+        self.logMsg('Value of {0} is not a proper mw_channel. Digital laser '
+                    'channels are positive values 1=d_ch1, 2=d_ch2, '
+                    '... and analog channel numbers are chosen by a negative '
+                    'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
+                    'invalid input. Make your choice!', msgType='error')
+        return
+
+    mw_element = Pulse_Block_Element(init_length_bins=mw_time_bins,
+                                     analog_channels=self.analog_channels,
+                                     digital_channels=self.digital_channels,
+                                     increment_bins=0,
+                                     pulse_function=pulse_function,
+                                     marker_active=markers,
+                                     parameters=analog_params,
+                                     use_as_tick=True)
+
+    analog_params = [{}]*self.analog_channels
+    markers = [False]*self.digital_channels
+    pulse_function = ['Idle']*self.analog_channels
+
+    # Choose digital channel to be positive, analog channels negative
+    # Zero is not defined.
+    if laser_channel > 0 and laser_channel <= self.digital_channels:
+        markers[laser_channel-1] = True
+    elif laser_channel < 0 and laser_channel >= -self.analog_channels:
+        pulse_function[abs(laser_channel)-1] = 'DC'
+        analog_params[abs(laser_channel)-1] = {'amplitude1': laser_amp_V}
+    else:
+        self.logMsg('Value of {0} is not a proper laser channel. Digital laser '
+                    'channels are positive values 1=d_ch1, 2=d_ch2, '
+                    '... and analog channel numbers are chosen by a negative '
+                    'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
+                    'invalid input. Make your choice!', msgType='error')
+        return
+
+    laser_element = Pulse_Block_Element(laser_time_bins, self.analog_channels,
+                                        self.digital_channels, 0,
+                                        pulse_function, markers,
+                                        analog_params)
+
+    analog_params = [{}]*self.analog_channels
+    pulse_function = ['Idle']*self.analog_channels
+    markers = [False]*self.digital_channels
+
+    waiting_element = Pulse_Block_Element(wait_time_bins, self.analog_channels,
+                                          self.digital_channels, 0,
+                                          pulse_function, markers,
+                                          analog_params)
+
+    element_list = [mw_element, laser_element, waiting_element]
+
+    #FIXME: that has to be fixed in the generation
+    laser_channel_index = abs(laser_channel)
+
+    pulsed_odmr_block = Pulse_Block(name, element_list, laser_channel_index)
     # save block
-    # self.save_block(name, block)
+    self.save_block(name, pulsed_odmr_block)
+    # set current block
+    self.current_block = pulsed_odmr_block
+
+    block_list = [(pulsed_odmr_block, 0)]
+
+    # create ensemble out of the block(s)
+    block_ensemble = Pulse_Block_Ensemble(name, block_list, laser_channel_index,
+                                          rotating_frame=False)
     # save ensemble
     self.save_ensemble(name, block_ensemble)
-    # set current block
-    self.current_block = block
+
     # set current block ensemble
     self.current_ensemble = block_ensemble
     # update ensemble list
     self.refresh_ensemble_list()
-    return
+
+
+
+
+# def generate_pulsedodmr(self, name='PulsedODMR', start_freq=0.0, stop_freq=0.0,
+#                         number_of_points=0, amp_V=0.0, pi_bins=0,
+#                         aom_delay_bins=0, laser_time_bins=0,
+#                         use_seqtrig=True):
+#
+#     # create parameter dictionary list for MW signal
+#     mw_params = [{},{}]
+#     mw_params[0]['amplitude1'] = amp_V
+#     mw_params[0]['phase1'] = 0
+#     no_analog_params = [{},{}]
+#     laser_markers = [True, True, False, False]
+#     gate_markers = [False, True, False, False]
+#     idle_markers = [False, False, False, False]
+#     seqtrig_markers = [False, False, True, False]
+#
+#     # create frequency list
+#     freq_list = np.linspace(start_freq, stop_freq, number_of_points)
+#
+#     # generate elements
+#     laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
+#     aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
+#     waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
+#     seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
+#     # put elements in a list to create the block
+#     element_list = []
+#     for freq in freq_list:
+#         # create copy of parameter dict to use for this frequency
+#         temp_params = [mw_params[0].copy(),{}]
+#         temp_params[0]['frequency1'] = freq
+#         # create actual pi-pulse element
+#         pi_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, temp_params)
+#         # create measurement elements for this frequency
+#         element_list.append(laser_element)
+#         element_list.append(aomdelay_element)
+#         element_list.append(waiting_element)
+#         element_list.append(pi_element)
+#     if use_seqtrig:
+#         element_list.append(seqtrig_element)
+#
+#     # create block
+#     block = Pulse_Block(name, element_list)
+#     # put block in a list with repetitions
+#     block_list = [(block, 0),]
+#     # create ensemble out of the block(s)
+#     block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, number_of_points, False)
+#     # save block
+#     # self.save_block(name, block)
+#     # save ensemble
+#     self.save_ensemble(name, block_ensemble)
+#     # set current block
+#     self.current_block = block
+#     # set current block ensemble
+#     self.current_ensemble = block_ensemble
+#     # update ensemble list
+#     self.refresh_ensemble_list()
+#     return
 
 def generate_xy8(self, name='', mw_freq_Hz=0.0, mw_amp_V=0.0,
                  aom_delay_bins=0, laser_time_bins=0, tau_start_bins=0,
