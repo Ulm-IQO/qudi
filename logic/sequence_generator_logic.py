@@ -43,8 +43,8 @@ class Pulse_Block_Element(object):
     a GUI as single rows of a Pulse_Block.
     """
     def __init__(self, init_length_bins, analog_channels, digital_channels,
-                 increment_bins = 0, pulse_function = None,
-                 marker_active = None, parameters=[], use_as_tick=False):
+                 increment_bins=0, pulse_function=None, marker_active=None,
+                 parameters=[], use_as_tick=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
         @param int init_length_bins: an initial length of a bins, this
@@ -788,7 +788,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         return self._add_pb_param
 
-
     def set_sample_rate(self, freq_Hz):
         """ Sets the sampling frequency of the pulse generator device in Hz.
 
@@ -798,7 +797,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._pulse_generator_device.set_sample_rate(freq_Hz)
         self.sample_rate = freq_Hz
         return 0
-
 
     def pulser_on(self):
         """ Switch on the output of the Pulse Generator.
