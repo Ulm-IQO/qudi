@@ -40,7 +40,6 @@ General Pulse Creation Procedure:
 """
 
 
-
 def generate_laser_on(self, name='Laser_On', laser_time_bins=3000,
                       laser_channel=1, laser_amp_V=1.0):
     """ Generates Laser on.
