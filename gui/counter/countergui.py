@@ -105,11 +105,14 @@ class CounterGui(GUIBase):
         self._curve2 = self._pw.plot()
         self._curve2.setPen('r', width=4)
 
-        if self._counting_logic._counting_device._photon_source2 is not None:
-            self._curve3 = self._pw.plot()
-            self._curve3.setPen('y')
-            self._curve4 = self._pw.plot()
-            self._curve4.setPen('b', width=4)
+        # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via the
+        #       logic.  There needs to be a much better way to do this!
+        if hasattr(self._counting_logic._counting_device, '_photon_source2'):
+            if self._counting_logic._counting_device._photon_source2 is not None:
+                self._curve3 = self._pw.plot()
+                self._curve3.setPen('y')
+                self._curve4 = self._pw.plot()
+                self._curve4.setPen('b', width=4)
 
         # setting the x axis length correctly
         self._pw.setXRange(0, self._counting_logic.get_count_length()/self._counting_logic.get_count_frequency())
@@ -164,19 +167,22 @@ class CounterGui(GUIBase):
             self._curve1.setData(y=self._counting_logic.countdata, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
             self._curve2.setData(y=self._counting_logic.countdata_smoothed, x=np.arange(0, self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency())
 
-            if self._counting_logic._counting_device._photon_source2 is not None:
-                self._curve3.setData(
-                                y=self._counting_logic.countdata2,
-                                x=np.arange(
-                                    0,
-                                    self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
-                                )
-                self._curve4.setData(
-                                y=self._counting_logic.countdata_smoothed2,
-                                x=np.arange(
-                                    0,
-                                    self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
-                                )
+            # TODO: This is pretty bad, to directly inquire about the HW device from the GUI via the
+            #       logic.  There needs to be a much better way to do this!
+            if hasattr(self._counting_logic._counting_device, '_photon_source2'):
+                if self._counting_logic._counting_device._photon_source2 is not None:
+                    self._curve3.setData(
+                                    y=self._counting_logic.countdata2,
+                                    x=np.arange(
+                                        0,
+                                        self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
+                                    )
+                    self._curve4.setData(
+                                    y=self._counting_logic.countdata_smoothed2,
+                                    x=np.arange(
+                                        0,
+                                        self._counting_logic.get_count_length())/self._counting_logic.get_count_frequency()
+                                    )
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
