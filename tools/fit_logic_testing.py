@@ -1208,14 +1208,39 @@ class FitLogic():
                 
             units={'center': 'counts/s','sigma': 'counts','amplitude': 'counts/s','c': 'N'}
             print(self.create_fit_string(result,mod_final,units=units))
+            
+        def decay_testing(self):
+#            def constant_function(x, offset):
+#                """
+#                Function of a constant value.
+#                @param x: variable variable
+#                @param offset: independent variable - e.g. offset
+#        
+#                @return: constant function: in order to use it as a model
+#                """
+#        
+#                return offset + 0.0 * x
+#            model= Model(constant_function,prefix = 'x_')
+#            params = model.make_params()
+            model, params = self.make_linear_model()
+            print(params)
+            
+            x = np.linspace(0.20,1000)
+            params['slope'].value = 2.
+            params['x_offset'].value = 3.
+            params['y_offset'].value = 5.
 
+            y = model.eval(x=x, params=params)
+            
+            plt.plot(x,y)
+            
 plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
 #test.N14_testing()
 #test.N15_testing()
 #test.oneD_testing()
-test.gaussian_testing()
+#test.gaussian_testing()
 #test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
@@ -1227,6 +1252,7 @@ test.gaussian_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
+test.decay_testing()
 
 
 #class FitConstraints(OrderedDict):        

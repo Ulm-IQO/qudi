@@ -30,42 +30,6 @@ from lmfit import minimize
 #                                                                          #
 ############################################################################
 
-def make_constant_model(self):
-    """ This method creates a model of a constant model.
-
-    @return tuple: (object model, object params)
-
-    Explanation of the objects:
-        object lmfit.model.CompositeModel model:
-            A model the lmfit module will use for that fit. Returns an object of the class
-            lmfit.model.CompositeModel.
-
-        object lmfit.parameter.Parameters params:
-            It is basically an OrderedDict, so a dictionary, with keys
-            denoting the parameters as string names and values which are
-            lmfit.parameter.Parameter (without s) objects, keeping the
-            information about the current value.
-
-    For further information have a look in:
-    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
-    """
-    def constant_function(x, offset):
-        """
-        Function of a constant value.
-        @param x: variable variable
-        @param offset: independent variable - e.g. offset
-
-        @return: constant function: in order to use it as a model
-        """
-
-        return offset + 0.0 * x
-
-    model = Model(constant_function)
-    params = model.make_params()
-
-    return model, params
-
-
 def make_sine_model(self):
     """ This method creates a model of sine.
 
