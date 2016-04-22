@@ -344,7 +344,7 @@ class TraceAnalysisLogic(GenericLogic):
             P(k) =  sigma^k * exp(-sigma) / k!
         """
 
-        return poisson.pmf(x_val, mu)
+        return self._fit_logic.poisson(x_val, mu)
 
     def guess_threshold(self, hist_val=None, trace=None, max_ratio_value=0.1):
         """ Assume a distribution between two values and try to guess the threshold.
