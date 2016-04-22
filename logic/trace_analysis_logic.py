@@ -181,11 +181,26 @@ class TraceAnalysisLogic(GenericLogic):
         """
         pass
 
-    def do_fit(self, fit_function=None):
-        """
-            Makes the a fit of the current fit funciton.
+    def get_fit_methods(self):
+        """ Return all fit methods, which are currently implemented for that module.
 
-            @param string fit_function: name of the chosen fit function
+        @return list: with string entries denoting the name of the fit.
+        """
+        return ['No Fit', 'Gaussian', 'Double Gaussian', 'Poisson',
+                'Double Poisson']
+
+    def do_fit(self, fit_function=None):
+        """ Makes the a fit of the current fit function.
+
+        @param str fit_function: name of the chosen fit function.
+
+        @return tuple(x_val, y_val, fit_results):
+                    x_val: a 1D numpy array containing the x values
+                    y_val: a 1D numpy array containing the y values
+                    fit_results: a string containing the information of the fit
+                                 results.
+
+        You can obtain with get_fit_methods all implemented fit methods.
         """
         if self.hist_data is None:
             hist_fit_x = []
@@ -197,7 +212,7 @@ class TraceAnalysisLogic(GenericLogic):
             axis = self.hist_data[0][:-1]+(self.hist_data[0][1]-self.hist_data[0][0])/2.
             data = self.hist_data[1]
             if fit_function == 'No Fit':
-                hist_fit_x, hist_fit_y, fit_result = self.do_NO_fit()
+                hist_fit_x, hist_fit_y, fit_result = self.do_no_fit()
                 return hist_fit_x, hist_fit_y, fit_result
             elif fit_function == 'Gaussian':
                 hist_fit_x, hist_fit_y, fit_result = self.do_gaussian_fit(axis, data)
@@ -212,20 +227,37 @@ class TraceAnalysisLogic(GenericLogic):
                 hist_fit_x, hist_fit_y, fit_result = self.do_doublepossonian_fit(axis, data)
                 return hist_fit_x, hist_fit_y, fit_result
 
-    def do_NO_fit(self):
+    def do_no_fit(self):
+        """ Perform no fit, basically return an empty array.
+
+        @return tuple(x_val, y_val, fit_results):
+                    x_val: a 1D numpy array containing the x values
+                    y_val: a 1D numpy array containing the y values
+                    fit_results: a string containing the information of the fit
+                                 results.
+        """
         hist_fit_x = []
         hist_fit_y = []
         fit_result = 'No Fit'
         return hist_fit_x, hist_fit_y, fit_result
 
-
     def do_gaussian_fit(self, axis, data):
+        """ Perform a gaussian fit.
+
+        @param axis:
+        @param data:
+        @return:
+        """
+
         model, params = self._fit_logic.make_gaussian_model()
         if len(axis) < len(params):
-            return self.do_NO_fit()
-            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+            self.logMsg('Fit could not be performed because number of '
+                        'parameters is smaller than data points.',
                         msgType='warning')
+            return self.do_no_fit()
+
         else:
+
             parameters_to_substitute = dict()
             update_dict=dict()
 
@@ -264,14 +296,15 @@ class TraceAnalysisLogic(GenericLogic):
     def do_doublegaussian_fit(self, axis, data):
         model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
         if len(axis) < len(params):
-            return self.do_NO_fit()
-            self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
+            self.logMsg('Fit could not be performed because number of '
+                        'parameters is smaller than data points',
                         msgType='warning')
+            return self.do_no_fit()
+
         else:
             result = self._fit_logic.make_doublegaussian_fit(axis=axis,
-                                                               data=data,
-                                                               add_parameters=None)
-
+                                                             data=data,
+                                                             add_parameters=None)
 
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
@@ -292,7 +325,7 @@ class TraceAnalysisLogic(GenericLogic):
     def do_doublepossonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
         if len(axis) < len(params):
-            return self.do_NO_fit()
+            return self.do_no_fit()
             self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
                         msgType='warning')
         else:
@@ -316,7 +349,7 @@ class TraceAnalysisLogic(GenericLogic):
         if len(axis) < len(params):
             self.logMsg('Fit could not be performed because number of parameters is smaller than data points',
                         msgType='error')
-            return self.do_NO_fit()
+            return self.do_no_fit()
         else:
             result = self._fit_logic.make_poissonian_fit(axis=axis,
                                                                data=data,
@@ -332,7 +365,7 @@ class TraceAnalysisLogic(GenericLogic):
             fit_result = str("poissonian_mu (Counts/s): {:.1f}".format(result.best_values['poissonian_mu']))
             return hist_fit_x, hist_fit_y, fit_result
 
-    def get_poissonian(self, mu, x_val):
+    def get_poissonian(self, x_val, mu):
         """ Calculate, bases on the passed values a poissonian distribution.
 
         @param float mu:
@@ -341,7 +374,7 @@ class TraceAnalysisLogic(GenericLogic):
                           values for the y axis.
 
         Calculate a Poissonian Distribution according to:
-            P(k) =  sigma^k * exp(-sigma) / k!
+            P(k) =  mu^k * exp(-mu) / k!
         """
 
         return self._fit_logic.poisson(x_val, mu)
@@ -414,10 +447,10 @@ class TraceAnalysisLogic(GenericLogic):
 
         # perform the fit, maybe more fitting parameter will come
         #Fixme: This won't work, defitinion of fit and get_poissonian is not appropriate
-        sigma1, sigma2 = self.do_double_possonian_fit(hist_val, threshold)
+        mu1, mu2 = self.do_double_possonian_fit(hist_val, threshold)
 
-        first_dist = self.get_poissonian(sigma=sigma1, x_val=hist_val)
-        sec_dist = self.get_poissonian(sigma=sigma1, x_val=hist_val)
+        first_dist = self.get_poissonian(x_val=hist_val, mu=mu1)
+        sec_dist = self.get_poissonian(x_val=hist_val, mu=mu1)
 
         # create a two poissonian array, where the second poissonian
         # distribution is add as negative values. Now the transition from
@@ -441,10 +474,10 @@ class TraceAnalysisLogic(GenericLogic):
         # Calculate also the readout fidelity, i.e. sum the area under the
         # first peak before the threshold and after it and sum also the area
         # under the second peak before the threshold and after it:
-        area1_low = self.get_poissonian(sigma1, hist_val[0:trans_index]).sum()
-        area1_high = self.get_poissonian(sigma1, hist_val[trans_index:]).sum()
-        area2_low = self.get_poissonian(sigma2, hist_val[0:trans_index]).sum()
-        area2_high = self.get_poissonian(sigma2, hist_val[trans_index:]).sum()
+        area1_low = self.get_poissonian(hist_val[0:trans_index], mu1).sum()
+        area1_high = self.get_poissonian(hist_val[trans_index:], mu1).sum()
+        area2_low = self.get_poissonian(hist_val[0:trans_index], mu2).sum()
+        area2_high = self.get_poissonian(hist_val[trans_index:], mu2).sum()
 
         # Now calculate how big is the overlap relative to the sum of the other
         # part of the area, that will give the normalized fidelity:
@@ -475,53 +508,3 @@ class TraceAnalysisLogic(GenericLogic):
         @return:
         """
         pass
-
-
-
-    #
-    # def set_binning(self, binning, update=True):
-    #     """ Change the binning of the histogram and redo the histogram
-    #
-    #     @param int binning: number of bins in the trace.
-    #     @param bool update: optional, set whether the histogram should be
-    #                         updated
-    #     @return:
-    #     """
-    #     self.trace_obj.change_binning(binning)
-    #
-    #     if update:
-    #         self.create_histogram()
-    #
-    # def create_histogram(self):
-    #     """ Creates the histogram
-    #
-    #     @return:
-    #     """
-    #
-    #     self.trace_obj.create_hist()
-    #
-    #
-    #     self.histogram = np.array((self.trace_obj.bins, self.trace_obj.hist))
-    #
-    #     self.sigHistogramUpdated.emit()
-    #
-    #
-    # """
-    # - Methods for histogram
-    #
-    # """
-
-    # def create_new_trace(self, trace=None):
-    #     """ Create a new Trace Analysis object, which can be analyzed.
-    #
-    #     @param np.array trace: a 1D trace
-    #
-    #     Overwrites the trace object saved in this class.
-    #     """
-    #
-    #     if trace is None:
-    #         self.trace_obj = Trace(self._counter_logic.countdata)
-    #     else:
-    #         self.trace_obj = Trace(trace)
-    #
-    #     self.create_histogram()
