@@ -28,13 +28,15 @@ try:
 except ImportError:
     import thirdparty.opal_kelly32 as ok
 
+
 class OkFpgaTtlSwitch(Base, SwitchInterface):
+
     """Methods to control TTL switch running on OK FPGA.
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'
     _out = {'switch': 'SwitchInterface'}
-    
+
     def __init__(self, manager, name, config, **kwargs):
         c_dict = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config,  c_dict)
@@ -54,8 +56,8 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
 
     def deactivation(self, e):
         pass
-        #self.fp.
-        
+        # self.fp.
+
     def reset(self):
         self.fp.SetWireInValue(0x00, 0)
         self.fp.SetWireInValue(0x01, 0)
@@ -67,7 +69,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp.SetWireInValue(0x07, 0)
         self.fp.UpdateWireIns()
         self.logMsg('FPGA switch reset')
-    
+
     def getNumberOfSwitches(self):
         """ There are 8 TTL channels on the OK FPGA.
         Chan   PIN
