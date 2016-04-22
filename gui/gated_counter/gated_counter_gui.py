@@ -139,8 +139,6 @@ class GatedCounterGui(GUIBase):
         self._mw.hist_bins_SpinBox.valueChanged.connect(self.num_bins_changed)
         self._trace_analysis.sigHistogramUpdated.connect(self.update_histogram)
 
-
-
         # starting the physical measurement:
         self.sigStartGatedCounter.connect(self._counter_logic.startCount)
         self.sigStopGatedCounter.connect(self._counter_logic.stopCount)
@@ -150,11 +148,8 @@ class GatedCounterGui(GUIBase):
         self._counter_logic.sigGatedCounterFinished.connect(self.reset_toolbar_display)
 
         # configuration of the combo widget
-        self._mw.fit_methods_ComboBox.addItem('No Fit')
-        self._mw.fit_methods_ComboBox.addItem('Gaussian')
-        self._mw.fit_methods_ComboBox.addItem('Double Gaussian')
-        self._mw.fit_methods_ComboBox.addItem('Poisson')
-        self._mw.fit_methods_ComboBox.addItem('Double Poisson')
+        fit_functions = self._trace_analysis.get_fit_functions()
+        self._mw.fit_methods_ComboBox.addItems(fit_functions)
 
         # Push buttons
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
@@ -182,9 +177,15 @@ class GatedCounterGui(GUIBase):
         self._mw.count_trace_DockWidget.setFloating(False)
         self._mw.histogram_DockWidget.setFloating(False)
 
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.control_param_DockWidget)
-        # somehow that give an error, so comment out:
-        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(6), self._mw.count_trace_DockWidget)
+        # QtCore.Qt.LeftDockWidgetArea        0x1
+        # QtCore.Qt.RightDockWidgetArea       0x2
+        # QtCore.Qt.TopDockWidgetArea         0x4
+        # QtCore.Qt.BottomDockWidgetArea      0x8
+        # QtCore.Qt.AllDockWidgetAreas        DockWidgetArea_Mask
+        # QtCore.Qt.NoDockWidgetArea          0
+
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(4), self._mw.control_param_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.count_trace_DockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.histogram_DockWidget)
 
     def start_clicked(self):
@@ -274,7 +275,7 @@ class GatedCounterGui(GUIBase):
 
         current_fit_function = self._mw.fit_methods_ComboBox.currentText()
 
-        fit_x, fit_y, fit_result = self._trace_analysis.do_fit(fit_function=current_fit_function)
+        fit_x, fit_y, fit_result, param_dict = self._trace_analysis.do_fit(fit_function=current_fit_function)
         self._fit_image.setData(x=fit_x, y=fit_y, pen='r')
 
         self._mw.fit_param_TextEdit.setPlainText(fit_result)

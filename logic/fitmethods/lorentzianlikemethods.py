@@ -119,14 +119,13 @@ def make_lorentzian_fit(self, axis=None, data=None,
                           with best fit with given axis,...
     """
 
-    error,amplitude, x_zero, sigma, offset = self.estimate_lorentz(
-                                                            axis,data)
+    error, amplitude, x_zero, sigma, offset = self.estimate_lorentz(axis, data)
 
-    model,params = self.make_lorentzian_model()
+    model, params = self.make_lorentzian_model()
 
     #auxiliary variables
-    stepsize=axis[1]-axis[0]
-    n_steps=len(axis)
+    stepsize = axis[1]-axis[0]
+    n_steps = len(axis)
 
     # TODO: Make sigma amplitude and x_zero better
     # Defining standard parameters
@@ -147,18 +146,17 @@ def make_lorentzian_fit(self, axis=None, data=None,
                         ('center',    x_zero,    True, (axis[-1]),          (axis[0]),            None),
                         ('c',         offset,    True, None,                None,                 None))
 
-#TODO: Add logmessage when value is changed
+    #TODO: Add logmessage when value is changed
     #redefine values of additional parameters
     if add_parameters is not None :
-        params=self._substitute_parameter(parameters=params,
+        params = self._substitute_parameter(parameters=params,
                                          update_dict=add_parameters)
     try:
-        result=model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=axis,params=params)
     except:
-        result=model.fit(data, x=axis,params=params)
+        result = model.fit(data, x=axis,params=params)
         self.logMsg('The 1D lorentzian fit did not work. Error '
-                    'message:'+result.message,
-                    msgType='warning')
+                    'message: {0}\n'.format(result.message), msgType='warning')
     return result
 
 ############################################################################
@@ -181,32 +179,32 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
     @return float offset: estimated offset
     """
 
-#           TODO: make sigma and amplitude good, this is only a dirty fast solution
-    error=0
+    #TODO: make sigma and amplitude good, this is only a dirty fast solution
+    error = 0
     # check if parameters make sense
 
-    parameters=[x_axis,data]
+    parameters = [x_axis, data]
     for var in parameters:
-        if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is no array.',
                         msgType='error')
             error=-1
-        elif len(np.shape(var))!=1:
+        elif len(np.shape(var)) != 1:
             self.logMsg('Given parameter is no one dimensional array.',
                         msgType='error')
     #set paraameters
     #print('data',data)
-    data_smooth,offset=self.find_offset_parameter(x_axis,data)
+    data_smooth, offset = self.find_offset_parameter(x_axis, data)
     #print('offset',offset)
-    data_level=data-offset
-    data_min=data_level.min()
-    data_max=data_level.max()
+    data_level = data-offset
+    data_min = data_level.min()
+    data_max = data_level.max()
     #print('data_min',data_min)
     #print('data_max',data_max)
     #estimate sigma
 
-    numerical_integral=np.sum(data_level) * \
-                       (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
+    numerical_integral = np.sum(data_level) * \
+                        (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
 
 
 
@@ -221,11 +219,11 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
                   'maximum value, if you want to fit a dip instead of '
                   'a peak use estimate_lorentz.')
 
-    amplitude_median=data_max
-    #x_zero=x_axis[np.argmax(data_smooth)]
-    x_zero=x_axis[np.argmax(data)]
+    amplitude_median = data_max
+    #x_zero = x_axis[np.argmax(data_smooth)]
+    x_zero = x_axis[np.argmax(data)]
     sigma = np.abs(numerical_integral / (np.pi * amplitude_median))
-    amplitude=amplitude_median * np.pi * sigma
+    amplitude = amplitude_median * np.pi * sigma
 
     #print('amplitude',amplitude)
     #print('x_zero',x_zero)

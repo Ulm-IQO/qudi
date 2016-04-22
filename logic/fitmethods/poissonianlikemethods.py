@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi fitting logic functions needed for 
+This file contains the QuDi fitting logic functions needed for
 poissinian-like-methods.
 
 QuDi is free software: you can redistribute it and/or modify
@@ -40,15 +40,17 @@ from scipy.special import gammaln as gamln
 #                                                                          #
 ############################################################################
 
-def poisson(self,x,mu):
+def poisson(self, x, mu,amplitude=1.0):
     """
     Poisson function see https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
     """
-    return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
-            
+
+    norm = amplitude/np.exp(special.xlogy(mu, mu) - gamln(mu + 1) - mu)
+    return norm*np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+
 def make_poissonian_model(self, no_of_functions=None):
     """ This method creates a model of a poissonian with an offset.
-    @param no_of_functions: if None or 1 there is one poissonian, else 
+    @param no_of_functions: if None or 1 there is one poissonian, else
                             more functions are added
     @return tuple: (object model, object params)
 
@@ -75,7 +77,7 @@ def make_poissonian_model(self, no_of_functions=None):
         @return: poisson function: in order to use it as a model
         """
         return self.poisson(x,mu)
-        
+
     def amplitude_function(x, amplitude):
         """
         Function of a amplitude value.
@@ -86,7 +88,7 @@ def make_poissonian_model(self, no_of_functions=None):
         """
 
         return amplitude + 0.0 * x
-    
+
     if no_of_functions is None or no_of_functions == 1:
         model = ( Model(poisson_function,prefix='poissonian_') *
                   Model(amplitude_function,prefix='poissonian_') )
@@ -112,22 +114,22 @@ def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-     
+
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')    
-                        
+                            msgType='error')
+
     mod_final, params = self.make_poissonian_model()
 
     error, params = self.estimate_poissonian(axis, data, params)
-                        
+
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
                                             update_dict=add_parameters)
-                                            
+
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
@@ -179,9 +181,9 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     params['poissonian_amplitude'].value = data_smooth.max()/self.poisson(mu,mu)
 
     return error, params
-    
-    
-    
+
+
+
 def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a double poissonian fit on the provided data.
 
@@ -194,24 +196,24 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
                            initial fitting values, best fitting values, data
                            with best fit with given axis,...
     """
-      
+
     parameters = [axis, data]
     for var in parameters:
         if len(np.shape(var)) != 1:
                 self.logMsg('Given parameter is no one dimensional array.',
-                            msgType='error')  
+                            msgType='error')
 
     mod_final, params = self.make_poissonian_model(no_of_functions=2)
 
     error, params = self.estimate_doublepoissonian(axis, data, params)
 
     # TODO: check if we have integers
-        
+
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
                                             update_dict=add_parameters)
-                                            
+
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
@@ -235,8 +237,8 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
                                          threshold_fraction=0.4,
                                          minimal_threshold=0.1,
                                          sigma_threshold_fraction=0.2):
-    """ This method provides a an estimator for a double poissonian fit 
-    with the parameters coming from the physical properties of an experiment 
+    """ This method provides a an estimator for a double poissonian fit
+    with the parameters coming from the physical properties of an experiment
     done in gated counter:
                     - positive peak
                     - no values below 0
@@ -296,14 +298,14 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
                                 make_prints=False
                                 )
 
-    
+
     params['poissonian0_mu'].value = x_axis[dip0_arg]
-    params['poissonian0_amplitude'].value = ( data[dip0_arg] / 
+    params['poissonian0_amplitude'].value = ( data[dip0_arg] /
                   self.poisson(x_axis[dip0_arg],x_axis[dip0_arg]) )
 
 
     params['poissonian1_mu'].value = x_axis[dip1_arg]
-    params['poissonian1_amplitude'].value = ( data[dip1_arg] / 
+    params['poissonian1_amplitude'].value = ( data[dip1_arg] /
                   self.poisson(x_axis[dip1_arg],x_axis[dip1_arg]) )
 
     return error, params
