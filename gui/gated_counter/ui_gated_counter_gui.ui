@@ -262,7 +262,20 @@ Threshold</string>
         <widget class="QComboBox" name="fit_methods_ComboBox"/>
        </item>
        <item row="1" column="2" rowspan="3" colspan="3">
-        <widget class="QTextEdit" name="fit_param_TextEdit"/>
+        <widget class="QTextEdit" name="fit_param_TextEdit">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>90</height>
+          </size>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

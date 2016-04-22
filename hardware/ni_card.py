@@ -877,7 +877,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         return 0
 
-    def set_voltage_range(self, myrange=[-10.,10.]):
+    def set_voltage_range(self, myrange=[-10., 10.]):
         """ Sets the voltage range of the NI Card.
 
         @param float [2] myrange: array containing lower and upper limit
@@ -955,7 +955,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         return 0
 
 
-    def set_up_scanner_clock(self, clock_frequency = None, clock_channel = None):
+    def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
@@ -968,12 +968,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
         # The clock for the scanner is created on the same principle as it is
         # for the counter. Just to keep consistency, this function is a wrapper
         # around the set_up_clock.
-        return self.set_up_clock(clock_frequency = clock_frequency,
-                                 clock_channel = clock_channel, scanner = True)
+        return self.set_up_clock(clock_frequency=clock_frequency,
+                                 clock_channel=clock_channel, scanner=True)
 
 
-    def set_up_scanner(self, counter_channel = None, photon_source = None,
-                       clock_channel = None, scanner_ao_channels = None):
+    def set_up_scanner(self, counter_channel=None, photon_source=None,
+                       clock_channel=None, scanner_ao_channels=None):
         """ Configures the actual scanner with a given clock.
 
         The scanner works pretty much like the counter. Here you connect a
@@ -1073,7 +1073,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         return 0
 
-    def scanner_set_position(self, x = None, y = None, z = None, a = None):
+    def scanner_set_position(self, x=None, y=None, z=None, a=None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
 
         #FIXME: No volts
@@ -1162,7 +1162,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         return self._AONwritten.value
 
-    def _scanner_position_to_volt(self, positions = None):
+    def _scanner_position_to_volt(self, positions=None):
         """ Converts a set of position pixels to acutal voltages.
 
         @param float[][4] positions: array of 4-part tuples defining the pixels
@@ -1299,7 +1299,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         return 0
 
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None):
         """ Scans a line and return the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the

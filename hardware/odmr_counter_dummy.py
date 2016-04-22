@@ -35,7 +35,8 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _out = {'odmrcounter': 'ODMRCounterInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
-        state_actions = {'onactivate': self.activation, 'ondeactivate': self.deactivation}
+        state_actions = {'onactivate': self.activation,
+                         'ondeactivate': self.deactivation}
         Base.__init__(self, manager, name, config, state_actions, **kwargs)
 
         self.logMsg('The following configuration was found.',
@@ -50,26 +51,38 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
             self._clock_frequency=config['clock_frequency']
         else:
             self._clock_frequency=100
-            self.logMsg('No clock_frequency configured taking 100 Hz instead.', \
-            msgType='warning')
+            self.logMsg('No clock_frequency configured taking 100 Hz instead.',
+                        msgType='warning')
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+
+        @param object e: Event class object from Fysom.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
         """
-        print('here you go')
         self._fit_logic = self.connector['in']['fitlogic']['object']
 
     def deactivation(self, e):
-        self.logMsg('ODMR counter is shutting down.')
+        """ Deinitialisation performed during deactivation of the module.
 
-    def set_up_odmr_clock(self, clock_frequency = None, clock_channel = None):
+        @param object e: Event class object from Fysom. A more detailed
+                         explanation can be found in method activation.
+        """
+        self.logMsg('ODMR counter is shutting down.', importance=1)
+
+    def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of the clock
-        @param string clock_channel: if defined, this is the physical channel of the clock
+        @param str clock_channel: if defined, this is the physical channel of the clock
 
         @return int: error code (0:OK, -1:error)
         """
@@ -85,13 +98,14 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         return 0
 
 
-    def set_up_odmr(self, counter_channel = None, photon_source = None, clock_channel = None, odmr_trigger_channel = None):
+    def set_up_odmr(self, counter_channel=None, photon_source=None,
+                    clock_channel=None, odmr_trigger_channel=None):
         """ Configures the actual counter with a given clock.
 
-        @param string counter_channel: if defined, this is the physical channel of the counter
-        @param string photon_source: if defined, this is the physical channel where the photons are to count from
-        @param string clock_channel: if defined, this specifies the clock for the counter
-        @param string odmr_trigger_channel: if defined, this specifies the trigger output for the microwave
+        @param str counter_channel: if defined, this is the physical channel of the counter
+        @param str photon_source: if defined, this is the physical channel where the photons are to count from
+        @param str clock_channel: if defined, this specifies the clock for the counter
+        @param str odmr_trigger_channel: if defined, this specifies the trigger output for the microwave
 
         @return int: error code (0:OK, -1:error)
         """
@@ -100,15 +114,15 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
                     msgType='warning')
 
         if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
-            self.logMsg('Another odmr is already running, close this one first.', \
-            msgType='error')
+            self.logMsg('Another odmr is already running, close this one first.',
+                        msgType='error')
             return -1
 
         time.sleep(0.2)
 
         return 0
 
-    def set_odmr_length(self,length = 100):
+    def set_odmr_length(self, length=100):
         """ Sets up the trigger sequence for the ODMR and the triggered microwave.
 
         @param int length: length of microwave sweep in pixel
@@ -124,7 +138,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         return 0
 
-    def count_odmr(self, length = 100):
+    def count_odmr(self, length=100):
         """ Sweeps the microwave and returns the counts on that sweep.
 
         @param int length: length of microwave sweep in pixel
@@ -133,8 +147,8 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         """
 
         if self.getState() == 'locked':
-            self.logMsg('A scan_line is already running, close this one first.', \
-            msgType='error')
+            self.logMsg('A scan_line is already running, close this one first.',
+                        msgType='error')
             return -1
 
         self.lock()
@@ -161,9 +175,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         count_data += lorentians.eval(x=np.arange(1, length+1, 1), params=params)
 
         time.sleep(self._odmr_length*1./self._clock_frequency)
-
-#        self.logMsg('ODMRCounterDummy>count_odmr: length {0:d}.'.format(self._odmr_length),
-#                    msgType='warning')
 
         self.unlock()
 

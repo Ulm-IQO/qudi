@@ -164,7 +164,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.logMsg("MicrowaveDummy>reset_listpos", msgType='warning')
+        # self.logMsg("MicrowaveDummy>reset_listpos", msgType='warning')
         return 0
 
     def list_on(self):
