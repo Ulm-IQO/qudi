@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Christoph Mueller christoph-1.mueller@uni-ulm.de
+Copyright (C) 2016 Christoph Mueller cmueller2603@gmail.com
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
