@@ -176,35 +176,6 @@ Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>100</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="3" column="2">
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Expanding</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>2000</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
@@ -221,6 +192,12 @@ Threshold</string>
        </item>
        <item row="3" column="1">
         <widget class="QLineEdit" name="filetag_LineEdit">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the descriptive name for this&lt;br/&gt;measurement. The file will be saved with &lt;br/&gt;a date and timestamp prefix and the&lt;br/&gt;descriptive name will be append to that&lt;br/&gt;string.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
@@ -264,14 +241,14 @@ Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="3">
+       <item row="0" column="2">
         <widget class="QLabel" name="label_4">
          <property name="text">
           <string>Fit Parameters</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="4">
+       <item row="0" column="3">
         <widget class="QPushButton" name="fit_PushButton">
          <property name="enabled">
           <bool>true</bool>
@@ -281,10 +258,10 @@ Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="5">
+       <item row="0" column="4">
         <widget class="QComboBox" name="fit_methods_ComboBox"/>
        </item>
-       <item row="1" column="3" rowspan="3" colspan="3">
+       <item row="1" column="2" rowspan="3" colspan="3">
         <widget class="QTextEdit" name="fit_param_TextEdit"/>
        </item>
       </layout>
