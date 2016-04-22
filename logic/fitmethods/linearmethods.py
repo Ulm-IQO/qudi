@@ -30,7 +30,7 @@ from lmfit import minimize
 #                                                                          #
 ############################################################################
 
-def make_constant_model(self, prefix):
+def make_constant_model(self, prefix=None):
     """ This method creates a model of a constant model.
 
     @return tuple: (object model, object params)
@@ -62,7 +62,9 @@ def make_constant_model(self, prefix):
 
     #Todo: Check if prefix is string
     if prefix is not None:
-        model= Model(constant_function,prefix = prefix)
+        model = Model(constant_function, prefix=prefix)
+    else:
+        model = Model(constant_function)
     params = model.make_params()
 
     return model, params

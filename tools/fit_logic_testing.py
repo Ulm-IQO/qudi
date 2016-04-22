@@ -1251,8 +1251,8 @@ test=FitLogic()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
-#test.double_poissonian_testing()
-test.decay_testing()
+test.double_poissonian_testing()
+#test.decay_testing()
 
 
 #class FitConstraints(OrderedDict):        
