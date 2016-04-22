@@ -130,11 +130,8 @@ class ODMRGui(GUIBase):
         self._mw.odmr_matrix_PlotWidget.addItem(self.odmr_matrix_image)
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
-
-
         # Get the colorscales at set LUT
         my_colors = ColorScale()
-
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
         # Set the state button as ready button as default setting.
@@ -144,14 +141,9 @@ class ODMRGui(GUIBase):
         self._mw.mode_ComboBox.addItem('Off')
         self._mw.mode_ComboBox.addItem('CW')
 
-        self._mw.fit_methods_ComboBox.addItem('No Fit')
-        self._mw.fit_methods_ComboBox.addItem('Lorentzian')
-        self._mw.fit_methods_ComboBox.addItem('Double Lorentzian')
-        self._mw.fit_methods_ComboBox.addItem('Double Lorentzian with fixed splitting')
-        self._mw.fit_methods_ComboBox.addItem('N14')
-        self._mw.fit_methods_ComboBox.addItem('N15')
-        self._mw.fit_methods_ComboBox.addItem('Double Gaussian')
-
+        fit_functions = self._odmr_logic.get_fit_functions()
+        self._mw.fit_methods_ComboBox.clear()
+        self._mw.fit_methods_ComboBox.addItems(fit_functions)
 
         ########################################################################
         ##                 Configuration of the Colorbar                      ##
@@ -202,8 +194,6 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.editingFinished.connect(self.change_power)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
 
-        #
-
         self._mw.odmr_cb_max_SpinBox.valueChanged.connect(self.refresh_matrix)
         self._mw.odmr_cb_min_SpinBox.valueChanged.connect(self.refresh_matrix)
         self._mw.odmr_cb_high_centile_SpinBox.valueChanged.connect(self.refresh_matrix)
@@ -219,9 +209,9 @@ class ODMRGui(GUIBase):
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_Save.triggered.connect(self.save_plots_and_data)
 
-        self._odmr_logic.signal_ODMR_plot_updated.connect(self.refresh_plot)
-        self._odmr_logic.signal_ODMR_matrix_updated.connect(self.refresh_matrix)
-        self._odmr_logic.signal_ODMR_elapsedtime_changed.connect(self.refresh_elapsedtime)
+        self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
+        self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
+        self._odmr_logic.sigOdmrElapsedTimeChanged.connect(self.refresh_elapsedtime)
         # connect settings signals
         self._mw.action_Settings.triggered.connect(self.menue_settings)
         self._sd.accepted.connect(self.update_settings)
@@ -229,8 +219,8 @@ class ODMRGui(GUIBase):
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
-        # self._odmr_logic.signal_ODMR_finished.connect(self._mw.idle_StateWidget.click)
-        self._odmr_logic.signal_ODMR_finished.connect(self.odmr_stopped)
+        # self._odmr_logic.sigOdmrFinished.connect(self._mw.idle_StateWidget.click)
+        self._odmr_logic.sigOdmrFinished.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
         self._mw.fit_methods_ComboBox.activated[str].connect(self.update_fit_variable)
@@ -260,9 +250,9 @@ class ODMRGui(GUIBase):
 
 #     def idle_clicked(self):
 #         """ Stopp the scan if the state has switched to idle. """
-#         self._odmr_logic.stop_ODMR_scan()
+#         self._odmr_logic.stop_odmr_scan()
 #         self._sd.matrix_lines_SpinBox.setReadOnly(False)
-# #        self._odmr_logic.kill_ODMR()
+# #        self._odmr_logic.kill_odmr()
 #
 #
 #     def run_clicked(self, enabled):
@@ -272,22 +262,22 @@ class ODMRGui(GUIBase):
 #         """
 #
 #         #Firstly stop any scan that might be in progress
-#         self._odmr_logic.stop_ODMR_scan()
-# #        self._odmr_logic.kill_ODMR()
+#         self._odmr_logic.stop_odmr_scan()
+# #        self._odmr_logic.kill_odmr()
 #         #Then if enabled. start a new odmr scan.
 #         if enabled:
-#             self._odmr_logic.start_ODMR_scan()
+#             self._odmr_logic.start_odmr_scan()
 #             self._sd.matrix_lines_SpinBox.setReadOnly(True)
 
     def run_stop(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped """
         if is_checked:
-            self._odmr_logic.stop_ODMR_scan()
-            self._odmr_logic.start_ODMR_scan()
+            self._odmr_logic.stop_odmr_scan()
+            self._odmr_logic.start_odmr_scan()
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
             self._sd.matrix_lines_SpinBox.setReadOnly(True)
         else:
-            self._odmr_logic.stop_ODMR_scan()
+            self._odmr_logic.stop_odmr_scan()
             self._sd.matrix_lines_SpinBox.setReadOnly(False)
 
     def odmr_stopped(self):
