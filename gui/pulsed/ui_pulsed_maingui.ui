@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -76,7 +76,7 @@
              </widget>
             </item>
             <item row="5" column="5">
-             <widget class="QSpinBox" name="time_param_elapsed_sweep_SpinBox">
+             <widget class="ScienSpinBox" name="time_param_elapsed_sweep_SpinBox">
               <property name="readOnly">
                <bool>true</bool>
               </property>
@@ -385,11 +385,14 @@
                  </item>
                  <item row="0" column="3">
                   <widget class="QCheckBox" name="ana_param_x_axis_defined_CheckBox">
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
                    <property name="text">
                     <string/>
                    </property>
                    <property name="checked">
-                    <bool>false</bool>
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -404,6 +407,9 @@
                   <widget class="QCheckBox" name="ana_param_num_laser_defined_defined_CheckBox">
                    <property name="text">
                     <string/>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -422,9 +428,9 @@
                   </widget>
                  </item>
                  <item row="1" column="3">
-                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_start_DoubleSpinBox">
+                  <widget class="ScienDSpinBox" name="ana_param_x_axis_start_ScienDSpinBox">
                    <property name="enabled">
-                    <bool>false</bool>
+                    <bool>true</bool>
                    </property>
                    <property name="maximum">
                     <double>999999999.000000000000000</double>
@@ -442,9 +448,9 @@
                   </widget>
                  </item>
                  <item row="2" column="3">
-                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_inc_DoubleSpinBox">
+                  <widget class="ScienDSpinBox" name="ana_param_x_axis_inc_ScienDSpinBox">
                    <property name="enabled">
-                    <bool>false</bool>
+                    <bool>true</bool>
                    </property>
                    <property name="maximum">
                     <double>999999999.000000000000000</double>
@@ -1928,7 +1934,7 @@ sel.</string>
                   </spacer>
                  </item>
                  <item row="4" column="1">
-                  <widget class="ScienDSpinBox" name="extract_param_aom_delay_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="extract_param_aom_delay_ScienDSpinBox"/>
                  </item>
                  <item row="4" column="0">
                   <widget class="QLabel" name="label_18">
@@ -1955,7 +1961,7 @@ sel.</string>
                   </widget>
                  </item>
                  <item row="5" column="1">
-                  <widget class="ScienDSpinBox" name="extract_param_laser_length_DSpinBox"/>
+                  <widget class="ScienDSpinBox" name="extract_param_laser_length_ScienDSpinBox"/>
                  </item>
                 </layout>
                </item>
@@ -2195,6 +2201,11 @@ sel.</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
    <header>tools.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>

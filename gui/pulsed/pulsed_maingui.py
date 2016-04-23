@@ -2500,9 +2500,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
 
         self._mw.ana_param_x_axis_start_Label.setVisible(False)
-        self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setVisible(False)
         self._mw.ana_param_x_axis_inc_Label.setVisible(False)
-        self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
 
 
         # Get the possible binwidth setting from the hardware constraints
@@ -2530,10 +2530,11 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.fit_param_fit_func_ComboBox.addItem(ii)
 
 
+        # self._mw.time_param_elapsed_sweep_ScienSpinBox.setOpts(suffix='s')
+
         # ---------------------------------------------------------------------
         #                         Connect signals
         # ---------------------------------------------------------------------
-
 
         self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
@@ -2548,6 +2549,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
 
 
+        # configure the ticks or x axis viewboxes:
+
+        # configure a bit the display box in the pulse extraction:
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setSingleStep(10e-9) # in s
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setMinimum(0.0)
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setValue(10e-9) # in s
+
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setSingleStep(10e-9) # in s
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setValue(10e-9) # in s
+
         # Connect the CheckBoxes
         # anaylsis tab
 
@@ -2558,8 +2569,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
-        self._mw.ana_param_x_axis_start_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
-        self._mw.ana_param_x_axis_inc_DoubleSpinBox.editingFinished.connect(self.seq_parameters_changed)
+        # self._mw.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.seq_parameters_changed)
+        # self._mw.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self.analysis_timing_changed()
@@ -2604,12 +2615,26 @@ class PulsedMeasurementGui(GUIBase):
 
             # set number of laser pulses:
             if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
-                self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
+                num_laser_pulses = self._mw.ana_param_num_laser_pulse_SpinBox.value()
             else:
-                pass
+                asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
+                num_laser_pulses = asset_param['num_laser_pulses']
 
-            self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_DSpinBox.value()
-            self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_DSpinBox.value()
+            if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+                start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value() # in s
+                step = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()     # in s
+
+                meas_ticks_list = np.arange(start, start + step*num_laser_pulses, step)
+            else:
+                asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
+                meas_ticks_list = asset_param['measurement_ticks_list']/self.get_sample_rate()
+
+            self._pulsed_meas_logic.set_num_of_lasers(num_laser_pulses)
+            self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
+
+            # set the parameters from Pulse Extraction:
+            self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_ScienDSpinBox.value()
+            self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_ScienDSpinBox.value()
 
             self.analysis_fc_binning_changed()
 
@@ -2719,7 +2744,7 @@ class PulsedMeasurementGui(GUIBase):
             expected_time = 1.0
         else:
             expected_time = self._mw.time_param_expected_dur_DoubleSpinBox.value()
-        self._mw.time_param_elapsed_sweep_SpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
+        self._mw.time_param_elapsed_sweep_ScienSpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
 
 
 
@@ -2745,14 +2770,14 @@ class PulsedMeasurementGui(GUIBase):
 
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
-            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
+            self._mw.ana_param_x_axis_start_ScienDSpinBox.setVisible(True)
             self._mw.ana_param_x_axis_inc_Label.setVisible(True)
-            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(True)
+            self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(True)
         else:
             self._mw.ana_param_x_axis_start_Label.setVisible(False)
-            self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
+            self._mw.ana_param_x_axis_start_ScienDSpinBox.setVisible(False)
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
-            self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
+            self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
 
         if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
             self._mw.ana_param_num_laserpulses_Label.setVisible(True)
@@ -2812,8 +2837,8 @@ class PulsedMeasurementGui(GUIBase):
         """ This method changes the sequence parameters"""
 
         laser_num = self._mw.ana_param_num_laser_pulse_SpinBox.value()
-        measurement_tick_start = self._mw.ana_param_x_axis_start_DoubleSpinBox.value()
-        measurement_tick_incr = self._mw.ana_param_x_axis_inc_DoubleSpinBox.value()
+        measurement_tick_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
+        measurement_tick_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
         mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
         mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
@@ -3530,20 +3555,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
-        self._mw.extract_param_aom_delay_DSpinBox.setValue(self._pulsed_meas_logic.aom_delay_s)
-        self._mw.extract_param_laser_length_DSpinBox.setValue(self._pulsed_meas_logic.laser_length_s)
+        self._mw.extract_param_aom_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.aom_delay_s)
+        self._mw.extract_param_laser_length_ScienDSpinBox.setValue(self._pulsed_meas_logic.laser_length_s)
 
-        # configure a big the display box:
-        self._mw.extract_param_aom_delay_DSpinBox.setSingleStep(10e-9) # in s
-        self._mw.extract_param_laser_length_DSpinBox.setSingleStep(100e-9) # in s
-
-        #FIXME: remove the dependency on the seq parameter changed for this
-        #       section!
-        self.seq_parameters_changed()
-
-
-        #self._mw.measuring_error_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-
+        # configure a bit the display box in the pulse extraction:
+        self._mw.extract_param_aom_delay_ScienDSpinBox.setSingleStep(10e-9) # in s
+        self._mw.extract_param_laser_length_ScienDSpinBox.setSingleStep(100e-9) # in s
 
     def _deactivate_pulse_extraction_ui(self, e):
         """ Disconnects the configuration for 'Pulse Extraction' Tab.
