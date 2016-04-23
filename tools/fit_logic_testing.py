@@ -1114,6 +1114,9 @@ class FitLogic():
     
             except:
                 print('exception')
+                
+            print(mod.eval(x=np.array([1]),params=p))
+            print(mod.eval(x=np.array([1]),poissonian_mu=8,poissonian_amplitude=200))
 
         def gaussian_testing(self):
             start=0
@@ -1250,8 +1253,8 @@ test=FitLogic()
 #test.powerfluorescence_testing()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
-#test.poissonian_testing()
-test.double_poissonian_testing()
+test.poissonian_testing()
+#test.double_poissonian_testing()
 #test.decay_testing()
 
 

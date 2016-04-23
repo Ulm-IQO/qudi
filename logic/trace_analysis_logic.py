@@ -467,18 +467,22 @@ class TraceAnalysisLogic(GenericLogic):
             return hist_fit_x, hist_fit_y, fit_result, param_dict
 
     def get_poissonian(self, x_val, mu, amplitude):
-        """ Calculate, bases on the passed values a poissonian distribution.
+        """ Calculate, bases on the passed values a poisson distribution.
 
-        @param float mu:
-        @param x_val:
-        @return np.array: a 2D array with the given x axis and the calculated
-                          values for the y axis.
+        @param float mu: expected value of poisson distribution
+        @param float amplitude: Amplitude to which is multiplied on distribution
+        @param int,float or np.array x_val: x values for poisson distribution,
+                                            also works for numbers (int or float)
+        @return np.array: a 1D array with the calculated poisson distribution,
+                          corresponding to given parameters/ x values
 
-        Calculate a Poissonian Distribution according to:
+        Calculate a Poisson distribution according to:
             P(k) =  mu^k * exp(-mu) / k!
         """
 
-        return self._fit_logic.poisson(x_val, mu, amplitude)
+        model, params = self._fit_logic.make_poissonian_model()
+
+        return model.eval(x=np.array(x_val), poissonian_mu=mu, poissonian_amplitude=amplitude)
 
     def guess_threshold(self, hist_val=None, trace=None, max_ratio_value=0.1):
         """ Assume a distribution between two values and try to guess the threshold.
