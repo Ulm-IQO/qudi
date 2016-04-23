@@ -251,8 +251,7 @@ class Pulse_Sequence(object):
     """
 
 
-    def __init__(self, name, ensemble_param_list, measurement_ticks_list=[],
-                 rotating_frame=True):
+    def __init__(self, name, ensemble_param_list, rotating_frame=True):
         """ The constructor for a Pulse_Sequence objects needs to have:
 
         @param str name: the actual name of the sequence
@@ -269,18 +268,12 @@ class Pulse_Sequence(object):
                                           look like
                                                 seq_param = {'reps': 12}
                                           if 12 was chosen as the number of repetitions.
-        @param list measurement_ticks_list: 1d list, where each entry corresponds to an tick on an
-                                            the x-axis of the measurement.
-                                            Note, that the x-axis does not have to be always a time
-                                            axis! The entry can also be voltages or other stuffm
-                                            which varies between the different entries!
         @param bool rotating_frame: indicates, whether the phase has to be preserved in all
                                     oscillating functions.
         """
 
         self.name = name
         self.ensemble_param_list = ensemble_param_list
-        self.measurement_ticks_list = np.array(measurement_ticks_list)
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
         self.sampled_ensembles = OrderedDict()
@@ -301,6 +294,14 @@ class Pulse_Sequence(object):
         #           without searching through the whole dict!
         self.different_ensembles_dict = dict()
 
+        # here the measurement ticks will be saved:
+        self.measurement_ticks_list = []
+
+        # to make a resonable measurement tick list, the last biggest tick value after all
+        # the repetitions of a block is used as the offset_time for the next
+        # block.
+        offset_tick_bin = 0
+
         for ensemble, seq_dict in self.ensemble_param_list:
 
             for param in seq_dict:
@@ -319,6 +320,15 @@ class Pulse_Sequence(object):
 
             if self.different_ensembles_dict.get(ensemble.name) is None:
                 self.different_ensembles_dict[ensemble.name] = ensemble
+
+            self.measurement_ticks_list = np.append(self.measurement_ticks_list,
+                                                   (offset_tick_bin + ensemble.measurement_ticks_list))
+
+            # for the next repetition or pulse_block_ensemble, add last number
+            # from the measurement_ticks_list as offset_tick_bin. Otherwise the
+            # measurement_ticks_list will be a mess:
+            if len(self.measurement_ticks_list) > 0:
+                offset_tick_bin = self.measurement_ticks_list[-1]
 
         self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
 
@@ -408,7 +418,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     signal_block_list_updated = QtCore.Signal()
     signal_ensemble_list_updated = QtCore.Signal()
     signal_sequence_list_updated = QtCore.Signal()
-    signal_loaded_asset_updated = QtCore.Signal()
+    sigLoadedAssetUpdated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -888,7 +898,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     def clear_pulser(self):
         """ Delete all loaded files in the device's current memory. """
         self._pulse_generator_device.clear_all()
-
+        self.loaded_asset = None
+        self.sigLoadedAssetUpdated.emit()
 
     def get_interleave(self):
         """ Get the interleave state.
@@ -1171,8 +1182,32 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             return -1
         self.loaded_asset = asset_obj
         # emit signal for pulse_analysis_logic and GUI
-        self.signal_loaded_asset_updated.emit()
+        self.sigLoadedAssetUpdated.emit()
         return err
+
+    def get_loaded_asset(self):
+        """ Retrieves the currently loaded asset on in the pulsing device and in the logic.
+
+        return tuple(str, str): first entry tells the name of the current asset
+                                second name tells the type of the asset.
+
+        Additionally, tell whether the currently loaded asset is a
+        Pulse_Block_Ensemble or a Pulse_Sequence object.
+        """
+
+        if isinstance(self.loaded_asset, Pulse_Block_Ensemble):
+            return self.loaded_asset.name, 'Ensemble'
+        elif isinstance(self.loaded_asset, Pulse_Sequence):
+            return self.loaded_asset.name, 'Sequence'
+        elif isinstance(self.loaded_asset, type(None)):
+            return 'None', 'None'
+        else:
+            self.logMsg('The current loaded asset is neither an instance of '
+                        'Pulse_Block_Ensemble, neither of Pulse_Sequence nor '
+                        'of None type! Handling of type {0} is not '
+                        'implemented!'.format(type(self.loaded_asset)),
+                        msgType='error')
+            return 'Unknown', 'Unknown Type'
 
     # =========================================================================
     # Depricated method, will be remove soon.
@@ -1434,17 +1469,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # list of all the Pulse_Block_Ensemble objects and their parameters
         ensemble_param_list = [None] * len(sequence_matrix)
 
-
-        # calculate the measurement ticks from all the previous measurement ticks in the
-        # Pulse_Block_Ensemble objects:
-        measurement_ticks_list = []
-
-
-        # to make a resonable measurement tick list, the last biggest tick value after all
-        # the repetitions of a block is used as the offset_time for the next
-        # block.
-        offset_tick_bin = 0
-
         for row_index, row in enumerate(sequence_matrix):
 
             # the ensemble entry must be always (!) present, therefore this entry in the
@@ -1482,23 +1506,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # get the reference on the Pulse_Block_Ensemble object:
             pulse_block_ensemble = self.get_pulse_block_ensemble(pulse_block_ensemble_name)
 
-            # append the measurement_ticks_list from the present pulse_block_ensemble depending
-            # on the amount of repetitions. Take also care about the offset_tick_bin.
-            for num in range(pulse_block_ensemble_reps + 1):
-                measurement_ticks_list = np.append(measurement_ticks_list,
-                                                   (offset_tick_bin + pulse_block_ensemble.measurement_ticks_list))
-
-                # for the next repetition or pulse_block_ensemble, add last number form the
-                # measurement_ticks_list as offset_tick_bin. Otherwise the measurement_ticks_list
-                # will be a mess.
-                offset_tick_bin = measurement_ticks_list[-1]
-
             # save in the list the object and sequence parameter
             ensemble_param_list[row_index] = (pulse_block_ensemble, seq_param)
 
         pulse_sequence = Pulse_Sequence(name=sequence_name,
                                         ensemble_param_list=ensemble_param_list,
-                                        measurement_ticks_list=measurement_ticks_list,
                                         rotating_frame=rotating_frame)
 
         # set current block ensemble

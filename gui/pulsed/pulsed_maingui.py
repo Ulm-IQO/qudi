@@ -565,7 +565,7 @@ class PulsedMeasurementGui(GUIBase):
         self._create_pulser_on_off_buttons()
         self._create_radiobuttons_for_channels()
         self._create_pushbutton_clear_device()
-
+        self._create_current_asset_QLabel()
         # filename tag input widget
         self._create_save_tag_input()
 
@@ -603,6 +603,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulser_on_PushButton.clicked.connect(self.pulser_on_clicked)
         self._mw.pulser_off_PushButton.clicked.connect(self.pulser_off_clicked)
         self._mw.clear_device_PushButton.clicked.connect(self.clear_device_clicked)
+
+        # the loaded asset will be updated in the GUI:
+        self._seq_gen_logic.sigLoadedAssetUpdated.connect(self.update_loaded_asset)
 
         # initialize the lists of available blocks, ensembles and sequences
         self.update_block_list()
@@ -728,6 +731,32 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.sample_freq_DSpinBox.setSingleStep(sample_step/1e6)
         self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step/1e6)* -1) )
         self.set_sample_rate(sample_max)
+
+    def _create_current_asset_QLabel(self):
+        """ Creaate a QLabel Display for the currently loaded asset for the toolbar. """
+        self._mw.current_loaded_asset_Label = QtGui.QLabel(self._mw)
+        self._mw.current_loaded_asset_Label.setText('  No Asset Loaded')
+        self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
+        self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
+
+    def get_ref_asset_label(self):
+        """ Retrieve the reference to the QLabel object of the GUI.
+
+        @return object: reference to a QtGui.QLabel object.
+        """
+        return self._mw.current_loaded_asset_Label
+
+    def update_loaded_asset(self):
+        """ Check the current loaded asset from the logic and update the display. """
+
+        label = self.get_ref_asset_label()
+        asset_name, asset_type = self._seq_gen_logic.get_loaded_asset()
+
+        if asset_name == 'None':
+            label.setText('  No Asset Loaded')
+        else:
+            label.setText('  {0} ({1})'.format(asset_name, asset_type))
+
 
     def pulser_on_clicked(self):
         """ Switch on the pulser output. """
