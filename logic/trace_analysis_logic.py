@@ -153,7 +153,8 @@ class TraceAnalysisLogic(GenericLogic):
             # array. That will ensure at least an output:
             if np.isclose(0, difference) or num_bins is None:
                 # numpy can handle an array of zeros
-                hist_y_val, hist_x_val = np.histogram(trace)
+                num_bins = 50
+                hist_y_val, hist_x_val = np.histogram(trace, num_bins)
             else:
                 # a histogram with self defined number of bins
                 hist_y_val, hist_x_val = np.histogram(trace, num_bins)
@@ -161,17 +162,74 @@ class TraceAnalysisLogic(GenericLogic):
         return hist_x_val, hist_y_val
 
 
-    def analyze_flip_prob(self, trace, ):
-        """ General method, which analysis how often a value was changed from
-            one data point to another in relation to a certain threshold.
+    def analyze_flip_prob(self, trace, num_bins=None, threshold=None):
+        """General method, which analysis how often a value was changed from
+           one data point to another in relation to a certain threshold.
 
-        @return:
+        @param np.array trace: 1D trace of data
+        @param int num_bins: optional, if a specific size for the histogram is
+                             desired, which is used to calculate the threshold.
+        @param float threshold: optional, if a specific threshold is going to be
+                                used, otherwise the threshold is calculated from
+                                the data.
+
+        @return tuple(flip_prop, param):
+
+                      float flip_prop: the actual flip probability
+                      int num_of_flips: the total number of flips
+                      float fidelity: the fidelity
+                      float threshold: the calculated or passed threshold
+                      float lifetime_dark: the lifetime in the dark state in s
+                      float lifetime_bright: lifetime in the bright state in s
         """
-        # # check whether the passed trace is a numpy array:
-        # if not type(trace).__module__ == np.__name__:
-        #     trace = np.array(trace)
-        pass
 
+        hist_data = self.calculate_histogram(trace=trace, num_bins=num_bins)
+        threshold_fit, fidelity = self.calculate_threshold(hist_data)
+        bin_trace = self.calculate_binary_trace(trace, threshold_fit)
+
+        # here the index_arr contain all indices where the state is above
+        # threshold, indicating the bright state.
+        index_arr, filtered_arr = self.extract_filtered_values(trace, threshold_fit, below=False)
+
+        # by shifting the index_arr one value further, one will investigate
+        # basically the next state, where a change has happened.
+        next_index_arr = index_arr+1
+
+        # Just for safety neglect the last value in the index_arr so that one
+        # will not go beyond the array.
+        next_filtered_bin_arr = bin_trace[next_index_arr[:-1]]
+
+        # calculate how many darkstates are present in the array, remember
+        # filtered_arr contains all the bright states.
+        num_dark_state = len(trace) - len(filtered_arr)
+        num_bright_state = len(filtered_arr)
+
+        # extract the number of state, which has been flipped to dark state
+        # (True) started in the bright state (=False)
+        num_flip_to_dark = len(np.where(next_filtered_bin_arr == True)[0])
+
+        # flip probability:
+        # In the array filtered_bin_arr all states are in bright state meaning
+        # that if you would perform for
+        #   filtered_bin_arr = bin_trace[index_arr]
+        # the mean value with filtered_bin_arr.mean() then you should get 0.0
+        # since every entry in that array is False. By looking at the next index
+        # it might be that some entries turn to True, i.e. a flip from bright to
+        # dark occurred. Then you get a different mean value, which would
+        # indicate how many states are flipped from bright (False) to dark (True).
+        # If all the next states would be dark (True), then you would perform a
+        # perfect flip into the dark state, meaning a flip probability of 1.
+        flip_prob = next_filtered_bin_arr.mean()
+
+        # put all the calculated parameters in a proper dict:
+        param = OrderedDict()
+        param['num_dark_state'] = num_dark_state # Number of Dark States
+        param['num_bright_state'] = num_bright_state # Number of Bright States
+        param['num_flip_to_dark'] = num_flip_to_dark # Number of flips from bright to dark
+        param['fidelity'] = fidelity # Fidelity of Double Poissonian Fit
+        param['threshold'] = threshold_fit # Threshold
+
+        return flip_prob, param
 
     def analyze_flip_prob_postselect(self):
         """ Post select the data trace so that the flip probability is only
@@ -316,13 +374,6 @@ class TraceAnalysisLogic(GenericLogic):
 
             fit_result = self._create_formatted_output(param_dict)
 
-            # units = {'center': 'cts/s',
-            #          'c': '#',
-            #          'amplitude': '#',
-            #          'sigma': 'cts/s'}
-            # fit_result = self._fit_logic.create_fit_string(result, model, units=units)
-            # fit_result = str("Center (Counts/s): {:.1f} \n".format(result.best_values['center']))
-
             return hist_fit_x, hist_fit_y, fit_result, param_dict
 
     def do_doublegaussian_fit(self, axis, data):
@@ -341,15 +392,6 @@ class TraceAnalysisLogic(GenericLogic):
             # 1000 points in x axis for smooth fit data
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
-
-            # units = {'gaussian0_center': 'cts/s',
-            #          'gaussian1_center': 'cts/s',
-            #          'gaussian0_sigma': 'cts/s',
-            #          'gaussian1_sigma': 'cts/s',
-            #          'gaussian0_amplitude': '#',
-            #          'gaussian1_amplitude': '#',
-            #          'c': '#'}
-            # fit_result = self._fit_logic.create_fit_string(result, model, units=units)
 
             # this dict will be passed to the formatting method
             param_dict = OrderedDict()
@@ -387,8 +429,6 @@ class TraceAnalysisLogic(GenericLogic):
                                          'error': np.round(result.params['gaussian1_amplitude'].stderr, 2),
                                          'unit' : 'Occurrences'}
 
-            # fit_result = str("Center 1 (kCounts/s): {:.1f} \nCenter 2 (kCounts/s): {:.1f}".format(
-            #     result.best_values['gaussian0_center']/1e3, result.best_values['gaussian1_center']/1e3))
             fit_result = self._create_formatted_output(param_dict)
             return hist_fit_x, hist_fit_y, fit_result, param_dict
 
@@ -409,10 +449,6 @@ class TraceAnalysisLogic(GenericLogic):
             hist_fit_x = np.linspace(axis[0], axis[-1], 1000)
             hist_fit_y = model.eval(x=hist_fit_x, params=result.params)
 
-            # units = {'poissonian0_mu', 'Counts/s',
-            #          'poissonian1_mu', 'kCounts/s'}
-            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
-
             # this dict will be passed to the formatting method
             param_dict = OrderedDict()
 
@@ -431,8 +467,7 @@ class TraceAnalysisLogic(GenericLogic):
                                          'unit' : 'Occurrences'}
 
             fit_result = self._create_formatted_output(param_dict)
-            # fit_result = str("poissonian0_mu (kCounts/s): {:.1f} \npoissonian1_mu (kCounts/s): {:.1f}".format(
-            #     result.best_values['poissonian0_mu']/1e3, result.best_values['poissonian1_mu']/1e3))
+
             return hist_fit_x, hist_fit_y, fit_result, param_dict
 
     def do_possonian_fit(self, axis, data):
@@ -459,10 +494,6 @@ class TraceAnalysisLogic(GenericLogic):
                                      'error': np.round(result.params['poissonian_mu'].stderr, 2),
                                      'unit' : 'Counts/s'}
 
-            # units = {'poissonian0_mu', 'Counts/s',
-            #          'poissonian1_mu', 'kCounts/s'}
-            # fit_result = self._fit_logic.create_fit_string(result, doublepoissonian, units=units)
-            # fit_result = str("poissonian_mu (Counts/s): {:.1f}".format(result.best_values['poissonian_mu']))
             fit_result = self._create_formatted_output(param_dict)
             return hist_fit_x, hist_fit_y, fit_result, param_dict
 
@@ -525,13 +556,7 @@ class TraceAnalysisLogic(GenericLogic):
         """ Calculate the threshold by minimizing its overlap with the poissonian fits.
 
         @param np.array hist_data: 2D array whitch represent the x and y values
-                                   of a histogram of a trace. Optional, if None
-                                   is passed here, the argument trace can be
-                                   used for calculations.
-        @param np.array trace: optional, 1D array containing the y values of a
-                               measured counter trace. If None is passed to
-                               hist_data then the threshold will be calculated
-                               from the trace.
+                                   of a histogram of a trace.
 
         @return tuple(float, float):
                     threshold: the calculated threshold between two overlapping
@@ -545,7 +570,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         """
 
-        # perform the fit, maybe more fitting parameter will come
+        # perform the fit
         x_axis = hist_data[0][:-1]+(hist_data[0][1]-hist_data[0][0])/2.
         y_data = hist_data[1]
         hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
@@ -570,17 +595,20 @@ class TraceAnalysisLogic(GenericLogic):
             # changes the sign. The transition from positive to negative values
             # will get the threshold:
             if difference_poissonian[i] < 0 and difference_poissonian[i+1] >= 0:
-                trans_index = i+1
+                trans_index = i
                 break
             elif difference_poissonian[i] > 0 and difference_poissonian[i+1] <= 0:
-                trans_index = i+1
+                trans_index = i
                 break
 
         threshold_fit = hist_data[0][trans_index]
 
         # Calculate also the readout fidelity, i.e. sum the area under the
-        # first peak before the threshold and after it and sum also the area
-        # under the second peak before the threshold and after it:
+        # first peak before the threshold of the first and second distribution
+        # and take the ratio of that area. Do the same thing after the threshold
+        # (of course with a reversed choice of the distribution). If the overlap
+        # in both cases is very small, then the fidelity is good, if the overlap
+        # is identical, then fidelity indicates a poor separation of the peaks.
 
         if mu0 < mu1:
             area0_low = self.get_poissonian(hist_data[0][0:trans_index], mu0, amp0).sum()
@@ -600,28 +628,41 @@ class TraceAnalysisLogic(GenericLogic):
         return threshold_fit, fidelity
 
 
-
     def calculate_binary_trace(self, trace, threshold):
         """ Calculate for a given threshold all the trace values und output a
             binary array, where
                 True = Below or equal Threshold
                 False = Above Threshold.
 
-        @param trace:
-        @param threshold:
-        @return:
+        @param np.array trace: a 1D array containing the y data, e.g. ccunts
+        @param float threshold: value to decide whether a point in the trace
+                                is below/equal (True) or above threshold (False).
+
+        @return np.array: 1D trace of the length(trace) but now with boolean
+                          entries
         """
-        pass
+        return trace <= threshold
 
+    def extract_filtered_values(self, trace, threshold, below=True):
+        """ Extract only those values, which are below or equal a certain Threshold.
 
-    def extract_filtered_values(self, trace, threshold, as_binary=False):
-        """ Extract only those values, which are below a certain Threshold.
+        @param np.array trace:
+        @param float threshold:
 
-        @param trace:
-        @param threshold:
-        @return:
+        @return tuple(index_array, filtered_array):
+                    np.array index_array: 1D integer array containing the
+                                          indices of the passed trace array
+                                          which are equal or below the threshold
+                    np.array filtered_array: the actual values of the trace,
+                                             which are equal or below threshold
         """
-        pass
+        if below:
+            index_array = np.where(trace <= threshold)[0]
+        else:
+            index_array = np.where(trace > threshold)[0]
+        filtered_array = trace[index_array]
+        return index_array, filtered_array
+
 
     def _create_formatted_output(self, param_dict):
         """ Display a parameter set nicely.
