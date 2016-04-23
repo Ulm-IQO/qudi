@@ -40,13 +40,11 @@ from scipy.special import gammaln as gamln
 #                                                                          #
 ############################################################################
 
-def poisson(self, x, mu,amplitude=1.0):
+def poisson(self,x,mu):
     """
     Poisson function see https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
     """
-
-    norm = amplitude/np.exp(special.xlogy(mu, mu) - gamln(mu + 1) - mu)
-    return norm*np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
+    return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
 
 def make_poissonian_model(self, no_of_functions=None):
     """ This method creates a model of a poissonian with an offset.
