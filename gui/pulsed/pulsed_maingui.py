@@ -734,8 +734,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def _create_current_asset_QLabel(self):
         """ Creaate a QLabel Display for the currently loaded asset for the toolbar. """
-        self._mw.current_loaded_asset_Label = QtGui.QLabel(self._mw)
-        self._mw.current_loaded_asset_Label.setText('  No Asset Loaded')
+
+        self._mw.current_loaded_asset_Label = self._create_QLabel(self._mw, '  No Asset Loaded')
         self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
 
@@ -2547,6 +2547,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
+        self._mw.ana_param_num_laser_defined_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
         self.measurement_ticks_editor()
 
         # Connect InputWidgets to events
@@ -2598,9 +2599,8 @@ class PulsedMeasurementGui(GUIBase):
             # set number of laser pulses:
             self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
 
-            #FIXME: Should not be hardcoded here
-            self._pulsed_meas_logic.aom_delay_s = 1e-6
-            self._pulsed_meas_logic.laser_length_s = 3e-6
+            self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_DSpinBox.value()
+            self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_DSpinBox.value()
 
             self.analysis_fc_binning_changed()
 
@@ -2732,7 +2732,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def measurement_ticks_editor(self):
-        """ Shows or hides input widgets which are necessary if the x axis id defined or not"""
+        """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
+
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
             self._mw.ana_param_x_axis_start_Label.setVisible(True)
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(True)
@@ -2743,8 +2744,13 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_start_DoubleSpinBox.setVisible(False)
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_DoubleSpinBox.setVisible(False)
-        return
 
+        if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
+            self._mw.ana_param_num_laserpulses_Label.setVisible(True)
+            self._mw.ana_param_num_laser_pulse_SpinBox.setVisible(True)
+        else:
+            self._mw.ana_param_num_laserpulses_Label.setVisible(False)
+            self._mw.ana_param_num_laser_pulse_SpinBox.setVisible(False)
 
     def change_second_plot(self):
         """ This method handles the second plot"""
@@ -3515,6 +3521,12 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
+        self._mw.extract_param_aom_delay_DSpinBox.setValue(self._pulsed_meas_logic.aom_delay_s)
+        self._mw.extract_param_laser_length_DSpinBox.setValue(self._pulsed_meas_logic.laser_length_s)
+
+        # configure a big the display box:
+        self._mw.extract_param_aom_delay_DSpinBox.setSingleStep(10e-9) # in s
+        self._mw.extract_param_laser_length_DSpinBox.setSingleStep(100e-9) # in s
 
         #FIXME: remove the dependency on the seq parameter changed for this
         #       section!
