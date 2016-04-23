@@ -186,6 +186,11 @@ class Pulse_Block_Ensemble(object):
         self.rotating_frame = rotating_frame
         self.refresh_parameters()
 
+        #TODO: That parameter container should be used to store all Information
+        #      upon creation of the Pulse_Sequence object. Those information
+        #      will also be saved to file.
+        self.param_container = OrderedDict()
+
     def refresh_parameters(self):
         self.length_bins = 0
         self.analog_channels = 0
@@ -278,8 +283,11 @@ class Pulse_Sequence(object):
         self.refresh_parameters()
         self.sampled_ensembles = OrderedDict()
 
-    # FIXME: Calculate all parameters that are also present in the ensemble objects
-    # like number_of_lasers etc.
+        #TODO: That parameter container should be used to store all Information
+        #      upon creation of the Pulse_Sequence object. Those information
+        #      will also be saved to file.
+        self.param_container = OrderedDict()
+
     def refresh_parameters(self):
         """ Generate the needed parameters from the passed object.
 
@@ -1211,21 +1219,51 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         Additionally, tell whether the currently loaded asset is a
         Pulse_Block_Ensemble or a Pulse_Sequence object.
+
+        Prepare an abstract dict with parameter for all external routines.
         """
+        param = OrderedDict()
+
 
         if isinstance(self.loaded_asset, Pulse_Block_Ensemble):
-            return self.loaded_asset.name, 'Ensemble'
+
+            #FIXME: Those parameter should be actually saved in the param_container
+            #       attribute of a Pulse_Block_Ensemble object, to centralize
+            #       the content of information! Implement that! Think also about
+            #       whether it makes sense that the GUI will get this asset and
+            #       pass it to the pulsed_measurement_logic or whether just
+            #       the parameter container should be passed to the logic
+            #       because the GUI does not need to know about the
+            #       Pulse_Block_Ensemble object
+            param['num_laser_pulses'] = self.loaded_asset.number_of_lasers
+            param['measurement_ticks_list'] = self.loaded_asset.measurement_ticks_list
+
+            return self.loaded_asset.name, 'Ensemble', param
+
         elif isinstance(self.loaded_asset, Pulse_Sequence):
-            return self.loaded_asset.name, 'Sequence'
+
+            #FIXME: Those parameter should be actually saved in the param_container
+            #       attribute of a Pulse_Sequence object, to centralize
+            #       the content of information! Implement that! Think also about
+            #       whether it makes sense that the GUI will get this asset and
+            #       pass it to the pulsed_measurement_logic or whether just
+            #       the parameter container should be passed to the logic
+            #       because the GUI does not need to know about the
+            #       Pulse_Sequence object
+            param['num_laser_pulses'] = self.loaded_asset.number_of_lasers
+            param['measurement_ticks_list'] = self.loaded_asset.measurement_ticks_list
+
+            return self.loaded_asset.name, 'Sequence', param
+
         elif isinstance(self.loaded_asset, type(None)):
-            return 'None', 'None'
+            return 'None', 'None', param
         else:
             self.logMsg('The current loaded asset is neither an instance of '
                         'Pulse_Block_Ensemble, neither of Pulse_Sequence nor '
                         'of None type! Handling of type {0} is not '
                         'implemented!'.format(type(self.loaded_asset)),
                         msgType='error')
-            return 'Unknown', 'Unknown Type'
+            return 'Unknown', 'Unknown Type', param
 
     # =========================================================================
     # Depricated method, will be remove soon.
