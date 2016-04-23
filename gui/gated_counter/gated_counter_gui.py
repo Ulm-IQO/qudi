@@ -103,7 +103,7 @@ class GatedCounterGui(GUIBase):
 
         self._histoplot1 = PlotCurveItem()
         self._hp.addItem(self._histoplot1, pen='r')
-        self._histoplot1.setPen((37,87,238,255))
+        self._histoplot1.setPen((37, 87, 238, 255))
 
 
         # Configure the fit of the data in the main pulse analysis display:
@@ -132,12 +132,17 @@ class GatedCounterGui(GUIBase):
         self._mw.save_measurement_Action.triggered.connect(self.save_clicked)
         self._mw.actionRestore_Default.triggered.connect(self.set_default_view_main_window)
 
+        # that is also the default value of the histogram method in logic
+        # important: the set of a value should not trigger a redrawn of the
+        # current empty histogram, which is at the start of the program.
+        self._mw.hist_bins_SpinBox.setValue(50)
         # connect now a reaction on a change of the various input widgets:
         self._mw.count_length_SpinBox.editingFinished.connect(self.count_length_changed)
         self._mw.count_per_readout_SpinBox.editingFinished.connect(self.count_per_readout_changed)
-        self._mw.hist_bins_Slider.sliderMoved.connect(self.num_bins_changed)
+        self._mw.hist_bins_Slider.valueChanged.connect(self.num_bins_changed)
         self._mw.hist_bins_SpinBox.valueChanged.connect(self.num_bins_changed)
         self._trace_analysis.sigHistogramUpdated.connect(self.update_histogram)
+
 
         # starting the physical measurement:
         self.sigStartGatedCounter.connect(self._counter_logic.startCount)
