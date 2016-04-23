@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -317,11 +317,11 @@
                  <item row="0" column="2">
                   <widget class="QLabel" name="label_29">
                    <property name="text">
-                    <string>is x axis defined ?</string>
+                    <string>Define own x axis ?</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="2" column="1">
                   <widget class="QSpinBox" name="ana_param_num_laser_pulse_SpinBox">
                    <property name="minimum">
                     <number>50</number>
@@ -338,35 +338,28 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_18">
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="ana_param_num_laserpulses_Label">
                    <property name="text">
                     <string>Num Laserpulses</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="3" column="1">
                   <widget class="QCheckBox" name="ana_param_ignore_first_CheckBox">
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="2">
-                  <widget class="QLabel" name="ana_param_x_axis_start_Label">
-                   <property name="text">
-                    <string>x axis start:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
+                 <item row="5" column="1">
                   <widget class="QCheckBox" name="ana_param_alternating_CheckBox">
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="4" column="1">
                   <widget class="QCheckBox" name="ana_param_ignore_last_CheckBox">
                    <property name="text">
                     <string/>
@@ -376,34 +369,14 @@
                  <item row="0" column="1">
                   <widget class="QComboBox" name="ana_param_fc_bins_ComboBox"/>
                  </item>
-                 <item row="3" column="2">
-                  <widget class="QLabel" name="second_plot_Label">
-                   <property name="text">
-                    <string>Show second plot?</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
+                 <item row="4" column="0">
                   <widget class="QLabel" name="label_24">
                    <property name="text">
                     <string>Ignore last ?</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="3">
-                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_start_DoubleSpinBox">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="maximum">
-                    <double>999999999.000000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>1.000000000000000</double>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
+                 <item row="5" column="0">
                   <widget class="QLabel" name="label_25">
                    <property name="text">
                     <string>Alternating ?</string>
@@ -420,15 +393,46 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="label_23">
                    <property name="text">
                     <string>Ignore first ?</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="3">
-                  <widget class="QComboBox" name="second_plot_ComboBox"/>
+                 <item row="1" column="1">
+                  <widget class="QCheckBox" name="ana_param_num_laser_defined_defined_CheckBox">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_27">
+                   <property name="text">
+                    <string>Define Num Laserpulses?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="ana_param_x_axis_start_Label">
+                   <property name="text">
+                    <string>x axis start:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QDoubleSpinBox" name="ana_param_x_axis_start_DoubleSpinBox">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="maximum">
+                    <double>999999999.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>1.000000000000000</double>
+                   </property>
+                  </widget>
                  </item>
                  <item row="2" column="2">
                   <widget class="QLabel" name="ana_param_x_axis_inc_Label">
@@ -449,6 +453,16 @@
                     <double>1.000000000000000</double>
                    </property>
                   </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="second_plot_Label">
+                   <property name="text">
+                    <string>Show second plot?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QComboBox" name="second_plot_ComboBox"/>
                  </item>
                  <item row="4" column="2">
                   <widget class="QLabel" name="show_errorbars_Label">
@@ -506,7 +520,7 @@
               <property name="sizeHint" stdset="0">
                <size>
                 <width>40</width>
-                <height>20</height>
+                <height>10</height>
                </size>
               </property>
              </spacer>
@@ -1900,7 +1914,7 @@ sel.</string>
                    </property>
                   </spacer>
                  </item>
-                 <item row="3" column="1">
+                 <item row="6" column="1">
                   <spacer name="verticalSpacer_3">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
@@ -1912,6 +1926,36 @@ sel.</string>
                     </size>
                    </property>
                   </spacer>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="ScienDSpinBox" name="extract_param_aom_delay_DSpinBox"/>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_18">
+                   <property name="text">
+                    <string>AOM Delay</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="3">
+                  <widget class="Line" name="line">
+                   <property name="styleSheet">
+                    <string notr="true">background-color: rgb(255, 255, 255);</string>
+                   </property>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_33">
+                   <property name="text">
+                    <string>Laser length</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="ScienDSpinBox" name="extract_param_laser_length_DSpinBox"/>
                  </item>
                 </layout>
                </item>
@@ -2147,6 +2191,11 @@ sel.</string>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

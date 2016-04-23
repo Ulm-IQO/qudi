@@ -297,6 +297,7 @@ class Pulse_Sequence(object):
         # here the measurement ticks will be saved:
         self.measurement_ticks_list = []
 
+        self.number_of_lasers = 0
         # to make a resonable measurement tick list, the last biggest tick value after all
         # the repetitions of a block is used as the offset_time for the next
         # block.
@@ -323,6 +324,8 @@ class Pulse_Sequence(object):
 
             self.measurement_ticks_list = np.append(self.measurement_ticks_list,
                                                    (offset_tick_bin + ensemble.measurement_ticks_list))
+
+            self.number_of_lasers += ensemble.number_of_lasers
 
             # for the next repetition or pulse_block_ensemble, add last number
             # from the measurement_ticks_list as offset_tick_bin. Otherwise the
