@@ -977,6 +977,10 @@ class PulsedMeasurementGui(GUIBase):
         else:
             # set the current ensemble in the logic and all ComboBoxes to the currently
             # shown ensemble in the upload_ensemble_ComboBox.
+
+            # index_to_set = self._mw.saved_ensembles_ComboBox.currentIndex()
+            # current_ensemble_name = self._mw.saved_ensembles_ComboBox.itemText(index_to_set)
+
             current_ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
             index_to_set = self._mw.saved_ensembles_ComboBox.findText(current_ensemble_name)
             self._mw.saved_ensembles_ComboBox.setCurrentIndex(index_to_set)
@@ -1926,7 +1930,9 @@ class PulsedMeasurementGui(GUIBase):
         """
         name = self._mw.saved_ensembles_ComboBox.currentText()
         self._seq_gen_logic.delete_ensemble(name)
+        self.update_ensemble_list()
         return
+
 
     def generate_pulse_block_ensemble(self):
         """ Generate a Pulse_Block_ensemble object."""
@@ -2597,7 +2603,10 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(True)
 
             # set number of laser pulses:
-            self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
+            if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
+                self._pulsed_meas_logic.set_num_of_lasers(self._mw.ana_param_num_laser_pulse_SpinBox.value())
+            else:
+                pass
 
             self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_DSpinBox.value()
             self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_DSpinBox.value()
@@ -2632,7 +2641,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     #ToDo: I think that is not really working yet
-    def continue_pause_clicked(self,isChecked):
+    def continue_pause_clicked(self, isChecked):
         """ Continues and pauses the measurement. """
 
         if isChecked:

@@ -971,6 +971,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         if name in self.saved_pulse_blocks:
             os.remove(os.path.join(self.block_dir, name + '.blk'))
+
+            # if a block is removed, then check whether the current_block is
+            # actually the removed block and if so set current_block to None
+            if hasattr(self.current_block, 'name'):
+                if self.current_block.name == name:
+                    self.current_block = None
             self.refresh_block_list()
         else:
             self.logMsg('Pulse_Block object with name "{0}" not found '
@@ -1034,6 +1040,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         if name in self.saved_pulse_block_ensembles:
             os.remove( os.path.join(self.ensemble_dir, name + '.ens'))
+
+            # if a ensemble is removed, then check whether the current_ensemble
+            # is actually the removed ensemble and if so set current_ensemble to
+            # None.
+            if hasattr(self.current_ensemble, 'name'):
+                if self.current_ensemble.name == name:
+                    self.current_ensemble = None
+
             self.refresh_ensemble_list()
         else:
             self.logMsg('Pulse_Block_Ensemble object with name "{0}" not found '
@@ -1049,8 +1063,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ensembles = []
         for filename in ensemble_files:
             ensembles.append(filename.rsplit('.', 1)[0])
-        self.saved_pulse_block_ensembles = ensembles
         ensembles.sort()
+        self.saved_pulse_block_ensembles = ensembles
+
         self.signal_ensemble_list_updated.emit()
 
     def save_sequence(self, name, sequence):
