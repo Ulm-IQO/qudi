@@ -737,11 +737,11 @@ class AWG5002C(Base, PulserInterface):
 
             # since the available channels are not going to change for this
             # device you are asking directly:
-            amp[1] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
-            amp[2] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
+            amp['a_ch1'] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
+            amp['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
 
-            off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
-            off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
+            off['a_ch1'] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
+            off['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
         else:
             for a_ch in amplitude:

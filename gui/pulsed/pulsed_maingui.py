@@ -794,7 +794,7 @@ class PulsedMeasurementGui(GUIBase):
         """ Check the current loaded asset from the logic and update the display. """
 
         label = self.get_ref_asset_label()
-        asset_name, asset_type = self._seq_gen_logic.get_loaded_asset()
+        asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
 
         if asset_name == 'None':
             label.setText('  No Asset Loaded')
