@@ -140,7 +140,7 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
     elif mw_channel < 0 and mw_channel >= -self.analog_channels:
         pulse_function[abs(mw_channel)-1] = 'Sin'
         mw_freq = mw_freq_MHz*1e6
-        analog_params[abs(mw_channel)-1] = {'amplitude1':mw_amp_V, 'frequency1':mw_freq}
+        analog_params[abs(mw_channel)-1] = {'amplitude1':mw_amp_V, 'frequency1':mw_freq, 'phase1': 0.0}
     else:
         self.logMsg('Value of {0} is not a proper mw channel. Digital laser '
                     'channels are positive values 1=d_ch1, 2=d_ch2, '
@@ -322,7 +322,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70,
     markers = [False]*self.digital_channels
 
     if seq_channel > 0 and seq_channel <= self.digital_channels:
-        markers[open_count_channel-1] = True
+        markers[seq_channel-1] = True
     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
         pulse_function[abs(seq_channel)-1] = 'DC'
         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}
@@ -692,7 +692,7 @@ def generate_ramsey_bins(self, name='Ramsey', tau_start_bins=50, tau_step_bins=5
     markers = [False]*self.digital_channels
 
     if seq_channel > 0 and seq_channel <= self.digital_channels:
-        markers[open_count_channel-1] = True
+        markers[seq_channel-1] = True
     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
         pulse_function[abs(seq_channel)-1] = 'DC'
         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}
@@ -926,7 +926,7 @@ def generate_hahn_bins(self, name='Hahn Echo', tau_start_bins=500,
     markers = [False]*self.digital_channels
 
     if seq_channel > 0 and seq_channel <= self.digital_channels:
-        markers[open_count_channel-1] = True
+        markers[seq_channel-1] = True
     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
         pulse_function[abs(seq_channel)-1] = 'DC'
         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}
@@ -1222,7 +1222,7 @@ def generate_xy8_bins(self, name='xy8', tau_start_bins=50, tau_step_bins=50,
     markers = [False]*self.digital_channels
 
     if seq_channel > 0 and seq_channel <= self.digital_channels:
-        markers[open_count_channel-1] = True
+        markers[seq_channel-1] = True
     elif seq_channel < 0 and seq_channel >= -self.analog_channels:
         pulse_function[abs(seq_channel)-1] = 'DC'
         analog_params[abs(seq_channel)-1] = {'amplitude1': channel_amp_V}

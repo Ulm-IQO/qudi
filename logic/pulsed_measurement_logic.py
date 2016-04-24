@@ -169,11 +169,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
         if self.fast_counter_gated:
             record_length_s = self.aom_delay_s + self.laser_length_s
-            number_of_gates = self.number_of_lasers
+            number_of_gates = int(self.number_of_lasers)
         elif not self.fast_counter_gated:
             record_length_s = self.aom_delay_s + self.sequence_length_s
             number_of_gates = 0
-        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth/1e9 , record_length_s, number_of_gates)
+        actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , record_length_s, number_of_gates)
         #self.fast_counter_binwidth = actual_binwidth_s
         return
 
