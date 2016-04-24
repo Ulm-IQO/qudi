@@ -324,10 +324,13 @@
                  <item row="2" column="1">
                   <widget class="QSpinBox" name="ana_param_num_laser_pulse_SpinBox">
                    <property name="minimum">
-                    <number>50</number>
+                    <number>0</number>
                    </property>
                    <property name="maximum">
                     <number>10000000</number>
+                   </property>
+                   <property name="value">
+                    <number>50</number>
                    </property>
                   </widget>
                  </item>
@@ -404,7 +407,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QCheckBox" name="ana_param_num_laser_defined_defined_CheckBox">
+                  <widget class="QCheckBox" name="ana_param_num_laser_defined_CheckBox">
                    <property name="text">
                     <string/>
                    </property>

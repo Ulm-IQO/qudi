@@ -320,7 +320,7 @@ class AWG5002C(Base, PulserInterface):
 
         # at first delete all the name, which might lead to confusions in the
         # upload procedure:
-        self._check_and_delete_filename(asset_name)
+        self._check_and_delete_filename_on_device(asset_name)
 
         # create list of filenames to be uploaded
         upload_names = []
@@ -1530,7 +1530,7 @@ class AWG5002C(Base, PulserInterface):
 
         return filename_list
 
-    def _check_and_delete_filename(self, asset_name):
+    def _check_and_delete_filename_on_device(self, asset_name):
         """ Check and delete filenames with asset_name.
 
         @param str asset_name: name of the asset you want to look for.
@@ -1562,7 +1562,7 @@ class AWG5002C(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.wfm')]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.wfm') or f.endswith('.seq')]
         return filename_list
 
     def _get_num_a_ch(self):

@@ -2652,7 +2652,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
-        self._mw.ana_param_num_laser_defined_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
+        self._mw.ana_param_num_laser_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
         self.measurement_ticks_editor()
 
         # Connect InputWidgets to events
@@ -2702,7 +2702,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_pull_data.setEnabled(True)
 
             # set number of laser pulses:
-            if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
+            if self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
                 num_laser_pulses = self._mw.ana_param_num_laser_pulse_SpinBox.value()
             else:
                 asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
@@ -2867,7 +2867,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
 
-        if self._mw.ana_param_num_laser_defined_defined_CheckBox.isChecked():
+        if self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
             self._mw.ana_param_num_laserpulses_Label.setVisible(True)
             self._mw.ana_param_num_laser_pulse_SpinBox.setVisible(True)
         else:
