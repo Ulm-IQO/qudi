@@ -696,13 +696,14 @@ class PulsedMeasurementLogic(GenericLogic):
 
         return fft_x[:middle],fft_y[:middle]
 
-    def get_available_fit_functions(self):
+    def get_fit_functions(self):
         """Giving the available fit functions
 
         @return list of strings with all available fit functions
 
         """
-        return ['No Fit','Rabi Decay','Lorentian (neg)','Lorentian (pos)','N14','N15','Stretched Exponential','Exponential','XY8']
+        return ['No Fit', 'Rabi', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
+                'N15', 'Stretched Exponential', 'Exponential', 'XY8']
 
 
     def do_fit(self, fit_function):
@@ -714,7 +715,9 @@ class PulsedMeasurementLogic(GenericLogic):
         @return float array pulsed_fit_y: Array containing the y-values of the fit
         @return str array pulsed_fit_result: String containing the fit parameters displayed in a nice form
         """
-        pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0],self.signal_plot_x[-1],1000)
+        pulsed_fit_x = self.compute_x_for_fit(self.signal_plot_x[0], self.signal_plot_x[-1],1000)
+
+        param_dict = OrderedDict()
 
         if fit_function == 'No Fit':
             pulsed_fit_x = []
@@ -722,7 +725,7 @@ class PulsedMeasurementLogic(GenericLogic):
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
-        elif fit_function == 'Rabi Decay':
+        elif fit_function == 'Rabi':
             result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x,
                                                    data=self.signal_plot_y,
                                                    add_parameters=None)
@@ -731,71 +734,175 @@ class PulsedMeasurementLogic(GenericLogic):
 
             #pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
 
-            fit_result = str('Contrast: ' + str(np.round(np.abs(2*result.params['amplitude'].value), 3)) + u" \u00B1 " +
-                                            str(np.round(2 * result.params['amplitude'].stderr, 2)) + "\n" +
-                             'Frequency [MHz]: ' + str(np.round(1000*result.params['frequency'].value, 3)) + u" \u00B1 " +
-                                                   str(np.round(1000*result.params['frequency'].stderr, 2)) + "\n" +
-                             'Offset: ' + str(np.round(result.params['offset'].value,3)) + u" \u00B1 " +
-                                          str(np.round(result.params['offset'].stderr,2)) + "\n" +
-                             #'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
-                             'Phase [rad]: ' + str(np.round(result.params['phase'].value, 3)) + u" \u00B1 " +
-                                               str(np.round(result.params['frequency'].stderr, 2)) + "\n")
+            param_dict['Contrast'] = {'value': np.round(np.abs(2*result.params['amplitude'].value), 3),
+                                      'error': np.round(2 * result.params['amplitude'].stderr, 2),
+                                      'unit' : 'norm. signal'}
+            param_dict['Frequency'] = {'value': np.round(result.params['frequency'].value/1e6, 3),
+                                       'error': np.round(result.params['frequency'].stderr/1e6, 3),
+                                       'unit' : 'MHz'}
+            param_dict['Offset'] = {'value': np.round(result.params['offset'].value, 3),
+                                    'error': np.round(result.params['offset'].stderr, 2),
+                                    'unit' : 'norm. signal'}
+            param_dict['Phase'] = {'value': np.round(result.params['phase'].value/np.pi *180, 3),
+                                   'error': np.round(result.params['phase'].stderr/np.pi *180, 2),
+                                   'unit' : '°'}
+
+            fit_result = self._create_formatted_output(param_dict)
+
+            # fit_result = str('Contrast: ' + str(np.round(np.abs(2*result.params['amplitude'].value), 3)) + u" \u00B1 " +
+            #                                 str(np.round(2 * result.params['amplitude'].stderr, 2)) + "\n" +
+            #                  'Frequency [MHz]: ' + str(np.round(1000*result.params['frequency'].value, 3)) + u" \u00B1 " +
+            #                                        str(np.round(1000*result.params['frequency'].stderr, 2)) + "\n" +
+            #                  'Offset: ' + str(np.round(result.params['offset'].value,3)) + u" \u00B1 " +
+            #                               str(np.round(result.params['offset'].stderr,2)) + "\n" +
+            #                  #'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
+            #                  'Phase [rad]: ' + str(np.round(result.params['phase'].value, 3)) + u" \u00B1 " +
+            #                                    str(np.round(result.params['frequency'].stderr, 2)) + "\n")
 
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function == 'Lorentian (neg)':
-            result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+
+            result = self._fit_logic.make_lorentzian_fit(axis=self.signal_plot_x,
+                                                         data=self.signal_plot_y,
+                                                         add_parameters=None)
             lorentzian, params = self._fit_logic.make_lorentzian_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
-            fit_result = (   'Minimum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
-                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
-                                + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
+            param_dict['Minimum'] = {'value': np.round(result.params['center'].value, 3),
+                                     'error': np.round(result.params['center'].stderr, 2),
+                                     'unit' : 'ns'}
+            param_dict['Linewidth'] = {'value': np.round(result.params['fwhm'].value, 3),
+                                       'error': np.round(result.params['fwhm'].stderr, 2),
+                                       'unit' : 'ns'}
+
+            cont = result.params['amplitude'].value
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            param_dict['Contrast'] = {'value': np.round(cont*100, 3),
+                                      'unit' : '%'}
+
+            fit_result = self._create_formatted_output(param_dict)
+
+            # fit_result = (   'Minimum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+            #                     + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
+            #                     + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
+            #                     + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
+            #                     + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     )
+
+
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
 
         elif fit_function == 'Lorentian (pos)':
-            result = self._fit_logic.make_lorentzianpeak_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+
+            result = self._fit_logic.make_lorentzianpeak_fit(axis=self.signal_plot_x,
+                                                             data=self.signal_plot_y,
+                                                             add_parameters=None)
             lorentzian,params=self._fit_logic.make_lorentzian_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
-            fit_result = (   'Maximum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
-                                + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-                                + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
-                                + 'contrast : ' + str(np.abs(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3))*100) + '[%]'
-                                )
+
+            param_dict['Maximum'] = {'value': np.round(result.params['center'].value, 3),
+                                     'error': np.round(result.params['center'].stderr, 2),
+                                     'unit' : 'ns'}
+            param_dict['Linewidth'] = {'value': np.round(result.params['fwhm'].value, 3),
+                                       'error': np.round(result.params['fwhm'].stderr, 2),
+                                       'unit' : 'ns'}
+
+            cont = result.params['amplitude'].value
+            cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
+            param_dict['Contrast'] = {'value': np.round(cont*100, 3),
+                                      'unit' : '%'}
+
+            fit_result = self._create_formatted_output(param_dict)
+
+            # fit_result = (   'Maximum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
+            #                     + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
+            #                     + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
+            #                     + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
+            #                     + 'contrast : ' + str(np.abs(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3))*100) + '[%]'
+            #                     )
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function =='N14':
-            result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            result = self._fit_logic.make_N14_fit(axis=self.signal_plot_x,
+                                                  data=self.signal_plot_y,
+                                                  add_parameters=None)
             fitted_function, params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=3)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-            fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz2_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
+
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 2'] = {'value': np.round(result.params['lorentz2_center'].value, 3),
+                                     'error': np.round(result.params['lorentz2_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+
+            cont0 = result.params['lorentz0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            param_dict['Contrast 0'] = {'value': np.round(cont0*100, 3),
+                                        'unit' : '%'}
+
+            cont1 = result.params['lorentz1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            param_dict['Contrast 1'] = {'value': np.round(cont1*100, 3),
+                                        'unit' : '%'}
+
+            cont2 = result.params['lorentz2_amplitude'].value
+            cont2 = cont2/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)
+            param_dict['Contrast 2'] = {'value': np.round(cont2*100, 3),
+                                        'unit' : '%'}
+
+            fit_result = self._create_formatted_output(param_dict)
+
+            # fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+            #                     +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+            #                     + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+            #                     +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+            #                     + 'f_2 : ' + str(np.round(result.params['lorentz2_center'].value,3)) + u" \u00B1 "
+            #                     +  str(np.round(result.params['lorentz2_center'].stderr,2)) + ' [MHz]' + '\n'
+            #                     + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     + '  ,  con_2 : ' + str(np.round((result.params['lorentz2_amplitude'].value/(-1*np.pi*result.params['lorentz2_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     )
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function =='N15':
-            result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x, data=self.signal_plot_y, add_parameters=None)
+            result = self._fit_logic.make_N15_fit(axis=self.signal_plot_x,
+                                                  data=self.signal_plot_y,
+                                                  add_parameters=None)
             fitted_function,params=self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)
             pulsed_fit_y = fitted_function.eval(x=pulsed_fit_x, params=result.params)
-            fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
-                                +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
-                                + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-                                )
+
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
+                                     'unit' : 'MHz'}
+
+            cont0 = result.params['lorentz0_amplitude'].value
+            cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
+            param_dict['Contrast 0'] = {'value': np.round(cont0*100, 3),
+                                        'unit' : '%'}
+
+            cont1 = result.params['lorentz1_amplitude'].value
+            cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
+            param_dict['Contrast 1'] = {'value': np.round(cont1*100, 3),
+                                        'unit' : '%'}
+
+            fit_result = self._create_formatted_output(param_dict)
+
+            # fit_result = (   'f_0 : ' + str(np.round(result.params['lorentz0_center'].value,3)) + u" \u00B1 "
+            #                     +  str(np.round(result.params['lorentz0_center'].stderr,2)) + ' [MHz]' + '\n'
+            #                     + 'f_1 : ' + str(np.round(result.params['lorentz1_center'].value,3)) + u" \u00B1 "
+            #                     +  str(np.round(result.params['lorentz1_center'].stderr,2)) + ' [MHz]' + '\n'
+            #                     + 'con_0 : ' + str(np.round((result.params['lorentz0_amplitude'].value/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     + '  ,  con_1 : ' + str(np.round((result.params['lorentz1_amplitude'].value/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)),3)*100) + '[%]'
+            #                     )
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
         elif fit_function =='Stretched Exponential':
@@ -837,6 +944,28 @@ class PulsedMeasurementLogic(GenericLogic):
         x_for_fit = np.arange(x_start,x_end,step)
 
         return x_for_fit
+
+    def _create_formatted_output(self, param_dict):
+        """ Display a parameter set nicely.
+
+        @param dict param: with two needed keywords 'value' and 'unit' and one
+                           optional keyword 'error'. Add the proper items to the
+                           specified keywords.
+
+        @return str: a sting list, which is nicely formatted.
+        """
+        output_str = ''
+        for entry in param_dict:
+            if param_dict[entry].get('error') is None:
+                output_str += '{0} : {1} {2} \n'.format(entry,
+                                                        param_dict[entry]['value'],
+                                                        param_dict[entry]['unit'])
+            else:
+                output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
+                                                                   param_dict[entry]['value'],
+                                                                   param_dict[entry]['error'],
+                                                                   param_dict[entry]['unit'])
+        return output_str
 
     def _do_confocal_optimize(self):
         """ Does a refocus. """

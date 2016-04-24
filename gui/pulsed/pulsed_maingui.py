@@ -2515,8 +2515,6 @@ class PulsedMeasurementGui(GUIBase):
             binwidth_str_list.append(str(round(entry,12)))
         self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
 
-        # Configuration of the second plot ComboBox
-        #FIXME: This should be given by the logic
         self._mw.second_plot_ComboBox.addItem('None')
         self._mw.second_plot_ComboBox.addItem('unchanged data')
         self._mw.second_plot_ComboBox.addItem('FFT')
@@ -2525,7 +2523,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.second_plot_ComboBox.addItem('Log(x)&Log(y)')
 
         # Configuration of the fit ComboBox
-        fit_functions=self._pulsed_meas_logic.get_available_fit_functions()
+        fit_functions=self._pulsed_meas_logic.get_fit_functions()
         for ii in fit_functions:
             self._mw.fit_param_fit_func_ComboBox.addItem(ii)
 
