@@ -120,7 +120,7 @@ class MagnetLogic(GenericLogic):
         self._3D_data_matrix = np.zeros((2, 2, 2))
         self._3D_add_data_matrix = np.zeros(shape=np.shape(self._3D_data_matrix), dtype=object)
 
-
+        self._stop_measure = False
 
 
     def activation(self, e):
@@ -190,8 +190,22 @@ class MagnetLogic(GenericLogic):
         """
 
         # self._magnet_device.move_rel(param_dict)
+        # start_pos = self.get_pos(list(param_dict))
+        # end_pos = dict()
+        #
+        # for axis_name in param_dict:
+        #     end_pos[axis_name] = start_pos[axis_name] + param_dict[axis_name]
+
+        # if the magnet is moving, then the move_rel command will be neglected.
+        status_dict = self.get_status(list(param_dict))
+        for axis_name in status_dict:
+            if status_dict[axis_name][0] != 0:
+                return
+
         self.sigMoveRel.emit(param_dict)
+        # self._check_position_reached_loop(start_pos, end_pos)
         self.sigPosChanged.emit(param_dict)
+
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage.
@@ -209,6 +223,21 @@ class MagnetLogic(GenericLogic):
         pos_dict = self._magnet_device.get_pos(param_list)
         return pos_dict
 
+    def get_status(self, param_list=None):
+        """ Get the status of the position
+
+        @param list param_list: optional, if a specific status of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed in the param_list.
+                                If nothing is passed, then from each axis the
+                                status is asked.
+
+        @return dict: with the axis label as key and  a tuple of a status
+                     number and a status dict as the item.
+        """
+        status = self._magnet_device.get_status(param_list)
+        return status
+
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
 
@@ -219,7 +248,11 @@ class MagnetLogic(GenericLogic):
                                  to one of the axis.
         """
         # self._magnet_device.move_abs(param_dict)
+        start_pos = self.get_pos(list(param_dict))
         self.sigMoveAbs.emit(param_dict)
+
+        self._check_position_reached_loop(start_pos, param_dict)
+
         self.sigPosChanged.emit(param_dict)
 
     def stop_movement(self):
@@ -300,8 +333,8 @@ class MagnetLogic(GenericLogic):
         axis1_num_of_steps = int(axis1_range//axis1_step)
 
         # make an array of movement steps
-        axis0_steparray = [axis0_step] * (axis0_num_of_steps)
-        axis1_steparray = [axis1_step] * (axis1_num_of_steps)
+        axis0_steparray = [axis0_step] * axis0_num_of_steps
+        axis1_steparray = [axis1_step] * axis1_num_of_steps
 
         pathway = []
 
@@ -400,14 +433,26 @@ class MagnetLogic(GenericLogic):
                     # step_config[axis0_name] = {'move_rel': direction*step_in_axis0}
 
                     # absolute movement:
-                    axis0_pos =round( axis0_pos + direction*step_in_axis0, 7)
+                    axis0_pos =round(axis0_pos + direction*step_in_axis0, 7)
 
-                    if axis0_vel is None:
+                    # if axis0_vel is None:
+                    #     step_config[axis0_name] = {'move_abs': axis0_pos}
+                    #     step_config[axis1_name] = {'move_abs': axis1_pos}
+                    # else:
+                    #     step_config[axis0_name] = {'move_abs': axis0_pos,
+                    #                                'move_vel': axis0_vel}
+                    if axis1_vel is None and axis0_vel is None:
                         step_config[axis0_name] = {'move_abs': axis0_pos}
+                        step_config[axis1_name] = {'move_abs': axis1_pos}
                     else:
-                        step_config[axis0_name] = {'move_abs': axis0_pos,
-                                                   'move_vel': axis0_vel}
+                        step_config[axis0_name] = {'move_abs': axis0_pos}
+                        step_config[axis1_name] = {'move_abs': axis1_pos}
 
+                        if axis0_vel is not None:
+                            step_config[axis0_name] = {'move_abs': axis0_pos, 'move_vel': axis0_vel}
+
+                        if axis1_vel is not None:
+                            step_config[axis1_name] = {'move_abs': axis1_pos, 'move_vel': axis1_vel}
 
                     # append to the pathway
                     pathway.append(step_config)
@@ -427,10 +472,19 @@ class MagnetLogic(GenericLogic):
 
                 # absolute movement:
                 axis1_pos = round(axis1_pos + step_in_axis1, 7)
-                if axis1_vel is None:
+
+                if axis1_vel is None and axis0_vel is None:
+                    step_config[axis0_name] = {'move_abs': axis0_pos}
                     step_config[axis1_name] = {'move_abs': axis1_pos}
                 else:
-                    step_config[axis1_name] = {'move_abs': axis1_pos, 'move_vel': axis1_vel}
+                    step_config[axis0_name] = {'move_abs': axis0_pos}
+                    step_config[axis1_name] = {'move_abs': axis1_pos}
+
+                    if axis0_vel is not None:
+                        step_config[axis0_name] = {'move_abs': axis0_pos, 'move_vel': axis0_vel}
+
+                    if axis1_vel is not None:
+                        step_config[axis1_name] = {'move_abs': axis1_pos, 'move_vel': axis1_vel}
 
                 pathway.append(step_config)
                 axis1_index += 1
@@ -882,11 +936,11 @@ class MagnetLogic(GenericLogic):
         #       by not using this connection!
         self._counter_logic.start_saving()
         time.sleep(meas_time)
-        data_array = self._counter_logic.save_data(to_file=False)
+        data_array, parameters = self._counter_logic.save_data(to_file=False)
 
         data_array = np.array(data_array)[:, 1]
 
-        return data_array.mean(), {}
+        return data_array.mean(), parameters
 
     def _do_postmeasurement_proc(self):
 
