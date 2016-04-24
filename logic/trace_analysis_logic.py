@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi gated counter logic class.
+This file contains the general QuDi trace analysis logic.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

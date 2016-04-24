@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi Hardware module  for Rohde and Schwary SMR20.
+This file contains the QuDi Hardware module for Rohde and Schwary SMR20.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
