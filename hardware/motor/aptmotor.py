@@ -457,13 +457,35 @@ class APTMotor():
 
     # --------------------------- Miscelaneous ---------------------------------
 
+    def _create_status_dict(self):
+        """ Extract from the status integer all possible states.
+        "return:
+        """
+        status = {}
+        status[0] = 'magnet stopped'
+        status[1] = 'magnet moves forward'
+        status[2] = 'magnet moves backward'
+
+        return status
+
     def get_status(self):
-        """ Get the status bits of the current axis. """
+        """ Get the status bits of the current axis.
+
+        @return tuple(int, dict): the current status as an integer and the
+                                  dictionary explaining the current status.
+        """
 
         status_bits = c_long()
         self.aptdll.MOT_GetStatusBits(self.SerialNum, pointer(status_bits))
 
-        return status_bits.value
+        # Check at least whether magnet is moving:
+
+        if self._test_bit(status_bits.value, 4):
+            return 1, self._create_status_dict()
+        elif self._test_bit(status_bits.value, 5):
+            return 2, self._create_status_dict()
+        else:
+            return 0, self._create_status_dict()
 
     def identify(self):
         '''
@@ -492,6 +514,19 @@ class APTMotor():
         #TODO: a proper home position has to be set, not just zero.
         self.move_abs(0.0)
 
+    def _test_bit(self, int_val, offset):
+        """ Check a bit in an integer number at position offset.
+
+        @param int int_val: an integer value, which is checked
+        @param int offset: the position which should be checked whether in
+                           int_valfor a bit of 1 is set.
+
+        @return bool: Check in an integer representation, whether the bin at the
+                      position offset is set to 0 or to 1. If bit is set True
+                      will be returned else False.
+        """
+        mask = 1 << offset
+        return(int_val & mask)!= 0
 # ==============================================================================
 
 class APTStage(Base, MotorInterface):
@@ -740,7 +775,7 @@ class APTStage(Base, MotorInterface):
                                 If nothing is passed, then from each axis the
                                 status is asked.
 
-        @return dict: with the axis label as key and the status number as item.
+
         """
 
         status = {}
@@ -1270,11 +1305,11 @@ class APTFourAxisStage(APTStage):
         axis3['pos_min'] = 0     # in mm
         axis3['pos_max'] = 360       # that is basically the traveling range
         axis3['pos_step'] = 0.01   # in mm
-        axis3['vel_min'] = 4.0      # in mm/s
-        axis3['vel_max'] = 6.0      # in mm/s
+        axis3['vel_min'] = 0.1      # in mm/s
+        axis3['vel_max'] = 4.5      # in mm/s
         axis3['vel_step'] = 0.1   # in mm/s (a rather arbitrary number)
         axis3['acc_min'] = 4.0     # in mm/s^2
-        axis3['acc_max'] = 5.0      # in mm/s^2
+        axis3['acc_max'] = 6.0      # in mm/s^2
         axis3['acc_step'] = 0.01   # in mm/s^2 (a rather arbitrary number)
 
         # assign the parameter container for x to a name which will identify it
