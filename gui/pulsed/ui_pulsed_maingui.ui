@@ -2056,7 +2056,8 @@ sel.</string>
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionOpen_Prepared_Methods"/>
+    <addaction name="actionOpen_Predefined_Methods"/>
+    <addaction name="actionConfigure_Predefined_Methods"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
@@ -2176,9 +2177,9 @@ sel.</string>
     <string>Pull and analyze data</string>
    </property>
   </action>
-  <action name="actionOpen_Prepared_Methods">
+  <action name="actionOpen_Predefined_Methods">
    <property name="text">
-    <string>&amp;Open Prepared Methods</string>
+    <string>Open Predefined Methods</string>
    </property>
   </action>
   <action name="actionClose">
@@ -2189,6 +2190,11 @@ sel.</string>
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </action>
+  <action name="actionConfigure_Predefined_Methods">
+   <property name="text">
+    <string>Configure Predefined Methods</string>
    </property>
   </action>
  </widget>

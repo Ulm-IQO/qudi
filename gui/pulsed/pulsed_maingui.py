@@ -150,6 +150,17 @@ class PredefinedMethodsDialog(QtGui.QDialog):
 
         uic.loadUi(ui_file, self)
 
+class PredefinedMethodsConfigDialog(QtGui.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui-predefined_methods_config.ui')
+
+        # Load it
+        super(PredefinedMethodsConfigDialog, self).__init__()
+
+        uic.loadUi(ui_file, self)
+
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
 
@@ -289,6 +300,11 @@ class PulsedMeasurementGui(GUIBase):
 
         # create the Predefined methods Dialog
         self._pm = PredefinedMethodsDialog()
+        self._predefined_methods_list = []  # here are all the names saved of
+                                            # the created predefined methods.
+
+        # create a config for the predefined methods:
+        self._pm_cfg = PredefinedMethodsConfigDialog()
 
         # Add in the settings menu within the groupbox widget all the available
         # math_functions, based on the list from the Logic. Right now, the GUI
@@ -411,11 +427,32 @@ class PulsedMeasurementGui(GUIBase):
         """ Opens the block settings menue. """
         self._bs.exec_()
 
-
-    def show_prepared_methods(self):
-        """ Opens the prepared methods Window."""
+    def show_predefined_methods(self):
+        """ Opens the predefined methods Window."""
         self._pm.show()
         self._pm.raise_()
+
+    def show_predefined_methods_config(self):
+        """ Opens the Window for the config of predefined methods."""
+        self._pm_cfg.show()
+        self._pm_cfg.raise_()
+
+    def keep_former_predefined_methods(self):
+
+        for method_name in self._predefined_methods_list:
+            groupbox = self._get_ref_groupbox_predefined_methods(method_name)
+            checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
+
+            checkbox.setChecked(groupbox.isVisible())
+
+    def update_predefined_methods(self):
+
+        for method_name in self._predefined_methods_list:
+            groupbox = self._get_ref_groupbox_predefined_methods(method_name)
+            checkbox = self._get_ref_checkbox_predefined_methods_config(method_name)
+
+            groupbox.setVisible(checkbox.isChecked())
+
 
     def update_block_settings(self):
         """ Write new block settings from the gui to the file. """
@@ -534,7 +571,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # connect the menue to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_block_settings)
-        self._mw.actionOpen_Prepared_Methods.triggered.connect(self.show_prepared_methods)
+        self._mw.actionOpen_Predefined_Methods.triggered.connect(self.show_predefined_methods)
+        self._mw.actionConfigure_Predefined_Methods.triggered.connect(self.show_predefined_methods_config)
 
         # emit a trigger event when for all mouse click and keyboard click events:
         self._mw.block_editor_TableWidget.setEditTriggers(QtGui.QAbstractItemView.AllEditTriggers)
@@ -561,7 +599,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # create all the needed control widgets on the fly and connect their a
         # actions to each other:
-        self._create_control_for_prepared_methods()
+        self._create_control_for_predefined_methods()
         self._create_pulser_on_off_buttons()
         self._create_radiobuttons_for_channels()
         self._create_pushbutton_clear_device()
@@ -611,6 +649,11 @@ class PulsedMeasurementGui(GUIBase):
         self.update_block_list()
         self.update_ensemble_list()
 
+        # connect the actions of the Config for Predefined methods:
+        self._pm_cfg.accepted.connect(self.update_predefined_methods)
+        self._pm_cfg.rejected.connect(self.keep_former_predefined_methods)
+        self._pm_cfg.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_predefined_methods)
+
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
         # self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -623,6 +666,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
+        self._pm_cfg.close()
 
     def _create_save_tag_input(self):
         """ Add save file tag input box. """
@@ -2130,7 +2174,30 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-    def _create_control_for_prepared_methods(self):
+    def _add_config_for_predefined_methods(self, parent, name):
+        """ Create the Config Elements for altering the Predefined Methods
+            display.
+        """
+        # one has to know that all the checkbox control elements are attached
+        # to the widget verticalLayout, accessible via self._pm_cfg.verticalLayout
+
+        checkbox = self._create_QCheckBox(parent, default_val=True)
+
+        checkbox.setText(name)
+        setattr(self._pm_cfg, name +'_CheckBox', checkbox)
+        self._pm_cfg.verticalLayout.addWidget(checkbox)
+
+    def _get_ref_checkbox_predefined_methods_config(self, name):
+        """ Retrieve the reference to the CheckBox with the name of the predefined method
+
+        @param str name: the name of the predefined method
+
+        @return QtGui.QCheckBox: reference to the CheckBox widget.
+        """
+
+        return getattr(self._pm_cfg, name+'_CheckBox')
+
+    def _create_control_for_predefined_methods(self):
         """ Create the Control Elements in the Predefined Windows, depending
             on the methods of the logic.
 
@@ -2145,7 +2212,7 @@ class PulsedMeasurementGui(GUIBase):
                 _<method_name>_generate_upload()
                 which generates and uploads the current values to the device.
         """
-        method_list = self._seq_gen_logic.prepared_method_list
+        method_list = self._seq_gen_logic.predefined_method_list
 
         for method in method_list:
             inspected = inspect.signature(method)
@@ -2223,10 +2290,33 @@ class PulsedMeasurementGui(GUIBase):
 
             groupBox.setTitle(method.__name__.replace('_',' '))
 
+            # attach the GroupBox widget to the predefined methods widget.
+            setattr(self._pm, method.__name__+'_GroupBox', groupBox)
+
+            # Since a Scroll Widget is used, you need you pass the
+            # scrollAreaWidgetContents as the parent widget.
+            self._add_config_for_predefined_methods(self._pm_cfg.scrollAreaWidgetContents, method.__name__)
+
+            # add the name of the predefined method to a local list to keep
+            # track of the method:
+            self._predefined_methods_list.append(method.__name__)
+
             self._pm.verticalLayout.addWidget(groupBox)
 
+    def _get_ref_groupbox_predefined_methods(self, name):
+        """ Retrieve the reference to the GroupBox with the name of the predefined method
+
+        @param str name: the name of the predefined method
+
+        @return QtGui.QGroupBox: reference to the groupbox widget containing all
+                                 elements for the predefined methods.
+        """
+
+        return getattr(self._pm, name+'_GroupBox')
+
+
     def _create_QLabel(self, parent, label_name):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param str label_name: the display name for the QLabel Widget.
@@ -2244,7 +2334,7 @@ class PulsedMeasurementGui(GUIBase):
         return label
 
     def _create_QDoubleSpinBox(self, parent, default_val=0.0):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param float default_val: a default value for the QDoubleSpinBox.
@@ -2267,7 +2357,7 @@ class PulsedMeasurementGui(GUIBase):
         return doublespinbox
 
     def _create_QSpinBox(self, parent, default_val=0):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param int default_val: a default value for the QSpinBox.
@@ -2282,7 +2372,7 @@ class PulsedMeasurementGui(GUIBase):
         return spinBox
 
     def _create_QCheckBox(self, parent, default_val=False):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param bool default_val: a default value for the QCheckBox.
@@ -2295,7 +2385,7 @@ class PulsedMeasurementGui(GUIBase):
         return checkBox
 
     def _create_QLineEdit(self, parent, default_val=''):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param str default_val: a default value for the QLineEdit.
@@ -2318,7 +2408,7 @@ class PulsedMeasurementGui(GUIBase):
         return lineedit
 
     def _create_QPushButton(self, parent, text='Generate'):
-        """ Helper method for _create_control_for_prepared_methods.
+        """ Helper method for _create_control_for_predefined_methods.
 
         @param parent: The parent QWidget, which should own that object
         @param str text: a display text for the QPushButton.
