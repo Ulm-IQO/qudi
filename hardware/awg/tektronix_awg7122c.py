@@ -807,16 +807,16 @@ class AWG7122C(Base, PulserInterface):
 
             # since the available channels are not going to change for this
             # device you are asking directly:
-            amp[1] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
-            amp[2] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
+            amp['a_ch1'] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
+            amp['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
 
             if '02' in self.AWG_options or '06' in self.AWG_options:
                 #In option 2 and 6 this can not be set
-                off[1] = float(0.0)
-                off[2] = float(0.0)
+                off['a_ch1'] = float(0.0)
+                off['a_ch2'] = float(0.0)
             else:
-                off[1] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
-                off[2] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
+                off['a_ch1'] = float(self.ask('SOURCE1:VOLTAGE:OFFSET?'))
+                off['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:OFFSET?'))
 
         else:
 
