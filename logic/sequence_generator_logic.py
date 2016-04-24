@@ -617,7 +617,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @return:
         """
 
-        self.prepared_method_list = []
+        self.predefined_method_list = []
         filename_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
@@ -637,7 +637,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         # Bind the method as an attribute to the Class
                         setattr(SequenceGeneratorLogic, method, getattr(mod, method))
 
-                        self.prepared_method_list.append(eval('self.'+method))
+                        self.predefined_method_list.append(eval('self.'+method))
                 except:
                     self.logMsg('It was not possible to import element {0} '
                                 'from {1} into '

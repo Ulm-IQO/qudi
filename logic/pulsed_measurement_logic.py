@@ -734,9 +734,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
             #pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
 
-            param_dict['Contrast'] = {'value': np.round(np.abs(2*result.params['amplitude'].value), 3),
-                                      'error': np.round(2 * result.params['amplitude'].stderr, 2),
-                                      'unit' : 'norm. signal'}
+            param_dict['Contrast'] = {'value': np.round(np.abs(2*result.params['amplitude'].value*100), 2),
+                                      'error': np.round(2 * result.params['amplitude'].stderr*100, 2),
+                                      'unit' : '%'}
             param_dict['Frequency'] = {'value': np.round(result.params['frequency'].value/1e6, 3),
                                        'error': np.round(result.params['frequency'].stderr/1e6, 3),
                                        'unit' : 'MHz'}
