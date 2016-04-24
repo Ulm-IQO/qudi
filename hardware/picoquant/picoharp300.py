@@ -83,7 +83,6 @@ correspond to standard C/C++ data types as follows:
 #WARNING_TIME_SPAN_TOO_SMALL    = 0x0400    # 1024
 #WARNING_OFFSET_UNNECESSARY     = 0x0800    # 2048
 
-#FIXME: The interface connetion to the fast counter must be established!
 
 class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     """Hardware class to control the Picoharp 300 from PicoQuant.
@@ -148,11 +147,6 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         #locking for thread safety
         self.threadlock = Mutex()
-
-
-
-
-
 
 
     def activation(self, fysom_e=None):
