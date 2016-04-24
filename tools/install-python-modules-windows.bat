@@ -1,3 +1,22 @@
+::
+:: This file contains the bat script for windows to install the needed python modules
+::
+:: QuDi is free software: you can redistribute it and/or modify
+:: it under the terms of the GNU General Public License as published by
+:: the Free Software Foundation, either version 3 of the License, or
+:: (at your option) any later version.
+::
+:: QuDi is distributed in the hope that it will be useful,
+:: but WITHOUT ANY WARRANTY; without even the implied warranty of
+:: MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+:: GNU General Public License for more details.
+::
+:: You should have received a copy of the GNU General Public License
+:: along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+::
+:: Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
+
+
 :: Basically this just creates a VBS Script on the fly and invokes the batch
 :: script using it.  It checks to see if the current window is running as
 :: administrator by attempting to create a folder that requires administrative

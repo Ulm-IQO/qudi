@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi logic which controlls all pulsed measurements.
+This file contains the QuDi logic which controls all pulsed measurements.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
