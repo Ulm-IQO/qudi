@@ -172,7 +172,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
 
         @return dict: with the axis label as key and the status number as item.
         """
-        return self._motor_devicee.get_status(param_list)
+        return self._motor_device.get_status(param_list)
 
 
     def calibrate(self, param_list=None):
