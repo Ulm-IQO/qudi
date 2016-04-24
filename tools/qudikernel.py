@@ -22,12 +22,15 @@ import os
 import sys
 import rpyc
 import time
+import json
 import signal
 import atexit
 
 from parentpoller import ParentPollerUnix, ParentPollerWindows
 
-class QuDi(object):
+rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+
+class QuDi:
 
     def __init__(self):
         self.host = 'localhost'
@@ -35,7 +38,7 @@ class QuDi(object):
         self.conn_config = {'allow_all_attrs': True}
         self.parent_handle = int(os.environ.get('JPY_PARENT_PID') or 0)
         self.interrupt = int(os.environ.get('JPY_INTERRUPT_EVENT') or 0)
-        self.kernelthread = None
+        self.kernelid = None
 
     def connect(self, **kwargs):
         self.connection = rpyc.connect(self.host, self.port, config=self.conn_config)
@@ -45,15 +48,16 @@ class QuDi(object):
 
     def startKernel(self, connfile):
         m = self.getModule('kernellogic')
-        self.kernelthread = m.startKernel(connfile)
+        config = json.loads("".join(open(connfile).readlines()))
+        self.kernelid = m.startKernel(config, self)
         print('Kernel up!')
 
     def stopKernel(self):
         print('Shutting down: ', self.kernelthread)
         sys.stdout.flush()
         m = self.getModule('kernellogic')
-        if self.kernelthread is not None:
-            m.stopKernel(self.kernelthread)
+        if self.kernelindex is not None:
+            m.stopKernel(self.kernelid)
             print('Down!')
             sys.stdout.flush()
 
@@ -67,6 +71,8 @@ class QuDi(object):
         elif self.parent_handle:
             self.poller = ParentPollerUnix()
 
+    def exit(self):
+        sys.exit()
 
 if __name__ == '__main__':
     q = QuDi()
@@ -79,6 +85,4 @@ if __name__ == '__main__':
     q.poller.run()
     print('Quitting.')
     sys.stdout.flush()
-    #q.stopKernel()
-    #q.connection.close()
     
