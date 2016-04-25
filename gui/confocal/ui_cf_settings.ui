@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>304</width>
-    <height>344</height>
+    <width>305</width>
+    <height>395</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -155,12 +155,68 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
+        <string>Do loop scans</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="loop_scan_CheckBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Scan continuously (automatically restart at the end of a scan).  This is useful for photo-bleaching a sample.</string>
+       </property>
+       <property name="accessibleDescription">
+        <string/>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string notr="true"/>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_10">
+     <item>
+      <widget class="QLabel" name="label_7">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
         <string>Fixed Aspect Ratio XY Scan :</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="fixed_aspect_xy_checkBox">
+      <widget class="QCheckBox" name="fixed_aspect_xy_checkBox_2">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -427,11 +483,16 @@
     </widget>
    </item>
   </layout>
+  <zorder>line</zorder>
+  <zorder>hardware_switch</zorder>
+  <zorder>buttonBox</zorder>
+  <zorder>layoutWidget</zorder>
+  <zorder>label_7</zorder>
  </widget>
  <tabstops>
   <tabstop>clock_frequency_InputWidget</tabstop>
   <tabstop>return_slowness_InputWidget</tabstop>
-  <tabstop>fixed_aspect_xy_checkBox</tabstop>
+  <tabstop>loop_scan_CheckBox</tabstop>
   <tabstop>fixed_aspect_depth_checkBox</tabstop>
   <tabstop>savePNG_checkBox</tabstop>
   <tabstop>save_purePNG_checkBox</tabstop>
