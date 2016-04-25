@@ -1265,7 +1265,7 @@ class FitLogic():
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['amplitude'].value = 30
-            params['frequency'].value = 1.6
+            params['frequency'].value = 0.01
             params['phase'].value = np.pi * 0.4
             params['offset'].value = 10
             params['lifetime'].value = 200
@@ -1283,17 +1283,6 @@ class FitLogic():
 
             # estimate
             params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
-
-            plt.plot(x_axis,data_level)
-            #plt.show()
-            #stepsize = x_axis[1] - x_axis[0]
-            #fourier = np.fft.fft(data_level)
-            #freq = np.fft.fftfreq(data_level.size, stepsize)
-            #plt.plot(freq, fourier)
-            #plt.plot()
-            #print(np.abs(freq[np.log(fourier).argmax()]))
-            #def gauss(x, p):  # p[0]==mean, p[1]==stdev
-                #return 1.0 / (p[1] * np.sqrt(2 * np.pi)) * np.exp(-(x - p[0]) ** 2 / (2 * p[1] ** 2))
             # perform fourier transform
             data_level_zeropaded = np.zeros(int(len(data_level) * 2))
             data_level_zeropaded[:len(data_level)] = data_level
@@ -1302,26 +1291,9 @@ class FitLogic():
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
             print('frequency_max',frequency_max)
-            #plt.plot(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)])
             fourier_real = fourier.real
 
-            #fourier_reciprocal = 1 / fourier_real
-            #plt.plot(freq[500:1000],fourier[0:500])
-
-            #print(np.polyfit(freq[np.log(fourier).argmax():],abs(fourier_reciprocal)[np.log(fourier).argmax():],2))
-            #test = 100/(np.square(freq)+10000)
-            #print(len(test))
-
-            #plt.plot(freq[:int(len(freq) / 2)],np.convolve(test[:int(len(freq) / 2)],fourier[:int(len(freq) / 2)],'same'))
-            #plt.plot(freq[:int(len(freq) / 2)], fourier[:int(len(freq) / 2)])
-
             def fwhm(x, y, k=10):
-                """
-                Determine full-with-half-maximum of a peaked set of points, x and y.
-
-                Assumes that there is only one peak present in the datasset.  The function
-                uses a spline interpolation of order k.
-                """
 
                 class MultiplePeaks(Exception):
                     pass
@@ -1332,7 +1304,6 @@ class FitLogic():
                 half_max = max(y) / 2.0
                 s = splrep(x, y - half_max)
                 roots = sproot(s)
-                #print (type(x))
                 #if len(roots) > 2:
                     #raise MultiplePeaks("The dataset appears to have multiple peaks, and "
                                         #"thus the FWHM can't be determined.")
@@ -1357,25 +1328,13 @@ class FitLogic():
             #print(len(np.array(freq_plus)),np.array(fourier_real_plus))
             fwhm_plus = fwhm(np.array(freq_plus),np.array(fourier_real_plus),k=10)
             print("FWHM", fwhm_plus)
-            #plt.plot(freq_plus, fourier_real)
-            #errfunc = lambda p, freq,fourier_real: gauss(freq, p) - fourier_real  # Distance to the target function
-
-            #p1, success = opt.leastsq(errfunc, p0[:],args=(freq, fourier_real))
-
-            #fit_mu, fit_stdev = p1
-
-            #FWHM = 2 * np.sqrt(2 * np.log(2)) * fit_stdev
-            #print("FWHM", FWHM)
             params['lifetime'].value = 1/(fwhm_plus *np.pi)
 
             print(params['frequency'].value, np.round(frequency_max, 3))
-            #            plt.xlim(0,freq.max())
             plt.plot(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)])
-            #            plt.plot(freq,np.log(abs(fourier)),'-r')
             plt.show()
 
             print('offset', offset)
-            #            print((x_axis[-1]-x_axis[0])*frequency_max)
 
             shift_tmp = (data_level[0]) / params['amplitude'].value
             shift = abs(np.arcsin(shift_tmp))
@@ -1392,22 +1351,6 @@ class FitLogic():
 
             print(params['phase'].value, shift)
 
-            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-            #function = InterpolatedUnivariateSpline(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)], k=1)
-            #Integral = function.integral(x_axis[0], x_axis[-1])
-
-            #sigma = Integral / np.sqrt(2 * np.pi) / abs(fourier).max()
-
-            #print('sigma', sigma)
-            # TO#DO: Improve decay estimation
-            #if len(data_noisy) > stepsize / frequency_max * 2.5:
-                #pos01 = int((1 - shift / (np.pi ** 2)) / frequency_max / (2 * stepsize))
-                #pos02 = pos01 + int(frequency_max / stepsize)
-                # print(pos01,pos02,data[pos01],data[pos02])
-                #decay = np.log(data_noisy[pos02] / data_noisy[pos01]) * frequency_max
-                # decay = - np.log(0.2)/x_axis[-1]
-            #else:
-                #decay = 0.0
 
             params['frequency'].value = frequency_max
             params['phase'].value = shift
@@ -1417,35 +1360,23 @@ class FitLogic():
             print('lifetime',params['lifetime'].value)
             print('amplitude',params['amplitude'].value)
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
-            ##            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
-            #
-            #            print(result.fit_report())
-
-            #            x_nice= np.linspace(0,data[:,0].max(), 101)
-
-            #            plt.plot(data[:,0],data[:,2]/1000,'ob'
-            #            plt.plot(x,mod.eval(x=x,params=para),'-g')
             #params = self.make_sineexponentialdecay_fit()
-            #print (x_axis,)
             #plt.plot(freq,fourier_real)
             #plt.plot(freq,gauss(freq,p1))
-            #plt.plot(x_axis, data_noisy, 'ob')
-            #plt.plot(x_axis, result.init_fit, '-y')
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_axis, result.init_fit, '-y')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, )
-            #plt.plot(x_axis, result)
-            #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
+            plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
 
             plt.show()
 
-            #            print(result.fit_report())
-
-            #units = dict()
-            #units['frequency'] = 'GHz'
-            #units['phase'] = 'rad'
-            #units['offset'] = 'arb. u.'
-            #            units['amplitude']='arb. u.'
-           # print(self.create_fit_string(result, mod, units))
+            units = dict()
+            units['frequency'] = 'GHz'
+            units['phase'] = 'rad'
+            units['offset'] = 'arb. u.'
+            units['amplitude']='arb. u.'
+            print(self.create_fit_string(result, mod, units))
 
 
 plt.rcParams['figure.figsize'] = (10,5)
