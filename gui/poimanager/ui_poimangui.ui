@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>683</width>
-    <height>803</height>
+    <width>687</width>
+    <height>820</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,8 +30,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>683</width>
-     <height>29</height>
+     <width>687</width>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -767,7 +767,7 @@
   <action name="new_roi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-new.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-new.png</normaloff>../../artwork/icons/oxygen/22x22/document-new.png</iconset>
    </property>
    <property name="text">
     <string>New ROI</string>
@@ -779,7 +779,7 @@
   <action name="save_roi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</normaloff>../../artwork/icons/qudiTheme/22x22/document-save.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>Save ROI</string>
@@ -866,7 +866,7 @@
   <action name="refind_poi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position_poi.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position-poi.png</iconset>
    </property>
    <property name="text">
     <string>Refind POI</string>
@@ -921,7 +921,7 @@
   <action name="goto_poi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/goto_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/goto_poi.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/goto-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/goto-poi.png</iconset>
    </property>
    <property name="text">
     <string>Go to POI</string>
@@ -956,7 +956,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>

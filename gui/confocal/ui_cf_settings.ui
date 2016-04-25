@@ -216,7 +216,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="fixed_aspect_xy_checkBox_2">
+      <widget class="QCheckBox" name="fixed_aspect_xy_checkBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
