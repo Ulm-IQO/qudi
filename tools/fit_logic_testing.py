@@ -1225,18 +1225,36 @@ class FitLogic():
 #                return offset + 0.0 * x
 #            model= Model(constant_function,prefix = 'x_')
 #            params = model.make_params()
-            model, params = self.make_linear_model()
+            mod, params = self.make_exponentialdecay_model()
             print(params)
             
-            x = np.linspace(0.20,1000)
-            params['slope'].value = 2.
-            params['x_offset'].value = 3.
-            params['y_offset'].value = 5.
+            x = np.linspace(-100,100,100)
+            params['lifetime'].value= 100
+            data_noisy = (mod.eval(x=x, params=params)+ 0.01 * np.random.normal(size=x.shape))
 
-            y = model.eval(x=x, params=params)
+            # set the offset as the average of the data
+            #offset = np.average(data_noisy)
+
+            # level data
+            #data_level = data_noisy - offset
+            data_level_log = np.log(abs(data_noisy))
+
+            # estimate amplitude
+            params['lifetime'].value = -1/(np.polyfit(x,data_level_log,1)[0])
+            print(params['lifetime'].value)
+
+            #params['amplitude'].value = np.exp(data_level[3]+x[3]/params['lifetime'].value)
+
+            #params['offset'].value = offset
+            y = mod.eval(x=x, params=params)
             
             plt.plot(x,y)
-            
+            plt.plot(x,data_noisy)
+            #plt.plot(x,np.exp(x/lifetime))
+            plt.show()
+
+
+
 plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
@@ -1253,9 +1271,9 @@ test=FitLogic()
 #test.powerfluorescence_testing()
 #test.sine_testing()
 #test.twoD_gaussian_magnet()
-test.poissonian_testing()
+#test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.decay_testing()
+test.decay_testing()
 
 
 #class FitConstraints(OrderedDict):        
