@@ -169,10 +169,6 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         half_max = max(y) / 2.0
         s = splrep(x, y - half_max)
         roots = sproot(s)
-        # print (type(x))
-        # if len(roots) > 2:
-        # raise MultiplePeaks("The dataset appears to have multiple peaks, and "
-        # "thus the FWHM can't be determined.")
         if len(roots) < 2:
             raise NoPeaksFound("No proper peaks were found in the data set; likely "
                                "the dataset is flat (e.g. all zeros).")
