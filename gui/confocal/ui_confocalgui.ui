@@ -1446,7 +1446,7 @@
              </property>
              <property name="icon">
               <iconset>
-               <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-anticlockwise-icon.png</iconset>
+               <normaloff>../../artwork/icons/oxygen/16x16/object-rotate-left.png</normaloff>../../artwork/icons/oxygen/16x16/object-rotate-left.png</iconset>
              </property>
             </widget>
            </item>
@@ -1466,7 +1466,7 @@
              </property>
              <property name="icon">
               <iconset>
-               <normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</normaloff>../../artwork/icons/qudiTheme/22x22/arrow-rotate-clockwise-icon.png</iconset>
+               <normaloff>../../artwork/icons/oxygen/16x16/object-rotate-right.png</normaloff>../../artwork/icons/oxygen/16x16/object-rotate-right.png</iconset>
              </property>
             </widget>
            </item>
@@ -1494,12 +1494,9 @@
    </attribute>
    <addaction name="action_scan_xy_start"/>
    <addaction name="action_scan_xy_resume"/>
-   <addaction name="action_loop_scan_xy"/>
    <addaction name="action_stop_scanning"/>
    <addaction name="action_scan_depth_start"/>
-   <addaction name="actionRotated_depth_scan"/>
    <addaction name="action_scan_depth_resume"/>
-   <addaction name="action_loop_scan_depth"/>
    <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="util_ToolBar">
@@ -1879,7 +1876,8 @@
   <action name="actionSave_XY_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>&amp;Save XY Data</string>
@@ -1888,7 +1886,8 @@
   <action name="actionSave_configuration">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save co&amp;nfiguration</string>
@@ -1897,7 +1896,8 @@
   <action name="action_Settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Se&amp;ttings</string>
@@ -1906,7 +1906,8 @@
   <action name="actionClose">
    <property name="icon">
     <iconset theme="window-close">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>C&amp;lose</string>
@@ -1921,7 +1922,8 @@
   <action name="actionSave_Depth_Scan">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save &amp;XZ Data</string>
@@ -1930,7 +1932,8 @@
   <action name="action_optimizer_settings">
    <property name="icon">
     <iconset theme="settings">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>O&amp;ptimizer Settings</string>
@@ -1939,7 +1942,8 @@
   <action name="actionSave_XY_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XY &amp;Image+Data</string>
@@ -1948,7 +1952,8 @@
   <action name="actionSave_Depth_Image_Data">
    <property name="icon">
     <iconset theme="document-save">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff/>
+    </iconset>
    </property>
    <property name="text">
     <string>Save XZ Image+&amp;Data</string>
@@ -1960,8 +1965,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/search.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/32x32/search_active.png</normalon>../../artwork/icons/qudiTheme/22x22/search.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/zoom-select.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/32x32/search_active.png</normalon>../../artwork/icons/oxygen/22x22/zoom-select.png</iconset>
    </property>
    <property name="text">
     <string>Zoom</string>
@@ -2095,30 +2100,6 @@
     <string>Stop scanning XY or depth and return to &quot;ready&quot; state</string>
    </property>
   </action>
-  <action name="action_loop_scan_xy">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_xy.png</normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_xy.png</iconset>
-   </property>
-   <property name="text">
-    <string>Loop Scan XY</string>
-   </property>
-   <property name="toolTip">
-    <string>Start a permanent XY Scan</string>
-   </property>
-  </action>
-  <action name="action_loop_scan_depth">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_depth.png</normaloff>../../artwork/icons/qudiTheme/22x22/permanent_scan_depth.png</iconset>
-   </property>
-   <property name="text">
-    <string>Loop Scan Depth</string>
-   </property>
-   <property name="toolTip">
-    <string>Start a permanent depth scan</string>
-   </property>
-  </action>
   <action name="restore_default_view_Action">
    <property name="text">
     <string>&amp;Restore default</string>
@@ -2133,23 +2114,6 @@
    </property>
    <property name="toolTip">
     <string>Rearrange window as a small optimizer interface.</string>
-   </property>
-  </action>
-  <action name="actionRotated_depth_scan">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/32x32/x_depth.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/32x32/y_depth.png</normalon>
-     <selectedon>../../artwork/icons/qudiTheme/32x32/y_depth.png</selectedon>../../artwork/icons/qudiTheme/32x32/x_depth.png</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Depth Scan Direction</string>
-   </property>
-   <property name="toolTip">
-    <string>Switch between x- and y- depth scan</string>
    </property>
   </action>
   <action name="actionScan_Toolbar">
@@ -2181,6 +2145,10 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/tilt_correct.png</normaloff>../../artwork/icons/qudiTheme/22x22/tilt_correct.png</iconset>
+   </property>
    <property name="text">
     <string>&amp;Use Tilt Correction</string>
    </property>
@@ -2198,8 +2166,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="go-next">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/go-next.png</normaloff>../../artwork/icons/oxygen/22x22/go-next.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Forward</string>
@@ -2213,8 +2181,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="go-previous">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</normaloff>../../artwork/icons/oxygen/22x22/go-previous.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Back</string>
@@ -2252,7 +2220,9 @@
   <tabstop>y_SliderWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="../../artwork/icons/qudiTheme/22x22/tilt_correct.png"/>
+ </resources>
  <connections>
   <connection>
    <sender>actionClose</sender>
