@@ -477,10 +477,10 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_xy_resume.triggered.connect(self.continue_xy_scan_clicked)
         self._mw.action_scan_depth_start.triggered.connect(self.depth_scan_clicked)
         self._mw.action_scan_depth_resume.triggered.connect(self.continue_depth_scan_clicked)
-        self._mw.actionRotated_depth_scan.triggered.connect(self.rotate_depth_scan_clicked)
+        #self._mw.actionRotated_depth_scan.triggered.connect(self.rotate_depth_scan_clicked)
 
-        self._mw.action_loop_scan_xy.triggered.connect(self.xy_loop_scan_clicked)
-        self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
+        #self._mw.action_loop_scan_xy.triggered.connect(self.xy_loop_scan_clicked)
+        #self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
 
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
@@ -797,12 +797,12 @@ class ConfocalGui(GUIBase):
 
         # Disable the start scan buttons
         self._mw.action_scan_xy_start.setEnabled(False)
-        self._mw.action_loop_scan_xy.setEnabled(False)
+#        self._mw.action_loop_scan_xy.setEnabled(False)
         self._mw.action_scan_depth_start.setEnabled(False)
-        self._mw.actionRotated_depth_scan.setEnabled(False)
+#        self._mw.actionRotated_depth_scan.setEnabled(False)
 
         self._mw.action_scan_xy_resume.setEnabled(False)
-        self._mw.action_loop_scan_depth.setEnabled(False)
+#        self._mw.action_loop_scan_depth.setEnabled(False)
         self._mw.action_scan_depth_resume.setEnabled(False)
 
         self._mw.action_optimize_position.setEnabled(False)
@@ -833,7 +833,7 @@ class ConfocalGui(GUIBase):
         # Enable the scan buttons
         self._mw.action_scan_xy_start.setEnabled(True)
         self._mw.action_scan_depth_start.setEnabled(True)
-        self._mw.actionRotated_depth_scan.setEnabled(True)
+#        self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
 
@@ -847,8 +847,8 @@ class ConfocalGui(GUIBase):
         self._mw.xy_res_InputWidget.setEnabled(True)
         self._mw.z_res_InputWidget.setEnabled(True)
 
-        self._mw.action_loop_scan_xy.setEnabled(True)
-        self._mw.action_loop_scan_depth.setEnabled(True)
+#        self._mw.action_loop_scan_xy.setEnabled(True)
+#        self._mw.action_loop_scan_depth.setEnabled(True)
 
         self._mw.action_zoom.setEnabled(True)
 
