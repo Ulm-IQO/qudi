@@ -63,6 +63,7 @@ def make_constant_model(self, prefix=None):
     #Todo: Check if prefix is string
     if prefix is not None:
         model = Model(constant_function, prefix=prefix)
+        print(type(prefix))
     else:
         model = Model(constant_function)
     params = model.make_params()
