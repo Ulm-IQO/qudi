@@ -33,7 +33,7 @@ class Gui(QtCore.QObject):
         return pg.mkQApp()
 
     def setAppIcon(self):
-        iconpath = 'artwork/QuantumDiamond-logo-'
+        iconpath = 'artwork/logo/logo-qudi-'
         self.appIcon = QtGui.QIcon()
         self.appIcon.addFile('{0}16x16.png'.format(iconpath), QtCore.QSize(16,16))
         self.appIcon.addFile('{0}24x24.png'.format(iconpath), QtCore.QSize(24,24))
