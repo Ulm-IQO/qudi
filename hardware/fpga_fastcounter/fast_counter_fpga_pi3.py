@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Jan M. Binder <jan.binder@uni-ulm.de>
+Copyright (C) 2015 Thomas Unden <thomas.unden@uni-ulm.de>
 """
 
 from interface.fast_counter_interface import FastCounterInterface
@@ -177,7 +178,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self._number_of_gates = number_of_gates
         self._bin_width = bin_width_s * 1e9
-        self._record_length = int(self.record_length_s / self._bin_width_s)
+        self._record_length = int(record_length_s / bin_width_s)
         self.statusvar = 1
 
         self.pulsed = tt.Pulsed(
@@ -208,7 +209,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self.lock()
         self.count_data = np.zeros([self._number_of_gates,
-                                    self._gate_length_bins])
+                                    self._record_length])
         self.pulsed.start()
         self.statusvar = 2
         self.signal_get_data_next.emit()
