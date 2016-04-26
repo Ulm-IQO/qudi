@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -206,7 +206,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
    </property>
    <property name="text">
     <string>Record counts</string>
@@ -252,7 +252,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>

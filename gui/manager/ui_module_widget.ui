@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>72</height>
+    <height>74</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -37,7 +37,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</normaloff>../../artwork/icons/qudiTheme/22x22/view-refresh.png</iconset>
+       <normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</iconset>
      </property>
     </widget>
    </item>
@@ -48,7 +48,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>../../artwork/icons/qudiTheme/22x22/application-exit.png</normaloff>../../artwork/icons/qudiTheme/22x22/application-exit.png</iconset>
+       <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
      </property>
     </widget>
    </item>
