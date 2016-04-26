@@ -81,8 +81,10 @@ class OkFpgaPulser(Base, PulserInterface):
         self.current_status = -1
         self.sample_rate = 950e6
         # self.lock = Mutex()
+        self.current_loaded_asset = None
 
     def activation(self, e):
+        self.current_loaded_asset = None
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.sample_rate = self.get_sample_rate()
@@ -177,29 +179,20 @@ class OkFpgaPulser(Base, PulserInterface):
         # That configuration takes place here. A Setting for an AWG type
         # configuration, where 2 analog and 4 digital channels are available.
         available_ch = OrderedDict()
-        available_ch['DCH1'] = {'d_ch': 1}
-        available_ch['DCH2'] = {'d_ch': 2}
-        available_ch['DCH3'] = {'d_ch': 3}
-        available_ch['DCH4'] = {'d_ch': 4}
-        available_ch['DCH5'] = {'d_ch': 5}
-        available_ch['DCH6'] = {'d_ch': 6}
-        available_ch['DCH7'] = {'d_ch': 7}
-        available_ch['DCH8'] = {'d_ch': 8}
+        available_ch['d_ch1'] = 'DCH1'
+        available_ch['d_ch2'] = 'DCH2'
+        available_ch['d_ch3'] = 'DCH3'
+        available_ch['d_ch4'] = 'DCH4'
+        available_ch['d_ch5'] = 'DCH5'
+        available_ch['d_ch6'] = 'DCH6'
+        available_ch['d_ch7'] = 'DCH7'
+        available_ch['d_ch8'] = 'DCH8'
         constraints['available_ch'] = available_ch
 
-        # State all possible DIFFERENT configurations, which the pulsing device
-        # may have. That concerns also the display of the chosen channels.
-        # Channel configuration for this device, use OrderedDictionaries to
-        # keep an order in that dictionary. That is for now the easiest way to
-        # determine the channel configuration:
-        channel_config = OrderedDict()
-        channel_config['conf1'] = ['d_ch', 'd_ch', 'd_ch', 'd_ch', 'd_ch', 'd_ch', 'd_ch', 'd_ch']
-        constraints['channel_config'] = channel_config
-
         # Now you can choose, how many channel activation pattern exists:
-        activation_map = OrderedDict()
-        activation_map['map1'] = ['DCH1', 'DCH2', 'DCH3', 'DCH4', 'DCH5', 'DCH6', 'DCH7', 'DCH8']
-        constraints['activation_map'] = activation_map
+        activation_config = OrderedDict()
+        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
+        constraints['activation_config'] = activation_config
 
         # this information seems to be almost redundant but it can be that no
         # channel configuration exists, where not all available channels are
@@ -579,6 +572,14 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         names = []
         return names
+
+    def get_loaded_asset(self):
+        """ Retrieve the currently loaded asset name of the device.
+
+        @return str: Name of the current asset, that can be either a filename
+                     a waveform, a sequence ect.
+        """
+        return self.current_loaded_asset
 
     def get_saved_asset_names(self):
         """ Retrieve the names of all sampled and saved assets on the host PC.
