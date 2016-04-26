@@ -866,7 +866,7 @@
   <action name="refind_poi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position-poi.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position-poi.png</iconset>
    </property>
    <property name="text">
     <string>Refind POI</string>
@@ -881,7 +881,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/periodic_refind_poi.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/periodic-refind-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/periodic-refind-poi.png</iconset>
    </property>
    <property name="text">
     <string>Track POI</string>
@@ -893,7 +893,7 @@
   <action name="new_poi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-add-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-add-new.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
    </property>
    <property name="text">
     <string>New POI</string>

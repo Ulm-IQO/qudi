@@ -2021,7 +2021,7 @@
   <action name="action_scan_xy_start">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_start.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</iconset>
    </property>
    <property name="text">
     <string>Scan XY</string>
@@ -2033,7 +2033,7 @@
   <action name="action_scan_xy_resume">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_xy_resume.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-resume.png</iconset>
    </property>
    <property name="text">
     <string>Resume XY scan</string>
@@ -2045,7 +2045,7 @@
   <action name="action_scan_depth_start">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_start.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</iconset>
    </property>
    <property name="text">
     <string>Scan depth</string>
@@ -2057,7 +2057,7 @@
   <action name="action_scan_depth_resume">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan_depth_resume.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</iconset>
    </property>
    <property name="text">
     <string>Resume depth scan</string>
@@ -2069,7 +2069,7 @@
   <action name="action_optimize_position">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize_position.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Optimize position</string>
@@ -2084,7 +2084,7 @@
   <action name="action_stop_scanning">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/stop_scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop_scan.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
    </property>
    <property name="text">
     <string>Stop scan</string>
@@ -2140,7 +2140,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/tilt_correct.png</normaloff>../../artwork/icons/qudiTheme/22x22/tilt_correct.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/correct-tilt.png</normaloff>../../artwork/icons/qudiTheme/22x22/correct-tilt.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Use Tilt Correction</string>
