@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains a gui to see laser scanning data.
+This file contains a gui to see wavemeter data during laser scanning.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Jan M. Binder jan.binder@uni-ulm.de
+Copyright (C) 2015 Lachlan J. Rogers <lachlan.j.rogers@quantum.diamonds>
 """
 
 from gui.guibase import GUIBase
