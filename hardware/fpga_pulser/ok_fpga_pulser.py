@@ -22,7 +22,7 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.pulser_interface import PulserInterface
-import thirdparty.opal_kelly as ok
+import thirdparty.opal_kelly.ok64 as ok
 import time
 import os
 import numpy as np
