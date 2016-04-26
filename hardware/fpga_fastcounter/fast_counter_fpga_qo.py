@@ -26,7 +26,7 @@ import os
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.base import Base
-import thirdparty.opal_kelly as ok
+import thirdparty.opal_kelly.ok64 as ok
 
 
 class FastCounterFPGAQO(Base, FastCounterInterface):
