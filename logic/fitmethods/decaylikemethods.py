@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains methods for decay-like fitting, these methods
+are imported by class FitLogic.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,8 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian Frank florian.frank@uni-ulm.de
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 import numpy as np

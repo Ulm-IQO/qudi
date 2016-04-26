@@ -1,5 +1,23 @@
 # -*- coding: utf-8 -*-
-# unstable: Jochen Scheuer
+"""
+This file contains the QuDi FitLogic class, which provides all
+fitting methods imported from the files in logic/fitmethods.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
+"""
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -9,69 +27,18 @@ import importlib
 from os import listdir
 from os.path import isfile, join
 
-import numpy as np
-
-# FIXME: In general is it needed for any purposes to use weighting?
-# FIXME: Don't understand exactly when you return error code...
-
-"""
-General procedure to create new fitting routines:
-
-A fitting routine consists out of three major parts:
-    1. a (mathematical) Model you have for the passed data
-            * Here we use the lmfit package, which has a couple of standard
-              models like ConstantModel, LorentzianModel or GaussianModel.
-              These models can be used straight away and also can be added, like:
-              new_model = ConstantModel()+GaussianModel(), which yields a
-              Gaussian model with an offset.
-            * If there is no standard model one can define a customized model,
-              see make_sine_model()
-            * With model.make_params() one can create a set of parameters with
-              a value, min, max, vary and an expression. These parameters are
-              returned as a Parameters object which contains all variables
-              in a dictionary.
-            * The make_"..."_model method returns, the model and parameter
-              dictionary
-    2. an Estimator, which can extract from the passed data initial values for
-       the fitting routine.
-            * Here values have to be estimated from the raw data
-            * In many cases a clever convolution helps a lot
-            * Offsets can be retrieved from find_offset_parameter method
-            * All parameters are given via a Parameters object
-            * The estimated values are returned by a Parameters object
-    3. The actual fit method
-            * First the model and parameters are created with the make_model
-              method.
-            * The initial values are returned by the estimator method
-            * Constraints are set, e.g. param['offset'].min=0
-                                        param['offset'].max=data.max()
-            * Additional parameters given by inputs can be overwritten by
-              substitute_parameter method
-            * Finally fit is done via model.fit(data, x=axis,params=params)
-            * The fit routine from lmfit returns a dictionary with many
-              parameters like: results with errors and correlations,
-              best_values, initial_values, success flag,
-              an error message.
-            * With model.eval(...) one can generate high resolution data by
-              setting an x-axis with maby points
-
-The power of that general splitting is that you can write pretty independent
-fit algorithms, but their efficiency will (very often) rely on the quality of
-the estimator.
-"""
-
-
 class FitLogic(GenericLogic):
     """
     UNSTABLE:Jochen Scheuer
+
+    Documentation to add a new fit model/estimator/funciton can be found in
+    documentation/how_to_use_fitting.md or in the online documentation
+
     This is the fitting class where fit functions are defined and methods are
     implemented to process the data.
 
-    Here fit functions and estimators are provided, so for every function there
-    is a callable function (gaussian_function), a corresponding estimator
-    (gaussian_estimator) and a method (make_gaussian_fit) which executes the
-    fit.
-
+    For clarity reasons the fit function are imported from different files
+    seperated by function type, e.g. gaussianlikemethods, sinemethods, generalmethods
     """
     _modclass = 'fitlogic'
     _modtype = 'logic'

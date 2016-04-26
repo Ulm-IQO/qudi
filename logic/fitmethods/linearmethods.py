@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains methods for linear fitting, these methods
+are imported by class FitLogic. The functions can be used for amy
+types of offsets or slopes in other methods.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +17,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian Frank florian.frank@uni-ulm.de
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
@@ -175,8 +176,6 @@ def make_linear_model(self):
     
     
     model = slope * (Model(linear_function)+ constant_x) +constant_y
-#    model = slope * (Model(linear_function))
-    
     params = model.make_params()
 
     return model, params

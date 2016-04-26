@@ -1,4 +1,26 @@
 # -*- coding: utf-8 -*-
+"""
+This file contains a test bed for implementation of new fit
+functions and estimators. Here one can also do stability checks
+ with dummy data.
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (c) 2015-2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
+
+"""
 
 import numpy as np
 import scipy.optimize as opt
@@ -22,16 +44,13 @@ from scipy.special import gammaln as gamln
 #import peakutils
 #from peakutils.plot import plot as pplot
 
-"""
-Test bed in order to test performance of fits and estimators
-"""
-
-
 class FitLogic():
         """
-        UNSTABLE:Jochen Scheuer
-        This is the fitting class where fit models are defined and methods
-        are implemented to process the data.
+        This file contains a test bed for implementation of new fit
+        functions and estimators. Here one can also do stability checks
+         with dummy data.
+
+        All methods in the folder logic/fitmethods/ are imported here.
         
         """
         def __init__(self):
@@ -535,32 +554,6 @@ class FitLogic():
                 
                 mod,params = self.make_multiplegaussian_model(no_of_gauss=2)
     #            print('Parameters of the model',mod.param_names)
-                
-
-#                calculate_alex_model=True
-#                if calculate_alex_model==False:
-#    #                #============ Create data ==========
-#                    self.dist = 'dark_bright_gaussian'
-#
-#                    self.mean_signal = 260*1000
-#                    self.contrast = 0.3
-#                    self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
-#                    self.noise_amplitude = self.mean_signal*0.1
-#
-#                    self.life_time_bright = 0.08 # 60 millisecond
-#                    self.life_time_dark    = 0.04 # 40 milliseconds
-#
-#                    # needed for the life time simulation
-#                    self.current_dec_time = self.life_time_bright
-#                    self.curr_state_b = True
-#                    self.total_time = 0.0
-#
-#                    start=time.time()
-#                    data=self.get_counter(500)
-#                    print('time to create data',time.time()-start)
-#
-#                    plt.hist(data[0,:],20)
-#                    plt.show()
                     
                 amplitude=75000+np.random.random(1)*50000
                 sigma0=25000+np.random.random(1)*20000
@@ -669,76 +662,6 @@ class FitLogic():
 #                indices= peakutils.indexes(data, thres=5/max(data), min_dist=2)
 #                print('Peakutils',x[indices])
 #                pplot(x,data,indices)
-
-        def get_counter(self,samples=None):
-            """ Returns the current counts per second of the counter.
-    
-            @param int samples: if defined, number of samples to read in one go
-    
-            @return float: the photon counts per second
-            """
-    
-            count_data = np.empty([2,samples], dtype=np.uint32) # count data will be written here in the NumPy array
-            
-            self._clock_frequency=100
-
-            
-            timestep = 1./self._clock_frequency*samples
-            
-            for i in range(samples):
-    
-                if self.dist == 'single_gaussian':
-                    count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude/2)
-    
-                elif self.dist == 'dark_bright_gaussian':
-    
-                    self.total_time = self.total_time + timestep
-    
-                    if self.total_time > self.current_dec_time:
-                        if self.curr_state_b:
-                            self.curr_state_b = False
-                            self.current_dec_time = np.random.exponential(self.life_time_dark)
-                            count_data[0][i] = np.random.poisson(self.mean_signal)
-                        else:
-                            self.curr_state_b = True
-                            self.current_dec_time = np.random.exponential(self.life_time_bright)
-                        self.total_time = 0.0
-    
-                    count_data[0][i] = np.random.normal(self.mean_signal, self.noise_amplitude)*self.curr_state_b + \
-                                       np.random.normal(self.mean_signal2, self.noise_amplitude)*(1-self.curr_state_b)
-    
-                elif self.dist == 'uniform':
-                    count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
-    
-                elif self.dist == 'exponential':
-                    count_data[0][i] = np.random.exponential(self.mean_signal)
-    
-                elif self.dist == 'single_poisson':
-                    count_data[0][i] = np.random.poisson(self.mean_signal)
-    
-                elif self.dist == 'dark_bright_poisson':
-                    self.total_time = self.total_time + timestep
-    
-                    if self.total_time > self.current_dec_time:
-                        if self.curr_state_b:
-                            self.curr_state_b = False
-                            self.current_dec_time = np.random.exponential(self.life_time_dark)
-                            count_data[0][i] = np.random.poisson(self.mean_signal)
-                        else:
-                            self.curr_state_b = True
-                            self.current_dec_time = np.random.exponential(self.life_time_bright)
-                        self.total_time = 0.0
-    
-                    count_data[0][i] = np.random.poisson(self.mean_signal)*self.curr_state_b + np.random.poisson(self.mean_signal2)*(1-self.curr_state_b)
-    
-                else:
-                    # make uniform as default
-                    count_data[0][i] = self.mean_signal + random.uniform(-self.noise_amplitude/2, self.noise_amplitude/2)
-    
-    
-            time.sleep(1./self._clock_frequency*samples)
-    
-            return count_data
 
         def powerfluorescence_testing(self):
             x = np.linspace(1, 1000, 101)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains methods for a power vs. fluorescence fitting, these methods
+are imported by class FitLogic.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,7 +30,7 @@ from lmfit import Parameters
 #                                                                          #
 ############################################################################
 
-
+#Todo: Rename to real function name
 def make_powerfluorescence_model(self):
     """ This method creates a model of the fluorescence depending on excitation power with an linear offset.
 

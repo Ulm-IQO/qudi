@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi fitting logic functions needed for gaussian-like-methods.
+This file contains methods for gaussian-like fitting, these methods
+are imported by class FitLogic.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import numpy as np
@@ -242,6 +243,13 @@ def make_twoDgaussian_model(self):
 
         """ This method provides a two dimensional gaussian function.
 
+        Function taken from:
+        http://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m/21566831
+
+        Question from: http://stackoverflow.com/users/2097737/bland & http://stackoverflow.com/users/3273102/kokomoking
+                       & http://stackoverflow.com/users/2767207/jojodmo
+        Answer: http://stackoverflow.com/users/1461210/ali-m & http://stackoverflow.com/users/5234/mrjrdnthms
+
         @param array[k][M] x_data_tuple: array which is (k,M)-shaped, x and y
                                          values
         @param float or int amplitude: Amplitude of gaussian
@@ -254,19 +262,6 @@ def make_twoDgaussian_model(self):
 
         @return callable function: returns the function
         """
-
-        # # check if parameters make sense
-        # #FIXME: Check for 2D matrix
-        # if not isinstance( x,(frozenset, list, set, tuple,\
-        #                     np.ndarray)):
-        #     self.logMsg('Given range of axes is no array type.',
-        #                 msgType='error')
-        #
-        # parameters=[amplitude,x_zero,y_zero,sigma_x,sigma_y,theta,offset]
-        # for var in parameters:
-        #     if not isinstance(var,(float,int)):
-        #         self.logMsg('Given range of parameter is no float or int.',
-        #                     msgType='error')
 
         (u, v) = x
         x_zero = float(x_zero)

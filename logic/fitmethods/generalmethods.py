@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains general methods which are imported by class FitLogic.
+These general methods are available for all different fitting methods.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,110 +29,6 @@ from scipy.ndimage import filters
 #                                                                          #
 ############################################################################
 
-#def _substitute_parameter(self, parameters=None, update_parameters=None):
-#    """ This method substitutes all parameters handed in the
-#    update_parameters object in an initial set of parameters.
-#
-#    @param object parameters: lmfit.parameter.Parameters object, initial
-#                              parameters
-#    @param object update_parameters: lmfit.parameter.Parameters object, new
-#                                     parameters
-#
-#    @return object parameters: lmfit.parameter.Parameters object, new object
-#                               with substituted parameters
-#    """
-#
-#    for para in update_parameters:
-#        #first check if completely new parameter, which is added in the else
-#        if para in parameters:
-#            #store value because when max,min is set the value is overwritten
-#            store_value = parameters[para].value
-#
-#            # the Parameter object changes the value, min and max when the
-#            # value is called therefore the parameters have to be saved from
-#            # the reseted Parameter object therefore the Parameters have to be
-#            # saved also here
-#
-#            para_temp = update_parameters
-#            if para_temp[para].value is not None:
-#                value_new = True
-#                value_value = para_temp[para].value
-#            else:
-#                value_new = False
-#
-#            para_temp = update_parameters
-#            if para_temp[para].min is not None:
-#                min_new = True
-#                min_value = para_temp[para].min
-#            else:
-#                min_new = False
-#
-#            para_temp = update_parameters
-#            if para_temp[para].max is not None:
-#                max_new = True
-#                max_value = para_temp[para].max
-#            else:
-#                max_new = False
-#
-#            # vary is set by default to True
-#            parameters[para].vary = update_parameters[para].vary
-#
-#            # if the min, max and expression and value are new overwrite
-#            # them here
-#
-#            if min_new:
-#                parameters[para].min = update_parameters[para].min
-#
-#            if max_new:
-#                parameters[para].max = update_parameters[para].max
-#
-#            if update_parameters[para].expr is not None:
-#                parameters[para].expr = update_parameters[para].expr
-#
-#            if value_new:
-#                parameters[para].value = value_value
-#
-#            # if the min or max are changed they overwrite the value
-#            # therefore here the values have to be reseted to the initial
-#            # value also when no new value was set in the beginning
-#
-#            if min_new:
-#                if parameters[para].value is not None:
-#                    # in case the value is 0, devision by 0 has to be avoided
-#                    if parameters[para].value < 1e-12:
-#                        if abs((min_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
-#                            parameters[para].value = store_value
-#                    else:
-#                        if abs(min_value/parameters[para].value-1.)<1e-12:
-#                            parameters[para].value = store_value
-#            if max_new:
-#                # in case the value is 0, devision by 0 has to be avoided
-#                if parameters[para].value is not None:
-#                    if parameters[para].value < 1e-12:
-#                        if abs((max_value+1.)/(parameters[para].value+1.)-1.) < 1e-12:
-#                            parameters[para].value=store_value
-#                    else:
-#                        if abs(max_value/parameters[para].value-1.) < 1e-12:
-#                            parameters[para].value=store_value
-#
-#            # check if the suggested value or the value in parameters is
-#            # smaller/bigger than min/max values and set then the value to
-#            # min or max
-#
-#            if min_new:
-#                if parameters[para].value is not None:
-#                    if parameters[para].value<min_value:
-#                        parameters[para].value=min_value
-#
-#            if max_new:
-#                if parameters[para].value is not None:
-#                    if parameters[para].value>max_value:
-#                        parameters[para].value=max_value
-#        else:
-#            #if parameter is new add here
-#            parameters.add(para)
-#
-#    return parameters
 
 def _substitute_parameter(self, parameters=None, update_dict=None):
     """ This method substitutes all parameters handed in the
@@ -235,6 +132,7 @@ def _search_end_of_dip(self, direction, data, peak_arg, start_arg, end_arg, sigm
     """
     data has to be offset leveled such that offset is substracted
     """
+    # Todo: Create doc string
     absolute_min  = data[peak_arg]
 
     if direction == 'left':
@@ -503,6 +401,8 @@ def find_offset_parameter(self, x_values=None, data=None):
     """
     # lorentzian filter
     mod, params = self.make_lorentzian_model()
+
+    # Todo: exclude filter in seperate method to be used in other methods
 
     if len(x_values) < 20.:
         len_x = 5
