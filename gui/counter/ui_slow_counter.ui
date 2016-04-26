@@ -191,7 +191,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start counter</string>
