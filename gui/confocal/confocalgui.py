@@ -589,16 +589,16 @@ class ConfocalGui(GUIBase):
         #######################################################################
 
         self._scan_xy_single_icon = QtGui.QIcon()
-        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_xy_start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-xy-start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_depth_single_icon = QtGui.QIcon()
-        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_depth_start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-depth-start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_xy_loop_icon = QtGui.QIcon()
-        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_xy_loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-xy-loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
         self._scan_depth_loop_icon = QtGui.QIcon()
-        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_depth_loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-depth-loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         
         #######################################################################
         ####           Connect the colorbar and their actions              ####
