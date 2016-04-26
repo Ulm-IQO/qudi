@@ -22,22 +22,26 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 from collections import OrderedDict
 
 from core.base import Base
-from interface import magnet_interface
+from interface.magnet_interface import MagnetInterface
 
 
 class MagnetAxisDummy(object):
     """ Generic dummy magnet representing one axis. """
     def __init__(self, label):
         self.label = label
+        self.pos = 0.0
+        self.status = 0, {0: 'MagnetDummy Idle'}
 
 
-class MagnetDummy(Base, magnet_interface):
+class MagnetDummy(Base, MagnetInterface):
     """This is the Interface class to define the controls for the simple
     magnet hardware.
     """
 
     _modtype = 'MagnetDummy'
     _modclass = 'hardware'
+
+    _out = {'magnet': 'MagnetInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
@@ -74,8 +78,7 @@ class MagnetDummy(Base, magnet_interface):
                          of the state which should be reached after the event
                          had happened.
         """
-
-        self._magnet_device = self.connector['in']['magnetstage']['object']
+        pass
 
 
     def deactivation(self, e):
