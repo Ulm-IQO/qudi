@@ -33,6 +33,13 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorScale, ColorBar
 from gui.fitsettings import FitSettingsWidget
 
+# This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
+# It is used when specifying the paths to icons for the scanning actions.
+try:
+    _fromUtf8 = QtCore.QString.fromUtf8
+except AttributeError:
+    def _fromUtf8(s):
+        return s
 
 class CrossROI(pg.ROI):
 
@@ -479,9 +486,6 @@ class ConfocalGui(GUIBase):
         self._mw.action_scan_depth_resume.triggered.connect(self.continue_depth_scan_clicked)
         #self._mw.actionRotated_depth_scan.triggered.connect(self.rotate_depth_scan_clicked)
 
-        #self._mw.action_loop_scan_xy.triggered.connect(self.xy_loop_scan_clicked)
-        #self._mw.action_loop_scan_depth.triggered.connect(self.depth_loop_scan_clicked)
-
         self._mw.action_optimize_position.triggered.connect(self.refocus_clicked)
 
         # history actions
@@ -580,6 +584,22 @@ class ConfocalGui(GUIBase):
         # PlotWidget, which creates a xy_ViewWidget or a depth_Viewwidget:
         #self._mw.xy_ViewWidget.getViewBox().sigRangeChanged.connect(self.reset_xy_imagerange)
 
+        #######################################################################
+        ###               Icons for the scan actions                        ###
+        #######################################################################
+
+        self._scan_xy_single_icon = QtGui.QIcon()
+        self._scan_xy_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_xy_start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        self._scan_depth_single_icon = QtGui.QIcon()
+        self._scan_depth_single_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_depth_start.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        self._scan_xy_loop_icon = QtGui.QIcon()
+        self._scan_xy_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_xy_loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        self._scan_depth_loop_icon = QtGui.QIcon()
+        self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan_depth_loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        
         #######################################################################
         ####           Connect the colorbar and their actions              ####
         #######################################################################
@@ -797,12 +817,10 @@ class ConfocalGui(GUIBase):
 
         # Disable the start scan buttons
         self._mw.action_scan_xy_start.setEnabled(False)
-#        self._mw.action_loop_scan_xy.setEnabled(False)
         self._mw.action_scan_depth_start.setEnabled(False)
 #        self._mw.actionRotated_depth_scan.setEnabled(False)
 
         self._mw.action_scan_xy_resume.setEnabled(False)
-#        self._mw.action_loop_scan_depth.setEnabled(False)
         self._mw.action_scan_depth_resume.setEnabled(False)
 
         self._mw.action_optimize_position.setEnabled(False)
@@ -847,8 +865,6 @@ class ConfocalGui(GUIBase):
         self._mw.xy_res_InputWidget.setEnabled(True)
         self._mw.z_res_InputWidget.setEnabled(True)
 
-#        self._mw.action_loop_scan_xy.setEnabled(True)
-#        self._mw.action_loop_scan_depth.setEnabled(True)
 
         self._mw.action_zoom.setEnabled(True)
 
@@ -907,26 +923,29 @@ class ConfocalGui(GUIBase):
         """ Write new settings from the gui to the file. """
         self._scanning_logic.set_clock_frequency(self._sd.clock_frequency_InputWidget.value())
         self._scanning_logic.return_slowness = self._sd.return_slowness_InputWidget.value()
+        self._scanning_logic.permanent_scan = self._sd.loop_scan_CheckBox.isChecked()
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
         self.slider_small_step = self._sd.slider_small_step_SpinBox.value()
         self.slider_big_step = self._sd.slider_big_step_SpinBox.value()
 
+        # Update GUI icons to new loop-scan state
+        self._set_scan_icons()
+
     def keep_former_settings(self):
         """ Keep the old settings and restores them in the gui. """
         self._sd.clock_frequency_InputWidget.setValue(int(self._scanning_logic._clock_frequency))
         self._sd.return_slowness_InputWidget.setValue(int(self._scanning_logic.return_slowness))
+        self._sd.loop_scan_CheckBox.setChecked(self._scanning_logic.permanent_scan)
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
         self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
         self._sd.slider_big_step_SpinBox.setValue(int(self.slider_big_step))
 
-
     def menu_optimizer_settings(self):
         """ This method opens the settings menu. """
         self.keep_former_optimizer_settings()
         self._osd.exec_()
-
 
     def update_optimizer_settings(self):
         """ Write new settings from the gui to the file. """
@@ -936,7 +955,7 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.optimizer_Z_res = self._osd.z_optimizer_resolution_SpinBox.value()
         self._optimizer_logic.set_clock_frequency(self._osd.count_freq_SpinBox.value())
         self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
-        self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value()/1000
+        self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value() / 1000
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
 
         if self._osd.optim_sequence_z_last_RadioButton.isChecked():
@@ -982,16 +1001,6 @@ class ConfocalGui(GUIBase):
         #self._scanning_logic.stop_scanning()
         self._scanning_logic.start_scanning()
         self.disable_scan_actions()
-
-    def xy_loop_scan_clicked(self):
-        """ Perform a permanent xy scan."""
-        self._scanning_logic.permanent_scan = True
-        self.xy_scan_clicked()
-
-    def depth_loop_scan_clicked(self):
-        """Perform a permanent depth scan. """
-        self._scanning_logic.permanent_scan = True
-        self.depth_scan_clicked()
 
     def continue_xy_scan_clicked(self):
         """ Manages what happens if the xy scan is continued.
@@ -2070,3 +2079,14 @@ class ConfocalGui(GUIBase):
             self._mw.z_min_InputWidget.setValue(zMin)
             self._mw.z_max_InputWidget.setValue(zMax)
             self.change_z_image_range()
+
+    def _set_scan_icons(self):
+        """ Set the scan icons depending on whether loop-scan is active or not
+        """
+
+        if self._scanning_logic.permanent_scan:
+            self._mw.action_scan_xy_start.setIcon(self._scan_xy_loop_icon)
+            self._mw.action_scan_depth_start.setIcon(self._scan_depth_loop_icon)
+        else:
+            self._mw.action_scan_xy_start.setIcon(self._scan_xy_single_icon)
+            self._mw.action_scan_depth_start.setIcon(self._scan_depth_single_icon)
