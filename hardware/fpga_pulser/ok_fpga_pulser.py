@@ -391,7 +391,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         self.sample_rate = sample_rate
         self.fpga.ConfigureFPGA(bitfile_path)
-        self.logMsg('FPGA pulse generator configured with "pulsegen_8chnl_950MHz.bit"', msgType='status')
+        self.logMsg('FPGA pulse generator configured with {}'.format(bitfile_path), msgType='status')
         return 0
 
     def get_analog_level(self, amplitude=[], offset=[]):
@@ -780,14 +780,8 @@ a
     def _connect_fpga(self):
         # connect to FPGA by serial number
         self.fpga.OpenBySerial(self.fpga_serial)
-
         # upload configuration bitfile to FPGA
-        if (self.sample_rate == 950e6):
-            self.fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware', 'fpga_pulser', 'pulsegen_8chnl_950MHz.bit'))
-            self.logMsg('FPGA pulse generator configured with "pulsegen_8chnl_950MHz.bit"', msgType='status')
-        else:
-            self.fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware', 'fpga_pulser', 'pulsegen_8chnl_500MHz.bit'))
-            self.logMsg('FPGA pulse generator configured with "pulsegen_8chnl_500MHz.bit"', msgType='status')
+        self.set_sample_rate(self.sample_rate)
 
         # Check connection
         if not self.fpga.IsFrontPanelEnabled():

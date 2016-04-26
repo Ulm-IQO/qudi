@@ -46,7 +46,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp = ok.FrontPanel()
         self.fp.GetDeviceCount()
         self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
-        self.fp.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware', 'switches', 'ok_fpga', 'switch_top.bit'))
+        self.fp.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'switch_top.bit'))
         if not self.fp.IsFrontPanelEnabled():
             self.logMsg('ERROR: FrontPanel is not enabled in FPGA switch!', msgType='error')
             return
