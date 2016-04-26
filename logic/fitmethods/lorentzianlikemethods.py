@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the QuDi task runner module.
+This file contains methods for lorentzian-like fitting, these methods
+are imported by class FitLogic.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
+Copyright (C) 2015-2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import numpy as np
@@ -44,10 +46,10 @@ def make_lorentzian_model(self):
                            parameters for the lorentzian model.
     """
 
-    model=LorentzianModel()+ConstantModel()
-    params=model.make_params()
+    model = LorentzianModel()+ConstantModel()
+    params = model.make_params()
 
-    return model,params
+    return model, params
 
 def estimate_lorentz(self,x_axis=None,data=None):
     """ This method provides a lorentzian function.
@@ -75,17 +77,17 @@ def estimate_lorentz(self,x_axis=None,data=None):
                         msgType='error')
     #set paraameters
 
-    data_smooth,offset=self.find_offset_parameter(x_axis,data)
+    data_smooth, offset = self.find_offset_parameter(x_axis, data)
 
-    data_level=data-offset
-    data_min=data_level.min()
-    data_max=data_level.max()
+    data_level = data-offset
+    data_min = data_level.min()
+    data_max = data_level.max()
 
     #estimate sigma
-    numerical_integral=np.sum(data_level) * \
-                       (abs(x_axis[-1] - x_axis[0])) / len(x_axis)
+    numerical_integral = (np.sum(data_level) *
+                          (abs(x_axis[-1] - x_axis[0])) / len(x_axis))
 
-    if data_max>abs(data_min):
+    if data_max > abs(data_min):
         try:
             self.logMsg('The lorentzian estimator set the peak to the '
                         'minimal value, if you want to fit a peak instead '
@@ -97,11 +99,11 @@ def estimate_lorentz(self,x_axis=None,data=None):
                         'of a dip rewrite the estimator.',
                         msgType='warning')
 
-    amplitude_median=data_min
-    x_zero=x_axis[np.argmin(data_smooth)]
+    amplitude_median = data_min
+    x_zero = x_axis[np.argmin(data_smooth)]
 
     sigma = numerical_integral / (np.pi * amplitude_median)
-    amplitude=amplitude_median * np.pi * sigma
+    amplitude = amplitude_median * np.pi * sigma
 
     return error, amplitude, x_zero, sigma, offset
 
@@ -123,7 +125,7 @@ def make_lorentzian_fit(self, axis=None, data=None,
 
     model, params = self.make_lorentzian_model()
 
-    #auxiliary variables
+    # auxiliary variables
     stepsize = axis[1]-axis[0]
     n_steps = len(axis)
 
@@ -188,20 +190,17 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is no array.',
                         msgType='error')
-            error=-1
+            error = -1
         elif len(np.shape(var)) != 1:
             self.logMsg('Given parameter is no one dimensional array.',
                         msgType='error')
     #set paraameters
-    #print('data',data)
+
     data_smooth, offset = self.find_offset_parameter(x_axis, data)
-    #print('offset',offset)
     data_level = data-offset
     data_min = data_level.min()
     data_max = data_level.max()
-    #print('data_min',data_min)
-    #print('data_max',data_max)
-    #estimate sigma
+
 
     numerical_integral = np.sum(data_level) * \
                         (np.abs(x_axis[0] - x_axis[-1])) / len(x_axis)
@@ -220,14 +219,10 @@ def estimate_lorentzpeak (self, x_axis=None, data=None):
                   'a peak use estimate_lorentz.')
 
     amplitude_median = data_max
-    #x_zero = x_axis[np.argmax(data_smooth)]
     x_zero = x_axis[np.argmax(data)]
     sigma = np.abs(numerical_integral / (np.pi * amplitude_median))
     amplitude = amplitude_median * np.pi * sigma
 
-    #print('amplitude',amplitude)
-    #print('x_zero',x_zero)
-    #print('offset',offset)
 
     return error, amplitude, x_zero, sigma, offset
 
@@ -317,9 +312,9 @@ def make_multiplelorentzian_model(self, no_of_lor=None):
 
     model=ConstantModel()
     for ii in range(no_of_lor):
-        model+=LorentzianModel(prefix='lorentz{}_'.format(ii))
+        model += LorentzianModel(prefix='lorentz{}_'.format(ii))
 
-    params=model.make_params()
+    params = model.make_params()
 
     return model, params
 
@@ -347,13 +342,13 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
     """
     error=0
     # check if parameters make sense
-    parameters=[x_axis,data]
+    parameters = [x_axis,data]
     for var in parameters:
         if not isinstance(var,(frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is no array.', \
                         msgType='error')
             error=-1
-        elif len(np.shape(var))!=1:
+        elif len(np.shape(var)) != 1:
             self.logMsg('Given parameter is no one dimensional array.',
                         msgType='error')
 

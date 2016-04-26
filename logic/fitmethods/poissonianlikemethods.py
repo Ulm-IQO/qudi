@@ -20,10 +20,6 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
-
-"""
-Acknoledgments: scipy project https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
-"""
 import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
@@ -42,7 +38,13 @@ from scipy.special import gammaln as gamln
 
 def poisson(self,x,mu):
     """
-    Poisson function see https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
+    Poisson function taken from:
+    https://github.com/scipy/scipy/blob/master/scipy/stats/_discrete_distns.py
+
+    For license see documentation/BSDLicense_scipy.md
+
+    Author:  Travis Oliphant  2002-2011 with contributions from
+             SciPy Developers 2004-2011
     """
     return np.exp(special.xlogy(x, mu) - gamln(x + 1) - mu)
 
@@ -170,8 +172,8 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
 
     # a gaussian filter is appropriate due to the well approximation of poisson
     # distribution
-    gaus=gaussian(10,10)
-    data_smooth = filters.convolve1d(data, gaus/gaus.sum(),mode='mirror')
+    gaus = gaussian(10,10)
+    data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
 
     # set parameters
     mu = x_axis[np.argmax(data_smooth)]
@@ -227,7 +229,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
 
 ############################################################################
 #                                                                          #
-#                     double  poissonian model                             #
+#                     double poissonian model                              #
 #                                                                          #
 ############################################################################
 
