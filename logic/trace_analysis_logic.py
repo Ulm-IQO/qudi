@@ -386,7 +386,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         else:
             result = self._fit_logic.make_doublegaussian_fit(axis=axis,
-                                                             data=data,
+                                                             data=data, estimator='gated_counter',
                                                              add_parameters=None)
 
             # 1000 points in x axis for smooth fit data

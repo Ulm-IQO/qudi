@@ -528,44 +528,46 @@ class FitLogic():
         def double_gaussian_testing(self):
             for ii in range(1):
 #                time.sleep(0.51)
-                start=100000
-                stop=400000
+                start=000000
+                stop=500000
                 num_points=int((stop-start)/2000)
                 x = np.linspace(start, stop, num_points)
                 
                 mod,params = self.make_multiplegaussian_model(no_of_gauss=2)
     #            print('Parameters of the model',mod.param_names)
                 
-                p=Parameters()
-                calculate_alex_model=True
-                if calculate_alex_model==False:
-    #                #============ Create data ==========
-                    self.dist = 'dark_bright_gaussian'
-    
-                    self.mean_signal = 260*1000
-                    self.contrast = 0.3
-                    self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
-                    self.noise_amplitude = self.mean_signal*0.1
-            
-                    self.life_time_bright = 0.08 # 60 millisecond
-                    self.life_time_dark    = 0.04 # 40 milliseconds
-                    
-                    # needed for the life time simulation
-                    self.current_dec_time = self.life_time_bright
-                    self.curr_state_b = True
-                    self.total_time = 0.0
-                    
-                    start=time.time()
-                    data=self.get_counter(500)
-                    print('time to create data',time.time()-start)
-                    
-                    plt.hist(data[0,:],20)
-                    plt.show()
+
+#                calculate_alex_model=True
+#                if calculate_alex_model==False:
+#    #                #============ Create data ==========
+#                    self.dist = 'dark_bright_gaussian'
+#
+#                    self.mean_signal = 260*1000
+#                    self.contrast = 0.3
+#                    self.mean_signal2 = self.mean_signal - self.contrast*self.mean_signal
+#                    self.noise_amplitude = self.mean_signal*0.1
+#
+#                    self.life_time_bright = 0.08 # 60 millisecond
+#                    self.life_time_dark    = 0.04 # 40 milliseconds
+#
+#                    # needed for the life time simulation
+#                    self.current_dec_time = self.life_time_bright
+#                    self.curr_state_b = True
+#                    self.total_time = 0.0
+#
+#                    start=time.time()
+#                    data=self.get_counter(500)
+#                    print('time to create data',time.time()-start)
+#
+#                    plt.hist(data[0,:],20)
+#                    plt.show()
                     
                 amplitude=75000+np.random.random(1)*50000
                 sigma0=25000+np.random.random(1)*20000
                 sigma1=25000+np.random.random(1)*20000
                 splitting=100000  # abs(np.random.random(1)*300000)
+
+                p=Parameters()
                 p.add('gaussian0_amplitude',value=amplitude)
                 p.add('gaussian0_center',value=160000)
                 p.add('gaussian0_sigma',value=sigma0)
@@ -575,7 +577,7 @@ class FitLogic():
                 p.add('c',value=0.)
 
                 data_noisy=(mod.eval(x=x,params=p)
-                                        + 0.3*np.random.normal(size=x.shape))
+                                        + 0.0*np.random.normal(size=x.shape))
 
 #                np.savetxt('data',data_noisy)
 
@@ -610,7 +612,16 @@ class FitLogic():
                 plt.plot((x[sigma1_argleft], x[sigma1_argleft]), ( data_noisy.min() ,data_noisy.max()), 'k-')
                 plt.plot((x[sigma1_argright], x[sigma1_argright]), ( data_noisy.min() ,data_noisy.max()), 'k-')
 
-                result=self.make_doublegaussian_fit(x,data_noisy,estimator='gated_counter',
+                paramdict = dict()
+                paramdict['gaussian0_amplitude'] = {'gaussian0_amplitude':amplitude}
+                paramdict['gaussian0_center'] = {'gaussian0_center':160000}
+                paramdict['gaussian0_sigma'] = {'gaussian0_sigma':sigma0}
+                paramdict['gaussian1_amplitude'] = {'gaussian1_amplitude':amplitude*1.5}
+                paramdict['gaussian1_center'] = {'gaussian1_center':300000}
+                paramdict['gaussian1_sigma'] = {'gaussian1_sigma':sigma1}
+                paramdict['c'] = {'c':0}
+
+                result=self.make_doublegaussian_fit(x,data_noisy,add_parameters = paramdict,estimator='gated_counter',
                                         threshold_fraction=threshold_fraction, 
                                         minimal_threshold=minimal_threshold, 
                                         sigma_threshold_fraction=sigma_threshold_fraction)
@@ -621,9 +632,17 @@ class FitLogic():
 #                gaus=gaussian(20,10)
 #                data_smooth = filters.convolve1d(data_noisy, gaus/gaus.sum(),mode='mirror')
 #                data_der=np.gradient(data_smooth)
-#                print(result.fit_report())
-#                print(result.message)
-#                print(result.success)
+                print(result.fit_report())
+                print(result.message)
+                print(result.success)
+#                print(result.params)
+                print(result.errorbars)
+
+######################################################
+
+                #TODO: check if adding  #,fit_kws={"ftol": 1e-4, "xtol": 1e-4, "gtol": 1e-4} to model.fit can help to get errorbars
+
+#####################################################
                 try:
                     plt.plot(x, data_noisy, '-b')
                     plt.plot(x, data_smooth, '-g')
@@ -823,7 +842,7 @@ class FitLogic():
                 
                 
                 
-                result=self.make_doublegaussian_fit(x,data_noisy,add_parameters=params,
+                result=self.make_doublegaussian_fit(x,data_noisy,
                                         estimator='odmr_dip',
                                         threshold_fraction=threshold_fraction, 
                                         minimal_threshold=minimal_threshold, 
@@ -833,7 +852,7 @@ class FitLogic():
 #                plt.plot((result.init_values['gaussian1_center'], result.init_values['gaussian1_center']), ( data_level.min() ,data_level.max()), 'r-')                                    
 #                print(result.init_values['gaussian0_center'],result.init_values['gaussian1_center'])
 
-#                print(result.fit_report())
+                print(result.fit_report())
 #                print(result.message)
 #                print(result.success)
                 try:
@@ -894,8 +913,7 @@ class FitLogic():
             stepsize = x_axis[1]-x_axis[0]  # for frequency axis
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
-
-            #plt.plot(freq,fourier)
+            
             print(params['frequency'].value,np.round(frequency_max,3))
 #            plt.xlim(0,freq.max())
             plt.plot(freq[:int(len(freq)/2)],abs(fourier)[:int(len(freq)/2)])
@@ -1116,9 +1134,6 @@ class FitLogic():
     
             except:
                 print('exception')
-                
-            print(mod.eval(x=np.array([1]),params=p))
-            print(mod.eval(x=np.array([1]),poissonian_mu=8,poissonian_amplitude=200))
 
         def gaussian_testing(self):
             start=0
@@ -1397,40 +1412,4 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.exponentialdecay_testing()
 test.sineexponentialdecay_testing()
-
-#class FitConstraints(OrderedDict):        
-#    def __init__(self):
-#        print('Fitconstraints')
-#        
-#    def add(self, name, value=None, vary=True, min=-inf, max=inf, expr=None):
-#        """
-#        Convenience function for adding a Parameter:
-#        Example
-#        -------
-#        p = Parameters()
-#        p.add(name, value=XX, ...)
-#        is equivalent to:
-#        p[name] = Parameter(name=name, value=XX, ....
-#        """
-#        if isinstance(name, Parameter):
-#            self.__setitem__(name.name, name)
-#        else:
-#            self.__setitem__(name, Parameter(value=value, name=name, vary=vary,
-#                                             min=min, max=max, expr=expr))
-#                                             
-#                                             
-#class FitConstraint():        
-#    def __init__(self, name, value=None, vary=None, minimum=None, maximum=None, expr=None): 
-#        print(name)
-#        self.name = name 
-#        self.value = value 
-#        self.vary = vary 
-#        self.minimum = minimum
-#        self.maximum = maximum
-#        self.expr = expr
-#    def values(self):
-#        return self.name, self.value
-#    
-#    
