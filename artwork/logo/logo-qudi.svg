@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   sodipodi:docname="QuantumDiamond-logo.svg"
+   inkscape:version="0.91 r13725"
+   version="1.1"
+   id="svg2"
+   height="230"
+   width="230"
+   inkscape:export-filename="D:\Dropbox\Doctorwork\Software\QO-Diamond\QuantumDiamond-quad.png"
+   inkscape:export-xdpi="200"
+   inkscape:export-ydpi="200">
+  <title
+     id="title4165">Quantum Diamond Main Logo</title>
+  <defs
+     id="defs4">
+    <linearGradient
+       id="linearGradient3846">
+      <stop
+         style="stop-color:#25ff13;stop-opacity:1;"
+         offset="0"
+         id="stop3848" />
+      <stop
+         style="stop-color:#0fc700;stop-opacity:0;"
+         offset="1"
+         id="stop3850" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient4020">
+      <stop
+         style="stop-color:#f32821;stop-opacity:1;"
+         offset="0"
+         id="stop4022" />
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="1"
+         id="stop4024" />
+    </linearGradient>
+    <clipPath
+       id="clipPath3888"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3890"
+         d="m 0,841.89 595.276,0 L 595.276,0 0,0 0,841.89 z"
+         inkscape:connector-curvature="0" />
+    </clipPath>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient4020"
+       id="radialGradient4026"
+       cx="192.50934"
+       cy="549.86218"
+       fx="192.50934"
+       fy="549.86218"
+       r="82.510406"
+       gradientTransform="matrix(1,0,0,0.09091938,0,499.86906)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient4020"
+       id="radialGradient3049"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,0.09091938,0,499.86906)"
+       cx="192.50934"
+       cy="549.86218"
+       fx="192.50934"
+       fy="549.86218"
+       r="82.510406" />
+    <clipPath
+       id="clipPath3888-1"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3890-7"
+         d="m 0,841.89 595.276,0 L 595.276,0 0,0 0,841.89 z"
+         inkscape:connector-curvature="0" />
+    </clipPath>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3846"
+       id="radialGradient3852"
+       cx="114.9375"
+       cy="163.35767"
+       fx="114.9375"
+       fy="163.35767"
+       r="42.5"
+       gradientTransform="matrix(1,0,0,2.5882353,0,-259.45041)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2"
+     inkscape:cx="100.01667"
+     inkscape:cy="155.85609"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer2"
+     showgrid="true"
+     inkscape:window-width="2560"
+     inkscape:window-height="1378"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:snap-bbox="true"
+     inkscape:bbox-paths="true"
+     inkscape:bbox-nodes="true"
+     inkscape:snap-bbox-edge-midpoints="true"
+     inkscape:snap-bbox-midpoints="true"
+     inkscape:object-paths="true"
+     inkscape:object-nodes="true"
+     inkscape:snap-intersection-paths="true"
+     inkscape:snap-smooth-nodes="true"
+     inkscape:snap-global="true"
+     inkscape:snap-midpoints="true"
+     inkscape:snap-object-midpoints="true"
+     inkscape:snap-center="true">
+    <inkscape:grid
+       type="xygrid"
+       id="grid3041"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true"
+       originx="28px"
+       originy="-377.87873px" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>Quantum Diamond Main Logo</dc:title>
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/by-nc-sa/3.0/" />
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Alexander Stark</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:rights>
+          <cc:Agent>
+            <dc:title>Copyright 2015 by Alexander Stark alexander.stark@uni-ulm.de</dc:title>
+          </cc:Agent>
+        </dc:rights>
+        <dc:date>15.06.2015</dc:date>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/by-nc-sa/3.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Notice" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Attribution" />
+        <cc:prohibits
+           rdf:resource="http://creativecommons.org/ns#CommercialUse" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#ShareAlike" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline"
+     transform="translate(28,-444.48346)" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Ebene"
+     style="display:inline"
+     transform="translate(28,-444.48346)">
+    <path
+       sodipodi:type="arc"
+       style="fill:url(#radialGradient3852);fill-opacity:1;stroke:none"
+       id="path3834"
+       sodipodi:cx="114.9375"
+       sodipodi:cy="163.35767"
+       sodipodi:rx="42.5"
+       sodipodi:ry="110"
+       d="m 157.4375,163.35767 a 42.5,110 0 0 1 -42.5,110 42.5,110 0 0 1 -42.5,-110 42.5,110 0 0 1 42.5,-110.000004 42.5,110 0 0 1 42.5,110.000004 z"
+       transform="matrix(1.9999999,0,0,1.2032086,-139.87498,363.4559)" />
+    <g
+       id="g3841"
+       transform="translate(35,5.0000026)">
+      <path
+         inkscape:connector-curvature="0"
+         id="path3823"
+         d="m -60,517.36218 95,145 -60,-145 z"
+         style="fill:#215778;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3821"
+         d="m -60,517.36218 35,0 20,-75 z"
+         style="fill:#60b5ff;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3043"
+         d="m -5,442.36218 -55,75 95,145 0,-220 z"
+         style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3815"
+         d="m -60,517.36218 95,0"
+         style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3817"
+         d="m -25,517.36218 60,0 0,145 -60,-145"
+         style="fill:#215778;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         sodipodi:nodetypes="ccccc"
+         inkscape:connector-curvature="0"
+         id="path3819"
+         d="m -25,517.36218 21,-75 39,0 0,75 z"
+         style="fill:#60b5ff;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <g
+       id="g3866"
+       transform="matrix(-1,0,0,1,409,35.000003)">
+      <g
+         id="g3826">
+        <path
+           style="fill:#215778;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;display:inline"
+           d="m 210,487.36218 95,145 -60,-145 z"
+           id="path3823-1"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:#60b5ff;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;display:inline"
+           d="m 210,487.36218 35,0 20,-75 z"
+           id="path3821-7"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;display:inline"
+           d="m 265,412.36218 -55,75 95,145 0,-220 z"
+           id="path3043-4"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;display:inline"
+           d="m 210,487.36218 95,0"
+           id="path3815-0"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:#215778;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;display:inline"
+           d="m 245,487.36218 60,0 0,145 -60,-145"
+           id="path3817-9"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:#60b5ff;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;display:inline"
+           d="m 245,487.36218 21,-75 39,0 0,75 z"
+           id="path3819-4"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccc" />
+      </g>
+    </g>
+    <g
+       id="g3792"
+       transform="matrix(1.4355612,0,0,1.4355612,-178.69435,-72.235453)"
+       inkscape:export-filename="D:\Dropbox\Doctorwork\Software\QO-Diamond\QuantumDiamond-quad.png"
+       inkscape:export-xdpi="200"
+       inkscape:export-ydpi="200" />
+  </g>
+</svg>
