@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Kay Jahnke kay.jahnke@alumni.uni-ulm.de
 Copyright (C) 2015 Thomas Unden thomas.unden@uni-ulm.de
+Copyright (C) 2009 Helmut Rathgen <helmut.rathgen@gmail.com>
 """
 
 import visa
