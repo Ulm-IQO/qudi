@@ -143,9 +143,10 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         bitfile_name = 'fastcounter_' + self._fpga_type + '.bit'
 
         # Load on the FPGA a configuration file (bit file).
-        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'hardware',
-                                              'fpga_fastcounter',
-                                              bitfile_name))
+        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(),
+                                                'thirdparty',
+                                                'qo_fpga',
+                                                bitfile_name))
 
         # Check if the upload was successful and the Opal Kelly FrontPanel is
         # enabled on the FPGA
