@@ -26,7 +26,7 @@ from lmfit import minimize
 from scipy.interpolate import splrep, sproot, splev
 ############################################################################
 #                                                                          #
-#                              decay fitting                              #
+#                              decay fitting                               #
 #                                                                          #
 ############################################################################
 
@@ -151,7 +151,6 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(fourier).argmax()])
     fourier_real = fourier.real
-
     def fwhm(x, y, k=10):
         """
         Determine full-with-half-maximum of a peaked set of points, x and y.
@@ -195,8 +194,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
         fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
     print(len(np.array(freq_plus)), np.array(freq_plus))
-    fwhm_plus = fwhm(np.array(freq_plus), np.array(fourier_real_plus), k=10)
-    params['lifetime'].value = 1 / (fwhm_plus * np.pi)
+    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
+    params['lifetime'].value = 1 / (fwhm_plus*np.pi)
     print("FWHM", fwhm_plus)
 
     # estimating the phase from the first point
