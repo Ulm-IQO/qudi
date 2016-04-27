@@ -1187,7 +1187,7 @@ class FitLogic():
 
 ###########################################################################################
         def sineexponentialdecay_testing(self):
-
+            # generation of data for testing
             x_axis = np.linspace(0, 1000, 6001)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
@@ -1200,9 +1200,9 @@ class FitLogic():
             params['lifetime'].value = 200
             print(params)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.01 * np.random.normal(size=x_axis.shape))
+                          + 1* np.random.normal(size=x_axis.shape))
 
-            plt.plot(x_axis, data_noisy)
+            #plt.plot(x_axis, data_noisy)
 
             # set the offset as the average of the data
             offset = np.average(data_noisy)
@@ -1221,10 +1221,11 @@ class FitLogic():
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
             
             
-            print('frequency_max',frequency_max)
+            #print('frequency_max',frequency_max)
+            #take the real part of fourier
             fourier_real = fourier.real
-
-            def fwhm(x, y, k=10):
+            
+            def fwhm(x, y, k=3):
                 """
                 Determine full-with-half-maximum of a peaked set of points, x and y.
         
@@ -1243,18 +1244,16 @@ class FitLogic():
                 s = splrep(x, y - half_max)
                 roots = sproot(s)
                 if len(roots) < 2:
-                    # self.logMsg('No peak was found.',
-                    #             msgType='error')
-                    pass
+                     self.logMsg('No peak was found.',
+                                 msgType='error')
                 elif len(roots) > 2:
-                    # self.logMsg('Multiple peaks was found.',
-                    #             msgType='error')
-                    pass
+                     self.logMsg('Multiple peaks was found.',
+                                 msgType='error')
                 else:
-                    print(len(roots))
                     return abs(roots[1] - roots[0])
-            #print(freq)
-            #print(len(fourier_real))
+                    
+                    
+            #adjust the order of data. Now that freq is ordered from - to +
             freq_plus = [0]*len(freq)
             for i in range(0,int(len(freq)/2)):
                 freq_plus[i + int(len(freq)/2)]=freq[i]
@@ -1265,45 +1264,47 @@ class FitLogic():
                 fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
             for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
                 fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
-            #print(len(np.array(freq_plus)),np.array(fourier_real_plus))
-            plt.plot(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]))
-            plt.show()
-            fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
-            print("FWHM", fwhm_plus)
+            # Get the peak width by using the function defined before
+            fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=3)
+            #print("FWHM", fwhm_plus)
             params['lifetime'].value = 1/(fwhm_plus*np.pi)
+           
+           # plotting spline interpolation of the data.
+            plt.plot(freq_plus[int(len(freq) / 2):], fourier_real_plus[int(len(freq) / 2):]-max(fourier_real_plus)/2, '-or')
+            plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],splrep(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]-max(fourier_real_plus)/2))))
             
-            print('max:', abs(fourier)[:int(len(freq) / 2)].max())
-            print(params['frequency'].value, np.round(frequency_max, 3))
-            plt.xlim(-0.02,0.02)            
-            plt.plot(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)])
-            plt.plot(freq,abs(fourier))
+            #print('max:', abs(fourier)[:int(len(freq) / 2)].max())
+            #print(params['frequency'].value, np.round(frequency_max, 3))
+            plt.xlim(0,0.02)            
+            #plt.plot(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)])
+            #plt.plot(freq,)
             plt.show()
 
-            print('offset', offset)
+            #print('offset', offset)
 
             shift_tmp = (data_level[0]) / params['amplitude'].value
             shift = abs(np.arcsin(shift_tmp))
-            print('shift', shift)
+            #print('shift', shift)
             if np.gradient(data_noisy)[0] < 0 and data_level[0] > 0:
                 shift = np.pi - shift
-                print('ho ', shift)
+                #print('ho ', shift)
             elif np.gradient(data_noisy)[0] < 0 and data_level[0] < 0:
                 shift += np.pi
-                print('hi1')
+                #print('hi1')
             elif np.gradient(data_noisy)[0] > 0 and data_level[0] < 0:
                 shift = 2. * np.pi - shift
-                print('hi2')
+                #print('hi2')
 
-            print(params['phase'].value, shift)
+            #print(params['phase'].value, shift)
 
 
             params['frequency'].value = frequency_max
             params['phase'].value = shift
             params['offset'].value = offset
             params['lifetime'].value = 1/(fwhm_plus *np.pi)
-            print('frequency', params['frequency'].value)
-            print('lifetime',params['lifetime'].value)
-            print('amplitude',params['amplitude'].value)
+            #print('frequency', params['frequency'].value)
+            #print('lifetime',params['lifetime'].value)
+            #print('amplitude',params['amplitude'].value)
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             #params = self.make_sineexponentialdecay_fit()
             #plt.plot(freq,fourier_real)
@@ -1334,7 +1335,7 @@ test=FitLogic()
 #test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
-test.double_gaussian_odmr_testing()
+#test.double_gaussian_odmr_testing()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
@@ -1342,4 +1343,4 @@ test.double_gaussian_odmr_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.sineexponentialdecay_testing()
+test.sineexponentialdecay_testing()
