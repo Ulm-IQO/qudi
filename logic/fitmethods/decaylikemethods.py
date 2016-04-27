@@ -151,7 +151,6 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(fourier).argmax()])
     fourier_real = fourier.real
-# This definirion of funcion comes from the stackflow answer http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755 made by jdg on Jan 14 '13 at 22:24
 
     def fwhm(x, y, k=10):
         """
