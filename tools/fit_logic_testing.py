@@ -1270,7 +1270,7 @@ class FitLogic():
             plt.show()
             fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
             print("FWHM", fwhm_plus)
-            params['lifetime'].value = 1/(fwhm_plus *np.pi)
+            params['lifetime'].value = 1/(fwhm_plus*np.pi)
             
             print('max:', abs(fourier)[:int(len(freq) / 2)].max())
             print(params['frequency'].value, np.round(frequency_max, 3))
