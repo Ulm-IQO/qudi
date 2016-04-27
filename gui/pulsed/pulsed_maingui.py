@@ -1321,7 +1321,18 @@ class PulsedMeasurementGui(GUIBase):
         """
         name = self._mw.saved_blocks_ComboBox.currentText()
         self._seq_gen_logic.delete_block(name)
+
+        # update at first the comboboxes within the organizer table and block
+        # all the signals which might cause an error, because during the update
+        # there is access on the table and that happens row by row, i.e. not all
+        # cells are updated if the first signal is emited and there might be
+        # some cells which are basically empty, which would cause an error in
+        # the display of the current ensemble configuration.
+        self._mw.block_organizer_TableWidget.blockSignals(True)
         self.update_block_organizer_list()
+        self._mw.block_organizer_TableWidget.blockSignals(False)
+        # after everything is fine, perform the update:
+        self._update_current_pulse_block_ensemble()
         return
 
     def generate_pulse_block(self):
@@ -1335,7 +1346,18 @@ class PulsedMeasurementGui(GUIBase):
         self._seq_gen_logic.generate_pulse_block_object(objectname,
                                                   self.get_pulse_block_table(),
                                                   self._mw.laserchannel_ComboBox.currentText())
+
+        # update at first the comboboxes within the organizer table and block
+        # all the signals which might cause an error, because during the update
+        # there is access on the table and that happens row by row, i.e. not all
+        # cells are updated if the first signal is emited and there might be
+        # some cells which are basically empty, which would cause an error in
+        # the display of the current ensemble configuration.
+        self._mw.block_organizer_TableWidget.blockSignals(True)
         self.update_block_organizer_list()
+        self._mw.block_organizer_TableWidget.blockSignals(False)
+        # after everything is fine, perform the update:
+        self._update_current_pulse_block_ensemble()
 
     def insert_parameters(self, column):
         """ Insert additional parameters given in the dict add_pbe_param at specified column.
@@ -1681,7 +1703,7 @@ class PulsedMeasurementGui(GUIBase):
 
                 # Calculate the length via the gaussian summation formula:
                 length_bin = int(length_bin + block_obj.init_length_bins * (reps + 1) +
-                                 ((reps + 1) * ((reps + 1) + 1) / 2) * block_obj.increment_bins)
+                             ((reps + 1) * ((reps + 1) + 1) / 2) * block_obj.increment_bins)
 
                 num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps + 1)
 
@@ -2730,8 +2752,8 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
                 meas_ticks_list = asset_param['measurement_ticks_list']/self.get_sample_rate()
-
             # ---------------------------------------------------------------------------------
+
 
             self._pulsed_meas_logic.set_num_of_lasers(num_laser_pulses)
             self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
