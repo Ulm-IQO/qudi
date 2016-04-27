@@ -80,6 +80,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         self.current_status = -1
         self.sample_rate = 950e6
+        self.current_loaded_asset = None
         # self.lock = Mutex()
         self.current_loaded_asset = None
 
@@ -298,7 +299,7 @@ class OkFpgaPulser(Base, PulserInterface):
                 self.logMsg('Upload of the asset "{0}" to FPGA was successful.\n'
                             'Upload attempts needed: {1}'.format(asset_name, loop_count), msgType='status')
                 break
-
+        self.current_loaded_asset = asset_name
         return 0
 
     def load_asset(self, asset_name, load_dict={}):
@@ -560,6 +561,14 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         d_ch_dict = {1: True, 2: True, 3: True, 4: True, 5: True, 6: True, 7: True, 8: True}
         return {}, d_ch_dict
+
+    def get_loaded_asset(self):
+        """ Retrieve the currently loaded asset name of the device.
+
+        @return str: Name of the current asset, that can be either a filename
+                     a waveform, a sequence ect.
+        """
+        return self.current_loaded_asset
 
     def get_uploaded_asset_names(self):
         """ Retrieve the names of all uploaded assets on the device.

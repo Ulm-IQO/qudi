@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Niko Tomek
+Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 

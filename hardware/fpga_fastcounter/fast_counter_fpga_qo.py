@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the QuDi hardware file for the FPGA based fast counter.
+This file contains the QuDi hardware module for the FPGA based fast counter.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
