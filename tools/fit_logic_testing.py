@@ -1197,19 +1197,19 @@ class FitLogic():
 ###########################################################################################
         def sineexponentialdecay_testing(self):
 
-            x_axis = np.linspace(0, 1000, 9001)
+            x_axis = np.linspace(0, 1000, 6001)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = 10
-            params['frequency'].value = 1
+            params['amplitude'].value = 30
+            params['frequency'].value = 0.01
             params['phase'].value = np.pi * 0.4
-            params['offset'].value = 2
-            params['lifetime'].value = 50
+            params['offset'].value = 10
+            params['lifetime'].value = 200
             print(params)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.01* np.random.normal(size=x_axis.shape))
+                          + 0.01 * np.random.normal(size=x_axis.shape))
 
             plt.plot(x_axis, data_noisy)
 
@@ -1230,7 +1230,7 @@ class FitLogic():
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
             print('frequency_max',frequency_max)
             fourier_real = fourier.real
-#The fwhm def comes from http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755, jdg's answer on Jan 14 2013
+# This definirion of funcion comes from the stackflow answer http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755 made by jdg on Jan 14 '13 at 22:24
             def fwhm(x, y, k=10):
 
                 class MultiplePeaks(Exception):
@@ -1264,7 +1264,7 @@ class FitLogic():
             for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
                 fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
             #print(len(np.array(freq_plus)),np.array(fourier_real_plus))
-            fwhm_plus = fwhm(np.array(freq_plus[int(len(freq) / 2):]),np.array(fourier_real_plus[int(len(freq) / 2):]),k=10)
+            fwhm_plus = fwhm(np.array(freq_plus),np.array(fourier_real_plus),k=10)
             print("FWHM", fwhm_plus)
             params['lifetime'].value = 1/(fwhm_plus *np.pi)
 
