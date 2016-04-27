@@ -2701,6 +2701,20 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
 
+
+            # ---------------------------------------------------------------------------------
+            #FIXME: A proper transfer of pulse sequence parameters has to be
+            #       arranged from the sequence_generation_logic to the
+            #       pulsed_measurement_logic, and that not just includes the
+            #       number of laser pulses and the measurement ticks list, that
+            #       includes all the parameters related to the sequence, since
+            #       pulsed_measurement_logic is going to save the measured data
+            #       and therefore it needs all information about the sequence.
+            #       Think about using a param_dict or so in the pulse objects
+            #       Pulse_Block_Ensemble and Pulse_Sequence, which can be just
+            #       passed to the pulsed_measurement_logic instead of passing
+            #       the Pulse_Block_Ensemble or Pulse_Sequence object.
+
             # set number of laser pulses:
             if self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
                 num_laser_pulses = self._mw.ana_param_num_laser_pulse_SpinBox.value()
@@ -2716,6 +2730,8 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
                 meas_ticks_list = asset_param['measurement_ticks_list']/self.get_sample_rate()
+
+            # ---------------------------------------------------------------------------------
 
             self._pulsed_meas_logic.set_num_of_lasers(num_laser_pulses)
             self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
