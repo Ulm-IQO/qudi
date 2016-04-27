@@ -2,7 +2,9 @@
 """
 This file contains a test bed for implementation of new fit
 functions and estimators. Here one can also do stability checks
- with dummy data. This is a playground so absolute
+ with dummy data. This is a playground so no conventions have to be 
+ taken into account. This is completely standalone and does not interact with
+ qudi. It only will import the fitting methods from qudi.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,6 +53,10 @@ class FitLogic():
         with dummy data.
 
         All methods in the folder logic/fitmethods/ are imported here.
+        
+        This is a playground so no conventions have to be 
+        taken into account. This is completely standalone and does not interact
+        with qudi. It only will import the fitting methods from qudi.
         
         """
         def __init__(self):
