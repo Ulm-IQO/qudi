@@ -2,7 +2,7 @@
 """
 This file contains a test bed for implementation of new fit
 functions and estimators. Here one can also do stability checks
- with dummy data.
+ with dummy data. This is a playground so absolute
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -450,6 +450,7 @@ class FitLogic():
 #            plt.plot(runs[:],results[3,:],'-y')
 #            plt.show()
         def double_lorentzian_fixedsplitting_testing(self):
+            # This method does not work and has to be fixed!!!
             for ii in range(1):
 #                time.sleep(0.51)
                 start=2800
@@ -861,22 +862,6 @@ class FitLogic():
                 
             print(params['phase'].value,shift)
         
-            # integral of data corresponds to sqrt(2) * Amplitude * Sigma
-            function = InterpolatedUnivariateSpline(freq[:int(len(freq)/2)],abs(fourier)[:int(len(freq)/2)], k=1)
-            Integral = function.integral(x_axis[0], x_axis[-1])
-            
-            sigma = Integral / np.sqrt(2*np.pi) / abs(fourier).max()
-            
-            print('sigma', sigma)
-            # TODO: Improve decay estimation
-            if len(data_noisy) > stepsize/frequency_max * 2.5:
-                pos01 = int((1-shift/(np.pi**2)) / frequency_max/(2*stepsize))
-                pos02 = pos01 + int(frequency_max/stepsize)
-                # print(pos01,pos02,data[pos01],data[pos02])
-                decay = np.log(data_noisy[pos02]/data_noisy[pos01])*frequency_max
-                # decay = - np.log(0.2)/x_axis[-1]
-            else:
-                decay = 0.0
             
             params['frequency'].value = frequency_max
             params['phase'].value = shift
@@ -1232,24 +1217,33 @@ class FitLogic():
             
             print('frequency_max',frequency_max)
             fourier_real = fourier.real
-# This definirion of funcion comes from the stackflow answer http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755 made by jdg on Jan 14 '13 at 22:24
+
             def fwhm(x, y, k=10):
-
-                class MultiplePeaks(Exception):
-                    pass
-
-                class NoPeaksFound(Exception):
-                    pass
-
+                """
+                Determine full-with-half-maximum of a peaked set of points, x and y.
+        
+                Assumes that there is only one peak present in the datasset.  The function
+                uses a spline interpolation of order k.
+        
+                Function taken from:
+                http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
+        
+                Question from: http://stackoverflow.com/users/490332/harpal
+                Answer: http://stackoverflow.com/users/1146963/jdg
+                """
+        
+        
                 half_max = max(y) / 2.0
                 s = splrep(x, y - half_max)
                 roots = sproot(s)
-                #if len(roots) > 2:
-                    #raise MultiplePeaks("The dataset appears to have multiple peaks, and "
-                                        #"thus the FWHM can't be determined.")
                 if len(roots) < 2:
-                    raise NoPeaksFound("No proper peaks were found in the data set; likely "
-                                       "the dataset is flat (e.g. all zeros).")
+                    # self.logMsg('No peak was found.',
+                    #             msgType='error')
+                    pass
+                elif len(roots) > 2:
+                    # self.logMsg('Multiple peaks was found.',
+                    #             msgType='error')
+                    pass
                 else:
                     print(len(roots))
                     return abs(roots[1] - roots[0])
@@ -1334,7 +1328,7 @@ test=FitLogic()
 #test.twoD_testing()
 #test.lorentzian_testing()
 #test.double_gaussian_testing()
-#test.double_gaussian_odmr_testing()
+test.double_gaussian_odmr_testing()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
@@ -1342,4 +1336,4 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing()
