@@ -48,7 +48,7 @@ class FitLogic():
         """
         This file contains a test bed for implementation of new fit
         functions and estimators. Here one can also do stability checks
-         with dummy data.
+        with dummy data.
 
         All methods in the folder logic/fitmethods/ are imported here.
         
@@ -1228,6 +1228,8 @@ class FitLogic():
             stepsize = x_axis[1] - x_axis[0]  # for frequency axis
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
+            
+            
             print('frequency_max',frequency_max)
             fourier_real = fourier.real
 # This definirion of funcion comes from the stackflow answer http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755 made by jdg on Jan 14 '13 at 22:24
@@ -1264,12 +1266,17 @@ class FitLogic():
             for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
                 fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
             #print(len(np.array(freq_plus)),np.array(fourier_real_plus))
-            fwhm_plus = fwhm(np.array(freq_plus),np.array(fourier_real_plus),k=10)
+            plt.plot(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]))
+            plt.show()
+            fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
             print("FWHM", fwhm_plus)
             params['lifetime'].value = 1/(fwhm_plus *np.pi)
-
+            
+            print('max:', abs(fourier)[:int(len(freq) / 2)].max())
             print(params['frequency'].value, np.round(frequency_max, 3))
+            plt.xlim(-0.02,0.02)            
             plt.plot(freq[:int(len(freq) / 2)], abs(fourier)[:int(len(freq) / 2)])
+            plt.plot(freq,abs(fourier))
             plt.show()
 
             print('offset', offset)

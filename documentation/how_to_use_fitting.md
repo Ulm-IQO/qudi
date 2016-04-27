@@ -19,7 +19,7 @@ A fitting routine consists of three major parts:
       a value, min, max, vary and an expression. These parameters are
       returned as a Parameters object which contains all variables
       in a dictionary.
-    * The make_"<custom>"_model method returns, the model and a corresoindung
+    * The make_"<custom>"_model method returns, the model and a corresponding
      parameter dictionary
 2. an estimator, which can extract initial values for
    the fitting routine from the passed data. `estimate_<custom>()`
