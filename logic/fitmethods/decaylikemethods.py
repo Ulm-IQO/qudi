@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
+Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 import numpy as np
@@ -159,20 +159,26 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
 
         Assumes that there is only one peak present in the datasset.  The function
         uses a spline interpolation of order k.
+
+        Function taken from:
+        http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
+
+        Question from: http://stackoverflow.com/users/490332/harpal
+        Answer: http://stackoverflow.com/users/1146963/jdg
         """
 
-        class MultiplePeaks(Exception):
-            pass
-
-        class NoPeaksFound(Exception):
-            pass
 
         half_max = max(y) / 2.0
         s = splrep(x, y - half_max)
         roots = sproot(s)
         if len(roots) < 2:
-            raise NoPeaksFound("No proper peaks were found in the data set; likely "
-                               "the dataset is flat (e.g. all zeros).")
+            # self.logMsg('No peak was found.',
+            #             msgType='error')
+            pass
+        elif len(roots) > 2:
+            # self.logMsg('Multiple peaks was found.',
+            #             msgType='error')
+            pass
         else:
             print(len(roots))
             return abs(roots[1] - roots[0])
