@@ -151,7 +151,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(fourier).argmax()])
     fourier_real = fourier.real
-    def fwhm(x, y, k=10):
+    
+    def fwhm(x, y, k=3):
         """
         Determine full-with-half-maximum of a peaked set of points, x and y.
 
@@ -167,22 +168,22 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
 
 
         half_max = max(y) / 2.0
-        s = splrep(x, y - half_max)
+        s = splrep(x, y- half_max)
         roots = sproot(s)
         if len(roots) < 2:
-            # self.logMsg('No peak was found.',
-            #             msgType='error')
-            pass
+            self.logMsg('No peak was found.',
+                        msgType='error')
+            #pass
         elif len(roots) > 2:
-            # self.logMsg('Multiple peaks was found.',
-            #             msgType='error')
-            pass
+            self.logMsg('Multiple peaks was found.',
+                        msgType='error')
+            #pass
         else:
-            print(len(roots))
             return abs(roots[1] - roots[0])
 
         # print(freq)
         # print(len(fourier_real))
+#adjustion the order for freq and fourier, order freq from - to +
     freq_plus = [0] * len(freq)
     for i in range(0, int(len(freq) / 2)):
         freq_plus[i + int(len(freq) / 2)] = freq[i]
@@ -193,10 +194,12 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
     for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
         fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
-    print(len(np.array(freq_plus)), np.array(freq_plus))
+    #print(len(np.array(freq_plus)), np.array(freq_plus))
+    
+    # estimate life time from peak width
     fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
     params['lifetime'].value = 1 / (fwhm_plus*np.pi)
-    print("FWHM", fwhm_plus)
+    #print("FWHM", fwhm_plus)
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
