@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Kay D. Jahnke
-Copyright (c) 2015 Christoph Müller
+Copyright (c) 2016 Christoph Müller  cmueller2603@gmail.com
 Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
@@ -29,7 +29,6 @@ import time
 
 
 class OptimizerLogic(GenericLogic):
-
     """This is the Logic class for optimizing scanner position on bright features.
     """
 
@@ -53,6 +52,7 @@ class OptimizerLogic(GenericLogic):
     signal_image_updated = QtCore.Signal()
     signal_refocus_started = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal(str, list)
+
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -91,13 +91,15 @@ class OptimizerLogic(GenericLogic):
         # Keep track of who called the refocus
         self._caller_tag = ''
 
+
     def activation(self, e):
         """ Initialisation performed during activation of the module.
+        
         @param e: error code
+        
         @return int: error code (0:OK, -1:error)
         """
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
-#        print("Scanning device is", self._scanning_device)
         self._fit_logic = self.connector['in']['fitlogic']['object']
 
         #default values for clock frequency and slowness
@@ -147,21 +149,24 @@ class OptimizerLogic(GenericLogic):
 
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
-
         return 0
+
 
     def deactivation(self, e):
         """ Reverse steps of activation
 
         @param e: error code
+        
         @return int: error code (0:OK, -1:error)
         """
         self._statusVariables['clock_frequency'] = self._clock_frequency
         self._statusVariables['return_slowness'] = self.return_slowness
         return 0
 
+
     def testing(self):
         pass
+
 
     def set_optimization_sequence(self):
         """ Set the sequence of scan events for the optimization.
@@ -179,6 +184,7 @@ class OptimizerLogic(GenericLogic):
             self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
             self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
 
+
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
 
@@ -193,6 +199,7 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             return 0
+
 
     def start_refocus(self, initial_pos=None, caller_tag='unknown'):
         """Starts the optimization scan around initial_pos
@@ -231,15 +238,15 @@ class OptimizerLogic(GenericLogic):
         elif self.optimization_sequence == 'Z-XY':
             self._signal_scan_z_line.emit()
 
+
     def stop_refocus(self):
-        """Stops refocus
-        """
+        """Stops refocus."""
         with self.threadlock:
             self.stopRequested = True
 
+
     def _initialize_xy_refocus_image(self):
-        """Initialisation of the xy refocus image
-        """
+        """Initialisation of the xy refocus image."""
         self._xy_scan_line_count = 0
 
         # defining center of refocus image
@@ -265,11 +272,11 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
         self.xy_refocus_image[:, :, 2] = self._initial_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
+
     def _initialize_z_refocus_image(self):
-        """Initialisation of the z refocus image
-        """
+        """Initialisation of the z refocus image."""
         self._xy_scan_line_count = 0
-        z0 = self._initial_pos_z  # falls tilt correction, dann hier aufpassen
+        z0 = self._initial_pos_z
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
 
@@ -278,6 +285,7 @@ class OptimizerLogic(GenericLogic):
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
+
 
     def _move_to_start_pos(self, start_pos):
         """Moves the scanner from its current position to the start position of the optimizer scan.
@@ -307,9 +315,10 @@ class OptimizerLogic(GenericLogic):
             self.stop_refocus()
 
     def _refocus_xy_line(self):
-        """Scanning a line of the xy optimization image.  This method repeats itself using the _signal_scan_next_xy_line until the xy optimization image is complete.
+        """Scanning a line of the xy optimization image.
+        This method repeats itself using the _signal_scan_next_xy_line 
+        until the xy optimization image is complete.
         """
-
         # stop scanning if instructed
         if self.stopRequested:
             with self.threadlock:
@@ -356,10 +365,9 @@ class OptimizerLogic(GenericLogic):
         else:
             self._signal_completed_xy_optimizer_scan.emit()
 
-    def _set_optimized_xy_from_fit(self):
-        """Fit the completed xy optimizer scan and set the optimized xy position.
-        """
 
+    def _set_optimized_xy_from_fit(self):
+        """Fit the completed xy optimizer scan and set the optimized xy position."""
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
@@ -389,9 +397,9 @@ class OptimizerLogic(GenericLogic):
         self.signal_image_updated.emit()
         self._signal_found_optimal_xy.emit()
 
+
     def do_z_optimization(self):
-        """ Do the z axis optimisation
-        """
+        """ Do the z axis optimisation."""
         # z scaning
         self._scan_z_line()
 
@@ -416,7 +424,7 @@ class OptimizerLogic(GenericLogic):
             self.logMsg('error in 1D Gaussian Fit.',
                         msgType='error')
             self.optim_pos_z = self._initial_pos_z
-            # hier abbrechen
+            # interrupt here?
         else:  # move to new position
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
             # checks if new pos is too far away
@@ -444,9 +452,9 @@ class OptimizerLogic(GenericLogic):
 
         self._signal_found_optimal_z.emit()
 
+
     def finish_refocus(self):
-        """ Finishes up and releases hardware after the optimizer scans
-        """
+        """ Finishes up and releases hardware after the optimizer scans."""
         self.kill_scanner()
         self.unlock()
 
@@ -458,11 +466,10 @@ class OptimizerLogic(GenericLogic):
         # Signal that the optimization has finished, and "return" the optimal position along with caller_tag
         self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
 
-    def _scan_z_line(self):
-        """Scans the z line for refocus
-        """
 
-        # Move to start of z-scan
+    def _scan_z_line(self):
+        """Scans the z line for refocus."""
+        # Moves to the start value of the z-scan
         self._move_to_start_pos([self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
 
         # defining trace of positions for z-refocus
@@ -502,17 +509,17 @@ class OptimizerLogic(GenericLogic):
             # surface-subtracted line scan data is the difference
             self.z_refocus_line = line_counts - line_bg
 
+
     def start_scanner(self):
         """Setting up the scanner device.
 
         @return int: error code (0:OK, -1:error)
         """
-
         self._scanning_device.lock()
         self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         self._scanning_device.set_up_scanner()
-
         return 0
+
 
     def kill_scanner(self):
         """Closing the scanner device.
@@ -522,5 +529,4 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device.close_scanner()
         self._scanning_device.close_scanner_clock()
         self._scanning_device.unlock()
-
         return 0
