@@ -26,7 +26,7 @@ from lxml import etree as ET
 class WFMX_header():
     """ This class creates the header for all .WFMX files """
 
-    #TODO: Correct timestamp
+    
 
     def __init__(self, sampling_rate=35000000, total_amplitude=0.35, offset=0,
                  number_of_samples=2701652, temp_dir= ''):
