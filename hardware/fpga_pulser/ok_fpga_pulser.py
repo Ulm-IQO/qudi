@@ -114,8 +114,8 @@ class OkFpgaPulser(Base, PulserInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'channel_config', 'available channels', 'available_ch_num'
-        'activation_map' and 'independent_ch' differ.
+        Only the keys 'activation_config' and differs, since it contain the
+        channel configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
@@ -163,47 +163,20 @@ class OkFpgaPulser(Base, PulserInterface):
                                           'step': 0, 'unit': '#'}
 
         # If sequencer mode is enable than sequence_param should be not just an
-        # empty dictionary. Insert here in the same fashion like above the parameters, which the
-        # device is needing for a creating sequences:
+        # empty dictionary. Insert here in the same fashion like above the
+        # parameters, which the device is needing for a creating sequences:
         sequence_param = OrderedDict()
         constraints['sequence_param'] = sequence_param
 
-        # For the channel configuration, three information has to be set!
-        #   First is the 'personal' or 'assigned' channelnumber (can be chosen)
-        #   by yourself.
-        #   Second is whether the specified channel is an analog or digital
-        #   channel
-        #   Third is the channel number, which is assigned to that channel name.
-        #
-        # So in summary:
-        #       configuration: channel-name, channel-type, channelnumber
-        # That configuration takes place here. A Setting for an AWG type
-        # configuration, where 2 analog and 4 digital channels are available.
-        available_ch = OrderedDict()
-        available_ch['d_ch1'] = 'DCH1'
-        available_ch['d_ch2'] = 'DCH2'
-        available_ch['d_ch3'] = 'DCH3'
-        available_ch['d_ch4'] = 'DCH4'
-        available_ch['d_ch5'] = 'DCH5'
-        available_ch['d_ch6'] = 'DCH6'
-        available_ch['d_ch7'] = 'DCH7'
-        available_ch['d_ch8'] = 'DCH8'
-        constraints['available_ch'] = available_ch
+        # the name a_ch<num> and d_ch<num> are generic names, which describe
+        # UNAMBIGUOUSLY the channels. Here all possible channel configurations
+        # are stated, where only the generic names should be used. The names
+        # for the different configurations can be customary chosen.
 
-        # Now you can choose, how many channel activation pattern exists:
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
+        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
         constraints['activation_config'] = activation_config
-
-        # this information seems to be almost redundant but it can be that no
-        # channel configuration exists, where not all available channels are
-        # present. Therefore this is needed here:
-        constraints['available_ch_num'] = {'a_ch': 0, 'd_ch': 8}
-
-        # number of independent channels on which you can load or upload
-        # separately the created files. It does not matter how the channels
-        # are looking like.
-        constraints['independent_ch'] = 1
 
         return constraints
 
