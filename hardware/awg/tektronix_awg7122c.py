@@ -203,8 +203,8 @@ class AWG7122C(Base, PulserInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the keys 'activation_config' and differs, since it contain the
+        channel configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
@@ -289,25 +289,10 @@ class AWG7122C(Base, PulserInterface):
                                    'unit': 'row'}
         constraints['sequence_param'] = sequence_param
 
-
-        # State here all available channels and here you have the possibility to
-        # assign to each generic channel name an individual channel name:
-
-        available_ch = OrderedDict()
-        available_ch['a_ch1'] = 'Interleave'
-        available_ch['a_ch2'] = 'ACH1'
-        available_ch['d_ch1'] = 'DCH1'
-        available_ch['d_ch2'] = 'DCH2'
-        available_ch['a_ch3'] = 'ACH2'
-        available_ch['d_ch3'] = 'DCH3'
-        available_ch['d_ch4'] = 'DCH4'
-        constraints['available_ch'] = available_ch
-        # from this you will be able to count the number of available analog and
-        # digital channels
-
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used.
+        # are stated, where only the generic names should be used. The names
+        # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
         activation_config['All'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
@@ -1658,17 +1643,39 @@ class AWG7122C(Base, PulserInterface):
 
         @return int: number of analog channels.
         """
-        available_ch = self.get_constraints()['available_ch']
+        config = self.get_constraints()['activation_config']
 
-        num_a_ch = len([entry for entry in available_ch if 'a_ch' in entry])
-        return num_a_ch
+        all_a_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+        # count the number of entries in that array
+        return len(all_a_ch)
 
     def _get_num_d_ch(self):
         """ Retrieve the number of available digital channels.
 
         @return int: number of digital channels.
         """
-        available_ch = self.get_constraints()['available_ch']
+        config = self.get_constraints()['activation_config']
 
-        num_d_ch = len([entry for entry in available_ch if 'd_ch' in entry])
-        return num_d_ch
+        all_d_ch = []
+        for conf in config:
+
+            # extract all digital channels from the config
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        # count the number of entries in that array
+        return len(all_d_ch)
