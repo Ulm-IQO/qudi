@@ -169,8 +169,8 @@ class PulserDummy(Base, PulserInterface):
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the keys 'activation_config' and differs, since it contain the
+        channel configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
@@ -230,29 +230,10 @@ class PulserDummy(Base, PulserInterface):
                                    'unit': 'row'}
         constraints['sequence_param'] = sequence_param
 
-        # State here all available channels and here you have the possibility to
-        # assign to each generic channel name an individual channel name:
-
-        available_ch = OrderedDict()
-        available_ch['a_ch1'] = 'Interleave'
-        available_ch['a_ch2'] = 'Analog 1'
-        available_ch['d_ch1'] = 'DCH1'
-        available_ch['d_ch2'] = 'DCH2'
-        available_ch['a_ch3'] = 'Analog 2'
-        available_ch['d_ch3'] = 'DCH3'
-        available_ch['d_ch4'] = 'DCH4'
-        available_ch['d_ch5'] = 'DCH5'
-        available_ch['d_ch6'] = 'DCH6'
-        available_ch['d_ch7'] = 'DCH7'
-        available_ch['d_ch8'] = 'DCH8'
-
-        constraints['available_ch'] = available_ch
-        # from this you will be able to count the number of available analog and
-        # digital channels
-
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used.
+        # are stated, where only the generic names should be used. The names
+        # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
         activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
@@ -273,16 +254,6 @@ class PulserDummy(Base, PulserInterface):
         activation_config['config9'] = ['a_ch2', 'a_ch3']
 
         constraints['activation_config'] = activation_config
-
-        # # this information seems to be almost redundant but it can be that no
-        # # channel configuration exists, where not all available channels are
-        # # present. Therefore this is needed here:
-        # constraints['available_ch_num'] = {'a_ch': 3, 'd_ch': 8}
-        #
-        # # number of independent channels on which you can load or upload
-        # # separately the created files. It does not matter how the channels
-        # # are looking like.
-        # constraints['independent_ch'] = 2
 
         return constraints
 
@@ -1179,3 +1150,45 @@ class PulserDummy(Base, PulserInterface):
         """
         filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat') or f.endswith('.wfm'))]
         return filename_list
+
+    def _get_num_a_ch(self):
+        """ Retrieve the number of available analog channels.
+
+        @return int: number of analog channels.
+        """
+        config = self.get_constraints()['activation_config']
+
+        all_a_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_ach = [entry for entry in config[conf] if 'a_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_ach:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+        # count the number of entries in that array
+        return len(all_a_ch)
+
+    def _get_num_d_ch(self):
+        """ Retrieve the number of available digital channels.
+
+        @return int: number of digital channels.
+        """
+        config = self.get_constraints()['activation_config']
+
+        all_d_ch = []
+        for conf in config:
+
+            # extract all digital channels from the config
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        # count the number of entries in that array
+        return len(all_d_ch)
