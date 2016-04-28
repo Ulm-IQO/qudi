@@ -1,6 +1,6 @@
 [submodule "thirdparty"]
 	path = thirdparty
-	url = https://github.com/latchr/qudi-iqo-thirdparty.git
+	url = https://github.com/Ulm-IQO/qudi-iqo-thirdparty.git
 [submodule "config/qo-config"]
 	path = config/qo-config
-	url = https://github.com/latchr/qudi-iqo-config.git
+	url = https://github.com/Ulm-IQO/qudi-iqo-config.git
