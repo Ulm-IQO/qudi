@@ -1,0 +1,6 @@
+[submodule "thirdparty"]
+	path = thirdparty
+	url = git@github.com:latchr/qudi-iqo-thirdparty.git
+[submodule "config/qo-config"]
+	path = config/qo-config
+	url = git@github.com:latchr/qudi-iqo-config.git
