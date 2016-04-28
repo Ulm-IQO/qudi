@@ -400,27 +400,58 @@ class PulsedMeasurementGui(GUIBase):
         pulser is switched on, it will tell which channels are switched on.
         """
 
-        pulser_const = self.get_hardware_constraints()
-        available_ch =  list(pulser_const['available_ch'])
+        available_ch = self._get_available_ch()
 
         if index is None:
             config = self._bs.activation_config_ComboBox.currentText()
         else:
             config = self._bs.activation_config_ComboBox.itemText(index)
 
-        activation_config = pulser_const['activation_config'][config]
+        activation_config = self.get_hardware_constraints()['activation_config'][config]
         self._bs.ch_activation_pattern_LineEdit.setText(str(activation_config))
-
 
         # at first disable all the channels:
         for channelname in available_ch:
             radiobutton_obj = self.get_radiobutton_obj(channelname)
             radiobutton_obj.setEnabled(False)
 
+        # then enable only those which are needed by config
         for channelname in activation_config:
             radiobutton_obj = self.get_radiobutton_obj(channelname)
             radiobutton_obj.setEnabled(True)
 
+    def _get_available_ch(self):
+        """ Helper method to get a list of all available channels.
+
+        @return list: entries are the generic string names of the channels.
+        """
+        config = self.get_hardware_constraints()['activation_config']
+
+        available_ch = []
+        all_a_ch = []
+        all_d_ch = []
+        for conf in config:
+
+            # extract all analog channels from the config
+            curr_a_ch = [entry for entry in config[conf] if 'a_ch' in entry]
+            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
+
+            # append all new analog channels to a temporary array
+            for a_ch in curr_a_ch:
+                if a_ch not in all_a_ch:
+                    all_a_ch.append(a_ch)
+
+            # append all new digital channels to a temporary array
+            for d_ch in curr_d_ch:
+                if d_ch not in all_d_ch:
+                    all_d_ch.append(d_ch)
+
+        all_a_ch.sort()
+        all_d_ch.sort()
+        available_ch.extend(all_a_ch)
+        available_ch.extend(all_d_ch)
+
+        return available_ch
 
 
     def show_block_settings(self):
@@ -718,7 +749,11 @@ class PulsedMeasurementGui(GUIBase):
         # for i in reversed(range(self._mw.RadioButtons_HorizontalLayout.count())):
         #     self._mw.RadioButtons_HorizontalLayout.itemAt(i).widget().setParent(None)
 
-        for channel in pulser_const['available_ch']:
+
+        available_ch = self._get_available_ch()
+
+
+        for channel in available_ch:
 
             radiobutton_obj_name = str(channel) + '_RadioButton'
 
@@ -728,7 +763,7 @@ class PulsedMeasurementGui(GUIBase):
             radiobutton.setText('')
             radiobutton.setAutoExclusive(False)
             radiobutton.setObjectName(radiobutton_obj_name)
-            radiobutton.setToolTip(str(pulser_const['available_ch'][channel]))
+            radiobutton.setToolTip(channel)
             radiobutton.setReadOnly(True)
             self._mw.radiobutton_container_layout.addWidget(radiobutton)
             # attach to the main object the radiobutton:
@@ -843,7 +878,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # check whether the correct channels are already active, and if not
         # correct for that and activate and deactivate the appropriate ones:
-        for ch_name in pulser_const['available_ch']:
+        available_ch = self._get_available_ch()
+        for ch_name in available_ch:
 
             # if the channel is in the activation, check whether it is active:
             if ch_name in activation_config:
