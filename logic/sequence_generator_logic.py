@@ -23,17 +23,15 @@ Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 import numpy as np
 import pickle
 import os
-import sys
 import time
-import importlib
 from pyqtgraph.Qt import QtCore
 from collections import OrderedDict
 import inspect
-from types import MethodType
+import importlib
 
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
-import importlib
+
 
 class Pulse_Block_Element(object):
     """ Object representing a single atomic element in a pulse block.
