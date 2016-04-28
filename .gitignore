@@ -18,3 +18,4 @@
 # The contents of the svn:ignore property on the branch root.
 /crash.log
 /tempLog.txt
+/.idea
