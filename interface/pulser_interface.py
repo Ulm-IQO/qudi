@@ -24,9 +24,7 @@ Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 from core.util.customexceptions import InterfaceImplementationError
 
 class PulserInterface():
-    """ UNSTABLE: Nikolas Tomek
-
-    This is the Interface class to define the abstract controls and
+    """ Interface class to define the abstract controls and
     communication with all pulsing devices.
     """
 
@@ -57,8 +55,8 @@ class PulserInterface():
              'step': <value>,
              'unit': '<value>'}
 
-        Only the keys 'activation_config' and 'available_ch' differ, since they
-        contain the channel name and configuration/activation information.
+        Only the keys 'activation_config' and differs, since it contain the
+        channel configuration/activation information.
 
         If the constraints cannot be set in the pulsing hardware (because it
         might e.g. has no sequence mode) then write just zero to each generic
@@ -105,23 +103,10 @@ class PulserInterface():
         sequence_param = OrderedDict()
         constraints['sequence_param'] = sequence_param
 
-        # State here all available channels and here you have the possibility to
-        # assign to each generic channel name an individual channel name:
-
-        available_ch = OrderedDict()
-        available_ch['a_ch1'] = 'ACH1'
-        available_ch['d_ch1'] = 'DCH1'
-        available_ch['d_ch2'] = 'DCH2'
-        available_ch['a_ch2'] = 'ACH2'
-        available_ch['d_ch3'] = 'DCH3'
-        available_ch['d_ch4'] = 'DCH4'
-        constraints['available_ch'] = available_ch
-        # from this you will be able to count the number of available analog and
-        # digital channels
-
         # the name a_ch<num> and d_ch<num> are generic names, which describe
         # UNAMBIGUOUSLY the channels. Here all possible channel configurations
-        # are stated, where only the generic names should be used.
+        # are stated, where only the generic names should be used. The names
+        # for the different configurations can be customary chosen.
 
         activation_config = OrderedDict()
         activation_config['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
