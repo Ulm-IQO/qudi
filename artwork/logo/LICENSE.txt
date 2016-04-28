@@ -1,0 +1,42 @@
+Qudi Logo
+	Copyright (C) 2015 Alexander Stark <alexander.stark@uni-ulm.de>
+
+
+License:
+
+	This logo is released under the terms of the Creative Commons 
+	Attribution-NonCommercial-ShareAlike 3.0 license, which can be found
+	at https://creativecommons.org/licenses/by-nc-sa/3.0/
+
+	You are free to:
+    	Share — copy and redistribute the material in any medium or format
+    	Adapt — remix, transform, and build upon the material
+
+	Under the following terms:
+	    Attribution — You must give appropriate credit, provide a link to the 
+			license, and indicate if changes were made. You may do so in any 
+			reasonable manner, but not in any way that suggests the licensor 
+			endorses you or your use.
+    	NonCommercial — You may not use the material for commercial purposes.
+    	ShareAlike — If you remix, transform, or build upon the material, you 
+			must distribute your contributions under the same license as the 
+			original. 
+
+
+Usage Policy (Trademarks and Project Identity)
+
+	The Qudi Logo represents graphically the identiy of the Qudi project and
+	software suite.  As such, its use is regulated by trademark law (as well
+	as copyright law).  The CC-BY-NC-SA license addresses copyright
+	regulations, but the following guidelines protect the Qudi project
+	identity.
+
+	The core idea is that you are not allowed to use the Qudi logo in a way
+	that would confuse the connection between this logo and the Qudi project.
+
+	You may not
+	- distribute Qudi code using a modified version of the logo;
+	- use the logo in a way that suggests any type of association or partnership
+	  with the Qudi project, sponsorship or endorsement by the Qudi developers 
+	  (unless allowed via a license from us)
+
