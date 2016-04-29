@@ -348,9 +348,9 @@ class OkFpgaPulser(Base, PulserInterface):
               further processing.
         """
         if sample_rate == 950e6:
-            bitfile_path = os.path.join(self.get_main_dir(), 'hardware', 'fpga_pulser', 'pulsegen_8chnl_950MHz.bit')
+            bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'pulsegen_8chnl_950MHz.bit')
         elif sample_rate == 500e6:
-            bitfile_path = os.path.join(self.get_main_dir(), 'hardware', 'fpga_pulser', 'pulsegen_8chnl_500MHz.bit')
+            bitfile_path = os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'pulsegen_8chnl_500MHz.bit')
         else:
             self.logMsg('Setting "{0}" as sample rate for FPGA pulse generator '
                     'is not allowed. Use 950e6 or 500e6 instead.', msgType='error')
@@ -725,7 +725,7 @@ a
             encoded_samples = np.zeros(chunk_length_bins, dtype='uint8')
 
         for channel in range(channel_number):
-            encoded_samples[:chunk_length_bins] += (channel+1)*np.uint8(digital_samples[channel])
+            encoded_samples[:chunk_length_bins] += (2**channel)*np.uint8(digital_samples[channel])
 
         del digital_samples # no longer needed
 
