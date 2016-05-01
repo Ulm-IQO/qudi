@@ -87,6 +87,7 @@ class AppWatchdog(QtCore.QObject):
 
         """
         if restart:
+            # exitcode of 42 signals to start.py that this should be restarted
             self.exitcode = 42
         if not self.alreadyQuit:    # Need this because multiple triggers can 
                                     # call this function during quit.

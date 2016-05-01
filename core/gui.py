@@ -25,6 +25,7 @@ class Gui(QtCore.QObject):
 
     def __init__(self):
         super().__init__()
+        QtGui.QApplication.instance().setQuitOnLastWindowClosed(False)
 
     def makePyQtGraphQApplication(self):
         # Every Qt application must have ONE AND ONLY ONE QApplication object. The 
