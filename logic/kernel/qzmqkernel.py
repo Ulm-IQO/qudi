@@ -1,24 +1,41 @@
-# simple_kernel.py
-# by Doug Blank <doug.blank@gmail.com>
-#
-# This sample kernel is meant to be able to demonstrate using zmq for
-# implementing a language backend (called a kernel) for IPython. It is
-# written in the most straightforward manner so that it can be easily
-# translated into other programming languages. It doesn't use any code
-# from IPython, but only standard Python libraries and zmq.
-#
-# It is also designed to be able to run, showing the details of the
-# message handling system.
-#
-# To adjust debug output, set debug_level to:
-#  0 - show no debugging information
-#  1 - shows basic running information
-#  2 - also shows loop details
-#  3 - also shows message details
-#
-# Start with a command, such as:
-# ipython console --KernelManager.kernel_cmd="['python', 'simple_kernel.py',
-#                                              '{connection_file}']"
+# -*- coding: utf-8 -*-
+"""
+Qt-based IPython/jupyter kernel
+
+------------------------------------------------------------------------------
+based on simple_kernel.py (https://github.com/dsblank/simple_kernel)
+by Doug Blank <doug.blank@gmail.com>
+placed in the public domain, see
+https://github.com/dsblank/simple_kernel/issues/5
+------------------------------------------------------------------------------
+Parts of this file were taken from
+https://github.com/ipython/ipython/blob/master/IPython/core/interactiveshell.py
+which carries the following attributions:
+
+Copyright (C) 2001 Janko Hauser <jhauser@zscout.de>
+Copyright (C) 2001-2007 Fernando Perez. <fperez@colorado.edu>
+Copyright (C) 2008-2011  The IPython Development Team
+
+Distributed under the terms of the BSD License.  The full license is in
+the file document documentation/BSDLicense_IPython.md,
+distributed as part of this software.
+------------------------------------------------------------------------------
+
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
+"""
 
 ## General Python imports:
 import sys
