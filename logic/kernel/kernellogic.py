@@ -58,14 +58,18 @@ class QudiKernelLogic(GenericLogic):
         ## declare actions for state transitions
         state_actions = { 'onactivate': self.activation, 'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
-        self.kernellist = {}
+        self.kernellist = dict()
+        self.modules = set()
 
     def activation(self, e):
         """ Prepare logic module for work.
 
           @param object e: Fysom state change notification
         """
-        self.kernellist = {}
+        self.kernellist = dict()
+        self.modules = set()
+        self._manager.sigModulesChanged.connect(self.updateModuleList)
+        self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
         """ Deactivate modeule.
@@ -88,6 +92,7 @@ class QudiKernelLogic(GenericLogic):
         #kernel.connect()
         self.kernellist[kernel.engine_id] = kernel
         self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
+        self.sigStartKernel.emit(kernel.engine_id)
         return kernel.engine_id
 
     def stopKernel(self, kernelid):
@@ -105,3 +110,21 @@ class QudiKernelLogic(GenericLogic):
                 external.exit()
             except:
                 self.logMsg('External qudikernel starter did not exit', msgType="warning")
+
+    def updateModuleList(self):
+        """Remove non-existing modules from namespace,
+            add new modules to namespace, update reloaded modules
+        """
+        currentModules = set()
+        newNamespace = dict()
+        for base in ['hardware', 'logic', 'gui']:
+            for module in self._manager.tree['loaded'][base]:
+                currentModules.add(module)
+                newNamespace[module] = self._manager.tree['loaded'][base][module]
+        discard = self.modules - currentModules
+        for kernel in self.kernellist:
+            self.kernellist[kernel].user_ns.update(newNamespace)
+        for module in discard:
+            for kernel in self.kernellist:
+                self.kernellist[kernel].user_ns.pop(module, None)
+        self.modules = currentModules

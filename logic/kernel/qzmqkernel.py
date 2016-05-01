@@ -30,6 +30,7 @@ import hashlib
 import datetime
 import threading
 import logging
+import builtins
 
 import ast
 import traceback
@@ -81,32 +82,36 @@ class ExecutionResult:
             raise self.error_in_exec
 
 
-class ZMQDisplayHook(object):
+class ZMQDisplayHook:
     """A simple displayhook that publishes the object's repr over a ZeroMQ
     socket."""
     topic = 'execute_result'
 
-    def __init__(self, session, pub_socket):
+    def __init__(self, session, stream):
         self.session = session
-        self.pub_socket = pub_socket
+        self.stream = stream
         self.parent_header = {}
 
     def __call__(self, obj):
         if obj is None:
             return
 
-        builtin_mod._ = obj
+        builtins._ = obj
         sys.stdout.flush()
         sys.stderr.flush()
+        content = {
+            'execution_count': self.session.execution_count,
+            'data': {"text/plain": repr(obj)},
+            }
         self.session.send(
-            self.pub_socket,
-            'execute_result',
-            {'data':repr(obj)},
-            parent=self.parent_header,
-            ident=self.topic)
+            self.stream,
+            self.topic,
+            content,
+            parent_header=self.parent_header
+            )
 
-    def set_parent(self, parent):
-        self.parent_header = extract_header(parent)
+    def set_parent(self, parentheader):
+        self.parent_header = parentheader
 
 
 class QZMQHeartbeat(QtCore.QObject):
@@ -165,6 +170,9 @@ class QZMQKernel(QtCore.QObject):
     def __init__(self, config=None):
         super().__init__()
         self.DELIM = b"<IDS|MSG>"
+        # namespaces
+        self.user_global_ns = {}
+        self.user_ns = {}
 
         self.exiting = False
         self.engine_id = str(uuid.uuid4())
@@ -193,7 +201,6 @@ class QZMQKernel(QtCore.QObject):
         self.auth = hmac.HMAC(
             self.secure_key,
             digestmod=self.signature_schemes[self.config["signature_scheme"]])
-        self.init_exec_env()
         logging.info('New Kernel {}'.format(self.engine_id))
 
     @QtCore.pyqtSlot()
@@ -242,7 +249,17 @@ class QZMQKernel(QtCore.QObject):
         self.heartbeat_stream.sigMsgRecvd.connect(self.heartbeat_handler.beat)
         self.hb_thread.start()
      
+        self.init_exec_env()
         logging.info( "Ready! Listening...")
+
+    def init_exec_env(self):
+        self.execution_count = 1
+        self.ast_node_interactivity = 'last_expr'
+        self.compile = CachingCompiler()
+        self.ast_transformers = []
+        self.displayhook = ZMQDisplayHook(self, self.iopub_stream)
+        self.display_trap = DisplayTrap(self.displayhook)
+        self.builtin_trap = BuiltinTrap()
 
     # Utility functions:
     @QtCore.pyqtSlot()
@@ -340,6 +357,7 @@ class QZMQKernel(QtCore.QObject):
                 #result_str = str(result)
                 #if result is None:
                     #result_str = ''
+                self.displayhook.set_parent(msg['header'])
                 res = self.run_cell(msg['content']['code'])
             except Exception as e:
                 tb = traceback.format_exc()
@@ -348,14 +366,14 @@ class QZMQKernel(QtCore.QObject):
                     'text': '{}\n{}'.format(e, tb),
                 }
                 self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
-            else:
-                logging.info( "RES %s" % result)
-                content = {
-                    'execution_count': self.execution_count,
-                    'data': {"text/plain": result_str},
-                    'metadata': {}
-                }
-                self.send(self.iopub_stream, 'execute_result', content, parent_header=msg['header'])
+            #else:
+            #    #logging.info( "RES %s" % result)
+            #    content = {
+            #        'execution_count': self.execution_count,
+            #        'data': {"text/plain": result_str},
+            #        'metadata': {}
+            #    }
+            #    self.send(self.iopub_stream, 'execute_result', content, parent_header=msg['header'])
             #######################################################################
      
             content = {
@@ -387,24 +405,28 @@ class QZMQKernel(QtCore.QObject):
                 identities=identities)
      
             self.execution_count += 1
+
         elif msg['header']["msg_type"] == "kernel_info_request":
             content = {
                 "protocol_version": "5.0",
                 "ipython_version": [1, 1, 0, ""],
                 "language_version": [0, 0, 1],
-                "language": "simple_kernel",
-                "implementation": "simple_kernel",
+                "language": "qudi_kernel",
+                "implementation": "qudi_kernel",
                 "implementation_version": "1.1",
                 "language_info": {
-                    "name": "simple_kernel",
-                    "version": "1.0",
-                    'mimetype': "",
+                    "name": "python",
+                    "version": sys.version.split()[0],
+                    'mimetype': "text/x-python",
                     'file_extension': ".py",
-                    'pygments_lexer': "",
-                    'codemirror_mode': "",
-                    'nbconvert_exporter': "",
+                    'pygments_lexer': "ipython3",
+                    'codemirror_mode': {
+                        'name': 'ipython',
+                        'version': sys.version.split()[0]
+                        },
+                    'nbconvert_exporter': "python",
                 },
-                "banner": ""
+                "banner": "Hue!"
             }
      
             self.send(
@@ -460,17 +482,6 @@ class QZMQKernel(QtCore.QObject):
         else:
             socket.bind("%s:%s" % (connection, port))
         return port
-
-
-    def init_exec_env(self):
-        self.execution_count = 1
-        self.ast_node_interactivity = 'last_expr'
-        self.compile = CachingCompiler()
-        self.ast_transformers = []
-        self.user_global_ns = {}
-        self.user_ns = {}
-        self.display_trap = DisplayTrap()
-        self.builtin_trap = BuiltinTrap()
 
     def run_cell(self, raw_cell, store_history=False, silent=False, shell_futures=True):
         """Run a complete IPython cell.

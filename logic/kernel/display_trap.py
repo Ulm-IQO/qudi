@@ -35,6 +35,7 @@ class DisplayTrap:
 
     def __init__(self, hook=None):
         self.old_hook = None
+        self.hook = hook
         # We define this to track if a single BuiltinTrap is nested.
         # Only turn off the trap when the outermost call to __exit__ is made.
         self._nested_level = 0
