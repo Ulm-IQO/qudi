@@ -19,7 +19,7 @@ Authors
 #
 #  Distributed under the terms of the BSD License.
 #
-#  The full license is in the file COPYING.txt, distributed with this software.
+#  The full license is in the file documentation/BSDLicense_IPython.md, distributed with this software.
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
