@@ -702,7 +702,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return list of strings with all available fit functions
 
         """
-        return ['No Fit', 'Rabi', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
+        return ['No Fit', 'Sine', 'Cos_FixedPhase', 'Lorentian (neg)' , 'Lorentian (pos)', 'N14',
                 'N15', 'Stretched Exponential', 'Exponential', 'XY8']
 
 
@@ -725,10 +725,13 @@ class PulsedMeasurementLogic(GenericLogic):
             fit_result = 'No Fit'
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
-        elif fit_function == 'Rabi':
+        elif fit_function == 'Sine' or 'Cos_FixedPhase':
+            update_dict = {}
+            if fit_function == 'Cos_FixedPhase':
+                update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
             result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x,
                                                    data=self.signal_plot_y,
-                                                   add_parameters=None)
+                                                   add_parameters=update_dict)
             sine, params = self._fit_logic.make_sine_model()
             pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
 
