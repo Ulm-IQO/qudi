@@ -1,8 +1,0 @@
-[submodule "thirdparty"]
-	path = thirdparty
-	url = https://github.com/Ulm-IQO/qudi-iqo-thirdparty.git
-	branch = master
-[submodule "config/qo-config"]
-	path = config/qo-config
-	url = https://github.com/Ulm-IQO/qudi-iqo-config.git
-	branch = master
