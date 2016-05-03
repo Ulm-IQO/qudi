@@ -183,7 +183,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
 
         # print(freq)
         # print(len(fourier_real))
-#adjustion the order for freq and fourier, order freq from - to +
+    #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
+    #frequency is not from minus inf to plus inf.
     freq_plus = [0] * len(freq)
     for i in range(0, int(len(freq) / 2)):
         freq_plus[i + int(len(freq) / 2)] = freq[i]
@@ -218,7 +219,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     params['offset'].value = offset
     params['lifetime'].value = 1/(fwhm_plus*np.pi)
     return error, params
-
+# Basically the same as sine fitting.
 def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
     sineexponentialdecay, params = self.make_sineexponentialdecay_model()
 
