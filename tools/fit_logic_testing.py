@@ -1188,16 +1188,16 @@ class FitLogic():
 ###########################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
-            x_axis = np.linspace(0, 1000, 6001)
+            x_axis = np.linspace(0, 1000, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = 0.1
-            params['frequency'].value = 0.005
+            params['amplitude'].value = 0.1# + np.random.normal(0,0.4)
+            params['frequency'].value = 0.005 #+ np.random.normal(0,0.005)
             params['phase'].value = np.pi *0.9
-            params['offset'].value = 10
-            params['lifetime'].value = 200
+            params['offset'].value = 10 #+ np.random.normal(0,5)
+            params['lifetime'].value = 200 #+ np.random.normal(0,0.005)
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
                           + 0.01* np.random.normal(size=x_axis.shape))
@@ -1211,7 +1211,7 @@ class FitLogic():
             data_level = data_noisy - offset
 
             # estimate
-            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+#            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
             # perform fourier transform
             data_level_zeropaded = np.zeros(int(len(data_level) * 2))
             data_level_zeropaded[:len(data_level)] = data_level
@@ -1239,17 +1239,20 @@ class FitLogic():
                 Answer: http://stackoverflow.com/users/1146963/jdg
                 """
         
-        
                 half_max = max(y) / 2.0
-                s = splrep(x, y - half_max)
+                s = splrep(x, y- half_max)
                 roots = sproot(s)
                 if len(roots) < 2:
-                     self.logMsg('No peak was found.',
-                                 msgType='error')
+                    # self.logMsg('No peak was found.',
+                    #             msgType='error')
+                    print("No peaks")
+                    pass
                 elif len(roots) > 2:
-                     self.logMsg('Multiple peaks was found.',
-                                 msgType='error')
-                     pass
+                    # self.logMsg('Multiple peaks was found.',
+                    #             msgType='error')
+                    print("Multiple peaks")
+        
+                    pass
                 else:
                     return abs(roots[1] - roots[0])
                     
@@ -1267,8 +1270,8 @@ class FitLogic():
                 fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
             # Get the peak width by using the function defined before
             fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=3)
-            #print("FWHM", fwhm_plus)
-            params['lifetime'].value = 1/(fwhm_plus*np.pi)
+            print("FWHM", fwhm_plus)
+#            params['lifetime'].value = 1/(fwhm_plus*np.pi)
            
            # plotting spline interpolation of the data.
             plt.plot(freq_plus[int(len(freq) / 2):], fourier_real_plus[int(len(freq) / 2):]-max(fourier_real_plus)/2, '-or')
@@ -1299,10 +1302,10 @@ class FitLogic():
             #print(params['phase'].value, shift)
 
 
-            params['frequency'].value = frequency_max
-            params['phase'].value = shift
-            params['offset'].value = offset
-            params['lifetime'].value = 1/(fwhm_plus *np.pi)
+#            params['frequency'].value = frequency_max
+#            params['phase'].value = shift
+#            params['offset'].value = offset
+#            params['lifetime'].value = 1/(fwhm_plus *np.pi)
             #print('frequency', params['frequency'].value)
             #print('lifetime',params['lifetime'].value)
             #print('amplitude',params['amplitude'].value)
@@ -1311,7 +1314,7 @@ class FitLogic():
             #plt.plot(freq,fourier_real)
             #plt.plot(freq,gauss(freq,p1))
             plt.plot(x_axis, data_noisy, 'ob')
-            plt.plot(x_axis, result.init_fit, '-y')
+            plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, )
             #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
