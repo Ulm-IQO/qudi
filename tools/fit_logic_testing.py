@@ -1193,14 +1193,14 @@ class FitLogic():
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = 30
-            params['frequency'].value = 0.01
-            params['phase'].value = np.pi * 0.4
+            params['amplitude'].value = 0.1
+            params['frequency'].value = 0.005
+            params['phase'].value = np.pi *0.9
             params['offset'].value = 10
             params['lifetime'].value = 200
-            print(params)
+            print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 1* np.random.normal(size=x_axis.shape))
+                          + 0.01* np.random.normal(size=x_axis.shape))
 
             #plt.plot(x_axis, data_noisy)
 
@@ -1249,6 +1249,7 @@ class FitLogic():
                 elif len(roots) > 2:
                      self.logMsg('Multiple peaks was found.',
                                  msgType='error')
+                     pass
                 else:
                     return abs(roots[1] - roots[0])
                     
@@ -1313,7 +1314,7 @@ class FitLogic():
             plt.plot(x_axis, result.init_fit, '-y')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, )
-            plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
+            #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
 
             plt.show()
 
