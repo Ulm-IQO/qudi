@@ -1274,6 +1274,9 @@ class FitLogic():
 #            params['lifetime'].value = 1/(fwhm_plus*np.pi)
            
            # plotting spline interpolation of the data.
+            gaus = gaussian(3, 3)
+            smooth_data =  filters.convolve1d(fourier_real_plus[int(len(freq) / 2):]-max(fourier_real_plus)/2, gaus / gaus.sum(), mode='mirror')
+            plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
             plt.plot(freq_plus[int(len(freq) / 2):], fourier_real_plus[int(len(freq) / 2):]-max(fourier_real_plus)/2, '-or')
             plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],splrep(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]-max(fourier_real_plus)/2))))
             
