@@ -20,7 +20,7 @@ Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
 import numpy as np
-
+from scipy.signal import gaussian
 from scipy.ndimage import filters
 
 ############################################################################
@@ -421,3 +421,32 @@ def find_offset_parameter(self, x_values=None, data=None):
     offset = (hist[1][hist[0].argmax()]+hist[1][hist[0].argmax()+1])/2.
 
     return data_smooth, offset
+
+############################################################################
+#                                                                          #
+#             Additional routines with gaussian-like filter              #
+#                                                                          #
+############################################################################
+
+def gaussian_smoothing(self, data=None):
+    """ This method convolves the data with a gaussian
+     the smoothed data is returned
+
+    @param array data: raw data
+
+    @return array: smoothed data
+
+    """
+    #Todo: Check for wrong data type
+    if len(data) < 20.:
+        len_x = 5
+    elif len(data) >= 100.:
+        len_x = 10
+    else:
+        len_x = int(len(data) / 10.) + 1
+
+    gaus = gaussian(len_x, len_x)
+    return filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
+
+
+
