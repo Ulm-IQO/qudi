@@ -821,7 +821,7 @@ class FitLogic():
             
             params['amplitude'].value=0.2
             params['frequency'].value=0.1
-            params['phase'].value=np.pi*0.4
+            params['phase'].value=np.pi*0.5
             params['offset'].value=0.94
             data_noisy=(mod.eval(x=x_axis,params=params)
                                     + 0.01*np.random.normal(size=x_axis.shape))
@@ -875,7 +875,8 @@ class FitLogic():
             
 #            print(params.pretty_print())
 #            print(data_noisy)                     
-            para=Parameters()
+            para={}
+            para['phase'] = {'vary': False, 'value': np.pi/2.}
 #            para.add('I_saturation',value=152.)
 #            para.add('slope',value=0.3,vary=True)
 #            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
@@ -1346,8 +1347,8 @@ test=FitLogic()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
-#test.sine_testing()
+test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing()

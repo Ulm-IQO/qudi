@@ -66,12 +66,14 @@ def _substitute_parameter(self, parameters=None, update_dict=None):
                 parameters[para].expr = update_dict[para]['expr']
                 
             if 'value' in update_dict[para]:
-                if (parameters[para].min > update_dict[para]['value']):
-                    parameters[para].min = update_dict[para]['value']                    
-                    parameters[para].value = update_dict[para]['value']
-                if (parameters[para].max < update_dict[para]['value']):
-                    parameters[para].max = update_dict[para]['value']                    
-                    parameters[para].value = update_dict[para]['value']
+                if parameters[para].min is not None:
+                    if (parameters[para].min > update_dict[para]['value']):
+                        parameters[para].min = update_dict[para]['value'] 
+                        parameters[para].value = update_dict[para]['value']
+                if parameters[para].max is not None:
+                    if (parameters[para].max < update_dict[para]['value']):
+                        parameters[para].max = update_dict[para]['value']                    
+                        parameters[para].value = update_dict[para]['value']
                 else:        
                     parameters[para].value = update_dict[para]['value']
         return parameters
