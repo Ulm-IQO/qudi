@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1014</width>
+    <width>931</width>
     <height>836</height>
    </rect>
   </property>
@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -632,6 +632,9 @@
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::NoButtons</enum>
                    </property>
+                   <property name="maximum">
+                    <number>1000000000</number>
+                   </property>
                   </widget>
                  </item>
                  <item row="7" column="1" colspan="2">
@@ -706,6 +709,9 @@
                    </property>
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="maximum">
+                    <number>1000000000</number>
                    </property>
                   </widget>
                  </item>
@@ -859,6 +865,9 @@
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::NoButtons</enum>
                    </property>
+                   <property name="maximum">
+                    <number>1000000000</number>
+                   </property>
                   </widget>
                  </item>
                  <item row="4" column="0" colspan="3">
@@ -993,6 +1002,9 @@
                    </property>
                    <property name="buttonSymbols">
                     <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="maximum">
+                    <number>1000000000</number>
                    </property>
                   </widget>
                  </item>
@@ -2036,7 +2048,7 @@ sel.</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1014</width>
+     <width>931</width>
      <height>21</height>
     </rect>
    </property>

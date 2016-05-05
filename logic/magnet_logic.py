@@ -251,7 +251,7 @@ class MagnetLogic(GenericLogic):
         start_pos = self.get_pos(list(param_dict))
         self.sigMoveAbs.emit(param_dict)
 
-        self._check_position_reached_loop(start_pos, param_dict)
+        # self._check_position_reached_loop(start_pos, param_dict)
 
         self.sigPosChanged.emit(param_dict)
 

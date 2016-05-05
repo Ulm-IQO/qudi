@@ -485,7 +485,7 @@ class MagnetGui(GUIBase):
             update_func_slider_ref = getattr(self, func_name)
             dspinbox_ref.valueChanged.connect(update_func_slider_ref)
 
-        extension =  len(constraints)
+        extension = len(constraints)
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
 
