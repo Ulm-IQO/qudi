@@ -2715,8 +2715,6 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
-        # self._mw.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.seq_parameters_changed)
-        # self._mw.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.seq_parameters_changed)
 
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self.analysis_timing_changed()
@@ -2844,7 +2842,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
     def pull_data_clicked(self):
-        """Pulls and analysis the data when the 'action_pull_data'-button is clicked"""
+        """ Pulls and analysis the data when the 'action_pull_data'-button is clicked. """
         self._pulsed_meas_logic.manually_pull_data()
         return
 
@@ -2871,7 +2869,11 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
             beamwidth=self._pulsed_meas_logic.compute_width_of_errorbars()
             # create ErrorBarItem
-            self.signal_image_error_bars.setData(x=self._pulsed_meas_logic.signal_plot_x, y=self._pulsed_meas_logic.signal_plot_y, top=self._pulsed_meas_logic.measuring_error,bottom=self._pulsed_meas_logic.measuring_error,beam=beamwidth)
+            self.signal_image_error_bars.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                                 y=self._pulsed_meas_logic.signal_plot_y,
+                                                 top=self._pulsed_meas_logic.measuring_error,
+                                                 bottom=self._pulsed_meas_logic.measuring_error,
+                                                 beam=beamwidth)
             if not self.errorbars_present:
                 self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
                 self.errorbars_present = True
@@ -2883,15 +2885,15 @@ class PulsedMeasurementGui(GUIBase):
 
 
         # dealing with the actual signal
-        self.signal_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.signal_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                  y=self._pulsed_meas_logic.signal_plot_y)
         self.change_second_plot()
         return
 
 
-
     def refresh_measuring_error_plot(self):
-        #print(self._pulsed_meas_logic.measuring_error)
-        self.measuring_error_image.setData(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.measuring_error*1000)
+        self.measuring_error_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
+                                           y=self._pulsed_meas_logic.measuring_error*1000)
 
     def refresh_elapsed_time(self):
         """ Refreshes the elapsed time and sweeps of the measurement. """
@@ -2908,9 +2910,6 @@ class PulsedMeasurementGui(GUIBase):
             expected_time = self._mw.time_param_expected_dur_DoubleSpinBox.value()
         self._mw.time_param_elapsed_sweep_ScienSpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
 
-
-
-
     def show_external_mw_source_checked(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
         if not self._mw.ext_control_use_mw_CheckBox.isChecked():
@@ -2925,7 +2924,6 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ext_control_mw_power_Label.setVisible(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(True)
         return
-
 
     def measurement_ticks_editor(self):
         """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
@@ -2955,12 +2953,13 @@ class PulsedMeasurementGui(GUIBase):
         else:
             self._mw.second_plot_GroupBox.setVisible(True)
 
-            #Here FFT is seperated from the other option. The reason for that is preventing of code doubling
-            if self._mw.second_plot_ComboBox.currentText()=='FFT':
-                fft_x,fft_y=self._pulsed_meas_logic.compute_fft()
+            # Here FFT is seperated from the other option. The reason for that
+            # is preventing of code doubling
+            if self._mw.second_plot_ComboBox.currentText() == 'FFT':
+                fft_x, fft_y = self._pulsed_meas_logic.compute_fft()
                 self.second_plot_image.setData(fft_x, fft_y)
-                self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
-                if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()=='':
+                self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
+                if self._as.ana_param_second_plot_x_axis_name_LineEdit.text() == '':
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'FT-Amplitude')
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'frequency (GHz)')
                 else:
@@ -2972,7 +2971,7 @@ class PulsedMeasurementGui(GUIBase):
                 #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
                 self.second_plot_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
 
-                if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()=='':
+                if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()== '':
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_y_axis_name_LineEdit.text())
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_x_axis_name_LineEdit.text())
 
@@ -2980,38 +2979,17 @@ class PulsedMeasurementGui(GUIBase):
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_second_plot_x_axis_name_LineEdit.text())
                     self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_second_plot_y_axis_name_LineEdit.text())
 
-                if self._mw.second_plot_ComboBox.currentText()=='unchanged data':
-                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=False)
+                if self._mw.second_plot_ComboBox.currentText() == 'unchanged data':
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
 
-                elif self._mw.second_plot_ComboBox.currentText()=='Log(x)':
-                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True,y=False)
+                elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)':
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
 
-                elif self._mw.second_plot_ComboBox.currentText()=='Log(y)':
+                elif self._mw.second_plot_ComboBox.currentText() == 'Log(y)':
                     self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False,y=True)
 
-                elif self._mw.second_plot_ComboBox.currentText()=='Log(x)&Log(y)':
-                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True,y=True)
-
-
-
-
-    def seq_parameters_changed(self):
-        """ This method changes the sequence parameters"""
-
-        laser_num = self._mw.ana_param_num_laser_pulse_SpinBox.value()
-        measurement_tick_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
-        measurement_tick_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
-        mw_frequency = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
-        mw_power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
-        #self._mw.lasertoshow_spinBox.setRange(0, laser_num)
-
-
-        measurement_tick_vector = np.arange(measurement_tick_start, measurement_tick_start + measurement_tick_incr*laser_num, measurement_tick_incr)
-        # self._pulsed_meas_logic.running_sequence_parameters['tau_vector'] = measurement_tick_vector
-
-        self._pulsed_meas_logic.microwave_freq = mw_frequency
-        self._pulsed_meas_logic.microwave_power = mw_power
-        return
+                elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)&Log(y)':
+                    self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
     def analysis_timing_changed(self):
         """ This method handles the analysis timing"""

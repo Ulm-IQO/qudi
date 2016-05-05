@@ -677,24 +677,54 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def compute_fft(self):
-        """Computing the fourier transform of the data
+        """ Computing the fourier transform of the data.
 
-        @return fft_x[:middle]: returns the frequencies for the FFT, middle makes sure that only positive values are displayed
-        @return fft_y[:middle]: returns the FFT spectrum, middle makes sure that only positive values are displayed
+        @return tuple (fft_x, fft_y):
+                    fft_x: the frequencies for the FT
+                    fft_y: the FT spectrum
+
+        Pay attention that the return values of the FT have only half of the
+        entries compared to the used signal input.
+
+        In general, a window function should be applied to the time domain data
+        before calculating the FT, to reduce spectral leakage. The Hann window
+        for instance is almost never a bad choice. Use it like:
+            y_ft = np.fft.fft(y_signal * np.hanning(len(y_signal)))
+
+        Keep always in mind the relation for the Fourier transform:
+            T = delta_t * N_samples
+        where delta_t is the distance between the time points and N_samples are
+        the amount of points in the time domain. Consequently the sample rate is
+            f_samplerate = T / N_samples
+
+        Keep in mind that the FT returns value from 0 to f_samplerate, or
+        equivalently -f_samplerate/2 to f_samplerate/2.
+
+
         """
-        # FiXME: This is the first implementation. It is working, but there is probably a lot room for improvement
-        # subtract baseline
-        mean_y=sum(self.signal_plot_y)/len(self.signal_plot_y)
-        corrected_y=self.signal_plot_y-mean_y
+        # Make a baseline correction to avoid a constant offset near zero
+        # frequencies:
+        mean_y = sum(self.signal_plot_y) / len(self.signal_plot_y)
+        corrected_y = self.signal_plot_y - mean_y
 
-        #FIXME: Not sure if real or imaginary part is the better choice here
-        fft_y=np.abs((np.fft.fft(corrected_y)).real)
+        # The absolute values contain the fourier transformed y values
+        fft_y = np.abs(np.fft.fft(corrected_y))
 
-        # Take just the positive values
-        middle = round(corrected_y.shape[-1]/2)
-        fft_x = np.fft.fftfreq(corrected_y.shape[-1])
+        # Due to the sampling theorem you can only identify frequencies at half
+        # of the sample rate, therefore the FT contains an almost symmetric
+        # spectrum (the asymmetry results from aliasing effects). Therefore take
+        # the half of the values for the display.
+        middle = int((len(corrected_y)+1)//2)
 
-        return fft_x[:middle],fft_y[:middle]
+        # sample spacing of x_axis, if x is a time axis than it corresponds to a
+        # timestep:
+        x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
+
+        # use the helper function of numpy to calculate the x_values for the
+        # fourier space. That function will handle an occuring devision by 0:
+        fft_x = np.fft.fftfreq(len(corrected_y), d=x_spacing)
+
+        return abs(fft_x[:middle]), fft_y[:middle]
 
     def get_fit_functions(self):
         """Giving the available fit functions
@@ -735,14 +765,17 @@ class PulsedMeasurementLogic(GenericLogic):
             sine, params = self._fit_logic.make_sine_model()
             pulsed_fit_y = sine.eval(x=pulsed_fit_x, params=result.params)
 
-            #pulsed_fit_y = rabi_amp * np.sin(np.multiply(pulsed_fit_x,1/rabi_freq*2*np.pi)+rabi_shift)*np.exp(np.multiply(pulsed_fit_x,-rabi_decay))+rabi_offset
-
             param_dict['Contrast'] = {'value': np.round(np.abs(2*result.params['amplitude'].value*100), 2),
                                       'error': np.round(2 * result.params['amplitude'].stderr*100, 2),
                                       'unit' : '%'}
             param_dict['Frequency'] = {'value': np.round(result.params['frequency'].value/1e6, 3),
                                        'error': np.round(result.params['frequency'].stderr/1e6, 3),
                                        'unit' : 'MHz'}
+            # use proper error propagation formula:
+            error_per = 1/(result.params['frequency'].value/1e9)**2 * result.params['frequency'].stderr/1e9
+            param_dict['Period'] = {'value': np.round(1/(result.params['frequency'].value/1e9), 2),
+                                    'error': np.round(error_per, 2),
+                                    'unit' : 'ns'}
             param_dict['Offset'] = {'value': np.round(result.params['offset'].value, 3),
                                     'error': np.round(result.params['offset'].stderr, 2),
                                     'unit' : 'norm. signal'}
@@ -751,16 +784,6 @@ class PulsedMeasurementLogic(GenericLogic):
                                    'unit' : '°'}
 
             fit_result = self._create_formatted_output(param_dict)
-
-            # fit_result = str('Contrast: ' + str(np.round(np.abs(2*result.params['amplitude'].value), 3)) + u" \u00B1 " +
-            #                                 str(np.round(2 * result.params['amplitude'].stderr, 2)) + "\n" +
-            #                  'Frequency [MHz]: ' + str(np.round(1000*result.params['frequency'].value, 3)) + u" \u00B1 " +
-            #                                        str(np.round(1000*result.params['frequency'].stderr, 2)) + "\n" +
-            #                  'Offset: ' + str(np.round(result.params['offset'].value,3)) + u" \u00B1 " +
-            #                               str(np.round(result.params['offset'].stderr,2)) + "\n" +
-            #                  #'Decay [ns]: ' + str(rabi_decay) + " + " + str(rabi_decay_error) + "\n" +
-            #                  'Phase [rad]: ' + str(np.round(result.params['phase'].value, 3)) + u" \u00B1 " +
-            #                                    str(np.round(result.params['frequency'].stderr, 2)) + "\n")
 
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
@@ -786,14 +809,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
             fit_result = self._create_formatted_output(param_dict)
 
-            # fit_result = (   'Minimum : ' + str(np.round(result.params['center'].value,3)) + u" \u00B1 "
-            #                     + str(np.round(result.params['center'].stderr,2)) + ' [ns]' + '\n'
-            #                     + 'linewidth : ' + str(np.round(result.params['fwhm'].value,3)) + u" \u00B1 "
-            #                     + str(np.round(result.params['fwhm'].stderr,2)) + ' [ns]' + '\n'
-            #                     + 'contrast : ' + str(np.round((result.params['amplitude'].value/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)),3)*100) + '[%]'
-            #                     )
-
-
             return pulsed_fit_x, pulsed_fit_y, fit_result
 
 
@@ -802,7 +817,7 @@ class PulsedMeasurementLogic(GenericLogic):
             result = self._fit_logic.make_lorentzianpeak_fit(axis=self.signal_plot_x,
                                                              data=self.signal_plot_y,
                                                              add_parameters=None)
-            lorentzian,params=self._fit_logic.make_lorentzian_model()
+            lorentzian, params=self._fit_logic.make_lorentzian_model()
             pulsed_fit_y = lorentzian.eval(x=pulsed_fit_x, params=result.params)
 
             param_dict['Maximum'] = {'value': np.round(result.params['center'].value, 3),
