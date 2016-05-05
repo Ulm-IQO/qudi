@@ -2560,10 +2560,7 @@ class PulsedMeasurementGui(GUIBase):
         self._as.accepted.connect(self.update_analysis_settings)
         self._as.rejected.connect(self.keep_former_analysis_settings)
         self._as.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
-        self._as.ana_param_x_axis_name_LineEdit.setText('tau(ns)')
-        self._as.ana_param_x_axis_name_LineEdit.editingFinished.connect(self.name_x_axis_changed)
-        self._as.ana_param_y_axis_name_LineEdit.setText('Counts')
-        self._as.ana_param_y_axis_name_LineEdit.editingFinished.connect(self.name_y_axis_changed)
+        self.update_analysis_settings()
         pass
 
     def _deactivate_analysis_settings_ui(self, e):
@@ -2577,7 +2574,14 @@ class PulsedMeasurementGui(GUIBase):
 
     def update_analysis_settings(self):
         """ Apply the new settings """
-        #FIXME: Implement the behaviour
+
+        self._mw.pulse_analysis_PlotWidget.setLabel(axis='bottom',
+                                                    text=self._as.ana_param_x_axis_name_LineEdit.text(),
+                                                    units=self._as.ana_param_x_axis_unit_LineEdit.text())
+        self._mw.pulse_analysis_PlotWidget.setLabel(axis='left',
+                                                    text=self._as.ana_param_y_axis_name_LineEdit.text(),
+                                                    units=self._as.ana_param_y_axis_unit_LineEdit.text())
+
         pass
 
     def keep_former_analysis_settings(self):
@@ -2590,15 +2594,14 @@ class PulsedMeasurementGui(GUIBase):
         self._as.exec_()
 
     def name_x_axis_changed(self):
-        name=self._as.ana_param_x_axis_name_LineEdit.text()
-        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', name)
-        #self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', name)
+        """ Update the x axis labels of the first plot. """
+
+
         return
 
     def name_y_axis_changed(self):
-        name=self._as.ana_param_y_axis_name_LineEdit.text()
-        self._mw.pulse_analysis_PlotWidget.setLabel('left', name)
-        #self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', name)
+        """ Update the y axis labels of the first plot. """
+
         return
 
     ###########################################################################
@@ -2959,25 +2962,33 @@ class PulsedMeasurementGui(GUIBase):
                 fft_x, fft_y = self._pulsed_meas_logic.compute_fft()
                 self.second_plot_image.setData(fft_x, fft_y)
                 self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-                if self._as.ana_param_second_plot_x_axis_name_LineEdit.text() == '':
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('left', 'FT-Amplitude')
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', 'frequency (GHz)')
-                else:
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_second_plot_x_axis_name_LineEdit.text())
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_second_plot_y_axis_name_LineEdit.text())
 
+                self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
+                                                                   text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
+                                                                   units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
+                self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
+                                                                   text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
+                                                                   units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
 
             else:
                 #FIXME: Is not working when there is a 0 in the values, therefore ignoring the first measurment point
                 self.second_plot_image.setData(self._pulsed_meas_logic.signal_plot_x[1:], self._pulsed_meas_logic.signal_plot_y[1:])
 
                 if self._as.ana_param_second_plot_x_axis_name_LineEdit.text()== '':
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_y_axis_name_LineEdit.text())
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_x_axis_name_LineEdit.text())
+                    self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
+                                                                       text=self._as.ana_param_y_axis_name_LineEdit.text(),
+                                                                       units=self._as.ana_param_y_axis_unit_LineEdit.text())
+                    self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
+                                                                       text=self._as.ana_param_x_axis_name_LineEdit.text(),
+                                                                       units=self._as.ana_param_x_axis_unit_LineEdit.text())
 
                 else:
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('bottom', self._as.ana_param_second_plot_x_axis_name_LineEdit.text())
-                    self._mw.pulse_analysis_second_PlotWidget.setLabel('left', self._as.ana_param_second_plot_y_axis_name_LineEdit.text())
+                    self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='bottom',
+                                                                       text=self._as.ana_param_second_plot_x_axis_name_LineEdit.text(),
+                                                                       units=self._as.ana_param_second_plot_x_axis_unit_LineEdit.text())
+                    self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
+                                                                       text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
+                                                                       units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
 
                 if self._mw.second_plot_ComboBox.currentText() == 'unchanged data':
                     self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
