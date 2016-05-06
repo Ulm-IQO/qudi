@@ -54,8 +54,6 @@ class ODMRSettingDialog(QtGui.QDialog):
         super(ODMRSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
-
-
 class ODMRGui(GUIBase):
     """
     This is the GUI Class for ODMR
@@ -321,8 +319,20 @@ class ODMRGui(GUIBase):
             low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
             high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
 
-            cb_min = np.percentile(odmr_image_data, low_centile)
-            cb_max = np.percentile(odmr_image_data, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(odmr_image_data, 0.0)
+            # The power of the masked array are that one can still use all numpy
+            # functionality like .mean() .max() , ... on the array and the
+            # masked value will be automatically excluded.
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
@@ -331,9 +341,11 @@ class ODMRGui(GUIBase):
         # Now update image with new color scale, and update colorbar
         self.odmr_matrix_image.setImage(image=odmr_image_data,
                                         levels=(cb_min, cb_max))
+
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
                                                      0,
-                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
+                                                     self._odmr_logic.NumberofLines))
         self.refresh_odmr_colorbar()
 
 
@@ -347,8 +359,20 @@ class ODMRGui(GUIBase):
             low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
             high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
 
-            cb_min = np.percentile(self.odmr_matrix_image.image, low_centile)
-            cb_max = np.percentile(self.odmr_matrix_image.image, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(self.odmr_matrix_image.image, 0.0)
+            # The power of the masked array are that one can still use all numpy
+            # functionality like .mean() .max() , ... on the array and the
+            # masked value will be automatically excluded.
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
