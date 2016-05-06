@@ -5,7 +5,7 @@ the ACQ4 project (http://acq4.org and [1]), which is distributed under the
 [MIT License](@ref mitlicense).
 
 Some functions in QuDi are adapted from or inspired by pi3diamond from the
-3\. Institut für Physik of Stuttgart University and there is definitive evidence
+Third Institut für Physik of Stuttgart University and there is definitive evidence
 that pi3diamond is mostly licensed under the [GNU Public License Version 3](@ref gpl),
 it is the easiest solution for each author to also license their contribution
 to this software as [GPLv3](@ref gpl).
