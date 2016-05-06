@@ -105,9 +105,20 @@ class ODMRGui(GUIBase):
         self._sd = ODMRSettingDialog()
 
         # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit()
+        self._mw.save_tag_LineEdit = QtGui.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
+                                              'added to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
+
+        # add a clear button to clear the ODMR plots:
+        self._mw.clear_odmr_PushButton = QtGui.QPushButton(self._mw)
+
+        self._mw.clear_odmr_PushButton.setText('Clear ODMR')
+        self._mw.clear_odmr_PushButton.setToolTip('Clear the plots of the\n'
+                                                    'current ODMR measurements.')
+        self._mw.clear_odmr_PushButton.setEnabled(False)
+        self._mw.save_ToolBar.addWidget(self._mw.clear_odmr_PushButton)
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
@@ -232,6 +243,8 @@ class ODMRGui(GUIBase):
         # react on an axis change in the logic by adapting the display:
         self._odmr_logic.sigODMRMatrixAxesChanged.connect(self.update_matrix_axes)
 
+        # connect the clear button:
+        self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_plots_clicked)
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
@@ -302,15 +315,23 @@ class ODMRGui(GUIBase):
             self._odmr_logic.stop_odmr_scan()
             self._odmr_logic.start_odmr_scan()
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-            # self._sd.matrix_lines_SpinBox.setReadOnly(True)
+
+            # during scan, enable the clear plot possibility.
+            self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
             self._odmr_logic.stop_odmr_scan()
-            # self._sd.matrix_lines_SpinBox.setReadOnly(False)
+            # Disable the clear functionality since that is not needed if no
+            # scan is running:
+            self._mw.clear_odmr_PushButton.setEnabled(False)
 
     def odmr_stopped(self):
         """ Switch the run/stop button to stop after receiving an odmr_stoped
             signal """
         self._mw.action_run_stop.setChecked(False)
+
+    def clear_odmr_plots_clicked(self):
+        """ Clear the ODMR plots. """
+        self._odmr_logic.clear_odmr_plots()
 
     def menue_settings(self):
         """ Open the settings menue """
