@@ -111,9 +111,9 @@ class ODMRGui(GUIBase):
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
                                                      0,
-                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
+                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
                                                      self._odmr_logic.number_of_lines))
 
 
@@ -124,11 +124,28 @@ class ODMRGui(GUIBase):
                                               self._odmr_logic.ODMR_fit_y,
                                               pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
 
+        # set the prefix, which determines the representation in the viewboxes
+        # for the frequencies,  one can choose from the dict obtainable from
+        # self.get_unit_prefix_dict():
+        self._freq_prefix = 'M'
+
+
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.odmr_PlotWidget.addItem(self.odmr_image)
-        self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
+        self._mw.odmr_PlotWidget.setLabel(axis='left', text='Counts',
+                                          units='Counts/s')
+        self._mw.odmr_PlotWidget.setLabel(axis='bottom', text='Frequency',
+                                          units='Hz')
+
+        #self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
         self._mw.odmr_matrix_PlotWidget.addItem(self.odmr_matrix_image)
+        self._mw.odmr_matrix_PlotWidget.setLabel(axis='left',
+                                                 text='Matrix Lines',
+                                                 units='#')
+        self._mw.odmr_matrix_PlotWidget.setLabel(axis='bottom', text='Frequency',
+                                                 units='Hz')
+
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Get the colorscales at set LUT
@@ -156,7 +173,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_PlotWidget.addItem(self.odmr_cb)
         self._mw.odmr_cb_PlotWidget.hideAxis('bottom')
         self._mw.odmr_cb_PlotWidget.hideAxis('left')
-        self._mw.odmr_cb_PlotWidget.setLabel('right', 'Fluorescence', units='c/s')
+        self._mw.odmr_cb_PlotWidget.setLabel('right', 'Fluorescence', units='counts/s')
 
         # Connect the buttons and inputs for the odmr colorbar
         self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
@@ -168,13 +185,15 @@ class ODMRGui(GUIBase):
         ########################################################################
 
         # Take the default values from logic:
-        self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.MW_frequency)
-        self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_start)
-        self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_step)
-        self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_stop)
-        self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.MW_power)
-        self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.RunTime)
-        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+
+        self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.mw_frequency/freq_norm)
+        self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start/freq_norm)
+        self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step/freq_norm)
+        self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop/freq_norm)
+        self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
+        self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
 
@@ -313,9 +332,9 @@ class ODMRGui(GUIBase):
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
 #        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
 #                                                     0,
-#                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.number_of_lines))
+#                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
 #        self.refresh_odmr_colorbar()
 
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
@@ -353,9 +372,9 @@ class ODMRGui(GUIBase):
     def update_matrix_axes(self):
         """ Adjust the x and y axes in the image according to the input. """
 
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
                                                      0,
-                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
+                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
                                                      self._odmr_logic.number_of_lines))
 
 
@@ -393,7 +412,7 @@ class ODMRGui(GUIBase):
 
     def refresh_elapsedtime(self):
         """ Show current elapsed measurement time """
-        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
 
     def update_settings(self):
         """ Write the new settings from the gui to the file. """
@@ -445,28 +464,32 @@ class ODMRGui(GUIBase):
 
     def change_frequency(self):
         """ Change CW frequency of microwave source """
-        self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value())
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value()*freq_norm)
 
     def change_start_freq(self):
         """ Change start frequency of frequency sweep """
-        self._odmr_logic.MW_start = self._mw.start_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_start = self._mw.start_freq_DoubleSpinBox.value()*freq_norm
 
     def change_step_freq(self):
         """ Change step size in which frequency is changed """
-        self._odmr_logic.MW_step = self._mw.step_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_step = self._mw.step_freq_DoubleSpinBox.value()*freq_norm
 
     def change_stop_freq(self):
         """ Change end of frequency sweep """
-        self._odmr_logic.MW_stop = self._mw.stop_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_stop = self._mw.stop_freq_DoubleSpinBox.value()*freq_norm
 
     def change_power(self):
         """ Change microwave power """
-        self._odmr_logic.MW_power = self._mw.power_DoubleSpinBox.value()
-        self._odmr_logic.set_power(power=self._odmr_logic.MW_power)
+        self._odmr_logic.mw_power = self._mw.power_DoubleSpinBox.value()
+        self._odmr_logic.set_power(power=self._odmr_logic.mw_power)
 
     def change_runtime(self):
         """ Change time after which microwave sweep is stopped """
-        self._odmr_logic.RunTime = self._mw.runtime_DoubleSpinBox.value()
+        self._odmr_logic.run_time = self._mw.runtime_DoubleSpinBox.value()
 
     def save_plots_and_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
