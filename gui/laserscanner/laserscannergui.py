@@ -99,7 +99,7 @@ class VoltScanGui(GUIBase):
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.number_of_lines))
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,self._odmr_logic.ODMR_plot_y)
         self.odmr_fit_image = pg.PlotDataItem(self._odmr_logic.ODMR_fit_x,self._odmr_logic.ODMR_fit_y,
                                                     pen=QtGui.QPen(QtGui.QColor(255,255,255,255)))
@@ -176,7 +176,7 @@ class VoltScanGui(GUIBase):
         self._mw.power_InputWidget.setText(str(self._odmr_logic.MW_power))
         self._mw.runtime_InputWidget.setText(str(self._odmr_logic.RunTime))
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
-        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.number_of_lines))
         self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
 
         # Update the inputed/displayed numbers if return key is hit:
@@ -296,7 +296,7 @@ class VoltScanGui(GUIBase):
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
 #        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.number_of_lines))
 #        self.refresh_odmr_colorbar()
 
 
@@ -317,7 +317,7 @@ class VoltScanGui(GUIBase):
 
         # Now update image with new color scale, and update colorbar
         self.odmr_matrix_image.setImage(image=odmr_image_data, levels=(cb_min, cb_max) )
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,0,self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.number_of_lines))
         self.refresh_odmr_colorbar()
 
 
@@ -345,7 +345,7 @@ class VoltScanGui(GUIBase):
 
     def update_settings(self):
         """ Write the new settings from the gui to the file. """
-        self._odmr_logic.NumberofLines = int(self._sd.matrix_lines_InputWidget.text())
+        self._odmr_logic.number_of_lines = int(self._sd.matrix_lines_InputWidget.text())
         self._odmr_logic.set_clock_frequency(int(self._sd.clock_frequency_InputWidget.text()))
         self._odmr_logic.safeRawData = self._sd.save_raw_data_box.isChecked()
 
@@ -371,7 +371,7 @@ class VoltScanGui(GUIBase):
 
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.NumberofLines))
+        self._sd.matrix_lines_InputWidget.setText(str(self._odmr_logic.number_of_lines))
         self._sd.clock_frequency_InputWidget.setText(str(self._odmr_logic._clock_frequency))
         self._sd.save_raw_data_box.setChecked(self._odmr_logic.safeRawData)
 
