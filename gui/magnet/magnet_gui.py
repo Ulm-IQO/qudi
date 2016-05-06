@@ -154,10 +154,10 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis1)
 
 
-        self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
-        self._mw.alignment_2d_cb_high_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
-        self._mw.alignment_2d_cb_low_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
         self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_low_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
+        self._mw.alignment_2d_cb_high_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
 
 
         self._update_limits_axis0()
@@ -826,21 +826,32 @@ class MagnetGui(GUIBase):
                                                            axis0_array[-1]-axis0_array[0],
                                                            axis1_array[-1]-axis1_array[0],))
 
-        self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
-        self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
+        self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
+        self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
 
     def _update_2d_graph_cb(self):
-        """ Update the colorbar to a new scaling."""
+        """ Update the colorbar to a new scaling.
+
+        That function alters the color scaling of the colorbar next to the main
+        picture.
+        """
 
         # If "Centiles" is checked, adjust colour scaling automatically to
         # centiles. Otherwise, take user-defined values.
 
         if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+
             low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
             high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
 
-            cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
-            cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array such that the arrays will be
+            masked_image = np.ma.masked_equal(self._2d_alignment_ImageItem.image, 0.0)
+
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
@@ -849,18 +860,26 @@ class MagnetGui(GUIBase):
         self._2d_alignment_cb.refresh_colorbar(cb_min, cb_max)
         self._mw.alignment_2d_cb_GraphicsView.update()
 
-
-
     def _update_2d_graph_data(self):
         """ Refresh the 2D-matrix image. """
         matrix_data = self._magnet_logic.get_2d_data_matrix()
 
         if self._mw.alignment_2d_centiles_RadioButton.isChecked():
+
             low_centile = self._mw.alignment_2d_cb_low_centiles_DSpinBox.value()
             high_centile = self._mw.alignment_2d_cb_high_centiles_DSpinBox.value()
 
-            cb_min = np.percentile(matrix_data, low_centile)
-            cb_max = np.percentile(matrix_data, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(matrix_data, 0.0)
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
         else:
             cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
             cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()

@@ -30,7 +30,7 @@ import time
 import datetime
 
 class ODMRLogic(GenericLogic):
-    """This is the Logic class for ODMR."""    
+    """This is the Logic class for ODMR."""
     _modclass = 'odmrlogic'
     _modtype = 'logic'
     # declare connectors
@@ -47,6 +47,7 @@ class ODMRLogic(GenericLogic):
     sigOdmrMatrixUpdated = QtCore.Signal()
     sigOdmrFinished = QtCore.Signal()
     sigOdmrElapsedTimeChanged = QtCore.Signal()
+    sigODMRMatrixAxesChanged = QtCore.Signal()
 
 
     def __init__(self, manager, name, config, **kwargs):
@@ -64,7 +65,7 @@ class ODMRLogic(GenericLogic):
                         msgType='status')
 
         # number of lines in the matrix plot
-        self.NumberofLines = 50
+        self.number_of_lines = 50
         self.threadlock = Mutex()
         self.stopRequested = False
 
@@ -258,8 +259,8 @@ class ODMRLogic(GenericLogic):
 
     def _initialize_ODMR_matrix(self):
         """ Initializing the ODMR matrix plot. """
-        self.ODMR_plot_xy = np.zeros( (self.NumberofLines, len(self._mw_frequency_list)) )
-
+        self.ODMR_plot_xy = np.zeros((self.number_of_lines, len(self._mw_frequency_list)))
+        self.sigODMRMatrixAxesChanged.emit()
 
     def _scan_ODMR_line(self):
         """ Scans one line in ODMR
@@ -290,10 +291,38 @@ class ODMRLogic(GenericLogic):
         # ######################## end of quick and dirty fix
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
-        self.ODMR_plot_xy = np.vstack( (new_counts, self.ODMR_plot_xy[:-1, :]) )
+
+
+
+
+        curr_num_lines = np.shape(self.ODMR_plot_xy)[0]
+        if curr_num_lines > self.number_of_lines:
+
+            self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:self.number_of_lines-1, :]))
+
+            self.sigOdmrMatrixUpdated.emit()
+            self.sigODMRMatrixAxesChanged.emit()
+
+        elif np.shape(self.ODMR_plot_xy)[0] < self.number_of_lines:
+
+            new_matrix = np.zeros((self.number_of_lines, len(self._mw_frequency_list)))
+
+            new_matrix[1:curr_num_lines+1, :] = self.ODMR_plot_xy
+            new_matrix[0, :] = new_counts
+            self.ODMR_plot_xy = new_matrix
+
+            self.sigOdmrMatrixUpdated.emit()
+            self.sigODMRMatrixAxesChanged.emit()
+
+        else:
+            self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:-1, :]))
+            self.sigOdmrMatrixUpdated.emit()
+
+
+
 
         if self.safeRawData:
-            self.ODMR_raw_data[:,self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
+            self.ODMR_raw_data[:, self._odmrscan_counter] = new_counts  # adds the ne odmr line to the overall np.array
 
         self._odmrscan_counter += 1
 
@@ -305,7 +334,6 @@ class ODMRLogic(GenericLogic):
             self.sigOdmrFinished.emit()
 
         self.sigOdmrPlotUpdated.emit()
-        self.sigOdmrMatrixUpdated.emit()
         self.sigNextLine.emit()
 
 
@@ -688,7 +716,7 @@ class ODMRLogic(GenericLogic):
         parameters['Stop Frequency (MHz)'] = self.MW_stop
         parameters['Step size (MHz)'] = self.MW_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
-        parameters['Number of matrix lines (#)'] = self.NumberofLines
+        parameters['Number of matrix lines (#)'] = self.number_of_lines
         parameters['Fit function'] = self.current_fit_function
 
         i = 0
