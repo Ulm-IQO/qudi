@@ -122,6 +122,7 @@ class MagnetLogic(GenericLogic):
 
         self._stop_measure = False
 
+        self._optimize_pos = False
 
     def activation(self, e):
         """ Definition and initialisation of the GUI.
@@ -861,7 +862,7 @@ class MagnetLogic(GenericLogic):
             self._2D_data_matrix[index_array] = meas_val
             self._2D_add_data_matrix[index_array] = add_meas_val
 
-            self.logMsg('Data "{0}", saved at intex "{1}"'.format(meas_val, index_array), msgType='status')
+            # self.logMsg('Data "{0}", saved at intex "{1}"'.format(meas_val, index_array), msgType='status')
 
             self.sig2DMatrixChanged.emit()
 
@@ -886,6 +887,10 @@ class MagnetLogic(GenericLogic):
 
     def _do_premeasurement_proc(self):
         # do a selected pre measurement procedure, like e.g. optimize position.
+
+        if self._optimize_pos:
+            pass
+
         return
 
     def _do_alignment_measurement(self):
@@ -925,7 +930,7 @@ class MagnetLogic(GenericLogic):
 
         # time.sleep(3)
         value = np.random.random_sample()
-        self.logMsg('Alignment Done: {0}'.format(data), msgType='status')
+        # self.logMsg('Alignment Done: {0}'.format(data), msgType='status')
 
 
         return data, add_data
@@ -1054,3 +1059,14 @@ class MagnetLogic(GenericLogic):
 
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
+
+    def set_optimize_pos(self, state=True):
+        """ Activate the optimize position option. """
+        self._optimize_pos = state
+
+    def get_optimize_pos(self):
+        """ Retrieve whether the optimize position is set.
+
+        @return bool: whether the optimize_pos is set or not.
+        """
+        return self._optimize_pos
