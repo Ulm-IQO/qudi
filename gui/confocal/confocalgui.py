@@ -599,7 +599,7 @@ class ConfocalGui(GUIBase):
 
         self._scan_depth_loop_icon = QtGui.QIcon()
         self._scan_depth_loop_icon.addPixmap(QtGui.QPixmap(_fromUtf8("artwork/icons/qudiTheme/22x22/scan-depth-loop.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        
+
         #######################################################################
         ####           Connect the colorbar and their actions              ####
         #######################################################################
@@ -613,16 +613,16 @@ class ConfocalGui(GUIBase):
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
 
-        self.xy_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min = 0, cb_max = 100)
-        self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min = 0, cb_max = 100)
+        self.xy_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
+        self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
         self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
         self._mw.xy_cb_ViewWidget.hideAxis('bottom')
-        self._mw.xy_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.xy_cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
         self._mw.xy_cb_ViewWidget.setMouseEnabled(x=False, y=False)
 
         self._mw.depth_cb_ViewWidget.addItem(self.depth_cb)
         self._mw.depth_cb_ViewWidget.hideAxis('bottom')
-        self._mw.depth_cb_ViewWidget.setLabel( 'left', 'Fluorescence', units='c/s' )
+        self._mw.depth_cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
         self._mw.depth_cb_ViewWidget.setMouseEnabled(x=False, y=False)
 
         self._mw.sigPressKeyBoard.connect(self.keyPressEvent)
@@ -777,7 +777,7 @@ class ConfocalGui(GUIBase):
         # Otherwise, calculate cb range from percentiles.
         else:
             # Exclude any zeros (which are typically due to unfinished scan)
-            depth_image_nonzero = self.depth_image.image[ np.nonzero(self.depth_image.image) ]
+            depth_image_nonzero = self.depth_image.image[np.nonzero(self.depth_image.image)]
 
             # Read centile range
             low_centile = self._mw.depth_cb_low_centile_InputWidget.value()
