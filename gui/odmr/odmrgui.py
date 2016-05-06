@@ -114,7 +114,7 @@ class ODMRGui(GUIBase):
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
                                                      0,
                                                      self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
-                                                     self._odmr_logic.NumberofLines))
+                                                     self._odmr_logic.number_of_lines))
 
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
@@ -175,7 +175,7 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.MW_power)
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.RunTime)
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.NumberofLines)
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
 
         # Update the inputed/displayed numbers if return key is hit:
@@ -209,6 +209,10 @@ class ODMRGui(GUIBase):
         # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_Save.triggered.connect(self.save_plots_and_data)
+
+        # react on an axis change in the logic by adapting the display:
+        self._odmr_logic.sigODMRMatrixAxesChanged.connect(self.update_matrix_axes)
+
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
@@ -271,15 +275,18 @@ class ODMRGui(GUIBase):
 #             self._sd.matrix_lines_SpinBox.setReadOnly(True)
 
     def run_stop(self, is_checked):
-        """ Manages what happens if odmr scan is started/stopped """
+        """ Manages what happens if odmr scan is started/stopped. """
+
         if is_checked:
+
+            # change the axes appearance according to input values:
             self._odmr_logic.stop_odmr_scan()
             self._odmr_logic.start_odmr_scan()
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-            self._sd.matrix_lines_SpinBox.setReadOnly(True)
+            # self._sd.matrix_lines_SpinBox.setReadOnly(True)
         else:
             self._odmr_logic.stop_odmr_scan()
-            self._sd.matrix_lines_SpinBox.setReadOnly(False)
+            # self._sd.matrix_lines_SpinBox.setReadOnly(False)
 
     def odmr_stopped(self):
         """ Switch the run/stop button to stop after receiving an odmr_stoped
@@ -308,7 +315,7 @@ class ODMRGui(GUIBase):
 #        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
 #        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
 #                                                     0,
-#                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+#                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.number_of_lines))
 #        self.refresh_odmr_colorbar()
 
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
@@ -341,12 +348,15 @@ class ODMRGui(GUIBase):
         # Now update image with new color scale, and update colorbar
         self.odmr_matrix_image.setImage(image=odmr_image_data,
                                         levels=(cb_min, cb_max))
+        self.refresh_odmr_colorbar()
+
+    def update_matrix_axes(self):
+        """ Adjust the x and y axes in the image according to the input. """
 
         self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
                                                      0,
                                                      self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
-                                                     self._odmr_logic.NumberofLines))
-        self.refresh_odmr_colorbar()
+                                                     self._odmr_logic.number_of_lines))
 
 
     def refresh_odmr_colorbar(self):
@@ -387,7 +397,7 @@ class ODMRGui(GUIBase):
 
     def update_settings(self):
         """ Write the new settings from the gui to the file. """
-        self._odmr_logic.NumberofLines = self._sd.matrix_lines_SpinBox.value()
+        self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
         self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
 
@@ -415,7 +425,7 @@ class ODMRGui(GUIBase):
 
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.NumberofLines)
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
 
