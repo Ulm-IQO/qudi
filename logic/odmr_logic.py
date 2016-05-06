@@ -94,18 +94,24 @@ class ODMRLogic(GenericLogic):
         self.MW_trigger_pol = 'POS'
 
         self._odmrscan_counter = 0
-        self._clock_frequency = 200
+        self._clock_frequency = 200     # in Hz
         self.fit_function = 'No Fit'
         self.fit_result = ''
 
-        self.MW_frequency = 2870.    #in MHz
-        self.MW_power = -30.         #in dBm
-        self.MW_start = 2800.        #in MHz
-        self.MW_stop = 2950.         #in MHz
-        self.MW_step = 2.            #in MHz
+        # set the prefix, which determines the representation in the viewboxes
+        # for the frequencies,  one can choose from the dict obtainable from
+        # self.get_unit_prefix_dict(). That is mainly used to save the fitted
+        # values with the appropriated magnitude.
+        self._freq_prefix = 'M'
 
-        self.RunTime = 10
-        self.ElapsedTime = 0
+        self.mw_frequency = 2870e6    #in Hz
+        self.mw_power = -30.         #in dBm
+        self.mw_start = 2800e6        #in Hz
+        self.mw_stop = 2950e6         #in Hz
+        self.mw_step = 2e6            #in Hz
+
+        self.run_time = 10
+        self.elapsed_time = 0
         self.current_fit_function = 'No Fit'
 
         self.safeRawData = False #flag for saving raw data
@@ -117,32 +123,32 @@ class ODMRLogic(GenericLogic):
             self.MW_trigger_pol = self._statusVariables['MW_trigger_pol']
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
-        if 'MW_frequency' in self._statusVariables:
-            self.MW_frequency = self._statusVariables['MW_frequency']
-        if 'MW_power' in self._statusVariables:
-            self.MW_power = self._statusVariables['MW_power']
-        if 'MW_start' in self._statusVariables:
-            self.MW_start = self._statusVariables['MW_start']
-        if 'MW_stop' in self._statusVariables:
-            self.MW_stop = self._statusVariables['MW_stop']
-        if 'MW_step' in self._statusVariables:
-            self.MW_step = self._statusVariables['MW_step']
-        if 'RunTime' in self._statusVariables:
-            self.RunTime = self._statusVariables['RunTime']
+        if 'mw_frequency' in self._statusVariables:
+            self.mw_frequency = self._statusVariables['mw_frequency']
+        if 'mw_power' in self._statusVariables:
+            self.mw_power = self._statusVariables['mw_power']
+        if 'mw_start' in self._statusVariables:
+            self.mw_start = self._statusVariables['mw_start']
+        if 'mw_stop' in self._statusVariables:
+            self.mw_stop = self._statusVariables['mw_stop']
+        if 'mw_step' in self._statusVariables:
+            self.mw_step = self._statusVariables['mw_step']
+        if 'run_time' in self._statusVariables:
+            self.run_time = self._statusVariables['run_time']
         if 'safeRawData' in self._statusVariables:
             self.safeRawData = self._statusVariables['safeRawData']
 
         self.sigNextLine.connect(self._scan_ODMR_line, QtCore.Qt.QueuedConnection)
 
         # Initalize the ODMR plot and matrix image
-        self._mw_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
-        self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
+        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step)
+        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step/10.)
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
 
         # setting to low power and turning off the input during activation
-        self.set_frequency(frequency = self.MW_frequency)
-        self.set_power(power = self.MW_power)
+        self.set_frequency(frequency=self.mw_frequency)
+        self.set_power(power=self.mw_power)
         self.MW_off()
         self._mw_device.set_ex_trigger(source=self.MW_trigger_source,
                                        pol=self.MW_trigger_pol)
@@ -158,12 +164,12 @@ class ODMRLogic(GenericLogic):
         self._statusVariables['MW_trigger_source'] = self.MW_trigger_source
         self._statusVariables['MW_trigger_pol'] = self.MW_trigger_pol
         self._statusVariables['clock_frequency'] = self._clock_frequency
-        self._statusVariables['MW_frequency'] = self.MW_frequency
-        self._statusVariables['MW_power'] = self.MW_power
-        self._statusVariables['MW_start'] = self.MW_start
-        self._statusVariables['MW_stop'] = self.MW_stop
-        self._statusVariables['MW_step'] = self.MW_step
-        self._statusVariables['RunTime'] = self.RunTime
+        self._statusVariables['mw_frequency'] = self.mw_frequency
+        self._statusVariables['mw_power'] = self.mw_power
+        self._statusVariables['mw_start'] = self.mw_start
+        self._statusVariables['mw_stop'] = self.mw_stop
+        self._statusVariables['mw_step'] = self.mw_step
+        self._statusVariables['run_time'] = self.run_time
         self._statusVariables['safeRawData'] = self.safeRawData
         #self._statusVariables['ODMR_plot_x'] = self.ODMR_plot_x
         #self._statusVariables['ODMR_plot_y'] = self.ODMR_plot_y
@@ -202,22 +208,21 @@ class ODMRLogic(GenericLogic):
         self._odmr_counter.close_odmr_clock()
         return 0
 
-
     def start_odmr_scan(self):
         """ Starting an ODMR scan. """
         self._odmrscan_counter = 0
         self._StartTime = time.time()
-        self.ElapsedTime = 0
+        self.elapsed_time = 0
         self.sigOdmrElapsedTimeChanged.emit()
 
-        self._mw_frequency_list = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step)
-        self.ODMR_fit_x = np.arange(self.MW_start, self.MW_stop+self.MW_step, self.MW_step/10.)
+        self._mw_frequency_list = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step)
+        self.ODMR_fit_x = np.arange(self.mw_start, self.mw_stop+self.mw_step, self.mw_step/10.)
 
         if self.safeRawData:
             # All that is necesarry fo saving of raw data:
             self._mw_frequency_list_length=int(self._mw_frequency_list.shape[0])  #length of req list
             self._ODMR_line_time= self._mw_frequency_list_length /  self._clock_frequency # time for one line
-            self._ODMR_line_count= self.RunTime / self._ODMR_line_time # amout of lines done during runtime
+            self._ODMR_line_count= self.run_time / self._ODMR_line_time # amout of lines done during run_time
 
             self.ODMR_raw_data = np.full((self._mw_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
             self.logMsg('Raw data saving...',msgType='status', importance=5)
@@ -227,7 +232,7 @@ class ODMRLogic(GenericLogic):
 
         self.start_odmr()
 
-        self._mw_device.set_list(self._mw_frequency_list*1e6, self.MW_power)  #times 1e6 to have freq in Hz
+        self._mw_device.set_list(self._mw_frequency_list, self.mw_power)  #times 1e6 to have freq in Hz
         self._mw_device.list_on()
 
         # sleep to wait for learn/list mode
@@ -265,11 +270,11 @@ class ODMRLogic(GenericLogic):
     def _scan_ODMR_line(self):
         """ Scans one line in ODMR
 
-        (from MW_start to MW_stop in steps of MW_step)
+        (from mw_start to mw_stop in steps of mw_step)
         """
         if self.stopRequested:
             with self.threadlock:
-                self._mw_device.set_cw(freq=self.MW_frequency, power=self.MW_power)
+                self._mw_device.set_cw(freq=self.mw_frequency, power=self.mw_power)
                 self.MW_off()
                 self.kill_odmr()
                 self.stopRequested = False
@@ -292,14 +297,16 @@ class ODMRLogic(GenericLogic):
 
         self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
 
-
-
-
+        # React on the case, when the number of matrix lines have changed during
+        # the scan. Essentially, there are three cases which can happen:
         curr_num_lines = np.shape(self.ODMR_plot_xy)[0]
         if curr_num_lines > self.number_of_lines:
 
             self.ODMR_plot_xy = np.vstack((new_counts, self.ODMR_plot_xy[:self.number_of_lines-1, :]))
 
+            # It is very necessary that the matrix will be updated BEFORE the
+            # axes are adjusted, otherwise, there the display will not fit with
+            # the data!
             self.sigOdmrMatrixUpdated.emit()
             self.sigODMRMatrixAxesChanged.emit()
 
@@ -311,6 +318,9 @@ class ODMRLogic(GenericLogic):
             new_matrix[0, :] = new_counts
             self.ODMR_plot_xy = new_matrix
 
+            # It is very necessary that the matrix will be updated BEFORE the
+            # axes are adjusted, otherwise, there the display will not fit with
+            # the data!
             self.sigOdmrMatrixUpdated.emit()
             self.sigODMRMatrixAxesChanged.emit()
 
@@ -326,9 +336,9 @@ class ODMRLogic(GenericLogic):
 
         self._odmrscan_counter += 1
 
-        self.ElapsedTime = time.time() - self._StartTime
+        self.elapsed_time = time.time() - self._StartTime
         self.sigOdmrElapsedTimeChanged.emit()
-        if self.ElapsedTime >= self.RunTime:
+        if self.elapsed_time >= self.run_time:
             self.do_fit(fit_function = self.current_fit_function)
             self.stopRequested = True
             self.sigOdmrFinished.emit()
@@ -360,15 +370,15 @@ class ODMRLogic(GenericLogic):
         return power
 
 
-    def set_frequency(self, frequency = None):
+    def set_frequency(self, frequency=None):
         """ Forwarding the desired new frequency from the GUI to the MW source.
 
         @param float frequency: frequency set at the GUI
 
         @return int: error code (0:OK, -1:error)
         """
-        if isinstance(frequency,(int, float)):
-            self.MW_frequency = frequency
+        if isinstance(frequency, (int, float)):
+            self.mw_frequency = frequency
         else:
             return -1
 
@@ -433,6 +443,11 @@ class ODMRLogic(GenericLogic):
         # the concept of our logic structure, i.e. the lowest one is the
         # 'dumbest' but the most general one)
 
+        # normalize the frequencies according to the chosen text representation.
+        # Those values will be converted to a readable string representation,
+        # and not used for further processing!
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+
         # this dict will be passed to the formatting method
         param_dict = OrderedDict()
 
@@ -448,12 +463,12 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Frequency'] = {'value': np.round(result.params['center'].value, 3),
-                                       'error': np.round(result.params['center'].stderr, 2),
-                                       'unit' : 'MHz'}
-            param_dict['Linewidth'] = {'value': np.round(result.params['fwhm'].value, 3),
-                                       'error': np.round(result.params['fwhm'].stderr, 2),
-                                       'unit' : 'MHz'}
+            param_dict['Frequency'] = {'value': np.round(result.params['center'].value/freq_norm, 3),
+                                       'error': np.round(result.params['center'].stderr/freq_norm, 2),
+                                       'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth'] = {'value': np.round(result.params['fwhm'].value/freq_norm, 3),
+                                       'error': np.round(result.params['fwhm'].stderr/freq_norm, 2),
+                                       'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont = result.params['amplitude'].value
             cont = cont/(-1*np.pi*result.params['sigma'].value*result.params['c'].value)
@@ -470,23 +485,23 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
-                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value, 3),
-                                         'error': np.round(result.params['lorentz0_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['lorentz0_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont0 = result.params['lorentz0_amplitude'].value
             cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
             param_dict['Contrast 0'] = {'value': np.round(cont0*100, 3),
                                         'unit' : '%'}
-            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
-                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value, 3),
-                                         'error': np.round(result.params['lorentz1_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['lorentz1_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont1 = result.params['lorentz1_amplitude'].value
             cont1 = cont1/(-1*np.pi*result.params['lorentz1_sigma'].value*result.params['c'].value)
@@ -524,18 +539,18 @@ class ODMRLogic(GenericLogic):
             self.ODMR_fit_y = double_lorentzian.eval(x=self.ODMR_fit_x, params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
-                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
-                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value, 3),
-                                         'error': np.round(result.params['lorentz0_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
-            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value, 3),
-                                         'error': np.round(result.params['lorentz1_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['lorentz0_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['lorentz0_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['lorentz1_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['lorentz1_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont0 = result.params['lorentz0_amplitude'].value
             cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
@@ -558,15 +573,15 @@ class ODMRLogic(GenericLogic):
                                                    params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
-                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
-                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Freq. 2'] = {'value': np.round(result.params['lorentz2_center'].value, 3),
-                                     'error': np.round(result.params['lorentz2_center'].stderr, 2),
-                                     'unit' : 'MHz'}
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Freq. 2'] = {'value': np.round(result.params['lorentz2_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz2_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont0 = result.params['lorentz0_amplitude'].value
             cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
@@ -594,12 +609,12 @@ class ODMRLogic(GenericLogic):
                                                    params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value, 3),
-                                     'error': np.round(result.params['lorentz0_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value, 3),
-                                     'error': np.round(result.params['lorentz1_center'].stderr, 2),
-                                     'unit' : 'MHz'}
+            param_dict['Freq. 0'] = {'value': np.round(result.params['lorentz0_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz0_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['lorentz1_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['lorentz1_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont0 = result.params['lorentz0_amplitude'].value
             cont0 = cont0/(-1*np.pi*result.params['lorentz0_sigma'].value*result.params['c'].value)
@@ -622,20 +637,20 @@ class ODMRLogic(GenericLogic):
                                                    params=result.params)
 
             # create the proper param_dict with the values:
-            param_dict['Freq. 0'] = {'value': np.round(result.params['gaussian0_center'].value, 3),
-                                     'error': np.round(result.params['gaussian0_center'].stderr, 2),
-                                     'unit' : 'MHz'}
-            param_dict['Freq. 1'] = {'value': np.round(result.params['gaussian1_center'].value, 3),
-                                     'error': np.round(result.params['gaussian1_center'].stderr, 2),
-                                     'unit' : 'MHz'}
+            param_dict['Freq. 0'] = {'value': np.round(result.params['gaussian0_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['gaussian0_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Freq. 1'] = {'value': np.round(result.params['gaussian1_center'].value/freq_norm, 3),
+                                     'error': np.round(result.params['gaussian1_center'].stderr/freq_norm, 2),
+                                     'unit' : '{0}Hz'.format(self._freq_prefix)}
 
 
-            param_dict['Linewidth 0'] = {'value': np.round(result.params['gaussian0_fwhm'].value, 3),
-                                         'error': np.round(result.params['gaussian0_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
-            param_dict['Linewidth 1'] = {'value': np.round(result.params['gaussian1_fwhm'].value, 3),
-                                         'error': np.round(result.params['gaussian1_fwhm'].stderr, 2),
-                                         'unit' : 'MHz'}
+            param_dict['Linewidth 0'] = {'value': np.round(result.params['gaussian0_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['gaussian0_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
+            param_dict['Linewidth 1'] = {'value': np.round(result.params['gaussian1_fwhm'].value/freq_norm, 3),
+                                         'error': np.round(result.params['gaussian1_fwhm'].stderr/freq_norm, 2),
+                                         'unit' : '{0}Hz'.format(self._freq_prefix)}
 
             cont0 = result.params['gaussian0_amplitude'].value
             cont0 = cont0/(-1*np.pi*result.params['gaussian0_sigma'].value*result.params['c'].value)
@@ -705,16 +720,16 @@ class ODMRLogic(GenericLogic):
         freq_data = self.ODMR_plot_x
         count_data = self.ODMR_plot_y
         matrix_data = self.ODMR_plot_xy  # the data in the matrix plot
-        data['frequency values (MHz)'] = freq_data
+        data['frequency values (Hz)'] = freq_data
         data['count data'] = count_data
         data2['count data'] = matrix_data  #saves the raw data used in the matrix NOT all only the size of the matrix
 
         parameters = OrderedDict()
-        parameters['Microwave Power (dBm)'] = self.MW_power
-        parameters['Runtime (s)'] = self.RunTime
-        parameters['Start Frequency (MHz)'] = self.MW_start
-        parameters['Stop Frequency (MHz)'] = self.MW_stop
-        parameters['Step size (MHz)'] = self.MW_step
+        parameters['Microwave Power (dBm)'] = self.mw_power
+        parameters['Run Time (s)'] = self.run_time
+        parameters['Start Frequency (Hz)'] = self.mw_start
+        parameters['Stop Frequency (Hz)'] = self.mw_stop
+        parameters['Step size (Hz)'] = self.mw_step
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['Number of matrix lines (#)'] = self.number_of_lines
         parameters['Fit function'] = self.current_fit_function
