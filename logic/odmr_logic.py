@@ -68,6 +68,7 @@ class ODMRLogic(GenericLogic):
         self.number_of_lines = 50
         self.threadlock = Mutex()
         self.stopRequested = False
+        self._clear_odmr_plots = False
 
 
     def activation(self, e):
@@ -210,6 +211,8 @@ class ODMRLogic(GenericLogic):
 
     def start_odmr_scan(self):
         """ Starting an ODMR scan. """
+
+        self._clear_odmr_plots = False
         self._odmrscan_counter = 0
         self._StartTime = time.time()
         self.elapsed_time = 0
@@ -267,6 +270,13 @@ class ODMRLogic(GenericLogic):
         self.ODMR_plot_xy = np.zeros((self.number_of_lines, len(self._mw_frequency_list)))
         self.sigODMRMatrixAxesChanged.emit()
 
+    def clear_odmr_plots(self):
+        """¨Set the option to clear the curret ODMR plot.
+
+        The clear operation has to be performed within the method
+        _scan_ODMR_line. This method just sets the tag for that. """
+        self._clear_odmr_plots = True
+
     def _scan_ODMR_line(self):
         """ Scans one line in ODMR
 
@@ -288,6 +298,14 @@ class ODMRLogic(GenericLogic):
 
         new_counts = self._odmr_counter.count_odmr(length=len(self._mw_frequency_list))
 
+        # if during the scan a clearing of the ODMR plots is needed:
+        if self._clear_odmr_plots:
+            self._odmrscan_counter = 0
+            self._initialize_ODMR_plot()
+            self._initialize_ODMR_matrix()
+            self._clear_odmr_plots = False
+
+
         # ######################## this is a quick and dirty fix due to a missing trigger;
         # index = self._odmrscan_counter % len(new_counts)
         # #print(index)
@@ -295,7 +313,7 @@ class ODMRLogic(GenericLogic):
         #     new_counts=np.hstack((new_counts[len(new_counts)-index:],new_counts[:-index]))
         # ######################## end of quick and dirty fix
 
-        self.ODMR_plot_y = ( self._odmrscan_counter * self.ODMR_plot_y + new_counts ) / (self._odmrscan_counter + 1)
+        self.ODMR_plot_y = (self._odmrscan_counter * self.ODMR_plot_y + new_counts) / (self._odmrscan_counter + 1)
 
         # React on the case, when the number of matrix lines have changed during
         # the scan. Essentially, there are three cases which can happen:
@@ -345,7 +363,6 @@ class ODMRLogic(GenericLogic):
 
         self.sigOdmrPlotUpdated.emit()
         self.sigNextLine.emit()
-
 
     def set_power(self, power = None):
         """ Forwarding the desired new power from the GUI to the MW source.
