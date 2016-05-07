@@ -136,14 +136,6 @@ import faulthandler
 faulthandler.disable()
 faulthandler.enable(all_threads=True)
 
-# IPython setup
-try:
-    # check for pyzmq 2.1.11
-    from IPython.utils.zmqrelated import check_for_zmq
-    check_for_zmq('2.1.11', 'IPython.html')
-except:
-    print('Checking ZMQ version failed, probasbly very new IPython/jupyter version.')
-
 try:
     # Install the pyzmq ioloop. This has to be done before anything else from
     # tornado is imported.
