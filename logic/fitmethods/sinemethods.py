@@ -172,6 +172,11 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
     params['phase'].value = phase
     params['offset'].value = offset
 
+    #Adding constraints
+    params['frequency'].min = 0.0
+    params['frequency'].max = 1/(stepsize) * 3
+
+
     return error, params
 
 ############################################################################

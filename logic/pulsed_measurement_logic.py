@@ -759,6 +759,7 @@ class PulsedMeasurementLogic(GenericLogic):
             update_dict = {}
             if fit_function == 'Cos_FixedPhase':
                 update_dict['phase'] = {'vary': False, 'value': np.pi/2.}
+                update_dict['amplitude'] = {'min': 0.0}
             result = self._fit_logic.make_sine_fit(axis=self.signal_plot_x,
                                                    data=self.signal_plot_y,
                                                    add_parameters=update_dict)
