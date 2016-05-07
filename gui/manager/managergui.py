@@ -24,9 +24,12 @@ try:
     from qtconsole.inprocess import QtInProcessKernelManager
 except ImportError:
     from IPython.qt.inprocess import QtInProcessKernelManager
+try:
+    from git import Repo
+except:
+    pass
 from collections import OrderedDict
 from .errordialog import ErrorDialog
-import svn.local
 import threading
 import pyqtgraph as pg
 import numpy as np
@@ -83,9 +86,14 @@ class ManagerGui(GUIBase):
         self._about = AboutDialog()
         version = self.getSoftwareVersion()
         configFile = self._manager._getConfigFile()  # TODO: better handle this hidden method from manager logic
-        self._about.label.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}.'.format(version[0], version[1]))
+        self._about.label.setText(
+            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
+            ' style=\"color: cyan;\"> {0} </a>, on branch {1}.'.format(version[0], version[1]))
         self.versionLabel = QtGui.QLabel()
-        self.versionLabel.setText('<a href=\"{0}\" style=\"color: cyan;\"> {0} </a>, Revision {1}, configured from {2}'.format(version[0], version[1], configFile))
+        self.versionLabel.setText(
+            '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\"'
+            ' style=\"color: cyan;\"> {0} </a>,'
+            ' on branch {1}, configured from {2}'.format(version[0], version[1], configFile))
         self.versionLabel.setOpenExternalLinks(True)
         self._mw.statusBar().addWidget(self.versionLabel)
         # Connect up the buttons.
@@ -334,13 +342,16 @@ Go, play.
             item.addChild(child)
 
     def getSoftwareVersion(self):
-        """ Try to determine the software version in case the program is in a SVN repository.
+        """ Try to determine the software version in case the program is in a git repository.
         """
         try:
-            repo = svn.local.LocalClient('.')
-            info = repo.info()
-            return (info['url'], info['commit#revision'])
-        except:
+            repo = Repo(self.get_main_dir())
+            branch = repo.active_branch
+            rev = str(repo.head.commit)
+            return (rev, str(branch))
+
+        except Exception as e:
+            print('Could not get git repo because:', e)
             return ('unknown', -1)
 
 

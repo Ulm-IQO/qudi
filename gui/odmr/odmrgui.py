@@ -54,8 +54,6 @@ class ODMRSettingDialog(QtGui.QDialog):
         super(ODMRSettingDialog, self).__init__()
         uic.loadUi(ui_file, self)
 
-
-
 class ODMRGui(GUIBase):
     """
     This is the GUI Class for ODMR
@@ -107,16 +105,27 @@ class ODMRGui(GUIBase):
         self._sd = ODMRSettingDialog()
 
         # Add save file tag input box
-        self._mw.save_tag_LineEdit = QtGui.QLineEdit()
+        self._mw.save_tag_LineEdit = QtGui.QLineEdit(self._mw)
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
+        self._mw.save_tag_LineEdit.setToolTip('Enter a nametag which will be\n'
+                                              'added to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
+
+        # add a clear button to clear the ODMR plots:
+        self._mw.clear_odmr_PushButton = QtGui.QPushButton(self._mw)
+
+        self._mw.clear_odmr_PushButton.setText('Clear ODMR')
+        self._mw.clear_odmr_PushButton.setToolTip('Clear the plots of the\n'
+                                                    'current ODMR measurements.')
+        self._mw.clear_odmr_PushButton.setEnabled(False)
+        self._mw.save_ToolBar.addWidget(self._mw.clear_odmr_PushButton)
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
                                                      0,
-                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,
-                                                     self._odmr_logic.NumberofLines))
+                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
+                                                     self._odmr_logic.number_of_lines))
 
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
@@ -126,11 +135,28 @@ class ODMRGui(GUIBase):
                                               self._odmr_logic.ODMR_fit_y,
                                               pen=QtGui.QPen(QtGui.QColor(255, 255, 255, 255)))
 
+        # set the prefix, which determines the representation in the viewboxes
+        # for the frequencies,  one can choose from the dict obtainable from
+        # self.get_unit_prefix_dict():
+        self._freq_prefix = 'M'
+
+
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
         self._mw.odmr_PlotWidget.addItem(self.odmr_image)
-        self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
+        self._mw.odmr_PlotWidget.setLabel(axis='left', text='Counts',
+                                          units='Counts/s')
+        self._mw.odmr_PlotWidget.setLabel(axis='bottom', text='Frequency',
+                                          units='Hz')
+
+        #self._mw.odmr_PlotWidget.addItem(self.odmr_fit_image)
         self._mw.odmr_matrix_PlotWidget.addItem(self.odmr_matrix_image)
+        self._mw.odmr_matrix_PlotWidget.setLabel(axis='left',
+                                                 text='Matrix Lines',
+                                                 units='#')
+        self._mw.odmr_matrix_PlotWidget.setLabel(axis='bottom', text='Frequency',
+                                                 units='Hz')
+
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Get the colorscales at set LUT
@@ -158,7 +184,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_PlotWidget.addItem(self.odmr_cb)
         self._mw.odmr_cb_PlotWidget.hideAxis('bottom')
         self._mw.odmr_cb_PlotWidget.hideAxis('left')
-        self._mw.odmr_cb_PlotWidget.setLabel('right', 'Fluorescence', units='c/s')
+        self._mw.odmr_cb_PlotWidget.setLabel('right', 'Fluorescence', units='counts/s')
 
         # Connect the buttons and inputs for the odmr colorbar
         self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.refresh_matrix)
@@ -170,14 +196,16 @@ class ODMRGui(GUIBase):
         ########################################################################
 
         # Take the default values from logic:
-        self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.MW_frequency)
-        self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_start)
-        self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_step)
-        self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.MW_stop)
-        self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.MW_power)
-        self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.RunTime)
-        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.NumberofLines)
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+
+        self._mw.frequency_DoubleSpinBox.setValue(self._odmr_logic.mw_frequency/freq_norm)
+        self._mw.start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start/freq_norm)
+        self._mw.step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step/freq_norm)
+        self._mw.stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop/freq_norm)
+        self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
+        self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
 
         # Update the inputed/displayed numbers if return key is hit:
@@ -211,6 +239,12 @@ class ODMRGui(GUIBase):
         # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_Save.triggered.connect(self.save_plots_and_data)
+
+        # react on an axis change in the logic by adapting the display:
+        self._odmr_logic.sigODMRMatrixAxesChanged.connect(self.update_matrix_axes)
+
+        # connect the clear button:
+        self._mw.clear_odmr_PushButton.clicked.connect(self.clear_odmr_plots_clicked)
 
         self._odmr_logic.sigOdmrPlotUpdated.connect(self.refresh_plot)
         self._odmr_logic.sigOdmrMatrixUpdated.connect(self.refresh_matrix)
@@ -273,20 +307,31 @@ class ODMRGui(GUIBase):
 #             self._sd.matrix_lines_SpinBox.setReadOnly(True)
 
     def run_stop(self, is_checked):
-        """ Manages what happens if odmr scan is started/stopped """
+        """ Manages what happens if odmr scan is started/stopped. """
+
         if is_checked:
+
+            # change the axes appearance according to input values:
             self._odmr_logic.stop_odmr_scan()
             self._odmr_logic.start_odmr_scan()
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
-            self._sd.matrix_lines_SpinBox.setReadOnly(True)
+
+            # during scan, enable the clear plot possibility.
+            self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
             self._odmr_logic.stop_odmr_scan()
-            self._sd.matrix_lines_SpinBox.setReadOnly(False)
+            # Disable the clear functionality since that is not needed if no
+            # scan is running:
+            self._mw.clear_odmr_PushButton.setEnabled(False)
 
     def odmr_stopped(self):
         """ Switch the run/stop button to stop after receiving an odmr_stoped
             signal """
         self._mw.action_run_stop.setChecked(False)
+
+    def clear_odmr_plots_clicked(self):
+        """ Clear the ODMR plots. """
+        self._odmr_logic.clear_odmr_plots()
 
     def menue_settings(self):
         """ Open the settings menue """
@@ -308,9 +353,9 @@ class ODMRGui(GUIBase):
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
 #        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
+#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
 #                                                     0,
-#                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
+#                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
 #        self.refresh_odmr_colorbar()
 
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
@@ -321,8 +366,20 @@ class ODMRGui(GUIBase):
             low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
             high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
 
-            cb_min = np.percentile(odmr_image_data, low_centile)
-            cb_max = np.percentile(odmr_image_data, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(odmr_image_data, 0.0)
+            # The power of the masked array are that one can still use all numpy
+            # functionality like .mean() .max() , ... on the array and the
+            # masked value will be automatically excluded.
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
@@ -331,10 +388,15 @@ class ODMRGui(GUIBase):
         # Now update image with new color scale, and update colorbar
         self.odmr_matrix_image.setImage(image=odmr_image_data,
                                         levels=(cb_min, cb_max))
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.MW_start,
-                                                     0,
-                                                     self._odmr_logic.MW_stop-self._odmr_logic.MW_start,self._odmr_logic.NumberofLines))
         self.refresh_odmr_colorbar()
+
+    def update_matrix_axes(self):
+        """ Adjust the x and y axes in the image according to the input. """
+
+        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
+                                                     0,
+                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
+                                                     self._odmr_logic.number_of_lines))
 
 
     def refresh_odmr_colorbar(self):
@@ -347,8 +409,20 @@ class ODMRGui(GUIBase):
             low_centile = self._mw.odmr_cb_low_centile_SpinBox.value()
             high_centile = self._mw.odmr_cb_high_centile_SpinBox.value()
 
-            cb_min = np.percentile(self.odmr_matrix_image.image, low_centile)
-            cb_max = np.percentile(self.odmr_matrix_image.image, high_centile)
+            if np.isclose(low_centile, 0.0):
+                low_centile = 0.0
+
+            # mask the array in order to mark the values which are zeros with
+            # True, the rest with False:
+            masked_image = np.ma.masked_equal(self.odmr_matrix_image.image, 0.0)
+            # The power of the masked array are that one can still use all numpy
+            # functionality like .mean() .max() , ... on the array and the
+            # masked value will be automatically excluded.
+
+            # compress the 2D masked array to a 1D array where the zero values
+            # are excluded:
+            cb_min = np.percentile(masked_image.compressed(), low_centile)
+            cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
@@ -359,11 +433,11 @@ class ODMRGui(GUIBase):
 
     def refresh_elapsedtime(self):
         """ Show current elapsed measurement time """
-        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.ElapsedTime))
+        self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
 
     def update_settings(self):
         """ Write the new settings from the gui to the file. """
-        self._odmr_logic.NumberofLines = self._sd.matrix_lines_SpinBox.value()
+        self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
         self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
 
@@ -391,7 +465,7 @@ class ODMRGui(GUIBase):
 
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.NumberofLines)
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
         self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
 
@@ -411,28 +485,32 @@ class ODMRGui(GUIBase):
 
     def change_frequency(self):
         """ Change CW frequency of microwave source """
-        self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value())
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.set_frequency(frequency=self._mw.frequency_DoubleSpinBox.value()*freq_norm)
 
     def change_start_freq(self):
         """ Change start frequency of frequency sweep """
-        self._odmr_logic.MW_start = self._mw.start_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_start = self._mw.start_freq_DoubleSpinBox.value()*freq_norm
 
     def change_step_freq(self):
         """ Change step size in which frequency is changed """
-        self._odmr_logic.MW_step = self._mw.step_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_step = self._mw.step_freq_DoubleSpinBox.value()*freq_norm
 
     def change_stop_freq(self):
         """ Change end of frequency sweep """
-        self._odmr_logic.MW_stop = self._mw.stop_freq_DoubleSpinBox.value()
+        freq_norm = self.get_unit_prefix_dict()[self._freq_prefix]
+        self._odmr_logic.mw_stop = self._mw.stop_freq_DoubleSpinBox.value()*freq_norm
 
     def change_power(self):
         """ Change microwave power """
-        self._odmr_logic.MW_power = self._mw.power_DoubleSpinBox.value()
-        self._odmr_logic.set_power(power=self._odmr_logic.MW_power)
+        self._odmr_logic.mw_power = self._mw.power_DoubleSpinBox.value()
+        self._odmr_logic.set_power(power=self._odmr_logic.mw_power)
 
     def change_runtime(self):
         """ Change time after which microwave sweep is stopped """
-        self._odmr_logic.RunTime = self._mw.runtime_DoubleSpinBox.value()
+        self._odmr_logic.run_time = self._mw.runtime_DoubleSpinBox.value()
 
     def save_plots_and_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """

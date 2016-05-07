@@ -192,7 +192,8 @@ class LogModel(QtCore.QAbstractTableModel):
 
 
 class LogFilter(QtGui.QSortFilterProxyModel):
-    """ A subclass of QProxyFilterModel that determines which log entries contained in the log model are shown in the view.
+    """ A subclass of QProxyFilterModel that determines which log entries
+        contained in the log model are shown in the view.
     """
     def __init__(self, parent=None):
         """ Create the LogFilter.
@@ -234,7 +235,8 @@ class LogFilter(QtGui.QSortFilterProxyModel):
     def setImportance(self, minImportance):
         """ Set the minimum importance value for which messages are shown by the filter.
         
-          @param int minImportance: a whole number between 0 and 9 giving thi minimal importnce from which a message is shown
+          @param int minImportance: a whole number between 0 and 9 giving thi minimal
+            importnce from which a message is shown
         """
         if minImportance >= 0 and minImportance <= 9:
             self.minImportance = minImportance
@@ -322,6 +324,8 @@ class LogWidget(QtGui.QWidget):
         if entry.get('exception', None) is not None:
             if 'reasons' in entry['exception']:
                 text += '\n' + entry['exception']['reasons']
+            if 'message' in entry['exception']:
+                text += '\n' + entry['exception']['message']
             for line in entry['exception']['traceback']:
                 text += '\n' + str(line) 
         logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], text ]
@@ -336,7 +340,8 @@ class LogWidget(QtGui.QWidget):
         self.output.scrollTo(self.model.index(entry, 0))
 
     def setLogLength(self, length):
-        """ Set how many log entries will be stored by the model before discarding old entries when new entries are added.
+        """ Set how many log entries will be stored by the model before
+            discarding old entries when new entries are added.
 
           @param int length: maximum number of log entries to be stored in model
         """
