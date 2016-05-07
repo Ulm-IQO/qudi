@@ -775,9 +775,6 @@ class MagnetLogic(GenericLogic):
             self._end_alignment_procedure()
 
 
-
-
-
     def _continuous_loop_body(self):
         """ Go as much as possible in one direction
 
@@ -924,6 +921,8 @@ class MagnetLogic(GenericLogic):
     def _do_premeasurement_proc(self):
         # do a selected pre measurement procedure, like e.g. optimize position.
 
+
+        # first attempt of an optimizer usage:
         if self._optimize_pos:
             self._optimizer_finished = False
 
@@ -975,12 +974,9 @@ class MagnetLogic(GenericLogic):
         #
         # if self.curr_align_method == 'fluorescence_pointwise':
 
-        data, add_data = self._perform_fluorescence_measure(5)
+        #data, add_data = self._perform_fluorescence_measure(5)
 
-
-        # time.sleep(3)
-        value = np.random.random_sample()
-        # self.logMsg('Alignment Done: {0}'.format(data), msgType='status')
+        data, add_data = self._perform_odmr_measure(11100e6, 1e6, 11200e6, 5, 10, 'Lorentzian', False,'')
 
 
         return data, add_data
@@ -996,6 +992,18 @@ class MagnetLogic(GenericLogic):
         data_array = np.array(data_array)[:, 1]
 
         return data_array.mean(), parameters
+
+    def _perform_odmr_measure(self, freq_start, freq_step, freq_stop, power,
+                                runtime, fit_function,
+                                save_after_meas, name_tag):
+
+        param = self._odmr_logic.perform_odmr_measurement(freq_start, freq_step, freq_stop, power,
+                                runtime, fit_function,
+                                save_after_meas, name_tag)
+
+        return param['Contrast']['value'], param
+
+
 
     def _do_postmeasurement_proc(self):
 
