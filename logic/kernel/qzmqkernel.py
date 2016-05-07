@@ -222,36 +222,27 @@ class QZMQKernel(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def connect(self):
-        ##########################################
         # Heartbeat:
         self.ctx = zmq.Context()
         self.heartbeat_socket = self.ctx.socket(zmq.REP)
         self.config["hb_port"] = self.bind(self.heartbeat_socket, self.connection, self.config["hb_port"])
         self.heartbeat_stream = QZMQStream(self.heartbeat_socket)
-     
-        ##########################################
         # IOPub/Sub:
-        # aslo called SubSocketChannel in IPython sources
+        # also called SubSocketChannel in IPython sources
         self.iopub_socket = self.ctx.socket(zmq.PUB)
         self.config["iopub_port"] = self.bind(self.iopub_socket, self.connection, self.config["iopub_port"])
         self.iopub_stream = QZMQStream(self.iopub_socket)
         self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler)
-     
-        ##########################################
         # Control:
         self.control_socket = self.ctx.socket(zmq.ROUTER)
         self.config["control_port"] = self.bind(self.control_socket, self.connection, self.config["control_port"])
         self.control_stream = QZMQStream(self.control_socket)
         self.control_stream.sigMsgRecvd.connect(self.control_handler)
-     
-        ##########################################
         # Stdin:
         self.stdin_socket = self.ctx.socket(zmq.ROUTER)
         self.config["stdin_port"] = self.bind(self.stdin_socket, self.connection, self.config["stdin_port"])
         self.stdin_stream = QZMQStream(self.stdin_socket)
         self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler)
-     
-        ##########################################
         # Shell:
         self.shell_socket = self.ctx.socket(zmq.ROUTER)
         self.config["shell_port"] = self.bind(self.shell_socket, self.connection, self.config["shell_port"])
@@ -344,121 +335,120 @@ class QZMQKernel(QtCore.QObject):
         position = 0
         identities, msg = self.deserialize_wire_msg(msg)
 
-        # process request:
-
+        # process some of the possible requests:
+        # execute_request, execute_reply, inspect_request, inspect_reply
+        # complete_request, complete_reply, history_request, history_reply
+        # is_complete_request, is_complete_reply, connect_request, connect_reply
+        # kernel_info_request, kernel_info_reply, shutdown_request, shutdown_reply
         if msg['header']["msg_type"] == "execute_request":
-            logging.info( "simple_kernel Executing: %s" % msg['content']["code"])
-            content = {
-                'execution_state': "busy",
-            }
-            self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
-            #######################################################################
-
-            content = {
-                'execution_count': self.execution_count,
-                'code': msg['content']["code"],
-            }
-            self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
-            #######################################################################
-     
-            #content = {
-            #    'name': "stdout",
-            #    'text': "hello, world",
-            #}
-            #self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
-
-            try:
-                #node = ast.parse(msg['content']['code'], mode='eval')
-                #print(node)
-                #result = eval(compile(node, '<string>', mode='eval'))
-                #result_str = str(result)
-                #if result is None:
-                    #result_str = ''
-                self.displayhook.set_parent(msg['header'])
-                res = self.run_cell(msg['content']['code'])
-            except Exception as e:
-                tb = traceback.format_exc()
-                content = {
-                    'name': "stdout",
-                    'text': '{}\n{}'.format(e, tb),
-                }
-                self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
-            #else:
-            #    #logging.info( "RES %s" % result)
-            #    content = {
-            #        'execution_count': self.execution_count,
-            #        'data': {"text/plain": result_str},
-            #        'metadata': {}
-            #    }
-            #    self.send(self.iopub_stream, 'execute_result', content, parent_header=msg['header'])
-            #######################################################################
-     
-            content = {
-                'execution_state': "idle",
-            }
-            self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
-            #######################################################################
-     
-            metadata = {
-                "dependencies_met": True,
-                "engine": self.engine_id,
-                "status": "ok",
-                "started": datetime.datetime.now().isoformat(),
-            }
-            content = {
-                "status": "ok",
-                "execution_count": self.execution_count,
-                "user_variables": {},
-                "payload": [],
-                "user_expressions": {},
-            }
-     
-            self.send(
-                self.shell_stream,
-                'execute_reply',
-                content,
-                metadata=metadata,
-                parent_header=msg['header'],
-                identities=identities)
-     
-            self.execution_count += 1
-
+            self.shell_execute(identities, msg)
         elif msg['header']["msg_type"] == "kernel_info_request":
-            content = {
-                "protocol_version": "5.0",
-                "ipython_version": [1, 1, 0, ""],
-                "language_version": [0, 0, 1],
-                "language": "qudi_kernel",
-                "implementation": "qudi_kernel",
-                "implementation_version": "1.1",
-                "language_info": {
-                    "name": "python",
-                    "version": sys.version.split()[0],
-                    'mimetype': "text/x-python",
-                    'file_extension': ".py",
-                    'pygments_lexer': "ipython3",
-                    'codemirror_mode': {
-                        'name': 'ipython',
-                        'version': sys.version.split()[0]
-                        },
-                    'nbconvert_exporter': "python",
-                },
-                "banner": "Hue!"
-            }
-     
-            self.send(
-                self.shell_stream,
-                'kernel_info_reply',
-                content,
-                parent_header=msg['header'],
-                identities=identities)
-     
+            self.shell_kernel_info(identities, msg)
+        elif msg['header']["msg_type"] == "complete_request":
+            self.shell_complete(identities, msg)
         elif msg['header']["msg_type"] == "history_request":
-            logging.info( "unhandled history request")
-     
+            self.shell_history(identities, msg)
         else:
             logging.info( "unknown msg_type: %s" % msg['header']["msg_type"])
 
+    def shell_execute(self, identities, msg):
+        logging.info( "simple_kernel Executing: %s" % msg['content']["code"])
+        # tell the notebook server that we are busy
+        content = {
+            'execution_state': "busy",
+        }
+        self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
+        # use the code we just got sent as input cell contents
+        content = {
+            'execution_count': self.execution_count,
+            'code': msg['content']["code"],
+        }
+        self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
+        # actual execution
+        try:
+            self.displayhook.set_parent(msg['header'])
+            res = self.run_cell(msg['content']['code'])
+        except Exception as e:
+            tb = traceback.format_exc()
+            content = {
+                'name': "stdout",
+                'text': '{}\n{}'.format(e, tb),
+            }
+            self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
+        #else:
+        #    #logging.info( "RES %s" % result)
+        #    content = {
+        #        'execution_count': self.execution_count,
+        #        'data': {"text/plain": result_str},
+        #        'metadata': {}
+        #    }
+        #    self.send(self.iopub_stream, 'execute_result', content, parent_header=msg['header'])
+ 
+        #tell the notebook server that we are not busy anymore
+        content = {
+            'execution_state': "idle",
+        }
+        self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
+ 
+        # publich execution result on shell channel
+        metadata = {
+            "dependencies_met": True,
+            "engine": self.engine_id,
+            "status": "ok",
+            "started": datetime.datetime.now().isoformat(),
+        }
+        content = {
+            "status": "ok",
+            "execution_count": self.execution_count,
+            "user_variables": {},
+            "payload": [],
+            "user_expressions": {},
+        }
+        self.send(
+            self.shell_stream,
+            'execute_reply',
+            content,
+            metadata=metadata,
+            parent_header=msg['header'],
+            identities=identities)
+ 
+        self.execution_count += 1
+
+    def shell_kernel_info(self, identities, msg):
+        content = {
+            "protocol_version": "5.0",
+            "ipython_version": [1, 1, 0, ""],
+            "language_version": [0, 0, 1],
+            "language": "qudi_kernel",
+            "implementation": "qudi_kernel",
+            "implementation_version": "1.1",
+            "language_info": {
+                "name": "python",
+                "version": sys.version.split()[0],
+                'mimetype': "text/x-python",
+                'file_extension': ".py",
+                'pygments_lexer': "ipython3",
+                'codemirror_mode': {
+                    'name': 'ipython',
+                    'version': sys.version.split()[0]
+                    },
+                'nbconvert_exporter': "python",
+            },
+            "banner": "Hue!"
+        }
+        self.send(
+            self.shell_stream,
+            'kernel_info_reply',
+            content,
+            parent_header=msg['header'],
+            identities=identities)
+
+    def shell_history(self, identities, msg):
+        logging.info( "unhandled history request")
+
+    def shell_complete(self, identities, msg):
+        logging.info( "unhandled complete request")
+ 
     def deserialize_wire_msg(self, wire_msg):
         """split the routing prefix and message frames from a message on the wire"""
         delim_idx = wire_msg.index(self.DELIM)
@@ -481,6 +471,11 @@ class QZMQKernel(QtCore.QObject):
         return identities, m
 
     def control_handler(self, wire_msg):
+        # process some of the possible requests:
+        # execute_request, execute_reply, inspect_request, inspect_reply
+        # complete_request, complete_reply, history_request, history_reply
+        # is_complete_request, is_complete_reply, connect_request, connect_reply
+        # kernel_info_request, kernel_info_reply, shutdown_request, shutdown_reply
         logging.info( "control received: %s" % wire_msg)
         identities, msg = self.deserialize_wire_msg(wire_msg)
         # Control message handler:
@@ -488,9 +483,14 @@ class QZMQKernel(QtCore.QObject):
             self.shutdown()
 
     def iopub_handler(self, msg):
+        # handle some of these messages:
+        # stream, display_data, data_pub, execute_input, execute_result
+        # error, status, clear_output
         logging.info( "iopub received: %s" % msg)
 
     def stdin_handler(self, msg):
+        # handle some of these messages:
+        # input_request, input_reply
         logging.info( "stdin received: %s" % msg)
 
     def bind(self, socket, connection, port):
