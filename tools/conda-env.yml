@@ -2,6 +2,7 @@ name: qudi
 dependencies:
 - backports_abc=0.4=py34_0
 - comtypes=1.1.2=py34_0
+- cycler=0.10.0=py34_0
 - decorator=4.0.4=py34_0
 - h5py=2.5.0=np110py34_4
 - hdf5=1.8.15.1=vc10_4
@@ -20,6 +21,7 @@ dependencies:
 - libtiff=4.0.6=vc10_1
 - lxml=3.5.0=py34_0
 - markupsafe=0.23=py34_0
+- matplotlib=1.5.1=np110py34_0
 - mistune=0.7.1=py34_0
 - mkl=11.3.1=0
 - msvc_runtime=1.0.1=vc10_0
@@ -32,9 +34,12 @@ dependencies:
 - pickleshare=0.5=py34_0
 - pip=8.0.2=py34_0
 - pygments=2.0.2=py34_0
+- pyparsing=2.1.1=py34_0
 - pyqt=4.10.4=py34_1
 - pyreadline=2.1=py34_0
-- python=3.4.4=2
+- python=3.4.4=4
+- python-dateutil=2.5.2=py34_0
+- pytz=2016.3=py34_0
 - pywin32=219=py34_2
 - pyzmq=15.1.0=py34_0
 - qt=4.8.7=vc10_5
@@ -44,13 +49,17 @@ dependencies:
 - simplegeneric=0.8.1=py34_0
 - sip=4.16.9=py34_2
 - six=1.10.0=py34_0
+- tk=8.5.18=vc10_0
 - tornado=4.3=py34_0
 - traitlets=4.0.0=py34_0
+- vs2010_runtime=10.00.40219.1=0
 - wheel=0.29.0=py34_0
 - zlib=1.2.8=vc10_2
 - pip:
   - backports-abc==0.4
   - fysom==2.1.2
+  - gitdb==0.6.4
+  - gitpython==2.0.2
   - hdf5storage==0.1.10
   - ipython-genutils==0.1.0
   - jupyter-client==4.1.1
@@ -60,9 +69,7 @@ dependencies:
   - plumbum==1.6.0
   - pydaqmx==1.3.2
   - pyqtgraph==0.9.10
-  - python-dateutil==2.2
   - pyvisa==1.8
   - pyvisa-py==0.2
   - rpyc==3.3.0
-  - svn==0.3.36
-
+  - smmap==0.9.0
