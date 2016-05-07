@@ -49,7 +49,6 @@ class ODMRLogic(GenericLogic):
     sigOdmrElapsedTimeChanged = QtCore.Signal()
     sigODMRMatrixAxesChanged = QtCore.Signal()
 
-
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation,
@@ -153,7 +152,6 @@ class ODMRLogic(GenericLogic):
         self.MW_off()
         self._mw_device.set_ex_trigger(source=self.MW_trigger_source,
                                        pol=self.MW_trigger_pol)
-
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -447,6 +445,9 @@ class ODMRLogic(GenericLogic):
         """Performs the chosen fit on the measured data.
 
         @param string fit_function: name of the chosen fit function
+
+        @return dict: a dictionary with the relevant fit parameters, i.e. the
+                      result of the fit
         """
         self.fit_function = fit_function
         # You have to know during implementation, how many parameters you are
@@ -685,6 +686,7 @@ class ODMRLogic(GenericLogic):
                         'the ODMR Logic. Correct that! Fit Call will be '
                         'skipped.'.format(fit_function), msgType='warning')
 
+        return param_dict
 
     def _create_formatted_output(self, param_dict):
         """ Display a parameter set nicely.
@@ -788,3 +790,46 @@ class ODMRLogic(GenericLogic):
             as_text=True)
 
         self.logMsg('ODMR data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
+
+
+    def perform_odmr_measurement(self, freq_start, freq_step, freq_stop, power,
+                                runtime, fit_function='Lorentzian',
+                                save_after_meas=True, name_tag=''):
+        """ An independant method, which can be called by a task with the proper input values
+            to perform an odmr measurement.
+
+        @return dict: a parameter container, containing all measurement results
+                      of the ODMR measurement.
+        """
+
+
+        # set all relevant parameter:
+        self.mw_start = freq_start
+        self.mw_step = freq_step
+        self.mw_stop = freq_stop
+        self.mw_power = power
+        self.run_time = runtime
+
+        # start the scan
+        self.start_odmr_scan()
+
+        # check just the state of the optimizer
+        while self.getState() != 'idle' and not self.stopRequested:
+            time.sleep(1)
+            print('running')
+
+        meas_param = self.do_fit(fit_function=fit_function)
+
+        meas_param['ODMR frequency start (Hz)'] = self.mw_start
+        meas_param['ODMR frequency step (Hz)'] = self.mw_step
+        meas_param['ODMR frequency stop (Hz)'] = self.mw_stop
+        meas_param['ODMR power (dBm)'] = self.mw_power
+        meas_param['ODMR run time (s)'] = self.run_time
+        meas_param['ODMR measurement saved separetely'] = save_after_meas
+
+        if save_after_meas:
+            timestamp = datetime.datetime.now()
+            self.save_ODMR_Data(tag=name_tag, timestamp=timestamp)
+            meas_param['ODMR measurement saved at time'] = timestamp
+
+        return meas_param
