@@ -202,6 +202,11 @@ class MagnetGui(GUIBase):
 
         self._mw.alignment_2d_save_PushButton.clicked.connect(self.save_2d_plots_and_data)
 
+        # connect the signals:
+        self._mw.align_2d_fluorescence_optimize_CheckBox.stateChanged.connect(self.optimize_pos_changed)
+
+
+
     def _activate_magnet_settings(self, e):
         """ Activate magnet settings.
 
@@ -654,6 +659,14 @@ class MagnetGui(GUIBase):
         dspinbox_ref = getattr(self._mw, dspinbox_name)
         return dspinbox_ref
 
+    def optimize_pos_changed(self):
+        """ Set whether postition should be optimized at each point. """
+
+        state = self._mw.align_2d_fluorescence_optimize_CheckBox.isChecked()
+        self._magnet_logic.set_optimize_pos(state)
+        self.logMsg(('test'))
+
+
     def stop_movement(self):
         """ Ivokes an immediate stop of the hardware.
 
@@ -850,8 +863,12 @@ class MagnetGui(GUIBase):
             # mask the array such that the arrays will be
             masked_image = np.ma.masked_equal(self._2d_alignment_ImageItem.image, 0.0)
 
-            cb_min = np.percentile(masked_image.compressed(), low_centile)
-            cb_max = np.percentile(masked_image.compressed(), high_centile)
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
+                cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
@@ -878,8 +895,12 @@ class MagnetGui(GUIBase):
 
             # compress the 2D masked array to a 1D array where the zero values
             # are excluded:
-            cb_min = np.percentile(masked_image.compressed(), low_centile)
-            cb_max = np.percentile(masked_image.compressed(), high_centile)
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(self._2d_alignment_ImageItem.image, low_centile)
+                cb_max = np.percentile(self._2d_alignment_ImageItem.image, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
         else:
             cb_min = self._mw.alignment_2d_cb_min_centiles_DSpinBox.value()
             cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
