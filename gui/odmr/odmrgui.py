@@ -378,8 +378,12 @@ class ODMRGui(GUIBase):
 
             # compress the 2D masked array to a 1D array where the zero values
             # are excluded:
-            cb_min = np.percentile(masked_image.compressed(), low_centile)
-            cb_max = np.percentile(masked_image.compressed(), high_centile)
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(odmr_image_data, low_centile)
+                cb_max = np.percentile(odmr_image_data, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
@@ -421,8 +425,12 @@ class ODMRGui(GUIBase):
 
             # compress the 2D masked array to a 1D array where the zero values
             # are excluded:
-            cb_min = np.percentile(masked_image.compressed(), low_centile)
-            cb_max = np.percentile(masked_image.compressed(), high_centile)
+            if len(masked_image.compressed()) == 0:
+                cb_min = np.percentile(self.odmr_matrix_image.image, low_centile)
+                cb_max = np.percentile(self.odmr_matrix_image.image, high_centile)
+            else:
+                cb_min = np.percentile(masked_image.compressed(), low_centile)
+                cb_max = np.percentile(masked_image.compressed(), high_centile)
 
         else:
             cb_min = self._mw.odmr_cb_min_SpinBox.value()
