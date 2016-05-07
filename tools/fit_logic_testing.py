@@ -819,6 +819,7 @@ class FitLogic():
             mod,params = self.make_sine_model()
             print('Parameters of the model',mod.param_names,' with the independet variable',mod.independent_vars)
             
+            print(1/(x_axis[1]-x_axis[0]))
             params['amplitude'].value=0.2
             params['frequency'].value=0.1
             params['phase'].value=np.pi*0.5
@@ -877,6 +878,7 @@ class FitLogic():
 #            print(data_noisy)                     
             para={}
             para['phase'] = {'vary': False, 'value': np.pi/2.}
+            para['amplitude'] = {'min': 0.0}
 #            para.add('I_saturation',value=152.)
 #            para.add('slope',value=0.3,vary=True)
 #            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
