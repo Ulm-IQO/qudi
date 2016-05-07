@@ -27,7 +27,7 @@ from core.util.mutex import Mutex
 from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
 import numpy as np
-import time
+
 
 class ConfocalHistoryEntry(QtCore.QObject):
     """ This class contains all relevant parameters of a Confocal scan.
@@ -148,7 +148,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.tile_slope_y = confocal._tilt_variable_ay
         self.xy_image = np.copy(confocal.xy_image)
         self.depth_image = np.copy(confocal.depth_image)
-       
+
 
     def serialize(self):
         """ Give out a dictionary that can be saved via the usual means """
@@ -172,7 +172,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         serialized['xy_image'] = numpy_to_b(image=self.xy_image)
         serialized['depth_image'] = numpy_to_b(image=self.depth_image)
         return serialized
-        
+
 
     def deserialize(self, serialized):
         """ Restore Confocal history object from a dict """
@@ -341,7 +341,7 @@ class ConfocalLogic(GenericLogic):
 
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.
- 
+
         @param to_on: True switches on, False switched off
 
         @return int: error code (0:OK, -1:error)
@@ -414,7 +414,7 @@ class ConfocalLogic(GenericLogic):
 
     def stop_scanning(self):
         """Stops the scan
-        
+
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
@@ -429,36 +429,36 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
 
-        #x1: x-start-value, x2: x-end-value
+        # x1: x-start-value, x2: x-end-value
         x1, x2 = self.image_x_range[0], self.image_x_range[1]
-        #y1: x-start-value, y2: x-end-value
+        # y1: x-start-value, y2: x-end-value
         y1, y2 = self.image_y_range[0], self.image_y_range[1]
-        #z1: x-start-value, z2: x-end-value
+        # z1: x-start-value, z2: x-end-value
         z1, z2 = self.image_z_range[0], self.image_z_range[1]
 
-        #Checks if the x-start and x-end value are ok
+        # Checks if the x-start and x-end value are ok
         if x2 < x1:
             self.logMsg('x1 must be smaller than x2, but they are ({0:.3f},{1:.3f}).'.format(x1, x2), msgType='error')
             return -1
 
         if self._zscan:
-            #creates an array of evenly spaced numbers over the interval
-            #x1, x2 and the spacing is equal to xy_resolution
+            # creates an array of evenly spaced numbers over the interval
+            # x1, x2 and the spacing is equal to xy_resolution
             self._X = np.linspace(x1, x2, self.xy_resolution)
-            #Checks if the z-start and z-end value are ok
+            # Checks if the z-start and z-end value are ok
             if z2 < z1:
                 self.logMsg('z1 must be smaller than z2, but they are ({0:.3f},{1:.3f}).'.format(z1, z2), msgType='error')
                 return -1
-            #creates an array of evenly spaced numbers over the interval
-            #z1, z2 and the spacing is equal to z_resolution
+            # creates an array of evenly spaced numbers over the interval
+            # z1, z2 and the spacing is equal to z_resolution
             self._Z = np.linspace(z1, z2, self.z_resolution)
         else:
-            #Checks if the y-start and y-end value are ok
+            # Checks if the y-start and y-end value are ok
             if y2 < y1:
                 self.logMsg('y1 must be smaller than y2, but they are ({0:.3f},{1:.3f}).'.format(y1, y2), msgType='error')
                 return -1
 
-            #prevents distorion of the image
+            # prevents distorion of the image
             if (x2-x1) >= (y2-y1):
                 self._X = np.linspace(x1, x2, self.xy_resolution)
                 self._Y = np.linspace(y1, y2, int(self.xy_resolution*(y2-y1)/(x2-x1)))
@@ -470,14 +470,14 @@ class ConfocalLogic(GenericLogic):
         self._YL = self._Y
         self._AL = np.zeros(self._XL.shape)
 
-        #Arrays for retrace line
+        # Arrays for retrace line
         self._return_XL = np.linspace(self._XL[-1], self._XL[0], self.return_slowness)
         self._return_AL = np.zeros(self._return_XL.shape)
 
         if self._zscan:
             if not self.yz_instead_of_xz_scan:
                 self._image_vert_axis = self._Z
-                #creats an image where each pixel will be [x,y,z,counts]
+                # creates an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
                 self.depth_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
                 self.depth_image[:,:,1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
@@ -485,7 +485,7 @@ class ConfocalLogic(GenericLogic):
                 self.depth_image[:,:,2] = z_value_matrix.transpose()
             else: # if self.xy_instead_of_xz == True
                 self._image_vert_axis = self._Z
-                #creats an image where each pixel will be [x,y,z,counts]
+                # creats an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._Y), 4))
                 self.depth_image[:,:,0] = self._current_x * np.ones((len(self._image_vert_axis), len(self._Y)))
                 self.depth_image[:,:,1] = np.full((len(self._image_vert_axis), len(self._Y)), self._YL)
@@ -500,7 +500,7 @@ class ConfocalLogic(GenericLogic):
             self.sigImageDepthInitialized.emit()
         else:
             self._image_vert_axis = self._Y
-            #creats an image where each pixel will be [x,y,z,counts]
+            # creats an image where each pixel will be [x,y,z,counts]
             self.xy_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
             self.xy_image[:,:,0] = np.full((len(self._image_vert_axis), len(self._X)), self._XL)
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
@@ -526,7 +526,7 @@ class ConfocalLogic(GenericLogic):
             self.unlock()
             return -1
 
-        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        returnvalue = self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         if returnvalue < 0:
             self._scanning_device.unlock()
             self.unlock()
@@ -552,7 +552,7 @@ class ConfocalLogic(GenericLogic):
 
         self.lock()
         self._scanning_device.lock()
-        self._scanning_device.set_up_scanner_clock(clock_frequency = self._clock_frequency)
+        self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         self._scanning_device.set_up_scanner()
         self.signal_scan_lines_next.emit()
 
@@ -578,7 +578,7 @@ class ConfocalLogic(GenericLogic):
         return 0
 
 
-    def set_position(self, tag, x = None, y = None, z = None, a = None):
+    def set_position(self, tag, x=None, y=None, z=None, a=None):
         """Forwarding the desired new position from the GUI to the scanning device.
 
         @param string tag: TODO
@@ -624,8 +624,10 @@ class ConfocalLogic(GenericLogic):
     def get_position(self):
         """Forwarding the desired new position from the GUI to the scanning device.
 
-        @return int[]: Current position
+        @return list: with three entries x, y and z denoting the current
+                      position in microns
         """
+        #FIXME: change that to SI units!
         return [
             self._current_x,
             self._current_y,

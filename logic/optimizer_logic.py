@@ -94,9 +94,9 @@ class OptimizerLogic(GenericLogic):
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
-        
+
         @param e: error code
-        
+
         @return int: error code (0:OK, -1:error)
         """
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
@@ -156,7 +156,7 @@ class OptimizerLogic(GenericLogic):
         """ Reverse steps of activation
 
         @param e: error code
-        
+
         @return int: error code (0:OK, -1:error)
         """
         self._statusVariables['clock_frequency'] = self._clock_frequency
@@ -316,7 +316,7 @@ class OptimizerLogic(GenericLogic):
 
     def _refocus_xy_line(self):
         """Scanning a line of the xy optimization image.
-        This method repeats itself using the _signal_scan_next_xy_line 
+        This method repeats itself using the _signal_scan_next_xy_line
         until the xy optimization image is complete.
         """
         # stop scanning if instructed
