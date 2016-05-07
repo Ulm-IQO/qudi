@@ -32,9 +32,37 @@ from logic.generic_logic import GenericLogic
 
 
 class MagnetLogic(GenericLogic):
-    """This is the Interface class to define the controls for the simple
+    """ This is the Interface class to define the controls for the simple
     magnet hardware.
+
+    DISCLAIMER:
+    ===========
+
+    The current status of the magnet logic is highly experimental and not well
+    tested. The implementation has some considerable imperfections.
+
+    This module has two major issues:
+        - a lack of proper documentation of all the methods
+        - usage of tasks is not implemented and therefore direct connection to
+          all the modules is used (I tried to compress as good as possible all
+          the part, where access to other modules occurs so that a later
+          replacement would be easier and one does not have to search throughout
+          the whole file.)
+
+    However, the 'high-level state maschine' for the alignment should be rather
+    general and very powerful to use. The different state were divided in
+    several consecutive methods, where each method can be implemented
+    separately and can be extended for custom needs. (I have drawn a diagram,
+    which is much more telling then the documentation I can write down here.)
+
+    I am currently working on that and will from time to time improve the status
+    of this module. So if you want to use it, be aware that there might appear
+    drastic changes.
+
+    ---
+    Alexander Stark
     """
+
 
     _modclass = 'MagnetLogic'
     _modtype = 'logic'
@@ -44,7 +72,8 @@ class MagnetLogic(GenericLogic):
            'optimizerlogic': 'OptimizerLogic',
            'counterlogic': 'CounterLogic',
            'odmrlogic': 'ODMRLogic',
-           'savelogic': 'SaveLogic'}
+           'savelogic': 'SaveLogic',
+           'scannerlogic':'ScannerLogic'}
     _out = {'magnetlogic': 'MagnetLogic'}
 
     # General Signals, used everywhere:
@@ -78,6 +107,8 @@ class MagnetLogic(GenericLogic):
     sig1DAxisChanged = QtCore.Signal()
     sig2DAxisChanged = QtCore.Signal()
     sig3DAxisChanged = QtCore.Signal()
+
+    sigTest = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
@@ -142,6 +173,7 @@ class MagnetLogic(GenericLogic):
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
+        self._confocal_logic = self.connector['in']['scannerlogic']['object']
         self._counter_logic = self.connector['in']['counterlogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
 
@@ -160,6 +192,10 @@ class MagnetLogic(GenericLogic):
         self._sigStepwiseAlignmentNext.connect(self._stepwise_loop_body,
                                                QtCore.Qt.QueuedConnection)
 
+
+        # connect the optimizer signals:
+
+        self.sigTest.connect(self._do_premeasurement_proc)
 
     def deactivation(self, e):
         """ Deactivate the module properly.
@@ -889,7 +925,21 @@ class MagnetLogic(GenericLogic):
         # do a selected pre measurement procedure, like e.g. optimize position.
 
         if self._optimize_pos:
-            pass
+            self._optimizer_finished = False
+
+            curr_pos = self._confocal_logic.get_position()
+
+            self._optimizer_logic.start_refocus(curr_pos, caller_tag='magnet_logic')
+
+            # check just the state of the optimizer
+            while self._optimizer_logic.getState() != 'idle' and not self._stop_measure:
+                time.sleep(0.5)
+
+            # use the position to move the scanner
+            self._confocal_logic.set_position('magnet_logic',
+                                              self._optimizer_logic.optim_pos_x,
+                                              self._optimizer_logic.optim_pos_y,
+                                              self._optimizer_logic.optim_pos_z)
 
         return
 
