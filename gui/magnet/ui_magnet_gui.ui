@@ -438,6 +438,7 @@ Alignment</string>
      <string>Menu</string>
     </property>
     <addaction name="actionMagnet_Settings"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -620,6 +621,10 @@ Alignment</string>
    </widget>
   </widget>
   <action name="actionMagnet_Settings">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
    <property name="text">
     <string>Magnet Settings</string>
    </property>
@@ -627,6 +632,15 @@ Alignment</string>
   <action name="actionDefault_View">
    <property name="text">
     <string>Default View</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Close</string>
    </property>
   </action>
  </widget>
@@ -638,5 +652,22 @@ Alignment</string>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionClose</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>523</x>
+     <y>276</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

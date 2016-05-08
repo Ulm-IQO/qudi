@@ -33,8 +33,8 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionClose"/>
     <addaction name="save_spectrum_Action"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -77,15 +77,18 @@
   </widget>
   <action name="actionClose">
    <property name="icon">
-    <iconset theme="application-exit">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
    </property>
   </action>
   <action name="rec_single_spectrum_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
+   </property>
    <property name="text">
     <string>Record spectrum</string>
    </property>
@@ -109,6 +112,10 @@
    </property>
   </action>
   <action name="save_spectrum_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
+   </property>
    <property name="text">
     <string>Save spectrum</string>
    </property>
