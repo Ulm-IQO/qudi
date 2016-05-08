@@ -21,6 +21,8 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 
 import numpy as np
 from PyQt4 import QtCore
+import time
+from collections import OrderedDict
 
 from logic.generic_logic import GenericLogic
 
@@ -57,9 +59,9 @@ class NuclearOperationsLogic(GenericLogic):
     _in = {'sequencegenerationlogic': 'SequenceGenerationLogic',
            'traceanalysislogic': 'TraceAnalysisLogic',
            'odmrlogic': 'ODMRLogic',
-           'savelogic': 'SaveLogic',
            'optimizerlogic': 'OptimizerLogic',
-           'scannerlogic':'ScannerLogic'}
+           'scannerlogic':'ScannerLogic',
+           'savelogic': 'SaveLogic'}
 
     _out = {'nuclearoperationlogic': 'NuclearOperationsLogic'}
 
@@ -81,6 +83,8 @@ class NuclearOperationsLogic(GenericLogic):
         for key in config.keys():
             self.logMsg('{}: {}'.format(key,config[key]),
                         msgType='status')
+
+
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -104,6 +108,7 @@ class NuclearOperationsLogic(GenericLogic):
 
         self.initialize_x_axis()
         self.initialize_y_axis()
+        self.initialize_meas_param()
 
         # establish the access to all connectors:
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -115,8 +120,6 @@ class NuclearOperationsLogic(GenericLogic):
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
         self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
-
-
 
 
         # connect signals:
@@ -141,9 +144,14 @@ class NuclearOperationsLogic(GenericLogic):
 
     def initialize_y_axis(self):
         """ Initialize the y axis. """
-        self.y_axis_list = np.zeros(len(self.x_axis_list))
+        self.y_axis_list = np.zeros(self.x_axis_list.shape)
+        self.y_axis_fit_list = np.zeros(self.x_axis_list.shape)
 
-
+    def initialize_meas_param(self):
+        """ Initialize the measurement param containter. """
+        # here all measurement parameters will be included for any kind of
+        # nuclear measurement.
+        self._meas_param = OrderedDict()
 
 
     def start_nuclear_meas(self):
@@ -165,6 +173,8 @@ class NuclearOperationsLogic(GenericLogic):
                 return
 
 
+
+
         self.sigNextMeasPoint.emit()
 
 
@@ -177,3 +187,104 @@ class NuclearOperationsLogic(GenericLogic):
             if self.getState() == 'locked':
                 self._stop_requested = True
         return 0
+
+
+
+    def get_fit_functions(self):
+        """ Returns all fit methods, which are currently implemented for that module.
+
+        @return list: with string entries denoting the names of the fit.
+        """
+        return ['No Fit', 'pos. Lorentzian', 'neg. Lorentzian', 'pos. Gaussian']
+
+
+    def do_fit(self, fit_function=None):
+        """ Performs the chosen fit on the measured data.
+
+        @param string fit_function: name of the chosen fit function
+
+        @return dict: a dictionary with the relevant fit parameters, i.e. the
+                      result of the fit
+        """
+        #TODO: implement the fit.
+        pass
+
+
+    def get_meas_type_list(self):
+        return ['Nuclear Rabi', 'Nuclear Frequency Scan',
+                'QSD - Artificial Drive', 'QSD - SWAP FID',
+                'QSD - Entanglement FID']
+
+
+    def prepare_measurement(self, meas_type):
+        """ Prepare and create all measurement sequences for the specified
+            measurement type
+
+        @param str meas_type: a measurement type from the list get_meas_type_list
+        """
+
+        if meas_type == 'Nuclear Rabi':
+            pass
+
+        elif meas_type == 'Nuclear Frequency Scan':
+            pass
+
+        elif meas_type == 'QSD - Artificial Drive':
+            pass
+
+        elif meas_type == 'QSD - SWAP FID':
+            pass
+
+        elif meas_type == 'QSD - Entanglement FID':
+            pass
+
+
+    def do_optimize_pos(self):
+        """ Perform an optimize position. """
+
+        #FIXME: Move this optimization routine to the tasks!
+
+        curr_pos = self._confocal_logic.get_position()
+
+        self._optimizer_logic.start_refocus(curr_pos, caller_tag='nuclear_operations_logic')
+
+        # check just the state of the optimizer
+        while self._optimizer_logic.getState() != 'idle' and not self._stop_requested:
+            time.sleep(0.5)
+
+        # use the position to move the scanner
+        self._confocal_logic.set_position('nuclear_operations_logic',
+                                          self._optimizer_logic.optim_pos_x,
+                                          self._optimizer_logic.optim_pos_y,
+                                          self._optimizer_logic.optim_pos_z)
+
+
+    def do_optimize_odmr_pos(self):
+        pass
+
+
+    def set_odmr_freq(self, freq1, freq2=None, freq3=None, power=-30, low=True):
+        """ Set the parameters for the ODMR measurement/optimization.
+
+        @param float freq1: frequency in Hz
+        @param float freq2: frequency in Hz
+        @param float freq3: frequency in Hz
+        @param float power: power in dBm
+        @param bool low: if True frequencies are for lower electron spin
+                         transition, else for higher electron spin transition.
+
+        """
+
+
+        if low:
+            text = 'low'
+        else:
+            text = 'high'
+
+        self._meas_param['odmr_'+text+'_power'] = power
+        self._meas_param['odmr_'+text+'_freq1'] = freq1
+
+        if freq2 is not None:
+            self._meas_param['odmr_'+text+'_freq2'] = freq2
+        if freq3 is not None:
+            self._meas_param['odmr_'+text+'_freq3'] = freq3
