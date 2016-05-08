@@ -229,9 +229,8 @@
   </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
-    <iconset theme="document-open">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-open.png</normaloff>../../artwork/icons/oxygen/22x22/document-open.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Load configuration</string>
@@ -239,9 +238,8 @@
   </action>
   <action name="actionSave_configuration">
    <property name="icon">
-    <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Save configuration</string>
@@ -269,9 +267,8 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset theme="application-exit">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Quit Qudi</string>
@@ -315,15 +312,18 @@
   </action>
   <action name="actionAbout_QuDi">
    <property name="icon">
-    <iconset theme="help-about">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</iconset>
    </property>
    <property name="text">
     <string>&amp;About QuDi</string>
    </property>
   </action>
   <action name="actionAbout_Qt">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</normaloff>../../artwork/icons/qudiTheme/22x22/help-about.png</iconset>
+   </property>
    <property name="text">
     <string>About &amp;Qt</string>
    </property>
@@ -355,6 +355,10 @@
    </property>
   </action>
   <action name="actionConsoleSettings">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/utilities-terminal.png</normaloff>../../artwork/icons/oxygen/22x22/utilities-terminal.png</iconset>
+   </property>
    <property name="text">
     <string>&amp;Console</string>
    </property>
@@ -376,6 +380,10 @@
    </property>
   </action>
   <action name="actionReload_current_configuration">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</normaloff>../../artwork/icons/oxygen/22x22/view-refresh.png</iconset>
+   </property>
    <property name="text">
     <string>Reload current configuration</string>
    </property>
