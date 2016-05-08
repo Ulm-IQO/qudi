@@ -29,7 +29,7 @@
      <x>0</x>
      <y>0</y>
      <width>730</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTaskrunner">
@@ -64,7 +64,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-start.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-start.png</iconset>
    </property>
    <property name="text">
     <string>Start Task</string>
@@ -75,8 +75,8 @@
   </action>
   <action name="actionClose">
    <property name="icon">
-    <iconset theme="application-exit">
-     <normaloff>.</normaloff>.</iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
@@ -85,6 +85,10 @@
   <action name="actionPause_Task">
    <property name="enabled">
     <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-pause.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-pause.png</iconset>
    </property>
    <property name="text">
     <string>Pause Task</string>
@@ -96,7 +100,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</iconset>
    </property>
    <property name="text">
     <string>Stop Task</string>

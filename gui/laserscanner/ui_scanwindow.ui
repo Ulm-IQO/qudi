@@ -49,7 +49,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>19</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -216,15 +216,18 @@ High bin number gives noisy but detailed data.</string>
   </widget>
   <action name="actionClose">
    <property name="icon">
-    <iconset theme="application-exit">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Close</string>
    </property>
   </action>
   <action name="actionStart_scan">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+   </property>
    <property name="text">
     <string>Start scan</string>
    </property>
@@ -233,21 +236,28 @@ High bin number gives noisy but detailed data.</string>
    <property name="enabled">
     <bool>false</bool>
    </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</iconset>
+   </property>
    <property name="text">
     <string>Stop scan</string>
    </property>
   </action>
   <action name="actionSave_histogram">
    <property name="icon">
-    <iconset theme="document-save">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Save histogram</string>
    </property>
   </action>
   <action name="actionAuto_range">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
+   </property>
    <property name="text">
     <string>Auto range</string>
    </property>

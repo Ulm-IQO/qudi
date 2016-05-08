@@ -173,7 +173,7 @@
      <x>0</x>
      <y>0</y>
      <width>1074</width>
-     <height>29</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -339,6 +339,10 @@
    </widget>
   </widget>
   <action name="action_Settings">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
    <property name="text">
     <string>&amp;Settings</string>
    </property>
@@ -346,7 +350,7 @@
   <action name="action_Save">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Save</string>
@@ -356,8 +360,12 @@
    </property>
   </action>
   <action name="action_Exit">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
    <property name="text">
-    <string>&amp;Exit</string>
+    <string>&amp;Close</string>
    </property>
   </action>
   <action name="action_run_stop">
@@ -366,8 +374,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normalon>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>run_stop</string>

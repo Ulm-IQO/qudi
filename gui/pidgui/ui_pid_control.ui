@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>439</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -39,6 +39,7 @@
     <addaction name="menuToolbars"/>
     <addaction name="separator"/>
     <addaction name="restore_default_view_Action"/>
+    <addaction name="actionClose"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
@@ -367,7 +368,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start counter</string>
@@ -385,7 +386,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record_counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
    </property>
    <property name="text">
     <string>Record</string>
@@ -426,12 +427,21 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>&amp;Counting controls</string>
    </property>
   </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph.h</header>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -529,6 +539,22 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionClose</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>219</x>
+     <y>281</y>
     </hint>
    </hints>
   </connection>

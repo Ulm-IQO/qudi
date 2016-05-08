@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>653</width>
-    <height>393</height>
+    <height>411</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,11 +30,15 @@
      <string>View</string>
     </property>
     <addaction name="actionRestore_Default"/>
+    <addaction name="actionClose"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -285,7 +289,7 @@ Threshold</string>
   <action name="start_counter_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/play_36x36.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start Measurement</string>
@@ -295,9 +299,12 @@ Threshold</string>
    </property>
   </action>
   <action name="stop_counter_Action">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</normaloff>../../artwork/icons/qudiTheme/36x36/stop_36x36.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</iconset>
    </property>
    <property name="text">
     <string>Stop Measurement</string>
@@ -321,7 +328,7 @@ Threshold</string>
   <action name="save_measurement_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</normaloff>../../artwork/icons/qudiTheme/32x32/document-save.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
     <string>Save Measurement</string>
@@ -335,6 +342,15 @@ Threshold</string>
     <string>Restore Default</string>
    </property>
   </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -344,5 +360,22 @@ Threshold</string>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionClose</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>326</x>
+     <y>205</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

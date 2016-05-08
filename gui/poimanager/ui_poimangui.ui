@@ -31,7 +31,7 @@
      <x>0</x>
      <y>0</y>
      <width>687</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -42,6 +42,7 @@
     <addaction name="save_roi_Action"/>
     <addaction name="load_roi_Action"/>
     <addaction name="reorient_roi_Action"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -790,9 +791,8 @@
   </action>
   <action name="load_roi_Action">
    <property name="icon">
-    <iconset theme="document-open">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-open.png</normaloff>../../artwork/icons/oxygen/22x22/document-open.png</iconset>
    </property>
    <property name="text">
     <string>Load ROI</string>
@@ -949,6 +949,15 @@
    </property>
    <property name="toolTip">
     <string>Optimize ROI by refinding and moving all POIs to their optimal positions.  This procedure makes the ROI map fully internally consistent.</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Close</string>
    </property>
   </action>
  </widget>
@@ -1182,6 +1191,22 @@
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionClose</sender>
+   <signal>triggered()</signal>
+   <receiver>PoiManager</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>343</x>
+     <y>409</y>
     </hint>
    </hints>
   </connection>

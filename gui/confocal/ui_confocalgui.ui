@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1348</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1902,9 +1902,8 @@
   </action>
   <action name="actionClose">
    <property name="icon">
-    <iconset theme="window-close">
-     <normaloff/>
-    </iconset>
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>C&amp;lose</string>
@@ -2102,6 +2101,10 @@
    </property>
   </action>
   <action name="optimizer_only_view_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
+   </property>
    <property name="text">
     <string>O&amp;ptimizer-only</string>
    </property>
@@ -2213,9 +2216,7 @@
   <tabstop>y_SliderWidget</tabstop>
   <tabstop>x_SliderWidget</tabstop>
  </tabstops>
- <resources>
-  <include location="../../artwork/icons/qudiTheme/22x22/tilt_correct.png"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>actionClose</sender>
