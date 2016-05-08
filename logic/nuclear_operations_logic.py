@@ -19,6 +19,8 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
+import numpy as np
+from PyQt4 import QtCore
 
 from logic.generic_logic import GenericLogic
 
@@ -58,7 +60,12 @@ class NuclearOperationsLogic(GenericLogic):
            'savelogic': 'SaveLogic',
            'optimizerlogic': 'OptimizerLogic',
            'scannerlogic':'ScannerLogic'}
+
     _out = {'nuclearoperationlogic': 'NuclearOperationsLogic'}
+
+    sigNextMeasPoint = QtCore.Signal()
+    sigCurrMeasPointUpdated = QtCore.Signal()
+    sigMeasValueUpdated = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -86,7 +93,34 @@ class NuclearOperationsLogic(GenericLogic):
                          of the state which should be reached after the event
                          had happened.
         """
-        pass
+
+
+        # choose some default values:
+        self.x_axis_start = 1e-3
+        self.x_axis_step = 10e3
+        self.x_axis_num_points = 50
+
+        self._stop_requested = False
+
+        self.initialize_x_axis()
+        self.initialize_y_axis()
+
+        # establish the access to all connectors:
+        self._save_logic = self.connector['in']['savelogic']['object']
+
+        #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
+        #       needed methods via the TaskRunner!
+        self._seq_gen_logic = self.connector['in']['sequencegenerationlogic']['object']
+        self._trace_logic = self.connector['in']['traceanalysislogic']['object']
+        self._odmr_logic = self.connector['in']['odmrlogic']['object']
+        self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
+        self._confocal_logic = self.connector['in']['scannerlogic']['object']
+
+
+
+
+        # connect signals:
+        self.sigNextMeasPoint.connect(self._meas_point_loop, QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
         """ Deactivate the module properly.
@@ -95,3 +129,51 @@ class NuclearOperationsLogic(GenericLogic):
                          explanation can be found in the method activation.
         """
         pass
+
+
+    def initialize_x_axis(self):
+        """ Initialize the x axis. """
+
+        stop = self.x_axis_start + self.x_axis_step*self.x_axis_num_points
+        self.x_axis_list = np.arange(self.x_axis_start, stop+(self.x_axis_step/2), self.x_axis_step)
+        self.current_meas_point = self.x_axis_start
+        self.sigCurrMeasPointUpdated.emit()
+
+    def initialize_y_axis(self):
+        """ Initialize the y axis. """
+        self.y_axis_list = np.zeros(len(self.x_axis_list))
+
+
+
+
+    def start_nuclear_meas(self):
+        """ Start the nuclear operation measurement. """
+        self.sigNextMeasPoint.emit()
+        pass
+
+
+
+    def _meas_point_loop(self):
+        """ Run this loop continuously until the an abort criterium is reached. """
+        if self._stop_requested:
+            with self.threadlock:
+                # end measurement and switch all devices off
+                self.stopRequested = False
+                self.unlock()
+                # emit all needed signals for the update:
+                self.sigMeasValueUpdated.emit()
+                return
+
+
+        self.sigNextMeasPoint.emit()
+
+
+    def stop_nuclear_meas(self):
+        """ Stop the Nuclear Operation Measurement.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        with self.threadlock:
+            if self.getState() == 'locked':
+                self._stop_requested = True
+        return 0
