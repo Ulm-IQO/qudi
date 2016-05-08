@@ -41,7 +41,7 @@ class MagnetDummy(Base, MagnetInterface):
     _modtype = 'MagnetDummy'
     _modclass = 'hardware'
 
-    _out = {'magnet': 'MagnetInterface'}
+    _out = {'magnetstage': 'MagnetInterface'}
 
     def __init__(self, manager, name, config, **kwargs):
         state_actions = {'onactivate': self.activation,
@@ -118,12 +118,12 @@ class MagnetDummy(Base, MagnetInterface):
         axis0['unit'] = 'm'                 # the SI units
         axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min'] = 0
-        axis0['pos_max'] = 100  # that is basically the traveling range
-        axis0['pos_step'] = 0.001
+        axis0['pos_max'] = 100e-3  # that is basically the traveling range
+        axis0['pos_step'] = 0.001e-3
         axis0['vel_min'] = 0
-        axis0['vel_max'] = 100
-        axis0['vel_step'] = 0.01
-        axis0['acc_min'] = 0.1
+        axis0['vel_max'] = 100e-3
+        axis0['vel_step'] = 0.01e-3
+        axis0['acc_min'] = 0.1e-3
         axis0['acc_max'] = 0.0
         axis0['acc_step'] = 0.0
 
@@ -132,12 +132,12 @@ class MagnetDummy(Base, MagnetInterface):
         axis1['unit'] = 'm'        # the SI units
         axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min'] = 0
-        axis1['pos_max'] = 100  # that is basically the traveling range
-        axis1['pos_step'] = 0.001
+        axis1['pos_max'] = 100e-3  # that is basically the traveling range
+        axis1['pos_step'] = 0.001e-3
         axis1['vel_min'] = 0
-        axis1['vel_max'] = 100
-        axis1['vel_step'] = 0.01
-        axis1['acc_min'] = 0.1
+        axis1['vel_max'] = 100e-3
+        axis1['vel_step'] = 0.01e-3
+        axis1['acc_min'] = 0.1e-3
         axis1['acc_max'] = 0.0
         axis1['acc_step'] = 0.0
 
@@ -146,12 +146,12 @@ class MagnetDummy(Base, MagnetInterface):
         axis2['unit'] = 'm'        # the SI units
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min'] = 0
-        axis2['pos_max'] = 100  # that is basically the traveling range
-        axis2['pos_step'] = 0.001
+        axis2['pos_max'] = 100e-3   # that is basically the traveling range
+        axis2['pos_step'] = 0.001e-3
         axis2['vel_min'] = 0
-        axis2['vel_max'] = 100
-        axis2['vel_step'] = 0.01
-        axis2['acc_min'] = 0.1
+        axis2['vel_max'] = 100e-3
+        axis2['vel_step'] = 0.01e-3
+        axis2['acc_min'] = 0.1e-3
         axis2['acc_max'] = 0.0
         axis2['acc_step'] = 0.0
 
