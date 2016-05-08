@@ -2,9 +2,20 @@
 
 In our main folder trunk, we have a folder 'documentation', where all
 (long and detailed) documentation about our code should be stored. The
-documentation is written in a so called Markdown structure, an lightweight
+documentation is written in a so called Markdown format, an lightweight
 markup language, which should be easily readable as a plain file, but also
 convertible to html.
+
+Inserting images
+----------------
+
+Images can be inserted using their path relative to the documentation directory
+in the qudi source.  For example, 
+
+![Settings window](gui/odmrgui-capture-20150621132437-349-1.png "The settings window")
+
+More WYSIWYG editing with markdown plugin in PyCharm
+----------------------------------------------------
 
 Since it might be a bit unusual to write directly in Markdown without having an
 immediate comparison how the result is going to look like, there is an easy way
