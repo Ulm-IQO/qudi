@@ -65,7 +65,7 @@ def estimate_lorentz(self,x_axis=None,data=None):
     @return float offset: estimated offset
     """
 #           TODO: make sigma and amplitude good, this is only a dirty fast solution
-    error=0
+    error = 0
     # check if parameters make sense
     parameters=[x_axis,data]
     for var in parameters:
@@ -148,11 +148,10 @@ def make_lorentzian_fit(self, axis=None, data=None,
                         ('center',    x_zero,    True, (axis[-1]),          (axis[0]),            None),
                         ('c',         offset,    True, None,                None,                 None))
 
-    #TODO: Add logmessage when value is changed
     #redefine values of additional parameters
     if add_parameters is not None :
         params = self._substitute_parameter(parameters=params,
-                                         update_dict=add_parameters)
+                                            update_dict=add_parameters)
     try:
         result = model.fit(data, x=axis,params=params)
     except:
@@ -166,6 +165,7 @@ def make_lorentzian_fit(self, axis=None, data=None,
 #                   Lorentz fit for peak instead of dip                    #
 #                                                                          #
 ############################################################################
+
 
 def estimate_lorentzpeak (self, x_axis=None, data=None):
     """ This method provides a lorentzian function to fit a peak.
@@ -273,12 +273,11 @@ def make_lorentzianpeak_fit(self, axis=None, data=None,
                         ('center',    x_zero,    True, (axis[-1]),           (axis[0]),            None),
                         ('c',         offset,    True, None,                 None,                 None))
 
-    #TODO: Add logmessage when value is changed
     #redefine values of additional parameters
 
     if add_parameters is not None :
         params=self._substitute_parameter(parameters=params,
-                                         update_dict=add_parameters)
+                                          update_dict=add_parameters)
     try:
         result=model.fit(data, x=axis,params=params)
     except:
@@ -340,7 +339,7 @@ def estimate_doublelorentz(self, x_axis=None, data=None,
     @return float lorentz1_sigma: estimated sigma of 2nd peak
     @return float offset: estimated offset
     """
-    error=0
+    error = 0
     # check if parameters make sense
     parameters = [x_axis,data]
     for var in parameters:

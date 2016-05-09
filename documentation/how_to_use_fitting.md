@@ -63,8 +63,8 @@ underscores, and that it starts with `estimate_`, e.g.
 
         def estimate_gaussian_dip() and def estimate_gaussian_peak()
 
-2. model function: ``make_<custom>_model()``, if one want to make construct the
-model from a custom (not built-in) funciton one can do that within the
+2. model function: ``make_<custom>_model()``, if one wants to construct the
+model from a custom (not built-in) function one can do that within the
  `make_<custom>_model()`` method e.g.
 
             def make_sine_model(self):
@@ -167,12 +167,16 @@ See very detailed description: https://lmfit.github.io/lmfit-py/parameters.html
 second dip, or one can estimate with this method the width of a dip/peak
 
         _search_end_of_dip()
+
 *  Find offset from peaklike data, here first a lorentzian filter is applied on the data
 and the a histogram is made. The most frequent value is supposed to be the offset value:
 
         find_offset_parameter()
 
+* Smooth data with a gaussian filter, the filter is adjusted in size depending on
+the length of the input data:
 
+        gaussian_smoothing()
 
 # List of fit functions
 
