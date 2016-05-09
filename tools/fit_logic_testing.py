@@ -822,7 +822,7 @@ class FitLogic():
             print(1/(x_axis[1]-x_axis[0]))
             params['amplitude'].value=0.2
             params['frequency'].value=0.1
-            params['phase'].value=np.pi*0.5
+            params['phase'].value=np.pi*1.0
             params['offset'].value=0.94
             data_noisy=(mod.eval(x=x_axis,params=params)
                                     + 0.01*np.random.normal(size=x_axis.shape))
@@ -879,14 +879,7 @@ class FitLogic():
             para={}
             para['phase'] = {'vary': False, 'value': np.pi/2.}
             para['amplitude'] = {'min': 0.0}
-#            para.add('I_saturation',value=152.)
-#            para.add('slope',value=0.3,vary=True)
-#            para.add('intercept',value=0.3,vary=False,min=0.) #dark counts
-#            para.add('P_saturation',value=130.   )         
-#            
-#            
-##            data=np.loadtxt('Po_Fl.txt')
-#
+
             result=self.make_sine_fit(axis=x_axis,data=data_noisy,add_parameters=para)
 ##            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
 #
@@ -912,6 +905,8 @@ class FitLogic():
             units['offset']='arb. u.'
 #            units['amplitude']='arb. u.'
             print(self.create_fit_string(result,mod,units))
+            
+            print(result.best_values['phase']/np.pi*180)
  
 
                                     
