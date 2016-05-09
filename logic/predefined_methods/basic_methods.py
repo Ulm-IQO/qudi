@@ -186,11 +186,54 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
     # update ensemble list
     self.refresh_ensemble_list()
 
+def generate_idle_bins(self, name='Idle', idle_time_bins=1500, laser_channel=2 ):
+    """ Generate just a simple idle ensemble element.
+
+    @param self:
+    @param name:
+    @param idle_time_bins:
+    @return:
+    """
+
+    # all this arrays have to be filled with the appropriate values. Fill them
+    # with default values:
+    analog_params = [{}]*self.analog_channels
+    markers = [False]*self.digital_channels
+    pulse_function = ['Idle']*self.analog_channels
+
+    idle_element = Pulse_Block_Element(idle_time_bins, self.analog_channels,
+                                          self.digital_channels, 0,
+                                          pulse_function, markers,
+                                          analog_params)
+
+    #FIXME: that has to be fixed in the generation
+    laser_channel_index = abs(laser_channel)-1
+
+    elem_list = [idle_time_bins]
+
+    wait_block = Pulse_Block(name, elem_list, laser_channel_index)
+    # save block
+    self.save_block(name, wait_block)
+    # set current block
+    self.current_block = wait_block
+
+    # remember number_of_taus=0 also counts as first round
+    block_list = [(wait_block, 0)]
+
+    # create ensemble out of the block(s)
+    block_ensemble = Pulse_Block_Ensemble(name, block_list, laser_channel_index,
+                                          rotating_frame=False)
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+
+    # set current block ensemble
+    self.current_ensemble = block_ensemble
+
 def generate_rabi(self, name='Rabi', tau_start_ns=5, tau_step_ns=10,
                   number_of_taus=50, mw_freq_MHz=2800, mw_amp_V=1.0,
-                  mw_channel=-1, laser_time_ns=3000, laser_channel=1,
-                  channel_amp_V=1, aom_delay_ns=500, open_count_channel=2,
-                  seq_channel=3, wait_time_ns=1500):
+                  mw_channel=-1, laser_time_ns=3000, laser_channel=2,
+                  channel_amp_V=1, aom_delay_ns=500, open_count_channel=3,
+                  seq_channel=4, wait_time_ns=1500):
     """ Converter function to use ns input instead of bins. """
 
     tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
@@ -207,9 +250,9 @@ def generate_rabi(self, name='Rabi', tau_start_ns=5, tau_step_ns=10,
 
 def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70,
                   number_of_taus=50, mw_freq_MHz=7784.13,  mw_amp_V=1.0,
-                  mw_channel=-1, laser_time_bins=3000, laser_channel=1,
-                  channel_amp_V=1, aom_delay_bins=50, open_count_channel=2,
-                  seq_channel=3, wait_time_bins=500):
+                  mw_channel=-1, laser_time_bins=3000, laser_channel=2,
+                  channel_amp_V=1, aom_delay_bins=50, open_count_channel=3,
+                  seq_channel=4, wait_time_bins=500):
 
     if laser_channel == mw_channel:
         self.logMsg('Laser and Microwave channel cannot be the same. Change '
@@ -339,7 +382,7 @@ def generate_rabi_bins(self, name='Rabi', tau_start_bins=7, tau_step_bins=70,
     element_list = [mw_element, laser_element, aomdelay_element, waiting_element]
 
     #FIXME: that has to be fixed in the generation
-    laser_channel_index = abs(laser_channel)
+    laser_channel_index = abs(laser_channel)-1
 
     rabi_block = Pulse_Block(name, element_list, laser_channel_index)
     # save block
@@ -710,7 +753,7 @@ def generate_ramsey_bins(self, name='Ramsey', tau_start_bins=50, tau_step_bins=5
                     laser_element, aomdelay_element, waiting_element]
 
     #FIXME: that has to be fixed in the generation
-    laser_channel_index = abs(laser_channel)
+    laser_channel_index = abs(laser_channel)-1
 
     ramsey_block = Pulse_Block(name, element_list, laser_channel_index)
     # save block
@@ -945,7 +988,7 @@ def generate_hahn_bins(self, name='Hahn Echo', tau_start_bins=500,
                     aomdelay_element, waiting_element]
 
     #FIXME: that has to be fixed in the generation
-    laser_channel_index = abs(laser_channel)
+    laser_channel_index = abs(laser_channel)-1
 
     hahn_block = Pulse_Block(name, element_list, laser_channel_index)
     # save block
@@ -1262,7 +1305,7 @@ def generate_xy8_bins(self, name='xy8', tau_start_bins=50, tau_step_bins=50,
     elem_list.extend(last_elem_list)
 
     #FIXME: that has to be fixed in the generation
-    laser_channel_index = abs(laser_channel)
+    laser_channel_index = abs(laser_channel)-1
 
     xy8_block = Pulse_Block(name, elem_list, laser_channel_index)
     # save block
