@@ -958,12 +958,9 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value() / 1000
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
 
-        if self._osd.optim_sequence_z_last_RadioButton.isChecked():
-            self._optimizer_logic.optimization_sequence = 'XY-Z'
-        if self._osd.optim_sequence_z_first_RadioButton.isChecked():
-            self._optimizer_logic.optimization_sequence = 'Z-XY'
-
-        self._optimizer_logic.set_optimization_sequence()
+        self._optimizer_logic.optimization_sequence = str(self._osd.optimization_sequence_lineEdit.text()).split(', ')
+            
+        self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
 
@@ -978,10 +975,8 @@ class ConfocalGui(GUIBase):
         self._osd.hw_settle_time_SpinBox.setValue(self._optimizer_logic.hw_settle_time * 1000)
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
 
-        if self._optimizer_logic.optimization_sequence == 'XY-Z':
-            self._osd.optim_sequence_z_last_RadioButton.setChecked(True)
-        else:
-            self._osd.optim_sequence_z_first_RadioButton.setChecked(True)
+        self._osd.optimization_sequence_lineEdit.setText(', '.join(self._optimizer_logic.optimization_sequence))
+
         # fit parameters
         self._osd.fit_tab.keepFitSettings(self._optimizer_logic.z_params, self._optimizer_logic.use_custom_params)
 

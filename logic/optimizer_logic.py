@@ -46,8 +46,8 @@ class OptimizerLogic(GenericLogic):
     _signal_scan_next_xy_line = QtCore.Signal()
     _signal_scan_z_line = QtCore.Signal()
     _signal_completed_xy_optimizer_scan = QtCore.Signal()
-    _signal_found_optimal_xy = QtCore.Signal()
-    _signal_found_optimal_z = QtCore.Signal()
+    _signal_do_next_optimization_step = QtCore.Signal()
+    _signal_finished_all_optimization_steps = QtCore.Signal()
 
     # public signals
     signal_image_updated = QtCore.Signal()
@@ -75,12 +75,12 @@ class OptimizerLogic(GenericLogic):
 
         self.hw_settle_time = 0.1  # let scanner reach start of xy and z scans
 
+        # Initialization of settings option for optimization sequence
+        self.optimization_sequence = ['XY', 'Z']
+
         # settings option for surface subtraction in depth scan
         self.do_surface_subtraction = False
         self.surface_subtr_scan_offset = 1  # micron
-
-        # settings option for optimization sequence
-        self.optimization_sequence = 'XY-Z'
 
         # locking for thread safety
         self.threadlock = Mutex()
@@ -135,18 +135,16 @@ class OptimizerLogic(GenericLogic):
         # Initialization of internal counter for scanning
         self._xy_scan_line_count = 0
 
+        # Initialization of optimization sequence step counter
+        self._optimization_step = 0
+
         # Sets connections between signals and functions
         self._signal_scan_next_xy_line.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
         self._signal_scan_z_line.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
         self._signal_completed_xy_optimizer_scan.connect(self._set_optimized_xy_from_fit, QtCore.Qt.QueuedConnection)
 
-        if self.optimization_sequence == 'XY-Z':
-            self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
-            self._signal_found_optimal_z.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
-        elif self.optimization_sequence == 'Z-XY':
-            self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
-            self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
-
+        self._signal_do_next_optimization_step.connect(self._do_next_optimization_step, QtCore.Qt.QueuedConnection)
+        self._signal_finished_all_optimization_steps.connect(self.finish_refocus)
         self._initialize_xy_refocus_image()
         self._initialize_z_refocus_image()
         return 0
@@ -165,21 +163,18 @@ class OptimizerLogic(GenericLogic):
     def testing(self):
         pass
 
-    def set_optimization_sequence(self):
-        """ Set the sequence of scan events for the optimization.
-        The desired sequence is configured using self.optimization_sequence,
-        and can be either 'XY-Z' or 'Z-XY'.
+    def check_optimization_sequence(self):
+        """ Check the sequence of scan events for the optimization.
         """
 
-        self._signal_found_optimal_xy.disconnect()
-        self._signal_found_optimal_z.disconnect()
-
-        if self.optimization_sequence == 'XY-Z':
-            self._signal_found_optimal_xy.connect(self.do_z_optimization, QtCore.Qt.QueuedConnection)
-            self._signal_found_optimal_z.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
-        elif self.optimization_sequence == 'Z-XY':
-            self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
-            self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
+        # Check the supplied optimization sequence only contains 'XY' and 'Z'
+        if len(set(self.optimization_sequence).difference({'XY', 'Z'})) > 0:
+            self.logMsg('Requested optimization sequence contains unknown steps. '
+                        'Please provide a sequence containing only \'XY\' and \'Z\' strings. '
+                        'The default [\'XY\', \'Z\'] will be used.',
+                        msgType='error'
+                        )
+            self.optimization_sequence = ['XY', 'Z']
 
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
@@ -223,15 +218,13 @@ class OptimizerLogic(GenericLogic):
         self.lock()
         self.signal_refocus_started.emit()
         self._xy_scan_line_count = 0
-        self._initialize_xy_refocus_image()
-        self._initialize_z_refocus_image()
+
+        self._optimization_step = 0
+        self.check_optimization_sequence()
 
         self.start_scanner()
 
-        if self.optimization_sequence == 'XY-Z':
-            self._signal_scan_next_xy_line.emit()
-        elif self.optimization_sequence == 'Z-XY':
-            self._signal_scan_z_line.emit()
+        self._signal_do_next_optimization_step.emit()
 
     def stop_refocus(self):
         """Stops refocus."""
@@ -254,7 +247,7 @@ class OptimizerLogic(GenericLogic):
 
         self._X_values = np.linspace(xmin, xmax, num=self.optimizer_XY_res)
         self._Y_values = np.linspace(ymin, ymax, num=self.optimizer_XY_res)
-        self._Z_values = self._initial_pos_z * np.ones(self._X_values.shape)
+        self._Z_values = self.optim_pos_z * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
@@ -263,7 +256,7 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_refocus_image[:, :, 2] = self._initial_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+        self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -385,10 +378,10 @@ class OptimizerLogic(GenericLogic):
 
         # emit image updated signal so crosshair can be updated from this fit
         self.signal_image_updated.emit()
-        self._signal_found_optimal_xy.emit()
+        self._signal_do_next_optimization_step.emit()
 
     def do_z_optimization(self):
-        """ Do the z axis optimisation."""
+        """ Do the z axis optimization."""
         # z scaning
         self._scan_z_line()
 
@@ -439,14 +432,14 @@ class OptimizerLogic(GenericLogic):
                         else:
                             self.optim_pos_z = self.z_range[0]  # moves to lowest possible value
 
-        self._signal_found_optimal_z.emit()
+        self._signal_do_next_optimization_step.emit()
 
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
         self.kill_scanner()
         self.unlock()
 
-        self.logMsg('Moved from ({0:.3f},{1:.3f},{2:.3f}) to ({3:.3f},{4:.3f},{5:.3f}).'.format(
+        self.logMsg('Optimised from ({0:.3f},{1:.3f},{2:.3f}) to local maximum at ({3:.3f},{4:.3f},{5:.3f}).'.format(
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z,
             self.optim_pos_x, self.optim_pos_y, self.optim_pos_z),
             msgType='status')
@@ -515,3 +508,27 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device.close_scanner_clock()
         self._scanning_device.unlock()
         return 0
+
+    def _do_next_optimization_step(self):
+        """Handle the steps through the specified optimization sequence
+        """
+
+        # At the end fo the sequence, finish the optimization
+        if self._optimization_step == len(self.optimization_sequence):
+            # todo: make this a signal?
+            self._signal_finished_all_optimization_steps.emit()
+            return
+
+        # Read the next step in the optimization sequence
+        this_step = self.optimization_sequence[self._optimization_step]
+
+        # Increment the step counter
+        self._optimization_step = self._optimization_step + 1
+
+        # Launch the next step
+        if this_step == 'XY':
+            self._initialize_xy_refocus_image()
+            self._signal_scan_next_xy_line.emit()
+        elif this_step == 'Z':
+            self._initialize_z_refocus_image()
+            self._signal_scan_z_line.emit()
