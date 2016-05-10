@@ -3485,7 +3485,7 @@ class PulsedMeasurementGui(GUIBase):
         # Sample the ensemble via logic module
 
         self._seq_gen_logic.sample_pulse_sequence(sequence_name, write_to_file=True,
-                                                  chunkwise=True)
+                                                  chunkwise=self._write_chunkwise)
         return
 
     def upload_seq_to_device_clicked(self):
