@@ -32,14 +32,15 @@ from logic.generic_logic import GenericLogic
 
 
 class MagnetLogic(GenericLogic):
-    """ This is the Interface class to define the controls for the simple
-    magnet hardware.
+    """ A general magnet logic to control an magnetic stage with an arbitrary
+        set of axis.
 
     DISCLAIMER:
     ===========
 
     The current status of the magnet logic is highly experimental and not well
-    tested. The implementation has some considerable imperfections.
+    tested. The implementation has some considerable imperfections. The state of
+    this module is considered to be UNSTABLE.
 
     This module has two major issues:
         - a lack of proper documentation of all the methods
@@ -974,9 +975,9 @@ class MagnetLogic(GenericLogic):
         #
         # if self.curr_align_method == 'fluorescence_pointwise':
 
-        #data, add_data = self._perform_fluorescence_measure(5)
+        data, add_data = self._perform_fluorescence_measure(5)
 
-        data, add_data = self._perform_odmr_measure(11100e6, 1e6, 11200e6, 5, 10, 'Lorentzian', False,'')
+        # data, add_data = self._perform_odmr_measure(11100e6, 1e6, 11200e6, 5, 10, 'Lorentzian', False,'')
 
 
         return data, add_data
