@@ -29,6 +29,7 @@ import time
 
 
 class OptimizerLogic(GenericLogic):
+
     """This is the Logic class for optimizing scanner position on bright features.
     """
 
@@ -52,7 +53,6 @@ class OptimizerLogic(GenericLogic):
     signal_image_updated = QtCore.Signal()
     signal_refocus_started = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal(str, list)
-
 
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
@@ -91,7 +91,6 @@ class OptimizerLogic(GenericLogic):
         # Keep track of who called the refocus
         self._caller_tag = ''
 
-
     def activation(self, e):
         """ Initialisation performed during activation of the module.
 
@@ -102,8 +101,8 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device = self.connector['in']['confocalscanner1']['object']
         self._fit_logic = self.connector['in']['fitlogic']['object']
 
-        #default values for clock frequency and slowness
-        #slowness: steps during retrace line
+        # default values for clock frequency and slowness
+        # slowness: steps during retrace line
         if 'clock_frequency' in self._statusVariables:
             self._clock_frequency = self._statusVariables['clock_frequency']
         else:
@@ -126,8 +125,9 @@ class OptimizerLogic(GenericLogic):
 
         self._max_offset = 3.
 
-        ############ Fit Params and Settings ################
-        model,params = self._fit_logic.make_gaussian_model()
+        ###########################
+        # Fit Params and Settings #
+        model, params = self._fit_logic.make_gaussian_model()
         self.z_params = params
         self.use_custom_params = False
         #####################################################
@@ -151,7 +151,6 @@ class OptimizerLogic(GenericLogic):
         self._initialize_z_refocus_image()
         return 0
 
-
     def deactivation(self, e):
         """ Reverse steps of activation
 
@@ -163,10 +162,8 @@ class OptimizerLogic(GenericLogic):
         self._statusVariables['return_slowness'] = self.return_slowness
         return 0
 
-
     def testing(self):
         pass
-
 
     def set_optimization_sequence(self):
         """ Set the sequence of scan events for the optimization.
@@ -184,7 +181,6 @@ class OptimizerLogic(GenericLogic):
             self._signal_found_optimal_z.connect(self._refocus_xy_line, QtCore.Qt.QueuedConnection)
             self._signal_found_optimal_xy.connect(self.finish_refocus, QtCore.Qt.QueuedConnection)
 
-
     def set_clock_frequency(self, clock_frequency):
         """Sets the frequency of the clock
 
@@ -199,7 +195,6 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             return 0
-
 
     def start_refocus(self, initial_pos=None, caller_tag='unknown'):
         """Starts the optimization scan around initial_pos
@@ -238,12 +233,10 @@ class OptimizerLogic(GenericLogic):
         elif self.optimization_sequence == 'Z-XY':
             self._signal_scan_z_line.emit()
 
-
     def stop_refocus(self):
         """Stops refocus."""
         with self.threadlock:
             self.stopRequested = True
-
 
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image."""
@@ -272,7 +265,6 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
         self.xy_refocus_image[:, :, 2] = self._initial_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
-
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
         self._xy_scan_line_count = 0
@@ -285,7 +277,6 @@ class OptimizerLogic(GenericLogic):
         self._zimage_A_values = np.zeros(self._zimage_Z_values.shape)
         self.z_refocus_line = np.zeros(len(self._zimage_Z_values))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
-
 
     def _move_to_start_pos(self, start_pos):
         """Moves the scanner from its current position to the start position of the optimizer scan.
@@ -325,7 +316,7 @@ class OptimizerLogic(GenericLogic):
                 self.stopRequested = False
                 self.finish_refocus()
                 self.signal_image_updated.emit()
-                self.signal_refocus_finished.emit()
+                self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
                 return
 
         # move to the start of the first line
@@ -365,7 +356,6 @@ class OptimizerLogic(GenericLogic):
         else:
             self._signal_completed_xy_optimizer_scan.emit()
 
-
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
@@ -397,7 +387,6 @@ class OptimizerLogic(GenericLogic):
         self.signal_image_updated.emit()
         self._signal_found_optimal_xy.emit()
 
-
     def do_z_optimization(self):
         """ Do the z axis optimisation."""
         # z scaning
@@ -414,7 +403,7 @@ class OptimizerLogic(GenericLogic):
             result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line,add_parameters=self.z_params)
+                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=self.z_params)
             else:
                 result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
         print(result.fit_report())
@@ -452,7 +441,6 @@ class OptimizerLogic(GenericLogic):
 
         self._signal_found_optimal_z.emit()
 
-
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
         self.kill_scanner()
@@ -465,7 +453,6 @@ class OptimizerLogic(GenericLogic):
 
         # Signal that the optimization has finished, and "return" the optimal position along with caller_tag
         self.signal_refocus_finished.emit(self._caller_tag, [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
-
 
     def _scan_z_line(self):
         """Scans the z line for refocus."""
@@ -509,7 +496,6 @@ class OptimizerLogic(GenericLogic):
             # surface-subtracted line scan data is the difference
             self.z_refocus_line = line_counts - line_bg
 
-
     def start_scanner(self):
         """Setting up the scanner device.
 
@@ -519,7 +505,6 @@ class OptimizerLogic(GenericLogic):
         self._scanning_device.set_up_scanner_clock(clock_frequency=self._clock_frequency)
         self._scanning_device.set_up_scanner()
         return 0
-
 
     def kill_scanner(self):
         """Closing the scanner device.
