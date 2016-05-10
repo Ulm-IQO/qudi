@@ -51,6 +51,7 @@ import builtins
 
 import ast
 import traceback
+import jedi
 
 # zmq specific imports:
 import zmq
@@ -61,6 +62,17 @@ from logic.kernel.builtin_trap import BuiltinTrap
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
+
+def cursor_pos_to_lc(text, cursor_pos):
+    lines = text.splitlines(True)
+    linenr = 1
+    for line in lines:
+        if len(line) < cursor_pos:
+            linenr = linenr + 1
+            cursor_pos = cursor_pos - len(line)
+        else:
+            break
+    return linenr, cursor_pos
 
 def softspace(file, newvalue):
     """Copied from code.py, to remove the dependency"""
@@ -447,7 +459,31 @@ class QZMQKernel(QtCore.QObject):
         logging.info( "unhandled history request")
 
     def shell_complete(self, identities, msg):
-        logging.info( "unhandled complete request")
+        code = msg['content']['code']
+        cursor_pos = msg['content']['cursor_pos']
+        linenr, colnr = cursor_pos_to_lc(code, cursor_pos)
+        script = jedi.Interpreter(
+            code,
+            [self.user_ns, self.user_global_ns],
+            line=linenr,
+            column=colnr)
+        completions = script.completions()
+        matches =  [c.name_with_symbols for c in completions]
+        rests = [len(c.name_with_symbols) - len(c.complete) for c in completions]
+        content = {
+            'matches' : matches,
+            'cursor_start' : cursor_pos - rests[0],
+            'cursor_end' : cursor_pos,
+            'status' : 'ok'
+            }
+        metadata = {}
+        self.send(
+            self.shell_stream,
+            'complete_reply',
+            content,
+            metadata=metadata,
+            parent_header=msg['header'],
+            identities=identities)
  
     def deserialize_wire_msg(self, wire_msg):
         """split the routing prefix and message frames from a message on the wire"""
