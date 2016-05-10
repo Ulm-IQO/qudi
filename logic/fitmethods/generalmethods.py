@@ -430,24 +430,29 @@ def find_offset_parameter(self, x_values=None, data=None):
 #                                                                          #
 ############################################################################
 
-def gaussian_smoothing(self, data=None):
+def gaussian_smoothing(self, data=None, filter_len=None, filter_sigma=None):
     """ This method convolves the data with a gaussian
      the smoothed data is returned
 
     @param array data: raw data
+    @param int filter_len: length of filter
+    @param int filter_sigma: width of gaussian
 
     @return array: smoothed data
 
     """
     #Todo: Check for wrong data type
-    if len(data) < 20.:
-        len_x = 5
-    elif len(data) >= 100.:
-        len_x = 10
-    else:
-        len_x = int(len(data) / 10.) + 1
+    if filter_len is None:
+        if len(data) < 20.:
+            filter_len = 5
+        elif len(data) >= 100.:
+            filter_len = 10
+        else:
+            filter_len = int(len(data) / 10.) + 1
+    if filter_sigma is None:
+        filter_sigma = filter_len
 
-    gaus = gaussian(len_x, len_x)
+    gaus = gaussian(filter_len, filter_sigma)
     return filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
 
 

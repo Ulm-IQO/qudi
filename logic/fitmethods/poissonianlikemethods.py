@@ -173,8 +173,9 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
 
     # a gaussian filter is appropriate due to the well approximation of poisson
     # distribution
-    gaus = gaussian(10,10)
-    data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
+    # gaus = gaussian(10,10)
+    # data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
+    data_smooth = self.gaussian_smoothing(data=data, filter_len=10, filter_sigma=10)
 
     # set parameters
     mu = x_axis[np.argmax(data_smooth)]
