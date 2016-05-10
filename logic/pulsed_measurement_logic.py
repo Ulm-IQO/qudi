@@ -173,6 +173,7 @@ class PulsedMeasurementLogic(GenericLogic):
         elif not self.fast_counter_gated:
             record_length_s = self.aom_delay_s + self.sequence_length_s
             number_of_gates = 0
+        #Fixme: Should we use the information of the actual values?
         actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , record_length_s, number_of_gates)
         #self.fast_counter_binwidth = actual_binwidth_s
         return
