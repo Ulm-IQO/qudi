@@ -26,7 +26,6 @@ Copyright (C) 2015 Jochen Scheuer jochen.scheuer@uni-ulm.de
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
 #Not written modules:
-#TODO: configure
 #TODO: get_status
 
 from core.base import Base
@@ -257,10 +256,11 @@ class FastComtec(Base, FastCounterInterface):
                     number_of_gates: the number of gated, which are accepted
         """
 
-        self.set_binwidth(bin_width_s)
-        #self.set_length(duration)
+        binwidth_s = self.set_binwidth(bin_width_s)
 
-        return (self.get_binwidth()/1e9, 4000e-9, 0)
+        no_of_bins = record_length_s / binwidth_s
+        self.set_length(no_of_bins)
+        return (self.get_binwidth(), None, None)
 
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
