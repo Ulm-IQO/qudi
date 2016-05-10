@@ -2791,6 +2791,8 @@ class PulsedMeasurementGui(GUIBase):
                 meas_ticks_list = asset_param['measurement_ticks_list']/self.get_sample_rate()
             # ---------------------------------------------------------------------------------
 
+            #Todo: This should be converted into a setter mehtod
+            self._pulsed_meas_logic.sequence_length_s = self._seq_gen_logic.loaded_asset.length_bins/self.get_sample_rate()
 
             self._pulsed_meas_logic.set_num_of_lasers(num_laser_pulses)
             self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
