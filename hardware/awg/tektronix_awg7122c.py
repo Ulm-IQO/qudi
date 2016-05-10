@@ -388,6 +388,8 @@ class AWG7122C(Base, PulserInterface):
                 is_wfm = filename.endswith('.wfm')
                 if is_wfm and (asset_name + '_ch') in filename:
                     upload_names.append(filename)
+                if (asset_name + '.seq') in filename:
+                    upload_names.append(filename)
         else:
             self.logMsg('Error in file upload:\nInvalid sample mode for '
                         'this device!\nSet a proper one for sample the '
@@ -560,7 +562,7 @@ class AWG7122C(Base, PulserInterface):
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
             for seq_param_dict in sequence_param:
 
-                repeat = seq_param_dict['reps']
+                repeat = seq_param_dict['repetitions']
                 trigger_wait = seq_param_dict['trigger_wait']
                 go_to = seq_param_dict['go_to']
                 event_jump_to = seq_param_dict['event_jump_to']
@@ -620,50 +622,99 @@ class AWG7122C(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
 
+        path = self.ftp_path + self.get_asset_dir_on_device()
+
+        # Find all files associated with the specified asset name
         file_list = self._get_filenames_on_device()
         filename = []
 
-        for file in file_list:
-            if file == asset_name+'_ch1.wfm' or file == asset_name+'_ch2.wfm':
-                filename.append(file)
+        if (asset_name + '.seq') in file_list:
+            file_name = asset_name + '.seq'
 
+            # self.tell('MMEMORY:IMPORT "{0}","{1}",SEQ \n'.format(asset_name , asset_name + '.seq'))
+            self.tell('SOUR1:FUNC:USER "%s/%s"\n' % (path, file_name))
+            # self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, file_name))
+            # set the AWG to the event jump mode:
+            self.tell('AWGCONTROL:EVENT:JMODE EJUMP')
 
-        # Check if something could be found
-        if len(filename) == 0:
-            self.logMsg('No files associated with asset {0} were found on AWG7122c.'
-                        'Load to channels failed!'.format(asset_name),
-                        msgType='error')
-            return -1
-
-        self.logMsg('The following files associated with the asset {0} were found on AWG7122c:\n'
-                    '"{1}"'.format(asset_name, filename), msgType='status')
-
-        # load files in AWG Waveform list
-        for asset in filename:
-            if asset.endswith('.wfm'):
-                self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
-            else:
-                self.logMsg('Could not load asset {0} to AWG7122c:\n'
-                    '"{1}"'.format(asset_name, filename), msgType='error')
-
-        file_path = self.ftp_path + self.get_asset_dir_on_device()
-        # simply use the channel association of the filenames if no load_dict is given
-        if load_dict == {}:
-            for asset in filename:
-                # load waveforms into channels as given in filename
-                if asset.split("_")[-1][:3] == 'ch1':
-                    self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
-                if asset.split("_")[-1][:3] == 'ch2':
-                    self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
-                self.current_loaded_asset = asset_name
+            self.current_loaded_asset = asset_name
         else:
-            for channel in load_dict:
-                # load waveforms into channels
-                name = load_dict[channel]
-                self.tell('SOUR'+str(channel)+':FUNC:USER "{0}/{1}"\n'.format(file_path, name))
-            self.current_loaded_asset = name
+
+            for file in file_list:
+
+                if file == asset_name + '_ch1.wfm':
+
+                    self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name +'_ch1', asset_name + '_ch1.wfm'))
+
+                    self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, asset_name + '_ch1.wfm'))
+
+                    filename.append(file)
+                elif file == asset_name + '_ch2.wfm':
+                    self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch2', asset_name + '_ch2.wfm'))
+
+                    self.tell('SOUR2:FUNC:USER "{0}/{1}"\n'.format(path, asset_name + '_ch2.wfm'))
+
+                    filename.append(file)
+
+            if load_dict == {} and filename == []:
+                self.logMsg('No file and channel provided for load!\nCorrect '
+                            'that!\nCommand will be ignored.', msgType='warning')
+
+        for channel_num in list(load_dict):
+            file_name = str(load_dict[channel_num]) + '_ch{0}.wfm'.format(int(channel_num))
+            self.tell('SOUR{0}:FUNC:USER "{1}/{2}"\n'.format(channel_num, path, file_name))
+
+        if len(list(load_dict)) > 0:
+            self.current_loaded_asset = asset_name
 
         return 0
+
+
+
+        # file_list = self._get_filenames_on_device()
+        # filename = []
+        #
+        # for file in file_list:
+        #     if file == asset_name+'_ch1.wfm' or file == asset_name+'_ch2.wfm':
+        #         filename.append(file)
+        #
+        #
+        # # Check if something could be found
+        # if len(filename) == 0:
+        #     self.logMsg('No files associated with asset {0} were found on AWG7122c.'
+        #                 'Load to channels failed!'.format(asset_name),
+        #                 msgType='error')        #         if asset.split("_")[-1][:3] == 'ch1':
+        #             self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
+        #         if asset.split("_")[-1][:3] == 'ch2':
+        #             self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
+        #         self.current_loaded_asset = asset_name
+        # else:
+        #     for channel in load_dict:
+        #     return -1
+        #
+        # self.logMsg('The following files associated with the asset {0} were found on AWG7122c:\n'
+        #             '"{1}"'.format(asset_name, filename), msgType='status')
+        #
+        # # load files in AWG Waveform list
+        # for asset in filename:
+        #     if asset.endswith('.wfm'):
+        #         self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
+        #     else:
+        #         self.logMsg('Could not load asset {0} to AWG7122c:\n'
+        #             '"{1}"'.format(asset_name, filename), msgType='error')
+        #
+        # file_path = self.ftp_path + self.get_asset_dir_on_device()
+        # # simply use the channel association of the filenames if no load_dict is given
+        # if load_dict == {}:
+        #     for asset in filename:
+        #         # load waveforms into channels as given in filename
+
+        #         # load waveforms into channels
+        #         name = load_dict[channel]
+        #         self.tell('SOUR'+str(channel)+':FUNC:USER "{0}/{1}"\n'.format(file_path, name))
+        #     self.current_loaded_asset = name
+        #
+        # return 0
 
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
@@ -1021,96 +1072,6 @@ class AWG7122C(Base, PulserInterface):
 
         return low_val, high_val
 
-
-    def set_digital_level(self, low={}, high={}):
-        """ Set low and/or high value of the provided digital channel.
-
-        @param dict low: dictionary, with key being the channel and items being
-                         the low values (in volt) for the desired channel.
-        @param dict high: dictionary, with key being the channel and items being
-                         the high values (in volt) for the desired channel.
-
-        If nothing is passed then the command is being ignored.
-
-        Note, the major difference to analog signals is that digital signals are
-        either ON or OFF, whereas analog channels have a varying amplitude
-        range. In contrast to analog output levels, digital output levels are
-        defined by a voltage, which corresponds to the ON status and a voltage
-        which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is not a bijective correspondence between
-        (amplitude, offset) for analog and (value high, value low) for digital!
-        """
-
-        constraints = self.get_constraints()
-
-        for d_ch in low:
-            if (d_ch <= self._get_num_d_ch()) and \
-               (d_ch >=0):
-
-                if low[d_ch] < constraints['d_ch_low']['min'] or \
-                   low[d_ch] > constraints['d_ch_low']['max']:
-
-                    self.logMsg('Not possible to set for analog channel {0} '
-                                'the amplitude value {1}Vpp, since it is not '
-                                'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(d_ch,
-                                                     low[d_ch],
-                                                     constraints['d_ch_low']['min'],
-                                                     constraints['d_ch_low']['max']),
-                                msgType='warning')
-                else:
-
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch-2) <= 0:
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
-                    else:
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch-2, low[d_ch]))
-
-            else:
-                self.logMsg('The device does not support that much digital '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(d_ch,
-                                                 self._get_num_d_ch()),
-                            msgType='warning')
-
-        for d_ch in high:
-            if (d_ch <= self._get_num_d_ch()) and \
-               (d_ch >=0):
-
-                if high[d_ch] < constraints['d_ch_high']['min'] or \
-                   high[d_ch] > constraints['d_ch_high']['max']:
-
-                    self.logMsg('Not possible to set for analog channel {0} '
-                                'the amplitude value {1}Vpp, since it is not '
-                                'within the interval [{2},{3}]! Command will '
-                                'be ignored.'.format(d_ch,
-                                                     high[d_ch],
-                                                     constraints['d_ch_high']['min'],
-                                                     constraints['d_ch_high']['max']),
-                                msgType='warning')
-                else:
-
-                    # a fast way to map from a channel list [1, 2, 3, 4] to  a
-                    # list like [[1,2], [1,2]]:
-                    if (d_ch-2) <= 0:
-                        self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
-                    else:
-                        self.tell('SOURCE2:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch-2, high[d_ch]))
-
-
-            else:
-                self.logMsg('The device does not support that much digital '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(d_ch,
-                                                 self._get_num_d_ch()),
-                            msgType='warning')
-
-        return self.get_digital_level(low=list(low), high=list(high))
-
     def get_active_channels(self, ch=[]):
         """ Get the active channels of the pulse generator hardware.
 
@@ -1129,15 +1090,14 @@ class AWG7122C(Base, PulserInterface):
         for their setting.
         """
 
-        constraints = self.get_constraints()
-        active_a_ch = {}
-        active_d_ch = {}
+        active_ch = {}
 
-        if (a_ch == []) and (d_ch == []):
-
+        if ch == []:
+            #FIXME: check the output of the interleave
+            active_ch['a_ch1'] = True
             # because 0 = False and 1 = True
-            active_a_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
-            active_a_ch['a_ch2'] = bool(int(self.ask('OUTPUT2:STATE?')))
+            active_ch['a_ch2'] = bool(int(self.ask('OUTPUT1:STATE?')))
+            active_ch['a_ch3'] = bool(int(self.ask('OUTPUT2:STATE?')))
 
             # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
@@ -1146,60 +1106,68 @@ class AWG7122C(Base, PulserInterface):
             #   self.ask('SOURCE1:DAC:RESOLUTION?'))
             # might be useful from which the active digital channels can be
             # obtained.
-            active_d_ch['d_ch1'] = True
-            active_d_ch['d_ch2'] = True
-            active_d_ch['d_ch3'] = True
-            active_d_ch['d_ch4'] = True
-            #FIXME: The awg 7000 series has the opportuinity to run only in
-            #       analog mode by switching off the digital channels through
-            #       changing the DAC resolution. Adapt that possibility. Look
-            #       above in the comment.
+            active_ch['d_ch1'] = False
+            active_ch['d_ch2'] = False
+            active_ch['d_ch3'] = False
+            active_ch['d_ch4'] = False
+
+
 
         else:
-            for ana_chan in a_ch:
+            for channel in ch:
 
-                if ana_chan <= self._get_num_a_ch() and \
-                   (ana_chan >= 0):
+                if 'a_ch' in channel:
 
-                    # because 0 = False and 1 = True
-                    active_a_ch[ana_chan] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
+                    ana_chan = int(channel[4:])
 
-                else:
-                    self.logMsg('The device does not support that much analog '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(ana_chan,
-                                                                  self._get_num_a_ch()),
-                                msgType='warning')
+                    if (ana_chan <= self._get_num_a_ch()) and \
+                            (ana_chan >= 0):
 
-            for digi_chan in d_ch:
+                        # because 0 = False and 1 = True
 
-                if digi_chan <= self._get_num_d_ch() and \
-                   (digi_chan >= 0):
+                        if ana_chan == 1:
 
-                    active_d_ch[digi_chan] = True
-                    #FIXME: The awg 7000 series has the opportuinity to run only in
-                    #       analog mode by switching off the digital channels through
-                    #       changing the DAC resolution. Adapt that possibility.
-                    #       Look above in the comment.
+                            #FIXME: check for interleave output turned on
+                            active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan))))
 
-                else:
-                    self.logMsg('The device does not support that much digital '
-                                'channels! A channel number "{0}" was passed, '
-                                'but only "{1}" channels are available!\n'
-                                'Command will be ignored.'.format(digi_chan,
-                                                                  self._get_num_d_ch()),
-                                msgType='warning')
+                        else:
 
-        return active_a_ch, active_d_ch
+                            active_ch[channel] = bool(int(self.ask('OUTPUT{0}:STATE?'.format(ana_chan-1))))
 
+                    else:
+                        self.logMsg('The device does not support that much analog '
+                                    'channels! A channel number "{0}" was passed, '
+                                    'but only "{1}" channels are available!\n'
+                                    'Command will be ignored.'.format(ana_chan,
+                                                                      self._get_num_a_ch()),
+                                    msgType='warning')
+                elif 'd_ch' in channel:
+
+                    digi_chan = int(channel[4:])
+
+                    if (digi_chan <= self._get_num_d_ch()) and \
+                            (digi_chan >= 0):
+
+                        active_ch[channel] = False
+
+
+
+                    else:
+                        self.logMsg('The device does not support that much digital '
+                                    'channels! A channel number "{0}" was passed, '
+                                    'but only "{1}" channels are available!\n'
+                                    'Command will be ignored.'.format(digi_chan,
+                                                                      self._get_num_d_ch()),
+                                    msgType='warning')
+
+        return active_ch
 
     def set_active_channels(self, ch={}):
         """ Set the active channels for the pulse generator hardware.
 
         @param dict ch: dictionary with keys being the analog or digital
                           string generic names for the channels with items being
-                          a boolean value.current_loaded_asset
+                          a boolean value.
 
         @return dict: with the actual set values for active channels for analog
                       and digital values.
@@ -1224,39 +1192,54 @@ class AWG7122C(Base, PulserInterface):
         resolution of the analog channels.
         """
 
-        constraints = self.get_constraints()
+        for channel in ch:
 
-        for ana_chan in a_ch:
-            if ana_chan <= self._get_num_a_ch() and \
-               (ana_chan >= 0):
+            chan = int(channel[4:])
 
-                if a_ch[ana_chan]:
+            if 'a_ch' in channel:
+
+                if (chan <= self._get_num_a_ch()) and \
+                        (chan >= 0):
+
+                    if ch[channel]:
+                        state = 'ON'
+                    else:
+                        state = 'OFF'
+
+                    #FIXME: make a proper check for interleave channel
+                    if chan == 1:
+                        self.tell('OUTPUT{0}:STATE {1}'.format(chan, state))
+                    else:
+                        self.tell('OUTPUT{0}:STATE {1}'.format(chan-1, state))
+            else:
+
+                # self.logMsg('The device does not support that much analog '
+                #             'channels! A channel number "{0}" was passed, but '
+                #             'only "{1}" channels are available!\nCommand will '
+                #             'be ignored.'.format(chan,
+                #                                  self._get_num_a_ch()),
+                #             msgType='warning')
+
+                # adjust the DAC resolution accordingly
+                # if ch[channel]:
+                #     self.tell('SOURCE1:DAC:RESOLUTION ' + str(10 - chan) + '\n')
+                #     self.tell('SOURCE2:DAC:RESOLUTION ' + str(10 - chan) + '\n')
+                if ch[channel]:
                     state = 'ON'
                 else:
                     state = 'OFF'
 
-                self.tell('OUTPUT{0}:STATE {1}'.format(ana_chan, state))
+                if chan == 1:
+                    self.tell('OUTPUT{0}:STATE {1}'.format(chan, state))
+                else:
+                    self.tell('OUTPUT{0}:STATE {1}'.format(chan - 1, state))
 
+        # if d_ch != {}:
+        #     self.logMsg('Digital Channel of the AWG5000 series will always be '
+        #                 'active. This configuration cannot be changed.',
+        #                 msgType='status')
 
-            else:
-                self.logMsg('The device does not support that much analog '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(ana_chan,
-                                                 self._get_num_a_ch()),
-                            msgType='warning')
-
-        if d_ch != {}:
-            self.logMsg('Digital Channel of the AWG5000 series will always be '
-                        'active. This configuration cannot be changed.',
-                        msgType='status')
-
-            #FIXME: The awg 7000 series has the opportuinity to run only in
-            #       analog mode by switching off the digital channels through
-            #       changing the DAC resolution
-            #       adapt that possibility.
-
-        return self.get_active_channels(a_ch=list(a_ch), d_ch=list(d_ch))
+        return self.get_active_channels(ch=list(ch))
 
 
     def get_uploaded_asset_names(self):
@@ -1598,7 +1581,7 @@ class AWG7122C(Base, PulserInterface):
                 if '<DIR>' not in line:
                     file_list.append(line.rsplit(None, 1)[1])
             for filename in file_list:
-                if filename.endswith('.wfm'):
+                if filename.endswith('.wfm') or filename.endswith('.seq'):
                     if filename not in filename_list:
                         filename_list.append(filename)
         return filename_list
