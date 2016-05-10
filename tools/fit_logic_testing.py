@@ -139,24 +139,47 @@ class FitLogic():
 ##############################################################################  
 
         def N15_testing(self):
-            x = np.linspace(2840, 2860, 101)
+            x = np.linspace(2840, 2860, 101)*1e6
                 
             mod,params = self.make_multiplelorentzian_model(no_of_lor=2)
 #            print('Parameters of the model',mod.param_names)
             
             p=Parameters()
             
-            p.add('lorentz0_amplitude',value=-35)
-            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
-            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
-            p.add('lorentz1_amplitude',value=-20)
-            p.add('lorentz1_center',value=p['lorentz0_center'].value+3.03)
+            p.add('lorentz0_amplitude',value=-3e7)
+            p.add('lorentz0_center',value=2850*1e6+abs(np.random.random(1)*8)*1e6)
+#            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)*1e6+0.5*1e6)
+            p.add('lorentz0_sigma',value=0.5*1e6)
+            p.add('lorentz1_amplitude',value=p['lorentz0_amplitude'].value)
+            p.add('lorentz1_center',value=p['lorentz0_center'].value+3.03*1e6)
             p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
             p.add('c',value=100.)
             
             data_noisy=(mod.eval(x=x,params=p) 
                                     + 1.5*np.random.normal(size=x.shape))
-            
+
+            data_smooth_lorentz, offset = self.find_offset_parameter(x, data_noisy)
+
+
+            hf_splitting = 3.03 * 1e6 # Hz
+            #filter should always have a length of approx linewidth 1MHz
+            points_within_1MHz = len(x)/(x.max()-x.min()) * 1e6
+            # filter should have a width of 4 MHz
+            x_filter = np.linspace(0,4*points_within_1MHz,4*points_within_1MHz)
+            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
+                                            (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4),
+                                            (x_filter >= len(x_filter)*3/4)], [1, 0,1])
+        
+            # if the filter is smaller than 5 points a convolution does not make sense
+            if len(lorentz) >= 3:
+                data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),
+                                             mode='constant', cval=data_smooth_lorentz.max())
+                x_axis_min = x[data_convolved.argmin()]-hf_splitting
+                plt.plot(x,data_convolved,'-g')
+
+            else:
+                x_axis_min = x[data_smooth_lorentz.argmin()]-hf_splitting
+
             result=self.make_N15_fit(x,data_noisy)
             print(result.best_values['lorentz0_center'])            
             plt.plot(x,data_noisy)
@@ -165,30 +188,88 @@ class FitLogic():
             plt.show()
             
         def N14_testing(self):
-            x = np.linspace(2850, 2860, 101)
+#            x = np.linspace(2800, 2900, 51)
+#            x = np.linspace(2820, 2920, 1001)*1e6
+            x = np.linspace(2850, 2860, 101)*1e6
                 
             mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
 #            print('Parameters of the model',mod.param_names)
             
             p=Parameters()
             
-            p.add('lorentz0_amplitude',value=-35)
-            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
-            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
-            p.add('lorentz1_amplitude',value=-20)
-            p.add('lorentz1_center',value=p['lorentz0_center'].value+2.15)
+            p.add('lorentz0_amplitude',value=-1e9)
+#            p.add('lorentz0_center',value=2850+abs(np.random.random(1)*8))
+            p.add('lorentz0_center',value=2852*1e6)
+#            p.add('lorentz0_sigma',value=abs(np.random.random(1)*1)+0.5)
+            p.add('lorentz0_sigma',value=1*1e6)
+            p.add('lorentz1_amplitude',value=p['lorentz0_amplitude'].value)
+            p.add('lorentz1_center',value=p['lorentz0_center'].value+2.15*1e6)
             p.add('lorentz1_sigma',value=p['lorentz0_sigma'].value)
-            p.add('lorentz2_amplitude',value=-10.)
-            p.add('lorentz2_center',value=p['lorentz1_center'].value+2.15)
+            p.add('lorentz2_amplitude',value=p['lorentz0_amplitude'].value)
+            p.add('lorentz2_center',value=p['lorentz1_center'].value+2.15*1e6)
             p.add('lorentz2_sigma',value=p['lorentz0_sigma'].value)
-            p.add('c',value=100.)
+            p.add('c',value=15000.)
             
             data_noisy=(mod.eval(x=x,params=p) 
-                                    + 2*np.random.normal(size=x.shape))
+                                    + 50*np.random.normal(size=x.shape))
             
             result=self.make_N14_fit(x,data_noisy)
-#            print(result.best_values['lorentz0_center'])            
-            plt.plot(x,data_noisy)
+            
+            print(result.fit_report())       
+            
+            data_smooth_lorentz, offset=self.find_offset_parameter(x,data_noisy)
+#            
+#            stepsize_in_x=len(x)/(x.max()-x.min())*1e6
+#            print(stepsize_in_x)
+#            print(x.min(),x.max())
+##            stepsize_in_x= 
+#            
+##            lorentz = np.ones(int(stepsize_in_x)+1)
+#            x_filter = np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
+#            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
+#                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
+#                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
+#                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
+#                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
+#                   
+##            print(lorentz)                         
+#            plt.plot(lorentz)
+#            plt.show()
+            
+#            print(x[int(len(lorentz)/5)]-x[0])
+
+#            data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
+#            print(offset)
+            data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+            plt.plot(data_level)
+            plt.show()            
+            
+            amplitude = data_level.min()
+                # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+            x_axis = x            
+            function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+            Integral = function.integral(x_axis[0], x_axis[-1])
+            print(Integral)
+#        
+            lorentz0_sigma = abs(Integral /
+                                 (np.pi * amplitude) )
+                                 
+            lorentz0_amplitude = -1*abs(amplitude*np.pi*lorentz0_sigma)
+
+                                 
+            print(lorentz0_sigma/3.,lorentz0_amplitude/3.)
+#        
+#            numerical_integral_1=numerical_integral_0
+#        
+#            lorentz1_sigma = abs( numerical_integral_1
+#                                  / (np.pi * lorentz1_amplitude)  )
+#        
+#            #esstimate amplitude
+#            lorentz1_amplitude = -1*abs(lorentz1_amplitude*np.pi*lorentz1_sigma)
+#            
+            plt.plot(x,data_noisy)    
+#            plt.plot(x,data_smooth_lorentz,'-g',linewidth=2.0)
+#            plt.plot(x,data_smooth,'-y',linewidth=2.0)
             plt.plot(x,result.init_fit,'-y')
             plt.plot(x,result.best_fit,'-r')
             plt.show()
@@ -1334,7 +1415,7 @@ plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
 #test.N14_testing()
-#test.N15_testing()
+test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()
 #test.twoD_testing()
@@ -1344,7 +1425,7 @@ test=FitLogic()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
-test.sine_testing()
+#test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()

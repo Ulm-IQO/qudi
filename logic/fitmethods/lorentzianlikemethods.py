@@ -25,6 +25,8 @@ from lmfit.models import ConstantModel, LorentzianModel
 from lmfit import Parameters
 
 from scipy.ndimage import filters
+from scipy.interpolate import InterpolatedUnivariateSpline
+
 
 ############################################################################
 #                                                                          #
@@ -478,7 +480,7 @@ def estimate_N14(self, x_axis=None, data=None):
     of a N14 nuclear spin. Here the splitting is set as an expression,
     if the splitting is not exactly 2.15MHz the fit will not work.
 
-    @param array x_axis: x values
+    @param array x_axis: x values in Hz
     @param array data: value of each data point corresponding to
                         x values
 
@@ -489,42 +491,62 @@ def estimate_N14(self, x_axis=None, data=None):
 
     """
 
-    data_smooth_lorentz,offset=self.find_offset_parameter(x_axis,data)
+    data_smooth_lorentz, offset=self.find_offset_parameter(x_axis,data)
 
-    #filter should always have a length of approx linewidth 1MHz
-    stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
-    lorentz=np.ones(int(stepsize_in_x)+1)
-    x_filter=np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
-    lorentz=np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
+    #filter of one dip should always have a length of approx linewidth 1MHz
+    points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+    # filter should have a width of 5MHz
+    x_filter = np.linspace(0, 5*points_within_1MHz, 5*points_within_1MHz)
+    lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
                                     (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
                                     (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
                                     (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
                                     (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
-    data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),mode='constant',cval=data_smooth_lorentz.max())
 
-    parameters=Parameters()
+    # if the filter is smaller than 5 points a convolution does not make sense
+    if len(lorentz) >= 5:
+        data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(), mode='constant', cval=data_smooth_lorentz.max())
+        x_axis_min = x_axis[data_convolved.argmin()]-2.15*1e6
+    else:
+        x_axis_min = x_axis[data_smooth_lorentz.argmin()]-2.15*1e6
 
-    #            (Name,                  Value,          Vary, Min,                        Max,                         Expr)
-    parameters.add('lorentz0_amplitude', value=data_smooth_lorentz.min()-offset,         max=-1e-6)
-    parameters.add('lorentz0_center',    value=x_axis[data_smooth.argmin()]-2.15)
-    parameters.add('lorentz0_sigma',     value=0.5,                                      min=0.01,    max=4.)
-    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,   max=-1e-6)
-    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15, expr='lorentz0_center+2.15')
-    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,       min=0.01,  max=4.,expr='lorentz0_sigma')
-    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value,   max=-1e-6)
-    parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15, expr='lorentz0_center+4.3')
-    parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value,       min=0.01,  max=4.,expr='lorentz0_sigma')
-    parameters.add('c',                  value=offset)
+    parameters = Parameters()
+
+    data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+    minimum_level = data_level.min()
+    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = function.integral(x_axis[0], x_axis[-1])
+
+    sigma = abs(Integral /(np.pi * minimum_level) )
+
+    amplitude = -1*abs(minimum_level*np.pi*sigma)
+
+    linewidth = sigma
+    minimal_linewidth = x_axis[1]-x_axis[0]
+    maximal_linewidth = x_axis[-1]-x_axis[0]
+
+    #            (Name,                  Value,          Vary, Min,             Max,           Expr)
+    parameters.add('lorentz0_amplitude', value=amplitude, max=0.0)
+    parameters.add('lorentz0_center',    value=x_axis_min,)
+    parameters.add('lorentz0_sigma',     value=linewidth, min=minimal_linewidth,max=maximal_linewidth)
+    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=0.0)
+    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6, expr='lorentz0_center+2.15*1e6')
+    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
+    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value, max=0.0)
+    parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6, expr='lorentz0_center+4.3*1e6')
+    parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
+    parameters.add('c',                  value=data_smooth_lorentz.max())
 
     return parameters
 
 
 def make_N14_fit(self, axis=None, data=None, add_parameters=None):
-    """ This method performes a fit on the provided data where a N14
-    hyperfine interaction of 2.15 MHz is taken into accound.
+    """ This method performs a fit on the provided data where a N14
+    hyperfine interaction of 2.15 MHz is taken into account.
 
     @param array [] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dictionary add_parameters: Additional parameters
 
     @return lmfit.model.ModelFit result: All parameters provided about
@@ -535,17 +557,16 @@ def make_N14_fit(self, axis=None, data=None, add_parameters=None):
 
     """
 
-    parameters=self.estimate_N14(axis, data)
+    parameters = self.estimate_N14(axis, data)
 
     # redefine values of additional parameters
     if add_parameters is not None:
-        parameters=self._substitute_parameter(parameters=parameters,
-                                              update_dict=add_parameters)
+        parameters = self._substitute_parameter(parameters=parameters,
+                                                update_dict=add_parameters)
 
-    mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
+    mod, params = self.make_multiplelorentzian_model(no_of_lor=3)
 
-    result=mod.fit(data=data, x=axis, params=parameters)
-
+    result = mod.fit(data=data, x=axis, params=parameters)
 
     return result
 
@@ -561,7 +582,7 @@ def estimate_N15(self, x_axis=None, data=None):
     of a N15 nuclear spin. Here the splitting is set as an expression, if the
     splitting is not exactly 3.03MHz the fit will not work.
 
-    @param array x_axis: x values
+    @param array x_axis: x values in Hz
     @param array data: value of each data point corresponding to
                         x values
 
@@ -574,26 +595,46 @@ def estimate_N15(self, x_axis=None, data=None):
 
     data_smooth_lorentz, offset = self.find_offset_parameter(x_axis, data)
 
-    hf_splitting=3.03
+    hf_splitting = 3.03 * 1e6 # Hz
     #filter should always have a length of approx linewidth 1MHz
-    stepsize_in_x=1/((x_axis.max()-x_axis.min())/len(x_axis))
-    lorentz=np.zeros(int(stepsize_in_x)+1)
-    x_filter = np.linspace(0,4*stepsize_in_x,4*stepsize_in_x)
+    points_within_1MHz = len(x_axis)/(x_axis.max()-x_axis.min()) * 1e6
+    # filter should have a width of 4 MHz
+    x_filter = np.linspace(0,4*points_within_1MHz,4*points_within_1MHz)
     lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/4),
                                     (x_filter >= len(x_filter)/4)*(x_filter<len(x_filter)*3/4),
                                     (x_filter >= len(x_filter)*3/4)], [1, 0,1])
-    data_smooth = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),
+
+    # if the filter is smaller than 5 points a convolution does not make sense
+    if len(lorentz) >= 3:
+        data_convolved = filters.convolve1d(data_smooth_lorentz, lorentz/lorentz.sum(),
                                      mode='constant', cval=data_smooth_lorentz.max())
+        x_axis_min = x_axis[data_convolved.argmin()]-hf_splitting/2.
+    else:
+        x_axis_min = x_axis[data_smooth_lorentz.argmin()]
+
+    data_level = data_smooth_lorentz - data_smooth_lorentz.max()
+    minimum_level = data_level.min()
+    # integral of data corresponds to sqrt(2) * Amplitude * Sigma
+    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = function.integral(x_axis[0], x_axis[-1])
+
+    sigma = abs(Integral /(np.pi * minimum_level) )
+
+    amplitude = -1*abs(minimum_level*np.pi*sigma)
+
+    minimal_sigma = x_axis[1]-x_axis[0]
+    maximal_sigma = x_axis[-1]-x_axis[0]
+
 
     parameters = Parameters()
 
-    parameters.add('lorentz0_amplitude', value=data_smooth.min()-offset,max=-1e-6)
-    parameters.add('lorentz0_center', value=x_axis[data_smooth.argmin()]-hf_splitting/2.)
-    parameters.add('lorentz0_sigma', value=0.5, min=0.01, max=4.)
-    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,max=-1e-6)
-    parameters.add('lorentz1_center', value=parameters['lorentz0_center'].value+hf_splitting, expr='lorentz0_center+3.03')
-    parameters.add('lorentz1_sigma', value=parameters['lorentz0_sigma'].value,min=0.01,max=4., expr='lorentz0_sigma')
-    parameters.add('c', value=offset)
+    parameters.add('lorentz0_amplitude', value=amplitude/2.,                                             max=0.0)
+    parameters.add('lorentz0_center',    value=x_axis_min)
+    parameters.add('lorentz0_sigma',     value=sigma/2.,                              min=minimal_sigma, max=maximal_sigma)
+    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                   max=-1e-6)
+    parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+hf_splitting,                             expr='lorentz0_center+3.03*1e6')
+    parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value,    min=minimal_sigma, max=maximal_sigma,  expr='lorentz0_sigma')
+    parameters.add('c',                  value=data_smooth_lorentz.max())
 
     return parameters
 
@@ -602,7 +643,7 @@ def make_N15_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a fit on the provided data where a N14
     hyperfine interaction of 3.03 MHz is taken into accound.
 
-    @param array [] axis: axis values
+    @param array [] axis: axis values in Hz
     @param array[]  data: data
     @param dictionary add_parameters: Additional parameters
 
