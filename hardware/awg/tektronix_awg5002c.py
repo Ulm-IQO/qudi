@@ -1067,6 +1067,7 @@ class AWG5002C(Base, PulserInterface):
             active_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
             active_ch['a_ch2'] = bool(int(self.ask('OUTPUT2:STATE?')))
 
+
             # For the AWG5000 series, the resolution of the DAC for the analog
             # channel is fixed to 14bit. Therefore the digital channels are
             # always active and cannot be deactivated. For other AWG devices the

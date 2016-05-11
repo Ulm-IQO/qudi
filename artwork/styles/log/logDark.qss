@@ -17,15 +17,15 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 /*
 
-body {color: #FFF; font-family: sans;}
-a {color: #0FF;}
+body {color: #f8f8f2; font-family: sans;}
+a {color: #8be9fd;}
 .entry {}
-.error .message {color: #F11}
-.warning .message {color: #F90}
-.user .message {color: #F1F}
-.thread .message {color: #11F}
-.status .message {color: #1F1}
+.error .message {color: #ff5555}
+.warning .message {color: #ffb86c}
+.user .message {color: #bd93f9}
+.thread .message {color: #ff79c6}
+.status .message {color: #50fa7b}
 .logExtra {margin-left: 40px;}
 .traceback {color: #999; height: 0px;}
-.timestamp {color: #FFF;}
+.timestamp {color: #f8f8f2;}
 

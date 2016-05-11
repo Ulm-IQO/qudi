@@ -20,10 +20,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
 """
 
-import numpy as np
-from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
-from lmfit import Parameters
-from lmfit import minimize
+from lmfit.models import Model
 
 ############################################################################
 #                                                                          #
@@ -33,6 +30,7 @@ from lmfit import minimize
 
 def make_constant_model(self, prefix=None):
     """ This method creates a model of a constant model.
+    @param string prefix: variable prefix
 
     @return tuple: (object model, object params)
 
@@ -61,10 +59,8 @@ def make_constant_model(self, prefix=None):
 
         return offset + 0.0 * x
 
-    #Todo: Check if prefix is string
     if prefix is not None:
         model = Model(constant_function, prefix=prefix)
-        print(type(prefix))
     else:
         model = Model(constant_function)
     params = model.make_params()
@@ -129,7 +125,7 @@ def make_slope_model(self):
         """
         Function of a constant value.
         @param x: variable variable
-        @param amplitude: independent variable - e.g. amplitude
+        @param slope: independent variable - slope
 
         @return: slope function: in order to use it as a model
         """
@@ -173,8 +169,7 @@ def make_linear_model(self):
     slope, slope_param = self.make_slope_model()
     constant_x, constant_x_param = self.make_constant_model(prefix='x_')
     constant_y, constant_y_param = self.make_constant_model(prefix='y_')
-    
-    
+
     model = slope * (Model(linear_function)+ constant_x) +constant_y
     params = model.make_params()
 
