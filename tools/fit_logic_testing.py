@@ -219,22 +219,22 @@ class FitLogic():
             
             data_smooth_lorentz, offset=self.find_offset_parameter(x,data_noisy)
 #            
-#            stepsize_in_x=len(x)/(x.max()-x.min())*1e6
-#            print(stepsize_in_x)
-#            print(x.min(),x.max())
-##            stepsize_in_x= 
-#            
-##            lorentz = np.ones(int(stepsize_in_x)+1)
-#            x_filter = np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
-#            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
-#                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
-#                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
-#                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
-#                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
-#                   
-##            print(lorentz)                         
-#            plt.plot(lorentz)
-#            plt.show()
+            stepsize_in_x=len(x)/(x.max()-x.min())*1e6
+            print(stepsize_in_x)
+            print(x.min(),x.max())
+#            stepsize_in_x= 
+            
+#            lorentz = np.ones(int(stepsize_in_x)+1)
+            x_filter = np.linspace(0,5*stepsize_in_x,5*stepsize_in_x)
+            lorentz = np.piecewise(x_filter, [(x_filter >= 0)*(x_filter<len(x_filter)/5),
+                                            (x_filter >= len(x_filter)/5)*(x_filter<len(x_filter)*2/5),
+                                            (x_filter >= len(x_filter)*2/5)*(x_filter<len(x_filter)*3/5),
+                                            (x_filter >= len(x_filter)*3/5)*(x_filter<len(x_filter)*4/5),
+                                            (x_filter >= len(x_filter)*4/5)], [1, 0,1,0,1])
+                   
+#            print(lorentz)                         
+            plt.plot(lorentz)
+            plt.show()
             
 #            print(x[int(len(lorentz)/5)]-x[0])
 
@@ -1414,8 +1414,8 @@ class FitLogic():
 plt.rcParams['figure.figsize'] = (10,5)
                        
 test=FitLogic()
-#test.N14_testing()
-test.N15_testing()
+test.N14_testing()
+#test.N15_testing()
 #test.oneD_testing()
 #test.gaussian_testing()
 #test.twoD_testing()
