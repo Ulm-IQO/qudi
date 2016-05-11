@@ -1,6 +1,8 @@
 # How to use the QuDi Jupyter Notebook {#jupyterkernel}
 
 1. Install the QuDi Jupyter kernel
+  * Ensure that your Anaconda environment or Python installation has
+   up-to-date dependencies
   * In a terminal, go to the `tools` folder in the `qudi` folder
   * Eventually do `activate qudi` to activate the conda environment
   * Do `python qudikernel.py install`
@@ -8,6 +10,7 @@
 2. Configure QuDi
   * Ensure that your QuDi configuration file contains the following 
   entry in the `logic` section:
+
 ```
     kernellogic:
         module.Class: 'kernel.kernellogic.QudiKernelLogic'
