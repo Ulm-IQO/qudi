@@ -188,8 +188,8 @@ class FitLogic():
             plt.show()
             
         def N14_testing(self):
-#            x = np.linspace(2800, 2900, 51)
-#            x = np.linspace(2820, 2920, 1001)*1e6
+            x = np.linspace(2800, 2900, 51)
+            x = np.linspace(2820, 2920, 1001)*1e6
             x = np.linspace(2850, 2860, 101)*1e6
                 
             mod,params = self.make_multiplelorentzian_model(no_of_lor=3)
@@ -212,7 +212,13 @@ class FitLogic():
             
             data_noisy=(mod.eval(x=x,params=p) 
                                     + 50*np.random.normal(size=x.shape))
-            
+                                    
+            if True:
+                data = np.loadtxt("20160511-1011-17_ODMR_data.dat")
+                x=data[:,0]
+                data_noisy = data[:,1]
+                print(data_noisy)
+                
             result=self.make_N14_fit(x,data_noisy)
             
             print(result.fit_report())       
@@ -270,7 +276,7 @@ class FitLogic():
             plt.plot(x,data_noisy)    
 #            plt.plot(x,data_smooth_lorentz,'-g',linewidth=2.0)
 #            plt.plot(x,data_smooth,'-y',linewidth=2.0)
-            plt.plot(x,result.init_fit,'-y')
+#            plt.plot(x,result.init_fit,'-y')
             plt.plot(x,result.best_fit,'-r')
             plt.show()
 
