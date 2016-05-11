@@ -33,7 +33,7 @@ class OptimizerLogic(GenericLogic):
     """This is the Logic class for optimizing scanner position on bright features.
     """
 
-    _modclass = 'trackerlogic'
+    _modclass = 'optimizerlogic'
     _modtype = 'logic'
 
     # declare connectors
