@@ -90,23 +90,24 @@ def make_poissonian_model(self, no_of_functions=None):
         return amplitude + 0.0 * x
 
     if no_of_functions is None or no_of_functions == 1:
-        model = ( Model(poisson_function,prefix='poissonian_') *
-                  Model(amplitude_function,prefix='poissonian_') )
+        model = ( Model(poisson_function, prefix='poissonian_') *
+                  Model(amplitude_function, prefix='poissonian_') )
     else:
-        model = ( Model(poisson_function,prefix='poissonian{}_'.format('0')) *
-                Model(amplitude_function,prefix='poissonian{}_'.format('0')))
+        model = (Model(poisson_function, prefix='poissonian{}_'.format('0')) *
+                 Model(amplitude_function, prefix='poissonian{}_'.format('0')))
         for ii in range(no_of_functions-1):
-            model += (Model(poisson_function,prefix='poissonian{}_'.format(ii+1)) *
-                    Model(amplitude_function,prefix='poissonian{}_'.format(ii+1)))
+            model += (Model(poisson_function, prefix='poissonian{}_'.format(ii+1)) *
+                      Model(amplitude_function, prefix='poissonian{}_'.format(ii+1)))
     params = model.make_params()
 
     return model, params
+
 
 def make_poissonian_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a poissonian fit on the provided data.
 
     @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -172,8 +173,9 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
 
     # a gaussian filter is appropriate due to the well approximation of poisson
     # distribution
-    gaus = gaussian(10,10)
-    data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
+    # gaus = gaussian(10,10)
+    # data_smooth = filters.convolve1d(data, gaus/gaus.sum(), mode='mirror')
+    data_smooth = self.gaussian_smoothing(data=data, filter_len=10, filter_sigma=10)
 
     # set parameters
     mu = x_axis[np.argmax(data_smooth)]
@@ -183,12 +185,11 @@ def estimate_poissonian(self, x_axis=None, data=None, params=None):
     return error, params
 
 
-
 def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a double poissonian fit on the provided data.
 
     @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -207,8 +208,6 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
 
     error, params = self.estimate_doublepoissonian(axis, data, params)
 
-    # TODO: check if we have integers
-
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
@@ -217,7 +216,7 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = mod_final.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The poissonian fit did not work. Check if a poisson '
+        self.logMsg('The double poissonian fit did not work. Check if a poisson '
                     'distribution is needed or a normal approximation can be'
                     'used. For values above 10 a normal/ gaussian distribution'
                     ' is a good approximation.',
@@ -234,9 +233,8 @@ def make_doublepoissonian_fit(self, axis=None, data=None, add_parameters=None):
 ############################################################################
 
 def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
-                                         threshold_fraction=0.4,
-                                         minimal_threshold=0.1,
-                                         sigma_threshold_fraction=0.2):
+                              threshold_fraction=0.4, minimal_threshold=0.1,
+                              sigma_threshold_fraction=0.2):
     """ This method provides a an estimator for a double poissonian fit
     with the parameters coming from the physical properties of an experiment
     done in gated counter:
@@ -248,8 +246,8 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
     @param array data: value of each data point corresponding to
                         x values
     @param Parameters object params: Needed parameters
-    @param float threshold : Threshold to find second gaussian
-    @param float minimal_threshold: Threshold is lowerd to minimal this
+    @param float threshold_fraction : Threshold to find second gaussian
+    @param float minimal_threshold: Threshold is lowered to minimal this
                                     value as a fraction
     @param float sigma_threshold_fraction: Threshold for detecting
                                            the end of the peak
@@ -300,7 +298,7 @@ def estimate_doublepoissonian(self, x_axis=None, data=None, params=None,
 
 
     params['poissonian0_mu'].value = x_axis[dip0_arg]
-    params['poissonian0_amplitude'].value = ( data[dip0_arg] /
+    params['poissonian0_amplitude'].value = (data[dip0_arg] /
                   self.poisson(x_axis[dip0_arg],x_axis[dip0_arg]) )
 
 

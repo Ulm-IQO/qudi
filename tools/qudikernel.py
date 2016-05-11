@@ -25,6 +25,8 @@ import time
 import json
 import signal
 import atexit
+import shutil
+import tempfile
 
 from parentpoller import ParentPollerUnix, ParentPollerWindows
 
@@ -53,10 +55,10 @@ class QuDi:
         print('Kernel up!')
 
     def stopKernel(self):
-        print('Shutting down: ', self.kernelthread)
+        print('Shutting down: ', self.kernelid)
         sys.stdout.flush()
         m = self.getModule('kernellogic')
-        if self.kernelindex is not None:
+        if self.kernelid is not None:
             m.stopKernel(self.kernelid)
             print('Down!')
             sys.stdout.flush()
@@ -74,15 +76,61 @@ class QuDi:
     def exit(self):
         sys.exit()
 
+
+def install_kernel():
+        from jupyter_client.kernelspec import KernelSpecManager
+        print('Installing QuDi kernel.')
+
+        try:
+            # prepare temporary kernelspec folder
+            tempdir = tempfile.mkdtemp(suffix='_kernels')
+            path = os.path.join(tempdir, 'qudi')
+            resourcepath = os.path.join(path, 'resources')
+            kernelpath = os.path.abspath(__file__)
+            os.mkdir(path)
+            os.mkdir(resourcepath)
+
+            kernel_dict = {
+                'argv': [sys.executable, kernelpath, '{connection_file}'],
+                'display_name': 'QuDi',
+                'language': 'python',
+                }
+            # write the kernelspe file
+            with open(os.path.join(path, 'kernel.json'), 'w') as f:
+                json.dump(kernel_dict, f, indent=1)
+
+            # copy logo
+            logopath = os.path.abspath(os.path.join(os.path.dirname(kernelpath), '..', 'artwork', 'logo'))
+            shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
+            shutil.copy(os.path.join(logopath, 'logo-qudi-32x32.png'), os.path.join(resourcepath, 'logo-32x32.png'))
+
+            # install kernelspec folder
+            kernel_spec_manager = KernelSpecManager()
+            dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
+            print('Installed kernelspec qudi in {}'.format(dest))
+        except OSError as e:
+            if e.errno == errno.EACCES:
+                print(e, file=sys.stderr)
+                self.exit(1)    
+        finally:
+            if os.path.isdir(tempdir):
+                shutil.rmtree(tempdir)
+
+
 if __name__ == '__main__':
-    q = QuDi()
-    q.initSignal()
-    q.initPoller()
-    q.connect()
-    q.startKernel(sys.argv[1])
-    atexit.register(q.stopKernel)
-    print('Sleeping.')
-    q.poller.run()
-    print('Quitting.')
-    sys.stdout.flush()
-    
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'install':
+            install_kernel()
+        else:
+            q = QuDi()
+            q.initSignal()
+            q.initPoller()
+            q.connect()
+            q.startKernel(sys.argv[1])
+            atexit.register(q.stopKernel)
+            print('Sleeping.')
+            q.poller.run()
+            print('Quitting.')
+            sys.stdout.flush()
+    else:
+        print('qudikernel usage is {0} <connectionfile> or {0} install'.format(sys.argv[0]), file=sys.stderr)

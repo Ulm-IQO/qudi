@@ -712,21 +712,22 @@ QAbstractSpinBox {
     background-color: #201F1F;
     color: silver;
     border-radius: 2px;
-    min-width: 75px;
+    /*min-width: 75px;
+    */
 }
 
 QAbstractSpinBox:up-button
 {
     background-color: transparent;
     subcontrol-origin: border;
-    subcontrol-position: center right;
+    subcontrol-position: top right;
 }
 
 QAbstractSpinBox:down-button
 {
     background-color: transparent;
     subcontrol-origin: border;
-    subcontrol-position: center left;
+    subcontrol-position: bottom right;
 }
 
 QAbstractSpinBox::up-arrow,QAbstractSpinBox::up-arrow:disabled,QAbstractSpinBox::up-arrow:off {

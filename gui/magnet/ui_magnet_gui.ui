@@ -202,14 +202,14 @@ at each point?</string>
                     </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_5">
+                    <widget class="QLabel" name="align_2d_fluorescence_axes0_range_Label">
                      <property name="text">
                       <string>Range:</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_6">
+                    <widget class="QLabel" name="align_2d_fluorescence_axes0_step_Label">
                      <property name="text">
                       <string>Step:</string>
                      </property>
@@ -253,7 +253,7 @@ at each point?</string>
                     <widget class="QComboBox" name="align_2d_fluorescence_axes1_name_ComboBox"/>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_4">
+                    <widget class="QLabel" name="align_2d_fluorescence_axes1_step_Label">
                      <property name="text">
                       <string>Step:</string>
                      </property>
@@ -270,10 +270,14 @@ at each point?</string>
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_fluorescence_axes1_step_DSpinBox"/>
+                    <widget class="QDoubleSpinBox" name="align_2d_fluorescence_axes1_step_DSpinBox">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                    </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_3">
+                    <widget class="QLabel" name="align_2d_fluorescence_axes1_range_Label">
                      <property name="text">
                       <string>Range:</string>
                      </property>

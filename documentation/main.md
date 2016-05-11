@@ -2,9 +2,11 @@
 
 
 * [License](@ref license)
-* [Installation](@ref installation)
-* [Required packages](@ref required-python-packages)
-* [Get Markdown Plugin for documentation](@ref write-markdown)
+* Setup
+    * [Installation](@ref installation)
+    * [Required packages](@ref required-python-packages)
+    * [Jupyter Notebook integration](@ref jupyterkernel)
+    * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)

@@ -394,16 +394,7 @@ def estimate_doublegaussian_gatedcounter(self, x_axis=None, data=None, params=No
 
     error = 0
 
-    # make the filter an extra function shared and usable for other functions
-    if len(x_axis) < 20.:
-        len_x = 5
-    elif len(x_axis) >= 100.:
-        len_x = 10
-    else:
-        len_x = int(len(x_axis) / 10.) + 1
-
-    gaus = gaussian(len_x, len_x)
-    data_smooth = filters.convolve1d(data, gaus / gaus.sum(), mode='mirror')
+    data_smooth = self.gaussian_smoothing(data=data)
 
     # search for double gaussian
 
