@@ -10,6 +10,7 @@ dependencies:
 - ipython=4.0.1=py34_0
 - ipython_genutils=0.1.0=py34_0
 - ipywidgets=4.1.0=py34_0
+- jedi=0.9.0=py34_0
 - jinja2=2.8=py34_0
 - jpeg=8d=vc10_0
 - jsonschema=2.4.0=py34_0
