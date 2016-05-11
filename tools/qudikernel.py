@@ -55,10 +55,10 @@ class QuDi:
         print('Kernel up!')
 
     def stopKernel(self):
-        print('Shutting down: ', self.kernelthread)
+        print('Shutting down: ', self.kernelid)
         sys.stdout.flush()
         m = self.getModule('kernellogic')
-        if self.kernelindex is not None:
+        if self.kernelid is not None:
             m.stopKernel(self.kernelid)
             print('Down!')
             sys.stdout.flush()

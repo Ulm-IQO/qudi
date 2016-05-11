@@ -131,6 +131,7 @@ class ZMQDisplayHook:
         content = {
             'execution_count': self.session.execution_count,
             'data': {"text/plain": repr(obj)},
+            'metadata': {}
             }
         self.session.send(
             self.stream,
@@ -470,9 +471,10 @@ class QZMQKernel(QtCore.QObject):
         completions = script.completions()
         matches =  [c.name_with_symbols for c in completions]
         rests = [len(c.name_with_symbols) - len(c.complete) for c in completions]
+        replace_start = cursor_pos - rests[0] if len(rests) > 0 else cursor_pos
         content = {
             'matches' : matches,
-            'cursor_start' : cursor_pos - rests[0],
+            'cursor_start' : replace_start,
             'cursor_end' : cursor_pos,
             'status' : 'ok'
             }
