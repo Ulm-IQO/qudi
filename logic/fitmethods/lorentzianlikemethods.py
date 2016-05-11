@@ -527,13 +527,13 @@ def estimate_N14(self, x_axis=None, data=None):
     maximal_linewidth = x_axis[-1]-x_axis[0]
 
     #            (Name,                  Value,          Vary, Min,             Max,           Expr)
-    parameters.add('lorentz0_amplitude', value=amplitude, max=0.0)
+    parameters.add('lorentz0_amplitude', value=amplitude, max=-1e-6)
     parameters.add('lorentz0_center',    value=x_axis_min,)
     parameters.add('lorentz0_sigma',     value=linewidth, min=minimal_linewidth,max=maximal_linewidth)
-    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=0.0)
+    parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
     parameters.add('lorentz1_center',    value=parameters['lorentz0_center'].value+2.15*1e6, expr='lorentz0_center+2.15*1e6')
     parameters.add('lorentz1_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
-    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value, max=0.0)
+    parameters.add('lorentz2_amplitude', value=parameters['lorentz0_amplitude'].value, max=-1e-6)
     parameters.add('lorentz2_center',    value=parameters['lorentz1_center'].value+2.15*1e6, expr='lorentz0_center+4.3*1e6')
     parameters.add('lorentz2_sigma',     value=parameters['lorentz0_sigma'].value, min=minimal_linewidth,max=maximal_linewidth,expr='lorentz0_sigma')
     parameters.add('c',                  value=data_smooth_lorentz.max())
@@ -628,7 +628,7 @@ def estimate_N15(self, x_axis=None, data=None):
 
     parameters = Parameters()
 
-    parameters.add('lorentz0_amplitude', value=amplitude/2.,                                             max=0.0)
+    parameters.add('lorentz0_amplitude', value=amplitude/2.,                                             max=-1e-6)
     parameters.add('lorentz0_center',    value=x_axis_min)
     parameters.add('lorentz0_sigma',     value=sigma/2.,                              min=minimal_sigma, max=maximal_sigma)
     parameters.add('lorentz1_amplitude', value=parameters['lorentz0_amplitude'].value,                   max=-1e-6)
