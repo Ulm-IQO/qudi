@@ -441,8 +441,8 @@ class ODMRLogic(GenericLogic):
         @return list: with string entries denoting the names of the fit.
         """
         return ['No Fit', 'Lorentzian', 'Double Lorentzian',
-                'Double Lorentzian with fixed splitting', 'N14', 'N15',
-                'Double Gaussian']
+                'N14', 'N15',
+                'Double Gaussian'] #'Double Lorentzian with fixed splitting',
 
 
     def do_fit(self, fit_function=None):
@@ -536,7 +536,7 @@ class ODMRLogic(GenericLogic):
             p = Parameters()
 
             #TODO: insert this in gui config of ODMR
-            splitting_from_gui_config = 3.03 #in MHz
+            self.splitting_from_gui_config = 3.03 #in MHz
 
             error,              \
             lorentz0_amplitude, \
