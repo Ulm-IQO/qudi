@@ -61,53 +61,160 @@ class APTMotor():
     hwtype_dict['HWTYPE_L490MZ'] = 43   # L490MZ Integrated Driver/Labjack
     hwtype_dict['HWTYPE_BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
 
+
+    # the error code is also comparable to the APT server documentation.
     error_code= {}
-    error_code[10000] = 'Unknown error'
-    error_code[10001] = 'Internal error'
-    error_code[10002] = 'Call has failed'
-    error_code[10003] = 'Invalid or out-of-range parameter'
-    error_code[10051] = 'Error while accessing hard disk'
-    error_code[10052] = 'Error while accessing registry'
-    error_code[10053] = 'Internal memory allocation or de-allocation error'
-    error_code[10054] = 'COM system error'
-    error_code[10055] = 'USB communication error'
-    error_code[10100] = 'Unknown serial number'
-    error_code[10101] = 'Duplicate Serial Number'
-    error_code[10102] = 'Duplicate Device Identifier'
-    error_code[10103] = 'Invalid message source'
-    error_code[10104] = 'Message received with unknown identifier'
-    error_code[10106] = 'Invalid serial number'
-    error_code[10107] = 'Invalid message destination ident'
-    error_code[10108] = 'Invalid index'
-    error_code[10109] = 'Control is currently not communicating'
-    error_code[10110] = 'Hardware fault or illegal command or parameter has been sent to hardware'
-    error_code[10111] = 'Time out while waiting for hardware unit to respond'
-    error_code[10112] = 'Incorrect firmware version'
-    error_code[10115] = 'Your hardware is not compatible'
-    error_code[10150] = 'No stage has been assigned'
-    error_code[10151] = 'Internal error when using an encoded stage'
-    error_code[10152] = 'Internal error when using an encoded stage'
-    error_code[10153] = 'Call only applicable to encoded stages'
+    # General Error code:
+    error_code[10000] = 'An unknown Server error has occurred. '
+    error_code[10001] = 'A Server internal error has occurred. '
+    error_code[10002] = 'A Server call has failed. '
+    error_code[10003] = 'An attempt has been made to pass a parameter that is ' \
+                        'invalid or out of range. In the case of motor ' \
+                        'commands, this error may occur when a move is ' \
+                        'requested that exceeds the stage travel or exceeds ' \
+                        'the calibration data.'
+    error_code[10004] = 'An attempt has been made to save or load control ' \
+                        'parameters to the registry (using the SaveParamSet ' \
+                        'or LoadParamSet methods) when the unit serial number ' \
+                        'has not been specified.'
+    # PC System:
+    error_code[10050] = 'An error has occurred whilst accessing the disk. ' \
+                        'Check that the drive is not full, missing or ' \
+                        'corrupted.'
+    error_code[10051] = 'An error has occurred with the ethernet connections ' \
+                        'or the windows sockets. '
+    error_code[10052] = 'An error has occurred whilst accessing the ' \
+                        'registry. '
+    error_code[10053] = 'An internal memory allocation error or ' \
+                        'de-allocation error has occurred.'
+    error_code[10054] = 'An error has occurred with the COM system. ' \
+                        'Restart the program.'
+    error_code[10055] = 'An error has occurred with the USB communications.'
+
+    # Rack and USB Units:
+    error_code[10100] = 'A serial number has been specified that is unknown ' \
+                        'to the server.'
+    error_code[10101] = 'A duplicate serial number has been detected. ' \
+                        'Serial numbers are required to be unique.'
+    error_code[10102] = 'A duplicate device identifier has been detected.'
+    error_code[10103] = 'An invalid message source has been detected.'
+    error_code[10104] = 'A message has been received with an unknown ' \
+                        'identifier.'
+    error_code[10105] = 'An unknown hardware identifier has been encountered.'
+    error_code[10106] = 'An invalid serial number has been detected.'
+    error_code[10107] = 'An invalid message destination ident has been detected.'
+    error_code[10108] = 'An invalid index parameter has been passed.'
+    error_code[10109] = 'A software call has been made to a control which is ' \
+                        'not currently communicating with any hardware. This ' \
+                        'may be because the control has not been started or ' \
+                        'may be due to an incorrect serial number or missing ' \
+                        'hardware. '
+    error_code[10110] = 'A notification or response message has been ' \
+                        'received from a hardware unit. This may be indicate ' \
+                        'a hardware fault or that an illegal ' \
+                        'command/parameter has been sent to the hardware.'
+    error_code[10111] = 'A time out has occurred while waiting for a ' \
+                        'hardware unit to respond. This may be due to ' \
+                        'communications problems or a hardware fault. '
+    error_code[10112] = 'Some functions are applicable only to later ' \
+                        'versions of embedded code. This error is returned ' \
+                        'when a software call is made to a unit with an ' \
+                        'incompatible version of embedded code installed.'
+    error_code[10115] = 'Some functions are applicable only to later versions ' \
+                        'of hardware. This error is returned when a software ' \
+                        'call is made to an incompatible version of hardware.'
+
+    # Motors:
+    error_code[10150] = 'The GetStageAxisInfo method has been called when ' \
+                        'no stage has been assigned. '
+    error_code[10151] = 'An internal error has occurred when using an ' \
+                        'encoded stage.'
+    error_code[10152] = 'An internal error has occurred when using an ' \
+                        'encoded stage. '
+    error_code[10153] = 'A software call applicable only to encoded stages ' \
+                        'has been made to a non-encoded stage.'
 
     # The status is encodes in a 32bit word. Some bits in that word have no
     # assigned meaning, or their meaning could not be deduced from the manual.
     # The known status bits are stated below. The current status can also be a
     # combination of status bits. Therefore you have to check with an AND
-    # bitwise comparison, which status your device has.
+    # bitwise comparison, which status your device has.  The bit flags are
+    # returned in a single 32 bit integer parameter and can provide additional
+    # useful status information for client application development.
     status_code = {}
-    status_code[1] = '0x00000001: forward hardware limit switch is active'
-    status_code[2] = '0x00000002: reverse hardware limit switch is active'
-    status_code[16] = '0x00000010: in motion, moving forward'
-    status_code[32] = '0x00000020: in motion, moving reverse'
-    status_code[64] = '0x00000040: in motion, jogging forward'
-    status_code[128] = '0x00000080: in motion, jogging reverse'
-    status_code[512] = '0x00000200: in motion, homing'
-    status_code[1024] = '0x00000400: homed (homing has been completed)'
-    status_code[4096] = '0x00001000: tracking'
-    status_code[8192] = '0x00002000: settled'
-    status_code[16384] = '0x00004000: motion error (excessive position error)'
-    status_code[16777216] = '0x01000000: motor current limit reached'
-    status_code[2147483648] = '0x80000000: channel is enabled'
+    # dict key as bit number =  'hex value, bit number,  description'
+    status_code[1] = '0x00000001, 1, forward hardware limit switch is active. ' \
+                     'CW hardware limit switch (0 - no contact, 1 - contact).'
+    status_code[2] = '0x00000002, 2, reverse hardware limit switch is active. ' \
+                     'CCW hardware limit switch (0 - no contact, 1 - contact).'
+    status_code[3] = '0x00000004, 3, CW software limit switch (0 - no ' \
+                     'contact, 1 - contact). Not applicable to Part Number ' \
+                     'ODC001 and TDC001 controllers'
+    status_code[4] = '0x00000008, 4, CCW software limit switch (0 - no ' \
+                     'contact, 1 - contact). Not applicable to Part Number ' \
+                     'ODC001 and TDC001 controllers'
+    status_code[5] = '0x00000010, 5, in motion, moving forward, Motor shaft ' \
+                     'moving clockwise (1 - moving, 0 - stationary).'
+    status_code[6] = '0x00000020, 6, in motion, moving reverse, Motor shaft ' \
+                     'moving counterclockwise (1 - moving, 0 - stationary).'
+    status_code[7] = '0x00000040, 7, in motion, jogging forward, Shaft ' \
+                      'jogging clockwise (1 - moving, 0 - stationary).'
+    status_code[8] = '0x00000080, 8, in motion, jogging reverse, Shaft ' \
+                     'jogging counterclockwise (1 - moving, 0 - stationary).'
+    status_code[9] = '0x00000100, 9, Motor connected (1 - connected, 0 - ' \
+                     'not connected). Not applicable to Part Number BMS001 ' \
+                     'and BMS002 controllers. Not applicable to Part Number ' \
+                     'ODC001 and TDC001 controllers.'
+    status_code[10] = '0x00000200, 10, in motion, homing, Motor homing ' \
+                      '(1 - homing, 0 - not homing).'
+    status_code[11] = '0x00000400, 11, homed (homing has been completed)' \
+                      '(1 - homed, 0 - not homed).'
+    status_code[12] = '0x00000800, 12, For Future Use.'
+    # NOTE: Bits 13 to 20 are applicable only to the BBD10x series brushless DC
+    #       controllers!
+    status_code[13] = '0x00001000, 13, Trajectory within tracking window ' \
+                      '(1 – within window, 0 – not within window).'
+    status_code[14] = '0x00002000, 14, settled, Axis within settled window ' \
+                      '(1 – settled within window, 0 – not settled within' \
+                      'window).'
+    status_code[15] = '0x00004000, 15, motion error (excessive position ' \
+                      'error), Axis exceeds position error limit ' \
+                      '(1 – limit exceeded, 0 – within limit).'
+    status_code[16] = '0x00008000, 16, Set when position module instruction ' \
+                      'error exists (1 – instruction error exists, 0 – ' \
+                      'no error).'
+    status_code[17] = '0x00010000, 17, Interlock link missing in motor ' \
+                      'connector (1 – missing, 0 – present).'
+    status_code[18] = '0x00020000, 18, Position module over temperature ' \
+                      'warning (1 – over temp, 0 – temp OK).'
+    status_code[19] = '0x00040000, 19, Position module bus voltage fault ' \
+                      '(1 – fault exists, 0 – OK).'
+    status_code[20] = '0x00080000, 20, Axis commutation error ' \
+                      '(1 – error, 0 – OK).'
+    # NOTE: Bits 21 to 26 (Digital Input States) are only applicable if the
+    #       associated digital input is fitted to your controller – see the
+    #       relevant handbook for more details.
+    status_code[21] = '0x00100000, 21, Digital input 1 state (1 - ' \
+                      'logic high, 0 - logic low).'
+    status_code[22] = '0x00200000, 22, Digital input 2 state (1 - ' \
+                      'logic high, 0 - logic low).'
+    status_code[23] = '0x00400000, 23, Digital input 3 state (1 - ' \
+                      'logic high, 0 - logic low).'
+    status_code[24] = '0x00800000, 24, Digital input 4 state (1 - ' \
+                      'logic high, 0 - logic low).'
+    status_code[25] = '0x01000000, 25, BBD10x Controllers: Axis phase ' \
+                      'current limit (1 – current limit exceeded, ' \
+                      '0 – below limit). Other Controllers: Digital input 5 ' \
+                      'state (1 - logic high, 0 - logic low).'
+    status_code[26] = '0x02000000, 26, Digital input 6 state (1 - logic ' \
+                      'high, 0 - logic low).'
+    status_code[27] = '0x04000000, 27, Unspecified, for Future Use.'
+    status_code[28] = '0x08000000, 28, Unspecified, for Future Use.'
+    status_code[29] = '0x10000000, 29, Unspecified, for Future Use.'
+    status_code[30] = '0x20000000, 30, Active (1 – indicates unit is active, ' \
+                      '0 – not active).'
+    status_code[31] = '0x40000000, 31, Unspecified, for Future Use.'
+    status_code[32] = '0x80000000, Channel enabled (1 – enabled, 0- disabled).'
 
 
 
@@ -326,9 +433,16 @@ class APTMotor():
     def setVelocityParameters(self, minVel, acc, maxVel):
         """ Set the velocity and acceleration parameter.
 
-        @param flaot minVel: minimal velocity in m/s or degree/s
-        @param float acc: current acceleration in m/s^2 or degree/s^2
-        @param float maxVel: maximal velocity in m/s or degree/s
+        @param flaot minVel: the minimum velocity at which to start and end a
+                             move in m/s or degree/s
+        @param float acc: the rate at which the velocity climbs from minimum
+                          to maximum, and slows from maximum to minimum current
+                          acceleration in m/s^2 or degree/s^2
+        @param float maxVel: the maximum velocity at which to perform a move in
+                             m/s or degree/s
+
+        Note: The minVel parameter value is locked at zero and cannot be
+              adjusted.
         """
         if self._unit == 'm':
             minimumVelocity = c_float(minVel*1000.0)
@@ -407,7 +521,8 @@ class APTMotor():
                                  4 = Use forward limit switch for home datum
                                  1 = Use forward limit switch for home datum.
         @param float home_vel = default velocity
-        @param float zero_offset: Offset from the home position.
+        @param float zero_offset: the distance or offset (in mm or degrees) of
+                                  the limit switch from the Home position.
 
         """
         home_dir_c = c_long(home_dir)
@@ -1219,7 +1334,7 @@ class APTThreeAxisStage(APTStage):
         axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min']  = -65e-3  # in m
         axis0['pos_max']  = 65e-3   # that is basically the traveling range
-        axis0['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis0['vel_min']  = 0.1e-3  # in m/s
         axis0['vel_max']  = 2.0e-3  # in m/s
         axis0['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1236,7 +1351,7 @@ class APTThreeAxisStage(APTStage):
         axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min']  = -65e-3  # in m
         axis1['pos_max']  = 65e-3   # that is basically the traveling range
-        axis1['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis1['vel_min']  = 0.1e-3  # in m/s
         axis1['vel_max']  = 2.0e-3  # in m/s
         axis1['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1251,7 +1366,7 @@ class APTThreeAxisStage(APTStage):
         axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
         axis2['pos_min']  = -65e-3  # in m
         axis2['pos_max']  = 65e-3   # that is basically the traveling range
-        axis2['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis2['vel_min']  = 0.1e-3  # in m/s
         axis2['vel_max']  = 2.0e-3  # in m/s
         axis2['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1371,7 +1486,7 @@ class APTFourAxisStage(APTStage):
         axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis0['pos_min']  = -65e-3  # in m
         axis0['pos_max']  = 65e-3   # that is basically the traveling range
-        axis0['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis0['vel_min']  = 0.1e-3  # in m/s
         axis0['vel_max']  = 2.0e-3  # in m/s
         axis0['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1389,7 +1504,7 @@ class APTFourAxisStage(APTStage):
         axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
         axis1['pos_min']  = -65e-3  # in m
         axis1['pos_max']  = 65e-3   # that is basically the traveling range
-        axis1['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis1['vel_min']  = 0.1e-3  # in m/s
         axis1['vel_max']  = 2.0e-3  # in m/s
         axis1['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1405,7 +1520,7 @@ class APTFourAxisStage(APTStage):
         axis2['ramp'] = ['Sinus', 'Linear'] # a possible list of ramps
         axis2['pos_min']  = -65e-3  # in m
         axis2['pos_max']  = 65e-3   # that is basically the traveling range
-        axis2['pos_step'] = 1.0e-6  # in m (a rather arbitrary number)
+        axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
         axis2['vel_min']  = 0.1e-3  # in m/s
         axis2['vel_max']  = 2.0e-3  # in m/s
         axis2['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
@@ -1421,9 +1536,9 @@ class APTFourAxisStage(APTStage):
         axis3['ramp'] = ['Sinus', 'Linear'] # a possible list of ramps
         axis3['pos_min']  = 0       # in °
         axis3['pos_max']  = 360     # that is basically the traveling range
-        axis3['pos_step'] = 0.01    # in °
-        axis3['vel_min']  = 0.1     # in °/s
-        axis3['vel_max']  = 4.5     # in °/s
+        axis3['pos_step'] = 0.01    # in ° 2.19 arcsec
+        axis3['vel_min']  = 1/3600*22     # in °/s, 22 arcsec/sec to 6 °/sec, 1 arcsec = 1/1296000  of a circle (1 degree is 1/360 of a cicle)
+        axis3['vel_max']  = 6.0     # in °/s 6 °/sec
         axis3['vel_step'] = 0.1     # in °/s (a rather arbitrary number)
         axis3['acc_min']  = 4.0     # in °/s^2
         axis3['acc_max']  = 5.0     # in °/s^2
