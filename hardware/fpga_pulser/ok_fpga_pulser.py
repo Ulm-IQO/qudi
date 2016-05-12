@@ -735,7 +735,7 @@ a
         created_files.append(filename)
 
         filepath = os.path.join(self.host_waveform_directory, filename)
-        with open(filepath, 'ab') as fpgafile:
+        with open(filepath, 'wb') as fpgafile:
             fpgafile.write(encoded_samples)
 
         return created_files
