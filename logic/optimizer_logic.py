@@ -235,9 +235,10 @@ class OptimizerLogic(GenericLogic):
         """Initialisation of the xy refocus image."""
         self._xy_scan_line_count = 0
 
-        # defining center of refocus image
-        x0 = self._initial_pos_x
-        y0 = self._initial_pos_y
+        # Take optim pos as center of refocus image, to benefit from any previous
+        # optimization steps that have occurred.
+        x0 = self.optim_pos_x
+        y0 = self.optim_pos_y
 
         # defining position intervals for refocus
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
@@ -261,7 +262,11 @@ class OptimizerLogic(GenericLogic):
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
         self._xy_scan_line_count = 0
-        z0 = self._initial_pos_z
+
+        # Take optim pos as center of refocus image, to benefit from any previous
+        # optimization steps that have occurred.
+        z0 = self.optim_pos_z
+
         zmin = np.clip(z0 - 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
         zmax = np.clip(z0 + 0.5 * self.refocus_Z_size, self.z_range[0], self.z_range[1])
 
