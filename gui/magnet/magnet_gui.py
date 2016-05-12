@@ -144,11 +144,11 @@ class MagnetGui(GUIBase):
         # Use the class 'MagnetMainWindow' to create the GUI window
 
         axis_list = list(self._magnet_logic.get_hardware_constraints())
-        self._mw.align_2d_fluorescence_axes0_name_ComboBox.clear()
-        self._mw.align_2d_fluorescence_axes0_name_ComboBox.addItems(axis_list)
+        self._mw.align_2d_axes0_name_ComboBox.clear()
+        self._mw.align_2d_axes0_name_ComboBox.addItems(axis_list)
 
-        self._mw.align_2d_fluorescence_axes1_name_ComboBox.clear()
-        self._mw.align_2d_fluorescence_axes1_name_ComboBox.addItems(axis_list)
+        self._mw.align_2d_axes1_name_ComboBox.clear()
+        self._mw.align_2d_axes1_name_ComboBox.addItems(axis_list)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
@@ -178,14 +178,14 @@ class MagnetGui(GUIBase):
         self._magnet_logic.sigPosChanged.connect(self.update_pos)
 
         # Connect alignment GUI elements:
-        self._mw.align_2d_fluorescence_start_PushButton.clicked.connect(self.start_2d_fluorescence_alignment_clicked)
-        self._mw.align_2d_fluorescence_continue_PushButton.clicked.connect(self.continue_2d_fluorescence_alignment_clicked)
+        self._mw.align_2d_start_PushButton.clicked.connect(self.start_2d_alignment_clicked)
+        self._mw.align_2d_continue_PushButton.clicked.connect(self.continue_2d_fluorescence_alignment_clicked)
         self._mw.align_2d_fluorescence_abort_PushButton.clicked.connect(self.abort_2d_fluorescence_alignment_clicked)
 
-        self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis0)
-        self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis1)
-        self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis0)
-        self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis1)
+        self._mw.align_2d_axes0_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis0)
+        self._mw.align_2d_axes1_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis1)
+        self._mw.align_2d_axis0_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis0)
+        self._mw.align_2d_axis1_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis1)
 
 
         self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
@@ -236,8 +236,54 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_save_PushButton.clicked.connect(self.save_2d_plots_and_data)
 
         # connect the signals:
+        # --------------------
+
+        # for fluorescence alignment:
         self._mw.align_2d_fluorescence_optimize_CheckBox.stateChanged.connect(self.optimize_pos_changed)
 
+
+        # for odmr alignment:
+        self.measurement_type = 'fluorescence'
+        self._mw.meas_type_fluorescence_RadioButton.toggled.connect(self.set_measurement_type)
+        self._mw.meas_type_odmr_RadioButton.toggled.connect(self.set_measurement_type)
+        self._mw.meas_type_nuclear_spin_RadioButton.toggled.connect(self.set_measurement_type)
+        self.set_measurement_type()
+
+
+        # for odmr alignment:
+        self._mw.align_2d_odmr_low_fit_func_ComboBox.clear()
+        self._mw.align_2d_odmr_low_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_low_fitfunction_list)
+        self._mw.align_2d_odmr_low_start_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_start_freq/1e6)
+        self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq/1e6)
+        self._mw.align_2d_odmr_low_stop_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_stop_freq/1e6)
+        self._mw.align_2d_odmr_low_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_power)
+        self._mw.align_2d_odmr_low_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_runtime)
+
+        self._mw.align_2d_odmr_high_fit_func_ComboBox.clear()
+        self._mw.align_2d_odmr_high_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_high_fitfunction_list)
+        self._mw.align_2d_odmr_high_start_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_start_freq/1e6)
+        self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq/1e6)
+        self._mw.align_2d_odmr_high_stop_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_stop_freq/1e6)
+        self._mw.align_2d_odmr_high_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_power)
+        self._mw.align_2d_odmr_high_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_runtime)
+
+        self._mw.align_2d_odmr_save_after_measure_CheckBox.setChecked(self._magnet_logic.odmr_2d_save_after_measure)
+
+        # for single shot alignment of a nuclear spin:
+        self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode*1e9)
+        self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq/1e6)
+        self._mw.align_2d_nuclear_mw_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_mw_channel)
+        self._mw.align_2d_nuclear_mw_power_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_power)
+        self._mw.align_2d_nuclear_laser_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_laser_time*1e9)
+        self._mw.align_2d_nuclear_laser_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_laser_channel)
+        self._mw.align_2d_nuclear_detect_channel_SpinBox.setValue(self._magnet_logic.nuclear_2d_detect_channel)
+        self._mw.align_2d_nuclear_idle_time_DSpinBox.setValue(self._magnet_logic.nuclear_2d_idle_time*1e9)
+        self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_reps_within_ssr)
+        self._mw.align_2d_nuclear_num_of_ssr_SpinBox.setValue(self._magnet_logic.nuclear_2d_num_ssr)
+
+
+        self._mw.alignment_2d_status_Label.setText('Stopped')
+        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
 
 
     def _activate_magnet_settings(self, e):
@@ -575,6 +621,9 @@ class MagnetGui(GUIBase):
             update_func_slider_ref = getattr(self, func_name)
             dspinbox_ref.valueChanged.connect(update_func_slider_ref)
 
+            # the editingFinished idea has to be implemented properly at first:
+            # dspinbox_ref.editingFinished.connect(update_func_slider_ref)
+
         extension = len(constraints)
         self._mw.move_abs_GridLayout.addWidget(self._mw.move_abs_PushButton, 0, 3, extension, 1)
         self._mw.move_abs_PushButton.clicked.connect(self.move_abs)
@@ -839,25 +888,76 @@ class MagnetGui(GUIBase):
             dspinbox_move_abs_ref.setValue(curr_pos[axis_label]/norm)
 
 
-    def start_2d_fluorescence_alignment_clicked(self):
-        """ Start the 2D fluorescence alignment. """
+    def start_2d_alignment_clicked(self):
+        """ Start the 2d alignment. """
+
+        self._mw.alignment_2d_status_Label.setText('Running')
+        self._mw.alignment_2d_status_Label.setStyleSheet('color: green')
+
+
+        if self.measurement_type == '2d_fluorescence':
+            self._magnet_logic.curr_alignment_method = self.measurement_type
+
+            self._magnet_logic.fluorescence_integration_time = self._mw.align_2d_fluorescence_integrationtime_DSpinBox.value()
+
+            self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Fluorescence', units='c/s')
+
+        elif self.measurement_type == '2d_odmr':
+            self._magnet_logic.curr_alignment_method = self.measurement_type
+
+            self._magnet_logic.odmr_2d_low_start_freq = self._mw.align_2d_odmr_low_start_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_stop_freq = self._mw.align_2d_odmr_low_stop_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_power = self._mw.align_2d_odmr_low_power_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_runtime  = self._mw.align_2d_odmr_low_runtime_DSpinBox.value()
+            self._magnet_logic.odmr_2d_low_fitfunction = self._mw.align_2d_odmr_low_fit_func_ComboBox.currentText()
+
+            self._magnet_logic.odmr_2d_high_start_freq = self._mw.align_2d_odmr_high_start_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_stop_freq = self._mw.align_2d_odmr_high_stop_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_power = self._mw.align_2d_odmr_high_power_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_runtime = self._mw.align_2d_odmr_high_runtime_DSpinBox.value()
+            self._magnet_logic.odmr_2d_high_fitfunction = self._mw.align_2d_odmr_high_fit_func_ComboBox.currentText()
+
+            self._magnet_logic.odmr_2d_peak_axis0_move_ratio = self._mw.align_2d_axes0_shift_DSpinBox.value()*1e12
+            self._magnet_logic.odmr_2d_peak_axis1_move_ratio = self._mw.align_2d_axes1_shift_DSpinBox.value()*1e12
+
+            self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
+
+        elif self.measurement_type == '2d_nuclear':
+            self._magnet_logic.curr_alignment_method = self.measurement_type
+
+            self._magnet_logic.nuclear_2d_rabi_periode = self._mw.align_2d_nuclear_rabi_periode_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_mw_freq = self._mw.align_2d_nuclear_mw_freq_DSpinBox.value()*1e6
+            self._magnet_logic.nuclear_2d_mw_channel = self._mw.align_2d_nuclear_mw_channel_SpinBox.value()
+            self._magnet_logic.nuclear_2d_mw_power = self._mw.align_2d_nuclear_mw_power_DSpinBox.value()
+            self._magnet_logic.nuclear_2d_laser_time = self._mw.align_2d_nuclear_laser_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_laser_channel = self._mw.align_2d_nuclear_laser_channel_SpinBox.value()
+            self._magnet_logic.nuclear_2d_detect_channel = self._mw.align_2d_nuclear_detect_channel_SpinBox.value()
+            self._magnet_logic.nuclear_2d_idle_time = self._mw.align_2d_nuclear_idle_time_DSpinBox.value()*1e-9
+            self._magnet_logic.nuclear_2d_reps_within_ssr = self._mw.align_2d_nuclear_reps_within_ssr_SpinBox.value()
+            self._magnet_logic.nuclear_2d_num_ssr = self._mw.align_2d_nuclear_num_of_ssr_SpinBox.value()
+
+            self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Single shot readout fidelity', units='%')
+
+
         constraints = self._magnet_logic.get_hardware_constraints()
 
-        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+        axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
         if constraints[axis0_name]['unit'] == 'm':
             norm1 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
             norm1 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis0_range = self._mw.align_2d_fluorescence_axes0_range_DSpinBox.value()*norm1
-        axis0_step =  self._mw.align_2d_fluorescence_axes0_step_DSpinBox.value()*norm1
+        axis0_range = self._mw.align_2d_axes0_range_DSpinBox.value()*norm1
+        axis0_step =  self._mw.align_2d_axes0_step_DSpinBox.value()*norm1
 
-        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+        axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
         if constraints[axis1_name]['unit'] == 'm':
             norm2 = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
         else:
             norm2 = self.get_unit_prefix_dict()[self._rot_trans_unit_prefix]
-        axis1_range = self._mw.align_2d_fluorescence_axes1_range_DSpinBox.value()*norm2
-        axis1_step =  self._mw.align_2d_fluorescence_axes1_step_DSpinBox.value()*norm2
+        axis1_range = self._mw.align_2d_axes1_range_DSpinBox.value()*norm2
+        axis1_step =  self._mw.align_2d_axes1_step_DSpinBox.value()*norm2
 
         if axis0_name == axis1_name:
             self.logMsg('Fluorescence Alignment cannot be started since the '
@@ -867,17 +967,15 @@ class MagnetGui(GUIBase):
                         'settings!'.format(axis0_name), msgType='error')
             return
 
-        if self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.isChecked():
-            axis0_vel = self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.value()*norm1
+        if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
+            axis0_vel = self._mw.align_2d_axes0_vel_DSpinBox.value()*norm1
         else:
             axis0_vel = None
 
-        if self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.isChecked():
-            axis1_vel = self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.value()*norm2
+        if self._mw.align_2d_axis1_set_vel_CheckBox.isChecked():
+            axis1_vel = self._mw.align_2d_axes1_vel_DSpinBox.value()*norm2
         else:
             axis1_vel = None
-
-        self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Fluorescence', units='c/s')
 
         self._magnet_logic.start_2d_alignment(axis0_name=axis0_name, axis0_range=axis0_range,
                                               axis0_step=axis0_step, axis1_name=axis1_name,
@@ -887,15 +985,18 @@ class MagnetGui(GUIBase):
 
         self._continue_2d_fluorescence_alignment = False
 
+
     def continue_2d_fluorescence_alignment_clicked(self):
 
         self._continue_2d_fluorescence_alignment = True
-        self.start_2d_fluorescence_alignment_clicked()
+        self.start_2d_alignment_clicked()
 
 
     def abort_2d_fluorescence_alignment_clicked(self):
         """ Stops the current Fluorescence alignment. """
 
+        self._mw.alignment_2d_status_Label.setText('Stopped')
+        self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
         self._magnet_logic.stop_alignment()
 
     def _update_limits_axis0(self):
@@ -904,7 +1005,7 @@ class MagnetGui(GUIBase):
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
-        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+        axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
 
         if constraints[axis0_name]['unit'] == 'm':
             norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
@@ -916,30 +1017,30 @@ class MagnetGui(GUIBase):
                                                  constraints[axis0_name]['unit'])
 
         # set the label text properly:
-        self._mw.align_2d_fluorescence_axes0_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_fluorescence_axes0_step_Label.setText('Step '+unit_text)
+        self._mw.align_2d_axes0_range_Label.setText('Range '+unit_text)
+        self._mw.align_2d_axes0_step_Label.setText('Step '+unit_text)
         vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
+        self._mw.align_2d_axis0_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
 
         # set the range constraints:
-        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
+        self._mw.align_2d_axes0_range_DSpinBox.setMinimum(0)
+        self._mw.align_2d_axes0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
+        self._mw.align_2d_axes0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
         # FIXME: obtain the decimals correctly:
         # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_fluorescence_axes0_range_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes0_range_DSpinBox.setDecimals(3)
 
 
         # set the step constraints:
-        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
-        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
-        self._mw.align_2d_fluorescence_axes0_step_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes0_step_DSpinBox.setMinimum(0)
+        self._mw.align_2d_axes0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max']/norm)
+        self._mw.align_2d_axes0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step']/norm)
+        self._mw.align_2d_axes0_step_DSpinBox.setDecimals(3)
 
         # set the velocity constraints:
-        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min']/norm)
-        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max']/norm)
-        self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step']/norm)
+        self._mw.align_2d_axes0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min']/norm)
+        self._mw.align_2d_axes0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max']/norm)
+        self._mw.align_2d_axes0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step']/norm)
 
     def _update_limits_axis1(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
@@ -947,7 +1048,7 @@ class MagnetGui(GUIBase):
         """
 
         constraints = self._magnet_logic.get_hardware_constraints()
-        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+        axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
 
         if constraints[axis1_name]['unit'] == 'm':
             norm = self.get_unit_prefix_dict()[self._lin_trans_unit_prefix]
@@ -959,50 +1060,50 @@ class MagnetGui(GUIBase):
                                                  constraints[axis1_name]['unit'])
 
         # set the label text properly:
-        self._mw.align_2d_fluorescence_axes1_range_Label.setText('Range '+unit_text)
-        self._mw.align_2d_fluorescence_axes1_step_Label.setText('Step '+unit_text)
+        self._mw.align_2d_axes1_range_Label.setText('Range '+unit_text)
+        self._mw.align_2d_axes1_step_Label.setText('Step '+unit_text)
         vel_unit = unit_text[:-1] + '/s)'
-        self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
+        self._mw.align_2d_axis1_set_vel_CheckBox.setText('Set Velocity? '+vel_unit)
 
-        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setMinimum(0)
-        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
+        self._mw.align_2d_axes1_range_DSpinBox.setMinimum(0)
+        self._mw.align_2d_axes1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
+        self._mw.align_2d_axes1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
         # FIXME: obtain the decimals correctly:
         # decimal = abs(int(np.log10(step+0.01*step)-1))  # I tried just to extract the decimal number from that
-        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
 
-        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setMinimum(0)
-        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
-        self._mw.align_2d_fluorescence_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
-        self._mw.align_2d_fluorescence_axes1_range_DSpinBox.setDecimals(3)
+        self._mw.align_2d_axes1_step_DSpinBox.setMinimum(0)
+        self._mw.align_2d_axes1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max']/norm)
+        self._mw.align_2d_axes1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step']/norm)
+        self._mw.align_2d_axes1_range_DSpinBox.setDecimals(3)
 
-        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min']/norm)
-        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max']/norm)
-        self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step']/norm)
+        self._mw.align_2d_axes1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min']/norm)
+        self._mw.align_2d_axes1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max']/norm)
+        self._mw.align_2d_axes1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step']/norm)
 
     def _set_vel_display_axis0(self):
         """ Set the visibility of the velocity display for axis 0. """
 
-        if self._mw.align_2d_fluorescence_axis0_set_vel_CheckBox.isChecked():
-            self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setVisible(True)
+        if self._mw.align_2d_axis0_set_vel_CheckBox.isChecked():
+            self._mw.align_2d_axes0_vel_DSpinBox.setVisible(True)
         else:
-            self._mw.align_2d_fluorescence_axes0_vel_DSpinBox.setVisible(False)
+            self._mw.align_2d_axes0_vel_DSpinBox.setVisible(False)
 
     def _set_vel_display_axis1(self):
         """ Set the visibility of the velocity display for axis 1. """
 
-        if self._mw.align_2d_fluorescence_axis1_set_vel_CheckBox.isChecked():
-            self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setVisible(True)
+        if self._mw.align_2d_axis1_set_vel_CheckBox.isChecked():
+            self._mw.align_2d_axes1_vel_DSpinBox.setVisible(True)
         else:
-            self._mw.align_2d_fluorescence_axes1_vel_DSpinBox.setVisible(False)
+            self._mw.align_2d_axes1_vel_DSpinBox.setVisible(False)
 
     def _update_2d_graph_axis(self):
 
         constraints = self._magnet_logic.get_hardware_constraints()
 
-        axis0_name = self._mw.align_2d_fluorescence_axes0_name_ComboBox.currentText()
+        axis0_name = self._mw.align_2d_axes0_name_ComboBox.currentText()
         axis0_unit = constraints[axis0_name]['unit']
-        axis1_name = self._mw.align_2d_fluorescence_axes1_name_ComboBox.currentText()
+        axis1_name = self._mw.align_2d_axes1_name_ComboBox.currentText()
         axis1_unit = constraints[axis1_name]['unit']
 
         axis0_array, axis1_array = self._magnet_logic.get_2d_axis_arrays()
@@ -1105,3 +1206,16 @@ class MagnetGui(GUIBase):
 
         # self._save_logic.
         self._magnet_logic.save_2d_data(filetag, timestamp)
+
+    def set_measurement_type(self):
+        """ According to the selected Radiobox a measurement type will be chosen."""
+
+        if self._mw.meas_type_fluorescence_RadioButton.isChecked():
+            self.measurement_type = '2d_fluorescence'
+        elif self._mw.meas_type_odmr_RadioButton.isChecked():
+            self.measurement_type = '2d_odmr'
+        elif self._mw.meas_type_nuclear_spin_RadioButton.isChecked():
+            self.measurement_type = '2d_nuclear'
+        else:
+            self.logMsg('No measurement type specified in Magnet GUI!',
+                        msgType='error')

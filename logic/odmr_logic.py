@@ -802,6 +802,9 @@ class ODMRLogic(GenericLogic):
                       of the ODMR measurement.
         """
 
+        while self.getState() != 'idle':
+            time.sleep(1)
+            print('wait until ready')
 
         # set all relevant parameter:
         self.mw_start = freq_start
