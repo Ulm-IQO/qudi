@@ -760,7 +760,7 @@ class APTMotor():
         else:
             c_backlash = c_float(backlash)
 
-        self.aptdll.MOT_GetBLashDist(self.SerialNum, c_backlash)
+        self.aptdll.MOT_SetBLashDist(self.SerialNum, c_backlash)
 
         self._backlash = backlash
         return backlash
@@ -1196,31 +1196,32 @@ class APTOneAxisStage(APTStage):
 
         for label_axis in self._axis_dict:
 
-            #FIXME: the backlash parameter has to be taken from the config and
-            #       should not be hardcoded here!!
-            self._axis_dict[label_axis].set_backlash(0.20e-3)    # set the backlach
-                                                    # correction since the
-                                                    # forward movement is
-                                                    # preciser than backwards
-
             # adapt the hardware controller to the proper unit set:
             if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
                 unit = 2    # for rotation movement
+                #FIXME: the backlash parameter has to be taken from the config and
+                #       should not be hardcoded here!!
+                pitch = 7.5
+                backlash_correction = 0.2
             else:
                 unit = 1    # default value for linear movement
+                pitch = 1
+                backlash_correction = 0.10e-3
 
             self._axis_dict[label_axis].set_stage_axis_info(
-                                                limits_dict[label_axis]['pos_min'],
-                                                limits_dict[label_axis]['pos_max'],
-                                                pitch=1,
-                                                unit=unit)
+                                            limits_dict[label_axis]['pos_min'],
+                                            limits_dict[label_axis]['pos_max'],
+                                            pitch=pitch, unit=unit)
             self._axis_dict[label_axis].setVelocityParameters(
-                                                limits_dict[label_axis]['vel_min'],
-                                                limits_dict[label_axis]['acc_max'],
-                                                limits_dict[label_axis]['vel_max'])
+                                            limits_dict[label_axis]['vel_min'],
+                                            limits_dict[label_axis]['acc_max'],
+                                            limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
+            # set the backlach correction in m since the forward movement is
+            # preciser than the backward:
+            self._axis_dict[label_axis].set_backlash(backlash_correction)
 
     def custom_deactivation(self, e):
         """ That deactivation method can be overwritten in the sub-classed file.
@@ -1269,7 +1270,7 @@ class APTOneAxisStage(APTStage):
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis0['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
+        axis0['ramp']     = ['Trapez'] # a possible list of ramps
         axis0['pos_min']  = 0       # in °
         axis0['pos_max']  = 360     # that is basically the traveling range
         axis0['pos_step'] = 0.01    # in °
@@ -1312,21 +1313,34 @@ class APTThreeAxisStage(APTStage):
         limits_dict = self.get_constraints()
 
         for label_axis in self._axis_dict:
+
+            # adapt the hardware controller to the proper unit set:
+            if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
+                unit = 2    # for rotation movement
+                #FIXME: the backlash parameter has to be taken from the config and
+                #       should not be hardcoded here!!
+                pitch = 7.5
+                backlash_correction = 0.2
+            else:
+                unit = 1    # default value for linear movement
+                pitch = 1
+                backlash_correction = 0.10e-3
+
             self._axis_dict[label_axis].set_stage_axis_info(
-                                                limits_dict[label_axis]['pos_min'],
-                                                limits_dict[label_axis]['pos_max'],
-                                                pitch=1)
+                                            limits_dict[label_axis]['pos_min'],
+                                            limits_dict[label_axis]['pos_max'],
+                                            pitch=pitch, unit=unit)
             self._axis_dict[label_axis].setVelocityParameters(
-                                                limits_dict[label_axis]['vel_min'],
-                                                limits_dict[label_axis]['acc_max'],
-                                                limits_dict[label_axis]['vel_max'])
+                                            limits_dict[label_axis]['vel_min'],
+                                            limits_dict[label_axis]['acc_max'],
+                                            limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
-            self._axis_dict[label_axis].setHardwareLimitSwitches(2,2)
+            self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
 
             # set the backlach correction in m since the forward movement is
             # preciser than the backward:
-            self._axis_dict[label_axis].set_backlash(0.10e-3)
+            self._axis_dict[label_axis].set_backlash(backlash_correction)
 
     def custom_deactivation(self, e):
         """ That deactivation method can be overwritten in the sub-classed file.
@@ -1371,7 +1385,7 @@ class APTThreeAxisStage(APTStage):
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis0['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
+        axis0['ramp']     = ['Trapez'] # a possible list of ramps
         axis0['pos_min']  = -65e-3  # in m
         axis0['pos_max']  = 65e-3   # that is basically the traveling range
         axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1388,7 +1402,7 @@ class APTThreeAxisStage(APTStage):
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis1['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
+        axis1['ramp']     = ['Trapez'] # a possible list of ramps
         axis1['pos_min']  = -65e-3  # in m
         axis1['pos_max']  = 65e-3   # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1403,7 +1417,7 @@ class APTThreeAxisStage(APTStage):
         axis2 = {}
         axis2['label'] = 'z'        # name is just as a sanity included
         axis2['unit'] = 'm'        # the SI units
-        axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
+        axis2['ramp'] = ['Trapez'] # a possible list of ramps
         axis2['pos_min']  = -65e-3  # in m
         axis2['pos_max']  = 65e-3   # that is basically the traveling range
         axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1459,26 +1473,26 @@ class APTFourAxisStage(APTStage):
             if (limits_dict[label_axis]['unit'] == '°') or (limits_dict[label_axis]['unit'] == 'degree'):
                 unit = 2    # for rotation movement, for the CR1-Z7 rotation stage
                 pitch = 7.5
-                backlash_correction = 0.2e-3
+                backlash_correction = 0.2
             else:
                 unit = 1    # default value for linear movement
                 pitch = 1
                 backlash_correction = 0.10e-3
+
             self._axis_dict[label_axis].set_stage_axis_info(
-                                                limits_dict[label_axis]['pos_min'],
-                                                limits_dict[label_axis]['pos_max'],
-                                                pitch=pitch,
-                                                unit=unit)
+                                            limits_dict[label_axis]['pos_min'],
+                                            limits_dict[label_axis]['pos_max'],
+                                            pitch=pitch, unit=unit)
             self._axis_dict[label_axis].setVelocityParameters(
-                                                limits_dict[label_axis]['vel_min'],
-                                                limits_dict[label_axis]['acc_max'],
-                                                limits_dict[label_axis]['vel_max'])
-            self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
+                                            limits_dict[label_axis]['vel_min'],
+                                            limits_dict[label_axis]['acc_max']/2,
+                                            limits_dict[label_axis]['vel_max'])
+            self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max']/2)
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
             # set the backlach correction in m since the forward movement is
             # preciser than the backward.
-            self._axis_dict[label_axis].set_backlash(backlash_correction) 
+            self._axis_dict[label_axis].set_backlash(backlash_correction)
 
     def custom_deactivation(self, e):
         """ That deactivation method can be overwritten in the sub-classed file.
@@ -1524,7 +1538,7 @@ class APTFourAxisStage(APTStage):
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis0['unit']     = 'm'     # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Sinus','Linear'] # a possible list of ramps
+        axis0['ramp']     = ['Trapez'] # a possible list of ramps
         axis0['pos_min']  = -65e-3  # in m
         axis0['pos_max']  = 65e-3   # that is basically the traveling range
         axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1542,7 +1556,7 @@ class APTFourAxisStage(APTStage):
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
         axis1['unit']     = 'm'     # the SI units, only possible mm or degree
-        axis1['ramp']     = ['Sinus','Linear'] # a possible list of ramps
+        axis1['ramp']     = ['Trapez'] # a possible list of ramps
         axis1['pos_min']  = -65e-3  # in m
         axis1['pos_max']  = 65e-3   # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1558,7 +1572,7 @@ class APTFourAxisStage(APTStage):
         axis2 = {}
         axis2['label'] = 'z'        # name is just as a sanity included
         axis2['unit'] = 'm'         # the SI units
-        axis2['ramp'] = ['Sinus', 'Linear'] # a possible list of ramps
+        axis2['ramp'] = ['Trapez'] # a possible list of ramps
         axis2['pos_min']  = -65e-3  # in m
         axis2['pos_max']  = 65e-3   # that is basically the traveling range
         axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
@@ -1574,7 +1588,7 @@ class APTFourAxisStage(APTStage):
         axis3 = {}
         axis3['label'] = 'phi'      # name is just as a sanity included
         axis3['unit'] = '°'         # the SI units, possible entries: m or ° or degree
-        axis3['ramp'] = ['Sinus', 'Linear'] # a possible list of ramps
+        axis3['ramp'] = ['Trapez'] # a possible list of ramps
         axis3['pos_min']  = 0       # in °
         axis3['pos_max']  = 360     # that is basically the traveling range
         axis3['pos_step'] = 0.01    # in ° 2.19 arcsec
