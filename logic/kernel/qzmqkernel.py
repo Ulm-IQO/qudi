@@ -48,7 +48,6 @@ import datetime
 import threading
 import logging
 import builtins
-import contextlib
 
 import ast
 import traceback
@@ -64,6 +63,35 @@ from logic.kernel.builtin_trap import BuiltinTrap
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
+
+
+class _RedirectStream:
+
+    _stream = None
+
+    def __init__(self, new_target):
+        self._new_target = new_target
+        # We use a list of old targets to make this CM re-entrant
+        self._old_targets = []
+
+    def __enter__(self):
+        self._old_targets.append(getattr(sys, self._stream))
+        setattr(sys, self._stream, self._new_target)
+        return self._new_target
+
+    def __exit__(self, exctype, excinst, exctb):
+        setattr(sys, self._stream, self._old_targets.pop())
+
+
+class redirect_stdout(_RedirectStream):
+    """Context manager for temporarily redirecting stdout to another file."""
+    _stream = "stdout"
+
+
+class redirect_stderr(_RedirectStream):
+    """Context manager for temporarily redirecting stderr to another file."""
+    _stream = "stderr"
+
 
 def cursor_pos_to_lc(text, cursor_pos):
     lines = text.splitlines(True)
@@ -370,22 +398,34 @@ class QZMQKernel(QtCore.QObject):
         #capture output
         output_objs = list()
         stream_stdout = StringIO()
-        with contextlib.redirect_stdout(stream_stdout):
-            # actual execution
-            try:
-                self.displayhook.set_list(output_objs)
-                res = self.run_cell(msg['content']['code'])
-            except Exception as e:
-                tb = traceback.format_exc()
-                print('{}\n{}'.format(e, tb))
+        stream_stderr = StringIO()
+        with redirect_stderr(stream_stderr):
+            with redirect_stdout(stream_stdout):
+                # actual execution
+                try:
+                    self.displayhook.set_list(output_objs)
+                    res = self.run_cell(msg['content']['code'])
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    print('{}\n{}'.format(e, tb))
 
         # send captured output if there is any
         captured_stdout = stream_stdout.getvalue()
         stream_stdout.close()
+        captured_stderr = stream_stderr.getvalue()
+        stream_stderr.close()
+
         if len(captured_stdout) > 0:
             content = {
                 'name': "stdout",
                 'text': captured_stdout,
+            }
+            self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
+
+        if len(captured_stderr) > 0:
+            content = {
+                'name': "stderr",
+                'text': captured_stderr,
             }
             self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
 
