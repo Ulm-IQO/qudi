@@ -226,15 +226,19 @@ class ODMRLogic(GenericLogic):
             self._ODMR_line_count= self.run_time / self._ODMR_line_time # amout of lines done during run_time
 
             self.ODMR_raw_data = np.full((self._mw_frequency_list_length , self._ODMR_line_count),-1)#list used to store the raw data, is saved in seperate file for post prossesing initiallized with -1
-            self.logMsg('Raw data saving...',msgType='status', importance=5)
+            self.logMsg('Raw data saving...', msgType='status', importance=5)
 
         else:
-            self.logMsg('Raw data NOT saved',msgType='status', importance=5)
+            self.logMsg('Raw data NOT saved', msgType='status', importance=5)
 
         self.start_odmr()
 
-        self._mw_device.set_list(self._mw_frequency_list, self.mw_power)  #times 1e6 to have freq in Hz
-        self._mw_device.list_on()
+        return_val = self._mw_device.set_list(self._mw_frequency_list,
+                                              self.mw_power)
+        if return_val != 0:
+            self.stopRequested = True
+        else:
+            self._mw_device.list_on()
 
         # sleep to wait for learn/list mode
         #time.sleep(5.0)
