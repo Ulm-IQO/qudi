@@ -26,6 +26,7 @@ import thirdparty.stuttgart_counter.TimeTagger as tt
 from core.base import Base
 from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
+import os
 
 class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
@@ -86,6 +87,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                         msgType='warning')
 
         tt._Tagger_setSerial(self._fpgacounter_serial)
+        tt._Tagger_setBitfilePath(os.path.join(self.get_main_dir(), 'thirdparty', 'stuttgart_counter', 'TimeTaggerController.bit'))
 
         self._number_of_gates = int(100)
         self._bin_width = 1
@@ -223,7 +225,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                 self.stopRequested = True
         self.pulsed.stop()
         self.statusvar = 1
-        self.unlock()
         return 0
 
     def pause_measure(self):
