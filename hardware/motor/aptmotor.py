@@ -1483,16 +1483,21 @@ class APTFourAxisStage(APTStage):
                                             limits_dict[label_axis]['pos_min'],
                                             limits_dict[label_axis]['pos_max'],
                                             pitch=pitch, unit=unit)
-            self._axis_dict[label_axis].setVelocityParameters(
-                                            limits_dict[label_axis]['vel_min'],
-                                            limits_dict[label_axis]['acc_max']/2,
-                                            limits_dict[label_axis]['vel_max'])
-            self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max']/2)
+
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
             # set the backlach correction in m since the forward movement is
             # preciser than the backward.
             self._axis_dict[label_axis].set_backlash(backlash_correction)
+
+            #FIXME: That is a hardcoded workaround, since the VelocityParameters
+            #       cannot be set with the controller for whatever reasons...
+            if label_axis != 'phi':
+                self._axis_dict[label_axis].setVelocityParameters(
+                                                limits_dict[label_axis]['vel_min'],
+                                                limits_dict[label_axis]['acc_max']/2,
+                                                limits_dict[label_axis]['vel_max'])
+                self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max']/2)
 
     def custom_deactivation(self, e):
         """ That deactivation method can be overwritten in the sub-classed file.
