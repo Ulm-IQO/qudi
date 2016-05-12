@@ -48,6 +48,7 @@ import datetime
 import threading
 import logging
 import builtins
+import contextlib
 
 import ast
 import traceback
@@ -55,6 +56,7 @@ import jedi
 
 # zmq specific imports:
 import zmq
+from io import StringIO
 from zmq.error import ZMQError
 from logic.kernel.compilerop import CachingCompiler, check_linecache_ipython
 from logic.kernel.display_trap import DisplayTrap
@@ -114,12 +116,9 @@ class ExecutionResult:
 class ZMQDisplayHook:
     """A simple displayhook that publishes the object's repr over a ZeroMQ
     socket."""
-    topic = 'execute_result'
 
-    def __init__(self, session, stream):
-        self.session = session
-        self.stream = stream
-        self.parent_header = {}
+    def __init__(self):
+        self.result_list = list()
 
     def __call__(self, obj):
         if obj is None:
@@ -128,20 +127,10 @@ class ZMQDisplayHook:
         builtins._ = obj
         sys.stdout.flush()
         sys.stderr.flush()
-        content = {
-            'execution_count': self.session.execution_count,
-            'data': {"text/plain": repr(obj)},
-            'metadata': {}
-            }
-        self.session.send(
-            self.stream,
-            self.topic,
-            content,
-            parent_header=self.parent_header
-            )
+        self.result_list.append(repr(obj))
 
-    def set_parent(self, parentheader):
-        self.parent_header = parentheader
+    def set_list(self, resultlist):
+        self.result_list = resultlist
 
 
 class QZMQHeartbeat(QtCore.QObject):
@@ -278,7 +267,7 @@ class QZMQKernel(QtCore.QObject):
         self.ast_node_interactivity = 'last_expr'
         self.compile = CachingCompiler()
         self.ast_transformers = []
-        self.displayhook = ZMQDisplayHook(self, self.iopub_stream)
+        self.displayhook = ZMQDisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
 
@@ -377,26 +366,42 @@ class QZMQKernel(QtCore.QObject):
             'code': msg['content']["code"],
         }
         self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
-        # actual execution
-        try:
-            self.displayhook.set_parent(msg['header'])
-            res = self.run_cell(msg['content']['code'])
-        except Exception as e:
-            tb = traceback.format_exc()
+
+        #capture output
+        output_objs = list()
+        stream_stdout = StringIO()
+        with contextlib.redirect_stdout(stream_stdout):
+            # actual execution
+            try:
+                self.displayhook.set_list(output_objs)
+                res = self.run_cell(msg['content']['code'])
+            except Exception as e:
+                tb = traceback.format_exc()
+                print('{}\n{}'.format(e, tb))
+
+        # send captured output if there is any
+        captured_stdout = stream_stdout.getvalue()
+        stream_stdout.close()
+        if len(captured_stdout) > 0:
             content = {
                 'name': "stdout",
-                'text': '{}\n{}'.format(e, tb),
+                'text': captured_stdout,
             }
             self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
-        #else:
-        #    #logging.info( "RES %s" % result)
-        #    content = {
-        #        'execution_count': self.execution_count,
-        #        'data': {"text/plain": result_str},
-        #        'metadata': {}
-        #    }
-        #    self.send(self.iopub_stream, 'execute_result', content, parent_header=msg['header'])
- 
+
+        # send captured result if there is any
+        if len(output_objs) > 0:
+            content = {
+                'execution_count': self.execution_count,
+                'data': {"text/plain": output_objs[0]},
+                'metadata': {}
+                }
+            self.send(
+                self.iopub_stream,
+                'execute_result',
+                content,
+                parent_header=msg['header'])
+
         #tell the notebook server that we are not busy anymore
         content = {
             'execution_state': "idle",
