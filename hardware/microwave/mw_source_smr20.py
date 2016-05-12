@@ -89,6 +89,10 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
                          'address >>{0}<<.'.format(self._gpib_address),
                          msgType='error')
 
+        # set manually the number of entries in a list, the explanation for that
+        # procedure is in the function self.set_list.
+        self._num_list_entries = 4000
+
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
 
@@ -206,6 +210,20 @@ class MicrowaveSMR20(Base, MicrowaveInterface):
             self.logMsg('The frequency list has an invalide first frequency '
                         'and power, which cannot be set.', msgType='error')
             error = -1
+
+        # Bug in the micro controller of SMR20:
+        # check the amount of entries, since the timeout is not working properly
+        # and the SMR20 overwrites for too big entries the device-internal
+        # memory such that the current firmware becomes corrupt. That is an
+        # extreme annoying bug. Therefore catch too long lists.
+
+        if len(freq)> self._num_list_entries:
+            self.logMsg('The frequency list exceeds the hardware limitation of '
+                        '{0} list entries. Aborting creation of a list due to '
+                        'potential overwrite of the firmware on the '
+                        'device.'.format(self._num_list_entries),
+                        msgType='error')
+            return -1
 
         self._gpib_connection.write(':SOUR:LIST:MODE STEP')
         self._gpib_connection.write('*WAI')

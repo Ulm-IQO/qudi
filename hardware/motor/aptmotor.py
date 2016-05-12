@@ -26,7 +26,9 @@ This module was developed from PyAPT, written originally by Michael Leung
 APT.dll and APT.lib were provided to PyAPT thanks to SeanTanner@ThorLabs .
 All the specific error and status code are taken from:
     https://github.com/UniNE-CHYN/thorpy
-
+The rest of the documentation is based on the Thorlabs APT Server documentation
+which can be obtained directly from
+    https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=APT
 """
 
 from collections import OrderedDict
@@ -732,7 +734,7 @@ class APTMotor():
 
         @param int int_val: an integer value, which is checked
         @param int offset: the position which should be checked whether in
-                           int_valfor a bit of 1 is set.
+                           int_val for a bit of 1 is set.
 
         @return bool: Check in an integer representation, whether the bin at the
                       position offset is set to 0 or to 1. If bit is set True
