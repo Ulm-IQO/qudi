@@ -497,10 +497,6 @@ class PulsedMeasurementGui(GUIBase):
         # set chosen config in sequence generator logic
         self._seq_gen_logic.set_activation_config(active_config_name)
 
-        # refresh parameters in pulsed measurement logic
-        self._pulsed_meas_logic.analog = self._seq_gen_logic.analog_channels
-        self._pulsed_meas_logic.digital = self._seq_gen_logic.digital_channels
-
         # reshape block editor table
         self.set_block_editor_columns()
 
