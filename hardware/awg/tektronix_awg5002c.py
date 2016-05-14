@@ -307,7 +307,7 @@ class AWG5002C(Base, PulserInterface):
 
         # at first delete all the name, which might lead to confusions in the
         # upload procedure:
-        self._check_and_delete_filename_on_device(asset_name)
+        self.delete_asset(asset_name)
 
         # create list of filenames to be uploaded
         upload_names = []
@@ -1223,12 +1223,13 @@ class AWG5002C(Base, PulserInterface):
 
 
     def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device memory.
+        """ Delete all files associated with an asset with the passed
+            asset_name from the device memory.
 
         @param str asset_name: The name of the asset to be deleted
                                Optionally a list of asset names can be passed.
 
-        @return int: error code (0:OK, -1:error)
+        @return list: a list with strings of the files which were deleted.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
@@ -1246,6 +1247,8 @@ class AWG5002C(Base, PulserInterface):
             for filename in uploaded_files:
                 if fnmatch(filename, name+'_ch?.wfm'):
                     files_to_delete.append(filename)
+                elif fnmatch(filename, name+'.seq'):
+                    files_to_delete.append(filename)
 
         # delete files
         with FTP(self.ip_address) as ftp:
@@ -1257,7 +1260,7 @@ class AWG5002C(Base, PulserInterface):
         # clear the AWG if the deleted asset is the currently loaded asset
         # if self.current_loaded_asset == asset_name:
         #     self.clear_all()
-        return 0
+        return files_to_delete
 
 
     def set_asset_dir_on_device(self, dir_path):
@@ -1510,40 +1513,26 @@ class AWG5002C(Base, PulserInterface):
             ftp.retrlines('LIST', callback=log.append)
             for line in log:
                 if '<DIR>' not in line:
-                    file_list.append(line.rsplit(None, 1)[1])
+                    # that is how a potential line is looking like:
+                    #   '05-10-16  05:22PM                  292 SSR aom adjusted.seq'
+                    # One can see that the first part consists of the date
+                    # information. Remove those information and separate then
+                    # the first number, which indicates the size of the file,
+                    # from the following. That is necessary if the filename has
+                    # whitespaces in the name:
+                    size_filename = line[18:].lstrip()
+
+                    # split after the first appearing whitespace and take the
+                    # rest as filename, remove for safety all trailing
+                    # whitespaces:
+                    actual_filename = size_filename.split(' ', 1)[1].lstrip()
+                    file_list.append(actual_filename)
             for filename in file_list:
                 if filename.endswith('.wfm') or filename.endswith('.seq'):
                     if filename not in filename_list:
                         filename_list.append(filename)
 
         return filename_list
-
-    def _check_and_delete_filename_on_device(self, asset_name):
-        """ Check and delete filenames with asset_name.
-
-        @param str asset_name: name of the asset you want to look for.
-
-        @return list: with str entries denoting which files on the devices have
-                      been deleted.
-        """
-
-        filename_list = self._get_filenames_on_device()
-
-        to_delete_list = []
-        for filename in filename_list:
-            if  (filename == asset_name+'_ch1.wfm') or \
-                (filename == asset_name+'_ch2.wfm') or \
-                (filename == asset_name+'.seq'):
-
-                to_delete_list.append(filename)
-
-        with FTP(self.ip_address) as ftp:
-            ftp.login() # login as default user anonymous, passwd anonymous@
-            ftp.cwd(self.asset_directory)
-            for filename_to_delete in to_delete_list:
-                ftp.delete(filename_to_delete)
-
-        return to_delete_list
 
     def _get_filenames_on_host(self):
         """ Get the full filenames of all assets saved on the host PC.
