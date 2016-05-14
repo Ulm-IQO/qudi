@@ -1289,7 +1289,29 @@ class PulsedMeasurementGui(GUIBase):
 
         # of no object was found then block has reference to None
         if block is None:
-            return
+            return -1
+
+        # get the number of currently set analogue and digital channels from the logic.
+        num_analog_chnl = self._seq_gen_logic.analog_channels
+        num_digital_chnl = self._seq_gen_logic.digital_channels
+        # check if the currently set activation_config has the same number of channels as
+        # the block object to be loaded. If this is not the case, change the config
+        # to something suitable and inform the user.
+        # FIXME: Currently it will just throw an error when the number of channels does not match.
+        if num_analog_chnl != block.analog_channels or num_digital_chnl != block.digital_channels:
+            self.logMsg('Mismatch in number of channels between block to load and chosen '
+                        'activation_config. Please select an activation_config from the block '
+                        'editor setttings with {0} digital and {1} analogue '
+                        'channels.'.format(block.digital_channels, block.analog_channels),
+                        msgType='error')
+            return -1
+
+        # get currently active activation_config.
+        config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = self.get_hardware_constraints()['activation_config'][config_name]
+        # seperate active analog and digital channels in lists
+        active_analog = [chnl for chnl in activation_config if 'a_ch' in chnl]
+        active_digital = [chnl for chnl in activation_config if 'd_ch' in chnl]
 
         self.block_editor_clear_table() # clear table
         rows = len(block.element_list)  # get amout of rows needed for display
@@ -1303,7 +1325,7 @@ class PulsedMeasurementGui(GUIBase):
 
             # set at first all digital channels:
             for digital_ch in range(pulse_block_element.digital_channels):
-                column = block_config_dict['digital_'+str(digital_ch)]
+                column = block_config_dict['digital_'+active_digital[digital_ch].split('ch')[-1]]
                 value = pulse_block_element.marker_active[digital_ch]
                 if value:
                     value=2
@@ -1313,16 +1335,15 @@ class PulsedMeasurementGui(GUIBase):
 
             # now set all parameters for the analog channels:
             for analog_ch in range(pulse_block_element.analog_channels):
-
                 # the function text:
-                column = block_config_dict['function_'+str(analog_ch)]
+                column = block_config_dict['function_'+active_analog[analog_ch].split('ch')[-1]]
                 func_text = pulse_block_element.pulse_function[analog_ch]
                 self.set_element_in_block_table(row_index, column, func_text)
 
                 # then the parameter dictionary:
                 parameter_dict = pulse_block_element.parameters[analog_ch]
                 for parameter in parameter_dict:
-                    column = block_config_dict[parameter + '_' +str(analog_ch)]
+                    column = block_config_dict[parameter + '_' +active_analog[analog_ch].split('ch')[-1]]
                     value = np.float(parameter_dict[parameter])
                     self.set_element_in_block_table(row_index, column, value)
 
