@@ -486,6 +486,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
+        self.waveform_dir = self._get_dir_for_name('sampled_hardware_files')
 
         # =============== Setting the additional parameters ==================
 
@@ -1702,6 +1703,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         time. This results in more function calls and general overhead causing the much longer time
         to complete.
         """
+
+        # check for old files associated with the new ensemble and delete them from host PC
+        # if write_to_file = True
+        if write_to_file:
+            # get sampled filenames on host PC referring to the same ensemble
+            filename_list = [f for f in os.listdir(self.waveform_dir) if
+                             f.startswith(ensemble_name + '_Ch')]
+            # delete all filenames in the list
+            for file in filename_list:
+                os.remove(os.path.join(self.waveform_dir, file))
+
+            if len(filename_list) != 0:
+                self.logMsg('Found old sampled ensembles for name "{0}". '
+                            'Files deleted before sampling: '
+                            '{1}'.format(ensemble_name, filename_list), msgType='warning')
 
         start_time = time.time()
         # get ensemble
