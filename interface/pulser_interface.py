@@ -450,12 +450,13 @@ class PulserInterface():
         return names
 
     def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device memory.
+        """ Delete all files associated with an asset with the passed asset_name
+            from the device memory.
 
         @param str asset_name: The name of the asset to be deleted
                                Optionally a list of asset names can be passed.
 
-        @return int: error code (0:OK, -1:error)
+        @return list: a list with strings of the files which were deleted.
 
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
