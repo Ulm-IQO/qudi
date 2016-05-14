@@ -971,6 +971,12 @@ class QZMQKernel(QtCore.QObject):
         except KeyboardInterrupt:
             print('\n' + self.get_exception_only(), file=sys.stderr)
 
+    def showsyntaxerror(self, filename=None):
+        self.showtraceback()
+
+    def showindentationerror(self):
+        self.showtraceback()
+
 ##############################################################################
 # Main
 ##############################################################################
