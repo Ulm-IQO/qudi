@@ -70,7 +70,7 @@ class AWG70K(Base, PulserInterface):
         self.sample_rate = 25e9
 
         self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
-        self.offset_list = {1: 0, 2: 0, 3: 0, 4: 0} # for each analog channel one value, the offset voltage
+        self.offset_list = {1: 0, 2: 0} # for each analog channel one value, the offset voltage
 
         self.current_loaded_asset = None
         self.is_output_enabled = True
@@ -282,7 +282,7 @@ class AWG70K(Base, PulserInterface):
         activation_config['ch1_0mrk'] = ['a_ch1']
         # Usage of only channel 2 with no marker:
         activation_config['ch2_0mrk'] = ['a_ch2']
-        constraints['activation_map'] = activation_config
+        constraints['activation_config'] = activation_config
 
         return constraints
 
@@ -489,7 +489,7 @@ class AWG70K(Base, PulserInterface):
 
         # at first delete all the name, which might lead to confusions in the
         # upload procedure:
-        self._check_and_delete_filename(asset_name)
+        self.delete_asset(asset_name)
 
         filelist = self._get_filenames_on_host()
         upload_names = []
@@ -716,9 +716,10 @@ class AWG70K(Base, PulserInterface):
         if (amplitude == []) and (offset == []):
             # since the available channels are not going to change for this
             # device you are asking directly:
-            #FIXME: Implement here the proper ask routine:
-            amp = self.amplitude_list
-            off = self.offset_list
+            amp['a_ch1'] = float(self.ask('SOURCE1:VOLTAGE:AMPLITUDE?'))
+            amp['a_ch2'] = float(self.ask('SOURCE2:VOLTAGE:AMPLITUDE?'))
+            off['a_ch1'] = 0.0
+            off['a_ch2'] = 0.0
 
         else:
             for a_ch in amplitude:
@@ -807,23 +808,19 @@ class AWG70K(Base, PulserInterface):
         if (low == []) and (high == []):
             # since the available channels are not going to change for this
             # device you are asking directly:
+            low_val[1] = float(self.ask('SOURCE1:MARKER1:VOLTAGE:LOW?'))
+            low_val[2] = float(self.ask('SOURCE1:MARKER2:VOLTAGE:LOW?'))
+            low_val[3] = float(self.ask('SOURCE2:MARKER1:VOLTAGE:LOW?'))
+            low_val[4] = float(self.ask('SOURCE2:MARKER2:VOLTAGE:LOW?'))
 
-            #FIXME: Implement here the proper ask routine:
-            # low_val[1] =  float(self.ask('SOURCE1:MARKER1:VOLTAGE:LOW?'))
-            low_val[1] = 0.0
-            low_val[2] = 0.0
-            low_val[3] = 0.0
-            low_val[4] = 0.0
-
-            # high_val[1] = float(self.ask('SOURCE1:MARKER1:VOLTAGE:HIGH?'))
-            high_val[1] = 2.5
-            high_val[2] = 2.5
-            high_val[3] = 2.5
-            high_val[4] = 2.5
+            high_val[1] = float(self.ask('SOURCE1:MARKER1:VOLTAGE:HIGH?'))
+            high_val[2] = float(self.ask('SOURCE1:MARKER2:VOLTAGE:HIGH?'))
+            high_val[3] = float(self.ask('SOURCE2:MARKER1:VOLTAGE:HIGH?'))
+            high_val[4] = float(self.ask('SOURCE2:MARKER2:VOLTAGE:HIGH?'))
         else:
             for d_ch in low:
                 #FIXME: Implement here the proper ask routine:
-                low_val[d_ch] = 0.0
+                low_val[d_ch] = float(self.ask('SOURCE1:MARKER{0}:VOLTAGE:HIGH?'.format(int(d_ch))))
             for d_ch in high:
                 #FIXME: Implement here the proper ask routine:
                 high_val[d_ch] = 2.5
@@ -903,7 +900,7 @@ class AWG70K(Base, PulserInterface):
         if ch2_markers == 0:
             active_ch['d_ch3'] = False
             active_ch['d_ch4'] = False
-        elif ch1_markers == 1:
+        elif ch2_markers == 1:
             active_ch['d_ch3'] = True
             active_ch['d_ch4'] = False
         else:
@@ -1159,7 +1156,7 @@ class AWG70K(Base, PulserInterface):
             question += '\n'
         question = bytes(question, 'UTF-8') # In Python 3.x the socket send command only accepts byte type arrays and no str
         self.soc.send(question)
-        time.sleep(0.1)                 # you need to wait until AWG generating
+        #time.sleep(0.1)                 # you need to wait until AWG generating
                                         # an answer.
         message = self.soc.recv(self.input_buffer)  # receive an answer
         message = message.decode('UTF-8') # decode bytes into a python str

@@ -557,31 +557,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._pulse_generator_device = self.connector['in']['pulser']['object']
 
-        self.sample_rate = self._pulse_generator_device.get_sample_rate()
-
         # make together with the hardware a proper dictionary for the sequence parameter:
-        # self.cfg_param_seq =
         self._seq_param =  self._create_seq_param()
-
-        constraints = self.get_hardware_constraints()
 
         # at least one configuration should always be available, if other
         # configuration are available, they can be chosen and set from the GUI.
         # Choose the first one in the config list:
-
-        channel_config = list(constraints['activation_config'])[0]
-        self.analog_channels =  len([entry for entry in channel_config if 'a_ch' in entry])
-        self.digital_channels =  len([entry for entry in channel_config if 'd_ch' in entry])
-
-        # lists with the pp-voltages and offsets corresponding to the analog channels
-        self.amplitude_list, self.offset_list = self._pulse_generator_device.get_analog_level()
-
-        config = self.getConfiguration()
-
-        # Append to this list all methods, which should be used for automated
-        # parameter generation.
-        # ALL THE ARGUMENTS IN THE METHODS MUST BE ASSIGNED TO DEFAULT VALUES!
-        # Otherwise it is not possible to determine the proper viewbox.
+        # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL ACTIVATION PATTERN ON THE HARDWARE
+        self.analog_channels = None
+        self.digital_channels = None
+        self.current_activation_config_name = None
+        self.set_activation_config()
 
         loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
         if loaded_asset_name is None:
@@ -791,6 +777,44 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         return func_config
 
+    def set_activation_config(self, config_name=None):
+        """
+        Sets the currently active channel activation config in this logic module
+        and calculates related parameters (like number of d and a channels).
+        This method will NOT set the active channels in the hardware.
+        If no config_name is given this method will get the first activation_config
+        from the hardware and set this by default.
+
+        @param config_name: str, The key for the hardware modules activation_config dict
+        @return: int, error code (0:OK, -1:error)
+        """
+        # get activation config dict from hardware constraints
+        config_dict = self.get_hardware_constraints()['activation_config']
+        # check input for default action and errors
+        if config_name is None:
+            self.current_activation_config_name = list(config_dict)[0]
+        elif config_name in config_dict.keys():
+            self.current_activation_config_name = config_name
+        else:
+            self.logMsg('activation_config with name {0} not found in hardware constraints.'
+                        .format(config_name), msgType='error')
+            return -1
+        # get proper config
+        config = config_dict[self.current_activation_config_name]
+        # calculate derived parameters
+        self.analog_channels = len([chnl for chnl in config if 'a_ch' in chnl])
+        self.digital_channels = len([chnl for chnl in config if 'd_ch' in chnl])
+        return 0
+
+    def get_activation_config(self):
+        """
+        Get the name of the currently set activation config of this module.
+        Does NOT return the activated channels in hardware.
+
+        @return: str, the name/key of the currently set activation_config
+        """
+        return self.current_activation_config_name
+
     def get_add_pbe_param(self):
         """ Return the additional parameters for Pulse_Block_Element objects.
 
@@ -808,14 +832,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         return self._add_pb_param
 
     def set_sample_rate(self, freq_Hz):
-        """ Sets the sampling frequency of the pulse generator device in Hz.
-
-        Additionally this value is updated in this logic.
         """
+        Sets the sampling frequency of the pulse generator device in Hz.
+        """
+        actual_sample_rate = self._pulse_generator_device.set_sample_rate(freq_Hz)
+        return actual_sample_rate
 
-        self._pulse_generator_device.set_sample_rate(freq_Hz)
-        self.sample_rate = freq_Hz
-        return 0
+    def get_sample_rate(self):
+        """
+        Gets the sampling frequency from the pulse generator device in Hz.
+        """
+        sample_rate = self._pulse_generator_device.get_sample_rate()
+        return sample_rate
 
     def pulser_on(self):
         """ Switch on the output of the Pulse Generator.
@@ -1222,9 +1250,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         param = OrderedDict()
 
+        # FIXME: I dont really see the problem here
+        # (the other FIXMEs and the concept of this method)
+        # The data objects (Ensemble, Block, Sequence) are MADE to be passed to
+        # whatever needs information about them.
+        # You are duplicating information in this method.
+        # The proper way would be to simply use the get_ensemble/sequence method
+        # of the sequence generator logic and retreive the data object.
+        # This method here would then serve only to determine beforehand what kind of asset
+        # it is to call the right get_ method.
+        # Its object oriented programming.
 
         if isinstance(self.loaded_asset, Pulse_Block_Ensemble):
-
+            #FIXME: Nope. See above.
             #FIXME: Those parameter should be actually saved in the param_container
             #       attribute of a Pulse_Block_Ensemble object, to centralize
             #       the content of information! Implement that! Think also about
@@ -1239,7 +1277,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             return self.loaded_asset.name, 'Ensemble', param
 
         elif isinstance(self.loaded_asset, Pulse_Sequence):
-
+            # FIXME: Nope. See above.
             #FIXME: Those parameter should be actually saved in the param_container
             #       attribute of a Pulse_Sequence object, to centralize
             #       the content of information! Implement that! Think also about
@@ -1373,6 +1411,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         analog_channels=self.analog_channels
         digital_channels=self.digital_channels
 
+        # get current activation config
+        config_name = self.current_activation_config_name
+        activation_config = self.get_hardware_constraints()['activation_config'][config_name]
+        # seperate digital and analogue channels
+        analog_chnl_names = [a_chnl for a_chnl in activation_config if 'a_ch' in a_chnl]
+        digital_chnl_names = [d_chnl for d_chnl in activation_config if 'd_ch' in d_chnl]
+
+        # get the current sample rate from the hardware
+        sample_rate = self.get_sample_rate()
+
         for row_index, row in enumerate(block_matrix):
 
             #FIXME: The output parameters are now in SI units. A conversion to
@@ -1380,11 +1428,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
             # check how length is displayed and convert it to bins:
             length_time= row[self.cfg_param_pbe['length']]
-            init_length_bins=int(np.round(length_time*self.sample_rate))
+            init_length_bins=int(np.round(length_time*sample_rate))
 
             # check how increment is displayed and convert it to bins:
             increment_time=row[self.cfg_param_pbe['increment']]
-            increment_bins= int(np.round(increment_time*self.sample_rate))
+            increment_bins= int(np.round(increment_time*sample_rate))
 
             # get the dict with all possible functions and their parameters:
             func_dict = self.get_func_config()
@@ -1395,7 +1443,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             parameter_list =[None]*self.analog_channels
 
             for num in range(self.analog_channels):
-                pulse_function[num] = row[self.cfg_param_pbe['function_'+str(num)]].decode('UTF-8')
+                # get the number of the analogue channel according to the channel activation_config
+                a_chnl_number = analog_chnl_names[num].split('ch')[-1]
+
+                pulse_function[num] = row[self.cfg_param_pbe['function_'+a_chnl_number]].decode('UTF-8')
 
                 # search for this function in the dictionary and get all the
                 # parameter with their names in list:
@@ -1405,19 +1456,21 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                 for entry in list(param_dict):
 
                     # Obtain how the value is displayed in the table:
-                    param_value = row[self.cfg_param_pbe[entry+'_'+str(num)]]
+                    param_value = row[self.cfg_param_pbe[entry+'_'+a_chnl_number]]
 
                     parameters[entry] = param_value
                 parameter_list[num] = parameters
 
             marker_active = [None]*self.digital_channels
             for num in range(self.digital_channels):
-                marker_active[num] = bool(row[self.cfg_param_pbe['digital_'+str(num)]])
+                # get the number of the digital channel according to the channel activation_config
+                d_chnl_number = digital_chnl_names[num].split('ch')[-1]
+
+                marker_active[num] = bool(row[self.cfg_param_pbe['digital_'+d_chnl_number]])
 
             use_as_tick = bool(row[self.cfg_param_pbe['use']])
 
             # create here actually the object with all the obtained information:
-
             pbe_obj_list[row_index] = Pulse_Block_Element(
                         init_length_bins=init_length_bins,
                         analog_channels=analog_channels,
@@ -1429,10 +1482,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         use_as_tick=use_as_tick)
 
         # determine the index of the laser pulse, i.e. which digital channel is the laser pulse
-        laser_channel_index = int(laser_channel[-1])
-        if 'A' in laser_channel:
+        # IMPORTANT:
+        # This is not the same as the description. As an example: if 'd_ch3' is the laser channel
+        # but d_ch1 and d_ch2 are not active, then the laser_channel_index is 0 and not 3 because
+        # d_ch3 is then the first digital channel of the active channels
+        if 'a' in laser_channel:
             self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
             laser_channel_index = 0
+        else:
+            laser_channel_index = digital_chnl_names.index(laser_channel)
 
         pb_obj = Pulse_Block(pb_name, pbe_obj_list, laser_channel_index)
         self.save_block(pb_name, pb_obj)
@@ -1456,7 +1514,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         GUI, where the parameters appear in columns.
         This dict enables the proper access to the desired element in the GUI.
         """
-
 
         # list of all the pulse block element objects
         pb_obj_list = [None]*len(ensemble_matrix)
@@ -1489,12 +1546,24 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             offset_tick_bin = offset_tick_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
             pb_obj_list[row_index] = (block, pulse_block_reps)
 
+        # determine the index of the laser pulse, i.e. which digital channel is the laser pulse
+        # IMPORTANT:
+        # This is not the same as the description. As an example: if 'd_ch3' is the laser channel
+        # but d_ch1 and d_ch2 are not active, then the laser_channel_index is 0 and not 3 because
+        # d_ch3 is then the first digital channel of the active channels
 
+        # get current activation config
+        config_name = self.current_activation_config_name
+        activation_config = self.get_hardware_constraints()['activation_config'][config_name]
+        # seperate digital and analogue channels
+        analog_chnl_names = [a_chnl for a_chnl in activation_config if 'a_ch' in a_chnl]
+        digital_chnl_names = [d_chnl for d_chnl in activation_config if 'd_ch' in d_chnl]
 
-        laser_channel_index = int(laser_channel[-1])
-        if 'A' in laser_channel:
+        if 'a' in laser_channel:
             self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
             laser_channel_index = 0
+        else:
+            laser_channel_index = digital_chnl_names.index(laser_channel)
 
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
                                                     block_list=pb_obj_list,
@@ -1642,6 +1711,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
 
+        # get the current sample rate from the hardware
+        sample_rate = self.get_sample_rate()
+        # get the current analogue levels from hardware
+        amplitude_list, offset_list = self._pulse_generator_device.get_analog_level()
+
         # The time bin offset for each element to be sampled to preserve rotating frame.
         # offset_bin = 0
 
@@ -1674,7 +1748,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     element_length_bins = init_length_bins + (rep_no*increment_bins)
 
                     # create floating point time array for the current element inside rotating frame
-                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
+                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / sample_rate
 
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
@@ -1691,7 +1765,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list['a_ch'+str(i+1)])
+                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/amplitude_list['a_ch'+str(i+1)])
 
                         # write temporary sample array to file
                         created_files = self._pulse_generator_device.write_samples_to_file(ensemble.name+name_tag,
@@ -1709,7 +1783,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         for i, state in enumerate(marker_active):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list['a_ch'+str(i+1)])
+                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/amplitude_list['a_ch'+str(i+1)])
 
                         # increment the index offset of the overall sample array for the next
                         # element
