@@ -27,6 +27,7 @@ import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import time
+import datetime
 import os
 
 class WavemeterLogWindow(QtGui.QMainWindow):
@@ -236,8 +237,9 @@ class WavemeterLogGui(GUIBase):
         """ Handling the save button to save the data into a file.
         """
 
-        filepath = self._save_logic.get_path_for_module(module_name='LaserScanning')
-        filename = os.path.join(filepath, time.strftime('%Y%m%d-%H%M-%S_laser_scan_thumbnail'))
+        timestamp = datetime.datetime.now()
+        filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
+        filename = os.path.join(filepath, timestamp.strftime('%Y%m%d-%H%M-%S_wavemeter_log_thumbnail'))
 
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')
@@ -246,7 +248,7 @@ class WavemeterLogGui(GUIBase):
             exporter = pg.exporters.ImageExporter(self._pw.plotItem)
             exporter.export(filename+'.png')
 
-        self._wm_logger_logic.save_data()
+        self._wm_logger_logic.save_data(timestamp=timestamp)
 
     def recalculate_histogram(self):
         self._wm_logger_logic.recalculate_histogram(

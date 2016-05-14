@@ -109,6 +109,10 @@ class MagnetLogic(GenericLogic):
     sig2DAxisChanged = QtCore.Signal()
     sig3DAxisChanged = QtCore.Signal()
 
+    # signal for ODMR alignment
+    sigODMRLowFreqChanged = QtCore.Signal()
+    sigODMRHighFreqChanged = QtCore.Signal()
+
     sigTest = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
@@ -211,17 +215,17 @@ class MagnetLogic(GenericLogic):
         self.fluorescence_integration_time = 5  # integration time in s
 
         # ODMR alignment settings (ALL IN SI!!!):
-        self.odmr_2d_low_start_freq = 10987e6
-        self.odmr_2d_low_step_freq = 0.1e6
-        self.odmr_2d_low_stop_freq = 11000e6
+        self.odmr_2d_low_center_freq = 10987e6
+        self.odmr_2d_low_step_freq = 0.3e6
+        self.odmr_2d_low_range_freq = 40e6
         self.odmr_2d_low_power = -12
         self.odmr_2d_low_runtime = 15
         self.odmr_2d_low_fitfunction_list = self._odmr_logic.get_fit_functions()
         self.odmr_2d_low_fitfunction = self.odmr_2d_low_fitfunction_list[1]
 
-        self.odmr_2d_high_start_freq = 10987e6
-        self.odmr_2d_high_step_freq = 0.1e6
-        self.odmr_2d_high_stop_freq = 11000e6
+        self.odmr_2d_high_center_freq = 16800e6
+        self.odmr_2d_high_step_freq = 0.3e6
+        self.odmr_2d_high_range_freq = 40e6
         self.odmr_2d_high_power = -12
         self.odmr_2d_high_runtime = 15
         self.odmr_2d_high_fitfunction = 15
@@ -229,8 +233,10 @@ class MagnetLogic(GenericLogic):
         self.odmr_2d_high_fitfunction = self.odmr_2d_high_fitfunction_list[1]
 
         self.odmr_2d_save_after_measure = True
-        self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
-        self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
+        self.odmr_2d_low_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
+        self.odmr_2d_low_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
+        self.odmr_2d_high_peak_axis0_move_ratio = -self.odmr_2d_low_peak_axis0_move_ratio
+        self.odmr_2d_high_peak_axis1_move_ratio = -self.odmr_2d_low_peak_axis1_move_ratio
 
         # single shot alignment on nuclear spin settings (ALL IN SI!!!):
         self.nuclear_2d_rabi_periode = 1000e-9
@@ -1053,70 +1059,96 @@ class MagnetLogic(GenericLogic):
         return data_array.mean(), parameters
 
     def _perform_odmr_measure(self):
+        """ Perform the odmr measurement.
+
+        @return:
+        """
 
         store_dict = {}
 
         # optimize at first the position:
         self._do_optimize_pos()
 
-        # correct the ODMR alignment during the x or y shift:
+
+        # correct the ODMR alignment the shift of the ODMR lines due to movement
+        # in axis0 and axis1, therefore find out how much you will move in each
+        # distance:
         if self._pathway_index == 0:
-            axis0_move = self._backmap[self._pathway_index][self._axis0_name] - self._saved_pos_before_align[self._axis0_name]
-            axis1_move = self._backmap[self._pathway_index][self._axis1_name] - self._saved_pos_before_align[self._axis1_name]
+            axis0_pos_start = self._saved_pos_before_align[self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._saved_pos_before_align[self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
         else:
-            axis0_move = self._backmap[self._pathway_index][self._axis0_name] - self._backmap[self._pathway_index-1][self._axis0_name]
-            axis1_move = self._backmap[self._pathway_index][self._axis1_name] - self._backmap[self._pathway_index-1][self._axis1_name]
+            axis0_pos_start = self._backmap[self._pathway_index-1][self._axis0_name]
+            axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
+
+            axis1_pos_start = self._backmap[self._pathway_index-1][self._axis1_name]
+            axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
+
+        # that is the current distance the magnet has moved:
+        axis0_move = axis0_pos_stop - axis0_pos_start
+        axis1_move = axis1_pos_stop - axis1_pos_start
+
+        # if the first point is measured in the scan, estimated by the
+        # approximated shift of the odmr peak for a move of axis0 and axis1 the
+        # position
+
+
+        # Measurement of the lower transition:
+        # -------------------------------------
 
         #FIXME:
         # that is a hardcoded calculation of the odmr shift:
         if self._pathway_index > 1:
+            # in essence, get the last measurement value for odmr freq:
             if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq'].get('Frequency') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Frequency']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Frequency']['value'] *1e6
+                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Frequency']['value']*1e6
+                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Frequency']['value']*1e6
             elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq'].get('Freq. 1') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Freq. 1']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Freq. 1']['value']*1e6
-
+                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Freq. 1']['value']*1e6
+                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Freq. 1']['value']*1e6
             else:
-                self.logMsg('No freq found in ODMR alignment', msgType='error')
+                self.logMsg('No previous saved lower odmr freq found in '
+                            'ODMR alignment data! Cannot do the ODMR '
+                            'Alignment!', msgType='error')
 
+            # only if there was a non zero movement, the if make sense to
+            # calculate the shift for either the axis0 or axis1.
+            # BE AWARE THAT FOR A MOVEMENT IN AXIS0 AND AXIS1 AT THE SAME TIME
+            # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
             if not np.isclose(axis0_move, 0.0):
-                self.odmr_2d_peak_axis0_move_ratio = (odmr_freq2 - odmr_freq1)/axis0_move
+                # update the correction ratio:
+                self.odmr_2d_low_peak_axis0_move_ratio = (low_odmr_freq2 - low_odmr_freq1)/axis0_move
             if not np.isclose(axis1_move, 0.0):
-                self.odmr_2d_peak_axis1_move_ratio = (odmr_freq2 - odmr_freq1)/axis1_move
-
-        if self._pathway_index < 2:
-            freq_shift_axis0 = axis0_move * self.odmr_2d_peak_axis0_move_ratio # correction in Hz
-            freq_shift_axis1 = axis1_move * self.odmr_2d_peak_axis1_move_ratio #
-            self.odmr_2d_low_start_freq += freq_shift_axis0 + freq_shift_axis1
-            self.odmr_2d_low_stop_freq += freq_shift_axis0 + freq_shift_axis1
-        else:
-            odmr_freq = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Freq. 1']['value']*1e6
-
-            shift_freq = odmr_freq - (self.odmr_2d_low_stop_freq + self.odmr_2d_low_start_freq)/2
-            self.odmr_2d_high_start_freq + shift_freq
-            self.odmr_2d_high_stop_freq + shift_freq
+                # update the correction ratio:
+                self.odmr_2d_low_peak_axis1_move_ratio = (low_odmr_freq2 - low_odmr_freq1)/axis1_move
 
 
+        freq_shift_low_axis0 = axis0_move * self.odmr_2d_low_peak_axis0_move_ratio
+        freq_shift_low_axis1 = axis1_move * self.odmr_2d_low_peak_axis1_move_ratio
 
+        # correct here the center freq with the estimated corrections:
+        self.odmr_2d_low_center_freq += (freq_shift_low_axis0 + freq_shift_low_axis1)
 
-
-
-
-
-
+        # create a unique nametag for the current measurement:
         name_tag = 'low_trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
                    +'_'+ str(self._backmap[self._pathway_index]['index'][1])
 
         # of course the shift of the ODMR peak is not linear for a movement in
-        # x or y, but we need just an estimate how to set the boundary
+        # axis0 and axis1, but we need just an estimate how to set the boundary
         # conditions for the first scan, since the first scan will move to a
         # start position and then it need to know where to search for the ODMR
         # peak(s).
 
-        param = self._odmr_logic.perform_odmr_measurement(self.odmr_2d_low_start_freq,
-                                                          self.odmr_2d_low_step_freq,
-                                                          self.odmr_2d_low_stop_freq,
+        # calculate the parameters for the odmr scan:
+        low_start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq/2
+        low_step_freq = self.odmr_2d_low_step_freq
+        low_stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq/2
+
+        param = self._odmr_logic.perform_odmr_measurement(low_start_freq,
+                                                          low_step_freq,
+                                                          low_stop_freq,
                                                           self.odmr_2d_low_power,
                                                           self.odmr_2d_low_runtime,
                                                           self.odmr_2d_low_fitfunction,
@@ -1125,71 +1157,87 @@ class MagnetLogic(GenericLogic):
 
         store_dict['low_freq'] = param
 
+        # extract the frequency meausure:
         if param.get('Frequency') is not None:
-            odmr_low_freq = param['Frequency']['value']*1e6
+            odmr_low_freq_meas = param['Frequency']['value']*1e6
         elif param.get('Freq. 1') is not None:
-            odmr_low_freq = param['Freq. 1']['value']*1e6
+            odmr_low_freq_meas = param['Freq. 1']['value']*1e6
         else:
-            odmr_low_freq = 1000e6
+            # a default value for testing and debugging:
+            odmr_low_freq_meas = 1000e6
 
+        # Measurement of the higher transition:
+        # -------------------------------------
 
+        #FIXME:
+        # that is a hardcoded calculation of the odmr shift:
         if self._pathway_index > 1:
+            # in essence, get the last measurement value for odmr freq:
             if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq'].get('Frequency') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Frequency']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Frequency']['value'] *1e6
+                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Frequency']['value']*1e6
+                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Frequency']['value']*1e6
             elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq'].get('Freq. 1') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Freq. 1']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Freq. 1']['value']*1e6
-
+                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Freq. 1']['value']*1e6
+                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Freq. 1']['value']*1e6
             else:
-                self.logMsg('No freq found in ODMR alignment', msgType='error')
+                self.logMsg('No previous saved higher odmr freq found in '
+                            'ODMR alignment data! Cannot do the ODMR '
+                            'Alignment!', msgType='error')
 
+            # only if there was a non zero movement, the if make sense to
+            # calculate the shift for either the axis0 or axis1.
+            # BE AWARE THAT FOR A MOVEMENT IN AXIS0 AND AXIS1 AT THE SAME TIME
+            # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
             if not np.isclose(axis0_move, 0.0):
-                self.odmr_2d_peak_axis0_move_ratio = (odmr_freq2 - odmr_freq1)/axis0_move
+                # update the correction ratio:
+                self.odmr_2d_high_peak_axis0_move_ratio = (high_odmr_freq2 - high_odmr_freq1)/axis0_move
             if not np.isclose(axis1_move, 0.0):
-                self.odmr_2d_peak_axis1_move_ratio = (odmr_freq2 - odmr_freq1)/axis1_move
-
-        if self._pathway_index < 2:
-            freq_shift_axis0 = axis0_move * self.odmr_2d_peak_axis0_move_ratio # correction in Hz
-            freq_shift_axis1 = axis1_move * self.odmr_2d_peak_axis1_move_ratio #
-            self.odmr_2d_high_start_freq += freq_shift_axis0 + freq_shift_axis1
-            self.odmr_2d_high_stop_freq += freq_shift_axis0 + freq_shift_axis1
-        else:
-            odmr_freq = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Freq. 1']['value']*1e6
-
-            shift_freq = odmr_freq - (self.odmr_2d_high_stop_freq + self.odmr_2d_high_start_freq)/2
-            self.odmr_2d_high_start_freq + shift_freq
-            self.odmr_2d_high_stop_freq + shift_freq
+                # update the correction ratio:
+                self.odmr_2d_high_peak_axis1_move_ratio = (high_odmr_freq2 - high_odmr_freq1)/axis1_move
 
 
+        freq_shift_low_axis0 = axis0_move * self.odmr_2d_high_peak_axis0_move_ratio
+        freq_shift_low_axis1 = axis1_move * self.odmr_2d_high_peak_axis1_move_ratio
 
+        # correct here the center freq with the estimated corrections:
+        self.odmr_2d_high_center_freq += (freq_shift_low_axis0 + freq_shift_low_axis1)
+
+        # create a unique nametag for the current measurement:
         name_tag = 'high_trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
                    +'_'+ str(self._backmap[self._pathway_index]['index'][1])
 
         # of course the shift of the ODMR peak is not linear for a movement in
-        # x or y, but we need just an estimate how to set the boundary
+        # axis0 and axis1, but we need just an estimate how to set the boundary
         # conditions for the first scan, since the first scan will move to a
         # start position and then it need to know where to search for the ODMR
         # peak(s).
 
-        param = self._odmr_logic.perform_odmr_measurement(self.odmr_2d_high_start_freq,
-                                                          self.odmr_2d_high_step_freq,
-                                                          self.odmr_2d_high_stop_freq,
-                                                          self.odmr_2d_high_power,
-                                                          self.odmr_2d_high_runtime,
-                                                          self.odmr_2d_high_fitfunction,
+        # calculate the parameters for the odmr scan:
+        high_start_freq = self.odmr_2d_high_center_freq - self.odmr_2d_high_range_freq/2
+        high_step_freq = self.odmr_2d_high_step_freq
+        high_stop_freq = self.odmr_2d_high_center_freq + self.odmr_2d_high_range_freq/2
+
+        param = self._odmr_logic.perform_odmr_measurement(high_start_freq,
+                                                          high_step_freq,
+                                                          high_stop_freq,
+                                                          self.odmr_2d_low_power,
+                                                          self.odmr_2d_low_runtime,
+                                                          self.odmr_2d_low_fitfunction,
                                                           self.odmr_2d_save_after_measure,
                                                           name_tag)
         store_dict['high_freq'] = param
 
+        # extract the frequency meausure:
         if param.get('Frequency') is not None:
-            odmr_high_freq = param['Frequency']['value']*1e6
+            odmr_high_freq_meas = param['Frequency']['value']*1e6
         elif param.get('Freq. 1') is not None:
-            odmr_high_freq = param['Freq. 1']['value']*1e6
+            odmr_high_freq_meas = param['Freq. 1']['value']*1e6
         else:
-            odmr_high_freq = 2000e6
+            # a default value for testing and debugging:
+            odmr_high_freq_meas = 2000e6
 
-        diff = abs(odmr_high_freq - odmr_low_freq)/2
+
+        diff = abs(odmr_high_freq_meas - odmr_low_freq_meas)/2
 
 
         return diff, store_dict

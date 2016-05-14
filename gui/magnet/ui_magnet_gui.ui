@@ -149,7 +149,7 @@
                <enum>QTabWidget::Rounded</enum>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>2</number>
               </property>
               <property name="documentMode">
                <bool>false</bool>
@@ -276,7 +276,7 @@
                 <item row="2" column="0">
                  <widget class="QGroupBox" name="groupBox_10">
                   <property name="title">
-                   <string> ODMR peak shift (for ODMR Alignment)</string>
+                   <string>ODMR lower peak shift (for ODMR Alignment)</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_2">
                    <item row="1" column="0">
@@ -294,7 +294,7 @@
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_shift_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_axes1_low_shift_DSpinBox">
                      <property name="decimals">
                       <number>4</number>
                      </property>
@@ -310,7 +310,7 @@
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_shift_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_axes0_low_shift_DSpinBox">
                      <property name="decimals">
                       <number>4</number>
                      </property>
@@ -389,27 +389,17 @@ at each point?</string>
                    <string>lower transition:</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_24">
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_stop_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="1" column="0">
                     <widget class="QLabel" name="label_14">
                      <property name="text">
-                      <string>Step Freq (MHz)</string>
+                      <string>Range Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="0">
                     <widget class="QLabel" name="label_13">
                      <property name="text">
-                      <string>Start Freq (MHz)</string>
+                      <string>Center Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
@@ -432,25 +422,12 @@ at each point?</string>
                    <item row="2" column="0">
                     <widget class="QLabel" name="label_15">
                      <property name="text">
-                      <string>Stop Freq (MHz)</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
+                      <string>Step Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_start_freq_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_center_freq_DSpinBox">
                      <property name="decimals">
                       <number>3</number>
                      </property>
@@ -490,6 +467,29 @@ at each point?</string>
                      </property>
                     </widget>
                    </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_range_freq_DSpinBox">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="maximum">
+                      <double>100000000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_low_step_freq_DSpinBox">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-100000000.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>100000000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
                   </layout>
                  </widget>
                 </item>
@@ -502,14 +502,14 @@ at each point?</string>
                    <item row="2" column="0">
                     <widget class="QLabel" name="label_18">
                      <property name="text">
-                      <string>Stop Freq (MHz)</string>
+                      <string>Step Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="0">
                     <widget class="QLabel" name="label_21">
                      <property name="text">
-                      <string>Start Freq (MHz)</string>
+                      <string>Center Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
@@ -520,21 +520,8 @@ at each point?</string>
                      </property>
                     </widget>
                    </item>
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-100000000.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>100000000.000000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="0" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_start_freq_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_center_freq_DSpinBox">
                      <property name="decimals">
                       <number>3</number>
                      </property>
@@ -579,7 +566,7 @@ at each point?</string>
                    <item row="1" column="0">
                     <widget class="QLabel" name="label_22">
                      <property name="text">
-                      <string>Step Freq (MHz)</string>
+                      <string>Range Freq (MHz)</string>
                      </property>
                     </widget>
                    </item>
@@ -590,10 +577,23 @@ at each point?</string>
                      </property>
                     </widget>
                    </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_stop_freq_DSpinBox">
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_range_freq_DSpinBox">
                      <property name="decimals">
                       <number>3</number>
+                     </property>
+                     <property name="maximum">
+                      <double>100000000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="align_2d_odmr_high_step_freq_DSpinBox">
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-100000000.000000000000000</double>
                      </property>
                      <property name="maximum">
                       <double>100000000.000000000000000</double>
@@ -966,7 +966,6 @@ Alignment</string>
               </widget>
              </item>
             </layout>
-            <zorder>gridLayoutWidget_2</zorder>
             <zorder>align_2d_continue_PushButton</zorder>
             <zorder>align_2d_fluorescence_abort_PushButton</zorder>
             <zorder>align_2d_start_PushButton</zorder>
@@ -1253,7 +1252,7 @@ Alignment</string>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
