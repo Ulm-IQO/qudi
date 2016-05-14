@@ -329,8 +329,11 @@ class WavemeterLoggerLogic(GenericLogic):
             self.sig_update_histogram_next.emit(False)
 
 
-    def save_data(self):
+    def save_data(self, timestamp = None):
         """ Save the counter trace data and writes it to a file.
+
+        @param datetime timestamp: timestamp passed from gui so that saved images match filenames of data.
+                                    This will be removed when savelogic handles the image creation also.
 
         @return int: error code (0:OK, -1:error)
         """
@@ -339,7 +342,11 @@ class WavemeterLoggerLogic(GenericLogic):
 
         filepath = self._save_logic.get_path_for_module(module_name='WavemeterLogger')
         filelabel = 'wavemeter_log_histogram'
-        timestamp = datetime.datetime.now()
+
+        # Currently need to pass timestamp from gui so that the saved image matches saved data.
+        # TODO: once the savelogic saves images, we can revert this to always getting timestamp here.
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
 
 
         # prepare the data in a dict or in an OrderedDict:

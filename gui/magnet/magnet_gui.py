@@ -249,25 +249,32 @@ class MagnetGui(GUIBase):
         self._mw.meas_type_nuclear_spin_RadioButton.toggled.connect(self.set_measurement_type)
         self.set_measurement_type()
 
-
         # for odmr alignment:
         self._mw.align_2d_odmr_low_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_low_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_low_fitfunction_list)
-        self._mw.align_2d_odmr_low_start_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_start_freq/1e6)
+        self._mw.align_2d_odmr_low_fit_func_ComboBox.setCurrentIndex(1)
+        self._mw.align_2d_odmr_low_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_center_freq/1e6)
         self._mw.align_2d_odmr_low_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_step_freq/1e6)
-        self._mw.align_2d_odmr_low_stop_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_stop_freq/1e6)
+        self._mw.align_2d_odmr_low_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_range_freq/1e6)
         self._mw.align_2d_odmr_low_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_power)
         self._mw.align_2d_odmr_low_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_runtime)
 
         self._mw.align_2d_odmr_high_fit_func_ComboBox.clear()
         self._mw.align_2d_odmr_high_fit_func_ComboBox.addItems(self._magnet_logic.odmr_2d_high_fitfunction_list)
-        self._mw.align_2d_odmr_high_start_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_start_freq/1e6)
+        self._mw.align_2d_odmr_high_fit_func_ComboBox.setCurrentIndex(1)
+        self._mw.align_2d_odmr_high_center_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_center_freq/1e6)
         self._mw.align_2d_odmr_high_step_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_step_freq/1e6)
-        self._mw.align_2d_odmr_high_stop_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_stop_freq/1e6)
+        self._mw.align_2d_odmr_high_range_freq_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_range_freq/1e6)
         self._mw.align_2d_odmr_high_power_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_power)
         self._mw.align_2d_odmr_high_runtime_DSpinBox.setValue(self._magnet_logic.odmr_2d_high_runtime)
 
         self._mw.align_2d_odmr_save_after_measure_CheckBox.setChecked(self._magnet_logic.odmr_2d_save_after_measure)
+
+        # peak shift for odmr:
+        self._mw.align_2d_axes0_low_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio/1e12)
+        self._mw.align_2d_axes1_low_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio/1e12)
+
+
 
         # for single shot alignment of a nuclear spin:
         self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode*1e9)
@@ -905,22 +912,25 @@ class MagnetGui(GUIBase):
         elif self.measurement_type == '2d_odmr':
             self._magnet_logic.curr_alignment_method = self.measurement_type
 
-            self._magnet_logic.odmr_2d_low_start_freq = self._mw.align_2d_odmr_low_start_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_center_freq = self._mw.align_2d_odmr_low_center_freq_DSpinBox.value()*1e6
             self._magnet_logic.odmr_2d_low_step_freq = self._mw.align_2d_odmr_low_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_low_stop_freq = self._mw.align_2d_odmr_low_stop_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_low_range_freq = self._mw.align_2d_odmr_low_range_freq_DSpinBox.value()*1e6
             self._magnet_logic.odmr_2d_low_power = self._mw.align_2d_odmr_low_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_runtime  = self._mw.align_2d_odmr_low_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_low_fitfunction = self._mw.align_2d_odmr_low_fit_func_ComboBox.currentText()
 
-            self._magnet_logic.odmr_2d_high_start_freq = self._mw.align_2d_odmr_high_start_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_center_freq = self._mw.align_2d_odmr_high_center_freq_DSpinBox.value()*1e6
             self._magnet_logic.odmr_2d_high_step_freq = self._mw.align_2d_odmr_high_step_freq_DSpinBox.value()*1e6
-            self._magnet_logic.odmr_2d_high_stop_freq = self._mw.align_2d_odmr_high_stop_freq_DSpinBox.value()*1e6
+            self._magnet_logic.odmr_2d_high_range_freq = self._mw.align_2d_odmr_high_range_freq_DSpinBox.value()*1e6
             self._magnet_logic.odmr_2d_high_power = self._mw.align_2d_odmr_high_power_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_runtime = self._mw.align_2d_odmr_high_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_fitfunction = self._mw.align_2d_odmr_high_fit_func_ComboBox.currentText()
 
-            self._magnet_logic.odmr_2d_peak_axis0_move_ratio = self._mw.align_2d_axes0_shift_DSpinBox.value()*1e12
-            self._magnet_logic.odmr_2d_peak_axis1_move_ratio = self._mw.align_2d_axes1_shift_DSpinBox.value()*1e12
+            self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio = self._mw.align_2d_axes0_low_shift_DSpinBox.value()*1e12
+            self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio = self._mw.align_2d_axes1_low_shift_DSpinBox.value()*1e12
+
+            self._magnet_logic.odmr_2d_high_peak_axis0_move_ratio = -self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio
+            self._magnet_logic.odmr_2d_high_peak_axis1_move_ratio = -self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio
 
             self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
 

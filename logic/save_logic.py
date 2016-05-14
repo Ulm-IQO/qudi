@@ -168,7 +168,7 @@ class SaveLogic(GenericLogic):
             @param bool as_text: specify how the saved data are saved to file.
             @param bool as_xml: specify how the saved data are saved to file.
 
-            @param int precision: optional, specifies the number of degits
+            @param int precision: optional, specifies the number of digits
                                   after the comma for the saving precision. All
                                   number, which follows afterwards are cut off.
                                   A c-like format should be used.
