@@ -1447,50 +1447,50 @@ class PulsedMeasurementGui(GUIBase):
                 # set initial values:
                 model.setData(index, ini_values[0], ini_values[1])
 
-    def count_digital_channels(self):
-        """ Get the number of currently displayed digital channels.
-
-        @return int: number of digital channels
-
-        The number of digital channal are counted and return and additionally
-        the internal counter variable _num_d_ch is updated. The counting
-        procedure is based on the block_editor_TableWidget.
-        """
-        count_dch = 0
-        for column in range(self._mw.block_editor_TableWidget.columnCount()):
-            if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
-                count_dch = count_dch + 1
-
-        # self._num_d_ch = count_dch
-        return count_dch
-
-    def count_analog_channels(self):
-        """ Get the number of currently displayed analog channels.
-
-        @return int: number of analog channels
-
-        The number of analog channal are counted and return and additionally
-        the internal counter variable _num_a_ch is updated. The counting
-        procedure is based on the block_editor_TableWidget since it is assumed
-        that all operation on the block_editor_TableWidget is also applied on
-        block_organizer_TableWidget.
-        """
-
-        count_a_ch = 0
-        # there must be definitly less analog channels then available columns
-        # in the table, therefore the number of columns can be used as the
-        # upper border.
-        for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
-            for column in range(self._mw.block_editor_TableWidget.columnCount()):
-                if ('ACh' + str(
-                        poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(
-                        column).text():
-                    # analog channel found, break the inner loop to
-                    count_a_ch = count_a_ch + 1
-                    break
-
-        # self._num_a_ch = count_a_ch
-        return count_a_ch
+    # def count_digital_channels(self):
+    #     """ Get the number of currently displayed digital channels.
+    #
+    #     @return int: number of digital channels
+    #
+    #     The number of digital channal are counted and return and additionally
+    #     the internal counter variable _num_d_ch is updated. The counting
+    #     procedure is based on the block_editor_TableWidget.
+    #     """
+    #     count_dch = 0
+    #     for column in range(self._mw.block_editor_TableWidget.columnCount()):
+    #         if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
+    #             count_dch = count_dch + 1
+    #
+    #     # self._num_d_ch = count_dch
+    #     return count_dch
+    #
+    # def count_analog_channels(self):
+    #     """ Get the number of currently displayed analog channels.
+    #
+    #     @return int: number of analog channels
+    #
+    #     The number of analog channal are counted and return and additionally
+    #     the internal counter variable _num_a_ch is updated. The counting
+    #     procedure is based on the block_editor_TableWidget since it is assumed
+    #     that all operation on the block_editor_TableWidget is also applied on
+    #     block_organizer_TableWidget.
+    #     """
+    #
+    #     count_a_ch = 0
+    #     # there must be definitly less analog channels then available columns
+    #     # in the table, therefore the number of columns can be used as the
+    #     # upper border.
+    #     for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
+    #         for column in range(self._mw.block_editor_TableWidget.columnCount()):
+    #             if ('ACh' + str(
+    #                     poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(
+    #                     column).text():
+    #                 # analog channel found, break the inner loop to
+    #                 count_a_ch = count_a_ch + 1
+    #                 break
+    #
+    #     # self._num_a_ch = count_a_ch
+    #     return count_a_ch
 
     def _determine_needed_parameters(self):
         """ Determine the maximal number of needed parameters for desired functions.
