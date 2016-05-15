@@ -913,7 +913,7 @@ class ODMRLogic(GenericLogic):
         # check just the state of the optimizer
         while self.getState() != 'idle' and not self.stopRequested:
             time.sleep(1)
-            print('running')
+            # print('running')
 
         meas_param = self.do_fit(fit_function=fit_function)
 

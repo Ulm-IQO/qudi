@@ -45,7 +45,7 @@
              <enum>Qt::LeftToRight</enum>
             </property>
             <property name="maximum">
-             <double>1000000.000000000000000</double>
+             <double>1000000000.000000000000000</double>
             </property>
             <property name="singleStep">
              <double>100.000000000000000</double>
@@ -90,7 +90,7 @@
           <item row="0" column="3" colspan="2">
            <widget class="QDoubleSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
             <property name="maximum">
-             <double>10000000.000000000000000</double>
+             <double>1000000000.000000000000000</double>
             </property>
             <property name="singleStep">
              <double>100.000000000000000</double>
@@ -149,7 +149,7 @@
                <enum>QTabWidget::Rounded</enum>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>0</number>
               </property>
               <property name="documentMode">
                <bool>false</bool>
@@ -276,7 +276,7 @@
                 <item row="2" column="0">
                  <widget class="QGroupBox" name="groupBox_10">
                   <property name="title">
-                   <string>ODMR lower peak shift (for ODMR Alignment)</string>
+                   <string>ODMR peak shift (for ODMR Alignment)</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_2">
                    <item row="1" column="0">
@@ -294,7 +294,7 @@
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes1_low_shift_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_axes1_shift_DSpinBox">
                      <property name="decimals">
                       <number>4</number>
                      </property>
@@ -310,7 +310,7 @@
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="align_2d_axes0_low_shift_DSpinBox">
+                    <widget class="QDoubleSpinBox" name="align_2d_axes0_shift_DSpinBox">
                      <property name="decimals">
                       <number>4</number>
                      </property>
