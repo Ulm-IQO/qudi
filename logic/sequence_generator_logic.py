@@ -589,6 +589,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         if 'current_activation_config_name' in self._statusVariables:
             self.current_activation_config_name = self._statusVariables['current_activation_config_name']
             self.set_activation_config()
+        if 'interleave_state' in self._statusVariables:
+            self._pulse_generator_device.set_interleave(self._statusVariables['interleave_state'])
 
 
     def deactivation(self, e):
@@ -600,6 +602,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
 
         self._statusVariables['current_activation_config_name'] = self.current_activation_config_name
+        self._statusVariables['interleave_state'] = self._pulse_generator_device.get_interleave()
 
     def _attach_predefined_methods(self):
         """ Retrieve in the folder all files for predefined methods and attach
@@ -952,7 +955,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         """
         return self._pulse_generator_device.get_interleave()
 
-    def set_interleave(self,interleave_state=False):
+    def set_interleave(self, interleave_state=False):
         """ Set the interleave state.
 
         @param bool interleave_state: If nothing passed, interleave will be switched off.

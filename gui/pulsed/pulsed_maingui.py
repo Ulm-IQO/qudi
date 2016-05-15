@@ -287,10 +287,6 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
-        #TODO: Check and transfer to logic:
-        if 'use_interleave_CheckBox' in self._statusVariables:
-            self._bs.use_interleave_CheckBox.setChecked(self._statusVariables['use_interleave_CheckBox'])
-
         # load in the possible channel configurations into the config
         pulser_constr = self.get_hardware_constraints()
 
@@ -300,6 +296,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self._bs.activation_config_ComboBox.currentIndexChanged.connect(self._update_channel_display)
 
+        self._bs.use_interleave_CheckBox.setChecked(self._seq_gen_logic.get_interleave())
         self._bs.use_interleave_CheckBox.stateChanged.connect(self._interleave_changed)
 
         # create the Predefined methods Dialog
@@ -357,9 +354,6 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
 
         self._bs.close()
-
-        #TODO: Check and transfer to logic:
-        self._statusVariables['use_interleave_CheckBox'] = self._bs.use_interleave_CheckBox.isChecked()
 
     def _interleave_changed(self, state):
         """ React on a Interleave state change.
@@ -2570,7 +2564,6 @@ class PulsedMeasurementGui(GUIBase):
         self._as.rejected.connect(self.keep_former_analysis_settings)
         self._as.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
 
-        #TODO: Check and transfer to logic:
         if 'ana_param_x_axis_name_LineEdit' in self._statusVariables:
             self._as.ana_param_x_axis_name_LineEdit.setText(self._statusVariables['ana_param_x_axis_name_LineEdit'])
         if 'ana_param_x_axis_unit_LineEdit' in self._statusVariables:
@@ -2590,7 +2583,6 @@ class PulsedMeasurementGui(GUIBase):
                          explanation can be found in the method initUI.
         """
 
-        #TODO: Check and transfer to logic:
         self._statusVariables['ana_param_x_axis_name_LineEdit'] = self._as.ana_param_x_axis_name_LineEdit.text()
         self._statusVariables['ana_param_x_axis_unit_LineEdit'] = self._as.ana_param_x_axis_unit_LineEdit.text()
         self._statusVariables['ana_param_y_axis_name_LineEdit'] = self._as.ana_param_y_axis_name_LineEdit.text()
@@ -2764,7 +2756,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self.run_stop_clicked(False)
 
-        #TODO: Check and transfer to logic:
         self._statusVariables['ana_param_x_axis_defined_CheckBox'] = self._mw.ana_param_x_axis_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_num_laser_defined_CheckBox'] = self._mw.ana_param_num_laser_defined_CheckBox.isChecked()
 
