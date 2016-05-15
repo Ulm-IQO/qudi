@@ -23,6 +23,7 @@ import sys
 import rpyc
 import time
 import json
+import logging
 import signal
 import atexit
 import shutil
@@ -52,15 +53,15 @@ class QuDi:
         m = self.getModule('kernellogic')
         config = json.loads("".join(open(connfile).readlines()))
         self.kernelid = m.startKernel(config, self)
-        print('Kernel up: {}'.format(self.kernelid))
+        logging.info('Kernel up: {}'.format(self.kernelid))
 
     def stopKernel(self):
-        print('Shutting down: ', self.kernelid)
+        logging.info('Shutting down: {}'.format(self.kernelid))
         sys.stdout.flush()
         m = self.getModule('kernellogic')
         if self.kernelid is not None:
             m.stopKernel(self.kernelid)
-            print('Down!')
+            logging.info('Down!')
             sys.stdout.flush()
 
     def initSignal(self):
@@ -79,7 +80,7 @@ class QuDi:
 
 def install_kernel():
         from jupyter_client.kernelspec import KernelSpecManager
-        print('Installing QuDi kernel.')
+        logging.info('Installing QuDi kernel.')
 
         try:
             # prepare temporary kernelspec folder
@@ -107,7 +108,7 @@ def install_kernel():
             # install kernelspec folder
             kernel_spec_manager = KernelSpecManager()
             dest = kernel_spec_manager.install_kernel_spec(path, kernel_name='qudi', user=True)
-            print('Installed kernelspec qudi in {}'.format(dest))
+            logging.info('Installed kernelspec qudi in {}'.format(dest))
         except OSError as e:
             if e.errno == errno.EACCES:
                 print(e, file=sys.stderr)
@@ -118,6 +119,10 @@ def install_kernel():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s"
+        )
     if len(sys.argv) > 1:
         if sys.argv[1] == 'install':
             install_kernel()
@@ -128,9 +133,9 @@ if __name__ == '__main__':
             q.connect()
             q.startKernel(sys.argv[1])
             atexit.register(q.stopKernel)
-            print('Sleeping.')
+            logging.info('Sleeping.')
             q.poller.run()
-            print('Quitting.')
+            logging.info('Quitting.')
             sys.stdout.flush()
     else:
         print('qudikernel usage is {0} <connectionfile> or {0} install'.format(sys.argv[0]), file=sys.stderr)
