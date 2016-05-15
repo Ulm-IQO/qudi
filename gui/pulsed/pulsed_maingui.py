@@ -287,6 +287,10 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_block_settings)
 
+        #TODO: Check and transfer to logic:
+        if 'use_interleave_CheckBox' in self._statusVariables:
+            self._bs.use_interleave_CheckBox.setChecked(self._statusVariables['use_interleave_CheckBox'])
+
         # load in the possible channel configurations into the config
         pulser_constr = self.get_hardware_constraints()
 
@@ -353,6 +357,9 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.disconnect()
 
         self._bs.close()
+
+        #TODO: Check and transfer to logic:
+        self._statusVariables['use_interleave_CheckBox'] = self._bs.use_interleave_CheckBox.isChecked()
 
     def _interleave_changed(self, state):
         """ React on a Interleave state change.
@@ -692,6 +699,14 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.rejected.connect(self.keep_former_predefined_methods)
         self._pm_cfg.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_predefined_methods)
 
+        # set the chosen predefined method to be visible:
+        for predefined_method in self._predefined_methods_list:
+            if predefined_method in self._statusVariables:
+                checkbox = self._get_ref_checkbox_predefined_methods_config(predefined_method)
+                checkbox.setChecked(self._statusVariables[predefined_method])
+
+        self.update_predefined_methods()
+
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
         # self._mw.repeat_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -705,6 +720,12 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: implement a proper deactivation for that.
         self._pm.close()
         self._pm_cfg.close()
+
+        # save which predefined method should be visible:
+        for predefined_method in self._predefined_methods_list:
+            checkbox = self._get_ref_checkbox_predefined_methods_config(predefined_method)
+            self._statusVariables[predefined_method] = checkbox.isChecked()
+
 
     def _create_save_tag_input(self):
         """ Add save file tag input box. """
@@ -2538,8 +2559,19 @@ class PulsedMeasurementGui(GUIBase):
         self._as.accepted.connect(self.update_analysis_settings)
         self._as.rejected.connect(self.keep_former_analysis_settings)
         self._as.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
+
+        #TODO: Check and transfer to logic:
+        if 'ana_param_x_axis_name_LineEdit' in self._statusVariables:
+            self._as.ana_param_x_axis_name_LineEdit.setText(self._statusVariables['ana_param_x_axis_name_LineEdit'])
+        if 'ana_param_x_axis_unit_LineEdit' in self._statusVariables:
+            self._as.ana_param_x_axis_unit_LineEdit.setText(self._statusVariables['ana_param_x_axis_unit_LineEdit'])
+        if 'ana_param_y_axis_name_LineEdit' in self._statusVariables:
+            self._as.ana_param_y_axis_name_LineEdit.setText(self._statusVariables['ana_param_y_axis_name_LineEdit'])
+        if 'ana_param_y_axis_unit_LineEdit' in self._statusVariables:
+            self._as.ana_param_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_y_axis_unit_LineEdit'])
+
         self.update_analysis_settings()
-        pass
+
 
     def _deactivate_analysis_settings_ui(self, e):
         """ Disconnects the configuration of the Settings for 'Analysis' Tab.
@@ -2548,7 +2580,11 @@ class PulsedMeasurementGui(GUIBase):
                          explanation can be found in the method initUI.
         """
 
-        pass
+        #TODO: Check and transfer to logic:
+        self._statusVariables['ana_param_x_axis_name_LineEdit'] = self._as.ana_param_x_axis_name_LineEdit.text()
+        self._statusVariables['ana_param_x_axis_unit_LineEdit'] = self._as.ana_param_x_axis_unit_LineEdit.text()
+        self._statusVariables['ana_param_y_axis_name_LineEdit'] = self._as.ana_param_y_axis_name_LineEdit.text()
+        self._statusVariables['ana_param_y_axis_unit_LineEdit'] = self._as.ana_param_y_axis_unit_LineEdit.text()
 
     def update_analysis_settings(self):
         """ Apply the new settings """
@@ -2619,9 +2655,8 @@ class PulsedMeasurementGui(GUIBase):
 
 
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
-        self.errorbars_present=False
+        self.errorbars_present = False
 
-        #FIXME: THE DEFAULT VALUES DO NOT NEED TO BE DEFINED HERE!!!
         # Initialize  what is visible and what not
         self._mw.ext_control_mw_freq_Label.setVisible(False)
         self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
@@ -2643,6 +2678,11 @@ class PulsedMeasurementGui(GUIBase):
         for entry in self._binwidth_ref_list:
             binwidth_str_list.append(str(round(entry,12)))
         self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
+
+        if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
+            self._mw.ana_param_x_axis_defined_CheckBox.setChecked(self._statusVariables['ana_param_x_axis_defined_CheckBox'])
+        if 'ana_param_num_laser_defined_CheckBox' in self._statusVariables:
+            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(self._statusVariables['ana_param_num_laser_defined_CheckBox'])
 
         self._mw.second_plot_ComboBox.addItem('None')
         self._mw.second_plot_ComboBox.addItem('unchanged data')
@@ -2713,6 +2753,10 @@ class PulsedMeasurementGui(GUIBase):
         """
 
         self.run_stop_clicked(False)
+
+        #TODO: Check and transfer to logic:
+        self._statusVariables['ana_param_x_axis_defined_CheckBox'] = self._mw.ana_param_x_axis_defined_CheckBox.isChecked()
+        self._statusVariables['ana_param_num_laser_defined_CheckBox'] = self._mw.ana_param_num_laser_defined_CheckBox.isChecked()
 
         # disconnect signals
         # self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
@@ -3665,10 +3709,10 @@ class PulsedMeasurementGui(GUIBase):
         # prepare the combobox:
         self.num_of_lasers_changed()
 
-        self._mw.extract_param_ana_window_start_SpinBox.setValue(5)
-        self._mw.extract_param_ana_window_width_SpinBox.setValue(200)
-        self._mw.extract_param_ref_window_start_SpinBox.setValue(500)
-        self._mw.extract_param_ref_window_width_SpinBox.setValue(200)
+        self._mw.extract_param_ana_window_start_SpinBox.setValue(self._pulsed_meas_logic.signal_start_bin)
+        self._mw.extract_param_ana_window_width_SpinBox.setValue(self._pulsed_meas_logic.signal_width_bin)
+        self._mw.extract_param_ref_window_start_SpinBox.setValue(self._pulsed_meas_logic.norm_start_bin)
+        self._mw.extract_param_ref_window_width_SpinBox.setValue(self._pulsed_meas_logic.norm_width_bin)
 
         # Display laser pulses, connect change of viewboxes and change of lines:
         self._mw.extract_param_ana_window_start_SpinBox.valueChanged.connect(self.analysis_window_values_changed)
@@ -3701,7 +3745,6 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-        pass
 
     def num_of_lasers_changed(self):
         """ Handle what happens if number of laser pulses changes. """
