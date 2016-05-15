@@ -374,9 +374,9 @@ class Pulse_Sequence(object):
         """
 
         if at_beginning:
-            self.ensemble_list.insert(0, ensemble)
+            self.ensemble_list.insert(0, ensemble_param)
         else:
-            self.ensemble_list.append(ensemble)
+            self.ensemble_list.append(ensemble_param)
         self.refresh_parameters()
 
     #TODO: Experimental, check how necessary that method is and replace by other idea if needed:
@@ -586,6 +586,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         self._attach_predefined_methods()
 
+        if 'current_activation_config_name' in self._statusVariables:
+            self.current_activation_config_name = self._statusVariables['current_activation_config_name']
+            self.set_activation_config()
+
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -593,7 +597,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         @param object e: Event class object from Fysom. A more detailed
                          explanation can be found in method activation.
         """
-        pass
+
+
+        self._statusVariables['current_activation_config_name'] = self.current_activation_config_name
 
     def _attach_predefined_methods(self):
         """ Retrieve in the folder all files for predefined methods and attach

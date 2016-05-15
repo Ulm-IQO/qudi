@@ -641,6 +641,7 @@ class PulsedMeasurementGui(GUIBase):
         self.set_block_editor_columns()
         # self.logMsg(('num_a_ch, num_d_ch:',num_a_ch,num_d_ch) )
 
+
         # create all the needed control widgets on the fly and connect their a
         # actions to each other:
         self._create_control_for_predefined_methods()
@@ -705,6 +706,12 @@ class PulsedMeasurementGui(GUIBase):
                 checkbox = self._get_ref_checkbox_predefined_methods_config(predefined_method)
                 checkbox.setChecked(self._statusVariables[predefined_method])
 
+        if 'laserchannel_ComboBox' in self._statusVariables:
+            text = self._statusVariables['laserchannel_ComboBox']
+            index = self._mw.laserchannel_ComboBox.findText(text)
+            if index >= 0:
+                self._mw.laserchannel_ComboBox.setCurrentIndex(index)
+
         self.update_predefined_methods()
 
         # Modified by me
@@ -725,6 +732,9 @@ class PulsedMeasurementGui(GUIBase):
         for predefined_method in self._predefined_methods_list:
             checkbox = self._get_ref_checkbox_predefined_methods_config(predefined_method)
             self._statusVariables[predefined_method] = checkbox.isChecked()
+
+        self._statusVariables['laserchannel_ComboBox'] = self._mw.laserchannel_ComboBox.currentText()
+
 
 
     def _create_save_tag_input(self):

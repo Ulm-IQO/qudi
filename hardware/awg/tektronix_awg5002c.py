@@ -1166,13 +1166,13 @@ class AWG5002C(Base, PulserInterface):
 
                     self.tell('OUTPUT{0}:STATE {1}'.format(ana_chan, state))
 
-            else:
-                self.logMsg('The device does not support that much analog '
-                            'channels! A channel number "{0}" was passed, but '
-                            'only "{1}" channels are available!\nCommand will '
-                            'be ignored.'.format(ana_chan,
-                                                 self._get_num_a_ch()),
-                            msgType='warning')
+                else:
+                    self.logMsg('The device does not support that much analog '
+                                'channels! A channel number "{0}" was passed, but '
+                                'only "{1}" channels are available!\nCommand will '
+                                'be ignored.'.format(ana_chan,
+                                                     self._get_num_a_ch()),
+                                msgType='warning')
 
         # if d_ch != {}:
         #     self.logMsg('Digital Channel of the AWG5000 series will always be '
