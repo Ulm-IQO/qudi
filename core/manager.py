@@ -577,10 +577,11 @@ class Manager(QtCore.QObject):
         for c in connections:
             connectorIn = self.tree['loaded'][base][mkey].connector['in']
             if c not in connectorIn:
-                self.logger.logMsg('IN connector {0} of {1} module {2} loaded '
-                                   'as {3} is supposed to get connected but '
-                                   'is not declared in the module.'.format(c, base, thismodule['module.Class'], mkey),
-                                   msgType='error')
+                self.logger.logMsg(
+                    'IN connector {0} of {1} module {2} loaded '
+                    'as {3} is supposed to get connected but '
+                    'is not declared in the module.'.format(c, base, thismodule['module.Class'], mkey),
+                    msgType='error')
                 continue
             if not isinstance(connectorIn[c], OrderedDict):
                 self.logger.logMsg('No dict.', msgType='error')
@@ -628,23 +629,28 @@ class Manager(QtCore.QObject):
             elif destmod in self.tree['loaded']['logic']:
                 destbase = 'logic'
             else:
-                self.logger.logMsg('Unique name {0} is neither in hardware or '
-                                   'logic module list. Cannot connect {1} ({2}) '
-                                   'to it.'.format(connections[c], mkey, thismodule['module.Class']),
-                                   msgType='error')
+                self.logger.logMsg(
+                    'Unique name {0} is neither in hardware or '
+                    'logic module list. Cannot connect {1} ({2}) '
+                    'to it.'.format(connections[c], mkey, thismodule['module.Class']),
+                    msgType='error')
                 continue
 
             if 'out' not in self.tree['loaded'][destbase][destmod].connector:
-                self.logger.logMsg('Module {0} loaded as {1} is supposed to '
-                                   'get connected to module loaded as {2} but '
-                                   'that does not declare any OUT '
-                                   'connectors.'.format(thismodule['module.Class'], mkey, destmod),
-                                   msgType='error')
+                self.logger.logMsg(
+                    'Module {0} loaded as {1} is supposed to '
+                    'get connected to module loaded as {2} but '
+                    'that does not declare any OUT '
+                    'connectors.'.format(thismodule['module.Class'], mkey, destmod),
+                    msgType='error')
                 continue
             outputs = self.tree['loaded'][destbase][destmod].connector['out']
             if destcon not in outputs:
-                self.logger.logMsg('OUT connector not declared', 
-                                   msgType='error')
+                self.logger.logMsg(
+                    'OUT connector {} not declared in module {}.{} '
+                    'but connected to IN connector {} of module {}'
+                    ''.format(destcon, destbase, destmod, c, thismodule['module.Class']), 
+                    msgType='error')
                 continue
             if not isinstance(outputs[destcon], OrderedDict):
                 self.logger.logMsg('not a dict', msgType='error')
