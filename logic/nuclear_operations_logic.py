@@ -55,7 +55,9 @@ class NuclearOperationsLogic(GenericLogic):
     _modclass = 'NuclearOperationsLogic'
     _modtype = 'logic'
 
-        ## declare connectors
+    # declare connectors
+    #TODO: Use rather the task runner instead directly the module!
+
     _in = {'sequencegenerationlogic': 'SequenceGenerationLogic',
            'traceanalysislogic': 'TraceAnalysisLogic',
            'odmrlogic': 'ODMRLogic',
@@ -100,15 +102,36 @@ class NuclearOperationsLogic(GenericLogic):
 
 
         # choose some default values:
-        self.x_axis_start = 1e-3
-        self.x_axis_step = 10e3
+        self.x_axis_start = 1e-3                    # in s
+        self.x_axis_step = 10e-3                     # in s
         self.x_axis_num_points = 50
+        self.current_meas_point = self.x_axis_start
+        self.current_meas_index = 0
 
         self._stop_requested = False
+
+        self.mw_cw_freq = 10e9                      # in Hz
+        self.mw_power = -30                         # in dBm
+
+        self.odmr_meas_freq0 = 10000e6              # in Hz
+        self.odmr_meas_freq1 = 10002.1e6            # in Hz
+        self.odmr_meas_freq2 = 10004.2e6            # in Hz
+        self.odmr_optimize_runtime = 30             # in s
+        self.odmr_time_for_next_optimize = 300      # in s
+
+        # store here all the measured odmr peaks
+        self.measured_odmr_list = []
+
+        # on which odmr peak the manipulation is going to be applied:
+        self.mw_on_odmr_peak = 1
+
+        self._optimize_now = False
 
         self.initialize_x_axis()
         self.initialize_y_axis()
         self.initialize_meas_param()
+
+        self.current_meas_seq_name = ''
 
         # establish the access to all connectors:
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -140,6 +163,7 @@ class NuclearOperationsLogic(GenericLogic):
         stop = self.x_axis_start + self.x_axis_step*self.x_axis_num_points
         self.x_axis_list = np.arange(self.x_axis_start, stop+(self.x_axis_step/2), self.x_axis_step)
         self.current_meas_point = self.x_axis_start
+        self.current_meas_index = 0
         self.sigCurrMeasPointUpdated.emit()
 
     def initialize_y_axis(self):
@@ -156,6 +180,11 @@ class NuclearOperationsLogic(GenericLogic):
 
     def start_nuclear_meas(self):
         """ Start the nuclear operation measurement. """
+
+        # prepare here everything for a measurement and go to the measurement
+        # loop.
+        self.prepare_measurement()
+
         self.sigNextMeasPoint.emit()
         pass
 
@@ -168,14 +197,66 @@ class NuclearOperationsLogic(GenericLogic):
                 # end measurement and switch all devices off
                 self.stopRequested = False
                 self.unlock()
+
+                self.mw_off()
+                self._pulser_off()
                 # emit all needed signals for the update:
                 self.sigMeasValueUpdated.emit()
                 return
 
+        if self._optimize_now:
+            current_meas_seq = self.current_meas_seq_name
+            self.mw_off()
+            self._load_laser_on()
+            self._pulser_on()
+            self.do_optimize_pos()
+            self._load_pulsed_odmr()
+            self._pulser_on()
+            self.do_optimize_odmr_freq()
+            self.mw_on()
+            self._load_measurement_seq(current_meas_seq)
+
+        if self._stop_requested:
+            self.sigNextMeasPoint.emit()
+            return
+
+        curr_meas_points, meas_param = self._get_meas_point()
+
+        self._set_meas_point(self.current_meas_index, curr_meas_points, meas_param)
 
 
+        # increment the measurement index or set it back to zero if it exceed
+        # the maximal number of x axis measurement points:
+        if self.current_meas_index + 1 > self.x_axis_num_points:
+            self.current_meas_index = 0
+        else:
+            self.current_meas_index += 1
 
         self.sigNextMeasPoint.emit()
+
+    def _set_meas_point(self, meas_index, meas_points, meas_param):
+        """ Handle the proper setting of the current meas_point and store all
+            the additional measurement parameter.
+
+        @param meas_index:
+        @param meas_points:
+        @param meas_param:
+        @return:
+        """
+        pass
+
+    def _get_meas_point(self):
+        """ Start the actual measurement (most probably with the gated counter)
+
+        And perform the measurement with that routine.
+        @return list, dict:
+        """
+
+        # save also the count trace of the gated counter after the measurement.
+        # here the actual measurement is going to be started and stoped and
+        # then analyzed and outputted in a proper format.
+
+        return [0], {}
 
 
     def stop_nuclear_meas(self):
@@ -215,12 +296,44 @@ class NuclearOperationsLogic(GenericLogic):
                 'QSD - Artificial Drive', 'QSD - SWAP FID',
                 'QSD - Entanglement FID']
 
+    def get_available_odmr_peaks(self):
+        """ Retrieve the information on which odmr peak the microwave can be
+            applied.
+
+        @return list: with string entries denoting the peak number
+        """
+        return [1, 2, 3]
+
 
     def prepare_measurement(self, meas_type):
         """ Prepare and create all measurement sequences for the specified
             measurement type
 
         @param str meas_type: a measurement type from the list get_meas_type_list
+        """
+        self._create_laser_on()
+        self._create_pulsed_odmr()
+
+        if meas_type == 'Nuclear Rabi':
+            pass
+
+        elif meas_type == 'Nuclear Frequency Scan':
+            pass
+
+        elif meas_type == 'QSD - Artificial Drive':
+            pass
+
+        elif meas_type == 'QSD - SWAP FID':
+            pass
+
+        elif meas_type == 'QSD - Entanglement FID':
+            pass
+
+    def adjust_measurement(self, meas_type):
+        """ Adjust the measurement sequence for the next measurement point.
+
+        @param meas_type:
+        @return:
         """
 
         if meas_type == 'Nuclear Rabi':
@@ -238,6 +351,40 @@ class NuclearOperationsLogic(GenericLogic):
         elif meas_type == 'QSD - Entanglement FID':
             pass
 
+    def _load_measurement_seq(self):
+        """ Load the current measurement sequence in the pulser
+
+        @return:
+        """
+        pass
+
+    def _create_laser_on(self):
+        """ Create the laser asset.
+
+        @return:
+        """
+        pass
+
+    def _load_laser_on(self):
+        """ Load the laser on asset into the pulser.
+
+        @return:
+        """
+        pass
+
+    def _pulser_on(self):
+        """ switch on the pulsing device.
+
+        @return:
+        """
+        pass
+
+    def _pulser_off(self):
+        """ switch off the pulsing device.
+
+        @return:
+        """
+        pass
 
     def do_optimize_pos(self):
         """ Perform an optimize position. """
@@ -259,32 +406,28 @@ class NuclearOperationsLogic(GenericLogic):
                                           self._optimizer_logic.optim_pos_z)
 
 
-    def do_optimize_odmr_pos(self):
+    def _create_pulsed_odmr(self):
+        #FIXME: Move this creation routine to the tasks!
+
         pass
 
+    def _load_pulsed_odmr(self):
+        #FIXME: Move this creation routine to the tasks!
 
-    def set_odmr_freq(self, freq1, freq2=None, freq3=None, power=-30, low=True):
-        """ Set the parameters for the ODMR measurement/optimization.
+        pass
 
-        @param float freq1: frequency in Hz
-        @param float freq2: frequency in Hz
-        @param float freq3: frequency in Hz
-        @param float power: power in dBm
-        @param bool low: if True frequencies are for lower electron spin
-                         transition, else for higher electron spin transition.
+    def do_optimize_odmr_freq(self):
+        pass
+
+    def mw_on(self):
+        pass
+
+    def mw_off(self):
+        pass
+
+    def set_mw_on_odmr_freq(self, freq, power):
+        """ Set the microwave on a the specified freq with the specified power.
 
         """
+        pass
 
-
-        if low:
-            text = 'low'
-        else:
-            text = 'high'
-
-        self._meas_param['odmr_'+text+'_power'] = power
-        self._meas_param['odmr_'+text+'_freq1'] = freq1
-
-        if freq2 is not None:
-            self._meas_param['odmr_'+text+'_freq2'] = freq2
-        if freq3 is not None:
-            self._meas_param['odmr_'+text+'_freq3'] = freq3
