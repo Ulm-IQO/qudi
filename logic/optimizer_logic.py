@@ -361,7 +361,7 @@ class OptimizerLogic(GenericLogic):
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(axis=axes, data=xy_fit_data)
-        print(result_2D_gaus.fit_report())
+        # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
             self.logMsg('error in 2D Gaussian Fit.',
@@ -404,7 +404,7 @@ class OptimizerLogic(GenericLogic):
                 result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=self.z_params)
             else:
                 result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line)
-        print(result.fit_report())
+        # print(result.fit_report())
         self.z_params = result.params
 
         if result.success is False:

@@ -271,8 +271,8 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_odmr_save_after_measure_CheckBox.setChecked(self._magnet_logic.odmr_2d_save_after_measure)
 
         # peak shift for odmr:
-        self._mw.align_2d_axes0_low_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio/1e12)
-        self._mw.align_2d_axes1_low_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio/1e12)
+        self._mw.align_2d_axes0_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_peak_axis0_move_ratio/1e12)
+        self._mw.align_2d_axes1_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_peak_axis1_move_ratio/1e12)
 
 
 
@@ -926,11 +926,8 @@ class MagnetGui(GUIBase):
             self._magnet_logic.odmr_2d_high_runtime = self._mw.align_2d_odmr_high_runtime_DSpinBox.value()
             self._magnet_logic.odmr_2d_high_fitfunction = self._mw.align_2d_odmr_high_fit_func_ComboBox.currentText()
 
-            self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio = self._mw.align_2d_axes0_low_shift_DSpinBox.value()*1e12
-            self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio = self._mw.align_2d_axes1_low_shift_DSpinBox.value()*1e12
-
-            self._magnet_logic.odmr_2d_high_peak_axis0_move_ratio = -self._magnet_logic.odmr_2d_low_peak_axis0_move_ratio
-            self._magnet_logic.odmr_2d_high_peak_axis1_move_ratio = -self._magnet_logic.odmr_2d_low_peak_axis1_move_ratio
+            self._magnet_logic.odmr_2d_peak_axis0_move_ratio = self._mw.align_2d_axes0_shift_DSpinBox.value()*1e12
+            self._magnet_logic.odmr_2d_peak_axis1_move_ratio = self._mw.align_2d_axes1_shift_DSpinBox.value()*1e12
 
             self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Half ODMR splitting', units='Hz')
 
