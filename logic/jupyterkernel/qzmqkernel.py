@@ -57,9 +57,9 @@ import jedi
 import zmq
 from io import StringIO
 from zmq.error import ZMQError
-from logic.kernel.compilerop import CachingCompiler, check_linecache_ipython
-from logic.kernel.display_trap import DisplayTrap
-from logic.kernel.builtin_trap import BuiltinTrap
+from .compilerop import CachingCompiler, check_linecache_ipython
+from .display_trap import DisplayTrap
+from .builtin_trap import BuiltinTrap
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
