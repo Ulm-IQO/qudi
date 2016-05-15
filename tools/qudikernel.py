@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-IPython notebook kernel executable file for QuDi.
+Jupyter notebook kernel executable file for QuDi.
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ class QuDi:
         m = self.getModule('kernellogic')
         config = json.loads("".join(open(connfile).readlines()))
         self.kernelid = m.startKernel(config, self)
-        print('Kernel up!')
+        print('Kernel up: {}'.format(self.kernelid))
 
     def stopKernel(self):
         print('Shutting down: ', self.kernelid)
@@ -111,7 +111,7 @@ def install_kernel():
         except OSError as e:
             if e.errno == errno.EACCES:
                 print(e, file=sys.stderr)
-                self.exit(1)    
+                sys.exit(1)
         finally:
             if os.path.isdir(tempdir):
                 shutil.rmtree(tempdir)

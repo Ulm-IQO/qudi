@@ -191,28 +191,37 @@ class QZMQStream(QtCore.QObject):
         logging.debug( "Check: %s" % self.readnotifier.socket())
         self.readnotifier.setEnabled(False)
         check = True
-        while check:
-            events = self.socket.get(zmq.EVENTS)
-            check = events & zmq.POLLIN
-            logging.debug( "EVENTS: %s" % events)
-            if check:
-                try:
-                    msg = self.socket.recv_multipart(zmq.NOBLOCK)
-                except zmq.ZMQError as e:
-                    if e.errno == zmq.EAGAIN:
-                        # state changed since poll event
-                        pass
+        try:
+            while check:
+                events = self.socket.get(zmq.EVENTS)
+                check = events & zmq.POLLIN
+                logging.debug( "EVENTS: %s" % events)
+                if check:
+                    try:
+                        msg = self.socket.recv_multipart(zmq.NOBLOCK)
+                    except zmq.ZMQError as e:
+                        if e.errno == zmq.EAGAIN:
+                            # state changed since poll event
+                            pass
+                        else:
+                            logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
                     else:
-                        logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
-                else:
-                    logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
-                    self.sigMsgRecvd.emit(msg)
-        self.readnotifier.setEnabled(True)
+                        logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
+                        self.sigMsgRecvd.emit(msg)
+        except:
+            pass
+        else:
+            self.readnotifier.setEnabled(True)
+
+    def close(self):
+        self.readnotifier.setEnabled(False)
+        self.readnotifier.activated.disconnect()
+        self.sigMsgRecvd.disconnect()
 
 
 class QZMQKernel(QtCore.QObject):
     
-    sigShutdownFinished = QtCore.Signal()
+    sigShutdownFinished = QtCore.Signal(str)
 
     def __init__(self, config=None):
         super().__init__()
@@ -302,8 +311,18 @@ class QZMQKernel(QtCore.QObject):
     # Utility functions:
     @QtCore.pyqtSlot()
     def shutdown(self):
+        self.iopub_stream.close()
+        self.stdin_stream.close()
+        self.shell_stream.close()
+        self.control_stream.close()
+        self.heartbeat_stream.close()
+        self.iopub_socket.close()
+        self.stdin_socket.close()
+        self.shell_socket.close()
+        self.control_socket.close()
+        self.heartbeat_socket.close()
         self.hb_thread.quit()
-        self.sigShutdownFinished.emit()
+        self.sigShutdownFinished.emit(self.engine_id,)
 
     def msg_id(self):
         """ Return a new uuid for message id """
