@@ -25,6 +25,8 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
+import pyqtgraph as pg
+import numpy as np
 
 from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
@@ -72,7 +74,7 @@ class QudiKernelLogic(GenericLogic):
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
-        """ Deactivate modeule.
+        """ Deactivate module.
 
           @param object e: Fysom state change notification
         """
@@ -85,7 +87,13 @@ class QudiKernelLogic(GenericLogic):
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
-        kernel.sigShutdownFinished.connect(lambda: self.cleanupKernel(kernel.engine_id, external))
+        kernel.user_ns.update({
+            'pg': pg,
+            'np': np,
+            'config': self._manager.tree['defined'],
+            'manager': self._manager
+            })
+        kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
         QtCore.QMetaObject.invokeMethod(kernel, 'connect')
         #QtCore.QTimer.singleShot(0, kernel.connect)
