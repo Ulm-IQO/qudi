@@ -113,17 +113,29 @@ class NuclearOperationsLogic(GenericLogic):
         self.mw_cw_freq = 10e9                      # in Hz
         self.mw_power = -30                         # in dBm
 
+        # parameters for pulsed ODMR:
         self.odmr_meas_freq0 = 10000e6              # in Hz
         self.odmr_meas_freq1 = 10002.1e6            # in Hz
         self.odmr_meas_freq2 = 10004.2e6            # in Hz
         self.odmr_optimize_runtime = 30             # in s
         self.odmr_time_for_next_optimize = 300      # in s
+        self.electron_rabi_periode = 1800e-9        # in s
 
         # store here all the measured odmr peaks
         self.measured_odmr_list = []
 
         # on which odmr peak the manipulation is going to be applied:
         self.mw_on_odmr_peak = 1
+
+        # laser options:
+        self.pulser_laser_channel = 1
+        self.pulser_laser_amp = 1       # in V
+        self.pulser_laser_length = 3e-6 # in s
+        self.pulser_mw_ch = -1
+        self.pulser_mw_freq = 100e6     # in Hz
+        self.pulser_mw_amp = 1          # in V
+        self.pulser_idle_time = 1.5e-6  # in s
+
 
         self._optimize_now = False
 
@@ -363,32 +375,65 @@ class NuclearOperationsLogic(GenericLogic):
 
         @return:
         """
-        pass
+        #FIXME: Move this creation routine to the tasks!
+        # generate:
+        self._seq_gen_logic.generate_laser_on(name='Laser_On',
+                                              laser_time_bins=3000,
+                                              laser_channel=self.pulser_laser_channel)
+
+        # sample:
+        self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name='Laser_On',
+                                                        write_to_file=True,
+                                                        chunkwise=False)
+
+        # upload:
+        self._seq_gen_logic.upload_asset(asset_name='Laser_On')
 
     def _load_laser_on(self):
         """ Load the laser on asset into the pulser.
 
         @return:
         """
-        pass
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.load_asset(asset_name='Laser_On')
 
     def _pulser_on(self):
         """ switch on the pulsing device.
 
         @return:
         """
-        pass
+        #FIXME: Move this creation routine to the tasks!
+
+        config_name = self._seq_gen_logic.get_activation_config()
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
+
+        active_ch = {}
+        for entry in config:
+            active_ch[entry] = True
+        self._seq_gen_logic.set_active_channels(active_ch)
+        self._seq_gen_logic.pulser_on()
 
     def _pulser_off(self):
         """ switch off the pulsing device.
 
         @return:
         """
-        pass
+        #FIXME: Move this creation routine to the tasks!
+
+        self._seq_gen_logic.pulser_off()
+
+        config_name = self._seq_gen_logic.get_activation_config()
+        config = self._seq_gen_logic.get_hardware_constraints()['activation_config'][config_name]
+
+        active_ch = {}
+        for entry in config:
+            active_ch[entry] = False
+        self._seq_gen_logic.set_active_channels(active_ch)
+
 
     def do_optimize_pos(self):
         """ Perform an optimize position. """
-
         #FIXME: Move this optimization routine to the tasks!
 
         curr_pos = self._confocal_logic.get_position()
@@ -405,16 +450,33 @@ class NuclearOperationsLogic(GenericLogic):
                                           self._optimizer_logic.optim_pos_y,
                                           self._optimizer_logic.optim_pos_z)
 
-
     def _create_pulsed_odmr(self):
+        """ Create the pulsed ODMR asset. """
         #FIXME: Move this creation routine to the tasks!
+        # generate:
+        self._seq_gen_logic.generate_pulsedodmr(name='PulsedODMR',
+                                                mw_time_ns=(self.electron_rabi_periode*1e9)/2,
+                                                mw_freq_MHz=self.pulser_mw_freq*1e-6,
+                                                mw_amp_V=self.pulser_mw_amp,
+                                                mw_channel=self.pulser_mw_ch,
+                                                laser_time_ns=self.pulser_laser_length*1e9,
+                                                laser_channel=self.pulser_laser_channel,
+                                                laser_amp_V=self.pulser_laser_amp,
+                                                wait_time_ns=self.pulser_idle_time*1e9)
 
-        pass
+        # sample:
+        self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name='PulsedODMR',
+                                                        write_to_file=True,
+                                                        chunkwise=False)
+
+        # upload:
+        self._seq_gen_logic.upload_asset(asset_name='PulsedODMR')
 
     def _load_pulsed_odmr(self):
+        """ Load a pulsed ODMR asset. """
         #FIXME: Move this creation routine to the tasks!
 
-        pass
+        self._seq_gen_logic.load_asset(asset_name='PulsedODMR')
 
     def do_optimize_odmr_freq(self):
         pass
