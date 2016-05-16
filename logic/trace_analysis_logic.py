@@ -267,9 +267,8 @@ class TraceAnalysisLogic(GenericLogic):
         if self.hist_data is None:
             hist_fit_x = []
             hist_fit_y = []
-            fit_result = 'No data to fit in histogram.'
             param_dict = {}
-            return hist_fit_x, hist_fit_y, fit_result, param_dict
+            return hist_fit_x, hist_fit_y, param_dict
         else:
 
             # self.logMsg((self.calculate_threshold(self.hist_data)))
@@ -277,21 +276,22 @@ class TraceAnalysisLogic(GenericLogic):
             # shift x axis to middle of bin
             axis = self.hist_data[0][:-1]+(self.hist_data[0][1]-self.hist_data[0][0])/2.
             data = self.hist_data[1]
+
             if fit_function == 'No Fit':
-                hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_no_fit()
-                return hist_fit_x, hist_fit_y, fit_result, param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict = self.do_no_fit()
+                return hist_fit_x, hist_fit_y, fit_param_dict
             elif fit_function == 'Gaussian':
-                hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_gaussian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_result, param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict = self.do_gaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict
             elif fit_function == 'Double Gaussian':
-                hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_doublegaussian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_result, param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict = self.do_doublegaussian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict
             elif fit_function == 'Poisson':
-                hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_possonian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_result, param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict = self.do_possonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict
             elif fit_function == 'Double Poisson':
-                hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_doublepossonian_fit(axis, data)
-                return hist_fit_x, hist_fit_y, fit_result, param_dict
+                hist_fit_x, hist_fit_y, fit_param_dict = self.do_doublepossonian_fit(axis, data)
+                return hist_fit_x, hist_fit_y, fit_param_dict
 
     def do_no_fit(self):
         """ Perform no fit, basically return an empty array.
@@ -304,9 +304,8 @@ class TraceAnalysisLogic(GenericLogic):
         """
         hist_fit_x = []
         hist_fit_y = []
-        fit_result = 'No Fit'
         param_dict = {}
-        return hist_fit_x, hist_fit_y, fit_result, param_dict
+        return hist_fit_x, hist_fit_y, param_dict
 
     def do_gaussian_fit(self, axis, data):
         """ Perform a gaussian fit.
@@ -356,25 +355,23 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03C3_0'] = {'value': np.round(result.params['amplitude'].value, 3),
-                                    'error': np.round(result.params['amplitude'].stderr, 2),
+            param_dict['\u03C3_0'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
                                     'unit' : 'Occurrences'}
 
-            param_dict['FWHM'] = {'value': np.round(result.params['fwhm'].value, 3),
-                                  'error': np.round(result.params['fwhm'].stderr, 2),
+            param_dict['FWHM'] = {'value': result.params['fwhm'].value,
+                                  'error': result.params['fwhm'].stderr,
                                   'unit' : 'Counts/s'}
 
-            param_dict['Center'] = {'value': np.round(result.params['center'].value, 3),
-                                    'error': np.round(result.params['center'].stderr, 2),
+            param_dict['Center'] = {'value': result.params['center'].value,
+                                    'error': result.params['center'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Amplitude'] = {'value': np.round(result.params['amplitude'].value, 3),
-                                       'error': np.round(result.params['amplitude'].stderr, 2),
+            param_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                       'error': result.params['amplitude'].stderr,
                                        'unit' : 'Occurrences'}
 
-            fit_result = self._create_formatted_output(param_dict)
-
-            return hist_fit_x, hist_fit_y, fit_result, param_dict
+            return hist_fit_x, hist_fit_y, param_dict
 
     def do_doublegaussian_fit(self, axis, data):
         model, params = self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)
@@ -397,40 +394,39 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03C3_0'] = {'value': np.round(result.params['gaussian0_sigma'].value, 3),
-                                     'error': np.round(result.params['gaussian0_sigma'].stderr, 2),
+            param_dict['\u03C3_0'] = {'value': result.params['gaussian0_sigma'].value,
+                                     'error': result.params['gaussian0_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_0'] = {'value': np.round(result.params['gaussian0_fwhm'].value, 3),
-                                    'error': np.round(result.params['gaussian0_fwhm'].stderr, 2),
+            param_dict['FWHM_0'] = {'value': result.params['gaussian0_fwhm'].value,
+                                    'error': result.params['gaussian0_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_0'] = {'value': np.round(result.params['gaussian0_center'].value, 3),
-                                      'error': np.round(result.params['gaussian0_center'].stderr, 2),
+            param_dict['Center_0'] = {'value': result.params['gaussian0_center'].value,
+                                      'error': result.params['gaussian0_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_0'] = {'value': np.round(result.params['gaussian0_amplitude'].value, 3),
-                                         'error': np.round(result.params['gaussian0_amplitude'].stderr, 2),
+            param_dict['Amplitude_0'] = {'value': result.params['gaussian0_amplitude'].value,
+                                         'error': result.params['gaussian0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            param_dict['\u03C3_1'] = {'value': np.round(result.params['gaussian1_sigma'].value, 3),
-                                     'error': np.round(result.params['gaussian1_sigma'].stderr, 2),
+            param_dict['\u03C3_1'] = {'value': result.params['gaussian1_sigma'].value,
+                                     'error': result.params['gaussian1_sigma'].stderr,
                                      'unit' : 'Counts/s'}
 
-            param_dict['FWHM_1'] = {'value': np.round(result.params['gaussian1_fwhm'].value, 3),
-                                    'error': np.round(result.params['gaussian1_fwhm'].stderr, 2),
+            param_dict['FWHM_1'] = {'value': result.params['gaussian1_fwhm'].value,
+                                    'error': result.params['gaussian1_fwhm'].stderr,
                                     'unit' : 'Counts/s'}
 
-            param_dict['Center_1'] = {'value': np.round(result.params['gaussian1_center'].value, 3),
-                                      'error': np.round(result.params['gaussian1_center'].stderr, 2),
+            param_dict['Center_1'] = {'value': result.params['gaussian1_center'].value,
+                                      'error': result.params['gaussian1_center'].stderr,
                                       'unit' : 'Counts/s'}
 
-            param_dict['Amplitude_1'] = {'value': np.round(result.params['gaussian1_amplitude'].value, 3),
-                                         'error': np.round(result.params['gaussian1_amplitude'].stderr, 2),
+            param_dict['Amplitude_1'] = {'value': result.params['gaussian1_amplitude'].value,
+                                         'error': result.params['gaussian1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            fit_result = self._create_formatted_output(param_dict)
-            return hist_fit_x, hist_fit_y, fit_result, param_dict
+            return hist_fit_x, hist_fit_y, param_dict
 
     def do_doublepossonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model(no_of_functions=2)
@@ -453,22 +449,20 @@ class TraceAnalysisLogic(GenericLogic):
             param_dict = OrderedDict()
 
             # create the proper param_dict with the values:
-            param_dict['\u03BB0'] = {'value': np.round(result.params['poissonian0_mu'].value, 3),
-                                     'error': np.round(result.params['poissonian0_mu'].stderr, 2),
+            param_dict['\u03BB0'] = {'value': result.params['poissonian0_mu'].value,
+                                     'error': result.params['poissonian0_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_0'] = {'value': np.round(result.params['poissonian0_amplitude'].value, 3),
-                                         'error': np.round(result.params['poissonian0_amplitude'].stderr, 2),
+            param_dict['Amplitude_0'] = {'value': result.params['poissonian0_amplitude'].value,
+                                         'error': result.params['poissonian0_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
-            param_dict['\u03BB1'] = {'value': np.round(result.params['poissonian1_mu'].value, 3),
-                                     'error': np.round(result.params['poissonian1_mu'].stderr, 2),
+            param_dict['\u03BB1'] = {'value': result.params['poissonian1_mu'].value,
+                                     'error': result.params['poissonian1_mu'].stderr,
                                      'unit' : 'Counts/s'}
-            param_dict['Amplitude_1'] = {'value': np.round(result.params['poissonian1_amplitude'].value, 3),
-                                         'error': np.round(result.params['poissonian1_amplitude'].stderr, 2),
+            param_dict['Amplitude_1'] = {'value': result.params['poissonian1_amplitude'].value,
+                                         'error': result.params['poissonian1_amplitude'].stderr,
                                          'unit' : 'Occurrences'}
 
-            fit_result = self._create_formatted_output(param_dict)
-
-            return hist_fit_x, hist_fit_y, fit_result, param_dict
+            return hist_fit_x, hist_fit_y, param_dict
 
     def do_possonian_fit(self, axis, data):
         model, params = self._fit_logic.make_poissonian_model()
@@ -494,8 +488,7 @@ class TraceAnalysisLogic(GenericLogic):
                                      'error': np.round(result.params['poissonian_mu'].stderr, 2),
                                      'unit' : 'Counts/s'}
 
-            fit_result = self._create_formatted_output(param_dict)
-            return hist_fit_x, hist_fit_y, fit_result, param_dict
+            return hist_fit_x, hist_fit_y, param_dict
 
     def get_poissonian(self, x_val, mu, amplitude):
         """ Calculate, bases on the passed values a poisson distribution.
@@ -573,7 +566,7 @@ class TraceAnalysisLogic(GenericLogic):
         # perform the fit
         x_axis = hist_data[0][:-1]+(hist_data[0][1]-hist_data[0][0])/2.
         y_data = hist_data[1]
-        hist_fit_x, hist_fit_y, fit_result, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
+        hist_fit_x, hist_fit_y, param_dict = self.do_doublepossonian_fit(x_axis, y_data)
 
         mu0 = param_dict['\u03BB0']['value']
         mu1 = param_dict['\u03BB1']['value']
@@ -663,25 +656,3 @@ class TraceAnalysisLogic(GenericLogic):
         filtered_array = trace[index_array]
         return index_array, filtered_array
 
-
-    def _create_formatted_output(self, param_dict):
-        """ Display a parameter set nicely.
-
-        @param dict param: with two needed keywords 'value' and 'unit' and one
-                           optional keyword 'error'. Add the proper items to the
-                           specified keywords.
-
-        @return str: a sting list, which is nicely formatted.
-        """
-        output_str = ''
-        for entry in param_dict:
-            if param_dict[entry].get('error') is None:
-                output_str += '{0} : {1} {2} \n'.format(entry,
-                                                        param_dict[entry]['value'],
-                                                        param_dict[entry]['unit'])
-            else:
-                output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
-                                                                   param_dict[entry]['value'],
-                                                                   param_dict[entry]['error'],
-                                                                   param_dict[entry]['unit'])
-        return output_str
