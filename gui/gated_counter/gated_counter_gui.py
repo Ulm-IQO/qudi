@@ -220,12 +220,12 @@ class GatedCounterGui(GUIBase):
             Pass also the chosen filename.
         """
 
-        file_desc = self._mw.filename_LineEdit.text()
+        file_desc = self._mw.filetag_LineEdit.text()
         if file_desc == '':
             file_desc = 'gated_counter'
 
         trace_file_desc = file_desc + '_trace'
-        self._counter_logic.save_count_trace(file_desc=trace_file_desc)
+        self._counter_logic.save_current_count_trace(name_tag=trace_file_desc)
 
         # histo_file_desc = file_desc + '_histogram'
         # self._trace_analysis.save_histogram(file_desc=histo_file_desc)

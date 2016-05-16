@@ -151,12 +151,18 @@ class TraceAnalysisLogic(GenericLogic):
 
             # if all values are the same, run at least the method with an zero
             # array. That will ensure at least an output:
-            if np.isclose(0, difference) or num_bins is None:
+            if np.isclose(0, difference) and num_bins is None:
                 # numpy can handle an array of zeros
                 num_bins = 50
                 hist_y_val, hist_x_val = np.histogram(trace, num_bins)
+
+            # if no number of bins are passed, then take the integer difference
+            # between the counts, that will prevent strange histogram artifacts:
+            elif not np.isclose(0, difference) and num_bins is None:
+                hist_y_val, hist_x_val = np.histogram(trace, int(difference))
+
+            # a histogram with self defined number of bins
             else:
-                # a histogram with self defined number of bins
                 hist_y_val, hist_x_val = np.histogram(trace, num_bins)
 
         return hist_x_val, hist_y_val

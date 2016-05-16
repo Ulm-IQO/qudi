@@ -89,8 +89,11 @@
           </item>
           <item row="0" column="3" colspan="2">
            <widget class="QDoubleSpinBox" name="alignment_2d_cb_max_centiles_DSpinBox">
+            <property name="decimals">
+             <number>0</number>
+            </property>
             <property name="maximum">
-             <double>1000000000.000000000000000</double>
+             <double>2100000000.000000000000000</double>
             </property>
             <property name="singleStep">
              <double>100.000000000000000</double>

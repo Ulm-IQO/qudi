@@ -60,6 +60,7 @@ class NuclearOperationsLogic(GenericLogic):
 
     _in = {'sequencegenerationlogic': 'SequenceGenerationLogic',
            'traceanalysislogic': 'TraceAnalysisLogic',
+           'gatedcounterlogic': 'CounterLogic',
            'odmrlogic': 'ODMRLogic',
            'optimizerlogic': 'OptimizerLogic',
            'scannerlogic':'ScannerLogic',
@@ -101,12 +102,18 @@ class NuclearOperationsLogic(GenericLogic):
         """
 
 
-        # choose some default values:
+        # choose default values:
         self.x_axis_start = 1e-3                    # in s
         self.x_axis_step = 10e-3                     # in s
         self.x_axis_num_points = 50
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
+        self.num_of_meas_runs = 0     # How often the measurement was repeated.
+        self.elapsed_time = 0
+        self.start_time = 0
+        self.optimize_period = 200
+        self.next_optimize_time = self.start_time
+
 
         self._stop_requested = False
 
@@ -117,9 +124,12 @@ class NuclearOperationsLogic(GenericLogic):
         self.odmr_meas_freq0 = 10000e6              # in Hz
         self.odmr_meas_freq1 = 10002.1e6            # in Hz
         self.odmr_meas_freq2 = 10004.2e6            # in Hz
-        self.odmr_optimize_runtime = 30             # in s
+        self.odmr_meas_runtime = 30             # in s
         self.odmr_time_for_next_optimize = 300      # in s
         self.electron_rabi_periode = 1800e-9        # in s
+        self.odmr_meas_freq_range = 30e6            # in Hz
+        self.odmr_meas_step = 0.15e6                # in Hz
+        self.odmr_meas_power = -30                  # in dBm
 
         # store here all the measured odmr peaks
         self.measured_odmr_list = []
@@ -136,6 +146,8 @@ class NuclearOperationsLogic(GenericLogic):
         self.pulser_mw_amp = 1          # in V
         self.pulser_idle_time = 1.5e-6  # in s
 
+        self.gc_number_of_samples = 3000    # in counts
+        self.gc_samples_per_readout = 50    # in counts
 
         self._optimize_now = False
 
@@ -143,7 +155,7 @@ class NuclearOperationsLogic(GenericLogic):
         self.initialize_y_axis()
         self.initialize_meas_param()
 
-        self.current_meas_seq_name = ''
+        self.current_meas_asset_name = ''
 
         # establish the access to all connectors:
         self._save_logic = self.connector['in']['savelogic']['object']
@@ -151,7 +163,8 @@ class NuclearOperationsLogic(GenericLogic):
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._seq_gen_logic = self.connector['in']['sequencegenerationlogic']['object']
-        self._trace_logic = self.connector['in']['traceanalysislogic']['object']
+        self._trace_ana_logic = self.connector['in']['traceanalysislogic']['object']
+        self._gc_logic = self.connector['in']['gatedcounterlogic']['object']
         self._odmr_logic = self.connector['in']['odmrlogic']['object']
         self._optimizer_logic = self.connector['in']['optimizerlogic']['object']
         self._confocal_logic = self.connector['in']['scannerlogic']['object']
@@ -201,7 +214,6 @@ class NuclearOperationsLogic(GenericLogic):
         pass
 
 
-
     def _meas_point_loop(self):
         """ Run this loop continuously until the an abort criterium is reached. """
         if self._stop_requested:
@@ -217,17 +229,26 @@ class NuclearOperationsLogic(GenericLogic):
                 return
 
         if self._optimize_now:
-            current_meas_seq = self.current_meas_seq_name
+            current_meas_asset = self.current_meas_asset_name
             self.mw_off()
+
+            # perform  optimize position:
             self._load_laser_on()
             self._pulser_on()
             self.do_optimize_pos()
+
+            # perform odmr measurement:
             self._load_pulsed_odmr()
             self._pulser_on()
             self.do_optimize_odmr_freq()
-            self.mw_on()
-            self._load_measurement_seq(current_meas_seq)
 
+            # establish the previous measurement conditions
+            self.mw_on()
+            self._load_measurement_seq(current_meas_asset)
+
+        # if stop request was done already here, do not perform the current
+        # measurement but jump to the switch off procedure at the top of this
+        # method.
         if self._stop_requested:
             self.sigNextMeasPoint.emit()
             return
@@ -255,7 +276,8 @@ class NuclearOperationsLogic(GenericLogic):
         @param meas_param:
         @return:
         """
-        pass
+
+        self.sigCurrMeasPointUpdated.emit()
 
     def _get_meas_point(self):
         """ Start the actual measurement (most probably with the gated counter)
@@ -268,7 +290,21 @@ class NuclearOperationsLogic(GenericLogic):
         # here the actual measurement is going to be started and stoped and
         # then analyzed and outputted in a proper format.
 
-        return [0], {}
+        self._gc_logic.set_counting_mode(mode='gated')
+        self._gc_logic.set_count_length()
+        self._gc_logic.set_counting_samples(self.gc_number_of_samples)
+        self._gc_logic.startCount()
+
+        # wait until the gated counter is done:
+        while self._counter_logic.getState() == 'locked' or not self._stop_requested:
+            time.sleep(1)
+
+        name_tag = '{0}_{1}'.format(self.current_meas_asset_name, self.current_meas_point)
+        self._gc_logic.save_current_count_trace(name_tag=name_tag)
+
+        flip_prop, param = self._trace_ana_logic.analyze_flip_prob(self._gc_logic.countdata)
+
+        return [flip_prop], param
 
 
     def stop_nuclear_meas(self):
@@ -349,6 +385,8 @@ class NuclearOperationsLogic(GenericLogic):
         """
 
         if meas_type == 'Nuclear Rabi':
+            # only the rf asset has to be regenerated since that is the only
+            # thing what has changed.
             pass
 
         elif meas_type == 'Nuclear Frequency Scan':
@@ -479,7 +517,40 @@ class NuclearOperationsLogic(GenericLogic):
         self._seq_gen_logic.load_asset(asset_name='PulsedODMR')
 
     def do_optimize_odmr_freq(self):
-        pass
+        """ Perform an ODMR measurement. """
+        #FIXME: Move this creation routine to the tasks!
+
+        # make the odmr around the peak which is used for the mw drive:
+
+        if self.mw_on_odmr_peak == 1:
+            center_freq = self.odmr_meas_freq0
+        if self.mw_on_odmr_peak == 2:
+            center_freq = self.odmr_meas_freq1
+        if self.mw_on_odmr_peak == 3:
+            center_freq = self.odmr_meas_freq2
+
+        start_freq = center_freq - self.odmr_meas_freq_range/2
+        stop_freq = center_freq + self.odmr_meas_freq_range/2
+
+        name_tag = 'odmr_meas_for_nuclear_ops'
+
+        param = self._odmr_logic.perform_odmr_measurement(freq_start=start_freq,
+                                                          freq_step=self.odmr_meas_step,
+                                                          freq_stop=stop_freq,
+                                                          power=self.odmr_meas_power,
+                                                          runtime=self.odmr_meas_runtime,
+                                                          fit_function='N14',
+                                                          save_after_meas=True,
+                                                          name_tag=name_tag)
+
+        self.odmr_meas_freq0 = param['Freq. 0']['value']
+        self.odmr_meas_freq1 = param['Freq. 1']['value']
+        self.odmr_meas_freq2 = param['Freq. 2']['value']
+
+        self.measured_odmr_list.append([self.odmr_meas_freq0,
+                                        self.odmr_meas_freq1,
+                                        self.odmr_meas_freq2])
+
 
     def mw_on(self):
         pass
