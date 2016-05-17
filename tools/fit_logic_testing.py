@@ -1302,6 +1302,27 @@ class FitLogic():
             units['offset'] = 'arb. u.'
             units['amplitude']='arb. u.'
             print(self.create_fit_string(result, mod, units))
+##################################################################################################################
+        def stretchedexponentialdecay_testing(self):
+            x_axis = np.linspace(1, 101, 100)
+            x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
+            mod, params = self.make_stretchedexponentialdecay_model()
+            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
+
+            params['beta'].value = 0.5
+            params['lifetime'].value = 100
+            print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
+                  params['lifetime'].value)
+            data_noisy = (mod.eval(x=x_axis, params=params)
+                          + 0.01 * np.random.normal(size=x_axis.shape))
+            result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
+            print(result.fit_report())
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+            # plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
+
+            plt.show()
 
 
 plt.rcParams['figure.figsize'] = (10,5)
@@ -1322,4 +1343,5 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing()
+test.stretchedexponentialdecay_testing()
