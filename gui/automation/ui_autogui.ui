@@ -36,12 +36,16 @@
     <property name="title">
      <string>A&amp;utomation</string>
     </property>
+    <addaction name="actionNew_automation"/>
+    <addaction name="actionLoad_automation_file"/>
+    <addaction name="actionSave_automation_file"/>
+    <addaction name="actionSave_automation_as"/>
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuAutomation"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="toolBar">
+  <widget class="QToolBar" name="taskToolBar">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -58,13 +62,27 @@
    <addaction name="actionPause_Task"/>
    <addaction name="actionStop_Task"/>
   </widget>
+  <widget class="QToolBar" name="fileToolBar">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionNew_automation"/>
+   <addaction name="actionLoad_automation_file"/>
+   <addaction name="actionSave_automation_file"/>
+  </widget>
   <action name="actionStart_Task">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start_counter.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-start.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-start.png</iconset>
    </property>
    <property name="text">
     <string>Start Task</string>
@@ -86,6 +104,10 @@
    <property name="enabled">
     <bool>false</bool>
    </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-pause.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-pause.png</iconset>
+   </property>
    <property name="text">
     <string>Pause Task</string>
    </property>
@@ -96,10 +118,42 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</iconset>
    </property>
    <property name="text">
     <string>Stop Task</string>
+   </property>
+  </action>
+  <action name="actionLoad_automation_file">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-open.png</normaloff>../../artwork/icons/oxygen/22x22/document-open.png</iconset>
+   </property>
+   <property name="text">
+    <string>Load automation file</string>
+   </property>
+  </action>
+  <action name="actionSave_automation_file">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save automation file</string>
+   </property>
+  </action>
+  <action name="actionSave_automation_as">
+   <property name="text">
+    <string>Save automation as</string>
+   </property>
+  </action>
+  <action name="actionNew_automation">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/document-new.png</normaloff>../../artwork/icons/oxygen/22x22/document-new.png</iconset>
+   </property>
+   <property name="text">
+    <string>New automation</string>
    </property>
   </action>
  </widget>
