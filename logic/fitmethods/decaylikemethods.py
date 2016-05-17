@@ -94,3 +94,9 @@ def make_exponential_fit(self, axis=None, data=None, add_parameters=None):
         print(result.message)
 
     return result
+
+############################################################################
+#                                                                          #
+#                 double stretched decay fitting                           #
+#                                                                          #
+############################################################################

@@ -1286,6 +1286,7 @@ class FitLogic():
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
                           + 0.1* np.random.normal(size=x_axis.shape))
+
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g')
