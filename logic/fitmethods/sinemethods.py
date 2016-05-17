@@ -268,7 +268,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
             # self.logMsg('Multiple peaks was found.',
             #             msgType='error')
             print("Multiple peaks")
-
+            return 6.7
             #pass
         else:
             return abs(roots[1] - roots[0])
@@ -289,8 +289,20 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
+
+    gaus = gaussian(3, 3)
+    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
+                                     gaus / gaus.sum(), mode='mirror')
+    plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
+    plt.plot(freq_plus[int(len(freq) / 2):], fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
+    plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
+                                                   splrep(np.array(freq_plus[int(len(freq_plus) / 2):]), np.array(
+                                                       fourier_real_plus[int(len(freq_plus) / 2):] - max(
+                                                           fourier_real_plus) / 2))))
+    plt.xlim(0, 0.02)
+    plt.show()
     # estimate life time from peak width
-    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
+    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
     params['lifetime'].value = 1 / (fwhm_plus*np.pi)
     #print("FWHM", fwhm_plus)
 
