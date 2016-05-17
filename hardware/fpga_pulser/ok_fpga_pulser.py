@@ -92,7 +92,6 @@ class OkFpgaPulser(Base, PulserInterface):
 
     def deactivation(self, e):
         self._disconnect_fpga()
-        pass
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Pulsing device.
@@ -474,66 +473,27 @@ class OkFpgaPulser(Base, PulserInterface):
         self.logMsg('FPGA pulse generator logic level cant be adjusted!', msgType='warning')
         return 0
 
-    def get_active_channels(self, a_ch=[], d_ch=[]):
-        """ Get the active channels of the pulse generator hardware.
-
-        @param list a_ch: optional, if specific analog channels are needed to be
-                          asked without obtaining all the channels.
-        @param list d_ch: optional, if specific digital channels are needed to
-                          be asked without obtaining all the channels.
-
-        @return (dict, dict): tuple of two dicts, where keys denoting the
-                              channel number and items boolean expressions
-                              whether channel are active or not. First dict
-                              contains the analog settings, second dict the
-                              digital settings. If either digital or analog are
-                              not present, return an empty dict.
-
-        Example for an possible input:
-            a_ch=[2, 1] d_ch=[2,1,5]
-        then the output might look like
-            {1: True, 2: False} {1: False, 2: True, 5: False}
-
-        If no parameters are passed to this method all channels will be asked
-        for their setting.
-        """
-        a_ch_dict = {}
+    def get_active_channels(self,  ch={}):
         d_ch_dict = {}
-        if d_ch is []:
-            for channel in range(8):
-                d_ch_dict[channel] = True
+        if len(ch) < 1:
+            for chnr in range(8):
+                d_ch_dict['d_ch{}'.format(chnr+1)] = True
         else:
-            for channel in d_ch:
+            for channel in ch:
                 d_ch_dict[channel] = True
-        return a_ch_dict, d_ch_dict
+        return d_ch_dict
 
-    def set_active_channels(self, a_ch={}, d_ch={}):
-        """ Set the active channels for the pulse generator hardware.
-
-        @param dict a_ch: dictionary with keys being the analog channel numbers
-                          and items being boolean values.
-        @param dict d_ch: dictionary with keys being the digital channel numbers
-                          and items being boolean values.
-
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                active channels for analog (a_ch) and digital (d_ch) values.
-
-        If nothing is passed then the command will return two empty dicts.
-
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
-
-        Example for possible input:
-            a_ch={2: True}, d_ch={1:False, 3:True, 4:True}
-        to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
-        """
-        d_ch_dict = {1: True, 2: True, 3: True, 4: True, 5: True, 6: True, 7: True, 8: True}
-        return {}, d_ch_dict
+    def set_active_channels(self, ch={}):
+        d_ch_dict = {
+            'd_ch1': True,
+            'd_ch2': True,
+            'd_ch3': True,
+            'd_ch4': True,
+            'd_ch5': True,
+            'd_ch6': True,
+            'd_ch7': True,
+            'd_ch8': True}
+        return d_ch_dict
 
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
