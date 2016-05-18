@@ -66,7 +66,7 @@ QtCore.Signal = QtCore.pyqtSignal
 
 
 class _RedirectStream:
-
+    """ A base class for a context manager to redirect streams from the sys module."""
     _stream = None
 
     def __init__(self, new_target):
@@ -94,6 +94,13 @@ class redirect_stderr(_RedirectStream):
 
 
 def cursor_pos_to_lc(text, cursor_pos):
+    """Calulate line, coulumn number from position in string.
+      
+      @param str text: string to calculate position in.
+      @param int cursor_pos: cursor position in text.
+
+      @return (int, int): tuple of line and column number of cursor in string
+    """
     lines = text.splitlines(True)
     linenr = 1
     for line in lines:
