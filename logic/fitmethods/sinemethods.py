@@ -24,7 +24,9 @@ import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
 from scipy.interpolate import splrep, sproot, splev
-
+from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
+from scipy.ndimage import filters
+import matplotlib.pylab as plt
 
 ############################################################################
 #                                                                          #
@@ -224,7 +226,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
         # set the offset as the average of the data
-    offset = np.average(data)
+    offset = np.average(data)+0.0000001
 
     # level data
     data_level = data - offset
@@ -240,7 +242,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(fourier).argmax()])
     fourier_real = fourier.real
-
+    params['frequency'].value = frequency_max
     def fwhm(x, y, k=3):
         """
         Determine full-with-half-maximum of a peaked set of points, x and y.
@@ -263,12 +265,12 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
             # self.logMsg('No peak was found.',
             #             msgType='error')
             print("No peaks")
-            #pass
+            return 0.0010001         #pass
         elif len(roots) > 2:
             # self.logMsg('Multiple peaks was found.',
             #             msgType='error')
             print("Multiple peaks")
-
+            return abs(roots[1] - roots[0])
             #pass
         else:
             return abs(roots[1] - roots[0])
@@ -289,10 +291,30 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
+
+    gaus = gaussian(4, 2)
+    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
+                                     gaus / gaus.sum(), mode='mirror')
+    plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
+    plt.plot(freq_plus[int(len(freq) / 2):],
+             fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
+    plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
+                                                   splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
+                                                          np.array(
+                                                              fourier_real_plus[int(len(freq_plus) / 2):] - max(
+                                                                  fourier_real_plus) / 2))))
+    plt.xlim(0, 0.05)
+    plt.show()
     # estimate life time from peak width
-    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(fourier_real_plus[int(len(freq_plus)/2):]),k=10)
+    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
+    if 2*np.array(smooth_data).std() > np.array(smooth_data).max()-np.array(smooth_data).mean() and fwhm_plus != 0.0010001:
+        print("unrecognizable peak")
+        fwhm_plus = 0.0050001
+    if fwhm_plus == 0.0050001 or fwhm_plus == 0.0010001:
+        params['frequency'].value = 0.0010001
+
     params['lifetime'].value = 1 / (fwhm_plus*np.pi)
-    #print("FWHM", fwhm_plus)
+    print("FWHM", fwhm_plus)
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
@@ -306,7 +328,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     elif np.gradient(data)[0] > 0 and data_level[0] < 0:
         phase = 2. * np.pi - phase
 
-    params['frequency'].value = frequency_max
+
     params['phase'].value = phase
     params['offset'].value = offset
     params['lifetime'].value = 1/(fwhm_plus*np.pi)

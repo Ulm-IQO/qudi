@@ -22,9 +22,11 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
+import pyqtgraph.configfile as configfile
 import numpy as np
+import os
 
-class TreeItem(object):
+class TreeItem:
     def __init__(self, data, parent=None):
         self.parentItem = parent
         self.itemData = data
@@ -59,11 +61,9 @@ class TreeItem(object):
 
 
 class TreeModel(QtCore.QAbstractItemModel):
-    def __init__(self, data, parent=None):
+    def __init__(self, parent=None):
         super(TreeModel, self).__init__(parent)
-
         self.rootItem = TreeItem(("Title", "Summary"))
-        self.setupModelData(data.split('\n'), self.rootItem)
 
     def columnCount(self, parent):
         if parent.isValid():
@@ -132,42 +132,32 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         return parentItem.childCount()
 
-    def setupModelData(self, lines, parent):
-        parents = [parent]
-        indentations = [0]
+    def loadExecTree(self, tree, parent=None):
+        if not isinstance(parent, TreeItem):
+            self.rootItem = TreeItem(("Title", "Summary"))
+            self.recursiveLoad(tree, self.rootItem)
+        else:
+            self.recursiveLoad(tree, parent)
 
-        number = 0
+    def recursiveLoad(self, tree, parent):
+        for key,value in tree.items():
+            if isinstance(value, OrderedDict):
+                newchild = TreeItem([key, 'branch'], parent)
+                parent.appendChild(newchild)
+                self.recursiveLoad(value, newchild)
+            else:
+                newchild = TreeItem([key, 'leaf'], parent)
+                parent.appendChild(newchild)
 
-        while number < len(lines):
-            position = 0
-            while position < len(lines[number]):
-                if lines[number][position] != ' ':
-                    break
-                position += 1
-
-            lineData = lines[number][position:].strip()
-
-            if lineData:
-                # Read the column data from the rest of the line.
-                columnData = [s for s in lineData.split('\t') if s]
-
-                if position > indentations[-1]:
-                    # The last child of the current parent is now the new
-                    # parent unless the current parent has no children.
-
-                    if parents[-1].childCount() > 0:
-                        parents.append(parents[-1].child(parents[-1].childCount() - 1))
-                        indentations.append(position)
-
-                else:
-                    while position < indentations[-1] and len(parents) > 0:
-                        parents.pop()
-                        indentations.pop()
-
-                # Append a new item to the current parent's list of children.
-                parents[-1].appendChild(TreeItem(columnData, parents[-1]))
-
-            number += 1
+    def recursiveSave(self, parent):
+        if parent.childCount() > 0:
+            retdict = OrderedDict()
+            for i in range(parent.childCount()):
+                key = parent.child(i).itemData[0]
+                retdict[key] = self.recursiveSave(parent.child(i))
+            return retdict
+        else:
+            return parent.itemData[0]
 
 class AutomationLogic(GenericLogic):        
     """ Logic module agreggating multiple hardware switches.
@@ -197,15 +187,32 @@ class AutomationLogic(GenericLogic):
           @param object e: Fysom state change notification
         """
         self._taskrunner = self.connector['in']['taskrunner']['object']
-        stuff = "a\txyz\n    b\tx\n    c\ty\n        d\tw\ne\tm\n"
-
-        self.model = TreeModel(stuff)
+        #stuff = "a\txyz\n    b\tx\n    c\ty\n        d\tw\ne\tm\n"
+        #tr = OrderedDict([
+        #    ('a', OrderedDict([
+        #        ('f', OrderedDict([
+        #            ('g', 5)
+        #        ])),
+        #        ('h', 'letrole'),
+        #    ])),
+        #    ('b', 1),
+        #    ('c', 2),
+        #    ('d', 3),
+        #    ('e', 4)
+        #])
+        self.model = TreeModel()
+        #self.model.loadExecTree(tr)
+        self.loadAutomation('auto.cfg')
 
     def deactivation(self, e):
         """ Deactivate modeule.
 
           @param object e: Fysom state change notification
         """
-        pass
+        print(self.model.recursiveSave(self.model.rootItem))
 
 
+    def loadAutomation(self, path):
+        if os.path.isfile(path):
+            configdict = configfile.readConfigFile(path)
+            self.model.loadExecTree(configdict)

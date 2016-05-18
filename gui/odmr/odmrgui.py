@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015-2016 Florian S. Frank florian.frank@uni-ulm.de
 Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
@@ -238,6 +238,7 @@ class ODMRGui(GUIBase):
         # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
         # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
+        self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
         self._mw.action_Save.triggered.connect(self.save_plots_and_data)
 
         # react on an axis change in the logic by adapting the display:
@@ -314,12 +315,29 @@ class ODMRGui(GUIBase):
             # change the axes appearance according to input values:
             self._odmr_logic.stop_odmr_scan()
             self._odmr_logic.start_odmr_scan()
+            self._mw.action_resume_odmr.setEnabled(False)
             self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
             # during scan, enable the clear plot possibility.
             self._mw.clear_odmr_PushButton.setEnabled(True)
         else:
             self._odmr_logic.stop_odmr_scan()
+            self._mw.action_resume_odmr.setEnabled(True)
+            # Disable the clear functionality since that is not needed if no
+            # scan is running:
+            self._mw.clear_odmr_PushButton.setEnabled(False)
+
+    def resume_odmr(self, is_checked):
+        if is_checked:
+            self._odmr_logic.stop_odmr_scan()
+            self._odmr_logic.continue_odmr_scan()
+            self._mw.action_run_stop.setEnabled(False)
+
+            # during scan, enable the clear plot possibility.
+            self._mw.clear_odmr_PushButton.setEnabled(True)
+        else:
+            self._odmr_logic.stop_odmr_scan()
+            self._mw.action_run_stop.setEnabled(True)
             # Disable the clear functionality since that is not needed if no
             # scan is running:
             self._mw.clear_odmr_PushButton.setEnabled(False)
@@ -328,6 +346,7 @@ class ODMRGui(GUIBase):
         """ Switch the run/stop button to stop after receiving an odmr_stoped
             signal """
         self._mw.action_run_stop.setChecked(False)
+        self._mw.action_resume_odmr.setChecked(False)
 
     def clear_odmr_plots_clicked(self):
         """ Clear the ODMR plots. """
