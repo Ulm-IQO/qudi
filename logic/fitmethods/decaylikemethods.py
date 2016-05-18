@@ -160,13 +160,12 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
             if data_level[i-1] <= data_level.max()/(2*len(data_level)):
                 break
         double_lg_data = np.log(-np.log(data_level[0:i-1]))
-        
-        #slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(x_axis[0:i-1]), double_lg_data)
+        #linear regression
         X=np.log(x_axis[0:i-1])
         X = sm.add_constant(X)
         linear_model = sm.OLS(double_lg_data,X)        
         linear_results = linear_model.fit()
-        print(linear_results.params[0])
+        print(linear_results.params)
         params['beta'].value = linear_results.params[1]
         params['lifetime'].value = np.exp(-linear_results.params[0])
         
@@ -180,12 +179,12 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     except:
         print("Set to 2 and 100, polyfit failed")
         params['beta'].value = 2
-        params['lifetime'].value = 100
+        params['lifetime'].value = 4*(x_axis[-1]-x_axis[0])
     
     params['beta'].min = 0
     params['lifetime'].min = 0
     params['beta'].max = 3
-    params['lifetime'].max = 20 * (x_axis[-1]-x_axis[0])
+    params['lifetime'].max = 10 * (x_axis[-1]-x_axis[0])
     print('\n','lifetime.min: ',params['lifetime'].min,'\n',
           'lifetime.max: ',params['lifetime'].max,'\n','beta.min: ',
           params['beta'].min,'\n','beta.max: ',params['beta'].max)
