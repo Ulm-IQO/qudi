@@ -16,8 +16,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Christoph Müller cmueller2603@gmail.com
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015 - 2016 Christoph Müller cmueller2603@gmail.com
+Copyright (C) 2015 - 2016 Florian S. Frank florian.frank@uni-ulm.de
 """
 
 from logic.generic_logic import GenericLogic
@@ -245,6 +245,22 @@ class ODMRLogic(GenericLogic):
 
         self._initialize_ODMR_plot()
         self._initialize_ODMR_matrix()
+
+        self.sigNextLine.emit()
+
+
+    def continue_odmr_scan(self):
+
+        self._StartTime = time.time()-self.elapsed_time
+
+        self.start_odmr()
+
+        return_val = self._mw_device.set_list(self._mw_frequency_list,
+                                              self.mw_power)
+        if return_val != 0:
+            self.stopRequested = True
+        else:
+            self._mw_device.list_on()
 
         self.sigNextLine.emit()
 
