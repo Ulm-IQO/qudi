@@ -225,8 +225,9 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         self.logMsg('Parameters object is not valid in estimate_gaussian.',
                     msgType='error')
         error = -1
-        # set the offset as the average of the data
-    offset = np.average(data)+0.0000001
+        
+    # set the offset as the average of the data
+    offset = np.average(data)
 
     # level data
     data_level = data - offset
@@ -269,7 +270,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         elif len(roots) > 2:
             # self.logMsg('Multiple peaks was found.',
             #             msgType='error')
-            print("Multiple peaks")
+            print("Multiple paires of roots.")
             return abs(roots[1] - roots[0])
             #pass
         else:
@@ -332,6 +333,16 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     params['phase'].value = phase
     params['offset'].value = offset
     params['lifetime'].value = 1/(fwhm_plus*np.pi)
+    
+    #bounds of initial parameters
+    params['lifetime'].min = 0.0
+    params['lifetime'].max = 10.0 *(x_axis[-1]-x_axis[0])
+    
+    params['frequency'].min = 0.1 / (x_axis[-1]-x_axis[0])
+    params['frequency'].max = 2. / stepsize
+    
+    
+    
     return error, params
 
 # Basically the same as sine fitting.

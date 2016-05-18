@@ -103,8 +103,10 @@ def make_exponential_fit(self, axis=None, data=None, add_parameters=None):
 #                                                                          #
 ############################################################################
 def make_stretchedexponentialdecay_model(self):
+    #Todo: write docstring
     def stretched_exponentialdecay_function(x,lifetime,beta ):
         """
+        #Todo: write docstring
 
         @param x:x
         @param lifetime: lifetime
@@ -143,13 +145,28 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     #plt.plot(x_axis,np.log(-np.log(data_level)))
     double_lg_data = np.log(-np.log(data_level))
     warnings.simplefilter('ignore', np.RankWarning)
-    params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
+    
+    #Fixme: use our own fitting with constraints for estimation
+    
+    #Fixme: implement proper error handling
+    
+    #Fixme: Check for sensible values and overwirte + logmassage 
+    
+    try:
+        params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
+        print("params['beta'].value", params['beta'].value)
+        if params['beta'].value is None:
+            print("Set to two, was None")
+            params['beta'].value = 2            
+    except:
+        print("Set to two, polyfit failed")
+        params['beta'].value = 2
     params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
     fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
     print(params['beta'].value,params['lifetime'].value)
-    #lt.plot(np.log(x_axis),double_lg_data,'or')
-    #plt.plot(np.log(x_axis),fit_result, '-g')
-    #plt.show()
+#    plt.plot(np.log(x_axis),double_lg_data,'or')
+#    plt.plot(np.log(x_axis),fit_result, '-g')
+#    plt.show()
 
 
     #params['offset'].value = offset
