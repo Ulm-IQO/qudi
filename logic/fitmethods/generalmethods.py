@@ -103,9 +103,13 @@ def create_fit_string(self, result, model, units=dict(), decimal_digits_value_gi
         exponent_error = int("{:e}".format(result.params[variable].stderr)[-3:])
         exponent_value = int("{:e}".format(result.params[variable].value)[-3:])
         if decimal_digits_value_given is None:
-            decimal_digits_value = int(exponent_value-exponent_error)+1
+            decimal_digits_value = int(exponent_value-exponent_error+1)
+            if decimal_digits_value <= 0:
+                decimal_digits_value = 1
         if decimal_digits_err_given is None:
             decimal_digits_err = 1
+            if decimal_digits_err <= 0:
+                decimal_digits_err = 1
         try:
             fit_result += ("{0} [{1}] : {2} ± {3}\n".format(str(variable),
                                                             units[variable],

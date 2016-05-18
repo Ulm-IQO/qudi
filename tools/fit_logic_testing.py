@@ -1273,19 +1273,19 @@ class FitLogic():
 ###########################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
-            x_axis = np.linspace(0, 1000, 100)
+            x_axis = np.linspace(0, 10000, 1000)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = abs(0.1 + np.random.normal(0,0.4))
-            params['frequency'].value = abs(0.005 + np.random.normal(0,0.005))
+            params['amplitude'].value = abs(0.1 + abs(np.random.normal(0,0.4)))
+            params['frequency'].value = abs(0.01)# + abs(np.random.normal(0,0.01)))
             params['phase'].value = np.pi *0.9
             params['offset'].value = 10 + np.random.normal(0,5)
-            params['lifetime'].value = abs(200 + np.random.normal(0,200))
+            params['lifetime'].value = abs(2000 )#+ abs(np.random.normal(0,200)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.1* np.random.normal(size=x_axis.shape))
+                          + 0.0* np.random.normal(size=x_axis.shape))
 
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')
@@ -1302,6 +1302,7 @@ class FitLogic():
             units['offset'] = 'arb. u.'
             units['amplitude']='arb. u.'
             print(self.create_fit_string(result, mod, units))
+            
 ##################################################################################################################
         def stretchedexponentialdecay_testing(self):
             x_axis = np.linspace(1, 101, 100)
@@ -1309,13 +1310,27 @@ class FitLogic():
             mod, params = self.make_stretchedexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['beta'].value = 0.5
-            params['lifetime'].value = 100
+            params['beta'].value = 2
+            params['lifetime'].value = 1000
             print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
                           + 0.01 * np.random.normal(size=x_axis.shape))
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            
+            data_level = data_noisy
+            #plt.plot(x_axis,np.log(-np.log(data_level)))
+            double_lg_data = np.log(-np.log(data_level))
+            warnings.simplefilter('ignore', np.RankWarning)
+            params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
+            params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
+            fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
+            print(params['beta'].value,params['lifetime'].value)
+            plt.plot(np.log(x_axis),double_lg_data,'or')
+            plt.plot(np.log(x_axis),fit_result, '-g')
+            plt.show()
+
+
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
@@ -1343,5 +1358,5 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.sineexponentialdecay_testing()
-test.stretchedexponentialdecay_testing()
+test.sineexponentialdecay_testing()
+#test.stretchedexponentialdecay_testing()
