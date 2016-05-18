@@ -209,6 +209,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_run_stop"/>
+   <addaction name="action_resume_odmr"/>
   </widget>
   <widget class="QDockWidget" name="odmr_control_DockWidget">
    <property name="sizePolicy">
@@ -220,13 +221,13 @@
    <property name="minimumSize">
     <size>
      <width>500</width>
-     <height>140</height>
+     <height>150</height>
     </size>
    </property>
    <property name="maximumSize">
     <size>
      <width>500</width>
-     <height>140</height>
+     <height>150</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
@@ -470,10 +471,16 @@
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
+   <property name="minimumSize">
+    <size>
+     <width>320</width>
+     <height>150</height>
+    </size>
+   </property>
    <property name="maximumSize">
     <size>
      <width>524287</width>
-     <height>140</height>
+     <height>150</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
@@ -588,10 +595,30 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <activeon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</activeon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>run_stop</string>
+   </property>
+  </action>
+  <action name="action_resume_odmr">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/restart-counter.png</normaloff>
+     <activeon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</activeon>../../artwork/icons/qudiTheme/22x22/restart-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>resume_odmr</string>
+   </property>
+   <property name="toolTip">
+    <string>resume odmr measurement</string>
    </property>
   </action>
  </widget>
