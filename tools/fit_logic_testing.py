@@ -1319,19 +1319,16 @@ class FitLogic():
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['beta'].value = 2 #+ abs(np.random.normal(0,1))
-            params['lifetime'].value = 300
+            params['lifetime'].value = 50+abs(np.random.normal(0,200)) 
             print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.01* np.random.normal(size=x_axis.shape))
+                          + 0.1* np.random.normal(size=x_axis.shape))
             
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             
             data_level = abs(data_noisy)
-            #double_lg_data = np.log(-np.log(data_level))
-    #warnings.simplefilter('ignore', np.RankWarning)
     
-    #Fixme: use our own fitting with constraints for estimation
     
     #Fixme: implement proper error handling
     
