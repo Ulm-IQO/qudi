@@ -1253,8 +1253,15 @@ class FitLogic():
             #offset = np.average(data_noisy)
 
             # level data
-            #data_level = data_noisy - offset
+            data_level = data_noisy #- offset
             data_level_log = np.log(abs(data_noisy))
+            data_level_zeropaded = np.zeros(int(len(data_level) * 2))
+            data_level_zeropaded[:len(data_level)] = data_level
+            fourier = np.fft.fft(data_level_zeropaded)
+            stepsize = x[1] - x[0]  # for frequency axis
+            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+            plt.plot(freq,fourier)
+            plt.show()
 
             # estimate amplitude
             params['lifetime'].value = -1/(np.polyfit(x,data_level_log,1)[0])
@@ -1273,19 +1280,19 @@ class FitLogic():
 ###########################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
-            x_axis = np.linspace(0, 10000, 1000)
+            x_axis = np.linspace(0, 100, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['amplitude'].value = abs(0.1 + abs(np.random.normal(0,0.4)))
-            params['frequency'].value = abs(0.01)# + abs(np.random.normal(0,0.01)))
-            params['phase'].value = np.pi *0.9
+            params['frequency'].value = abs(0.001 + abs(np.random.normal(0,0.25)))
+            params['phase'].value = abs(np.random.normal(0,2*np.pi))
             params['offset'].value = 10 + np.random.normal(0,5)
-            params['lifetime'].value = abs(2000 )#+ abs(np.random.normal(0,200)))
+            params['lifetime'].value = abs(0 + abs(np.random.normal(0,100)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.0* np.random.normal(size=x_axis.shape))
+                          + 0.01* np.random.normal(size=x_axis.shape))
 
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')
@@ -1299,7 +1306,7 @@ class FitLogic():
             units = dict()
             units['frequency'] = 'GHz'
             units['phase'] = 'rad'
-            units['offset'] = 'arb. u.'
+            #nits['offset'] = 'arb. u.'
             units['amplitude']='arb. u.'
             print(self.create_fit_string(result, mod, units))
             
@@ -1339,6 +1346,16 @@ class FitLogic():
 
             plt.show()
 
+##################################################################################################################
+        def random_testing(self):
+            x = np.linspace(1, 10000, 100000)
+            y = np.exp(-x/100)*5*np.sin(x*3+100)
+            z = np.fft.fft(y)
+            stepsize = x[1] - x[0]  # for frequency axis
+            freq = np.fft.fftfreq(z.size, stepsize)
+            plt.plot(freq,z)
+            plt.show()
+    
 
 plt.rcParams['figure.figsize'] = (10,5)
                        
@@ -1358,5 +1375,7 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
+#test.exponentialdecay_testing()
 test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
+#test.random_testing()
