@@ -174,3 +174,4 @@ def make_linear_model(self):
     params = model.make_params()
 
     return model, params
+    

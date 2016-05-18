@@ -22,8 +22,7 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 import numpy as np
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import warnings
-
+import statsmodels.api as sm
 ############################################################################
 #                                                                          #
 #                              decay fitting                               #
@@ -141,10 +140,10 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
 
     #data_level = data - offset
 
-    data_level = data
+    data_level = abs(data)
     #plt.plot(x_axis,np.log(-np.log(data_level)))
-    double_lg_data = np.log(-np.log(data_level))
-    warnings.simplefilter('ignore', np.RankWarning)
+    
+    #warnings.simplefilter('ignore', np.RankWarning)
     
     #Fixme: use our own fitting with constraints for estimation
     
@@ -153,22 +152,43 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     #Fixme: Check for sensible values and overwirte + logmassage 
     
     try:
-        params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
-        print("params['beta'].value", params['beta'].value)
-        if params['beta'].value is None:
-            print("Set to two, was None")
-            params['beta'].value = 2            
+        i = 0    
+        while i in range(0,len(x_axis)+1):
+            i+=1
+            if data_level[i-1] >=1:
+                data_level[i-1]=1-(data_level[i-1]-1)
+            if data_level[i-1] <= data_level.max()/(2*len(data_level)):
+                break
+        double_lg_data = np.log(-np.log(data_level[0:i-1]))
+        
+        #slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(x_axis[0:i-1]), double_lg_data)
+        X=np.log(x_axis[0:i-1])
+        X = sm.add_constant(X)
+        linear_model = sm.OLS(double_lg_data,X)        
+        linear_results = linear_model.fit()
+        print(linear_results.params[0])
+        params['beta'].value = linear_results.params[1]
+        params['lifetime'].value = np.exp(-linear_results.params[0])
+        
+        #print(slope, intercept, r_value, p_value, std_err)
+        #if math.isnan(params['beta'].value):
+            #print("Set to two, was None")
+            #params['beta'].value = float(2)  
+        #if math.isnan(params['lifetime'].value):
+            #print("Set to 100, was None")
+           # params['lifetime'].value = float(100)
     except:
-        print("Set to two, polyfit failed")
+        print("Set to 2 and 100, polyfit failed")
         params['beta'].value = 2
-    params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
-    fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
-    print(params['beta'].value,params['lifetime'].value)
-#    plt.plot(np.log(x_axis),double_lg_data,'or')
-#    plt.plot(np.log(x_axis),fit_result, '-g')
-#    plt.show()
-
-
+        params['lifetime'].value = 100
+    
+    params['beta'].min = 0
+    params['lifetime'].min = 0
+    params['beta'].max = 3
+    params['lifetime'].max = 20 * (x_axis[-1]-x_axis[0])
+    print('\n','lifetime.min: ',params['lifetime'].min,'\n',
+          'lifetime.max: ',params['lifetime'].max,'\n','beta.min: ',
+          params['beta'].min,'\n','beta.max: ',params['beta'].max)
     #params['offset'].value = offset
 
     return error, params
