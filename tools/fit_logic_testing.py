@@ -1253,17 +1253,6 @@ class FitLogic():
             # set the offset as the average of the data
             #offset = np.average(data_noisy)
 
-            # level data
-            data_level = data_noisy #- offset
-            data_level_log = np.log(abs(data_noisy))
-            data_level_zeropaded = np.zeros(int(len(data_level) * 2))
-            data_level_zeropaded[:len(data_level)] = data_level
-            fourier = np.fft.fft(data_level_zeropaded)
-            stepsize = x[1] - x[0]  # for frequency axis
-            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-            plt.plot(freq,fourier)
-            plt.show()
-
             # estimate amplitude
             params['lifetime'].value = -1/(np.polyfit(x,data_level_log,1)[0])
             print('lifetime',params['lifetime'].value)
