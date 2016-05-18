@@ -102,7 +102,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # analyze windows for laser pulses
         self.signal_start_bin = 5
         self.signal_width_bin = 200
-        self.norm_start_bin = 5
+        self.norm_start_bin = 300
         self.norm_width_bin = 200
 
         # threading
@@ -149,11 +149,40 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_laser_plot()
         self._initialize_measuring_error_plot()
 
+        if 'signal_start_bin' in self._statusVariables:
+            self.signal_start_bin = self._statusVariables['signal_start_bin']
+        if 'signal_width_bin' in self._statusVariables:
+            self.signal_width_bin = self._statusVariables['signal_width_bin']
+        if 'norm_start_bin' in self._statusVariables:
+            self.norm_start_bin = self._statusVariables['norm_start_bin']
+        if 'norm_width_bin' in self._statusVariables:
+            self.norm_width_bin = self._statusVariables['norm_width_bin']
+        if 'number_of_lasers' in self._statusVariables:
+            self.number_of_lasers = self._statusVariables['number_of_lasers']
+        if 'aom_delay_s' in self._statusVariables:
+            self.aom_delay_s = self._statusVariables['aom_delay_s']
+        if 'laser_length_s' in self._statusVariables:
+            self.laser_length_s = self._statusVariables['laser_length_s']
+
+
     def deactivation(self, e):
+        """ Deactivate the module properly.
+
+        @param object e: Fysom.event object from Fysom class. A more detailed
+                         explanation can be found in the method activation.
+        """
+
         with self.threadlock:
             if self.getState() != 'idle' and self.getState() != 'deactivated':
                 self.stop_pulsed_measurement()
 
+        self._statusVariables['signal_start_bin'] = self.signal_start_bin
+        self._statusVariables['signal_width_bin'] = self.signal_width_bin
+        self._statusVariables['norm_start_bin'] = self.norm_start_bin
+        self._statusVariables['norm_width_bin'] = self.norm_width_bin
+        self._statusVariables['number_of_lasers'] = self.number_of_lasers
+        self._statusVariables['aom_delay_s'] = self.aom_delay_s
+        self._statusVariables['laser_length_s'] = self.laser_length_s
 
     def update_fast_counter_status(self):
         """ Captures the fast counter status and update the corresponding class variables

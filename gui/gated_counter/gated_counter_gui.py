@@ -220,12 +220,12 @@ class GatedCounterGui(GUIBase):
             Pass also the chosen filename.
         """
 
-        file_desc = self._mw.filename_LineEdit.text()
+        file_desc = self._mw.filetag_LineEdit.text()
         if file_desc == '':
             file_desc = 'gated_counter'
 
         trace_file_desc = file_desc + '_trace'
-        self._counter_logic.save_count_trace(file_desc=trace_file_desc)
+        self._counter_logic.save_current_count_trace(name_tag=trace_file_desc)
 
         # histo_file_desc = file_desc + '_histogram'
         # self._trace_analysis.save_histogram(file_desc=histo_file_desc)
@@ -280,9 +280,160 @@ class GatedCounterGui(GUIBase):
 
         current_fit_function = self._mw.fit_methods_ComboBox.currentText()
 
-        fit_x, fit_y, fit_result, param_dict = self._trace_analysis.do_fit(fit_function=current_fit_function)
+        fit_x, fit_y, fit_param_dict = self._trace_analysis.do_fit(fit_function=current_fit_function)
         self._fit_image.setData(x=fit_x, y=fit_y, pen='r')
+
+        if len(fit_param_dict) == 0:
+            fit_result = 'No Fit parameter passed.'
+
+        else:
+            fit_result = self.create_formatted_output(fit_param_dict)
 
         self._mw.fit_param_TextEdit.setPlainText(fit_result)
 
         return
+
+    def create_formatted_output(self, param_dict):
+        """ Display a parameter set nicely.
+
+        @param dict param: with two needed keywords 'value' and 'unit' and one
+                           optional keyword 'error'. Add the proper items to the
+                           specified keywords.
+                           Note, that if no error is specified, no proper
+                           rounding (and therefore displaying) can be
+                           guaranteed.
+
+        @return str: a sting , which is nicely formatted.
+        """
+
+        output_str = ''
+        for entry in param_dict:
+            if param_dict[entry].get('error') is None:
+                output_str += '{0} : {1} {2} \n'.format(entry,
+                                                        param_dict[entry]['value'],
+                                                        param_dict[entry]['unit'])
+            else:
+                value, error, digit = self.round_value_to_error(param_dict[entry]['value'], param_dict[entry]['error'])
+
+                # check if the error is so big that the rounded value will
+                # become just zero. In that case, output at least 5 digits of
+                # the actual value and not the complete value, just to have
+                # some sort of a display.
+                if np.isclose(value, 0.0) or np.isnan(error) or np.isclose(error, 0.0):
+
+                    # catch the rare case, when the value is almost exact zero:
+                    if np.isclose(param_dict[entry]['value'], 0.0):
+
+                        if np.isnan(error) or np.isclose(error, 0.0):
+
+                            # give it up, value is zero, and error is an invalid
+                            # number, just pass everything to the output:
+                            value = param_dict[entry]['value']
+                            error = param_dict[entry]['error']
+                            digit = -1
+                        else:
+
+                            # if just the value is zero, try to estimate the
+                            # digit via the error:
+                            digit = -(int(np.log10(abs(param_dict[entry]['error'])))-5)
+                            value = param_dict[entry]['value']
+                            error = param_dict[entry]['error']
+                    else:
+                        # just output 5 digits of the value if fit was not
+                        # working properly:
+                        digit = -(int(np.log10(abs(param_dict[entry]['value'])))-5)
+                        value = param_dict[entry]['value']
+
+                if digit < 0:
+                    output_str += '{0} : {1} \u00B1 {2} {3} \n'.format(entry,
+                                                                       value,
+                                                                       error,
+                                                                       param_dict[entry]['unit'])
+                else:
+                    output_str += '{0} : {1:.{4}f} \u00B1 {2:.{4}f} {3} \n'.format(entry,
+                                                                                 value,
+                                                                                 error,
+                                                                                 param_dict[entry]['unit'],
+                                                                                 digit)
+        return output_str
+
+
+    def round_value_to_error(self, value, error):
+        """ The scientifically correct way of rounding a value according to an error.
+
+        @param float or int value: the measurement value
+        @param float or int error: the error for that measurement value
+
+        @return tuple(float, float, int):
+                    float value: the rounded value according to the error
+                    float error: the rounded error
+                    int rounding_digit: the digit, to which the rounding
+                                        procedure was performed. Note a positive
+                                        number indicates the position of the
+                                        digit right from the comma, zero means
+                                        the first digit left from the comma and
+                                        negative numbers are the digits left
+                                        from the comma.
+
+        Note: the input type of value or error will not be changed! If float is
+              the input, float will be the output, some same applies to integer.
+
+        The scientific way of displaying a measurement result in the presents of
+        an error is applied here. It is the following procedure:
+            Take the first leading non-zero number in the error value and check,
+            whether the number is a digit within 3 to 9. Then the rounding value
+            is the specified digit. Otherwise, if first leading digit is 1 or 2
+            then the next right digit is the rounding value.
+            The error is rounded according to that digit and the same applies
+            for the value.
+
+        Example 1:
+            x_meas = 2.05650234, delta_x = 0.0634
+                => x =  2.06 +- 0.06,   (output: (2.06, 0.06, 2)    )
+
+        Example 2:
+            x_meas = 0.34545, delta_x = 0.19145
+                => x = 0.35 +- 0.19     (output: (0.35, 0.19, 2)    )
+
+        Example 3:
+            x_meas = 239579.23, delta_x = 1289.234
+                => x = 239600 +- 1300   (output: (239600.0, 1300.0, -2) )
+
+        Example 4:
+            x_meas = 961453, delta_x = 3789
+                => x = 961000 +- 4000   (output: (961000, 4000, -3) )
+
+        """
+
+        # check if error is zero, since that is an invalid input!
+        if np.isclose(error, 0.0) or np.isnan(error):
+            self.logMsg('Cannot round to the error, since either a zero error '
+                        'value was passed for the number {0}, or the error is '
+                        'NaN: Error value: {1}. '.format(value, error),
+                        msgType='warning')
+
+            # set the round digit to float precision
+            round_digit = -12
+
+            return value, error, round_digit
+
+        # error can only be positive!
+        log_val = np.log10(abs(error))
+
+        if log_val < 0:
+            round_digit = -(int(log_val)-1)
+            first_err_digit = str(np.round(error, round_digit))[-1]
+
+        else:
+            round_digit = -(int(log_val))
+            first_err_digit = str(np.round(error, round_digit))[0]
+
+        if first_err_digit== '1' or first_err_digit == '2':
+            round_digit = round_digit + 1
+
+        # I do not why the round routine in numpy produces sometimes an long
+        # series of numbers, even after rounding. The internal round routine
+        # works marvellous, therefore this is take as the proper output:
+
+        return round(value, round_digit), round(error, round_digit), round_digit
+

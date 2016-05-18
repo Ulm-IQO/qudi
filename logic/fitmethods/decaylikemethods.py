@@ -22,6 +22,8 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 import numpy as np
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
+import warnings
+
 ############################################################################
 #                                                                          #
 #                              decay fitting                               #
@@ -91,6 +93,85 @@ def make_exponential_fit(self, axis=None, data=None, add_parameters=None):
         self.logMsg('The exponentialdecay fit did not work.',
                     msgType='warning')
         result = exponentialdecay.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
+
+############################################################################
+#                                                                          #
+#                      stretched decay fitting                             #
+#                                                                          #
+############################################################################
+def make_stretchedexponentialdecay_model(self):
+    def stretched_exponentialdecay_function(x,lifetime,beta ):
+        """
+
+        @param x:x
+        @param lifetime: lifetime
+        @param beta: stretch exponent
+        @return:
+        """
+        return np.exp(-np.power(x,beta)/lifetime)
+    model = Model(stretched_exponentialdecay_function)
+    params = model.make_params()
+    return model, params
+
+def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None):
+
+    # Todo: docstring
+    error = 0
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+
+    #offset = np.min(data)
+
+    #data_level = data - offset
+
+    data_level = data
+    #plt.plot(x_axis,np.log(-np.log(data_level)))
+    double_lg_data = np.log(-np.log(data_level))
+    warnings.simplefilter('ignore', np.RankWarning)
+    params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
+    params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
+    fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
+    print(params['beta'].value,params['lifetime'].value)
+    #lt.plot(np.log(x_axis),double_lg_data,'or')
+    #plt.plot(np.log(x_axis),fit_result, '-g')
+    #plt.show()
+
+
+    #params['offset'].value = offset
+
+    return error, params
+
+
+def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
+    # Todo: docstring
+    stretchedexponentialdecay, params = self.make_stretchedexponentialdecay_model()
+
+    error, params = self.estimate_stretchedexponentialdecay(axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The stretchedexponentialdecay fit did not work.',
+                    msgType='warning')
+        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
         print(result.message)
 
     return result

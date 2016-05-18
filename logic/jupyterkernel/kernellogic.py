@@ -25,6 +25,8 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from pyqtgraph.Qt import QtCore
+import pyqtgraph as pg
+import numpy as np
 
 from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
@@ -39,7 +41,7 @@ logging.basicConfig(
     level=logging.DEBUG)
 
 class QudiKernelLogic(GenericLogic):
-    """ Logic module 
+    """ Logic module providing a Jupyer-compatible kernel connected via ZMQ.
     """
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
@@ -72,7 +74,7 @@ class QudiKernelLogic(GenericLogic):
         self.sigStartKernel.connect(self.updateModuleList, QtCore.Qt.QueuedConnection)
 
     def deactivation(self, e):
-        """ Deactivate modeule.
+        """ Deactivate module.
 
           @param object e: Fysom state change notification
         """
@@ -80,12 +82,24 @@ class QudiKernelLogic(GenericLogic):
             self.stopKernel(kernel)
             
     def startKernel(self, config, external=None):
+        """Start a qudi inprocess jupyter kernel.
+          @param dict config: connection information for kernel
+          @param callable external: function to call on exit of kernel
+
+          @return str: uuid of the started kernel
+        """
         realconfig = netobtain(config)
         self.logMsg('Start {}'.format(realconfig), msgType="status")
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
-        kernel.sigShutdownFinished.connect(lambda: self.cleanupKernel(kernel.engine_id, external))
+        kernel.user_ns.update({
+            'pg': pg,
+            'np': np,
+            'config': self._manager.tree['defined'],
+            'manager': self._manager
+            })
+        kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
         QtCore.QMetaObject.invokeMethod(kernel, 'connect')
         #QtCore.QTimer.singleShot(0, kernel.connect)
@@ -96,6 +110,9 @@ class QudiKernelLogic(GenericLogic):
         return kernel.engine_id
 
     def stopKernel(self, kernelid):
+        """Tell kernel to close all sockets and stop hearteat thread.
+          @param str kernelid: uuid of kernel to be stopped
+        """
         realkernelid = netobtain(kernelid)
         self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
         kernel = self.kernellist[realkernelid]
@@ -103,7 +120,12 @@ class QudiKernelLogic(GenericLogic):
         #QtCore.QTimer.singleShot(0, kernel.shutdown)
         
     def cleanupKernel(self, kernelid, external=None):
-        self.logMsg('Cleanup {}'.format(kernelid), msgType="status")
+        """Remove kernel reference and tell rpyc client for that kernel to exit.
+
+          @param str kernelid: uuid of kernel reference to remove
+          @param callable external: reference to rpyc client exit function
+        """
+        self.logMsg('Cleanup kernel {}'.format(kernelid), msgType="status")
         del self.kernellist[kernelid]
         if external is not None:
             try:

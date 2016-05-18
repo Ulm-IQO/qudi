@@ -57,16 +57,16 @@ import jedi
 import zmq
 from io import StringIO
 from zmq.error import ZMQError
-from logic.kernel.compilerop import CachingCompiler, check_linecache_ipython
-from logic.kernel.display_trap import DisplayTrap
-from logic.kernel.builtin_trap import BuiltinTrap
+from .compilerop import CachingCompiler, check_linecache_ipython
+from .display_trap import DisplayTrap
+from .builtin_trap import BuiltinTrap
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
 
 
 class _RedirectStream:
-
+    """ A base class for a context manager to redirect streams from the sys module."""
     _stream = None
 
     def __init__(self, new_target):
@@ -94,6 +94,13 @@ class redirect_stderr(_RedirectStream):
 
 
 def cursor_pos_to_lc(text, cursor_pos):
+    """Calulate line, coulumn number from position in string.
+      
+      @param str text: string to calculate position in.
+      @param int cursor_pos: cursor position in text.
+
+      @return (int, int): tuple of line and column number of cursor in string
+    """
     lines = text.splitlines(True)
     linenr = 1
     for line in lines:
@@ -191,28 +198,37 @@ class QZMQStream(QtCore.QObject):
         logging.debug( "Check: %s" % self.readnotifier.socket())
         self.readnotifier.setEnabled(False)
         check = True
-        while check:
-            events = self.socket.get(zmq.EVENTS)
-            check = events & zmq.POLLIN
-            logging.debug( "EVENTS: %s" % events)
-            if check:
-                try:
-                    msg = self.socket.recv_multipart(zmq.NOBLOCK)
-                except zmq.ZMQError as e:
-                    if e.errno == zmq.EAGAIN:
-                        # state changed since poll event
-                        pass
+        try:
+            while check:
+                events = self.socket.get(zmq.EVENTS)
+                check = events & zmq.POLLIN
+                logging.debug( "EVENTS: %s" % events)
+                if check:
+                    try:
+                        msg = self.socket.recv_multipart(zmq.NOBLOCK)
+                    except zmq.ZMQError as e:
+                        if e.errno == zmq.EAGAIN:
+                            # state changed since poll event
+                            pass
+                        else:
+                            logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
                     else:
-                        logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
-                else:
-                    logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
-                    self.sigMsgRecvd.emit(msg)
-        self.readnotifier.setEnabled(True)
+                        logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
+                        self.sigMsgRecvd.emit(msg)
+        except:
+            pass
+        else:
+            self.readnotifier.setEnabled(True)
+
+    def close(self):
+        self.readnotifier.setEnabled(False)
+        self.readnotifier.activated.disconnect()
+        self.sigMsgRecvd.disconnect()
 
 
 class QZMQKernel(QtCore.QObject):
     
-    sigShutdownFinished = QtCore.Signal()
+    sigShutdownFinished = QtCore.Signal(str)
 
     def __init__(self, config=None):
         super().__init__()
@@ -302,8 +318,18 @@ class QZMQKernel(QtCore.QObject):
     # Utility functions:
     @QtCore.pyqtSlot()
     def shutdown(self):
+        self.iopub_stream.close()
+        self.stdin_stream.close()
+        self.shell_stream.close()
+        self.control_stream.close()
+        self.heartbeat_stream.close()
+        self.iopub_socket.close()
+        self.stdin_socket.close()
+        self.shell_socket.close()
+        self.control_socket.close()
+        self.heartbeat_socket.close()
         self.hb_thread.quit()
-        self.sigShutdownFinished.emit()
+        self.sigShutdownFinished.emit(self.engine_id,)
 
     def msg_id(self):
         """ Return a new uuid for message id """
@@ -970,6 +996,12 @@ class QZMQKernel(QtCore.QObject):
 
         except KeyboardInterrupt:
             print('\n' + self.get_exception_only(), file=sys.stderr)
+
+    def showsyntaxerror(self, filename=None):
+        self.showtraceback()
+
+    def showindentationerror(self):
+        self.showtraceback()
 
 ##############################################################################
 # Main

@@ -87,7 +87,10 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
                         msgType='warning')
 
         tt._Tagger_setSerial(self._fpgacounter_serial)
-        tt._Tagger_setBitfilePath(os.path.join(self.get_main_dir(), 'thirdparty', 'stuttgart_counter', 'TimeTaggerController.bit'))
+        thirdpartypath = os.path.join(self.get_main_dir(), 'thirdparty')
+        bitfilepath = os.path.join(thirdpartypath, 'stuttgart_counter', 'TimeTaggerController.bit')
+        tt._Tagger_setBitfilePath(bitfilepath)
+        del bitfilepath, thirdpartypath
 
         self._number_of_gates = int(100)
         self._bin_width = 1
@@ -105,7 +108,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self.signal_get_data_next.connect(self._get_data_next,
                                           QtCore.Qt.QueuedConnection)
-        print('fpga_counter end of activation:')
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
@@ -191,7 +193,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
             self._channel_detect,
             self._channel_sequence
         )
-        print('fpga_counter end of configure:')
         return (bin_width_s, record_length_s, number_of_gates)
 
     def _get_data_next(self):
