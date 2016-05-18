@@ -51,6 +51,32 @@ class ThreadManager(QtCore.QAbstractTableModel):
             self.endInsertRows()
         return self._threads[name].thread
 
+    def quitThread(self, name):
+        """Stop event loop of QThread.
+
+          @param str name: unique thread name
+        """
+        if name in self._threads:
+            self.threadLog('Quitting thread {0}.'.format(name))
+            self._threads[name].thread.quit()
+        else:
+            self.threadLog('You tried quitting a nonexistent thread {0}.'.format(name))
+
+    def joinThread(self, name, time=None):
+        """Stop event loop of QThread.
+
+          @param str name: unique thread name
+          @param int time: timeout for waiting in msec
+        """
+        if name in self._threads:
+            self.threadLog('Waiting for thread {0} to end.'.format(name))
+            if time is None:
+                self._threads[name].thread.wait()
+            else:
+                self._threads[name].thread.wait(time)
+        else:
+            self.threadLog('You tried waiting for a nonexistent thread {0}.'.format(name))
+
     def cleanupThread(self, name):
         """Remove thread from thread list if it is not running anymore.
           
@@ -63,17 +89,6 @@ class ThreadManager(QtCore.QAbstractTableModel):
                 self.beginRemoveRows(QtCore.QModelIndex(), row, row)
                 self._threads.pop(name)
                 self.endRemoveRows()
-
-    def quitThread(self, name):
-        """Stop event loop of QThread.
-
-          @param str name: unique thread name
-        """
-        if name in self._threads:
-            self.threadLog('Quitting thread {0}.'.format(name))
-            self._threads[name].thread.quit()
-        else:
-            self.threadLog('You tried quitting a nonexistent thread {0}.'.format(name))
 
     def quitAllThreads(self):
         """Stop event loop of all QThreads.
