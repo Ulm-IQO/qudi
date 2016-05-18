@@ -709,11 +709,6 @@ class Manager(QtCore.QObject):
 
                     modObj = self.importModule(base, module_name)
                     self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
-                    ## start main loop for qt objects
-                    if base == 'logic':
-                        modthread = self.tm.newThread('mod-' + base + '-' + key)
-                        self.tree['loaded'][base][key].moveToThread(modthread)
-                        modthread.start()
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
                         if not self.remoteServer:
                             self.logger.logMsg('Remote module sharing does not work as server startup failed earlier, check your log.', msgType='error')
@@ -754,9 +749,6 @@ class Manager(QtCore.QObject):
             try:
                 # state machine: deactivate
                 self.deactivateModule(base, key)
-                # stop main loop thread for qt objects
-                if base == 'logic':
-                    self.tm.quitThread('mod-' + base + '-' + key)
             except:
                 self.logger.logExc('Error while deactivating {0} module: {1}'.format(base, key), msgType='error')
                 return
@@ -774,11 +766,6 @@ class Manager(QtCore.QObject):
                 # des Pudels Kern
                 importlib.reload(modObj)
                 self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
-                # start main loop for qt objects
-                if base == 'logic':
-                    modthread = self.tm.newThread('mod-' + base + '-' + key)
-                    self.tree['loaded'][base][key].moveToThread(modthread)
-                    modthread.start()
             except:
                 self.logger.logExc('Error while reloading {0} module: {1}'.format(base, key), msgType='error')
                 return
@@ -801,12 +788,18 @@ class Manager(QtCore.QObject):
             self.logger.logMsg('{0} module {1} not deactivated anymore'.format(base, key),
                                msgType='error')
             return
+        ## start main loop for qt objects
+        if base == 'logic':
+            modthread = self.tm.newThread('mod-' + base + '-' + key)
+            self.tree['loaded'][base][key].moveToThread(modthread)
+            modthread.start()
         try:
             self.tree['loaded'][base][key].setStatusVariables(self.loadStatusVariables(base, key))
             self.tree['loaded'][base][key].activate()
         except:
             self.logger.logExc('{0} module {1}: error during activation:'.format(base, key),
                                msgType='error')
+        QtCore.QCoreApplication.instance().processEvents()
 
     @QtCore.pyqtSlot(str, str)
     def deactivateModule(self, base, key):
@@ -817,14 +810,18 @@ class Manager(QtCore.QObject):
             
         """
         self.logger.logMsg('Deactivating {0}.{1}'.format(base, key), msgType='status')
-        if not self.tree['loaded'][base][key].getState() in ['idle', 'running']:
+        if not self.tree['loaded'][base][key].getState() in ('idle', 'running'):
             self.logger.logMsg('{0} module {1} not active (idle or running) anymore'.format(base, key), msgType='error')
             return
         try:
             self.tree['loaded'][base][key].deactivate()
+            if base == 'logic':
+                self.tm.quitThread('mod-' + base + '-' + key)
+                self.tm.joinThread('mod-' + base + '-' + key)
             self.saveStatusVariables(base, key, self.tree['loaded'][base][key].getStatusVariables())
         except:
             self.logger.logExc('{0} module {1}: error during deactivation:'.format(base, key), msgType='error')
+        QtCore.QCoreApplication.instance().processEvents()
 
     def getSimpleModuleDependencies(self, base, key):
         """ Based on object id, find which connections to replace.
@@ -943,6 +940,26 @@ class Manager(QtCore.QObject):
                         self.tree['loaded'][mbase][mkey].show()
 
     @QtCore.pyqtSlot(str, str)
+    def stopModule(self, base, key):
+        """ Figure out the module dependencies in terms of connections and deactivate module.
+
+          @param str base: Module category
+          @param str key: Unique module name
+
+        """
+        deps = self.getRecursiveModuleDependencies(base, key)
+        sorteddeps = Manager.toposort(deps)
+        if len(sorteddeps) == 0:
+            sorteddeps.append(key)
+
+        for mkey in reversed(sorteddeps):
+            for mbase in ['hardware', 'logic', 'gui']:
+                if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
+                    if self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running'):
+                        self.deactivateModule(mbase, mkey)
+                        print(mbase, mkey)
+
+    @QtCore.pyqtSlot(str, str)
     def restartModuleSimple(self, base, key):
         """Deactivate, reloade, activate module.
           @param str base: Module category
@@ -982,7 +999,7 @@ class Manager(QtCore.QObject):
         sorteddeps = Manager.toposort(deps)
 
         for mkey in sorteddeps:
-            for mbase in ['hardware', 'logic', 'gui']:
+            for mbase in ['gui', 'logic', 'hardware']:
                 # load if the config changed
                 if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
                     self.loadConfigureModule(mbase, mkey)
@@ -1057,9 +1074,9 @@ class Manager(QtCore.QObject):
 
     def quit(self):
         """Nicely request that all modules shut down."""
-        for mbase in ['hardware', 'logic', 'gui']:
+        for mbase in ['gui', 'logic', 'hardware']:
             for module in self.tree['loaded'][mbase]:
-                self.deactivateModule(mbase, module)
+                self.stopModule(mbase, module)
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, False)
 
