@@ -22,9 +22,8 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 import numpy as np
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import matplotlib.pylab as plt
-import math
 import warnings
+
 ############################################################################
 #                                                                          #
 #                              decay fitting                               #
@@ -148,9 +147,9 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
     fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
     print(params['beta'].value,params['lifetime'].value)
-    plt.plot(np.log(x_axis),double_lg_data,'or')
-    plt.plot(np.log(x_axis),fit_result, '-g')
-    plt.show()
+    #lt.plot(np.log(x_axis),double_lg_data,'or')
+    #plt.plot(np.log(x_axis),fit_result, '-g')
+    #plt.show()
 
 
     #params['offset'].value = offset
