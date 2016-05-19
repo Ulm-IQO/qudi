@@ -1333,6 +1333,8 @@ class FitLogic():
                 print(i)
                 double_lg_data = np.log(-np.log(data_level[0:i-2]))
                 X=np.log(x_axis[0:i-2])
+
+                # Todo: Find another way to do this instead of sm or it has to be included into the package list
                 X = sm.add_constant(X)
                 linear_model = sm.OLS(double_lg_data,X)
                 linear_results = linear_model.fit()
