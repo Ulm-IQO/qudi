@@ -235,6 +235,11 @@ class MagnetLogic(GenericLogic):
         self.odmr_2d_peak_axis0_move_ratio = 0 # -13e6/ 0.01e-3    # in Hz/m
         self.odmr_2d_peak_axis1_move_ratio = 0 # -6e6/0.05e-3     # in Hz/m
 
+        # that is just a normalization value, which is needed for the ODMR
+        # alignment, since the colorbar cannot display values greater (2**32)/2.
+        # A solution has to found for that!
+        self.norm = 1000
+
         # single shot alignment on nuclear spin settings (ALL IN SI!!!):
         self.nuclear_2d_rabi_periode = 1000e-9
         self.nuclear_2d_mw_freq = 100e6
@@ -1231,8 +1236,10 @@ class MagnetLogic(GenericLogic):
         # correct the estimated center frequency by the actual measured one.
         self.odmr_2d_high_center_freq = odmr_high_freq_meas
 
-        diff = abs(odmr_high_freq_meas - odmr_low_freq_meas)/2
-        print('odmr_high_freq_meas', odmr_high_freq_meas, 'odmr_low_freq_meas', odmr_low_freq_meas)
+        #FIXME: the normalization is just done for the display to view the
+        #       value properly! There is right now a bug in the colorbad
+        #       display, which need to be solved.
+        diff = (abs(odmr_high_freq_meas - odmr_low_freq_meas)/2)/self.norm
 
         while self._odmr_logic.getState() != 'idle' and not self._stop_measure:
             time.sleep(0.5)
