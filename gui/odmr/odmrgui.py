@@ -490,6 +490,17 @@ class ODMRGui(GUIBase):
         self._mw.odmr_fit_results_DisplayWidget.clear()
         self._mw.odmr_fit_results_DisplayWidget.setPlainText(str(self._odmr_logic.fit_result))
 
+    def _format_param_dict(self, param_dict):
+        """ Create from the passed param_dict a proper display of the parameters.
+
+        @param dict param_dict: the dictionary with keys being the names of the
+                                parameter and items being values/parameters.
+
+        @return:
+        """
+        pass
+
+
     def reject_settings(self):
         """ Keep the old settings and restores the old settings in the gui. """
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)

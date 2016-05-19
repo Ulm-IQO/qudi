@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1193</width>
+    <width>1216</width>
     <height>665</height>
    </rect>
   </property>
@@ -919,7 +919,7 @@ Alignment</string>
               </widget>
              </item>
              <item row="1" column="2">
-              <widget class="QPushButton" name="align_2d_fluorescence_abort_PushButton">
+              <widget class="QPushButton" name="align_2d_abort_PushButton">
                <property name="maximumSize">
                 <size>
                  <width>65</width>
@@ -970,7 +970,7 @@ Alignment</string>
              </item>
             </layout>
             <zorder>align_2d_continue_PushButton</zorder>
-            <zorder>align_2d_fluorescence_abort_PushButton</zorder>
+            <zorder>align_2d_abort_PushButton</zorder>
             <zorder>align_2d_start_PushButton</zorder>
             <zorder>meas_type_fluorescence_RadioButton</zorder>
             <zorder>meas_type_odmr_RadioButton</zorder>
@@ -1013,7 +1013,7 @@ Alignment</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1193</width>
+     <width>1216</width>
      <height>21</height>
     </rect>
    </property>
