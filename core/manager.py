@@ -680,18 +680,20 @@ class Manager(QtCore.QObject):
           @param string base: module base package (hardware, logic or gui)  
           @param string key: module which is going to be loaded
           
+          @return int: 0 on success, -1 on fatal error, 1 on error
         """
         if 'module.Class' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
                 if not self.remoteServer:
                     self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
-                    return
+                    return -1
                 if not isinstance(self.tree['defined'][base][key]['remote'], str):
                     self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
-                    return
+                    return -1
                 try:
                     instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
-                    self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
+                    self.logger.logMsg('Remote module {0} loaded as'
+                        '.{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][base][key] = instance
@@ -700,6 +702,7 @@ class Manager(QtCore.QObject):
                             raise Exception('You are trying to cheat the system with some category {0}'.format(base))
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+                    return -1
             else:
                 try:
                     # class_name is the last part of the config entry
@@ -711,14 +714,19 @@ class Manager(QtCore.QObject):
                     self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
                         if not self.remoteServer:
-                            self.logger.logMsg('Remote module sharing does not work as server startup failed earlier, check your log.', msgType='error')
-                            return
+                            self.logger.logMsg('Remote module sharing does not work as server startup'
+                                ' failed earlier, check your log.', msgType='error')
+                            return 1
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
-                    self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
-                    return
+                    self.logger.logExc('Error while loading {0} module:'
+                        ' {1}'.format(base, key), msgType='error')
+                    return -1
         else:
-            self.logger.logMsg('Missing module declaration in configuration: {0}.{1}'.format(base, key), msgType='error')
+            self.logger.logMsg('Missing module declaration in configuration:'
+                ' {0}.{1}'.format(base, key), msgType='error')
+            return -1
+        return 0
 
     def reloadConfigureModule(self, base, key):
         """Reloads the configuration module in key with the help of base class.
@@ -918,6 +926,8 @@ class Manager(QtCore.QObject):
           @param str base: Module category
           @param str key: Unique module name
 
+          @return int: 0 on success, -1 on error
+
             If the module is already loaded, just activate it.
             If the module is an active GUI module, show its window.
         """
@@ -929,7 +939,12 @@ class Manager(QtCore.QObject):
         for mkey in sorteddeps:
             for mbase in ['hardware', 'logic', 'gui']:
                 if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
-                    self.loadConfigureModule(mbase, mkey)
+                    success = self.loadConfigureModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading', msgType='warning')
+                        return -1
+                    elif success >  0:
+                        self.logger.logMsg('Nonfatal loading error, going on.', msgType='warning')
                     self.connectModule(mbase, mkey)
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
@@ -938,6 +953,7 @@ class Manager(QtCore.QObject):
                         self.activateModule(mbase, mkey)
                     elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
                         self.tree['loaded'][mbase][mkey].show()
+        return 0
 
     @QtCore.pyqtSlot(str, str)
     def stopModule(self, base, key):
