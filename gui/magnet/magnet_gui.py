@@ -179,8 +179,12 @@ class MagnetGui(GUIBase):
 
         # Connect alignment GUI elements:
         self._mw.align_2d_start_PushButton.clicked.connect(self.start_2d_alignment_clicked)
-        self._mw.align_2d_continue_PushButton.clicked.connect(self.continue_2d_fluorescence_alignment_clicked)
-        self._mw.align_2d_fluorescence_abort_PushButton.clicked.connect(self.abort_2d_fluorescence_alignment_clicked)
+        self._mw.align_2d_continue_PushButton.clicked.connect(self.continue_2d_alignment_clicked)
+        self._mw.align_2d_abort_PushButton.clicked.connect(self.abort_2d_alignment_clicked)
+
+        self._magnet_logic.sigMeasurementFinished.connect(self._change_to_stop)
+
+
 
         self._mw.align_2d_axes0_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis0)
         self._mw.align_2d_axes1_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis1)
@@ -993,18 +997,22 @@ class MagnetGui(GUIBase):
         self._continue_2d_fluorescence_alignment = False
 
 
-    def continue_2d_fluorescence_alignment_clicked(self):
+    def continue_2d_alignment_clicked(self):
 
         self._continue_2d_fluorescence_alignment = True
         self.start_2d_alignment_clicked()
 
 
-    def abort_2d_fluorescence_alignment_clicked(self):
+    def abort_2d_alignment_clicked(self):
         """ Stops the current Fluorescence alignment. """
 
+        self._change_to_stop()
+        self._magnet_logic.stop_alignment()
+
+    def _change_to_stop(self):
+        """ Changes every display component back to the stopped state. """
         self._mw.alignment_2d_status_Label.setText('Stopped')
         self._mw.alignment_2d_status_Label.setStyleSheet('color: red')
-        self._magnet_logic.stop_alignment()
 
     def _update_limits_axis0(self):
         """ Whenever a new axis name was chosen in axis0 config, the limits of the
