@@ -53,6 +53,6 @@ if '%errorlevel%' NEQ '0' (
     pushd "%CD%"
     CD /D "%~dp0"
 :--------------------------------------
-
+conda env remove --yes --name qudi
 conda env create -f "%~dp0\conda-env.yml"
 pause

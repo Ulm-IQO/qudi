@@ -22,7 +22,10 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 import numpy as np
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import statsmodels.api as sm
+
+#  Todo: Find another way to do this instead of sm or it has to be included into the package list
+# import statsmodels.api as sm
+
 ############################################################################
 #                                                                          #
 #                              decay fitting                               #
@@ -162,6 +165,9 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
         double_lg_data = np.log(-np.log(data_level[0:i-1]))
         #linear regression
         X=np.log(x_axis[0:i-1])
+
+
+        # Todo: Find another way to do this instead of sm or it has to be included into the package list
         X = sm.add_constant(X)
         linear_model = sm.OLS(double_lg_data,X)        
         linear_results = linear_model.fit()
