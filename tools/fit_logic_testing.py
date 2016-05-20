@@ -43,6 +43,7 @@ import os
 
 from scipy import special
 from scipy.special import gammaln as gamln
+import statsmodels.api as sm
 #import peakutils
 #from peakutils.plot import plot as pplot
 
@@ -1252,10 +1253,6 @@ class FitLogic():
             # set the offset as the average of the data
             #offset = np.average(data_noisy)
 
-            # level data
-            #data_level = data_noisy - offset
-            data_level_log = np.log(abs(data_noisy))
-
             # estimate amplitude
             params['lifetime'].value = -1/(np.polyfit(x,data_level_log,1)[0])
             print('lifetime',params['lifetime'].value)
@@ -1273,19 +1270,19 @@ class FitLogic():
 ###########################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
-            x_axis = np.linspace(0, 1000, 100)
+            x_axis = np.linspace(0, 100, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 1000)
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = abs(0.1 + np.random.normal(0,0.4))
-            params['frequency'].value = abs(0.005 + np.random.normal(0,0.005))
-            params['phase'].value = np.pi *0.9
+            params['amplitude'].value = abs(0.1 + abs(np.random.normal(0,0.4)))
+            params['frequency'].value = abs(0.001 + abs(np.random.normal(0,0.2)))
+            params['phase'].value = abs(np.random.normal(0,2*np.pi))
             params['offset'].value = 10 + np.random.normal(0,5)
-            params['lifetime'].value = abs(200 + np.random.normal(0,200))
+            params['lifetime'].value = abs(0 + abs(np.random.normal(0,100)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.1* np.random.normal(size=x_axis.shape))
+                          + 0.01* np.random.normal(size=x_axis.shape))
 
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')
@@ -1299,31 +1296,75 @@ class FitLogic():
             units = dict()
             units['frequency'] = 'GHz'
             units['phase'] = 'rad'
-            units['offset'] = 'arb. u.'
+            #nits['offset'] = 'arb. u.'
             units['amplitude']='arb. u.'
             print(self.create_fit_string(result, mod, units))
+            
 ##################################################################################################################
         def stretchedexponentialdecay_testing(self):
-            x_axis = np.linspace(1, 101, 100)
+            x_axis = np.linspace(1, 51, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_stretchedexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['beta'].value = 0.5
-            params['lifetime'].value = 100
+            params['beta'].value = 2 #+ abs(np.random.normal(0,1))
+            params['lifetime'].value = 50+abs(np.random.normal(0,200)) 
             print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.01 * np.random.normal(size=x_axis.shape))
+                          + 0.1* np.random.normal(size=x_axis.shape))
+            
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            
+            data_level = abs(data_noisy)
+    
+    
+    #Fixme: implement proper error handling
+    
+    #Fixme: Check for sensible values and overwirte + logmassage 
+            try:
+                i = 0    
+                while i in range(0,len(x_axis)+1):
+                    i+=1
+                    if data_level[i-1] >=1:
+                        data_level[i-1]=1-(data_level[i-1]-1)
+                    if data_level[i-1] <= data_level.max()/(2*len(data_level)):
+                        break
+                print(i)
+                double_lg_data = np.log(-np.log(data_level[0:i-2]))
+                X=np.log(x_axis[0:i-2])
+
+                # Todo: Find another way to do this instead of sm or it has to be included into the package list
+                X = sm.add_constant(X)
+                linear_model = sm.OLS(double_lg_data,X)
+                linear_results = linear_model.fit()
+                plt.plot(np.log(x_axis[0:i-2]),double_lg_data,'ob')
+                plt.plot(np.log(x_axis[0:i-2]),linear_results.predict(X),'-r')
+                plt.show()
+                #print(slope, intercept, r_value, p_value, std_err)
+            except:
+                print(0)
+    
+    
+
+
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
-            # plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
-
+            #plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 
+##################################################################################################################
+        def random_testing(self):
+            x = np.linspace(1, 10000, 100000)
+            y = np.exp(-x/100)*5*np.sin(x*3+100)
+            z = np.fft.fft(y)
+            stepsize = x[1] - x[0]  # for frequency axis
+            freq = np.fft.fftfreq(z.size, stepsize)
+            plt.plot(freq,z)
+            plt.show()
+    
 
 plt.rcParams['figure.figsize'] = (10,5)
                        
@@ -1343,5 +1384,7 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
+#test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
 test.stretchedexponentialdecay_testing()
+#test.random_testing()
