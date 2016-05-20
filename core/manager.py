@@ -546,32 +546,34 @@ class Manager(QtCore.QObject):
         
           @param string base: module base package (hardware, logic or gui)  
           @param string mkey: module which you want to connect
-        
+
+          @return int: 0 on success, -1 on failure
         """
         thismodule = self.tree['defined'][base][mkey]
         if mkey not in self.tree['loaded'][base]:
             self.logger.logMsg('Loading of {0} module {1} as {2} was not  '
-                               'successful, not connecting it.'.format(base, thismodule['module.Class'], mkey),
-                               msgType='error')
-            return
+                'successful, not connecting it.'.format(base, thismodule['module.Class'], mkey),
+                msgType='error')
+            return -1
         if 'connect' not in thismodule:
-            return
+            return 0
         if 'in' not in  self.tree['loaded'][base][mkey].connector:
             self.logger.logMsg('{0} module {1} loaded as {2} is supposed to '
-                               'get connected but it does not declare any IN '
-                               'connectors.'.format(base, thismodule['module.Class'], mkey),
+                'get connected but it does not declare any IN '
+                'connectors.'.format(base, thismodule['module.Class'], mkey),
                                msgType='error')
-            return
+            return -1
         if 'module.Class' not in thismodule:
             self.logger.logMsg('{0} module {1} ({2}) connection configuration '
-                               'is broken: no module defined.'.format(base, mkey, thismodule['module.Class'] ),
-                               msgType='error')
-            return
+                'is broken: no module defined.'.format(base, mkey, thismodule['module.Class'] ),
+                msgType='error')
+            return -1
         if not isinstance(thismodule['connect'], OrderedDict):
             self.logger.logMsg('{0} module {1} ({2}) connection configuration '
-                               'is broken: connect is not a dict.'.format(base, mkey, thismodule['module.Class'] ),
-                               msgType='error')
-            return
+                'is broken: connect is not a dictionary.'
+                ''.format(base, mkey, thismodule['module.Class'] ),
+                msgType='error')
+            return -1
 
         connections = thismodule['connect']
         for c in connections:
@@ -579,48 +581,51 @@ class Manager(QtCore.QObject):
             if c not in connectorIn:
                 self.logger.logMsg(
                     'IN connector {0} of {1} module {2} loaded '
-                    'as {3} is supposed to get connected but '
-                    'is not declared in the module.'.format(c, base, thismodule['module.Class'], mkey),
+                    'as {3} is supposed to get connected but is not declared in the module.'
+                    ''.format(c, base, thismodule['module.Class'], mkey),
                     msgType='error')
                 continue
             if not isinstance(connectorIn[c], OrderedDict):
-                self.logger.logMsg('No dict.', msgType='error')
+                self.logger.logMsg('In connector is no dictionary.', msgType='error')
                 continue
             if 'class' not in connectorIn[c]:
-                self.logger.logMsg('no class key in connection declaration',
-                                   msgType='error')
+                self.logger.logMsg('No class key in connection declaration',
+                    msgType='error')
                 continue
             if not isinstance(connectorIn[c]['class'], str):
-                self.logger.logMsg('value for class key is not a string',
-                                   msgType='error')
+                self.logger.logMsg('Value for class key is not a string',
+                    msgType='error')
                 continue
             if 'object' not in connectorIn[c]:
-                self.logger.logMsg('no object key in connection declaration',
-                                   msgType='error')
+                self.logger.logMsg('No object key in connection declaration',
+                    msgType='error')
                 continue
             if connectorIn[c]['object'] is not None:
-                self.logger.logMsg('IN connector {0} of {1} module {2} loaded as {3} is already connected.'.format(c, base, thismodule['module.Class'], mkey), msgType='warning')
+                self.logger.logMsg('IN connector {0} of {1} module {2}'
+                    ' loaded as {3} is already connected.'
+                    ''.format(c, base, thismodule['module.Class'], mkey),
+                    msgType='warning')
                 continue
             if not isinstance(connections[c], str):
                 self.logger.logMsg('{0} module {1} ({2}) connection '
-                                   'configuration is broken, value for key '
-                                   '{3 }is not a string.'.format(base, mkey, thismodule['module.Class'], c ),
-                                   msgType='error')
+                    'configuration is broken, value for key {3} is not a string.'
+                    ''.format(base, mkey, thismodule['module.Class'], c ),
+                    msgType='error')
                 continue
             if '.' not in connections[c]:
                 self.logger.logMsg('{0} module {1} ({2}) connection '
-                                   'configuration is broken, value {3} for '
-                                   'key {4} does not contain a dot.'.format(base, mkey, thismodule['module.Class'], connections[c], c ),
-                                   msgType='error')
+                    'configuration is broken, value {3} for key {4} does not contain a dot.'
+                    ''.format(base, mkey, thismodule['module.Class'], connections[c], c ),
+                    msgType='error')
                 continue
             destmod = connections[c].split('.')[0]
             destcon = connections[c].split('.')[1]
             destbase = ''
             if destmod in self.tree['loaded']['hardware'] and destmod in self.tree['loaded']['logic']:
                 self.logger.logMsg('Unique name {0} is in both hardware and '
-                                   'logic module list. Connection is not well '
-                                   'defined, cannot connect {1} ({2}) to  it.'.format(destmod, mkey, thismodule['module.Class']),
-                                   msgType='error')
+                    'logic module list. Connection is not well defined, cannot connect {1} ({2}) to  it.'
+                    ''.format(destmod, mkey, thismodule['module.Class']),
+                    msgType='error')
                 continue
                 
             # Connect to hardware module
@@ -657,11 +662,12 @@ class Manager(QtCore.QObject):
                 continue
             if 'class' not in outputs[destcon]:
                 self.logger.logMsg(
-                    'no class key in dict',
+                    'No class key in connector dictionary',
                     msgType='error')
                 continue
             if not isinstance(outputs[destcon]['class'], str):
-                self.logger.logMsg('class value no string', msgType='error')
+                self.logger.logMsg('Class value not a string',
+                    msgType='error')
                 continue
 #            if not issubclass(self.tree['loaded'][destbase][destmod].__class__, outputs[destcon]['class']):
 #                self.logger.logMsg('not the correct class for declared '
@@ -669,10 +675,20 @@ class Manager(QtCore.QObject):
 #                return
 
             # Finally set the connection object
-            self.logger.logMsg('Connecting {0} module {1}.IN.{2} to {3} '
-                               '{4}.{5}'.format(base, mkey, c, destbase, destmod, destcon),
-                               msgType='status')
+            self.logger.logMsg('Connecting {0} module {1}.IN.{2} to {3} {4}.{5}'
+                ''.format(base, mkey, c, destbase, destmod, destcon),
+                msgType='status')
             connectorIn[c]['object'] = self.tree['loaded'][destbase][destmod]
+
+        # check that all IN connectors are connected
+        for c,v in self.tree['loaded'][base][mkey].connector['in'].items():
+            if v['object'] is None:
+                self.logger.logMsg(
+                    'IN connector {} of module {}.{} is empty, connection not complete.'
+                    ''.format(c, base, mkey),
+                    msgType='error')
+                return -1
+        return 0
 
     def loadConfigureModule(self, base, key):
         """Loads the configuration Module in key with the help of base class.
@@ -680,18 +696,20 @@ class Manager(QtCore.QObject):
           @param string base: module base package (hardware, logic or gui)  
           @param string key: module which is going to be loaded
           
+          @return int: 0 on success, -1 on fatal error, 1 on error
         """
         if 'module.Class' in self.tree['defined'][base][key]:
             if 'remote' in self.tree['defined'][base][key]:
                 if not self.remoteServer:
                     self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
-                    return
+                    return -1
                 if not isinstance(self.tree['defined'][base][key]['remote'], str):
                     self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
-                    return
+                    return -1
                 try:
                     instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
-                    self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
+                    self.logger.logMsg('Remote module {0} loaded as'
+                        '.{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
                     with self.lock:
                         if base in ['hardware', 'logic', 'gui']:
                             self.tree['loaded'][base][key] = instance
@@ -700,6 +718,7 @@ class Manager(QtCore.QObject):
                             raise Exception('You are trying to cheat the system with some category {0}'.format(base))
                 except:
                     self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+                    return -1
             else:
                 try:
                     # class_name is the last part of the config entry
@@ -711,14 +730,19 @@ class Manager(QtCore.QObject):
                     self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
                     if 'remoteaccess' in self.tree['defined'][base][key] and self.tree['defined'][base][key]['remoteaccess']:
                         if not self.remoteServer:
-                            self.logger.logMsg('Remote module sharing does not work as server startup failed earlier, check your log.', msgType='error')
-                            return
+                            self.logger.logMsg('Remote module sharing does not work as server startup'
+                                ' failed earlier, check your log.', msgType='error')
+                            return 1
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
-                    self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
-                    return
+                    self.logger.logExc('Error while loading {0} module:'
+                        ' {1}'.format(base, key), msgType='error')
+                    return -1
         else:
-            self.logger.logMsg('Missing module declaration in configuration: {0}.{1}'.format(base, key), msgType='error')
+            self.logger.logMsg('Missing module declaration in configuration:'
+                ' {0}.{1}'.format(base, key), msgType='error')
+            return -1
+        return 0
 
     def reloadConfigureModule(self, base, key):
         """Reloads the configuration module in key with the help of base class.
@@ -726,32 +750,40 @@ class Manager(QtCore.QObject):
           @param string base: module base package (hardware, logic or gui)
           @param string key: module which is going to be loaded
           
+          @return int: 0 on success, -1 on failure
         """
         if 'remote' in self.tree['defined'][base][key]:
             if not self.remoteServer:
-               self.logger.logMsg('Remote functionality not working, check your log.', msgType='error')
-               return
+                self.logger.logMsg('Remote functionality not working, check your log.',
+                    msgType='error')
+                return -1
             if not isinstance(self.tree['defined'][base][key]['remote'], str):
-                self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key), msgType='error')
-                return
+                self.logger.logMsg('Remote URI of {0} module {1} not a string.'.format(base, key),
+                    msgType='error')
+                return -1
             try:
                 instance = self.rm.getRemoteModuleUrl(self.tree['defined'][base][key]['remote'])
-                self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'.format(self.tree['defined'][base][key]['remote'], base, key), msgType='status')
+                self.logger.logMsg('Remote module {0} loaded as .{1}.{2}.'
+                    ''.format(self.tree['defined'][base][key]['remote'], base, key),
+                    msgType='status')
                 with self.lock:
                     if base in ['hardware', 'logic', 'gui']:
                         self.tree['loaded'][base][key] = instance
                         self.sigModulesChanged.emit()
                     else:
-                        raise Exception('You are trying to cheat the system with some category {0}'.format(base))
+                        raise Exception(
+                            'You are trying to cheat the system with some category {0}'.format(base))
             except:
-                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key), msgType='error')
+                self.logger.logExc('Error while loading {0} module: {1}'.format(base, key),
+                    msgType='error')
         elif key in self.tree['loaded'][base] and 'module.Class' in self.tree['defined'][base][key]:
             try:
                 # state machine: deactivate
                 self.deactivateModule(base, key)
             except:
-                self.logger.logExc('Error while deactivating {0} module: {1}'.format(base, key), msgType='error')
-                return
+                self.logger.logExc('Error while deactivating {0} module: {1}'.format(base, key),
+                    msgType='error')
+                return -1
             try:
                 with self.lock:
                     self.tree['loaded'][base].pop(key, None)
@@ -767,10 +799,14 @@ class Manager(QtCore.QObject):
                 importlib.reload(modObj)
                 self.configureModule(modObj, base, class_name, key, self.tree['defined'][base][key])
             except:
-                self.logger.logExc('Error while reloading {0} module: {1}'.format(base, key), msgType='error')
-                return
+                self.logger.logExc('Error while reloading {0} module: {1}'.format(base, key),
+                    msgType='error')
+                return -1
         else:
-            self.logger.logMsg('Module not loaded or not loadable (missing module declaration in configuration): {0}.{1}'.format(base, key), msgType='error')
+            self.logger.logMsg('Module not loaded or not loadable (missing module '
+                'declaration in configuration): {0}.{1}'
+                ''.format(base, key), msgType='error')
+        return 0
 
     @QtCore.pyqtSlot(str, str)
     def activateModule(self, base, key):
@@ -918,6 +954,8 @@ class Manager(QtCore.QObject):
           @param str base: Module category
           @param str key: Unique module name
 
+          @return int: 0 on success, -1 on error
+
             If the module is already loaded, just activate it.
             If the module is an active GUI module, show its window.
         """
@@ -929,8 +967,19 @@ class Manager(QtCore.QObject):
         for mkey in sorteddeps:
             for mbase in ['hardware', 'logic', 'gui']:
                 if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
-                    self.loadConfigureModule(mbase, mkey)
-                    self.connectModule(mbase, mkey)
+                    success = self.loadConfigureModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after loading failure',
+                            msgType='warning')
+                        return -1
+                    elif success >  0:
+                        self.logger.logMsg('Nonfatal loading error, going on.',
+                            msgType='warning')
+                    success = self.connectModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after connection failure.',
+                            msgType='warning')
+                        return -1
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
                 elif mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
@@ -938,6 +987,7 @@ class Manager(QtCore.QObject):
                         self.activateModule(mbase, mkey)
                     elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
                         self.tree['loaded'][mbase][mkey].show()
+        return 0
 
     @QtCore.pyqtSlot(str, str)
     def stopModule(self, base, key):
@@ -956,14 +1006,16 @@ class Manager(QtCore.QObject):
             for mbase in ['hardware', 'logic', 'gui']:
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     if self.tree['loaded'][mbase][mkey].getState() in ('idle', 'running'):
+                        print('Deactivating module {}.{}'.format(mbase, mkey))
                         self.deactivateModule(mbase, mkey)
-                        print(mbase, mkey)
 
     @QtCore.pyqtSlot(str, str)
     def restartModuleSimple(self, base, key):
         """Deactivate, reloade, activate module.
           @param str base: Module category
           @param str key: Unique module name
+
+          @return int: 0 on success, -1 on error
 
             Deactivates and activates all modules that depend on it in order to ensure correct connections.
         """
@@ -978,14 +1030,24 @@ class Manager(QtCore.QObject):
                     self.deactivateModule(destbase, destmod)
                     self.tree['loaded'][destbase][destmod].connector['in'][c]['object'] = None
 
-        self.reloadConfigureModule(base, key)
-        self.connectModule(base, key)
+        # reload and reconnect
+        success = self.reloadConfigureModule(base, key)
+        if success <  0:
+            self.logger.logMsg('Stopping module loading after laoding failure',
+                msgType='warning')
+            return -1
+        success = self.connectModule(base, key)
+        if success <  0:
+            self.logger.logMsg('Stopping module loading after connection failure',
+                msgType='warning')
+            return -1
         self.activateModule(base, key)
 
         for depmod in deps[key]:
             destbase, destmod = depmod
             self.connectModule(destbase, destmod)
             self.activateModule(destbase, destmod)
+        return 0
 
     @QtCore.pyqtSlot(str, str)
     def restartModuleRecursive(self, base, key):
@@ -1002,14 +1064,30 @@ class Manager(QtCore.QObject):
             for mbase in ['gui', 'logic', 'hardware']:
                 # load if the config changed
                 if mkey in self.tree['defined'][mbase] and not mkey in self.tree['loaded'][mbase]:
-                    self.loadConfigureModule(mbase, mkey)
-                    self.connectModule(mbase, mkey)
+                    success = self.loadConfigureModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after loading error.',
+                            msgType='warning')
+                        return -1
+                    success = self.connectModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after connection error',
+                            msgType='warning')
+                        return -1
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
                 # reload if already there
                 elif mkey in self.tree['loaded'][mbase]:
-                    self.reloadConfigureModule(mbase, mkey)
-                    self.connectModule(mbase, mkey)
+                    success = self.reloadConfigureModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after loading error',
+                            msgType='warning')
+                        return -1
+                    success = self.connectModule(mbase, mkey)
+                    if success <  0:
+                        self.logger.logMsg('Stopping module loading after connection error',
+                            msgType='warning')
+                        return -1
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
 
