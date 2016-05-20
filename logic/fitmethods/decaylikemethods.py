@@ -20,12 +20,9 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 import numpy as np
-from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
+from lmfit.models import Model
 from lmfit import Parameters
-from scipy.stats import norm
 
-#  Todo: Find another way to do this instead of sm or it has to be included into the package list
-# import statsmodels.api as sm
 
 ############################################################################
 #                                                                          #

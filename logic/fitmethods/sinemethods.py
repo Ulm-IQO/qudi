@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Florian Frank florian.frank@uni-ulm.de
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 import numpy as np
