@@ -72,6 +72,8 @@ class NuclearOperationsLogic(GenericLogic):
     sigCurrMeasPointUpdated = QtCore.Signal()
     sigMeasValueUpdated = QtCore.Signal()
 
+    sigMeasStarted = QtCore.Signal()
+
     def __init__(self, manager, name, config, **kwargs):
         # declare actions for state transitions
         state_actions = {'onactivate': self.activation,
@@ -106,6 +108,9 @@ class NuclearOperationsLogic(GenericLogic):
         self.x_axis_start = 1e-3                    # in s
         self.x_axis_step = 10e-3                     # in s
         self.x_axis_num_points = 50
+
+
+
         self.current_meas_point = self.x_axis_start
         self.current_meas_index = 0
         self.num_of_meas_runs = 0     # How often the measurement was repeated.
@@ -125,11 +130,14 @@ class NuclearOperationsLogic(GenericLogic):
         self.odmr_meas_freq1 = 10002.1e6            # in Hz
         self.odmr_meas_freq2 = 10004.2e6            # in Hz
         self.odmr_meas_runtime = 30             # in s
-        self.odmr_time_for_next_optimize = 300      # in s
-        self.electron_rabi_periode = 1800e-9        # in s
         self.odmr_meas_freq_range = 30e6            # in Hz
         self.odmr_meas_step = 0.15e6                # in Hz
         self.odmr_meas_power = -30                  # in dBm
+        self.odmr_time_for_next_optimize = 300      # in s
+
+        self.electron_rabi_periode = 1800e-9        # in s
+
+
 
         # store here all the measured odmr peaks
         self.measured_odmr_list = []
@@ -138,16 +146,28 @@ class NuclearOperationsLogic(GenericLogic):
         self.mw_on_odmr_peak = 1
 
         # laser options:
-        self.pulser_laser_channel = 1
+        self.pulser_laser_ch = 1
         self.pulser_laser_amp = 1       # in V
         self.pulser_laser_length = 3e-6 # in s
         self.pulser_mw_ch = -1
-        self.pulser_mw_freq = 100e6     # in Hz
-        self.pulser_mw_amp = 1          # in V
+        self.pulser_mw_freq = 200e6     # in Hz
+        self.pulser_mw_amp = 2.25          # in V
         self.pulser_idle_time = 1.5e-6  # in s
+        self.pulser_rf_ch = -2
+        self.pulser_rf_amp = 0.1
+
+        self.pulser_detect_ch = 1
+
+        self.nuclear_rabi_period = 30e-6
+        self.pulser_rf_freq0 = 6.32e6   # in Hz
+
+        self.num_singleshot_readout = 3000
 
         self.gc_number_of_samples = 3000    # in counts
         self.gc_samples_per_readout = 50    # in counts
+
+        # self.rf_length_measure_point = 10e-6
+        # self.rf_freq_measure_point =
 
         self._optimize_now = False
 
@@ -196,6 +216,13 @@ class NuclearOperationsLogic(GenericLogic):
         self.y_axis_list = np.zeros(self.x_axis_list.shape)
         self.y_axis_fit_list = np.zeros(self.x_axis_list.shape)
 
+        # here all consequutive measurements are saved, where the
+        # self.num_of_meas_runs determines the measurement index for the row.
+        self.y_axis_matrix = np.zeros(1, len(self.x_axis_list))
+
+        # here all the measurement parameters per measurement point are stored:
+        self.parameter_matrix = np.zeros(1, len(self.x_axis_list), dtype=object)
+
     def initialize_meas_param(self):
         """ Initialize the measurement param containter. """
         # here all measurement parameters will be included for any kind of
@@ -210,6 +237,7 @@ class NuclearOperationsLogic(GenericLogic):
         # loop.
         self.prepare_measurement()
 
+        self.sigMeasStarted.emit()
         self.sigNextMeasPoint.emit()
         pass
 
@@ -255,35 +283,55 @@ class NuclearOperationsLogic(GenericLogic):
 
         curr_meas_points, meas_param = self._get_meas_point()
 
-        self._set_meas_point(self.current_meas_index, curr_meas_points, meas_param)
-
+        self._set_meas_point(self.current_meas_index, self.num_of_meas_runs, curr_meas_points, meas_param)
 
         # increment the measurement index or set it back to zero if it exceed
-        # the maximal number of x axis measurement points:
+        # the maximal number of x axis measurement points. The measurement index
+        # will be used for the next measurement
         if self.current_meas_index + 1 > self.x_axis_num_points:
             self.current_meas_index = 0
+
+            # If the next measurement run begins, add a new matrix line to the
+            # self.y_axis_matrix
+            self.num_of_meas_runs += 1
+
+            new_row = np.zeros(self.x_axis_num_points)
+
+            # that vertical stack command behaves similar to the append method
+            # in python lists, where the new_row will be appended to the matrix:
+            self.y_axis_matrix = np.vstack((self.y_axis_matrix, new_row))
+            self.parameter_matrix = np.vstack((self.parameter_matrix, new_row))
+
         else:
             self.current_meas_index += 1
 
         self.sigNextMeasPoint.emit()
 
-    def _set_meas_point(self, meas_index, meas_points, meas_param):
+    def _set_meas_point(self, num_of_meas_runs, meas_index,  meas_points, meas_param):
         """ Handle the proper setting of the current meas_point and store all
             the additional measurement parameter.
 
-        @param meas_index:
-        @param meas_points:
+        @param int meas_index:
+        @param int num_of_meas_runs
+        @param float meas_points:
         @param meas_param:
         @return:
         """
 
+        self.y_axis_matrix[num_of_meas_runs, meas_index] = meas_points
+        self.parameter_matrix[num_of_meas_runs, meas_index] = meas_param
+
+        # the y_axis_list contains the summed and averaged values for each
+        # measurement index:
+        self.y_axis_list[meas_index] = self.y_axis_matrix[:, meas_index].mean()
+
         self.sigCurrMeasPointUpdated.emit()
 
-    def _get_meas_point(self):
+    def _get_meas_point(self, meas_type):
         """ Start the actual measurement (most probably with the gated counter)
 
         And perform the measurement with that routine.
-        @return list, dict:
+        @return tuple (float, dict):
         """
 
         # save also the count trace of the gated counter after the measurement.
@@ -302,9 +350,16 @@ class NuclearOperationsLogic(GenericLogic):
         name_tag = '{0}_{1}'.format(self.current_meas_asset_name, self.current_meas_point)
         self._gc_logic.save_current_count_trace(name_tag=name_tag)
 
-        flip_prop, param = self._trace_ana_logic.analyze_flip_prob(self._gc_logic.countdata)
+        if meas_type in ['Nuclear_Rabi', 'Nuclear_Frequency_Scan']:
+            flip_prop, param = self._trace_ana_logic.analyze_flip_prob(self._gc_logic.countdata)
+            # flip_prop = [flip_prop]
+        elif meas_type in ['QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID',
+                           'QSD_-_Entanglement_FID']:
+            # do something measurement specific
+            pass
 
-        return [flip_prop], param
+
+        return flip_prop, param
 
 
     def stop_nuclear_meas(self):
@@ -340,9 +395,9 @@ class NuclearOperationsLogic(GenericLogic):
 
 
     def get_meas_type_list(self):
-        return ['Nuclear Rabi', 'Nuclear Frequency Scan',
-                'QSD - Artificial Drive', 'QSD - SWAP FID',
-                'QSD - Entanglement FID']
+        return ['Nuclear_Rabi', 'Nuclear_Frequency_Scan',
+                'QSD_-_Artificial_Drive', 'QSD_-_SWAP_FID',
+                'QSD_-_Entanglement_FID']
 
     def get_available_odmr_peaks(self):
         """ Retrieve the information on which odmr peak the microwave can be
@@ -362,11 +417,54 @@ class NuclearOperationsLogic(GenericLogic):
         self._create_laser_on()
         self._create_pulsed_odmr()
 
-        if meas_type == 'Nuclear Rabi':
-            pass
+        if meas_type == 'Nuclear_Rabi':
+                #FIXME: Move this creation routine to the tasks!
+            # generate:
+            self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
+                                                          rf_length_ns=self.current_meas_point*1e9,
+                                                          rf_freq_MHz=self.pulser_rf_freq0,
+                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_channel=self.pulser_rf_ch,
+                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_amp_V=self.pulser_mw_amp,
+                                                          mw_rabi_period_ns=self.electron_rabi_periode*1e9,
+                                                          mw_channel=self.pulser_mw_ch,
+                                                          laser_time_ns=self.pulser_laser_length*1e9,
+                                                          laser_channel=self.pulser_laser_ch,
+                                                          laser_amp_V=self.pulser_laser_amp,
+                                                          detect_channel=self.pulser_detect_ch,
+                                                          wait_time_ns=self.pulser_idle_time,
+                                                          num_singleshot_readout=self.num_singleshot_readout)
+            # sample:
+            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+                                                      write_to_file=True,
+                                                      chunkwise=False)
+            # upload:
+            self._seq_gen_logic.upload_asset(asset_name=meas_type)
 
-        elif meas_type == 'Nuclear Frequency Scan':
-            pass
+        elif meas_type == 'Nuclear_Frequency_Scan':
+            # generate:
+            self._seq_gen_logic.generate_nuclear_meas_seq(name=meas_type,
+                                                          rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
+                                                          rf_freq_MHz=self.current_meas_point*1e-6,
+                                                          rf_amp_V=self.pulser_rf_amp,
+                                                          rf_channel=self.pulser_rf_ch,
+                                                          mw_freq_MHz=self.pulser_mw_freq,
+                                                          mw_amp_V=self.pulser_mw_amp,
+                                                          mw_rabi_period_ns=self.electron_rabi_periode*1e9,
+                                                          mw_channel=self.pulser_mw_ch,
+                                                          laser_time_ns=self.pulser_laser_length*1e9,
+                                                          laser_channel=self.pulser_laser_ch,
+                                                          laser_amp_V=self.pulser_laser_amp,
+                                                          detect_channel=self.pulser_detect_ch,
+                                                          wait_time_ns=self.pulser_idle_time,
+                                                          num_singleshot_readout=self.num_singleshot_readout)
+            # sample:
+            self._seq_gen_logic.sample_pulse_sequence(ensemble_name=meas_type,
+                                                      write_to_file=True,
+                                                      chunkwise=False)
+            # upload:
+            self._seq_gen_logic.upload_asset(asset_name=meas_type)
 
         elif meas_type == 'QSD - Artificial Drive':
             pass
@@ -384,29 +482,66 @@ class NuclearOperationsLogic(GenericLogic):
         @return:
         """
 
-        if meas_type == 'Nuclear Rabi':
+        if meas_type == 'Nuclear_Rabi':
             # only the rf asset has to be regenerated since that is the only
             # thing what has changed.
+            # You just have to ensure that the RF pulse in the sequence
+            # Nuclear_Rabi is called exactly like this RF pulse:
+
+            # generate the new pulse (which will overwrite the Ensemble)
+            self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
+                                                      rf_length_ns=(self.current_meas_point*1e9)/2,
+                                                      rf_freq_MHz=self.pulser_rf_freq0*1e6,
+                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_channel=self.pulser_rf_ch)
+
+            # sample the ensemble (and maybe save it to file, which will
+            # overwrite the old one):
+            self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name='RF_pulse',
+                                                            write_to_file=True,
+                                                            chunkwise=False)
+
+            # upload the new sampled file to the device:
+            self._seq_gen_logic.upload_asset(asset_name='RF_pulse')
+
+        elif meas_type == 'Nuclear_Frequency_Scan':
+
+            # generate the new pulse (which will overwrite the Ensemble)
+            self._seq_gen_logic.generate_rf_pulse_ens(name='RF_pulse',
+                                                      rf_length_ns=(self.nuclear_rabi_period*1e9)/2,
+                                                      rf_freq_MHz=self.current_meas_point*1e6,
+                                                      rf_amp_V=self.pulser_rf_amp,
+                                                      rf_channel=self.pulser_rf_ch)
+
+            # sample the ensemble (and maybe save it to file, which will
+            # overwrite the old one):
+            self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name='RF_pulse',
+                                                            write_to_file=True,
+                                                            chunkwise=False)
+
+            # upload the new sampled file to the device:
+            self._seq_gen_logic.upload_asset(asset_name='RF_pulse')
+
+        elif meas_type == 'QSD_-_Artificial Drive':
             pass
 
-        elif meas_type == 'Nuclear Frequency Scan':
+        elif meas_type == 'QSD_-_SWAP_FID':
             pass
 
-        elif meas_type == 'QSD - Artificial Drive':
+        elif meas_type == 'QSD_-_Entanglement_FID':
             pass
 
-        elif meas_type == 'QSD - SWAP FID':
-            pass
-
-        elif meas_type == 'QSD - Entanglement FID':
-            pass
-
-    def _load_measurement_seq(self):
+    def _load_measurement_seq(self, meas_seq):
         """ Load the current measurement sequence in the pulser
+
+        @param str meas_seq: the measurement sequence which should be loaded
+                             into the device.
 
         @return:
         """
-        pass
+        # now load the measurement sequence again on the device, which will
+        # load the uploaded pulse instead of the old one:
+        self._seq_gen_logic.load_asset(asset_name=meas_seq)
 
     def _create_laser_on(self):
         """ Create the laser asset.
@@ -417,7 +552,7 @@ class NuclearOperationsLogic(GenericLogic):
         # generate:
         self._seq_gen_logic.generate_laser_on(name='Laser_On',
                                               laser_time_bins=3000,
-                                              laser_channel=self.pulser_laser_channel)
+                                              laser_channel=self.pulser_laser_ch)
 
         # sample:
         self._seq_gen_logic.sample_pulse_block_ensemble(ensemble_name='Laser_On',
@@ -498,7 +633,7 @@ class NuclearOperationsLogic(GenericLogic):
                                                 mw_amp_V=self.pulser_mw_amp,
                                                 mw_channel=self.pulser_mw_ch,
                                                 laser_time_ns=self.pulser_laser_length*1e9,
-                                                laser_channel=self.pulser_laser_channel,
+                                                laser_channel=self.pulser_laser_ch,
                                                 laser_amp_V=self.pulser_laser_amp,
                                                 wait_time_ns=self.pulser_idle_time*1e9)
 

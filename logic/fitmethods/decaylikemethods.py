@@ -22,7 +22,9 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 import numpy as np
 from lmfit.models import Model,ConstantModel,LorentzianModel,GaussianModel,LinearModel
 from lmfit import Parameters
-import warnings
+
+#  Todo: Find another way to do this instead of sm or it has to be included into the package list
+# import statsmodels.api as sm
 
 ############################################################################
 #                                                                          #
@@ -103,8 +105,10 @@ def make_exponential_fit(self, axis=None, data=None, add_parameters=None):
 #                                                                          #
 ############################################################################
 def make_stretchedexponentialdecay_model(self):
+    #Todo: write docstring
     def stretched_exponentialdecay_function(x,lifetime,beta ):
         """
+        #Todo: write docstring
 
         @param x:x
         @param lifetime: lifetime
@@ -139,19 +143,57 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
 
     #data_level = data - offset
 
-    data_level = data
+    data_level = abs(data)
     #plt.plot(x_axis,np.log(-np.log(data_level)))
-    double_lg_data = np.log(-np.log(data_level))
-    warnings.simplefilter('ignore', np.RankWarning)
-    params['beta'].value = np.polyfit(np.log(x_axis),double_lg_data,1)[0]
-    params['lifetime'].value = np.exp( -np.polyfit(np.log(x_axis),double_lg_data,1)[1])
-    fit_result = params['beta'].value*np.log(x_axis) + np.polyfit(np.log(x_axis),double_lg_data,1)[1]
-    print(params['beta'].value,params['lifetime'].value)
-    #lt.plot(np.log(x_axis),double_lg_data,'or')
-    #plt.plot(np.log(x_axis),fit_result, '-g')
-    #plt.show()
+    
+    #warnings.simplefilter('ignore', np.RankWarning)
+    
+    #Fixme: use our own fitting with constraints for estimation
+    
+    #Fixme: implement proper error handling
+    
+    #Fixme: Check for sensible values and overwirte + logmassage 
+    
+    try:
+        i = 0    
+        while i in range(0,len(x_axis)+1):
+            i+=1
+            if data_level[i-1] >=1:
+                data_level[i-1]=1-(data_level[i-1]-1)
+            if data_level[i-1] <= data_level.max()/(2*len(data_level)):
+                break
+        double_lg_data = np.log(-np.log(data_level[0:i-1]))
+        #linear regression
+        X=np.log(x_axis[0:i-1])
 
 
+        # Todo: Find another way to do this instead of sm or it has to be included into the package list
+        X = sm.add_constant(X)
+        linear_model = sm.OLS(double_lg_data,X)        
+        linear_results = linear_model.fit()
+        print(linear_results.params)
+        params['beta'].value = linear_results.params[1]
+        params['lifetime'].value = np.exp(-linear_results.params[0])
+        
+        #print(slope, intercept, r_value, p_value, std_err)
+        #if math.isnan(params['beta'].value):
+            #print("Set to two, was None")
+            #params['beta'].value = float(2)  
+        #if math.isnan(params['lifetime'].value):
+            #print("Set to 100, was None")
+           # params['lifetime'].value = float(100)
+    except:
+        print("Set to 2 and 100, polyfit failed")
+        params['beta'].value = 2
+        params['lifetime'].value = 4*(x_axis[-1]-x_axis[0])
+    
+    params['beta'].min = 0
+    params['lifetime'].min = 0
+    params['beta'].max = 3
+    params['lifetime'].max = 10 * (x_axis[-1]-x_axis[0])
+    print('\n','lifetime.min: ',params['lifetime'].min,'\n',
+          'lifetime.max: ',params['lifetime'].max,'\n','beta.min: ',
+          params['beta'].min,'\n','beta.max: ',params['beta'].max)
     #params['offset'].value = offset
 
     return error, params

@@ -225,8 +225,9 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         self.logMsg('Parameters object is not valid in estimate_gaussian.',
                     msgType='error')
         error = -1
-        # set the offset as the average of the data
-    offset = np.average(data)+0.0000001
+        
+    # set the offset as the average of the data
+    offset = np.average(data)
 
     # level data
     data_level = data - offset
@@ -241,7 +242,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(fourier).argmax()])
-    fourier_real = fourier.real
+    fourier_real = abs(fourier.real)
     params['frequency'].value = frequency_max
     def fwhm(x, y, k=3):
         """
@@ -265,15 +266,15 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
             # self.logMsg('No peak was found.',
             #             msgType='error')
             print("No peaks")
-            return 0.0010001         #pass
+            return [0.0010001]         #pass
         elif len(roots) > 2:
             # self.logMsg('Multiple peaks was found.',
             #             msgType='error')
-            print("Multiple peaks")
-            return abs(roots[1] - roots[0])
+            print("Multiple paires of roots.")
+            return [abs(roots[1] - roots[0])*2]
             #pass
         else:
-            return abs(roots[1] - roots[0])
+            return [abs(roots[1] - roots[0])]
 
         # print(freq)
         # print(len(fourier_real))
@@ -292,7 +293,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
 
-    gaus = gaussian(4, 2)
+    gaus = gaussian(2,2)
     smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
                                      gaus / gaus.sum(), mode='mirror')
     plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
@@ -303,18 +304,14 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
                                                           np.array(
                                                               fourier_real_plus[int(len(freq_plus) / 2):] - max(
                                                                   fourier_real_plus) / 2))))
-    plt.xlim(0, 0.05)
+    #plt.xlim(0, 0.1)
     plt.show()
+    
     # estimate life time from peak width
     fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
-    if 2*np.array(smooth_data).std() > np.array(smooth_data).max()-np.array(smooth_data).mean() and fwhm_plus != 0.0010001:
-        print("unrecognizable peak")
-        fwhm_plus = 0.0050001
-    if fwhm_plus == 0.0050001 or fwhm_plus == 0.0010001:
-        params['frequency'].value = 0.0010001
 
-    params['lifetime'].value = 1 / (fwhm_plus*np.pi)
-    print("FWHM", fwhm_plus)
+    params['lifetime'].value = 1 / (fwhm_plus[0]*1.5)
+    print("FWHM", fwhm_plus[0])
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
@@ -331,7 +328,20 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
 
     params['phase'].value = phase
     params['offset'].value = offset
-    params['lifetime'].value = 1/(fwhm_plus*np.pi)
+    #params['lifetime'].value = 1/(fwhm_plus*2.8)
+    
+    #bounds of initial parameters
+    params['lifetime'].min = 0
+    params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
+    params['frequency'].min = 0.1 / (x_axis[-1]-x_axis[0])
+    params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[1]-freq[0]))
+    
+    print('\n','lifetime.min: ',params['lifetime'].min,'\n',
+          'lifetime.max: ',params['lifetime'].max,'\n','frequency.min: ',
+          params['frequency'].min,'\n','frequency.max: ',params['frequency'].max)
+    
+    
+    
     return error, params
 
 # Basically the same as sine fitting.

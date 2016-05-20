@@ -48,8 +48,10 @@ def generate_laser_on(self, name='Laser_On', laser_time_bins=3000,
     @param int laser_time_bins: number of bins
     @param int laser_channel: channel number, positive number are digitals,
                               negative number are positive channels
+
+    @return object: the generated Pulse_Block_Ensemble object.
     """
-    # laser_time_bins = self.sample_rate*3e-6 #3mus
+    # laser_time_bins = self.get_sample_rate()*3e-6 #3mus
     analog_params = [{}]*self.analog_channels
     laser_markers = [False]*self.digital_channels
     pulse_function = ['Idle']*self.analog_channels
@@ -106,9 +108,25 @@ def generate_laser_on(self, name='Laser_On', laser_time_bins=3000,
     # update ensemble list
     self.refresh_ensemble_list()
 
+    return block_ensemble
+
 def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
                          laser_channel=1, laser_amp_V=1, mw_channel=-1,
                          mw_freq_MHz=100, mw_amp_V=1.0):
+    """ General generation method for laser on and microwave on generation.
+
+    @param self:
+    @param name:
+    @param time_bins:
+    @param laser_channel:
+    @param laser_amp_V:
+    @param mw_channel:
+    @param mw_freq_MHz:
+    @param mw_amp_V:
+
+    @return object: the generated Pulse_Block_Ensemble object.
+    """
+
     if laser_channel == mw_channel:
         self.logMsg('Laser and Microwave channel cannot be the same. Change '
                     'that!', msgType='error')
@@ -142,11 +160,12 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
         mw_freq = mw_freq_MHz*1e6
         analog_params[abs(mw_channel)-1] = {'amplitude1':mw_amp_V, 'frequency1':mw_freq, 'phase1': 0.0}
     else:
-        self.logMsg('Value of {0} is not a proper mw channel. Digital laser '
+        self.logMsg('A value "{0}" is not a proper mw channel. Digital laser '
                     'channels are positive values 1=d_ch1, 2=d_ch2, '
                     '... and analog channel numbers are chosen by a negative '
                     'number -1=a_ch1, -2=a_ch2, ... where number 0 is an '
-                    'invalid input. Make your choise!', msgType='error')
+                    'invalid input. Make your choise!'.format(mw_channel),
+                    msgType='error')
         return
 
     laser_element = Pulse_Block_Element(init_length_bins=time_bins,
@@ -164,7 +183,7 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
     element_list = [laser_element]
 
     #FIXME: that has to be fixed in the generation
-    laser_channel_index = abs(laser_channel)
+    laser_channel_index = abs(laser_channel)-1
 
     # create the Pulse_Block object.
     block = Pulse_Block(name, element_list, laser_channel_index)
@@ -186,13 +205,31 @@ def generate_laser_mw_on(self, name='Laser_MW_On', time_bins=3000,
     # update ensemble list
     self.refresh_ensemble_list()
 
-def generate_idle_bins(self, name='Idle', idle_time_bins=1500, laser_channel=2 ):
+    return block_ensemble
+
+
+def generate_idle_ens(self, name='Idle', idle_time_ns=1500, laser_channel=2):
+    """ Converter function to use ns input instead of bins.
+
+    @param str name:
+    @param int idle_time_bins:
+    @param int laser_channel:
+    @return:
+    """
+
+    idle_time_bins = int(self.get_sample_rate()/1e9 * idle_time_ns)
+
+    return self.generate_idle_ens_bins(name=name,idle_time_bins=idle_time_bins,
+                                       laser_channel=laser_channel)
+
+
+def generate_idle_ens_bins(self, name='Idle', idle_time_bins=1500, laser_channel=2):
     """ Generate just a simple idle ensemble element.
 
-    @param self:
-    @param name:
-    @param idle_time_bins:
-    @return:
+    @param str name:
+    @param int idle_time_bins:
+
+    @return object: the generated Pulse_Block_Ensemble object.
     """
 
     # all this arrays have to be filled with the appropriate values. Fill them
@@ -209,7 +246,7 @@ def generate_idle_bins(self, name='Idle', idle_time_bins=1500, laser_channel=2 )
     #FIXME: that has to be fixed in the generation
     laser_channel_index = abs(laser_channel)-1
 
-    elem_list = [idle_time_bins]
+    elem_list = [idle_element]
 
     wait_block = Pulse_Block(name, elem_list, laser_channel_index)
     # save block
@@ -229,6 +266,8 @@ def generate_idle_bins(self, name='Idle', idle_time_bins=1500, laser_channel=2 )
     # set current block ensemble
     self.current_ensemble = block_ensemble
 
+    return block_ensemble
+
 def generate_rabi(self, name='Rabi', tau_start_ns=5, tau_step_ns=10,
                   number_of_taus=50, mw_freq_MHz=2800, mw_amp_V=1.0,
                   mw_channel=-1, laser_time_ns=3000, laser_channel=2,
@@ -236,11 +275,11 @@ def generate_rabi(self, name='Rabi', tau_start_ns=5, tau_step_ns=10,
                   seq_channel=4, wait_time_ns=1500):
     """ Converter function to use ns input instead of bins. """
 
-    tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
-    tau_step_bins = int(self.sample_rate/1e9 * tau_step_ns)
-    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
-    aom_delay_bins = int(self.sample_rate/1e9 * aom_delay_ns)
-    wait_time_bin = int(self.sample_rate/1e9 * wait_time_ns)
+    tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
+    tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
+    laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
+    aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
+    wait_time_bin = int(self.get_sample_rate()/1e9 * wait_time_ns)
 
     self.generate_rabi_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
                             mw_freq_MHz, mw_amp_V, mw_channel, laser_time_bins,
@@ -414,15 +453,16 @@ def generate_pulsedodmr(self, name='PulsedODMR', mw_time_ns=1000,
                         mw_freq_MHz=100.0,  mw_amp_V=1.0, mw_channel=-1,
                         laser_time_ns=3000, laser_channel=1, laser_amp_V=1,
                         wait_time_ns=1500):
+    """ Converter function to use ns input instead of bins. """
 
-    mw_time_bins = int(self.sample_rate/1e9 * mw_time_ns)
-    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
-    wait_time_bins = int(self.sample_rate/1e9 * wait_time_ns)
+    mw_time_bins = int(self.get_sample_rate()/1e9 * mw_time_ns)
+    laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
+    wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
 
     self.generate_pulsedodmr_bins(name, mw_time_bins, mw_freq_MHz, mw_amp_V,
                                   mw_channel, laser_time_bins, laser_channel,
                                   laser_amp_V, wait_time_bins)
-    """ Converter function to use ns input instead of bins. """
+
 
 def generate_pulsedodmr_bins(self, name='PulsedODMR', mw_time_bins=1000,
                         mw_freq_MHz=100.0,  mw_amp_V=1.0, mw_channel=-1,
@@ -522,65 +562,6 @@ def generate_pulsedodmr_bins(self, name='PulsedODMR', mw_time_bins=1000,
     self.refresh_ensemble_list()
 
 
-
-
-# def generate_pulsedodmr(self, name='PulsedODMR', start_freq=0.0, stop_freq=0.0,
-#                         number_of_points=0, amp_V=0.0, pi_bins=0,
-#                         aom_delay_bins=0, laser_time_bins=0,
-#                         use_seqtrig=True):
-#
-#     # create parameter dictionary list for MW signal
-#     mw_params = [{},{}]
-#     mw_params[0]['amplitude1'] = amp_V
-#     mw_params[0]['phase1'] = 0
-#     no_analog_params = [{},{}]
-#     laser_markers = [True, True, False, False]
-#     gate_markers = [False, True, False, False]
-#     idle_markers = [False, False, False, False]
-#     seqtrig_markers = [False, False, True, False]
-#
-#     # create frequency list
-#     freq_list = np.linspace(start_freq, stop_freq, number_of_points)
-#
-#     # generate elements
-#     laser_element = Pulse_Block_Element(laser_time_bins, 2, 4, 0, ['Idle', 'Idle'], laser_markers, no_analog_params)
-#     aomdelay_element = Pulse_Block_Element(aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], gate_markers, no_analog_params)
-#     waiting_element = Pulse_Block_Element((1e-6*self.sample_rate)-aom_delay_bins, 2, 4, 0, ['Idle', 'Idle'], idle_markers, no_analog_params)
-#     seqtrig_element = Pulse_Block_Element(250, 2, 4, 0, ['Idle', 'Idle'], seqtrig_markers, no_analog_params)
-#     # put elements in a list to create the block
-#     element_list = []
-#     for freq in freq_list:
-#         # create copy of parameter dict to use for this frequency
-#         temp_params = [mw_params[0].copy(),{}]
-#         temp_params[0]['frequency1'] = freq
-#         # create actual pi-pulse element
-#         pi_element = Pulse_Block_Element(pi_bins, 2, 4, 0, ['Sin', 'Idle'], idle_markers, temp_params)
-#         # create measurement elements for this frequency
-#         element_list.append(laser_element)
-#         element_list.append(aomdelay_element)
-#         element_list.append(waiting_element)
-#         element_list.append(pi_element)
-#     if use_seqtrig:
-#         element_list.append(seqtrig_element)
-#
-#     # create block
-#     block = Pulse_Block(name, element_list)
-#     # put block in a list with repetitions
-#     block_list = [(block, 0),]
-#     # create ensemble out of the block(s)
-#     block_ensemble = Pulse_Block_Ensemble(name, block_list, freq_list, number_of_points, False)
-#     # save block
-#     # self.save_block(name, block)
-#     # save ensemble
-#     self.save_ensemble(name, block_ensemble)
-#     # set current block
-#     self.current_block = block
-#     # set current block ensemble
-#     self.current_ensemble = block_ensemble
-#     # update ensemble list
-#     self.refresh_ensemble_list()
-#     return
-
 def generate_ramsey(self, name='Ramsey', tau_start_ns=50, tau_step_ns=50,
                   number_of_taus=50, mw_freq_MHz=100.0, mw_rabi_period_ns=200,
                   mw_amp_V=1.0,
@@ -589,12 +570,12 @@ def generate_ramsey(self, name='Ramsey', tau_start_ns=50, tau_step_ns=50,
                   seq_channel=3, wait_time_ns=1500):
     """ Converter function to use ns input instead of bins. """
 
-    tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
-    tau_step_bins = int(self.sample_rate/1e9 * tau_step_ns)
-    mw_rabi_period_bins = int(self.sample_rate/1e9 * mw_rabi_period_ns)
-    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
-    aom_delay_bins = int(self.sample_rate/1e9 * aom_delay_ns)
-    wait_time_bins = int(self.sample_rate/1e9 * wait_time_ns)
+    tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
+    tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
+    mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
+    laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
+    aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
+    wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
 
     self.generate_ramsey_bins(name, tau_start_bins, tau_step_bins,
                   number_of_taus, mw_freq_MHz, mw_rabi_period_bins, mw_amp_V,
@@ -788,12 +769,12 @@ def generate_hahn(self, name='Hahn Echo', tau_start_ns=500,
                   wait_time_ns=500):
     """ Converter function to use ns input instead of bins. """
 
-    tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
-    tau_step_bins = int(self.sample_rate/1e9 * tau_step_ns)
-    mw_rabi_period_bins = int(self.sample_rate/1e9 * mw_rabi_period_ns)
-    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
-    aom_delay_bins = int(self.sample_rate/1e9 * aom_delay_ns)
-    wait_time_bins = int(self.sample_rate/1e9 * wait_time_ns)
+    tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
+    tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
+    mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
+    laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
+    aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
+    wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
 
     self.generate_hahn_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
                             mw_freq_MHz, mw_rabi_period_bins, mw_amp_V,
@@ -1023,12 +1004,12 @@ def generate_xy8(self, name='xy8', tau_start_ns=2000, tau_step_ns=20,
                  wait_time_ns=1500):
     """ Converter function to use ns input instead of bins. """
 
-    tau_start_bins = int(self.sample_rate/1e9 * tau_start_ns)
-    tau_step_bins = int(self.sample_rate/1e9 * tau_step_ns)
-    mw_rabi_period_bins = int(self.sample_rate/1e9 * mw_rabi_period_ns)
-    laser_time_bins = int(self.sample_rate/1e9 * laser_time_ns)
-    aom_delay_bins = int(self.sample_rate/1e9 * aom_delay_ns)
-    wait_time_bins = int(self.sample_rate/1e9 * wait_time_ns)
+    tau_start_bins = int(self.get_sample_rate()/1e9 * tau_start_ns)
+    tau_step_bins = int(self.get_sample_rate()/1e9 * tau_step_ns)
+    mw_rabi_period_bins = int(self.get_sample_rate()/1e9 * mw_rabi_period_ns)
+    laser_time_bins = int(self.get_sample_rate()/1e9 * laser_time_ns)
+    aom_delay_bins = int(self.get_sample_rate()/1e9 * aom_delay_ns)
+    wait_time_bins = int(self.get_sample_rate()/1e9 * wait_time_ns)
 
     self.generate_xy8_bins(name, tau_start_bins, tau_step_bins, number_of_taus,
                            xy8_number, mw_freq_MHz, mw_rabi_period_bins,
