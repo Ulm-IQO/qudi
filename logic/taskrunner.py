@@ -169,7 +169,9 @@ class TaskRunner(GenericLogic):
                 ref = dict()
                 for moddef, mod in t['needsmodules'].items():
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
-                        self._manager.startModule('logic', mod)
+                        success = self._manager.startModule('logic', mod)
+                        if success < 0:
+                            raise Exception('Loading module {} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
                 # print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{}'.format(t['module']), fromlist=['*'])
