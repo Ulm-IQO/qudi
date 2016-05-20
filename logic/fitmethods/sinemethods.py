@@ -27,7 +27,6 @@ from lmfit import Parameters
 from scipy.interpolate import splrep, sproot, splev
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
-import matplotlib.pylab as plt
 
 ############################################################################
 #                                                                          #
