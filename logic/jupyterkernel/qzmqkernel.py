@@ -53,6 +53,10 @@ import ast
 import traceback
 import jedi
 
+import matplotlib
+from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
+from matplotlib._pylab_helpers import Gcf
+
 # zmq specific imports:
 import zmq
 from io import StringIO
@@ -60,112 +64,12 @@ from zmq.error import ZMQError
 from .compilerop import CachingCompiler, check_linecache_ipython
 from .display_trap import DisplayTrap
 from .builtin_trap import BuiltinTrap
+from .redirect import redirect_stdout, redirect_stderr
+from .stream import QZMQStream
+from .helpers import *
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
-
-
-class _RedirectStream:
-    """ A base class for a context manager to redirect streams from the sys module."""
-    _stream = None
-
-    def __init__(self, new_target):
-        self._new_target = new_target
-        # We use a list of old targets to make this CM re-entrant
-        self._old_targets = []
-
-    def __enter__(self):
-        self._old_targets.append(getattr(sys, self._stream))
-        setattr(sys, self._stream, self._new_target)
-        return self._new_target
-
-    def __exit__(self, exctype, excinst, exctb):
-        setattr(sys, self._stream, self._old_targets.pop())
-
-
-class redirect_stdout(_RedirectStream):
-    """Context manager for temporarily redirecting stdout to another file."""
-    _stream = "stdout"
-
-
-class redirect_stderr(_RedirectStream):
-    """Context manager for temporarily redirecting stderr to another file."""
-    _stream = "stderr"
-
-
-def cursor_pos_to_lc(text, cursor_pos):
-    """Calulate line, coulumn number from position in string.
-      
-      @param str text: string to calculate position in.
-      @param int cursor_pos: cursor position in text.
-
-      @return (int, int): tuple of line and column number of cursor in string
-    """
-    lines = text.splitlines(True)
-    linenr = 1
-    for line in lines:
-        if len(line) < cursor_pos:
-            linenr = linenr + 1
-            cursor_pos = cursor_pos - len(line)
-        else:
-            break
-    return linenr, cursor_pos
-
-def softspace(file, newvalue):
-    """Copied from code.py, to remove the dependency"""
-
-    oldvalue = 0
-    try:
-        oldvalue = file.softspace
-    except AttributeError:
-        pass
-    try:
-        file.softspace = newvalue
-    except (AttributeError, TypeError):
-        # "attribute-less object" or "read-only attributes"
-        pass
-    return oldvalue
-
-
-class ExecutionResult:
-    """The result of a call to run_cell
-    Stores information about what took place.
-    """
-    execution_count = None
-    error_before_exec = None
-    error_in_exec = None
-    result = None
-
-    @property
-    def success(self):
-        return (self.error_before_exec is None) and (self.error_in_exec is None)
-
-    def raise_error(self):
-        """Reraises error if `success` is `False`, otherwise does nothing"""
-        if self.error_before_exec is not None:
-            raise self.error_before_exec
-        if self.error_in_exec is not None:
-            raise self.error_in_exec
-
-
-class ZMQDisplayHook:
-    """A simple displayhook that publishes the object's repr over a ZeroMQ
-    socket."""
-
-    def __init__(self):
-        self.result_list = list()
-
-    def __call__(self, obj):
-        if obj is None:
-            return
-
-        builtins._ = obj
-        sys.stdout.flush()
-        sys.stderr.flush()
-        self.result_list.append(repr(obj))
-
-    def set_list(self, resultlist):
-        self.result_list = resultlist
 
 
 class QZMQHeartbeat(QtCore.QObject):
@@ -180,51 +84,6 @@ class QZMQHeartbeat(QtCore.QObject):
         except zmq.ZMQError as e:
             if e.errno != errno.EINTR:
                 raise
-
-
-class QZMQStream(QtCore.QObject):
-    sigMsgRecvd = QtCore.Signal(object)
-
-    def __init__(self, zmqsocket):
-        super().__init__()
-        self.socket = zmqsocket
-        self.readnotifier = QtCore.QSocketNotifier( 
-            self.socket.get(zmq.FD),
-            QtCore.QSocketNotifier.Read)
-        logging.debug( "Notifier: %s" % self.readnotifier.socket())
-        self.readnotifier.activated.connect(self.checkForMessage)
-    
-    def checkForMessage(self, socket):
-        logging.debug( "Check: %s" % self.readnotifier.socket())
-        self.readnotifier.setEnabled(False)
-        check = True
-        try:
-            while check:
-                events = self.socket.get(zmq.EVENTS)
-                check = events & zmq.POLLIN
-                logging.debug( "EVENTS: %s" % events)
-                if check:
-                    try:
-                        msg = self.socket.recv_multipart(zmq.NOBLOCK)
-                    except zmq.ZMQError as e:
-                        if e.errno == zmq.EAGAIN:
-                            # state changed since poll event
-                            pass
-                        else:
-                            logging.info( "RECV Error: %s" % zmq.strerror(e.errno))
-                    else:
-                        logging.debug( "MSG: %s %s" % (self.readnotifier.socket(), msg))
-                        self.sigMsgRecvd.emit(msg)
-        except:
-            pass
-        else:
-            self.readnotifier.setEnabled(True)
-
-    def close(self):
-        self.readnotifier.setEnabled(False)
-        self.readnotifier.activated.disconnect()
-        self.sigMsgRecvd.disconnect()
-
 
 class QZMQKernel(QtCore.QObject):
     
@@ -311,7 +170,7 @@ class QZMQKernel(QtCore.QObject):
         self.ast_node_interactivity = 'last_expr'
         self.compile = CachingCompiler()
         self.ast_transformers = []
-        self.displayhook = ZMQDisplayHook()
+        self.displayhook = DisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
 
@@ -384,6 +243,33 @@ class QZMQKernel(QtCore.QObject):
             parts = identities + parts
         logging.debug( "send parts: %s" % parts)
         stream.socket.send_multipart(parts)
+
+    def display_data(self, msg, mimetype, thing):
+        supported_mime = (
+            'text/plain',
+            'text/html',
+            'text/markdown',
+            'text/latex',
+            'application/json',
+            'application/javascript',
+            'image/png',
+            'image/jpeg',
+            'image/svg+xml'
+            )
+        if mimetype in supported_mime:
+            
+            content = {
+                'source': '',
+                'data': {
+                    mimetype: thing
+                    },
+                'metadata': metadata
+            }
+            self.send(
+                self.iopub_stream,
+                'display_data',
+                content,
+                parent_header=msg['header'])
 
     # Socket Handlers:
     def shell_handler(self, msg):

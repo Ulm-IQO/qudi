@@ -17,10 +17,6 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 """
-# ----------------------------------------------------------------------------
-# QuDi imports
-# ----------------------------------------------------------------------------
-
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from collections import OrderedDict
@@ -35,14 +31,8 @@ import logging
 # The QuDi logic module
 #-----------------------------------------------------------------------------
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%d %I:%M:%S %p',
-    level=logging.DEBUG)
-
 class QudiKernelLogic(GenericLogic):
-    """ Logic module providing a Jupyer-compatible kernel connected via ZMQ.
-    """
+    """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
     _modclass = 'QudiKernelLogic'
     _modtype = 'logic'
     _out = {'kernel': 'QudiKernelLogic'}
@@ -68,6 +58,11 @@ class QudiKernelLogic(GenericLogic):
 
           @param object e: Fysom state change notification
         """
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)s: %(message)s',
+            datefmt='%Y-%m-%d %I:%M:%S %p',
+            level=logging.DEBUG)
+
         self.kernellist = dict()
         self.modules = set()
         self._manager.sigModulesChanged.connect(self.updateModuleList)
