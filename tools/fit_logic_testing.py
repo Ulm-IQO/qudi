@@ -1307,21 +1307,17 @@ class FitLogic():
             mod, params = self.make_stretchedexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['beta'].value = 2 #+ abs(np.random.normal(0,1))
-            params['lifetime'].value = 50+abs(np.random.normal(0,200)) 
+            params['beta'].value = 1 + abs(np.random.normal(0,1))
+            params['lifetime'].value = 5+abs(np.random.normal(0,200))
             print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.1* np.random.normal(size=x_axis.shape))
+                          + 0.5* np.random.normal(size=x_axis.shape))
             
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             
             data_level = abs(data_noisy)
-    
-    
-    #Fixme: implement proper error handling
-    
-    #Fixme: Check for sensible values and overwirte + logmassage 
+
             try:
                 i = 0    
                 while i in range(0,len(x_axis)+1):
@@ -1334,16 +1330,14 @@ class FitLogic():
                 double_lg_data = np.log(-np.log(data_level[0:i-2]))
                 X=np.log(x_axis[0:i-2])
 
-                # Todo: Find another way to do this instead of sm or it has to be included into the package list
-                X = sm.add_constant(X)
-                linear_model = sm.OLS(double_lg_data,X)
-                linear_results = linear_model.fit()
+                linear_result = self.make_linear_fit(axis=X, data=double_lg_data, add_parameters=None)
+
                 plt.plot(np.log(x_axis[0:i-2]),double_lg_data,'ob')
-                plt.plot(np.log(x_axis[0:i-2]),linear_results.predict(X),'-r')
+                plt.plot(np.log(x_axis[0:i-2]),linear_result.best_fit,'-r')
                 plt.show()
                 #print(slope, intercept, r_value, p_value, std_err)
             except:
-                print(0)
+                print("except")
     
     
 
@@ -1356,15 +1350,81 @@ class FitLogic():
             plt.show()
 
 ##################################################################################################################
-        def random_testing(self):
-            x = np.linspace(1, 10000, 100000)
-            y = np.exp(-x/100)*5*np.sin(x*3+100)
-            z = np.fft.fft(y)
-            stepsize = x[1] - x[0]  # for frequency axis
-            freq = np.fft.fftfreq(z.size, stepsize)
-            plt.plot(freq,z)
+        def linear_testing(self):
+            x_axis = np.linspace(1, 51, 100)
+            x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
+            mod, params = self.make_linear_model()
+            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
+
+            params['slope'].value = 2  # + abs(np.random.normal(0,1))
+            params['offset'].value = 50 #+ abs(np.random.normal(0, 200))
+            #print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
+                  #params['lifetime'].value)
+            data_noisy = (mod.eval(x=x_axis, params=params)
+                          + 1 * np.random.normal(size=x_axis.shape))
+
+            result = self.make_linear_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
+            print(result.fit_report())
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
             plt.show()
-    
+########################################################################################################################
+        def doublecompressedexponentialdecay_testing(self):
+
+            x_axis = np.linspace(1, 51, 100)
+            x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
+            mod, params = self.make_doublecompressedexponentialdecay_model()
+            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
+
+            params['amplitude'].value = 2 + abs(np.random.normal(0,20))
+            params['lifetime'].value = 5 + abs(np.random.normal(0,10))
+            params['offset'].value = 1 + abs(np.random.normal(0, 20))
+            print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
+                      params['lifetime'].value,'\n', 'offset', params['offset'].value)
+            data_noisy = (mod.eval(x=x_axis, params=params)
+                              + 0.5 * np.random.normal(size=x_axis.shape))
+
+            result = self.make_doublecompressedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            data = data_noisy
+            offset = sum(data[-5:]) / 5
+
+            data_level = abs(data - offset)
+            for i in range(0, len(data_level)):
+                if data_level[i] == 0:
+                    data_level[i] = np.array(data_level).std() / len(data_level)
+
+            amplitude = data_level.max()-data_level[-5:].std()
+
+            data = data_level / amplitude
+
+            i = 0
+            # cut off values that are too small to be resolved
+            while i in range(0, len(x_axis)):
+                i += 1
+                # flip down the noise
+                if data[i - 1] >= 1:
+                    data[i - 1] = 1 - (data[i - 1] - 1)
+                if data[i - 1] <= data.max() / (2 * len(data)) and data[i - 1] < data.std():
+                    break
+            # double logarithmus of data, should be linear to the loagarithmus of x_axis
+            double_lg_data = np.log(-np.log(data[3:i-2]))
+            plt.plot(np.log(x_axis[3:i-2]), double_lg_data, 'ob')
+            # linear fit, see linearmethods.py
+
+            X = np.log(x_axis[3:i-2])
+
+            linear_result = self.make_fixedslopelinear_fit(axis=X, data=double_lg_data, add_parameters=None)
+            plt.plot(np.log(x_axis),np.log(-np.log(data)), 'ob')
+            plt.plot(np.log(x_axis[3:i - 2]), linear_result.best_fit, '-r')
+            plt.show()
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
+            print(result.fit_report())
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+                # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+            plt.show()
+
 
 plt.rcParams['figure.figsize'] = (10,5)
                        
@@ -1386,5 +1446,7 @@ test=FitLogic()
 #test.double_poissonian_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
-test.stretchedexponentialdecay_testing()
-#test.random_testing()
+#test.stretchedexponentialdecay_testing()
+#test.linear_testing()
+test.doublecompressedexponentialdecay_testing()
+
