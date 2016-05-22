@@ -1231,42 +1231,46 @@ class FitLogic():
 
 ################################################################################################################################
         def exponentialdecay_testing(self):
-#            def constant_function(x, offset):
-#                """
-#                Function of a constant value.
-#                @param x: variable variable
-#                @param offset: independent variable - e.g. offset
-#        
-#                @return: constant function: in order to use it as a model
-#                """
-#        
-#                return offset + 0.0 * x
-#            model= Model(constant_function,prefix = 'x_')
-#            params = model.make_params()
+            x_axis = np.linspace(1, 51, 100)
+            x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_exponentialdecay_model()
-            print(params)
-            
-            x = np.linspace(-100,100,100)
-            params['lifetime'].value= 100
-            data_noisy = (mod.eval(x=x, params=params)+ 0.01 * np.random.normal(size=x.shape))
+            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            # set the offset as the average of the data
-            #offset = np.average(data_noisy)
+            params['amplitude'].value = 2 + abs(np.random.normal(0,20))
+            params['lifetime'].value = 5 + abs(np.random.normal(0,10))
+            params['offset'].value = 1 + abs(np.random.normal(0, 20))
+            print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
+                      params['lifetime'].value,'\n', 'offset', params['offset'].value)
+            data_noisy = (mod.eval(x=x_axis, params=params)
+                              + 0.5 * np.random.normal(size=x_axis.shape))
+            result = self.make_exponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            data = data_noisy
+            offset = data.min()
 
-            # estimate amplitude
-            params['lifetime'].value = -1/(np.polyfit(x,data_level_log,1)[0])
-            print('lifetime',params['lifetime'].value)
+            data_sub = data - offset
+            for i in range(0, len(data_sub)):
+                if data_sub[i] == 0:
+                    data_sub[i] = np.std(data_sub) / len(data_sub)
 
-            #params['amplitude'].value = np.exp(data_level[3]+x[3]/params['lifetime'].value)
+            data_level = data_sub
+            i = 0
+            while i in range(0, len(x_axis) + 1):
+                i += 1
+                if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[
+                            i - 1] < data_level.std():
+                    break
+            data_level_log = np.log(data_level[3:i - 2])
 
-            #params['offset'].value = offset
-            y = mod.eval(x=x, params=params)
-            
-            plt.plot(x,y)
-            plt.plot(x,data_noisy)
-            #plt.plot(x,np.exp(x/lifetime))
+            linear_result = self.make_linear_fit(axis=x_axis[3:i - 2], data=data_level_log, add_parameters=None)
+            plt.plot(x_axis[3:i - 2], data_level_log, 'or')
+            plt.plot(x_axis[3:i - 2], linear_result.best_fit)
             plt.show()
-
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
+            print(result.fit_report())
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+                # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+            plt.show()
 ###########################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
@@ -1444,9 +1448,9 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.exponentialdecay_testing()
+test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
-test.doublecompressedexponentialdecay_testing()
+#test.doublecompressedexponentialdecay_testing()
 
