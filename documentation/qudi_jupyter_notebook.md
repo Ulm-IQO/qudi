@@ -11,9 +11,11 @@
   * Ensure that your QuDi configuration file contains the following 
   entry in the `logic` section:
 
+~~~~~~~~~~~~~
     kernellogic:
         module.Class: 'jupyterkernel.kernellogic.QudiKernelLogic'
         remoteaccess: True
+~~~~~~~~~~~~~
 
 3. Start the Jupyter notebook server
   * Run `jupyter notebook` or an equivalent
