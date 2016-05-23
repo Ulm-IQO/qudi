@@ -1310,7 +1310,7 @@ class PulsedMeasurementGui(GUIBase):
             current_block_name = self._mw.saved_blocks_ComboBox.currentText()
 
         block = self._seq_gen_logic.get_pulse_block(current_block_name,
-                                              set_as_current_block=True)
+                                                    set_as_current_block=True)
 
         # of no object was found then block has reference to None
         if block is None:
@@ -1319,61 +1319,82 @@ class PulsedMeasurementGui(GUIBase):
         # get the number of currently set analogue and digital channels from the logic.
         num_analog_chnl = self._seq_gen_logic.analog_channels
         num_digital_chnl = self._seq_gen_logic.digital_channels
+        # get currently active activation_config.
+        config_name = self._seq_gen_logic.current_activation_config_name
+        activation_config = self.get_hardware_constraints()['activation_config']
+        current_config = activation_config[config_name]
+
         # check if the currently set activation_config has the same number of channels as
         # the block object to be loaded. If this is not the case, change the config
         # to something suitable and inform the user.
-        # FIXME: Currently it will just throw an error when the number of channels does not match.
         if num_analog_chnl != block.analog_channels or num_digital_chnl != block.digital_channels:
+            # find the first valid activation config
+            config_to_set = None
+            for config in activation_config:
+                num_analog = len([chnl for chnl in activation_config[config] if 'a_ch' in chnl])
+                num_digital = len([chnl for chnl in activation_config[config] if 'd_ch' in chnl])
+                if num_analog == block.analog_channels and num_digital == block.digital_channels:
+                    config_to_set = config
+                    break
+            if config_to_set is None:
+                self.logMsg('Mismatch in number of channels between block to load and chosen '
+                            'activation_config. Need {0} digital and {1} analogue channels. '
+                            'Could not find a matching activation_config.'
+                            ''.format(block.digital_channels, block.analog_channels),
+                            msgType='error')
+                return -1
+            # find index of the config inside the ComboBox
+            index_to_set = self._bs.activation_config_ComboBox.findText(config_to_set)
+            self._bs.activation_config_ComboBox.setCurrentIndex(index_to_set)
+            self.update_block_settings()
             self.logMsg('Mismatch in number of channels between block to load and chosen '
-                        'activation_config. Please select an activation_config from the block '
-                        'editor setttings with {0} digital and {1} analogue '
-                        'channels.'.format(block.digital_channels, block.analog_channels),
+                        'activation_config. Need {0} digital and {1} analogue channels. '
+                        'The following activation_config was chosen: "{2}"'
+                        ''.format(block.digital_channels, block.analog_channels, config_to_set),
                         msgType='error')
-            return -1
 
-        # get currently active activation_config.
-        config_name = self._seq_gen_logic.current_activation_config_name
-        activation_config = self.get_hardware_constraints()['activation_config'][config_name]
+            # get currently active activation_config.
+            current_config = activation_config[config_to_set]
+
         # seperate active analog and digital channels in lists
-        active_analog = [chnl for chnl in activation_config if 'a_ch' in chnl]
-        active_digital = [chnl for chnl in activation_config if 'd_ch' in chnl]
+        active_analog = [chnl for chnl in current_config if 'a_ch' in chnl]
+        active_digital = [chnl for chnl in current_config if 'd_ch' in chnl]
 
-        self.block_editor_clear_table() # clear table
+        self.block_editor_clear_table()  # clear table
         rows = len(block.element_list)  # get amout of rows needed for display
 
         # configuration dict from the logic:
         block_config_dict = self.get_cfg_param_pbe()
 
-        self.block_editor_add_row_after_last(rows-1) # since one is already present
+        self.block_editor_add_row_after_last(rows - 1)  # since one is already present
 
         for row_index, pulse_block_element in enumerate(block.element_list):
 
             # set at first all digital channels:
             for digital_ch in range(pulse_block_element.digital_channels):
-                column = block_config_dict['digital_'+active_digital[digital_ch].split('ch')[-1]]
+                column = block_config_dict['digital_' + active_digital[digital_ch].split('ch')[-1]]
                 value = pulse_block_element.marker_active[digital_ch]
                 if value:
-                    value=2
+                    value = 2
                 else:
-                    value=0
-                self.set_element_in_block_table(row_index,column, value)
+                    value = 0
+                self.set_element_in_block_table(row_index, column, value)
 
             # now set all parameters for the analog channels:
             for analog_ch in range(pulse_block_element.analog_channels):
                 # the function text:
-                column = block_config_dict['function_'+active_analog[analog_ch].split('ch')[-1]]
+                column = block_config_dict['function_' + active_analog[analog_ch].split('ch')[-1]]
                 func_text = pulse_block_element.pulse_function[analog_ch]
                 self.set_element_in_block_table(row_index, column, func_text)
 
                 # then the parameter dictionary:
                 parameter_dict = pulse_block_element.parameters[analog_ch]
                 for parameter in parameter_dict:
-                    column = block_config_dict[parameter + '_' +active_analog[analog_ch].split('ch')[-1]]
+                    column = block_config_dict[parameter + '_' + active_analog[analog_ch].split('ch')[-1]]
                     value = np.float(parameter_dict[parameter])
                     self.set_element_in_block_table(row_index, column, value)
 
-
-            #FIXME: that is not really general, since the name 'use_as_tick' is
+            # FIXME: that is not really general, since the name 'use_as_tick' is
             #       directly taken. That must be more general! Right now it is
             #       hard to make it in a general way.
 
@@ -1382,26 +1403,38 @@ class PulsedMeasurementGui(GUIBase):
             value = pulse_block_element.use_as_tick
             # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
             if value:
-                value=2
+                value = 2
             else:
-                value=0
+                value = 0
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the init_length_bins:
             column = block_config_dict['length']
-            value = pulse_block_element.init_length_bins / (self.get_sample_rate() )
+            value = pulse_block_element.init_length_bins / (self.get_sample_rate())
             # the setter method will handle the proper unit for that value!
             # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the increment parameter
             column = block_config_dict['increment']
-            value = pulse_block_element.increment_bins / (self.get_sample_rate() )
+            value = pulse_block_element.increment_bins / (self.get_sample_rate())
             # the setter method will handle the proper unit for that value!
             # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
+
+        # FIXME: Right now only digital channels are supported.
+        # Set the right laser channel in the ComboBox
+        # sort the digital channels according to their index
+        channel_indices = [int(chnl.split('ch')[-1]) for chnl in active_digital]
+        channel_indices.sort()
+        # determine the digital channel to use
+        laser_channel = 'd_ch'+str(channel_indices[block.laser_channel])
+        # Find index to set in the ComboBox
+        laser_channel_index = self._mw.laserchannel_ComboBox.findText(laser_channel)
+        # Set ComboBox
+        self._mw.laserchannel_ComboBox.setCurrentIndex(laser_channel_index)
 
 
     def delete_pulse_block_clicked(self):
