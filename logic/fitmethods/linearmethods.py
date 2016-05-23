@@ -204,14 +204,20 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
     # slope
-    s = (sum(data[int(len(x_axis)/2):])-sum(data[:int(len(x_axis)/2)]))/int(len(x_axis)/2)*(x_axis[int(len(x_axis)/2)]
+    try:
+        s = (sum(data[int(len(x_axis)/2):])-sum(data[:int(len(x_axis)/2)]))/int(len(x_axis)/2)*(x_axis[int(len(x_axis)/2)]
                                                                                             -x_axis[0])
-    params['slope'].value = s
+        params['slope'].value = s
     # offset (y when x = 0 )
-    y_c=s*(0.75*(x_axis[int(len(x_axis)/2)]-x_axis[0])+x_axis[0])/(sum(data[int(len(x_axis)/2):])/int(len(x_axis)/2))
+        y_c=s*(0.75*(x_axis[int(len(x_axis)/2)]-x_axis[0])+x_axis[0])/(sum(data[int(len(x_axis)/2):])/int(len(x_axis)/2))
 
-    params['offset'].value = y_c
-
+        params['offset'].value = y_c
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        params['slope'].value = 0
+        params['offset'].value = 0
+        
     return error, params
 
 def make_linear_fit(self, axis=None, data=None, add_parameters=None):
