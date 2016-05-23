@@ -108,7 +108,8 @@ def make_sine_fit(self, axis=None, data=None, add_parameters=None):
 
 
 def estimate_sine(self, x_axis=None, data=None, params=None):
-    """ This method provides a one dimensional gaussian function.
+    """ This method provides a estimation of a initial values
+     for a sine function.
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to x values
