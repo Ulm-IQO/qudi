@@ -8,6 +8,7 @@
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
+* [Graphical User Interface Design Concept](@ref uiguidelines)
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)
     * [Manager GUI](@ref managergui)

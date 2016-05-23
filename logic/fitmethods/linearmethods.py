@@ -18,9 +18,12 @@ You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 from lmfit.models import Model
+import numpy as np
+from lmfit import Parameters
 
 ############################################################################
 #                                                                          #
@@ -167,11 +170,291 @@ def make_linear_model(self):
         return x
     
     slope, slope_param = self.make_slope_model()
-    constant_x, constant_x_param = self.make_constant_model(prefix='x_')
-    constant_y, constant_y_param = self.make_constant_model(prefix='y_')
+    constant, constant_param = self.make_constant_model()
 
-    model = slope * (Model(linear_function)+ constant_x) +constant_y
+    model = slope * Model(linear_function) + constant
     params = model.make_params()
 
     return model, params
-    
+
+def estimate_linear(self, x_axis=None, data=None, params=None):
+    """
+    This method provides a estimation of a initial values
+     for a linear function.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary
+            which can be set
+
+    @return: tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+
+    # slope
+    try:
+        # Todo: improve this and comment
+        s = ((sum(data[int(len(x_axis)/2):])-sum(data[:int(len(x_axis)/2)]))/
+             int(len(x_axis)/2)*(x_axis[int(len(x_axis)/2)]-x_axis[0]))
+        params['slope'].value = s
+    # offset calculation: (y when x = 0 )
+        y_c=s*(0.75*(x_axis[int(len(x_axis)/2)]-x_axis[0])+x_axis[0])/(sum(data[int(len(x_axis)/2):])/int(len(x_axis)/2))
+
+        params['offset'].value = y_c
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        params['slope'].value = 0
+        params['offset'].value = 0
+        
+    return error, params
+
+def make_linear_fit(self, axis=None, data=None, add_parameters=None):
+    """ This method performes a linear fit on the provided data.
+
+    @param array [] axis: axis values
+    @param array [] x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    linear, params = self.make_linear_model()
+
+    error, params = self.estimate_linear(axis, data, params)
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = linear.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        result = linear.fit(data, x=axis, params=params)
+
+    return result
+
+############################################################################
+#                                                                          #
+#                     fixed_slope linear fitting                           #
+#                                                                          #
+############################################################################
+
+
+def make_fixedslopelinear_model(self):
+    """ This method creates a model of a constant model.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+    def fixedslopelinearfunction(x):
+        return 2.0*x
+
+    constant_model, params = self.make_constant_model()
+
+    model = Model(fixedslopelinearfunction) + constant_model
+    params = model.make_params()
+
+    return model, params
+
+def estimate_fixedslopelinear(self, x_axis=None, data=None, params=None):
+    """
+
+    @param self:
+    @param x_axis: x
+    @param data: y
+    @param params:
+    @return:
+    """
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+
+    # offset (y when x = 0 )
+    y_c = sum(data)/len(x_axis)-2*sum(x_axis)/len(x_axis)
+
+    params['offset'].value = y_c
+
+    return error, params
+
+def make_fixedslopelinear_fit(self, axis=None, data=None, add_parameters=None):
+    """ This method performes a linear fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    fixedslopelinear, params = self.make_fixedslopelinear_model()
+
+    error, params = self.estimate_fixedslopelinear(axis, data, params)
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = fixedslopelinear.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        result = fixedslopelinear.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
+
+############################################################################
+#                                                                          #
+#                     no_offset linear fitting                             #
+#                                                                          #
+############################################################################
+
+
+def make_nooffsetlinear_model(self):
+    """ This method creates a model of a constant model.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
+    def linearfunction(x):
+        return x
+
+    slope_model, params = self.make_slope_model()
+
+    model = slope_model*Model(linearfunction)
+    params = model.make_params()
+
+    return model, params
+
+def estimate_nooffsetlinear(self, x_axis=None, data=None, params=None):
+    """
+
+    @param self:
+    @param x_axis: x
+    @param data: y
+    @param params:
+    @return:
+    """
+    error = 0
+    # check if parameters make sense
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+
+        s = (sum(data[int(len(x_axis) / 2):]) - sum(data[:int(len(x_axis) / 2)])) / int(len(x_axis) / 2) * (
+        x_axis[int(len(x_axis) / 2)]
+        - x_axis[0])
+        params['slope'].value = s
+
+    return error, params
+
+def make_nooffsetlinear_fit(self, axis=None, data=None, add_parameters=None):
+    """ This method performes a linear fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
+
+    nooffsetlinear, params = self.make_nooffsetlinear_model()
+
+    error, params = self.estimate_nooffsetlinear(axis, data, params)
+
+    # overwrite values of additional parameters
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = nooffsetlinear.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The linear fit did not work.',
+                    msgType='warning')
+        result = no.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
+
