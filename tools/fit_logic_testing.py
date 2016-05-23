@@ -1304,7 +1304,6 @@ class FitLogic():
             linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_log[0:i-2],add_parameters=None)
             
             plt.plot(x_axis[0:i-2], linear_result.best_fit)
-            plt.plot(x_axis[0:i-2], linear_result.init_fit)
             plt.show()
             
             
@@ -1313,7 +1312,6 @@ class FitLogic():
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
-            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 #############################################################################################
@@ -1441,7 +1439,7 @@ class FitLogic():
             print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.05* np.random.normal(size=x_axis.shape))
+                          + 0.5* np.random.normal(size=x_axis.shape))
             
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             
@@ -1475,7 +1473,6 @@ class FitLogic():
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
-            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
             #plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 
@@ -1499,9 +1496,9 @@ class FitLogic():
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
             plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
+
             plt.show()
 ########################################################################################################################
-            
         def doublecompressedexponentialdecay_testing(self):
 
             x_axis = np.linspace(1, 51, 100)
@@ -1579,7 +1576,7 @@ test=FitLogic()
 #test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
-test.stretchedexponentialdecay_testing()
-#test.linear_testing()
+#test.stretchedexponentialdecay_testing()
+test.linear_testing()
 #test.doublecompressedexponentialdecay_testing()
 
