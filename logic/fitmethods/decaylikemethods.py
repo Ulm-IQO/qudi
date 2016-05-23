@@ -23,16 +23,112 @@ import numpy as np
 from lmfit.models import Model
 from lmfit import Parameters
 
+############################################################################
+#                                                                          #
+#               bare exponential decay fitting                             #
+#                                                                          #
+############################################################################
 
+def make_bareexponentialdecay_model(self): # exponential decay
+    """
+
+    @param self:
+    @return:
+    """
+    def bareexponentialdecay_function(x,lifetime):
+        """
+
+        @param x:
+        @param lifetime:
+        @param amplitude:
+        @param offset:
+        @return:
+        """
+        return np.exp(-x/lifetime)
+    model = Model(bareexponentialdecay_function)
+    params = model.make_params()
+
+    return model, params
+
+def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
+    """
+
+    @param self:
+    @param x_axis:
+    @param data:
+    @param params:
+    @return:
+    """
+    error = 0
+    parameters = [x_axis, data]
+    for var in parameters:
+        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
+            self.logMsg('Given parameter is no array.',
+                        msgType='error')
+            error = -1
+        elif len(np.shape(var)) != 1:
+            self.logMsg('Given parameter is no one dimensional array.',
+                        msgType='error')
+            error = -1
+    if not isinstance(params, Parameters):
+        self.logMsg('Parameters object is not valid in estimate_gaussian.',
+                    msgType='error')
+        error = -1
+        
+    data = abs(data)    
+    for i in range(0, len(data)):
+        if data[i] == 0:
+            data[i] = np.std(data) / len(data)
+    i=0
+    while i in range(0, len(x_axis) + 1):
+        i += 1
+        if data[i - 1] < data.std():
+            break
+    data_log = np.log(data)
+
+    linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_log[0:i-2],add_parameters=None)
+    params['lifetime'].value = -1/(linear_result.params['slope'].value)
+
+    params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
+    print('\n', 'lifetime.min',
+                      params['lifetime'].min)
+
+    return error, params
+
+def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
+    """
+
+    @param self:
+    @param axis:
+    @param data:
+    @param add_parameters:
+    @return:
+    """
+    bareexponentialdecay, params = self.make_bareexponentialdecay_model()
+
+    error, params = self.estimate_bareexponentialdecay(axis, data, params)
+
+    if add_parameters is not None:
+        params = self._substitute_parameter(parameters=params,
+                                            update_dict=add_parameters)
+    try:
+        result = bareexponentialdecay.fit(data, x=axis, params=params)
+    except:
+        self.logMsg('The bare exponentialdecay fit did not work.',
+                    msgType='warning')
+        result = bareexponentialdecay.fit(data, x=axis, params=params)
+        print(result.message)
+
+    return result
 
 
 ############################################################################
 #                                                                          #
-#                              decay fitting                               #
+#                    exponential decay fitting                             #
 #                                                                          #
 ############################################################################
 
-def make_exponentialdecay_model(self): # pure exponential decay
+def make_exponentialdecay_model(self): # exponential decay
     """
 
     @param self:
@@ -88,18 +184,22 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
     i=0
     while i in range(0, len(x_axis) + 1):
         i += 1
-        if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[i - 1] < data_level.std():
+        if data_level[i - 1] < data_level.std():
             break
-    data_level_log = np.log(data_level[3:i-2])
-
-    linear_result = self.make_linear_fit(axis=x_axis[3:i-2],data= data_level_log,add_parameters=None)
-    params['lifetime'].value = -1/(linear_result.params['slope'].value)
-    params['amplitude'].value = np.exp(linear_result.params['offset'].value)
-
+    
+    try:
+        data_level_log = np.log(data_level[0:i-2])
+        linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_level_log,add_parameters=None)
+        params['lifetime'].value = -1/(linear_result.params['slope'].value)
+        params['amplitude'].value = np.exp(linear_result.params['offset'].value)
+    except:
+        print("lifetime too small, beyond resolution")
+        params['lifetime'].value = x_axis[i]-x_axis[0]
+    
     params['offset'].value = offset
 
-    params['lifetime'].min = 0
-    params['amplitude'].min = 0
+    params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
+    params['amplitude'].min = data.std()
 
     return error, params
 
@@ -319,45 +419,35 @@ def estimate_doublecompressedexponentialdecay(self,x_axis=None, data=None, param
     params['offset'].value = offset
     params['amplitude'].value=amplitude
 
+    i = 0
+    # cut off values that are too small to be resolved
+    while i in range(0, len(x_axis) + 1):
+        i += 1
+         #flip down the noise that are larger than 1.
+        if data_level[i - 1] >= 1:
+            data_level[i - 1] = 1 - (data_level[i - 1] - 1)
+        if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[i - 1] < data_level.std():
+            break    
     try:
-        i = 0
-        # cut off values that are too small to be resolved
-        while i in range(0, len(x_axis) + 1):
-            i += 1
-             #flip down the noise that are larger than 1.
-            if data_level[i - 1] >= 1:
-                data_level[i - 1] = 1 - (data_level[i - 1] - 1)
-            if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[i - 1] < data_level.std():
-                break
+       
         # double logarithmus of data, should be linear to the loagarithmus of x_axis
-        double_lg_data = np.log(-np.log(data_level[5:i-2]))
+        double_lg_data = np.log(-np.log(data_level[0:i-2]))
 
         # linear fit, see linearmethods.py
-        X = np.log(x_axis[5:i-2])
+        X = np.log(x_axis[0:i-2])
 
         linear_result = self.make_fixedslopelinear_fit(axis=X, data=double_lg_data, add_parameters=None)
         params['lifetime'].value = np.exp(-linear_result.params['offset'].value/2)
      # if linear fit failed
-        if np.isnan(linear_result.params['offset'].value):
-               for i, data in enumerate(data_level):
-                      if abs(data * np.e - 1) < 0.05:
-                          print(i)
-                          index = i
-                          break
-               params['lifetime'].value = x_axis[index] - x_axis[0]
     except:
         print( "linear fit failed")
-        s#elf.logMsg('The linear fit did not work.',
+        #self.logMsg('The linear fit did not work.',
                     #msgType='warning')
-        for i, data in enumerate(data_level):
-            if abs(data*np.e-1)<0.05:
-                print(i)
-                index = i
-        params['lifetime'].value = x_axis[index]-x_axis[0]
+        params['lifetime'].value = x_axis[i]-x_axis[0]
 
     params['amplitude'].min = 0
-    params['lifetime'].min = 0
-    params['lifetime'].max = (x_axis[-1]-x_axis[0])*(1-1/np.e)
+    params['lifetime'].min = x_axis[1]-x_axis[0]
+    params['lifetime'].max = (x_axis[-1]-x_axis[0])*3
 
     return error, params
 

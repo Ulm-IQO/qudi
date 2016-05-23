@@ -1231,18 +1231,20 @@ class FitLogic():
 
 ################################################################################################################################
         def exponentialdecay_testing(self):
+            #generation of data for testing
             x_axis = np.linspace(1, 51, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_exponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = 2 + abs(np.random.normal(0,20))
-            params['lifetime'].value = 5 + abs(np.random.normal(0,10))
-            params['offset'].value = 1 + abs(np.random.normal(0, 20))
+            params['amplitude'].value = 1 + abs(np.random.normal(0,200))
+            params['lifetime'].value = 1 + abs(np.random.normal(0,20))
+            params['offset'].value = 1 + abs(np.random.normal(0, 200))
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
                       params['lifetime'].value,'\n', 'offset', params['offset'].value)
+            
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 0.5 * np.random.normal(size=x_axis.shape))
+                              + 1 * np.random.normal(size=x_axis.shape))
             result = self.make_exponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             data = data_noisy
             offset = data.min()
@@ -1256,15 +1258,19 @@ class FitLogic():
             i = 0
             while i in range(0, len(x_axis) + 1):
                 i += 1
-                if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[
-                            i - 1] < data_level.std():
+                if  data_level[i - 1] < data_level.std():
+                    print(i)
                     break
-            data_level_log = np.log(data_level[3:i - 2])
-
-            linear_result = self.make_linear_fit(axis=x_axis[3:i - 2], data=data_level_log, add_parameters=None)
-            plt.plot(x_axis[3:i - 2], data_level_log, 'or')
-            plt.plot(x_axis[3:i - 2], linear_result.best_fit)
-            plt.show()
+            try:            
+                data_level_log = np.log(data_level[0:i - 2])
+                linear_result = self.make_linear_fit(axis=x_axis[0:i - 2], data=data_level_log, add_parameters=None)
+                plt.plot(x_axis[0:i - 2], data_level_log, 'or')
+                plt.plot(x_axis[0:i - 2], linear_result.best_fit)
+                plt.show()
+            except:
+                plt.plot(x_axis, np.log(data_level), 'or')
+                plt.show()
+                print("linear fitting poorly conditioned")
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
@@ -1272,6 +1278,43 @@ class FitLogic():
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 ###########################################################################################
+        def bareexponentialdecay_testing(self):
+            #generation of data for testing
+            x_axis = np.linspace(1, 51, 100)
+            x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
+            mod, params = self.make_bareexponentialdecay_model()
+            print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
+            params['lifetime'].value = 1 + abs(np.random.normal(0,10))       
+            print('\n''lifetime',
+                      params['lifetime'].value)
+            data_noisy = (mod.eval(x=x_axis, params=params)
+                              + 0.05 * np.random.normal(size=x_axis.shape))
+            data = abs(data_noisy)
+            for i in range(0, len(data)):
+                if data[i] == 0:
+                    data[i] = np.std(data) / len(data)
+            i=0
+            while i in range(0, len(x_axis) + 1):
+                i += 1
+                if data[i - 1] < data.std():
+                    break
+            data_log = np.log(data)
+            
+            plt.plot(x_axis, data_log, 'or')
+            linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_log[0:i-2],add_parameters=None)
+            
+            plt.plot(x_axis[0:i-2], linear_result.best_fit)
+            plt.show()
+            
+            
+            result = self.make_bareexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
+            plt.plot(x_axis, data_noisy, 'ob')
+            plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
+            print(result.fit_report())
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+                # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
+            plt.show()
+#############################################################################################
         def sineexponentialdecay_testing(self):
             # generation of data for testing
             x_axis = np.linspace(0, 100, 100)
@@ -1279,14 +1322,94 @@ class FitLogic():
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = abs(0.1 + abs(np.random.normal(0,0.4)))
+            params['amplitude'].value = abs(1 + abs(np.random.normal(0,0.4)))
             params['frequency'].value = abs(0.001 + abs(np.random.normal(0,0.2)))
             params['phase'].value = abs(np.random.normal(0,2*np.pi))
             params['offset'].value = 10 + np.random.normal(0,5)
-            params['lifetime'].value = abs(0 + abs(np.random.normal(0,100)))
+            params['lifetime'].value = abs(0 + abs(np.random.normal(0,70)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.01* np.random.normal(size=x_axis.shape))
+                          + 0.1* np.random.normal(size=x_axis.shape))
+            data = data_noisy            
+            offset = np.average(data)
+        
+            # level data
+            data_level = data - offset
+        
+            # perform fourier transform with zeropadding to get higher resolution
+            data_level_zeropaded = np.zeros(int(len(data_level) * 2))
+            data_level_zeropaded[:len(data_level)] = data_level
+            fourier = np.fft.fft(data_level_zeropaded)
+            stepsize = x_axis[1] - x_axis[0]  # for frequency axis
+            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
+            frequency_max = np.abs(freq[np.log(fourier).argmax()])
+            fourier_real = abs(fourier.real)
+            def fwhm(x, y, k=3):
+                """
+                Determine full-with-half-maximum of a peaked set of points, x and y.
+        
+                Assumes that there is only one peak present in the datasset.  The function
+                uses a spline interpolation of order k.
+        
+                Function taken from:
+                http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
+        
+                Question from: http://stackoverflow.com/users/490332/harpal
+                Answer: http://stackoverflow.com/users/1146963/jdg
+                """
+        
+        
+                half_max = max(y) / 2.0
+                s = splrep(x, y- half_max)
+                roots = sproot(s)
+                if len(roots) < 2:
+                    # self.logMsg('No peak was found.',
+                    #             msgType='error')
+                    print("No peaks")
+                    return [0.0010001]         #pass
+                elif len(roots) > 2:
+                    # self.logMsg('Multiple peaks was found.',
+                    #             msgType='error')
+                    print("Multiple paires of roots.")
+                    return [abs(roots[1] - roots[0])*2]
+                    #pass
+                else:
+                    return [abs(roots[1] - roots[0])]
+        
+                # print(freq)
+                # print(len(fourier_real))
+            #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
+            #frequency is not from minus inf to plus inf.
+            freq_plus = [0] * len(freq)
+            for i in range(0, int(len(freq) / 2)):
+                freq_plus[i + int(len(freq) / 2)] = freq[i]
+            for i in range(int(len(freq) * 0.5), len(freq)):
+                freq_plus[i - int(len(freq) / 2)] = freq[i]
+            fourier_real_plus = [0] * len(fourier_real)
+            for i in range(0, int(len(fourier_real) / 2)):
+                fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
+            for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
+                fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
+            #print(len(np.array(freq_plus)), np.array(freq_plus))
+        
+        
+            gaus = gaussian(3,3)
+            smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
+                                             gaus / gaus.sum(), mode='mirror')
+            plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
+            plt.plot(freq_plus[int(len(freq) / 2):],
+                      fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
+            plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
+                                                            splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
+                                                                   np.array(
+                                                                       fourier_real_plus[int(len(freq_plus) / 2):] - max(
+                                                                           fourier_real_plus) / 2))))
+            plt.xlim(0, 0.5)
+            plt.show()
+
+
+
+
 
             result = self.make_sineexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')
@@ -1387,7 +1510,7 @@ class FitLogic():
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
                       params['lifetime'].value,'\n', 'offset', params['offset'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 0.5 * np.random.normal(size=x_axis.shape))
+                              + 0.1 * np.random.normal(size=x_axis.shape))
 
             result = self.make_doublecompressedexponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             data = data_noisy
@@ -1412,15 +1535,15 @@ class FitLogic():
                 if data[i - 1] <= data.max() / (2 * len(data)) and data[i - 1] < data.std():
                     break
             # double logarithmus of data, should be linear to the loagarithmus of x_axis
-            double_lg_data = np.log(-np.log(data[3:i-2]))
-            plt.plot(np.log(x_axis[3:i-2]), double_lg_data, 'ob')
+            double_lg_data = np.log(-np.log(data[0:i-2]))
+            plt.plot(np.log(x_axis[0:i-2]), double_lg_data, 'ob')
             # linear fit, see linearmethods.py
 
-            X = np.log(x_axis[3:i-2])
+            X = np.log(x_axis[0:i-2])
 
             linear_result = self.make_fixedslopelinear_fit(axis=X, data=double_lg_data, add_parameters=None)
             plt.plot(np.log(x_axis),np.log(-np.log(data)), 'ob')
-            plt.plot(np.log(x_axis[3:i - 2]), linear_result.best_fit, '-r')
+            plt.plot(np.log(x_axis[0:i - 2]), linear_result.best_fit, '-r')
             plt.show()
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
@@ -1448,8 +1571,9 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-test.exponentialdecay_testing()
-#test.sineexponentialdecay_testing()
+#test.bareexponentialdecay_testing()
+#test.exponentialdecay_testing()
+test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 #test.doublecompressedexponentialdecay_testing()
