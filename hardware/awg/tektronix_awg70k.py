@@ -965,7 +965,7 @@ class AWG70K(Base, PulserInterface):
         ch2_marker = 0
         for channel in self.active_channel:
             if self.active_channel[channel]:
-                if ('d_ch1' in channel) or ('d_ch1' in channel):
+                if ('d_ch1' in channel) or ('d_ch2' in channel):
                         ch1_marker += 1
                 if ('d_ch3' in channel) or ('d_ch4' in channel):
                         ch2_marker += 1
