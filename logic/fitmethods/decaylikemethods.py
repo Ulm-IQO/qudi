@@ -29,15 +29,18 @@ from lmfit import Parameters
 #                                                                          #
 ############################################################################
 
-def make_bareexponentialdecay_model(self): # exponential decay
-    """
+def make_bareexponentialdecay_model(self):
+    #Todo: make docstring
 
+    """
+    exponential decay
     @param self:
     @return:
     """
+
+    #Todo: make docstring
     def bareexponentialdecay_function(x,lifetime):
         """
-
         @param x:
         @param lifetime:
         @param amplitude:
@@ -51,6 +54,8 @@ def make_bareexponentialdecay_model(self): # exponential decay
     return model, params
 
 def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
+    #Todo: make docstring
+
     """
 
     @param self:
@@ -74,28 +79,33 @@ def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
         self.logMsg('Parameters object is not valid in estimate_gaussian.',
                     msgType='error')
         error = -1
-        
-    data = abs(data)    
+
+    # Todo: Comment: why????
+    data = abs(data)
     for i in range(0, len(data)):
         if data[i] == 0:
             data[i] = np.std(data) / len(data)
     i=0
+    # Todo: Comment: why????
     while i in range(0, len(x_axis) + 1):
         i += 1
         if data[i - 1] < data.std():
             break
     data_log = np.log(data)
 
-    linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_log[0:i-2],add_parameters=None)
-    params['lifetime'].value = -1/(linear_result.params['slope'].value)
+    linear_result = self.make_linear_fit(axis=x_axis[0:i-2], data= data_log[0:i-2], add_parameters=None)
 
+    params['lifetime'].value = -1/linear_result.params['slope'].value
     params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
-    print('\n', 'lifetime.min',
-                      params['lifetime'].min)
+
+    #Todo: make logmassage out of print
+    # print('\n', 'lifetime.min',
+    #                   params['lifetime'].min)
 
     return error, params
 
 def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
+    #Todo: make docstring
     """
 
     @param self:
@@ -114,11 +124,10 @@ def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     try:
         result = bareexponentialdecay.fit(data, x=axis, params=params)
     except:
-        self.logMsg('The bare exponentialdecay fit did not work.',
-                    msgType='warning')
         result = bareexponentialdecay.fit(data, x=axis, params=params)
-        print(result.message)
-
+        self.logMsg('The bare exponential decay fit did not work. lmfit result '
+                    'message: {}'.format(str(result.message)),
+                    msgType='warning')
     return result
 
 
@@ -129,11 +138,13 @@ def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
 ############################################################################
 
 def make_exponentialdecay_model(self): # exponential decay
+    #Todo: make docstring
     """
 
     @param self:
     @return:
     """
+    #Todo: make docstring
     def exponentialdecay_function(x,lifetime,amplitude,offset):
         """
 
@@ -150,6 +161,7 @@ def make_exponentialdecay_model(self): # exponential decay
     return model, params
 
 def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
+    #Todo: make docstring
     """
 
     @param self:
@@ -174,14 +186,18 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
 
+    #Todo: Add check if amplitude is positive or negative
+    #Todo: check how long array and depending on this take mean of last tenth and take int
     offset = data.min()
 
     data_sub = data - offset
+    #Todo: comment
     for i in range(0, len(data_sub)):
         if data_sub[i] == 0:
             data_sub[i] = np.std(data_sub) / len(data_sub)
     data_level = data_sub
     i=0
+    #Todo: comment
     while i in range(0, len(x_axis) + 1):
         i += 1
         if data_level[i - 1] < data_level.std():
@@ -189,8 +205,8 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
     
     try:
         data_level_log = np.log(data_level[0:i-2])
-        linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_level_log,add_parameters=None)
-        params['lifetime'].value = -1/(linear_result.params['slope'].value)
+        linear_result = self.make_linear_fit(axis=x_axis[0:i-2], data=data_level_log, add_parameters=None)
+        params['lifetime'].value = -1/linear_result.params['slope'].value
         params['amplitude'].value = np.exp(linear_result.params['offset'].value)
     except:
         print("lifetime too small, beyond resolution")
@@ -204,6 +220,7 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
     return error, params
 
 def make_exponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
+    #Todo: make docstring
     """
 
     @param self:
@@ -222,6 +239,7 @@ def make_exponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = exponentialdecay.fit(data, x=axis, params=params)
     except:
+        #Todo: change print to inside logsmsg see above
         self.logMsg('The exponentialdecay fit did not work.',
                     msgType='warning')
         result = exponentialdecay.fit(data, x=axis, params=params)
@@ -234,28 +252,31 @@ def make_exponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
 #                      stretched decay fitting                             #
 #                                                                          #
 ############################################################################
-# This is an general fitting for stretched/compress fitting, with no amplitude and offset
 def make_stretchedexponentialdecay_model(self):
+    #Todo: make docstring
     """
+    # This is an general fitting for stretched/compress fitting, with no amplitude and offset
 
     @param self:
     @return:
     """
-    def stretched_exponentialdecay_function(x,lifetime,beta ):
+    def stretched_exponentialdecay_function(x, lifetime, beta):
+        #Todo: make docstring
         """
         #Todo: write docstring
 
-        @param x:x
+        @param x: x
         @param lifetime: lifetime
         @param beta: stretch exponent
         @return:
         """
-        return np.exp(-np.power(x,beta)/lifetime)
+        return np.exp(-np.power(x, beta)/lifetime)
     model = Model(stretched_exponentialdecay_function)
     params = model.make_params()
     return model, params
 
 def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None):
+    #Todo: make docstring
     """
 
     @param self:
@@ -358,6 +379,7 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
         print(result.message)
 
     return result
+
 ############################################################################
 #                                                                          #
 #            double compressed exponential decay fitting                   #
@@ -462,6 +484,10 @@ def make_doublecompressedexponentialdecay_fit(self, axis=None, data=None, add_pa
     @return:
     """
     doublecompressedexponentialdecay, params = self.make_doublecompressedexponentialdecay_model()
+
+    # Todo: Use general stretched exponential decay and restrict here
+    # params['beta'].value = 2.
+    # params['beta'].vary = False
 
     error, params = self.estimate_doublecompressedexponentialdecay(axis, data, params)
 

@@ -24,7 +24,7 @@ Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
 from lmfit.models import Model
 import numpy as np
 from lmfit import Parameters
-import math
+
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -170,7 +170,6 @@ def make_linear_model(self):
         return x
     
     slope, slope_param = self.make_slope_model()
-    #constant_x, constant_x_param = self.make_constant_model(prefix='x_')
     constant, constant_param = self.make_constant_model()
 
     model = slope * Model(linear_function) + constant
@@ -180,12 +179,19 @@ def make_linear_model(self):
 
 def estimate_linear(self, x_axis=None, data=None, params=None):
     """
+    This method provides a estimation of a initial values
+     for a linear function.
 
-    @param self:
-    @param x_axis: x
-    @param data: y
-    @param params:
-    @return:
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary
+            which can be set
+
+    @return: tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
     """
     error = 0
     # check if parameters make sense
@@ -203,12 +209,14 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         self.logMsg('Parameters object is not valid in estimate_gaussian.',
                     msgType='error')
         error = -1
+
     # slope
     try:
-        s = (sum(data[int(len(x_axis)/2):])-sum(data[:int(len(x_axis)/2)]))/int(len(x_axis)/2)*(x_axis[int(len(x_axis)/2)]
-                                                                                            -x_axis[0])
+        # Todo: improve this and comment
+        s = ((sum(data[int(len(x_axis)/2):])-sum(data[:int(len(x_axis)/2)]))/
+             int(len(x_axis)/2)*(x_axis[int(len(x_axis)/2)]-x_axis[0]))
         params['slope'].value = s
-    # offset (y when x = 0 )
+    # offset calculation: (y when x = 0 )
         y_c=s*(0.75*(x_axis[int(len(x_axis)/2)]-x_axis[0])+x_axis[0])/(sum(data[int(len(x_axis)/2):])/int(len(x_axis)/2))
 
         params['offset'].value = y_c
@@ -223,8 +231,8 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
 def make_linear_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a linear fit on the provided data.
 
-    @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array [] axis: axis values
+    @param array [] x_data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -247,9 +255,9 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
         self.logMsg('The linear fit did not work.',
                     msgType='warning')
         result = linear.fit(data, x=axis, params=params)
-        print(result.message)
 
     return result
+
 ############################################################################
 #                                                                          #
 #                     fixed_slope linear fitting                           #
