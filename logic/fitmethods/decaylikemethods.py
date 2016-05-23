@@ -378,12 +378,13 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     for i in range(0,len(data_sub)):
         if data_sub[i] == 0:
             data_sub[i] = np.std(data_sub)/len(data_sub)
-
+    #calculation of amplitude(with no sign)
     amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-data_sub[-max(1,int(len(x_axis)/10)):].std()
-
+    #'normalized' data level
     data_level = data_sub/amplitude
 
     params['offset'].value = offset
+    #put sign infront of amplitude
     if data[0]<data[-1]:
         params['amplitude'].value = 0-amplitude
     else:
@@ -391,16 +392,18 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
 
     i = 0
     a = 0
-    # cut off values that are too small to be resolved
+
     while i in range(0, len(x_axis)):
         i += 1
-         #flip down the noise that are larger than 1.
+        #make sure there is no data larger than 1, and record the index to exclude these altered data from linear fit.
         if data_level[i - 1] >= 1:
             a = i
             data_level[i - 1] = 1-data_sub[-max(1,int(len(x_axis)/10)):].std()/len(data)
+        #When a data is too small, it can't be resolved anymore.
         if data_level[i - 1] < 0.1*data_sub[-max(1,int(len(x_axis)/10)):].std():
             break    
-    try:        
+    try:
+        # double log of data is linear to log of x_axis, beta is the slope and life time should equals exp(-intercept/slope)
         double_lg_data = np.log(-np.log(data_level[a:i-2]))
 
         #linear fit, see linearmethods.py
@@ -441,7 +444,7 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
    stretchedexponentialdecay, params = self.make_stretchedexponentialdecay_model()
 
    error, params = self.estimate_stretchedexponentialdecay(axis, data, params)
-   
+
    # params['beta'].value = 2.
    # params['beta'].vary = False
 
@@ -457,126 +460,3 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
    return result
 
-############################################################################
-#                                                                          #
-#            double compressed exponential decay fitting                   #
-#                                                                          #
-############################################################################
-def make_doublecompressedexponentialdecay_model(self):
-    def doublecompressed_exponentialdecay_function(x,lifetime,amplitude,offset ):
-        """
-
-        @param x:
-        @param lifetime:
-        @param amplitude:
-        @param offset:
-        @return:
-        """
-        return amplitude*np.exp(-np.power((x/lifetime),2))+ offset
-    model = Model(doublecompressed_exponentialdecay_function)
-    params = model.make_params()
-    return model, params
-
-def estimate_doublecompressedexponentialdecay(self,x_axis=None, data=None, params=None):
-    """
-
-    @param self:
-    @param x_axis:
-    @param data:
-    @param params:
-    @return:
-    """
-    error = 0
-    parameters = [x_axis, data]
-    #test if the input make sense
-    for var in parameters:
-        if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
-            self.logMsg('Given parameter is no array.',
-                        msgType='error')
-            error = -1
-        elif len(np.shape(var)) != 1:
-            self.logMsg('Given parameter is no one dimensional array.',
-                        msgType='error')
-            error = -1
-    if not isinstance(params, Parameters):
-        self.logMsg('Parameters object is not valid in estimate_gaussian.',
-                    msgType='error')
-        error = -1
-
-    offset = sum(data[-5:])/5
-
-    data_level = abs(data - offset)
-#prevent the existence of 0
-    for i in range(0,len(data_level)):
-        if data_level[i] == 0:
-            data_level[i] = np.std(data_level)/len(data_level)
-
-    amplitude = data_level.max()-data_level[-5:].std()
-
-    data_level = data_level/amplitude
-
-    params['offset'].value = offset
-    params['amplitude'].value=amplitude
-
-    i = 0
-    # cut off values that are too small to be resolved
-    while i in range(0, len(x_axis) + 1):
-        i += 1
-         #flip down the noise that are larger than 1.
-        if data_level[i - 1] >= 1:
-            data_level[i - 1] = 1 - (data_level[i - 1] - 1)
-        if data_level[i - 1] <= data_level.max() / (2 * len(data_level)) or data_level[i - 1] < data_level.std():
-            break    
-    try:
-       
-        # double logarithmus of data, should be linear to the loagarithmus of x_axis
-        double_lg_data = np.log(-np.log(data_level[0:i-2]))
-
-        # linear fit, see linearmethods.py
-        X = np.log(x_axis[0:i-2])
-
-        linear_result = self.make_fixedslopelinear_fit(axis=X, data=double_lg_data, add_parameters=None)
-        params['lifetime'].value = np.exp(-linear_result.params['offset'].value/2)
-     # if linear fit failed
-    except:
-        print( "linear fit failed")
-        #self.logMsg('The linear fit did not work.',
-                    #msgType='warning')
-        params['lifetime'].value = x_axis[i]-x_axis[0]
-
-    params['amplitude'].min = 0
-    params['lifetime'].min = x_axis[1]-x_axis[0]
-    params['lifetime'].max = (x_axis[-1]-x_axis[0])*3
-
-    return error, params
-
-
-def make_doublecompressedexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
-    """
-
-    @param self:
-    @param axis:
-    @param data:
-    @param add_parameters:
-    @return:
-    """
-    doublecompressedexponentialdecay, params = self.make_doublecompressedexponentialdecay_model()
-
-    # Todo: Use general stretched exponential decay and restrict here
-    # params['beta'].value = 2.
-    # params['beta'].vary = False
-
-    error, params = self.estimate_doublecompressedexponentialdecay(axis, data, params)
-
-    if add_parameters is not None:
-        params = self._substitute_parameter(parameters=params,
-                                            update_dict=add_parameters)
-    try:
-        result = doublecompressedexponentialdecay.fit(data, x=axis, params=params)
-    except:
-        self.logMsg('The doublecompressedexponentialdecay fit did not work.',
-                    msgType='warning')
-        result = doublecompressedexponentialdecay.fit(data, x=axis, params=params)
-        print(result.message)
-
-    return result
