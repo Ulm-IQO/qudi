@@ -69,8 +69,8 @@ class AWG70K(Base, PulserInterface):
 
         self.sample_rate = 25e9
 
-        self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
-        self.offset_list = {1: 0, 2: 0} # for each analog channel one value, the offset voltage
+        self.amplitude_list = {'a_ch1': 0.5, 'a_ch2': 0.5}      # for each analog channel one value, the pp-voltage
+        self.offset_list = {'a_ch1': 0, 'a_ch2': 0} # for each analog channel one value, the offset voltage
 
         self.current_loaded_asset = None
         self.is_output_enabled = True
@@ -336,7 +336,7 @@ class AWG70K(Base, PulserInterface):
             for channel_number in range(analog_samples.shape[0]):
                 # create header
                 header_obj = WFMX_header(self.sample_rate,
-                                         self.amplitude_list[channel_number+1],
+                                         self.amplitude_list['a_ch1'],
                                          0,
                                          int(total_number_of_samples),
                                          temp_dir=self._temp_folder)
@@ -965,7 +965,7 @@ class AWG70K(Base, PulserInterface):
         ch2_marker = 0
         for channel in self.active_channel:
             if self.active_channel[channel]:
-                if ('d_ch1' in channel) or ('d_ch1' in channel):
+                if ('d_ch1' in channel) or ('d_ch2' in channel):
                         ch1_marker += 1
                 if ('d_ch3' in channel) or ('d_ch4' in channel):
                         ch2_marker += 1

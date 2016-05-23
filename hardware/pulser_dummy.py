@@ -376,7 +376,7 @@ class PulserDummy(Base, PulserInterface):
                 for channel_number in range(analog_samples.shape[0]):
                     # create header
                     header_obj = WFMX_header(self.sample_rate,
-                                             self.amplitude_list[channel_number+1],
+                                             self.amplitude_list['a_ch1'],
                                              0,
                                              int(total_number_of_samples),
                                              temp_dir=self._temp_folder)

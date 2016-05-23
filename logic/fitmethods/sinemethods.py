@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Florian Frank florian.frank@uni-ulm.de
 Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 import numpy as np
@@ -26,7 +27,6 @@ from lmfit import Parameters
 from scipy.interpolate import splrep, sproot, splev
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
-import matplotlib.pylab as plt
 
 ############################################################################
 #                                                                          #
@@ -108,7 +108,8 @@ def make_sine_fit(self, axis=None, data=None, add_parameters=None):
 
 
 def estimate_sine(self, x_axis=None, data=None, params=None):
-    """ This method provides a one dimensional gaussian function.
+    """ This method provides a estimation of a initial values
+     for a sine function.
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to x values
@@ -202,9 +203,9 @@ def make_sineexponentialdecay_model(self):
 
         return amplitude * np.sin(2 * np.pi * frequency * x + phase)
 
-    exponentialdecay_model, params = self.make_exponentialdecay_model()
+    bareexponentialdecay_model, params = self.make_bareexponentialdecay_model()
     constant_model, params = self.make_constant_model()
-    model = Model(sine_function)*exponentialdecay_model + constant_model
+    model = Model(sine_function)*bareexponentialdecay_model + constant_model
     params = model.make_params()
 
     return model, params
@@ -293,19 +294,19 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
 
-    gaus = gaussian(2,2)
+    gaus = gaussian(3,3)
     smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
                                      gaus / gaus.sum(), mode='mirror')
-    plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
-    plt.plot(freq_plus[int(len(freq) / 2):],
-             fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
-    plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
-                                                   splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
-                                                          np.array(
-                                                              fourier_real_plus[int(len(freq_plus) / 2):] - max(
-                                                                  fourier_real_plus) / 2))))
+    # plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
+    # plt.plot(freq_plus[int(len(freq) / 2):],
+    #          fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
+    # plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
+    #                                                splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
+    #                                                       np.array(
+    #                                                           fourier_real_plus[int(len(freq_plus) / 2):] - max(
+    #                                                               fourier_real_plus) / 2))))
     #plt.xlim(0, 0.1)
-    plt.show()
+    #plt.show()
     
     # estimate life time from peak width
     fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
@@ -333,8 +334,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #bounds of initial parameters
     params['lifetime'].min = 0
     params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
-    params['frequency'].min = 0.1 / (x_axis[-1]-x_axis[0])
-    params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[1]-freq[0]))
+    params['frequency'].min = min(0.1 / (x_axis[-1]-x_axis[0]),freq[3])
+    params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0]))
     
     print('\n','lifetime.min: ',params['lifetime'].min,'\n',
           'lifetime.max: ',params['lifetime'].max,'\n','frequency.min: ',
