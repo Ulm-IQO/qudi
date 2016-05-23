@@ -396,8 +396,6 @@ def make_nooffsetlinear_model(self):
 
 def estimate_nooffsetlinear(self, x_axis=None, data=None, params=None):
     """
-
-    @param self:
     @param x_axis: x
     @param data: y
     @param params:
