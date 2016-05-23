@@ -249,6 +249,8 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
 
     error, params = self.estimate_linear(axis, data, params)
 
+    # params['slope'].value = 2
+    # params['slope'].vary = False
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,

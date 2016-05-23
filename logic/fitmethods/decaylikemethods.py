@@ -332,7 +332,7 @@ def make_stretchedexponentialdecay_model(self):
         @return: streched exponential decay function: 
         in order to use it as a model
         """
-        return np.exp(-np.power(x, beta)/lifetime)
+        return np.exp(-np.power(x/lifetime,beta))
     constant_model, params = self.make_constant_model()
     amplitude_model, params = self.make_amplitude_model()
     model = amplitude_model*Model(stretched_exponentialdecay_function) + constant_model
@@ -379,30 +379,32 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
         if data_sub[i] == 0:
             data_sub[i] = np.std(data_sub)/len(data_sub)
 
-    amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].std()
+    amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-data_sub[-max(1,int(len(x_axis)/10)):].std()
 
     data_level = data_sub/amplitude
 
     params['offset'].value = offset
     if data[0]<data[-1]:
-        params['amplitude'].max = 0-amplitude
+        params['amplitude'].value = 0-amplitude
     else:
-        params['amplitude'].min = amplitude
+        params['amplitude'].value = amplitude
 
     i = 0
+    a = 0
     # cut off values that are too small to be resolved
     while i in range(0, len(x_axis)):
         i += 1
          #flip down the noise that are larger than 1.
         if data_level[i - 1] >= 1:
-            data_level[i - 1] = 1 - (data_level[i - 1] - 1)
-        if data_level[i - 1] < data_sub[-max(1,int(len(x_axis)/10)):].std():
+            a = i
+            data_level[i - 1] = 1-data_sub[-max(1,int(len(x_axis)/10)):].std()/len(data)
+        if data_level[i - 1] < 0.1*data_sub[-max(1,int(len(x_axis)/10)):].std():
             break    
     try:        
-        double_lg_data = np.log(-np.log(data_level[max(1,int(len(x_axis)/25)):i-2]))
+        double_lg_data = np.log(-np.log(data_level[a:i-2]))
 
         #linear fit, see linearmethods.py
-        X=np.log(x_axis[max(1,int(len(x_axis)/25)):i-2])
+        X=np.log(x_axis[a:i-2])
 
         linear_result = self.make_linear_fit(axis=X, data=double_lg_data, 
                                              add_parameters=None)
@@ -440,8 +442,8 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
 
    error, params = self.estimate_stretchedexponentialdecay(axis, data, params)
    
-   params['beta'].value = 2.
-   params['beta'].vary = False
+   # params['beta'].value = 2.
+   # params['beta'].vary = False
 
    if add_parameters is not None:
        params = self._substitute_parameter(parameters=params,
