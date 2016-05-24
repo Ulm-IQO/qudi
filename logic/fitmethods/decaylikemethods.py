@@ -95,23 +95,17 @@ def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
         error = -1
 
     #remove all the data that can be smaller than or equals to 0.
-    data = abs(data)
-    for i in range(0, len(data)):
-        if data[i] == 0:
-            data[i] = np.std(data) / len(data)
-    i=0
     #when the data is smaller than std of the data, it is beyond the resolution
     #which is not helpful to our fitting.
-    while i in range(0, len(x_axis) + 1):
-        i += 1
-        if data[i - 1] < data_sub[-max(1,int(len(x_axis)/10)):].std():
+    for i in range(0, len(x_axis)):
+        if data[i] <= data.std():
             break
         
     #take the logarithom of data, calculate the life time with linear fit.
     data_log = np.log(data)
 
-    linear_result = self.make_linear_fit(axis=x_axis[0:i-2], 
-                                         data= data_log[0:i-2], 
+    linear_result = self.make_linear_fit(axis=x_axis[0:i],
+                                         data= data_log[0:i],
                                              add_parameters=None)
 
     params['lifetime'].value = -1/linear_result.params['slope'].value
@@ -224,30 +218,25 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
         error = -1
 
     #check if amplitude is positive or negative
-    if data[0]<data[-1]:
-        params['amplitude'].max = 0-data[-max(1,int(len(x_axis)/10)):].std()
-    else:
-        params['amplitude'].min = data[-max(1,int(len(x_axis)/10)):].std()
+
     #calculation of offset
     offset = data[-max(1,int(len(x_axis)/10)):].mean()
     #substraction of offset
-    data_sub = abs(data - offset)
+    if data[0]<data[-1]:
+        data_level = offset - data
+    else:
+        data_level = data - offset
     #remove all the data that can be smaller than or equals to 0.
-    for i in range(0, len(data_sub)):
-        if data_sub[i] == 0:
-            data_sub[i] = np.std(data_sub) / len(data_sub)
-    data_level = data_sub
-    i=0
-    #when the data is smaller than std of the data, it is beyond the resolution
+    #when the data is smaller than 0, it can under go the log calculation
     #which is not helpful to our fitting.    
-    while i in range(0, len(x_axis) + 1):
-        i += 1
-        if data_level[i - 1] < data_sub[-max(1,int(len(x_axis)/10)):].std():
+    for i in range(0, len(x_axis)):
+        if data_level[i] <=data_level.std():
             break
     
     try:
-        data_level_log = np.log(data_level[0:i-2])
-        linear_result = self.make_linear_fit(axis=x_axis[0:i-2], 
+        data_level_log = np.log(data_level[0:i])
+        #linear fit, see linearmethods.py
+        linear_result = self.make_linear_fit(axis=x_axis[0:i],
                                              data=data_level_log, 
                                              add_parameters=None)
         params['lifetime'].value = -1/linear_result.params['slope'].value
@@ -258,9 +247,13 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
     except:
         print("lifetime too small, beyond resolution")
         params['lifetime'].value = x_axis[i]-x_axis[0]
-    
+
+    # values and bound of parameter.
+    if data[0] < data[-1]:
+        params['amplitude'].max = 0 - data[-max(1, int(len(x_axis) / 10)):].std()
+    else:
+        params['amplitude'].min = data[-max(1, int(len(x_axis) / 10)):].std()
     params['offset'].value = offset
-    #bound of parameter.
     params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
 
     return error, params
@@ -288,7 +281,6 @@ def make_exponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = exponentialdecay.fit(data, x=axis, params=params)
     except:
-        #Todo: change print to inside logsmsg see above
         self.logMsg('The exponentialdecay fit did not work.'
                     'message: {}'.format(str(result.message)),
                     msgType='warning')
@@ -321,7 +313,6 @@ def make_stretchedexponentialdecay_model(self):
 
     """
     def stretched_exponentialdecay_function(x, lifetime, beta):
-        #Todo: make docstring
         """
         Function of a stretched exponential decay.
         @param x: variable variable - e.g. time
@@ -380,11 +371,11 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     data_level = data_sub/amplitude
     #remove data that can't under go double log calculation
     i = 0    
-    b = len(data_sub)
+    b = len(data)
     for i in range(0,len(data_sub)):
         if data_level[i]>=1:
             a=i+1
-        if data_level[i] <= 0:
+        if data_level[i] <= data_level.std():
             b=i
             break
     try:
