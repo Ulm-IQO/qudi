@@ -228,8 +228,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         error = -1
         
     # set the offset as the average of the data
-    offset = np.average(data[-int(len(data)/10):])
-
+    #offset = np.average(data[-int(len(data)/10):])
+    offset = np.median(data)
     # level data
     data_level = data - offset
 
@@ -243,46 +243,11 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
     frequency_max = np.abs(freq[np.log(abs(fourier)).argmax()])
-    for i, frequency in enumerate(freq):
-        if frequency == frequency_max:
-            fourier_max = fourier.real[i]
+
     fourier_real = abs(fourier.real)
     
     params['frequency'].value = frequency_max
-    def fwhm(x, y, k=3):
-        """
-        Determine full-with-half-maximum of a peaked set of points, x and y.
 
-        Assumes that there is only one peak present in the datasset.  The function
-        uses a spline interpolation of order k.
-
-        Function taken from:
-        http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
-
-        Question from: http://stackoverflow.com/users/490332/harpal
-        Answer: http://stackoverflow.com/users/1146963/jdg
-        """
-
-
-        half_max = max(y) / 2.0
-        s = splrep(x, y- half_max)
-        roots = sproot(s)
-        if len(roots) < 2:
-            # self.logMsg('No peak was found.',
-            #             msgType='error')
-            print("No peaks")
-            return [0.0010001]         #pass
-        elif len(roots) > 2:
-            # self.logMsg('Multiple peaks was found.',
-            #             msgType='error')
-            print("Multiple paires of roots.")
-            return [abs(roots[1] - roots[0])*2]
-            #pass
-        else:
-            return [abs(roots[1] - roots[0])]
-
-        # print(freq)
-        # print(len(fourier_real))
     #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
     #frequency is not from minus inf to plus inf.
     freq_plus = [0] * len(freq)
@@ -298,31 +263,16 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
 
-    gaus = gaussian(2,3)
-    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
-                                     gaus / gaus.sum(), mode='mirror')
-    # plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
-    # plt.plot(freq_plus[int(len(freq) / 2):],
-    #          fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
-    # plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
-    #                                                splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
-    #                                                       np.array(
-    #                                                           fourier_real_plus[int(len(freq_plus) / 2):] - max(
-    #                                                               fourier_real_plus) / 2))))
-    #plt.xlim(0, 0.1)
-    #plt.show()
+    # gaus = gaussian(2,3)
+    # smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
+    #                                  gaus / gaus.sum(), mode='mirror')
     
     # estimate life time from peak width
-    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
     s = 0
     for i in range(int(len(freq) / 2),len(freq)):
-        s+= smooth_data[i-int(len(freq) / 2)]*abs(freq[1]-freq[0])/max(fourier_real_plus[int(len(freq) / 2):])
+        s+= fourier_real_plus[i-int(len(freq) / 2)]*abs(freq[1]-freq[0])/max(fourier_real_plus[int(len(freq) / 2):])
     s=s/2
-    if fwhm_plus[0] == 0.0010001 and frequency_max < freq[4]:
-        fwhm_plus[0] = frequency_max
-    fwhm_plus[0] = s
-    params['lifetime'].value = 1 / (fwhm_plus[0])
-    print("FWHM", fwhm_plus[0])
+    params['lifetime'].value = 1 / s
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
