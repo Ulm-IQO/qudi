@@ -228,7 +228,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
         error = -1
         
     # set the offset as the average of the data
-    offset = np.average(data)
+    offset = np.average(data[-int(len(data)/10):])
 
     # level data
     data_level = data - offset
@@ -242,8 +242,12 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     fourier = np.fft.fft(data_level_zeropaded)
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    frequency_max = np.abs(freq[np.log(fourier).argmax()])
+    frequency_max = np.abs(freq[np.log(abs(fourier)).argmax()])
+    for i, frequency in enumerate(freq):
+        if frequency == frequency_max:
+            fourier_max = fourier.real[i]
     fourier_real = abs(fourier.real)
+    
     params['frequency'].value = frequency_max
     def fwhm(x, y, k=3):
         """
@@ -294,8 +298,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #print(len(np.array(freq_plus)), np.array(freq_plus))
 
 
-    gaus = gaussian(3,3)
-    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
+    gaus = gaussian(2,3)
+    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
                                      gaus / gaus.sum(), mode='mirror')
     # plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
     # plt.plot(freq_plus[int(len(freq) / 2):],
@@ -310,8 +314,14 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     
     # estimate life time from peak width
     fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
-
-    params['lifetime'].value = 1 / (fwhm_plus[0]*1.5)
+    s = 0
+    for i in range(int(len(freq) / 2),len(freq)):
+        s+= smooth_data[i-int(len(freq) / 2)]*abs(freq[1]-freq[0])/max(fourier_real_plus[int(len(freq) / 2):])
+    s=s/2
+    if fwhm_plus[0] == 0.0010001 and frequency_max < freq[4]:
+        fwhm_plus[0] = frequency_max
+    fwhm_plus[0] = s
+    params['lifetime'].value = 1 / (fwhm_plus[0])
     print("FWHM", fwhm_plus[0])
 
     # estimating the phase from the first point
@@ -332,10 +342,11 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     #params['lifetime'].value = 1/(fwhm_plus*2.8)
     
     #bounds of initial parameters
-    params['lifetime'].min = 0
+    params['lifetime'].min = 3 * (x_axis[1]-x_axis[0])    
     params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
     params['frequency'].min = min(0.1 / (x_axis[-1]-x_axis[0]),freq[3])
     params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0]))
+    params['amplitude'].min = 0
     
     print('\n','lifetime.min: ',params['lifetime'].min,'\n',
           'lifetime.max: ',params['lifetime'].max,'\n','frequency.min: ',

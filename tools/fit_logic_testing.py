@@ -1284,7 +1284,7 @@ class FitLogic():
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_bareexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
-            params['lifetime'].value = 1 + abs(np.random.normal(0,10))       
+            params['lifetime'].value = 1 + abs(np.random.normal(0,25))       
             print('\n''lifetime',
                       params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
@@ -1321,14 +1321,14 @@ class FitLogic():
             mod, params = self.make_sineexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = abs(1 + abs(np.random.normal(0,0.4)))
-            params['frequency'].value = abs(0.001 + abs(np.random.normal(0,0.2)))
+            params['amplitude'].value = abs(1 + abs(np.random.normal(0,4)))
+            params['frequency'].value = abs(0.000 + abs(np.random.normal(0,0.2)))
             params['phase'].value = abs(np.random.normal(0,2*np.pi))
-            params['offset'].value = 10 + np.random.normal(0,5)
+            params['offset'].value = 12 + np.random.normal(0,5)
             params['lifetime'].value = abs(0 + abs(np.random.normal(0,70)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.1* np.random.normal(size=x_axis.shape))
+                          + 0.3* np.random.normal(size=x_axis.shape))
             data = data_noisy            
             offset = np.average(data)
         
@@ -1342,7 +1342,7 @@ class FitLogic():
             stepsize = x_axis[1] - x_axis[0]  # for frequency axis
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
             frequency_max = np.abs(freq[np.log(fourier).argmax()])
-            fourier_real = abs(fourier.real)
+            fourier_real = fourier.real
             def fwhm(x, y, k=3):
                 """
                 Determine full-with-half-maximum of a peaked set of points, x and y.
@@ -1392,17 +1392,12 @@ class FitLogic():
             #print(len(np.array(freq_plus)), np.array(freq_plus))
         
         
-            gaus = gaussian(3,3)
-            smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
+            gaus = gaussian(2,3)
+            smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
                                              gaus / gaus.sum(), mode='mirror')
             plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
             plt.plot(freq_plus[int(len(freq) / 2):],
-                      fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
-            plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
-                                                            splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
-                                                                   np.array(
-                                                                       fourier_real_plus[int(len(freq_plus) / 2):] - max(
-                                                                           fourier_real_plus) / 2))))
+                      fourier_real_plus[int(len(freq) / 2):], '-or')
             plt.xlim(0, 0.5)
             plt.show()
 
@@ -1414,6 +1409,7 @@ class FitLogic():
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice,mod.eval(x=x_nice, params=params),'-g')
             print(result.fit_report())
+            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0, )
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0, )
             #plt.plot(x_axis, np.gradient(data_noisy) + offset, '-g', linewidth=2.0, )
 
@@ -1541,8 +1537,8 @@ test=FitLogic()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
 #test.bareexponentialdecay_testing()
-test.exponentialdecay_testing()
-#test.sineexponentialdecay_testing()
+#test.exponentialdecay_testing()
+test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 
