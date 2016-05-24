@@ -753,10 +753,40 @@ class AWG70K(Base, PulserInterface):
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
-        #If you want to check the input use the constraints:
+        #Check the inputs by using the constraints:
         constraints = self.get_constraints()
+        # amplitude sanity check
+        for chnl in amplitude:
+            if amplitude[chnl] < constraints['a_ch_amplitude']['min']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['min']
+                self.logMsg('Minimum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to min value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['min'], amplitude[chnl]),
+                    msgType='warning')
+            elif amplitude[chnl] > constraints['a_ch_amplitude']['max']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['max']
+                self.logMsg('Maximum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to max value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['max'], amplitude[chnl]),
+                    msgType='warning')
+
+        # offset sanity check
+        for chnl in offset:
+            if offset[chnl] < constraints['a_ch_offset']['min']:
+                offset[chnl] = constraints['a_ch_offset']['min']
+                self.logMsg('Minimum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to min value.'
+                            ''.format(chnl, constraints['a_ch_offset']['min'], offset[chnl]),
+                            msgType='warning')
+            elif offset[chnl] > constraints['a_ch_offset']['max']:
+                offset[chnl] = constraints['a_ch_offset']['max']
+                self.logMsg('Maximum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to max value.'
+                            ''.format(chnl, constraints['a_ch_offset']['max'], offset[chnl]),
+                            msgType='warning')
 
         for a_ch in amplitude:
+
             self.amplitude_list[a_ch] = amplitude[a_ch]
             #FIXME: Tell the device the proper amplitude:
             # self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
