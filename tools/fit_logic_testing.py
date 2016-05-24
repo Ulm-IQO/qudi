@@ -913,7 +913,7 @@ class FitLogic():
             params['phase'].value=np.pi*1.0
             params['offset'].value=0.94+np.random.normal(0,0.4)
             data_noisy=(mod.eval(x=x_axis,params=params)
-                                    + 0.01*np.random.normal(size=x_axis.shape))
+                                    + 0.5*np.random.normal(size=x_axis.shape))
                                     
                                     
             # set the offset as the average of the data
@@ -923,7 +923,7 @@ class FitLogic():
             data_level = data_noisy - offset
         
             # estimate amplitude
-            params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
+ #           params['amplitude'].value = max(data_level.max(), np.abs(data_level.min()))
         
             # perform fourier transform
             data_level_zeropaded=np.zeros(int(len(data_level)*2))
@@ -942,33 +942,33 @@ class FitLogic():
             print('offset',offset)
 #            print((x_axis[-1]-x_axis[0])*frequency_max)
 
-            shift_tmp = (data_level[0])/params['amplitude'].value
-            shift = abs(np.arcsin(shift_tmp))
-            print('shift', shift)
-            if np.gradient(data_noisy)[0]<0 and data_level[0]>0:
-                shift=np.pi-shift
-                print('ho ', shift)
-            elif np.gradient(data_noisy)[0]<0 and data_level[0]<0:
-                shift+=np.pi
-                print('hi1')
-            elif np.gradient(data_noisy)[0]>0 and data_level[0]<0:
-                shift = 2.*np.pi - shift
-                print('hi2')
+           # shift_tmp = (data_level[0])/params['amplitude'].value
+            #shift = abs(np.arcsin(shift_tmp))
+#            print('shift', shift)
+#            if np.gradient(data_noisy)[0]<0 and data_level[0]>0:
+#                shift=np.pi-shift
+#                print('ho ', shift)
+ #           elif np.gradient(data_noisy)[0]<0 and data_level[0]<0:
+  #              shift+=np.pi
+   #             print('hi1')
+    #        elif np.gradient(data_noisy)[0]>0 and data_level[0]<0:
+     #           shift = 2.*np.pi - shift
+      #          print('hi2')
                 
-            print(params['phase'].value,shift)
+       #     print(params['phase'].value,shift)
         
             
-            params['frequency'].value = frequency_max
-            params['phase'].value = shift
-            params['offset'].value = offset
+#            params['frequency'].value = frequency_max
+ #           params['phase'].value = shift
+  #          params['offset'].value = offset
             
 #            print(params.pretty_print())
 #            print(data_noisy)                     
-            para={}
-            para['phase'] = {'vary': False, 'value': np.pi/2.}
-            para['amplitude'] = {'min': 0.0}
+#            para={}
+ #           para['phase'] = {'vary': False, 'value': np.pi/2.}
+  #          para['amplitude'] = {'min': 0.0}
 
-            result=self.make_sine_fit(axis=x_axis,data=data_noisy,add_parameters=para)
+            result=self.make_sine_fit(axis=x_axis,data=data_noisy,add_parameters=None)
 ##            result=self.make_powerfluorescence_fit(axis=data[:,0],data=data[:,2]/1000,add_parameters=para)
 #
 #            print(result.fit_report())
@@ -977,24 +977,24 @@ class FitLogic():
 
 #            plt.plot(data[:,0],data[:,2]/1000,'ob')
             
-#            plt.plot(x,mod.eval(x=x,params=para),'-g')
+            plt.plot(x_nice,mod.eval(x=x_nice,params=params),'-g')
             plt.plot(x_axis,data_noisy,'ob')
             plt.plot(x_axis,result.init_fit,'-y')
             plt.plot(x_axis,result.best_fit,'-r',linewidth=2.0,)
-            plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
+            #plt.plot(x_axis,np.gradient(data_noisy)+offset,'-g',linewidth=2.0,)
                     
             plt.show()
              
 #            print(result.fit_report())
             
-            units=dict()
-            units['frequency']='GHz'
-            units['phase']='rad'
-            units['offset']='arb. u.'
+#            units=dict()
+#            units['frequency']='GHz'
+ #           units['phase']='rad'
+  #          units['offset']='arb. u.'
 #            units['amplitude']='arb. u.'
-            print(self.create_fit_string(result,mod,units))
+   #         print(self.create_fit_string(result,mod,units))
             
-            print(result.best_values['phase']/np.pi*180)
+    #        print(result.best_values['phase']/np.pi*180)
  
 
                                     
@@ -1341,63 +1341,11 @@ class FitLogic():
             fourier = np.fft.fft(data_level_zeropaded)
             stepsize = x_axis[1] - x_axis[0]  # for frequency axis
             freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-            frequency_max = np.abs(freq[np.log(fourier).argmax()])
-            fourier_real = fourier.real
-            def fwhm(x, y, k=3):
-                """
-                Determine full-with-half-maximum of a peaked set of points, x and y.
-        
-                Assumes that there is only one peak present in the datasset.  The function
-                uses a spline interpolation of order k.
-        
-                Function taken from:
-                http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
-        
-                Question from: http://stackoverflow.com/users/490332/harpal
-                Answer: http://stackoverflow.com/users/1146963/jdg
-                """
-        
-        
-                half_max = max(y) / 2.0
-                s = splrep(x, y- half_max)
-                roots = sproot(s)
-                if len(roots) < 2:
-                    # self.logMsg('No peak was found.',
-                    #             msgType='error')
-                    print("No peaks")
-                    return [0.0010001]         #pass
-                elif len(roots) > 2:
-                    # self.logMsg('Multiple peaks was found.',
-                    #             msgType='error')
-                    print("Multiple paires of roots.")
-                    return [abs(roots[1] - roots[0])*2]
-                    #pass
-                else:
-                    return [abs(roots[1] - roots[0])]
-        
-                # print(freq)
-                # print(len(fourier_real))
-            #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
-            #frequency is not from minus inf to plus inf.
-            freq_plus = [0] * len(freq)
-            for i in range(0, int(len(freq) / 2)):
-                freq_plus[i + int(len(freq) / 2)] = freq[i]
-            for i in range(int(len(freq) * 0.5), len(freq)):
-                freq_plus[i - int(len(freq) / 2)] = freq[i]
-            fourier_real_plus = [0] * len(fourier_real)
-            for i in range(0, int(len(fourier_real) / 2)):
-                fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
-            for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
-                fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
-            #print(len(np.array(freq_plus)), np.array(freq_plus))
-        
-        
-            gaus = gaussian(2,3)
-            smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
-                                             gaus / gaus.sum(), mode='mirror')
-            #plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
-            plt.plot(freq_plus[int(len(freq) / 2):],
-                      fourier_real_plus[int(len(freq) / 2):], '-or')
+            fourier_power = (fourier * fourier.conj()).real
+            
+            
+            plt.plot(freq[:int(len(freq) / 2)],
+                      fourier_power[:int(len(freq) / 2)], '-or')
             plt.xlim(0, 0.5)
             plt.show()
 
@@ -1532,13 +1480,13 @@ test=FitLogic()
 #test.double_lorentzian_testing()
 #test.double_lorentzian_fixedsplitting_testing()
 #test.powerfluorescence_testing()
-#test.sine_testing()
+test.sine_testing()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
 #test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
-test.sineexponentialdecay_testing()
+#test.sineexponentialdecay_testing()
 #test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 
