@@ -17,8 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
-Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
+Copyright (c) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 from lmfit.models import Model
