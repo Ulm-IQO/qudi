@@ -94,7 +94,7 @@ def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
 
-    #remove all the data that can be smaller than or equals to 0.
+    #remove all the data that can be smaller than or equals to data.std()
     #when the data is smaller than std of the data, it is beyond the resolution
     #which is not helpful to our fitting.
     for i in range(0, len(x_axis)):
@@ -226,8 +226,8 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
         data_level = offset - data
     else:
         data_level = data - offset
-    #remove all the data that can be smaller than or equals to 0.
-    #when the data is smaller than 0, it can under go the log calculation
+    #remove all the data that can be smaller than or equals to std.
+    #when the data is smaller than std, it is beyond resolution
     #which is not helpful to our fitting.    
     for i in range(0, len(x_axis)):
         if data_level[i] <=data_level.std():
@@ -240,6 +240,7 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
                                              data=data_level_log, 
                                              add_parameters=None)
         params['lifetime'].value = -1/linear_result.params['slope'].value
+        #amplitude can be positive of negative
         if data[0]<data[-1]:
             params['amplitude'].value = -np.exp(linear_result.params['offset'].value)
         else:
@@ -331,14 +332,19 @@ def make_stretchedexponentialdecay_model(self):
     return model, params
 
 def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None):
-    #Todo: make docstring
-    """
+    """ 
+    This method provides a estimation of a initial values for a streched 
+    exponential decay function.
 
-    @param self:
-    @param x_axis:
-    @param data:
-    @param params:
-    @return:
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
     """
     error = 0
     parameters = [x_axis, data]
