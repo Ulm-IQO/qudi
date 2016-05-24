@@ -93,8 +93,8 @@ class QZMQKernel(QtCore.QObject):
         super().__init__()
         self.DELIM = b"<IDS|MSG>"
         # namespaces
-        self.user_global_ns = {}
-        self.user_ns = {}
+        self.user_global_ns = globals()
+        self.user_ns = self.user_global_ns
 
         self.exiting = False
         self.engine_id = str(uuid.uuid4())
@@ -245,6 +245,10 @@ class QZMQKernel(QtCore.QObject):
         stream.socket.send_multipart(parts)
 
     def display_data(self, msg, mimetype, thing):
+
+        #format = InteractiveShell.instance().display_formatter.format
+        #format_dict, md_dict = format(obj, include=include, exclude=exclude)
+
         supported_mime = (
             'text/plain',
             'text/html',
