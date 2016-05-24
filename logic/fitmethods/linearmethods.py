@@ -17,8 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
-Copyright (C) 2016 Ou Wang ou.wang@uni-ulm.de
+Copyright (c) 2016 Jochen Scheuer jochen.scheuer@uni-ulm.de
+Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 """
 
 from lmfit.models import Model
@@ -62,10 +62,23 @@ def make_constant_model(self, prefix=None):
 
         return offset + 0.0 * x
 
-    if prefix is not None:
-        model = Model(constant_function, prefix=prefix)
-    else:
+
+
+    if prefix is None:
         model = Model(constant_function)
+    else:
+        if not isinstance(prefix,str):
+            self.logMsg('Given prefix in constant model is no string. Deleting prefix.',
+                                msgType='error')
+        try:
+            model = Model(constant_function, prefix=prefix)
+        except:
+            self.logMsg('Creating the constant model failed. '
+                        'The prefix might not be a valid string'
+                        'The prefix was deleted',
+                        msgType='error')
+            model = Model(constant_function)
+
     params = model.make_params()
 
     return model, params
