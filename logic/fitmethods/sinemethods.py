@@ -242,37 +242,18 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     fourier = np.fft.fft(data_level_zeropaded)
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    frequency_max = np.abs(freq[np.log(abs(fourier)).argmax()])
-
-    fourier_real = abs(fourier.real)
-    
+    fourier_power = (fourier * fourier.conj()).real
+    frequency_max = np.abs(freq[fourier_power.argmax()])
     params['frequency'].value = frequency_max
-
-    #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
-    #frequency is not from minus inf to plus inf.
-    freq_plus = [0] * len(freq)
-    for i in range(0, int(len(freq) / 2)):
-        freq_plus[i + int(len(freq) / 2)] = freq[i]
-    for i in range(int(len(freq) * 0.5), len(freq)):
-        freq_plus[i - int(len(freq) / 2)] = freq[i]
-    fourier_real_plus = [0] * len(fourier_real)
-    for i in range(0, int(len(fourier_real) / 2)):
-        fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
-    for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
-        fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
-    #print(len(np.array(freq_plus)), np.array(freq_plus))
-
-
-    # gaus = gaussian(2,3)
-    # smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
-    #                                  gaus / gaus.sum(), mode='mirror')
-    
-    # estimate life time from peak width
+    fourier_real = abs(fourier)
+    a = np.std(fourier_power[:int(len(freq)/2)])
+    for i in range(0,int(len(fourier)/2)):
+        if fourier_power[i]<=a:
+            fourier_power[i] = 0
     s = 0
-    for i in range(int(len(freq) / 2),len(freq)):
-        s+= fourier_real_plus[i-int(len(freq) / 2)]*abs(freq[1]-freq[0])/max(fourier_real_plus[int(len(freq) / 2):])
-    s=s/2
-    params['lifetime'].value = 1 / s
+    for i in range(0,int(len(freq) / 2)):
+        s+= fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
+    params['lifetime'].value = 0.5 / s
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
