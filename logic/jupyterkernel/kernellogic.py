@@ -88,7 +88,7 @@ class QudiKernelLogic(GenericLogic):
         mythread = self.getModuleThread()
         kernel = QZMQKernel(realconfig)
         kernel.moveToThread(mythread)
-        kernel.user_ns.update({
+        kernel.user_global_ns.update({
             'pg': pg,
             'np': np,
             'config': self._manager.tree['defined'],
@@ -140,8 +140,8 @@ class QudiKernelLogic(GenericLogic):
                 newNamespace[module] = self._manager.tree['loaded'][base][module]
         discard = self.modules - currentModules
         for kernel in self.kernellist:
-            self.kernellist[kernel].user_ns.update(newNamespace)
+            self.kernellist[kernel].user_global_ns.update(newNamespace)
         for module in discard:
             for kernel in self.kernellist:
-                self.kernellist[kernel].user_ns.pop(module, None)
+                self.kernellist[kernel].user_global_ns.pop(module, None)
         self.modules = currentModules
