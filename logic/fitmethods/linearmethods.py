@@ -62,10 +62,21 @@ def make_constant_model(self, prefix=None):
 
         return offset + 0.0 * x
 
-    if prefix is not None:
-        model = Model(constant_function, prefix=prefix)
-    else:
+    if prefix is None:
         model = Model(constant_function)
+    else:
+        if not isinstance(prefix,str):
+            self.logMsg('Given prefix in constant model is no string. Deleting prefix.',
+                                msgType='error')
+        try:
+            model = Model(constant_function, prefix=prefix)
+        except:
+            self.logMsg('Creating the constant model failed. '
+                        'The prefix might not be a valid string'
+                        'The prefix was deleted',
+                        msgType='error')
+            model = Model(constant_function)
+
     params = model.make_params()
 
     return model, params
