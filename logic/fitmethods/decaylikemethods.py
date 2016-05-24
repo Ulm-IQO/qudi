@@ -364,50 +364,36 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
         self.logMsg('Parameters object is not valid in estimate_gaussian.',
                     msgType='error')
         error = -1
-    #check if amplitude is positive or negative
-    if data[0]<data[-1]:
-        params['amplitude'].max = 0-data.std()
-    else:
-        params['amplitude'].min = data.std()
-        
-    #calculation of offset
+    #check if amplitude is positive or negative, get data without offset,set 
+    #bound for smplitude 
     offset = data[-max(1,int(len(x_axis)/10)):].mean()
-    #substraction of offset
-    data_sub = abs(data - offset)
-    #remove all the 0 in data_sub    
-    for i in range(0,len(data_sub)):
-        if data_sub[i] == 0:
-            data_sub[i] = np.std(data_sub)/len(data_sub)
-    #calculation of amplitude(with no sign)
-    amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-data_sub[-max(1,int(len(x_axis)/10)):].std()
-    #'normalized' data level
-    data_level = data_sub/amplitude
-
-    params['offset'].value = offset
-    #put sign infront of amplitude
     if data[0]<data[-1]:
-        params['amplitude'].value = 0-amplitude
+        
+        data_sub = offset - data
     else:
-        params['amplitude'].value = amplitude
-
-    i = 0
-    a = 0
-
-    while i in range(0, len(x_axis)):
-        i += 1
-        #make sure there is no data larger than 1, and record the index to exclude these altered data from linear fit.
-        if data_level[i - 1] >= 1:
-            a = i
-            data_level[i - 1] = 1-data_sub[-max(1,int(len(x_axis)/10)):].std()/len(data)
-        #When a data is too small, it can't be resolved anymore.
-        if data_level[i - 1] < 0.1*data_sub[-max(1,int(len(x_axis)/10)):].std():
-            break    
+        
+        data_sub = data-offset
+    #calculate the absolute value of amplitude
+    amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-\
+                data_sub[-max(1,int(len(x_axis)/10)):].std()
+    #normalization of data
+    data_level = data_sub/amplitude
+    #remove data that can't under go double log calculation
+    i = 0    
+    b = len(data_sub)
+    for i in range(0,len(data_sub)):
+        if data_level[i]>=1:
+            a=i+1
+        if data_level[i] <= 0:
+            b=i
+            break
     try:
-        # double log of data is linear to log of x_axis, beta is the slope and life time should equals exp(-intercept/slope)
-        double_lg_data = np.log(-np.log(data_level[a:i-2]))
+        # double log of data is linear to log of x_axis, beta is the slope and 
+        # life time should equals exp(-intercept/slope)
+        double_lg_data = np.log(-np.log(data_level[a:b]))
 
         #linear fit, see linearmethods.py
-        X=np.log(x_axis[a:i-2])
+        X=np.log(x_axis[a:b])
 
         linear_result = self.make_linear_fit(axis=X, data=double_lg_data, 
                                              add_parameters=None)
@@ -421,6 +407,16 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
         params['lifetime'].value = x_axis[i] - x_axis[0]
         params['beta'].value = 2
     
+    
+    #value and bounds of params
+    params['offset'].value = offset
+    #put sign infront of amplitude
+    if data[0]<data[-1]:
+        params['amplitude'].max = 0-data.std()
+        params['amplitude'].value = 0-amplitude
+    else:
+        params['amplitude'].min = data.std()
+        params['amplitude'].value = amplitude
     params['beta'].min = 0
     params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
 

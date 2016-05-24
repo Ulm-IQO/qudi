@@ -1443,7 +1443,7 @@ class FitLogic():
                          params['offset'].value,'\n', 'beta',
                              params['beta'].value)            
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.3* np.random.normal(size=x_axis.shape))
+                          + 0.5* np.random.normal(size=x_axis.shape))
             
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, 
                                                              data=data_noisy, 
@@ -1452,44 +1452,37 @@ class FitLogic():
             data = data_noisy            
             #calculation of offset
             offset = data[-max(1,int(len(x_axis)/10)):].mean()
-            #substraction of offset
-            data_sub = abs(data - offset)
-            #remove all the 0 in data_sub    
-            for i in range(0,len(data_sub)):
-                if data_sub[i] == 0:
-                    data_sub[i] = np.std(data_sub)/len(data_sub)
-        
-            amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()
-        
+            if data[0]<data[-1]:
+                params['amplitude'].max = 0-data.std()
+                data_sub = offset - data
+            else:
+                params['amplitude'].min = data.std()
+                data_sub = data-offset
+            
+            amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-data_sub[-max(1,int(len(x_axis)/10)):].std()
             data_level = data_sub/amplitude
-        
-            i = 0
-            a = 0
-            # cut off values that are too small to be resolved
-            while i in range(0, len(x_axis)):
-                i += 1
-                 #flip down the noise that are larger than 1.
-                if data_level[i - 1] >= 1:
-                    a=i
-                    data_level[i - 1] = 1-data_sub[-max(1,int(len(x_axis)/10)):].std()
-                if data_level[i - 1] < 0.1*data_sub[-max(1,int(len(x_axis)/10)):].std():
-                    print(i)
+            
+            a = 0    
+            b = len(data_sub)
+            for i in range(0,len(data_sub)):
+                if data_level[i]>=1:
+                    a=i+1
+                if data_level[i] <= 0:
+                    b=i
                     break
-            print(a)
-            plt.plot(np.log(x_axis),np.log(-np.log(data_level)),'ob')
-            plt.show()
-
+            print(a,b)
+        
             try:        
-                double_lg_data = np.log(-np.log(data_level[a:i-2]))
+                double_lg_data = np.log(-np.log(data_level[a:b]))
         
                 #linear fit, see linearmethods.py
-                X=np.log(x_axis[a:i-2])
+                X=np.log(x_axis[a:b])
                 linear_result = self.make_linear_fit(axis=X, data=double_lg_data,
                                                      add_parameters= None)
                 print(linear_result.params)
                 plt.plot(np.log(x_axis),np.log(-np.log(data_level)),'ob')
-                plt.plot(np.log(x_axis[a:i-2]),linear_result.best_fit,'-r')
-                plt.plot(np.log(x_axis[a:i-2]),linear_result.init_fit,'-y')
+                plt.plot(np.log(x_axis[a:b]),linear_result.best_fit,'-r')
+                plt.plot(np.log(x_axis[a:b]),linear_result.init_fit,'-y')
                 print(linear_result.fit_report())
                 plt.show()
             except:
