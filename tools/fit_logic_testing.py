@@ -1322,13 +1322,13 @@ class FitLogic():
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['amplitude'].value = abs(1 + abs(np.random.normal(0,4)))
-            params['frequency'].value = abs(0.000 + abs(np.random.normal(0,0.2)))
+            params['frequency'].value = abs(0.01 + abs(np.random.normal(0,0.2)))
             params['phase'].value = abs(np.random.normal(0,2*np.pi))
             params['offset'].value = 12 + np.random.normal(0,5)
             params['lifetime'].value = abs(0 + abs(np.random.normal(0,70)))
             print('\n', 'amplitude',params['amplitude'].value, '\n', 'frequency',params['frequency'].value,'\n','phase',params['phase'].value, '\n','offset',params['offset'].value, '\n','lifetime', params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.3* np.random.normal(size=x_axis.shape))
+                          + 0.5* np.random.normal(size=x_axis.shape))
             data = data_noisy            
             offset = np.average(data)
         
@@ -1395,7 +1395,7 @@ class FitLogic():
             gaus = gaussian(2,3)
             smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):],
                                              gaus / gaus.sum(), mode='mirror')
-            plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
+            #plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
             plt.plot(freq_plus[int(len(freq) / 2):],
                       fourier_real_plus[int(len(freq) / 2):], '-or')
             plt.xlim(0, 0.5)
