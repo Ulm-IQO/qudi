@@ -1237,35 +1237,33 @@ class FitLogic():
             mod, params = self.make_exponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
-            params['amplitude'].value = 1 + abs(np.random.normal(0,200))
+            params['amplitude'].value = -100 + abs(np.random.normal(0,200))
             params['lifetime'].value = 1 + abs(np.random.normal(0,20))
             params['offset'].value = 1 + abs(np.random.normal(0, 200))
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
                       params['lifetime'].value,'\n', 'offset', params['offset'].value)
             
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 1 * np.random.normal(size=x_axis.shape))
+                              + 1* np.random.normal(size=x_axis.shape))
             result = self.make_exponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             data = data_noisy
-            offset = data.min()
+            offset = data[-max(1,int(len(x_axis)/10)):].mean()
 
-            data_sub = data - offset
-            for i in range(0, len(data_sub)):
-                if data_sub[i] == 0:
-                    data_sub[i] = np.std(data_sub) / len(data_sub)
-
-            data_level = data_sub
-            i = 0
-            while i in range(0, len(x_axis) + 1):
-                i += 1
-                if  data_level[i - 1] < data_level.std():
-                    print(i)
+            #substraction of offset
+            if data[0]<data[-1]:
+                data_level = offset - data
+            else:
+                data_level = data - offset
+            for i in range(0, len(x_axis)):
+                if data_level[i] <= data_level.std():
                     break
+            print(i)
             try:            
-                data_level_log = np.log(data_level[0:i - 2])
-                linear_result = self.make_linear_fit(axis=x_axis[0:i - 2], data=data_level_log, add_parameters=None)
-                plt.plot(x_axis[0:i - 2], data_level_log, 'or')
-                plt.plot(x_axis[0:i - 2], linear_result.best_fit)
+                data_level_log = np.log(data_level[0:i])
+                linear_result = self.make_linear_fit(axis=x_axis[0:i], data=data_level_log, add_parameters=None)
+                plt.plot(x_axis[0:i], data_level_log, 'ob')
+                plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
+                plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
                 plt.show()
             except:
                 plt.plot(x_axis, np.log(data_level), 'or')
@@ -1275,6 +1273,8 @@ class FitLogic():
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
+
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 ###########################################################################################
@@ -1290,20 +1290,17 @@ class FitLogic():
             data_noisy = (mod.eval(x=x_axis, params=params)
                               + 0.05 * np.random.normal(size=x_axis.shape))
             data = abs(data_noisy)
-            for i in range(0, len(data)):
-                if data[i] == 0:
-                    data[i] = np.std(data) / len(data)
-            i=0
-            while i in range(0, len(x_axis) + 1):
-                i += 1
-                if data[i - 1] < data[-max(1,int(len(x_axis)/10)):].std():
+            for i in range(0, len(x_axis)):
+                if data[i] <= data.std():
                     break
-            data_log = np.log(data)
+            print(i)
+            data_log = np.log(data[0:i])
             
-            plt.plot(x_axis, data_log, 'or')
-            linear_result = self.make_linear_fit(axis=x_axis[0:i-2],data= data_log[0:i-2],add_parameters=None)
+            plt.plot(x_axis[0:i], data_log, 'ob')
+            linear_result = self.make_linear_fit(axis=x_axis[0:i],data= data_log,add_parameters=None)
             
-            plt.plot(x_axis[0:i-2], linear_result.best_fit)
+            plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
+            plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
             plt.show()
             
             
@@ -1312,6 +1309,8 @@ class FitLogic():
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
             plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
+            plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
+
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 #############################################################################################
@@ -1435,7 +1434,7 @@ class FitLogic():
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['beta'].value = 2 + abs(np.random.normal(0,0.5))
-            params['amplitude'].value = -10 + np.random.normal(0,20)
+            params['amplitude'].value = -10 - abs(np.random.normal(0,20))
             params['lifetime'].value =1 + abs(np.random.normal(0,30))
             params['offset'].value = 1 + abs(np.random.normal(0, 20))
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
@@ -1467,7 +1466,7 @@ class FitLogic():
             for i in range(0,len(data_sub)):
                 if data_level[i]>=1:
                     a=i+1
-                if data_level[i] <= 0:
+                if data_level[i] <=data_level.std():
                     b=i
                     break
             print(a,b)
@@ -1542,8 +1541,8 @@ test=FitLogic()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
 #test.bareexponentialdecay_testing()
-#test.exponentialdecay_testing()
+test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
-test.stretchedexponentialdecay_testing()
+#test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 
