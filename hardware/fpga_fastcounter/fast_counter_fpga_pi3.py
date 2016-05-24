@@ -288,5 +288,5 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds. """
 
-        width_in_seconds = self._binwidth * 1e-9
+        width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
