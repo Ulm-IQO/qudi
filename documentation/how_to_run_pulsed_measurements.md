@@ -1,5 +1,7 @@
 # How to run a pulsed measurement  {#pulsedmeasurement-explanation}
 
+![Structural overview of pulsed measurement modules](pulsed_structure.png "Pulsed structure")
+
 To understand the logic modules (mainly sequence_generator_logic and pulsed_measurement_logic) this documentation will provide a step-by-step manual for scripting a pulsed measurement.
 This can also be used to properly implement a GUI which sets all variables and calls the right methods in the logic.
 
@@ -133,3 +135,8 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 
 	pulsedmeasurement.signal_plot_x
 	pulsedmeasurement.signal_plot_y
+
+	
+## Example IPython notebook for pulsed ODMR and Rabi measurements (not perfect, just a working thing...)
+
+![](generate_pulsedodmr.ipynb "IPython notebook example")
