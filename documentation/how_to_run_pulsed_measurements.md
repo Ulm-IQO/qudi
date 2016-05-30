@@ -50,7 +50,7 @@ First of all you need to get the classes for the abstract data objects for your 
 		sequencegenerator.sample_pulse_block_ensemble('ensemble_name', write_to_file=True, chunkwise=True|False)
 	
 
-## Upload waveform to pulser device and load into channels 
+## Step 3: Upload waveform to pulser device and load into channels 
 
 This functionality should be in the pulsed_measurement_logic in the future. For now we call the hardware methods directly
 
@@ -63,7 +63,7 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 		pulser.load_asset('ensemble_name')
 	
 	
-## Configure pulsed_measurement_logic parameters to prepare the measurement
+## Step 4: Configure pulsed_measurement_logic parameters to prepare the measurement
 
 * Set the approximate over-estimated delay in seconds between laser trigger signal and actual laser output
 
@@ -106,12 +106,12 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 		pulsedmeasurement.timer_interval = 3 (refresh measurement data every 3 seconds)
 	
 
-## Configure fast counter hardware
+## Step 5: Configure fast counter hardware
 
 	pulsedmeasurement.configure_fast_counter()
 	
 	
-## Perform measurement
+## Step 6: Perform measurement
 
 * Start the measurement
 
