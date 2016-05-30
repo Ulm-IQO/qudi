@@ -7,10 +7,14 @@ class ExecutionResult:
     """The result of a call to run_cell
     Stores information about what took place.
     """
-    execution_count = None
-    error_before_exec = None
-    error_in_exec = None
-    result = None
+    def __init__(self):
+        self.execution_count = None
+        self.error_before_exec = None
+        self.error_in_exec = None
+        self.result = list()
+        self.display_data = dict()
+        self.captured_stdout = ''
+        self.captured_stderr = ''
 
     @property
     def success(self):
@@ -29,7 +33,7 @@ class DisplayHook:
     socket."""
 
     def __init__(self):
-        self.result_list = list()
+        self.result = None
 
     def __call__(self, obj):
         if obj is None:
@@ -38,10 +42,12 @@ class DisplayHook:
         builtins._ = obj
         sys.stdout.flush()
         sys.stderr.flush()
-        self.result_list.append(repr(obj))
+        if self.result is not None:
+            self.result.result.append(repr(obj))
 
-    def set_list(self, resultlist):
-        self.result_list = resultlist
+    def pass_result_ref(self, result):
+        """ Set reference to result container for current cell """
+        self.result = result
 
 
 def cursor_pos_to_lc(text, cursor_pos):
