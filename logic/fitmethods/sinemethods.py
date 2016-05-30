@@ -189,6 +189,26 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 ############################################################################
 
 def make_sineexponentialdecay_model(self):
+    """
+    This method creates a model of sine with exponential decay.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
 
     def sine_function(x, amplitude, frequency, phase):
         """
@@ -211,8 +231,24 @@ def make_sineexponentialdecay_model(self):
     return model, params
 
 def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
+    """
+    This method provides a estimation of a initial values
+     for a sine exponential decay function.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
     error = 0
     parameters = [x_axis, data]
+    #varification of data
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is no array.',
@@ -227,8 +263,7 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
         
-    # set the offset as the average of the data
-    #offset = np.average(data[-int(len(data)/10):])
+    # set the offset as the median of the data
     offset = np.median(data)
     # level data
     data_level = data - offset
@@ -245,11 +280,14 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     fourier_power = (fourier * fourier.conj()).real
     frequency_max = np.abs(freq[fourier_power.argmax()])
     params['frequency'].value = frequency_max
-    fourier_real = abs(fourier)
+
+    #remove noise
     a = np.std(fourier_power[:int(len(freq)/2)])
     for i in range(0,int(len(fourier)/2)):
         if fourier_power[i]<=a:
             fourier_power[i] = 0
+
+    #calculating the width of the FT peak for the estimation of lifetime
     s = 0
     for i in range(0,int(len(freq) / 2)):
         s+= fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
@@ -267,29 +305,31 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     elif np.gradient(data)[0] > 0 and data_level[0] < 0:
         phase = 2. * np.pi - phase
 
-
+    # values and bounds of initial parameters
     params['phase'].value = phase
     params['offset'].value = offset
-    #params['lifetime'].value = 1/(fwhm_plus*2.8)
-    
-    #bounds of initial parameters
+
     params['lifetime'].min = 3 * (x_axis[1]-x_axis[0])    
     params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
     params['frequency'].min = min(0.1 / (x_axis[-1]-x_axis[0]),freq[3])
     params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0]))
     params['amplitude'].min = 0
-    
-    print('\n','lifetime.min: ',params['lifetime'].min,'\n',
-          'lifetime.max: ',params['lifetime'].max,'\n','frequency.min: ',
-          params['frequency'].min,'\n','frequency.max: ',params['frequency'].max)
-    
-    
-    
+
     return error, params
 
-# Basically the same as sine fitting.
 def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
-    #Todo: docstring
+    """
+    This method performes a sine exponential decay fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
     sineexponentialdecay, params = self.make_sineexponentialdecay_model()
 
     error, params = self.estimate_sineexponentialdecay(axis, data, params)
@@ -300,9 +340,8 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     try:
         result = sineexponentialdecay.fit(data, x=axis, params=params)
     except:
-        # self.logMsg('The sineexponentialdecay fit did not work.',
-        #             msgType='warning')
+         self.logMsg('The sineexponentialdecay fit did not work.','message: {}'.format(str(result.message)),
+                    msgType='warning')
         result = sineexponentialdecay.fit(data, x=axis, params=params)
-        print("Error in sinexp fit:",result.message)
 
     return result
