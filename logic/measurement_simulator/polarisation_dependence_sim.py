@@ -19,7 +19,7 @@ Copyright (C) 2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 from core.base import Base
-from hardware.slow_counter_interface import SlowCounterInterface
+from interface.slow_counter_interface import SlowCounterInterface
 from interface.motor_interface import MotorInterface
 from pyqtgraph.Qt import QtCore
 import time
