@@ -340,7 +340,7 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     try:
         result = sineexponentialdecay.fit(data, x=axis, params=params)
     except:
-         self.logMsg('The sineexponentialdecay fit did not work.','message: {}'.format(str(result.message)),
+        self.logMsg('The sineexponentialdecay fit did not work.','message: {}'.format(str(result.message)),
                     msgType='warning')
         result = sineexponentialdecay.fit(data, x=axis, params=params)
 
