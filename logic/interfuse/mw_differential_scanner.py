@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from core.base import Base
-from hardware.confocal_scanner_interface import ConfocalScannerInterface
+from interface.confocal_scanner_interface import ConfocalScannerInterface
 import time
 
 import numpy as np
