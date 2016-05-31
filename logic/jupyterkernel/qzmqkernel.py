@@ -319,37 +319,37 @@ class QZMQKernel(QtCore.QObject):
             with redirect_stdout(stream_stdout):
                 # actual execution
                 try:
-                    self.displayhook.set_list(output_objs)
                     res = self.run_cell(msg['content']['code'])
                 except Exception as e:
+                    res = ExecutionResult()
                     tb = traceback.format_exc()
                     print('{}\n{}'.format(e, tb))
 
         # send captured output if there is any
-        captured_stdout = stream_stdout.getvalue()
+        res.captured_stdout = stream_stdout.getvalue()
         stream_stdout.close()
-        captured_stderr = stream_stderr.getvalue()
+        res.captured_stderr = stream_stderr.getvalue()
         stream_stderr.close()
 
-        if len(captured_stdout) > 0:
+        if len(res.captured_stdout) > 0:
             content = {
                 'name': "stdout",
-                'text': captured_stdout,
+                'text': res.captured_stdout,
             }
             self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
 
-        if len(captured_stderr) > 0:
+        if len(res.captured_stderr) > 0:
             content = {
                 'name': "stderr",
-                'text': captured_stderr,
+                'text': res.captured_stderr,
             }
             self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
 
         # send captured result if there is any
-        if len(output_objs) > 0:
+        if len(res.result) > 0:
             content = {
                 'execution_count': self.execution_count,
-                'data': {"text/plain": output_objs[0]},
+                'data': {"text/plain": res.result[0]},
                 'metadata': {}
                 }
             self.send(
@@ -536,6 +536,9 @@ class QZMQKernel(QtCore.QObject):
             result.error_before_exec = value
             return result
 
+        # Give displyhook a reference to the ExecutionResult object keeping the output
+        self.displayhook.pass_result_ref(result)
+
         #self.events.trigger('pre_execute')
         if not silent:
             pass
@@ -640,6 +643,9 @@ class QZMQKernel(QtCore.QObject):
             # Each cell is a *single* input, regardless of how many lines it has
             self.execution_count += 1
 
+        # Pass none to DisplayHook, so it does not touch the result from this cell
+        # any more
+        self.displayhook.pass_result_ref(None)
         return result
     
     def transform_ast(self, node):

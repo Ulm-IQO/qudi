@@ -19,7 +19,7 @@ Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
 """
 
 from core.base import Base
-from hardware.confocal_scanner_interface import ConfocalScannerInterface
+from interface.confocal_scanner_interface import ConfocalScannerInterface
 import time
 
 import numpy as np
