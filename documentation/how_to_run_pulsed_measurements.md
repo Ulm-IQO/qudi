@@ -75,11 +75,11 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 	
 * Set the total number of laser pulses within the created waveform
 
-		pulsedmeasurement.number_of_lasers = 50 (50 laser pulses in the sequence)
+		pulsedmeasurement.set_num_of_lasers(50) (50 laser pulses in the sequence)
 	
 * Set the fast counter binwidth in seconds
 
-		pulsedmeasurement.fast_counter_binwidth = 1e-9 (1 ns)
+		pulsedmeasurement.set_fc_binning(1e-9) (1 ns)
 	
 * Set starting index of timebin for the signal analysis window
 
@@ -99,11 +99,11 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 	
 * Set the independent axis data point values as array
 
-		pulsedmeasurement.measurement_ticks_list = numpy.array(range(50)) (this will result in an x-axis showing only laser pulse indices 0..49)
+		pulsedmeasurement.set_measurement_ticks_list(numpy.arange(1,50,1)) (this will result in an x-axis showing only laser pulse indices 0..49)
 	
 * Set the analysis time intervall for the running measurement in seconds
 	
-		pulsedmeasurement.timer_interval = 3 (refresh measurement data every 3 seconds)
+		pulsedmeasurement.set_timer_interval(3) (refresh measurement data every 3 seconds)
 	
 
 ## Step 5: Configure fast counter hardware
@@ -131,11 +131,13 @@ This functionality should be in the pulsed_measurement_logic in the future. For 
 
 		fit_x, fit_y, fit_result = pulsedmeasurement.do_fit('Sine') (performs a Sine fit on the current measurement data)
 	
-* Raw access to measurement data via
+* direct access to measurement data via
 
-		pulsedmeasurement.signal_plot_x
-		pulsedmeasurement.signal_plot_y
-
+		pulsedmeasurement.signal_plot_x (independent variable of measurement)
+		pulsedmeasurement.signal_plot_y (evaluated measurement points)
+		pulsedmeasurement.laser_data (extracted laser pulses)
+		pulsedmeasurement.raw_data (raw fast counter data)
+		
 	
 ## Example IPython notebook for pulsed ODMR and Rabi measurements (not perfect, just a working thing...)
 
