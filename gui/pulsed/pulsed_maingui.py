@@ -3062,6 +3062,7 @@ class PulsedMeasurementGui(GUIBase):
                 elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)&Log(y)':
                     self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
+
     def analysis_timing_changed(self):
         """ This method handles the analysis timing"""
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
