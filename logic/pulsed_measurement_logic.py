@@ -285,15 +285,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # analyze pulses and get data points for signal plot
 
-            self.signal_plot_y, \
-            self.laser_data,    \
-            self.raw_data,      \
-            self.measuring_error,\
-            self.is_gated        = self._pulse_analysis_logic._analyze_data(norm_start,
-                                                                            norm_end,
-                                                                            sig_start,
-                                                                            sig_end,
-                                                                            self.number_of_lasers)
+            self.signal_plot_y,self.laser_data,self.raw_data,self.measuring_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
             # set x-axis of signal plot
 
 
@@ -567,7 +559,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         temp_arr = np.empty([self.laser_data.shape[1], self.laser_data.shape[0]+1])
         temp_arr[:,1:] = self.laser_data.transpose()
-        temp_arr[:,0] = self.laser_plot_x
+        temp_arr[:,0] = np.arange(0, self.laser_data.shape[1]*self.fast_counter_binwidth, self.fast_counter_binwidth)
         data = OrderedDict()
         data = {'Time (ns), Signal (counts)': temp_arr}
 
