@@ -1372,7 +1372,7 @@ class FitLogic():
             
 ##################################################################################################################
         def stretchedexponentialdecay_testing(self):
-            x_axis = np.linspace(1, 51, 100)
+            x_axis = np.linspace(0, 51, 100)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_stretchedexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
@@ -1486,7 +1486,7 @@ test=FitLogic()
 #test.double_poissonian_testing()
 #test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
-test.sineexponentialdecay_testing()
-#test.stretchedexponentialdecay_testing()
+#test.sineexponentialdecay_testing()
+test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 

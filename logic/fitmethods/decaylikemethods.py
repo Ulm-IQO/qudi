@@ -378,12 +378,16 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     #remove data that can't under go double log calculation
     i = 0    
     b = len(data)
+    c = 0
     for i in range(0,len(data_sub)):
         if data_level[i]>=1:
             a=i+1
+        if x_axis[i]==0:
+            c=i
         if data_level[i] <= data_level.std():
             b=i
             break
+    a=max(a,c)
     try:
         # double log of data is linear to log of x_axis, beta is the slope and 
         # life time should equals exp(-intercept/slope)
