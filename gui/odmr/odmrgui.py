@@ -30,7 +30,8 @@ import datetime
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScaleRainbow, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleRainbow
 
 
 class ODMRMainWindow(QtGui.QMainWindow):

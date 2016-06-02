@@ -26,7 +26,8 @@ import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScaleRainbow, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleRainbow
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
