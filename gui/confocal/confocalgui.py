@@ -30,7 +30,8 @@ import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScaleRainbow, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleRainbow
 from gui.fitsettings import FitSettingsWidget
 
 # This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator

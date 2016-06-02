@@ -27,7 +27,8 @@ from pyqtgraph.Qt import QtCore, QtGui, uic
 import datetime
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScaleRainbow, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleRainbow
 
 
 class MagnetMainWindow(QtGui.QMainWindow):

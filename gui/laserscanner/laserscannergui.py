@@ -27,7 +27,8 @@ import os
 
 from collections import OrderedDict
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScaleRainbow, ColorBar
+from gui.guiutils import ColorBar
+from gui.colormaps import ColorScaleRainbow
 
 
 class VoltScanMainWindow(QtGui.QMainWindow):
