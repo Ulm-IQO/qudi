@@ -53,10 +53,6 @@ import ast
 import traceback
 import jedi
 
-import matplotlib
-from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
-from matplotlib._pylab_helpers import Gcf
-
 # zmq specific imports:
 import zmq
 from io import StringIO
@@ -67,6 +63,7 @@ from .builtin_trap import BuiltinTrap
 from .redirect import redirect_stdout, redirect_stderr
 from .stream import QZMQStream
 from .helpers import *
+from .events import EventManager, available_events
 
 from PyQt4 import QtCore
 QtCore.Signal = QtCore.pyqtSignal
@@ -88,6 +85,18 @@ class QZMQHeartbeat(QtCore.QObject):
 class QZMQKernel(QtCore.QObject):
     
     sigShutdownFinished = QtCore.Signal(str)
+
+    supported_mime = (
+        'text/plain',
+        'text/html',
+        'text/markdown',
+        'text/latex',
+        'application/json',
+        'application/javascript',
+        'image/png',
+        'image/jpeg',
+        'image/svg+xml'
+        )
 
     def __init__(self, config=None):
         super().__init__()
@@ -169,12 +178,14 @@ class QZMQKernel(QtCore.QObject):
         self.execution_count = 1
         self.ast_node_interactivity = 'last_expr'
         self.compile = CachingCompiler()
-        self.ast_transformers = []
+        self.events = EventManager(self, available_events)
+        self.ast_transformers = list()
+        self.displaydata = list()
         self.displayhook = DisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
+        setup_matplotlib(self)
 
-    # Utility functions:
     @QtCore.pyqtSlot()
     def shutdown(self):
         self.iopub_stream.close()
@@ -188,7 +199,7 @@ class QZMQKernel(QtCore.QObject):
         self.control_socket.close()
         self.heartbeat_socket.close()
         self.hb_thread.quit()
-        self.sigShutdownFinished.emit(self.engine_id,)
+        self.sigShutdownFinished.emit(self.engine_id)
 
     def msg_id(self):
         """ Return a new uuid for message id """
@@ -244,36 +255,20 @@ class QZMQKernel(QtCore.QObject):
         logging.debug( "send parts: %s" % parts)
         stream.socket.send_multipart(parts)
 
-    def display_data(self, msg, mimetype, thing):
+    def display_data(self, mimetype, fmt_dict, metadata=None):
 
-        #format = InteractiveShell.instance().display_formatter.format
-        #format_dict, md_dict = format(obj, include=include, exclude=exclude)
+        #fmt_dict, md_dict = formatter(mimetype, obj)
+        dataenc = encode_images(fmt_dict)
 
-        supported_mime = (
-            'text/plain',
-            'text/html',
-            'text/markdown',
-            'text/latex',
-            'application/json',
-            'application/javascript',
-            'image/png',
-            'image/jpeg',
-            'image/svg+xml'
-            )
-        if mimetype in supported_mime:
-            
+        if mimetype in self.supported_mime:
             content = {
                 'source': '',
-                'data': {
-                    mimetype: thing
-                    },
-                'metadata': metadata
+                'data': dataenc,
+                'metadata': {}
             }
-            self.send(
-                self.iopub_stream,
-                'display_data',
-                content,
-                parent_header=msg['header'])
+            if metadata is not None:
+                content['metadata'] = metadata
+            self.displaydata.append(content)
 
     # Socket Handlers:
     def shell_handler(self, msg):
@@ -312,7 +307,7 @@ class QZMQKernel(QtCore.QObject):
         self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
 
         #capture output
-        output_objs = list()
+        self.displaydata = list()
         stream_stdout = StringIO()
         stream_stderr = StringIO()
         with redirect_stderr(stream_stderr):
@@ -355,6 +350,14 @@ class QZMQKernel(QtCore.QObject):
             self.send(
                 self.iopub_stream,
                 'execute_result',
+                content,
+                parent_header=msg['header'])
+
+        # output data from this run
+        for content in self.displaydata:
+            self.send(
+                self.iopub_stream,
+                'display_data',
                 content,
                 parent_header=msg['header'])
 
@@ -536,13 +539,9 @@ class QZMQKernel(QtCore.QObject):
             result.error_before_exec = value
             return result
 
-        # Give displyhook a reference to the ExecutionResult object keeping the output
-        self.displayhook.pass_result_ref(result)
-
-        #self.events.trigger('pre_execute')
+        self.events.trigger('pre_execute')
         if not silent:
-            pass
-            #self.events.trigger('pre_run_cell')
+            self.events.trigger('pre_run_cell')
 
         # If any of our input transformation (input_transformer_manager or
         # prefilter_manager) raises an exception, we store it in this variable
@@ -598,8 +597,7 @@ class QZMQKernel(QtCore.QObject):
                     if store_history:
                         self.execution_count += 1
                     return error_before_exec(e)
-                except (OverflowError, SyntaxError, ValueError, TypeError,
-                        MemoryError) as e:
+                except (OverflowError, SyntaxError, ValueError, TypeError, MemoryError) as e:
                     self.showsyntaxerror()
                     if store_history:
                         self.execution_count += 1
@@ -616,7 +614,7 @@ class QZMQKernel(QtCore.QObject):
          
                 # Give the displayhook a reference to our ExecutionResult so it
                 # can fill in the output value.
-                #self.displayhook.exec_result = result
+                self.displayhook.pass_result_ref(result)
          
                 # Execute the user code
                 interactivity = "none" if silent else self.ast_node_interactivity
@@ -630,11 +628,11 @@ class QZMQKernel(QtCore.QObject):
                 # Reset this so later displayed values do not modify the
                 # ExecutionResult
                 #self.displayhook.exec_result = None
+                self.displayhook.pass_result_ref(None)
          
-                #self.events.trigger('post_execute')
+                self.events.trigger('post_execute')
                 if not silent:
-                    pass
-                    #self.events.trigger('post_run_cell')
+                    self.events.trigger('post_run_cell')
 
         if store_history:
             # Write output to the database. Does nothing unless
@@ -643,9 +641,6 @@ class QZMQKernel(QtCore.QObject):
             # Each cell is a *single* input, regardless of how many lines it has
             self.execution_count += 1
 
-        # Pass none to DisplayHook, so it does not touch the result from this cell
-        # any more
-        self.displayhook.pass_result_ref(None)
         return result
     
     def transform_ast(self, node):
