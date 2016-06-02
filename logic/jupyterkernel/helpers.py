@@ -173,6 +173,11 @@ def setup_matplotlib(kernel):
     from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
     from matplotlib._pylab_helpers import Gcf
 
+    from logic.jupyterkernel.mpl.backend_inline import InlineBackend
+
+    cfg = InlineBackend.instance()
+    matplotlib.pyplot.rcParams.update(cfg.rc)
+
     # IPython symbols to add
     #kernel.user_ns['figsize'] = figsize
     # Add display and getfigs to the user's namespace
