@@ -29,7 +29,7 @@ def show(close=None, block=None):
       backends.
     """
     if close is None:
-        close = InlineBackend.close_figures
+        close = InlineBackend.instance().close_figures
     try:
         for figure_manager in Gcf.get_all_fig_managers():
             display(figure_manager.canvas.figure)
@@ -47,7 +47,7 @@ show._draw_called = False
 show._to_draw = []
 
 def display(fig):
-    print('Matplotlib has something to show:')
+    #print('Matplotlib has something to show:')
     imgdata, metadata = print_figure(fig)
     fmt_dict = {'image/png': imgdata}
     qudikernel.display_data('image/png', fmt_dict, metadata)
@@ -111,7 +111,7 @@ def flush_figures():
     if not show._draw_called:
         return
 
-    if InlineBackend.close_figures:
+    if InlineBackend.instance().close_figures:
         # ignore the tracking, just draw and close all figures
         try:
             return show(True)
