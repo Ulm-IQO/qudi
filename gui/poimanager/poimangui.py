@@ -26,7 +26,7 @@ import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorScaleRainbow, ColorBar
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -308,7 +308,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_map_ViewWidget.setAspectLocked(lock=True, ratio=1.0)
 
         # Get the colorscales and set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleRainbow()
 
         self.roi_map_image.setLookupTable(my_colors.lut)
 

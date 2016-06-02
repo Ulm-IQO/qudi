@@ -30,7 +30,7 @@ import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorScaleRainbow, ColorBar
 from gui.fitsettings import FitSettingsWidget
 
 # This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
@@ -602,7 +602,7 @@ class ConfocalGui(GUIBase):
         #           Connect the colorbar and their actions              #
         #################################################################
         # Get the colorscale and set the LUTs
-        self.my_colors = ColorScale()
+        self.my_colors = ColorScaleRainbow()
 
         self.xy_image.setLookupTable(self.my_colors.lut)
         self.depth_image.setLookupTable(self.my_colors.lut)

@@ -111,21 +111,27 @@ class ColorBar(pg.GraphicsObject):
 
 
 
-class ColorScale(object):
+class ColorScaleRainbow():
     # Define the color map that goes from dark blue to bright red
-    COLORS = np.array([ [  0,  0,132,255], [  0,  0,241,255], [  0, 88,255,255],
-                        [  0,204,255,255], [ 66,255,149,255], [160,255, 86,255],
-                        [254,237,  0,255], [255,129,  0,255], [255, 26,  0,255]
-                      ], dtype=np.ubyte)
+    COLORS = np.array([
+        [  0,   0, 132, 255],
+        [  0,   0, 241, 255],
+        [  0,  88, 255, 255],
+        [  0, 204, 255, 255],
+        [ 66, 255, 149, 255],
+        [160, 255,  86, 255],
+        [254, 237,   0, 255],
+        [255, 129,   0, 255],
+        [255,  26,   0, 255]
+        ], dtype=np.ubyte)
 
     COLORS_INV = COLORS[::-1]
 
     def __init__(self):
-        
-        color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS) )
+        color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS))
 
-        self.colormap = pg.ColorMap( color_positions, self.COLORS )
-        self.cmap_normed = pg.ColorMap( color_positions, self.COLORS_INV/255 )
+        self.colormap = pg.ColorMap(color_positions, self.COLORS)
+        self.cmap_normed = pg.ColorMap(color_positions, self.COLORS_INV/255)
         
         # get the LookUpTable (LUT), first two params should match the position
         # scale extremes passed to ColorMap().

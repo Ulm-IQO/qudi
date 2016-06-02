@@ -30,7 +30,7 @@ import datetime
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorScaleRainbow, ColorBar
 
 
 class ODMRMainWindow(QtGui.QMainWindow):
@@ -160,7 +160,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Get the colorscales at set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleRainbow()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
         # Set the state button as ready button as default setting.
