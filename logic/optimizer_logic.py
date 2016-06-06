@@ -17,6 +17,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (C) 2015 Kay D. Jahnke
 Copyright (c) 2016 Christoph Müller  cmueller2603@gmail.com
+Copyright (c) 2016 Florian Frank  florian.frank@uni-ulm.de
 Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
@@ -52,6 +53,8 @@ class OptimizerLogic(GenericLogic):
     # public signals
     signal_image_updated = QtCore.Signal()
     signal_refocus_started = QtCore.Signal()
+    signal_refocus_XY_size_changed = QtCore.Signal()
+    signal_refocus_Z_size_changed = QtCore.Signal()
     signal_refocus_finished = QtCore.Signal(str, list)
 
     def __init__(self, manager, name, config, **kwargs):
@@ -72,7 +75,6 @@ class OptimizerLogic(GenericLogic):
         self.optimizer_XY_res = 10
         self.refocus_Z_size = 2
         self.optimizer_Z_res = 30
-
         self.hw_settle_time = 0.1  # let scanner reach start of xy and z scans
 
         # Initialization of settings option for optimization sequence
@@ -190,6 +192,15 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             return 0
+
+    def set_refocus_XY_size(self,size):
+        self.refocus_XY_size = size
+        self.signal_refocus_XY_size_changed.emit()
+
+    def set_refocus_Z_size(self,size):
+        self.refocus_Z_size = size
+        self.signal_refocus_Z_size_changed.emit()
+
 
     def start_refocus(self, initial_pos=None, caller_tag='unknown'):
         """Starts the optimization scan around initial_pos
