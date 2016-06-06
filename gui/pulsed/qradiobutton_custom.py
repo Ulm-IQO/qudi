@@ -19,8 +19,8 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtCore
 
 
 class CustomQRadioButton(QtGui.QRadioButton):

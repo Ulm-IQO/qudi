@@ -31,6 +31,12 @@ import weakref
 import re
 import os
 
+import sys
+if 'PyQt5' in sys.modules:
+    # pyqtgraph.Qt doesn't define it
+    QtGui.QSortFilterProxyModel = QtCore.QSortFilterProxyModel
+
+
 class LogModel(QtCore.QAbstractTableModel):
     """ This is a Qt model that represents the log for dislpay in a QTableView.
     """
@@ -116,7 +122,7 @@ class LogModel(QtCore.QAbstractTableModel):
 
     def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
         """ Data for the table view headers.
-        
+
           @param int section: number of the column to get header data for
           @param Qt.Orientation: orientation of header (horizontal or vertical)
           @param ItemDataRole: role for which to get data
@@ -148,13 +154,13 @@ class LogModel(QtCore.QAbstractTableModel):
         self.entries[row:row] = insertion
         self.endInsertRows()
         return True
-        
+
     def addRow(self, row, data, parent = QtCore.QModelIndex()):
         """ Add a single log entry to model.
           @param int row: row before which to insert log entry
           @param list data: log entry in list format (5 elements)
           @param QModelIndex parent: parent model index
-          
+
           @return bool: True if adding entry succeede, False otherwise
         """
         return self.addRows(row, [data], parent)
@@ -164,7 +170,7 @@ class LogModel(QtCore.QAbstractTableModel):
           @param int row: row before which to insert log entry
           @param list data: log entries in list format (list of lists of 5 elements)
           @param QModelIndex parent: parent model index
-          
+
           @return bool: True if adding entry succeede, False otherwise
         """
         count = len(data)
@@ -176,7 +182,7 @@ class LogModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(topleft, bottomright)
         return True
 
-    def removeRows(self, row, count, parent = QtCore.QModelIndex() ): 
+    def removeRows(self, row, count, parent = QtCore.QModelIndex() ):
         """ Remove rows (log entries) from model.
 
           @param int row: from which row on to remove rows
@@ -234,7 +240,7 @@ class LogFilter(QtGui.QSortFilterProxyModel):
 
     def setImportance(self, minImportance):
         """ Set the minimum importance value for which messages are shown by the filter.
-        
+
           @param int minImportance: a whole number between 0 and 9 giving thi minimal
             importnce from which a message is shown
         """
@@ -244,7 +250,7 @@ class LogFilter(QtGui.QSortFilterProxyModel):
 
     def setTypes(self, showTypes):
         """ Set which types of messages are shown through the filter.
-          
+
           @param list(str) showTypes: list of all message types that should e shown
         """
         self.showTypes = showTypes
@@ -280,18 +286,37 @@ class LogWidget(QtGui.QWidget):
         self.output.setModel(self.filtermodel)
 
         # set up able view properties
-        self.output.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-        self.output.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
-        self.output.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
-        self.output.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
-        self.output.verticalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
-        
+        # setResizeMode is deprecated in Qt5 (and therefore not available
+        # in pyqt5
+        if 'PyQt4' in sys.modules:
+            self.output.horizontalHeader().setResizeMode(0,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setResizeMode(1,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setResizeMode(2,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setResizeMode(3,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.verticalHeader().setResizeMode(
+                    QtGui.QHeaderView.ResizeToContents)
+        else:
+            self.output.horizontalHeader().setSectionResizeMode(0,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(1,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(2,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.horizontalHeader().setSectionResizeMode(3,
+                    QtGui.QHeaderView.ResizeToContents)
+            self.output.verticalHeader().setSectionResizeMode(
+                    QtGui.QHeaderView.ResizeToContents)
+
         # connect signals
         self.sigDisplayEntry.connect(self.displayEntry, QtCore.Qt.QueuedConnection)
         self.sigAddEntry.connect(self.addEntry, QtCore.Qt.QueuedConnection)
         self.filterTree.itemChanged.connect(self.setCheckStates)
         self.importanceSlider.valueChanged.connect(self.filtersChanged)
-        
+
     def setStylesheet(self, logStyleSheet):
         """
         @param str logStyleSheet: stylesheet for log view
@@ -306,10 +331,10 @@ class LogWidget(QtGui.QWidget):
         f must be able to be read by pyqtgraph configfile.py
         """
         pass
-        
+
     def addEntry(self, entry):
         """Add a log entry to the log view.
-          
+
           @param dict entry: log entry in dict format
         """
         ## All incoming messages begin here
@@ -327,7 +352,7 @@ class LogWidget(QtGui.QWidget):
             if 'message' in entry['exception']:
                 text += '\n' + entry['exception']['message']
             for line in entry['exception']['traceback']:
-                text += '\n' + str(line) 
+                text += '\n' + str(line)
         logEntry = [ entry['id'], entry['timestamp'], entry['msgType'], entry['importance'], text ]
         self.model.addRow(self.model.rowCount(), logEntry)
         self.output.scrollToBottom()
@@ -370,9 +395,9 @@ class LogWidget(QtGui.QWidget):
                 typeFilter.append(str(text))
         #print(typeFilter)
         self.filtermodel.setTypes(typeFilter)
-        
+
     def filtersChanged(self):
         """ This function is called to update the filter list when the log filters have been changed.
         """
         self.filtermodel.setImportance(self.importanceSlider.value())
-        
+
