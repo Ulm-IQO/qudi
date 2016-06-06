@@ -23,8 +23,6 @@ import numpy as np
 import time
 from pyqtgraph.Qt import QtCore
 
-from PyQt4.QtCore import QThread
-
 from core.base import Base
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface

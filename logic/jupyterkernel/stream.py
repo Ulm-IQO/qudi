@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import zmq
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 QtCore.Signal = QtCore.pyqtSignal
 import logging
 
@@ -10,12 +10,12 @@ class QZMQStream(QtCore.QObject):
     def __init__(self, zmqsocket):
         super().__init__()
         self.socket = zmqsocket
-        self.readnotifier = QtCore.QSocketNotifier( 
+        self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
             QtCore.QSocketNotifier.Read)
         logging.debug( "Notifier: %s" % self.readnotifier.socket())
         self.readnotifier.activated.connect(self.checkForMessage)
-    
+
     def checkForMessage(self, socket):
         logging.debug( "Check: %s" % self.readnotifier.socket())
         self.readnotifier.setEnabled(False)
