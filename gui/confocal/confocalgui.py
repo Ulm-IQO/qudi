@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 
-Copyright (C) 2015 Florian S. Frank florian.frank@uni-ulm.de
+Copyright (C) 2015-2016 Florian S. Frank florian.frank@uni-ulm.de
 Copyright (C) 2015-2016 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 Copyright (C) 2015-2016 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
@@ -392,10 +392,13 @@ class ConfocalGui(GUIBase):
         # Create Region of Interest for depth image and add to xy Image Widget:
         self.roi_depth = CrossROI(
             [
-                ini_pos_x_crosshair - len(arr02) / 20,
-                ini_pos_z_crosshair - len(arr02) / 20
+                # ini_pos_x_crosshair - len(arr02) / 20,
+                # ini_pos_z_crosshair - len(arr02) / 20
+                ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size/2,
+                ini_pos_z_crosshair - self._optimizer_logic.refocus_Z_size/2
             ],
-            [len(arr02) / 20, len(arr02) / 20],
+            # [len(arr02) / 20, len(arr02) / 20],
+            [self._optimizer_logic.refocus_XY_size,self._optimizer_logic.refocus_Z_size],
             pen={'color': "F0F", 'width': 1},
             removable=True
         )
@@ -574,6 +577,7 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.signal_refocus_finished.connect(self._refocus_finished_wrapper)
         self._optimizer_logic.signal_refocus_started.connect(self.disable_scan_actions)
         self._optimizer_logic.signal_refocus_XY_size_changed.connect(self.update_roi_xy_size)
+        self._optimizer_logic.signal_refocus_Z_size_changed.connect(self.update_roi_depth_size)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
@@ -982,6 +986,7 @@ class ConfocalGui(GUIBase):
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.updateFitSettings(self._optimizer_logic.z_params)
         self.update_roi_xy_size()
+        self.update_roi_depth_size()
 
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
@@ -999,6 +1004,7 @@ class ConfocalGui(GUIBase):
         # fit parameters
         self._osd.fit_tab.keepFitSettings(self._optimizer_logic.z_params, self._optimizer_logic.use_custom_params)
         self.update_roi_xy_size()
+        self.update_roi_depth_size()
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
@@ -1152,7 +1158,7 @@ class ConfocalGui(GUIBase):
             roi_y_view = y - self.roi_xy.size()[1] * 0.5
 
         self.roi_xy.setPos([roi_x_view, roi_y_view])
-        
+
     def update_roi_xy_size(self):
         xpos = self.roi_xy.pos()[0]
         ypos = self.roi_xy.pos()[1]
@@ -1163,6 +1169,18 @@ class ConfocalGui(GUIBase):
         newsize = self._optimizer_logic.refocus_XY_size
         self.roi_xy.setSize([newsize,newsize])
         self.roi_xy.setPos([xcenter-newsize/2,ycenter-newsize/2])
+
+    def update_roi_depth_size(self):
+        xpos = self.roi_depth.pos()[0]
+        ypos = self.roi_depth.pos()[1]
+        xsize = self.roi_depth.size()[0]
+        ysize = self.roi_depth.size()[1]
+        xcenter = xpos+0.5*xsize
+        ycenter = ypos+0.5*ysize
+        newsize_z = self._optimizer_logic.refocus_Z_size
+        newsize_xy = self._optimizer_logic.refocus_XY_size
+        self.roi_depth.setSize([newsize_xy,newsize_z])
+        self.roi_depth.setPos([xcenter-newsize_xy/2,ycenter-newsize_z/2])
 
     def update_roi_depth(self, x=None, z=None):
         """ Adjust the depth ROI position if the value has changed.
@@ -1741,30 +1759,32 @@ class ConfocalGui(GUIBase):
                                view information about the display.
 
         """
-        viewbox = self.depth_image.getViewBox()
-        current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
-        current_z_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+        # viewbox = self.depth_image.getViewBox()
+        # current_x_view_range = viewbox.viewRange()[0][1] - viewbox.viewRange()[0][0]
+        # current_z_view_range = viewbox.viewRange()[1][1] - viewbox.viewRange()[1][0]
+        #
+        # new_size_x_roi = current_x_view_range / 20
+        # new_size_z_roi = current_z_view_range / 20
+        #
+        # if self.fixed_aspect_ratio_depth:
+        #     if new_size_x_roi > new_size_z_roi:
+        #         new_size_z_roi = new_size_x_roi
+        #     else:
+        #         new_size_x_roi = new_size_z_roi
+        #
+        # old_size_x_roi = self.roi_depth.size()[0]
+        # old_size_z_roi = self.roi_depth.size()[1]
+        #
+        # diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
+        # diff_size_z_roi = (old_size_z_roi - new_size_z_roi) * 0.5
+        #
+        # # Here it is really necessary not to update, otherwise you will
+        # # calculate the position of the roi in a wrong way.
+        # self.roi_depth.setSize([new_size_x_roi, new_size_z_roi], update=False)
+        # pos = self.roi_depth.pos()
+        # self.roi_depth.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_z_roi], update=True)
 
-        new_size_x_roi = current_x_view_range / 20
-        new_size_z_roi = current_z_view_range / 20
-
-        if self.fixed_aspect_ratio_depth:
-            if new_size_x_roi > new_size_z_roi:
-                new_size_z_roi = new_size_x_roi
-            else:
-                new_size_x_roi = new_size_z_roi
-
-        old_size_x_roi = self.roi_depth.size()[0]
-        old_size_z_roi = self.roi_depth.size()[1]
-
-        diff_size_x_roi = (old_size_x_roi - new_size_x_roi) * 0.5
-        diff_size_z_roi = (old_size_z_roi - new_size_z_roi) * 0.5
-
-        # Here it is really necessary not to update, otherwise you will
-        # calculate the position of the roi in a wrong way.
-        self.roi_depth.setSize([new_size_x_roi, new_size_z_roi], update=False)
-        pos = self.roi_depth.pos()
-        self.roi_depth.setPos([pos[0] + diff_size_x_roi, pos[1] + diff_size_z_roi], update=True)
+        pass
 
     def save_xy_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal pic."""
