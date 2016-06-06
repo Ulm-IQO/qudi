@@ -19,7 +19,6 @@ Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from PyQt4.QtGui import QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import time
@@ -853,7 +852,7 @@ class PoiManagerGui(GUIBase):
         '''Load a saved ROI from file.
         '''
 
-        this_file = QFileDialog.getOpenFileName(
+        this_file = QtGui.QFileDialog.getOpenFileName(
             self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)

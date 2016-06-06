@@ -21,7 +21,7 @@ Copyright (C) 2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2016 Simon Schmitt simon.schmitt@uni-ulm.de
 """
 
-from PyQt4 import QtGui, QtCore, uic
+from pyqtgraph.Qt import QtGui, QtCore, uic
 import numpy as np
 import os
 from collections import OrderedDict
