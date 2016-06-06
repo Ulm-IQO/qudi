@@ -172,7 +172,7 @@ class EdwardsPump(Base):
         Base.__init__(self, manager, name, configuration=config, callbacks = c_dict)
 
     def activation(self, e):
-        config = selg.getConfiguration()
+        config = self.getConfiguration()
         self.connect(config['interface'])
 
     def deactivation(self, e):
@@ -198,6 +198,7 @@ class EdwardsPump(Base):
         Close connection to instrument.
         """
         self.inst.close()
+        self.rm.close()
 
     def _parse_gauge_answer(self, answer):
         valuess = answer.split(';')
