@@ -31,7 +31,7 @@ class InlineBackend(SingletonConfigurable):
     # make that fit.
     rc = Dict({
         # figures are
-        'figure.figsize': (6.0,4.0),
+        'figure.figsize': (9.0,6.0),
         # play nicely with white background in the Qt and notebook frontend
         'figure.facecolor': (1,1,1,0),
         'figure.edgecolor': (1,1,1,0),
