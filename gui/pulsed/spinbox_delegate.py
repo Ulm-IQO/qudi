@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from PyQt4 import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore
 
 class SpinBoxDelegate(QtGui.QStyledItemDelegate):
     """
