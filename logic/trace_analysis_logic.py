@@ -19,7 +19,7 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 import numpy as np
 from scipy.signal import gaussian
 from scipy.ndimage import filters

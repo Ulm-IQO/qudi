@@ -20,7 +20,7 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 import numpy as np
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 import time
 from collections import OrderedDict
 
