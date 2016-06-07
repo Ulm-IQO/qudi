@@ -176,109 +176,30 @@ class QdplotLogic(GenericLogic):
         return self.plot_range
 
 
-    def start_saving(self, resume=False):
-        """ Starts saving the data in a list.
-
-        @return int: error code (0:OK, -1:error)
-        """
-
-        if not resume:
-            self._data_to_save = []
-            self._saving_start_time = time.time()
-        self._saving = True
-
-        # If the counter is not running, then it should start running so there is data to save
-        if self.isstate('idle'):
-            self.startCount()
-
-        return 0
-
-    def save_data(self, to_file=True, postfix=''):
-        """ Save the counter trace data and writes it to a file.
+    def save_data(self, postfix=''):
+        """ Save the data to a file.
 
         @param bool to_file: indicate, whether data have to be saved to file
         @param str postfix: an additional tag, which will be added to the filename upon save
 
         @return np.array([2 or 3][X]), OrderedDict: array with the
         """
-        self._saving = False
-        self._saving_stop_time = time.time()
-
-        # write the parameters:
+        # Set the parameters:
         parameters = OrderedDict()
-        parameters['Start counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_start_time))
-        parameters['Stop counting time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self._saving_stop_time))
-        parameters['Count frequency (Hz)'] = self._count_frequency
-        parameters['Oversampling (Samples)'] = self._counting_samples
-        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
-
-        if to_file:
-            # If there is a postfix then add separating underscore
-            if postfix == '':
-                filelabel = 'count_trace'
-            else:
-                filelabel = 'count_trace_'+postfix
-
-            # prepare the data in a dict or in an OrderedDict:
-            data = OrderedDict()
-            data = {'Time (s),Signal (counts/s)': self._data_to_save}
-            if self._counting_device._photon_source2 is not None:
-                data = {'Time (s),Signal 1 (counts/s),Signal 2 (counts/s)': self._data_to_save}
-
-            filepath = self._save_logic.get_path_for_module(module_name='Counter')
-            self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
-            #, as_xml=False, precision=None, delimiter=None)
-            self.logMsg('Counter Trace saved to:\n{0}'.format(filepath), msgType='status', importance=3)
-
-        return self._data_to_save, parameters
-
-
-    def save_current_count_trace(self, name_tag=''):
-        """ The current displayed counttrace will be saved.
-
-        @param str name_tag: optional, personal description that will be
-                             appended to the file name
-
-        This method saves the already displayed counts to file and does not
-        accumulate them. The counttrace variable will be saved to file with the
-        provided name!
-        """
+        parameters['User-selected display domain'] = self.plot_domain
+        parameters['User-selected display range'] = self.plot_range
 
         # If there is a postfix then add separating underscore
-        if name_tag == '':
-            filelabel = 'snapshot_count_trace'
+        if postfix == '':
+            filelabel = 'qdplot'
         else:
-            filelabel = 'snapshot_count_trace_'+name_tag
-
-        stop_time = self._count_length/self._count_frequency
-        time_step_size = stop_time/len(self.countdata)
-        x_axis = np.arange(0, stop_time, time_step_size)
+            filelabel = postfix
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        if hasattr(self._counting_device, '_photon_source2'):
-            # if self._counting_device._photon_source2 is None:
-            data['Time (s),Signal 1 (counts/s),Signal 2 (counts/s)'] = np.array((x_axis, self.countdata, self.countdata2)).transpose()
-        else:
-            data['Time (s),Signal (counts/s)'] = np.array((x_axis, self.countdata)).transpose()
+        data[self.h_label + ' (' + self.h_units + ')'] = self.indep_vals
+        data[self.v_label + ' (' + self.v_units + ')'] = self.depen_vals
 
-        # write the parameters:
-        parameters = OrderedDict()
-        parameters['Saved at time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss',
-                                                        time.localtime(time.time()))
-
-        parameters['Count frequency (Hz)'] = self._count_frequency
-        parameters['Oversampling (Samples)'] = self._counting_samples
-        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
-
-        filepath = self._save_logic.get_path_for_module(module_name='Counter')
-        self._save_logic.save_data(data, filepath, parameters=parameters,
-                                   filelabel=filelabel, as_text=True)
-
-        #, as_xml=False, precision=None, delimiter=None)
-        self.logMsg('Current Counter Trace saved to:\n'
-                    '{0}'.format(filepath), msgType='status', importance=3)
-
-
-
-
+        filepath = self._save_logic.get_path_for_module(module_name='qdplot')
+        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+        self.logMsg('Data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
