@@ -189,6 +189,26 @@ def estimate_sine(self, x_axis=None, data=None, params=None):
 ############################################################################
 
 def make_sineexponentialdecay_model(self):
+    """
+    This method creates a model of sine with exponential decay.
+
+    @return tuple: (object model, object params)
+
+    Explanation of the objects:
+        object lmfit.model.CompositeModel model:
+            A model the lmfit module will use for that fit. Here a
+            gaussian model. Returns an object of the class
+            lmfit.model.CompositeModel.
+
+        object lmfit.parameter.Parameters params:
+            It is basically an OrderedDict, so a dictionary, with keys
+            denoting the parameters as string names and values which are
+            lmfit.parameter.Parameter (without s) objects, keeping the
+            information about the current value.
+
+    For further information have a look in:
+    http://cars9.uchicago.edu/software/python/lmfit/builtin_models.html#models.GaussianModel
+    """
 
     def sine_function(x, amplitude, frequency, phase):
         """
@@ -211,8 +231,24 @@ def make_sineexponentialdecay_model(self):
     return model, params
 
 def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
+    """
+    This method provides a estimation of a initial values
+     for a sine exponential decay function.
+
+    @param array x_axis: x values
+    @param array data: value of each data point corresponding to x values
+    @param Parameters object params: object includes parameter dictionary which can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
     error = 0
     parameters = [x_axis, data]
+    #varification of data
     for var in parameters:
         if not isinstance(var, (frozenset, list, set, tuple, np.ndarray)):
             self.logMsg('Given parameter is no array.',
@@ -227,9 +263,8 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
                     msgType='error')
         error = -1
         
-    # set the offset as the average of the data
-    offset = np.average(data)
-
+    # set the offset as the median of the data
+    offset = np.median(data)
     # level data
     data_level = data - offset
 
@@ -242,77 +277,21 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     fourier = np.fft.fft(data_level_zeropaded)
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
     freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
-    frequency_max = np.abs(freq[np.log(fourier).argmax()])
-    fourier_real = abs(fourier.real)
+    fourier_power = (fourier * fourier.conj()).real
+    frequency_max = np.abs(freq[fourier_power.argmax()])
     params['frequency'].value = frequency_max
-    def fwhm(x, y, k=3):
-        """
-        Determine full-with-half-maximum of a peaked set of points, x and y.
 
-        Assumes that there is only one peak present in the datasset.  The function
-        uses a spline interpolation of order k.
+    #remove noise
+    a = np.std(fourier_power[:int(len(freq)/2)])
+    for i in range(0,int(len(fourier)/2)):
+        if fourier_power[i]<=a:
+            fourier_power[i] = 0
 
-        Function taken from:
-        http://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak/14327755#14327755
-
-        Question from: http://stackoverflow.com/users/490332/harpal
-        Answer: http://stackoverflow.com/users/1146963/jdg
-        """
-
-
-        half_max = max(y) / 2.0
-        s = splrep(x, y- half_max)
-        roots = sproot(s)
-        if len(roots) < 2:
-            # self.logMsg('No peak was found.',
-            #             msgType='error')
-            print("No peaks")
-            return [0.0010001]         #pass
-        elif len(roots) > 2:
-            # self.logMsg('Multiple peaks was found.',
-            #             msgType='error')
-            print("Multiple paires of roots.")
-            return [abs(roots[1] - roots[0])*2]
-            #pass
-        else:
-            return [abs(roots[1] - roots[0])]
-
-        # print(freq)
-        # print(len(fourier_real))
-    #adjustion the order for freq and fourier, this is not necessity, but it need to be awared that the order of
-    #frequency is not from minus inf to plus inf.
-    freq_plus = [0] * len(freq)
-    for i in range(0, int(len(freq) / 2)):
-        freq_plus[i + int(len(freq) / 2)] = freq[i]
-    for i in range(int(len(freq) * 0.5), len(freq)):
-        freq_plus[i - int(len(freq) / 2)] = freq[i]
-    fourier_real_plus = [0] * len(fourier_real)
-    for i in range(0, int(len(fourier_real) / 2)):
-        fourier_real_plus[i + int(len(fourier_real) / 2)] = fourier_real[i]
-    for i in range(int(len(fourier_real) * 0.5), len(fourier_real)):
-        fourier_real_plus[i - int(len(fourier_real) / 2)] = fourier_real[i]
-    #print(len(np.array(freq_plus)), np.array(freq_plus))
-
-
-    gaus = gaussian(3,3)
-    smooth_data = filters.convolve1d(fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2,
-                                     gaus / gaus.sum(), mode='mirror')
-    # plt.plot(freq_plus[int(len(freq) / 2):], smooth_data, '-g')
-    # plt.plot(freq_plus[int(len(freq) / 2):],
-    #          fourier_real_plus[int(len(freq) / 2):] - max(fourier_real_plus) / 2, '-or')
-    # plt.plot(freq_plus[int(len(freq) / 2):], splev(freq[:int(len(freq) / 2)],
-    #                                                splrep(np.array(freq_plus[int(len(freq_plus) / 2):]),
-    #                                                       np.array(
-    #                                                           fourier_real_plus[int(len(freq_plus) / 2):] - max(
-    #                                                               fourier_real_plus) / 2))))
-    #plt.xlim(0, 0.1)
-    #plt.show()
-    
-    # estimate life time from peak width
-    fwhm_plus = fwhm(np.array(freq_plus[int(len(freq_plus)/2):]),np.array(smooth_data),k=3)
-
-    params['lifetime'].value = 1 / (fwhm_plus[0]*1.5)
-    print("FWHM", fwhm_plus[0])
+    #calculating the width of the FT peak for the estimation of lifetime
+    s = 0
+    for i in range(0,int(len(freq) / 2)):
+        s+= fourier_power[i]*abs(freq[1]-freq[0])/max(fourier_power[:int(len(freq) / 2)])
+    params['lifetime'].value = 0.5 / s
 
     # estimating the phase from the first point
     # TODO: This only works when data starts at 0
@@ -326,28 +305,31 @@ def estimate_sineexponentialdecay(self,x_axis=None, data=None, params=None):
     elif np.gradient(data)[0] > 0 and data_level[0] < 0:
         phase = 2. * np.pi - phase
 
-
+    # values and bounds of initial parameters
     params['phase'].value = phase
     params['offset'].value = offset
-    #params['lifetime'].value = 1/(fwhm_plus*2.8)
-    
-    #bounds of initial parameters
-    params['lifetime'].min = 0
+
+    params['lifetime'].min = 3 * (x_axis[1]-x_axis[0])    
     params['lifetime'].max = 1/(abs(freq[1]-freq[0])*1.5)   
     params['frequency'].min = min(0.1 / (x_axis[-1]-x_axis[0]),freq[3])
     params['frequency'].max = min(0.5 / stepsize, freq.max()-abs(freq[2]-freq[0]))
-    
-    print('\n','lifetime.min: ',params['lifetime'].min,'\n',
-          'lifetime.max: ',params['lifetime'].max,'\n','frequency.min: ',
-          params['frequency'].min,'\n','frequency.max: ',params['frequency'].max)
-    
-    
-    
+    params['amplitude'].min = 0
+
     return error, params
 
-# Basically the same as sine fitting.
 def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
-    #Todo: docstring
+    """
+    This method performes a sine exponential decay fit on the provided data.
+
+    @param array[] axis: axis values
+    @param array[]  x_data: data
+    @param dict add_parameters: Additional parameters
+
+    @return object result: lmfit.model.ModelFit object, all parameters
+                           provided about the fitting, like: success,
+                           initial fitting values, best fitting values, data
+                           with best fit with given axis,...
+    """
     sineexponentialdecay, params = self.make_sineexponentialdecay_model()
 
     error, params = self.estimate_sineexponentialdecay(axis, data, params)
@@ -358,9 +340,8 @@ def make_sineexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
     try:
         result = sineexponentialdecay.fit(data, x=axis, params=params)
     except:
-        # self.logMsg('The sineexponentialdecay fit did not work.',
-        #             msgType='warning')
+        self.logMsg('The sineexponentialdecay fit did not work.','message: {}'.format(str(result.message)),
+                    msgType='warning')
         result = sineexponentialdecay.fit(data, x=axis, params=params)
-        print("Error in sinexp fit:",result.message)
 
     return result
