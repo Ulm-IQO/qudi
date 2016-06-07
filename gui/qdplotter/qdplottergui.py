@@ -30,6 +30,7 @@ from gui.guibase import GUIBase
 
 
 class QdplotMainWindow(QtGui.QMainWindow):
+
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self):
@@ -44,19 +45,20 @@ class QdplotMainWindow(QtGui.QMainWindow):
 
 
 class QdplotterGui(GUIBase):
+
     """ FIXME: Please document
     """
     _modclass = 'qdplotgui'
     _modtype = 'gui'
 
-    ## declare connectors
+    # declare connectors
     _in = {'qdplotlogic1': 'QdplotLogic'}
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
 
     def __init__(self, manager, name, config, **kwargs):
-        ## declare actions for state transitions
+        # declare actions for state transitions
         state_actions = {'onactivate': self.initUI,
                          'ondeactivate': self.deactivation}
         super().__init__(manager, name, config, state_actions, **kwargs)
@@ -66,7 +68,7 @@ class QdplotterGui(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
+            self.logMsg('{}: {}'.format(key, config[key]),
                         msgType='status')
 
 
@@ -129,6 +131,7 @@ class QdplotterGui(GUIBase):
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+        self._mw.save_Action.triggered.connect(self.save_clicked)
 
         #####################
         self._qdplot_logic.sigPlotDataUpdated.connect(self.updateData)
@@ -176,10 +179,7 @@ class QdplotterGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        self.logMsg('Implement saving',
-                    msgType='warning',
-                    importance=3
-                    )
+        self._qdplot_logic.save_data()
 
     def domain_changed(self):
         """ Handling the change of the domain.
