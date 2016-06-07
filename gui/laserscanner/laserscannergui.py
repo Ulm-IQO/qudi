@@ -28,7 +28,7 @@ import os
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colormaps import ColorScaleRainbow
+from gui.colormaps import ColorScaleInferno
 
 
 class VoltScanMainWindow(QtGui.QMainWindow):
@@ -116,7 +116,7 @@ class VoltScanGui(GUIBase):
 
 
         # Get the colorscales at set LUT
-        my_colors = ColorScaleRainbow()
+        my_colors = ColorScaleInferno()
 
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 

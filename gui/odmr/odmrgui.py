@@ -31,7 +31,7 @@ import os
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colormaps import ColorScaleRainbow
+from gui.colormaps import ColorScaleInferno
 
 
 class ODMRMainWindow(QtGui.QMainWindow):
@@ -161,7 +161,7 @@ class ODMRGui(GUIBase):
         self._mw.odmr_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Get the colorscales at set LUT
-        my_colors = ColorScaleRainbow()
+        my_colors = ColorScaleInferno()
         self.odmr_matrix_image.setLookupTable(my_colors.lut)
 
         # Set the state button as ready button as default setting.
