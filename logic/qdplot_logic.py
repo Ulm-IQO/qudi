@@ -150,6 +150,7 @@ class QdplotLogic(GenericLogic):
 
         @param string units: symbol for units
         """
+        print('label_in_sethlabel',label)
         self.h_label = label
         self.h_units = units
 
@@ -163,6 +164,7 @@ class QdplotLogic(GenericLogic):
 
         @param string units: symbol for units
         """
+        print('label_in_setvlabel',label)
         self.v_label = label
         self.v_units = units
 

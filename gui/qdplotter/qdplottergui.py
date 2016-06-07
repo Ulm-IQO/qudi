@@ -124,10 +124,10 @@ class QdplotterGui(GUIBase):
         self._mw.range_min_DoubleSpinBox.valueChanged.connect(self.range_changed)
         self._mw.range_max_DoubleSpinBox.valueChanged.connect(self.range_changed)
 
-        self._mw.horizontal_label_lineEdit.editingFinished.connect(self.labels_changed)
-        self._mw.horizontal_units_lineEdit.editingFinished.connect(self.labels_changed)
-        self._mw.vertical_label_lineEdit.editingFinished.connect(self.labels_changed)
-        self._mw.vertical_units_lineEdit.editingFinished.connect(self.labels_changed)
+        self._mw.horizontal_label_lineEdit.editingFinished.connect(self.h_label_changed)
+        self._mw.horizontal_units_lineEdit.editingFinished.connect(self.h_label_changed)
+        self._mw.vertical_label_lineEdit.editingFinished.connect(self.v_label_changed)
+        self._mw.vertical_units_lineEdit.editingFinished.connect(self.v_label_changed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -171,6 +171,8 @@ class QdplotterGui(GUIBase):
         self._mw.range_min_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[0])
         self._mw.range_max_DoubleSpinBox.setValue(self._qdplot_logic.get_range()[1])
 
+        print('v_label in logic when updatePLot',self._qdplot_logic.v_label)
+
         self._mw.horizontal_label_lineEdit.setText(self._qdplot_logic.h_label)
         self._mw.horizontal_units_lineEdit.setText(self._qdplot_logic.h_units)
         self._mw.vertical_label_lineEdit.setText(self._qdplot_logic.v_label)
@@ -200,10 +202,12 @@ class QdplotterGui(GUIBase):
 
         return
 
-    def labels_changed(self):
+    def h_label_changed(self):
         self._qdplot_logic.set_hlabel(self._mw.horizontal_label_lineEdit.text(),
                                       self._mw.horizontal_units_lineEdit.text()
                                       )
+
+    def v_label_changed(self):
         self._qdplot_logic.set_vlabel(self._mw.vertical_label_lineEdit.text(),
                                       self._mw.vertical_units_lineEdit.text()
                                       )
