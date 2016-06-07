@@ -256,7 +256,7 @@ class ConfocalLogic(GenericLogic):
         self._scan_counter = 0
         self._zscan = False
         self.stopRequested = False
-        self.yz_instead_of_xz_scan = False
+        self.depth_scan_dir_is_xz = True
         self.permanent_scan = False
 
 
@@ -475,7 +475,7 @@ class ConfocalLogic(GenericLogic):
         self._return_AL = np.zeros(self._return_XL.shape)
 
         if self._zscan:
-            if not self.yz_instead_of_xz_scan:
+            if self.depth_scan_dir_is_xz:
                 self._image_vert_axis = self._Z
                 # creates an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._X), 4))
@@ -483,7 +483,7 @@ class ConfocalLogic(GenericLogic):
                 self.depth_image[:,:,1] = self._current_y * np.ones((len(self._image_vert_axis), len(self._X)))
                 z_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Z)
                 self.depth_image[:,:,2] = z_value_matrix.transpose()
-            else: # if self.xy_instead_of_xz == True
+            else: # depth scan is yz instead of xz
                 self._image_vert_axis = self._Z
                 # creats an image where each pixel will be [x,y,z,counts]
                 self.depth_image = np.zeros((len(self._image_vert_axis), len(self._Y), 4))
@@ -686,7 +686,7 @@ class ConfocalLogic(GenericLogic):
             # scan of a single line
             line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
-            if not self.yz_instead_of_xz_scan:
+            if self.depth_scan_dir_is_xz:
                 return_line = np.vstack((
                     self._return_XL,
                     image[self._scan_counter,0,1] * np.ones(self._return_XL.shape),
@@ -706,7 +706,7 @@ class ConfocalLogic(GenericLogic):
             return_line_counts = self._scanning_device.scan_line(return_line)
             # updating images
             if self._zscan:
-                if not self.yz_instead_of_xz_scan:
+                if self.depth_scan_dir_is_xz:
                     self.depth_image[self._scan_counter,:,3] = line_counts
                 else:
                     self.depth_image[self._scan_counter,:,3] = line_counts
