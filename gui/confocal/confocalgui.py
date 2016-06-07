@@ -946,6 +946,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_clock_frequency(self._sd.clock_frequency_InputWidget.value())
         self._scanning_logic.return_slowness = self._sd.return_slowness_InputWidget.value()
         self._scanning_logic.permanent_scan = self._sd.loop_scan_CheckBox.isChecked()
+        self._scanning_logic.depth_scan_dir_is_xz = self._sd.depth_dir_x_radioButton.isChecked()
         self.fixed_aspect_ratio_xy = self._sd.fixed_aspect_xy_checkBox.isChecked()
         self.fixed_aspect_ratio_depth = self._sd.fixed_aspect_depth_checkBox.isChecked()
         self.slider_small_step = self._sd.slider_small_step_SpinBox.value()
@@ -959,6 +960,11 @@ class ConfocalGui(GUIBase):
         self._sd.clock_frequency_InputWidget.setValue(int(self._scanning_logic._clock_frequency))
         self._sd.return_slowness_InputWidget.setValue(int(self._scanning_logic.return_slowness))
         self._sd.loop_scan_CheckBox.setChecked(self._scanning_logic.permanent_scan)
+        if self._scanning_logic.depth_scan_dir_is_xz:
+            self._sd.depth_dir_x_radioButton.setChecked(True)
+        else:
+            self._sd.depth_dir_y_radioButton.setChecked(True)
+
         self._sd.fixed_aspect_xy_checkBox.setChecked(self.fixed_aspect_ratio_xy)
         self._sd.fixed_aspect_depth_checkBox.setChecked(self.fixed_aspect_ratio_depth)
         self._sd.slider_small_step_SpinBox.setValue(int(self.slider_small_step))
@@ -1044,9 +1050,6 @@ class ConfocalGui(GUIBase):
         """
         self._scanning_logic.start_scanning(zscan=True)
         self.disable_scan_actions()
-
-    def rotate_depth_scan_clicked(self):
-        self._scanning_logic.yz_instead_of_xz_scan = not self._scanning_logic.yz_instead_of_xz_scan
 
     def refocus_clicked(self):
         """ Manages what happens if the optimizer is started.
