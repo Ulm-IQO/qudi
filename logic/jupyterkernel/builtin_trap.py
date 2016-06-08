@@ -1,12 +1,28 @@
-"""
-A context manager for managing things injected into :mod:`__builtin__`.
+# -*- coding: utf-8 -*-
+""" A context manager for managing things injected into __builtin__.
 
-Authors:
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-* Brian Granger
-* Fernando Perez
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 """
+
 #-----------------------------------------------------------------------------
+#  Authors:
+#
+#  * Brian Granger
+#  * Fernando Perez
+#
 #  Copyright (C) 2010-2011  The IPython Development Team.
 #
 #  Distributed under the terms of the BSD License.

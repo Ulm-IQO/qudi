@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Infrastructure for registering and firing callbacks on application events.
 
 Unlike :mod:`IPython.core.hooks`, which lets end users set single functions to
@@ -8,9 +9,6 @@ can be registered for the same event without needing to be aware of one another.
 The functions defined in this module are no-ops indicating the names of available
 events and the arguments which will be passed to them.
 
-.. note::
-
-   This API is experimental in IPython 2.0, and may be revised in future versions.
 """
 
 class EventManager():
