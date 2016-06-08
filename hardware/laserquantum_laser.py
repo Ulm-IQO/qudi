@@ -65,7 +65,12 @@ class LaserQuantumLaser(Base):
         try:
             self.rm = visa.ResourceManager()
             rate = 9600 if self.psu == PSUTYPES['SMD6000'] else 19200
-            self.inst = self.rm.open_resource(interface, baud_rate=rate, term_chars='\n', send_end=True)
+            self.inst = self.rm.open_resource(
+                interface,
+                baud_rate=rate,
+                write_termination='\r\n',
+                read_termination='\r\n',
+                send_end=True)
         except visa.VisaIOError as e:
             self.logExc()
             return False
@@ -89,7 +94,7 @@ class LaserQuantumLaser(Base):
     def get_control_mode(self):
         if self.psu == PSUTYPES['FPU']:
             return 'MIXED'
-        elif self.psu == PSUTYPES('SMD6000'):
+        elif self.psu == PSUTYPES['SMD6000']:
             power = self.get_power()
             if '0000' in power:
                 return 'CURRENT'
@@ -103,7 +108,7 @@ class LaserQuantumLaser(Base):
             return 'MIXED'
         elif self.psu == PSUTYPES['SMD6000']:
             if mode == 'POWER':
-                power = 
+                power = self.get_power()
                 self.inst.ask('POWER={}'.format(power))
             else:
                 self.inst.ask('POWER=0')
@@ -120,7 +125,7 @@ class LaserQuantumLaser(Base):
         return self.inst.ask('POWER?')
 
     def get_power_setpoint(self):
-        if self.psu != PSUTYPES('SMD6000'):
+        if self.psu != PSUTYPES['SMD6000']:
             return self.inst.ask('SETPOWER?')
 
     def set_power_setpoint(self, power):
@@ -159,13 +164,13 @@ class LaserQuantumLaser(Base):
         return self.inst.ask('LASTEMP')
 
     def get_lcd(self):
-        if self.psu == PSUTYPE['SMD12'] or self.psu == PSUTYPE['SMD6000']:
+        if self.psu == PSUTYPES['SMD12'] or self.psu == PSUTYPES['SMD6000']:
             return ''
         else:
             return self.inst.ask('STATUSLCD?')
 
     def get_status(self):
-        if self.psu == PSUTYPES('SMD6000'):
+        if self.psu == PSUTYPES['SMD6000']:
             return self.inst.ask('STAT?')
         else:
             return self.inst.ask('STATUS?')
