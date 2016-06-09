@@ -26,21 +26,22 @@ Copyright (C) 2015
 import numpy as np
 import pyqtgraph as pg
 
+
 class ColorScale():
-    #you need to add two numpy arrays,  COLORS and COLORS_IBV when subclassing
+
+    # you need to add two numpy arrays,  COLORS and COLORS_INV when subclassing
 
     def __init__(self):
         color_positions = np.linspace(0.0, 1.0, num=len(self.COLORS))
 
         self.colormap = pg.ColorMap(color_positions, self.COLORS.astype(int))
-        self.cmap_normed = pg.ColorMap(color_positions, self.COLORS_INV/255)
-        
+        self.cmap_normed = pg.ColorMap(color_positions, self.COLORS_INV / 255)
+
         # get the LookUpTable (LUT), first two params should match the position
         # scale extremes passed to ColorMap().
         # Return an RGB(A) lookup table (ndarray). Insert starting and stopping
         # value and the number of points in the returned lookup table:
         self.lut = self.colormap.getLookupTable(0, 1, 2000)
-
 
 
 class ColorScaleRainbow(ColorScale):
@@ -1119,3 +1120,23 @@ class ColorScaleViridis(ColorScale):
                  ], dtype=np.float)*255
     COLORS_INV = COLORS[::-1]
 
+
+class QudiPalette():
+
+    blue = pg.mkColor(34, 23, 244)
+    c1 = blue
+
+    orange = pg.mkColor(255, 164, 14)
+    c2 = orange
+
+    magenta = pg.mkColor(255, 52, 135)
+    c3 = magenta
+
+    green = pg.mkColor(0, 139, 0)
+    c4 = green
+
+    cyan = pg.mkColor(23, 190, 207)
+    c5 = cyan
+
+    purple = pg.mkColor(133, 0, 133)
+    c6 = purple

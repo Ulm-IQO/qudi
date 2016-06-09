@@ -31,7 +31,8 @@ import os
 
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from gui.colormaps import ColorScaleInferno
+from gui.colordefs import ColorScaleInferno
+from gui.colordefs import QudiPalette as palette
 from gui.fitsettings import FitSettingsWidget
 
 # This _fromUtf8 bit was copied from the gui code produced using PyQt4 UI code generator
@@ -306,15 +307,19 @@ class ConfocalGui(GUIBase):
                 self._optimizer_logic.refocus_XY_size
             )
         )
-        self.depth_refocus_image = pg.ScatterPlotItem(
+        self.depth_refocus_image = pg.PlotDataItem(
             x=self._optimizer_logic._zimage_Z_values,
             y=self._optimizer_logic.z_refocus_line,
-            symbol='o'
+            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+            symbol='o',
+            symbolPen=palette.c1,
+            symbolBrush=palette.c1,
+            symbolSize=7
         )
         self.depth_refocus_fit_image = pg.PlotDataItem(
             x=self._optimizer_logic._fit_zimage_Z_values,
             y=self._optimizer_logic.z_fit_data,
-            pen=QtGui.QPen(QtGui.QColor(255, 0, 255, 255))
+            pen=pg.mkPen(palette.c2)
         )
 
         # Add the display item to the xy and depth VieWidget, which was defined in
@@ -332,8 +337,8 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
-        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255, 0, 255, 255), 0.02), pos=50, angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(QtGui.QColor(255, 0, 255, 255), 0.02), pos=50, angle=0, movable=False)
+        self.vLine = pg.InfiniteLine(pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(pen=QtGui.QPen(palette.green, 0.02), pos=50, angle=0, movable=False)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.vLine, ignoreBounds=True)
         self._mw.xy_refocus_ViewWidget_2.addItem(self.hLine, ignoreBounds=True)
 
@@ -374,9 +379,9 @@ class ConfocalGui(GUIBase):
 
         # create horizontal and vertical line as a crosshair in xy image:
         self.hline_xy = CrossLine(pos=self.roi_xy.pos() + self.roi_xy.size() * 0.5,
-                                  angle=0, pen={'color': "F0F", 'width': 1})
+                                  angle=0, pen={'color': palette.green, 'width': 1})
         self.vline_xy = CrossLine(pos=self.roi_xy.pos() + self.roi_xy.size() * 0.5,
-                                  angle=90, pen={'color': "F0F", 'width': 1})
+                                  angle=90, pen={'color': palette.green, 'width': 1})
 
         # connect the change of a region with the adjustment of the crosshair:
         self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
@@ -408,12 +413,12 @@ class ConfocalGui(GUIBase):
         self.hline_depth = CrossLine(
             pos=self.roi_depth.pos() + self.roi_depth.size() * 0.5,
             angle=0,
-            pen={'color': "F0F", 'width': 1}
+            pen={'color': palette.green, 'width': 1}
         )
         self.vline_depth = CrossLine(
             pos=self.roi_depth.pos() + self.roi_depth.size() * 0.5,
             angle=90,
-            pen={'color': "F0F", 'width': 1}
+            pen={'color': palette.green, 'width': 1}
         )
         # connect the change of a region with the adjustment of the crosshair:
         self.roi_depth.sigRegionChanged.connect(self.hline_depth.adjust)
