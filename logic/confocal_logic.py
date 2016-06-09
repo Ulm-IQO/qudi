@@ -18,6 +18,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015 Kay D. Jahnke  kay.jahnke@alumni.uni-ulm.de
 Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 Copyright (C) 2015 Lachlan J. Rogers lachlan.j.rogers@quantum.diamonds
+Copyright (C) 2016 Florian Frank  florian.frank@uni-ulm.de
 """
 
 
@@ -26,6 +27,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from core.util.numpyhelpers import numpy_to_b, numpy_from_b
 from collections import OrderedDict
+from copy import copy
 import numpy as np
 
 
@@ -313,7 +315,6 @@ class ConfocalLogic(GenericLogic):
 
         # Sets connections between signals and functions
         self.signal_scan_lines_next.connect(self._scan_line, QtCore.Qt.QueuedConnection)
-        self.signal_change_position.connect(self._change_position, QtCore.Qt.QueuedConnection)
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
 
@@ -494,9 +495,6 @@ class ConfocalLogic(GenericLogic):
                 # now we are scanning along the y-axis, so we need a new return line along Y:
                 self._return_YL = np.linspace(self._YL[-1], self._YL[0], self.return_slowness)
                 self._return_AL = np.zeros(self._return_YL.shape)
-            # this should do the whole tilt correction for scanning
-            if self.TiltCorrection:
-                self.depth_image[:,:,2] += self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
             self.sigImageDepthInitialized.emit()
         else:
             self._image_vert_axis = self._Y
@@ -506,9 +504,6 @@ class ConfocalLogic(GenericLogic):
             y_value_matrix = np.full((len(self._X), len(self._image_vert_axis)), self._Y)
             self.xy_image[:,:,1] = y_value_matrix.transpose()
             self.xy_image[:,:,2] = self._current_z * np.ones((len(self._image_vert_axis), len(self._X)))
-            # this should do the whole tilt correction for scanning
-            if self.TiltCorrection:
-                self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
             self.sigImageXYInitialized.emit()
         return 0
 
@@ -603,6 +598,7 @@ class ConfocalLogic(GenericLogic):
         if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
             return -1
         else:
+            self._change_position(tag)
             self.signal_change_position.emit(tag)
             return 0
 
@@ -612,12 +608,20 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device.scanner_set_position(
+        if tag == 'optimizer' or tag == 'scanner':
+            self._scanning_device.scanner_set_position(
             x = self._current_x,
             y = self._current_y,
-            z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
+            z = self._current_z,
             a = self._current_a
             )
+        else:
+            self._scanning_device.scanner_set_position(
+                x = self._current_x,
+                y = self._current_y,
+                z = self._current_z + self._calc_dz(x=self._current_x, y=self._current_y),
+                a = self._current_a
+                )
         return 0
 
 
@@ -628,11 +632,12 @@ class ConfocalLogic(GenericLogic):
                       position in microns
         """
         #FIXME: change that to SI units!
-        return [
-            self._current_x,
-            self._current_y,
-            self._current_z + self._calc_dz(x=self._current_x, y=self._current_y)
-            ]
+        # return [
+        #     self._current_x,
+        #     self._current_y,
+        #     self._current_z + self._calc_dz(x=self._current_x, y=self._current_y)
+        #     ]
+        return self._scanning_device.get_scanner_position()[:3]
 
 
     def _scan_line(self):
@@ -663,9 +668,17 @@ class ConfocalLogic(GenericLogic):
                 return
 
         if self._zscan:
-            image = self.depth_image
+            if self.TiltCorrection:
+                image = copy(self.depth_image)
+                image[:,:,2] += self._calc_dz(x = image[:,:,0], y = image[:,:,1])
+            else:
+                image = self.depth_image
         else:
-            image = self.xy_image
+            if self.TiltCorrection:
+                image = copy(self.xy_image)
+                image[:,:,2] += self._calc_dz(x = image[:,:,0], y = image[:,:,1])
+            else:
+                image = self.xy_image
 
         try:
             if self._scan_counter == 0:
@@ -916,15 +929,6 @@ class ConfocalLogic(GenericLogic):
         else:
             dz = -( (x - self._tiltreference_x)*self._tilt_variable_ax + (y - self._tiltreference_y)*self._tilt_variable_ay )
             return dz
-
-    def clicked_TiltCorrection(self,e):
-        if e:
-            self.xy_image[:,:,2] += self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
-            self.depth_image[:,:,2] += self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
-        else:
-            self.xy_image[:,:,2] -= self._calc_dz(x = self.xy_image[:,:,0], y = self.xy_image[:,:,1])
-            self.depth_image[:,:,2] -= self._calc_dz(x = self.depth_image[:,:,0], y = self.depth_image[:,:,1])
-
 
     def history_forward(self):
         if self.history_index < len(self.history) - 1:
