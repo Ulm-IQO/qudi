@@ -420,7 +420,7 @@ class ODMRLogic(GenericLogic):
         if self.getState() == 'locked':
             return -1
         else:
-            error_code = self._mw_device.set_frequency(frequency*1e6) #times 1e6 to have freq in Hz
+            error_code = self._mw_device.set_frequency(frequency) #times 1e6 is now done in gui!!
             return error_code
 
 
@@ -429,7 +429,7 @@ class ODMRLogic(GenericLogic):
 
         @return float: current frequency of the MW source
         """
-        frequency = self._mw_device.get_frequency()/1e6 #divided by 1e6 to get freq in MHz
+        frequency = self._mw_device.get_frequency() #divided by 1e6 is now done in gui!!
         return frequency
 
 
