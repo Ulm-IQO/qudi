@@ -1233,6 +1233,7 @@ class ConfocalGui(GUIBase):
         self.update_input_y(y_pos)
 
         self._scanning_logic.set_position('roixy', x=x_pos, y=y_pos)
+        self._optimizer_logic.set_position('roixy', x=x_pos, y=y_pos)
 
     def update_from_roi_depth(self, roi):
         """The user manually moved the Z ROI, adjust all other GUI elements accordingly
@@ -1259,6 +1260,7 @@ class ConfocalGui(GUIBase):
         self.update_input_z(z_pos)
 
         self._scanning_logic.set_position('roidepth', x=x_pos, z=z_pos)
+        self._optimizer_logic.set_position('roidepth', x=x_pos, z=-z_pos)
 
     def update_from_key(self, x=None, y=None, z=None):
         """The user pressed a key to move the crosshair, adjust all GUI elements.
@@ -1288,6 +1290,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth(x=x_pos)
         self.update_slider_x(x_pos)
         self._scanning_logic.set_position('xinput', x=x_pos)
+        self._optimizer_logic.set_position('xinput', x=x_pos)
 
     def update_from_input_y(self):
         """The user changed the number in the y position spin box, adjust all other GUI elements."""
@@ -1295,6 +1298,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_xy(y=y_pos)
         self.update_slider_y(y_pos)
         self._scanning_logic.set_position('yinput', y=y_pos)
+        self._optimizer_logic.set_position('yinput', y=y_pos)
 
     def update_from_input_z(self):
         """The user changed the number in the z position spin box, adjust all other GUI elements."""
@@ -1302,6 +1306,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth(z=z_pos)
         self.update_slider_z(z_pos)
         self._scanning_logic.set_position('zinput', z=z_pos)
+        self._optimizer_logic.set_position('zinput', z=z_pos)
 
     def update_input_x(self, x_pos):
         """ Update the displayed x-value.
@@ -1337,6 +1342,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth(x=x_pos)
         self.update_input_x(x_pos)
         self._scanning_logic.set_position('xslider', x=x_pos)
+        self._optimizer_logic.set_position('xslider', x=x_pos)
 
     def update_from_slider_y(self, sliderValue):
         """The user moved the y position slider, adjust the other GUI elements.
@@ -1347,6 +1353,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_xy(y=y_pos)
         self.update_input_y(y_pos)
         self._scanning_logic.set_position('yslider', y=y_pos)
+        self._optimizer_logic.set_position('yslider', y=y_pos)
 
     def update_from_slider_z(self, sliderValue):
         """The user moved the z position slider, adjust the other GUI elements.
@@ -1357,6 +1364,7 @@ class ConfocalGui(GUIBase):
         self.update_roi_depth(z=z_pos)
         self.update_input_z(z_pos)
         self._scanning_logic.set_position('zslider', z=z_pos)
+        self._optimizer_logic.set_position('zslider', z=z_pos)
 
     def update_slider_x(self, x_pos):
         """ Update the x slider when a change happens.
@@ -1404,16 +1412,21 @@ class ConfocalGui(GUIBase):
 
     def use_tiltcorrection_clicked(self, e):
         """ """
+        print('gui tilt clicked',e)
         self._scanning_logic.TiltCorrection = e
-        self._scanning_logic.clicked_TiltCorrection(e)
+        # self._scanning_logic.clicked_TiltCorrection(e)
+        self._optimizer_logic.tiltcorrection = e
+        # self._optimizer_logic.clicked_TiltCorrection(e)
 
     def calculate_tiltcorrection_clicked(self):
         """ """
         self._scanning_logic.calc_tilt_correction()
+        self._optimizer_logic.calc_tilt_correction()
 
     def set_tiltpoint_01_clicked(self):
         """Set the crosshair position as the first reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point1()
+        self._optimizer_logic.set_tilt_point1()
         self._mw.tilt_01_x_pos_doubleSpinBox.setValue(self._scanning_logic.point1[0])
         self._mw.tilt_01_y_pos_doubleSpinBox.setValue(self._scanning_logic.point1[1])
         self._mw.tilt_01_z_pos_doubleSpinBox.setValue(self._scanning_logic.point1[2])
@@ -1421,6 +1434,7 @@ class ConfocalGui(GUIBase):
     def set_tiltpoint_02_clicked(self):
         """Set the crosshair position as the second reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point2()
+        self._optimizer_logic.set_tilt_point2()
         self._mw.tilt_02_x_pos_doubleSpinBox.setValue(self._scanning_logic.point2[0])
         self._mw.tilt_02_y_pos_doubleSpinBox.setValue(self._scanning_logic.point2[1])
         self._mw.tilt_02_z_pos_doubleSpinBox.setValue(self._scanning_logic.point2[2])
@@ -1428,6 +1442,7 @@ class ConfocalGui(GUIBase):
     def set_tiltpoint_03_clicked(self):
         """Set the crosshair position as the third reference point for tilt correction calculation."""
         self._scanning_logic.set_tilt_point3()
+        self._optimizer_logic.set_tilt_point3()
         self._mw.tilt_03_x_pos_doubleSpinBox.setValue(self._scanning_logic.point3[0])
         self._mw.tilt_03_y_pos_doubleSpinBox.setValue(self._scanning_logic.point3[1])
         self._mw.tilt_03_z_pos_doubleSpinBox.setValue(self._scanning_logic.point3[2])
