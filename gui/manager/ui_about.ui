@@ -91,15 +91,15 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>96</width>
-            <height>560</height>
+            <width>608</width>
+            <height>456</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
             <widget class="QLabel" name="aboutText_2">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;QuDi is developed by the Institute for Quantum Optics at Ulm University. &lt;br/&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Lachlan J, Rogers&lt;/p&gt;&lt;p&gt;Nikolas Tomek&lt;/p&gt;&lt;p&gt;Florian S. Frank&lt;/p&gt;&lt;p&gt;Mathias Metsch&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Simon Schmitt&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;Jochen Scheuer&lt;/p&gt;&lt;p&gt;Ou Wang&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;QuDi is developed by the Institute for Quantum Optics at Ulm University. &lt;br/&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Kay D. Jahnke&lt;/p&gt;&lt;p&gt;Jan M. Binder&lt;/p&gt;&lt;p&gt;Alex Stark&lt;/p&gt;&lt;p&gt;Lachlan J, Rogers&lt;/p&gt;&lt;p&gt;Nikolas Tomek&lt;/p&gt;&lt;p&gt;Florian S. Frank&lt;/p&gt;&lt;p&gt;Mathias Metsch&lt;/p&gt;&lt;p&gt;Christoph Müller&lt;/p&gt;&lt;p&gt;Simon Schmitt&lt;/p&gt;&lt;p&gt;Thomas Unden&lt;/p&gt;&lt;p&gt;Jochen Scheuer&lt;/p&gt;&lt;p&gt;Ou Wang&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline;&quot;&gt;External Contributors:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Tobias Gehring, DTU Copenhagen&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -127,8 +127,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>608</width>
-            <height>1566</height>
+            <width>124</width>
+            <height>6116</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
