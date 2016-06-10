@@ -318,6 +318,8 @@ class ConfocalLogic(GenericLogic):
         self.signal_start_scanning.connect(self.start_scanner, QtCore.Qt.QueuedConnection)
         self.signal_continue_scanning.connect(self.continue_scanner, QtCore.Qt.QueuedConnection)
 
+        self._change_position('activation')
+
 
     def deactivation(self, e):
         """ Reverse steps of activation
@@ -608,7 +610,7 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        if tag == 'optimizer' or tag == 'scanner':
+        if tag == 'optimizer' or tag == 'scanner' or tag == 'activation':
             self._scanning_device.scanner_set_position(
             x = self._current_x,
             y = self._current_y,
