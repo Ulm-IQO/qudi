@@ -32,6 +32,7 @@ class ComboBoxDelegate(QtGui.QStyledItemDelegate):
                                                 # check every time the value
 
         self.get_list = self.item_dict['get_list_method']
+        print(self.item_dict)
 
         # constant from Qt how to access the specific data type:
         self.model_data_access = QtCore.Qt.DisplayRole

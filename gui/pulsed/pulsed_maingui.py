@@ -285,18 +285,18 @@ class PulsedMeasurementGui(GUIBase):
         self._bs.rejected.connect(self.keep_former_block_settings)
         self._bs.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.apply_block_settings)
 
-        # load in the possible channel configurations into the config
-        pulser_constr = self.get_hardware_constraints()
-        activation_config = self._seq_gen_logic.activation_config
-        self._bs.activation_config_ComboBox.clear()
-        self._bs.activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
-        # set ComboBox index to init value of logic
-        for index, config_name in enumerate(pulser_constr['activation_config']):
-            if pulser_constr['activation_config'][config_name] == activation_config:
-                self._bs.activation_config_ComboBox.setCurrentIndex(index)
-                break
-
-        self._bs.activation_config_ComboBox.currentIndexChanged.connect(self._update_channel_display)
+        # # load in the possible channel configurations into the config
+        # pulser_constr = self.get_hardware_constraints()
+        # activation_config = self._seq_gen_logic.activation_config
+        # self._bs.activation_config_ComboBox.clear()
+        # self._bs.activation_config_ComboBox.addItems(list(pulser_constr['activation_config']))
+        # # set ComboBox index to init value of logic
+        # for index, config_name in enumerate(pulser_constr['activation_config']):
+        #     if pulser_constr['activation_config'][config_name] == activation_config:
+        #         self._bs.activation_config_ComboBox.setCurrentIndex(index)
+        #         break
+        #
+        # self._bs.activation_config_ComboBox.currentIndexChanged.connect(self._update_channel_display)
 
         self._bs.use_interleave_CheckBox.setChecked(self._pulsed_meas_logic.get_interleave())
         self._bs.use_interleave_CheckBox.stateChanged.connect(self._interleave_changed)
@@ -362,31 +362,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         self._seq_gen_logic.set_interleave(bool(state))
 
-    def _update_channel_display(self, index=None):
-        """ Updates the channel display of the currently chosen configuration in
-            the settings for Block Generator.
-
-        @param int index: optional, update the display boxes with the
-                          configuration corresponding to the passed index in the
-                          Combobox. Otherwise the active index will be asked
-                          from the Combobox.
-        """
-        if index is None:
-            config = self._bs.activation_config_ComboBox.currentText()
-        else:
-            config = self._bs.activation_config_ComboBox.itemText(index)
-
-        channel_config = self.get_hardware_constraints()['activation_config'][config]
-
-        # Here just the number of analog or digital channels is needed:
-        num_d_ch = len([entry for entry in channel_config if 'd_ch' in entry])
-        num_a_ch = len([entry for entry in channel_config if 'a_ch' in entry])
-
-        self._bs.digital_channels_SpinBox.setValue(num_d_ch)
-        self._bs.analog_channels_SpinBox.setValue(num_a_ch)
-
-        self._bs.ch_activation_pattern_LineEdit.setText(str(channel_config))
-
     def show_block_settings(self):
         """ Opens the block settings menue. """
         self._bs.exec_()
@@ -421,36 +396,36 @@ class PulsedMeasurementGui(GUIBase):
     def apply_block_settings(self):
         """ Write new block settings from the gui to the file. """
 
-        self._mw.block_editor_TableWidget.blockSignals(True)
-
-        # retreive GUI inputs
-        active_config_name = self._bs.activation_config_ComboBox.currentText()
-        active_channel_config = self.get_hardware_constraints()['activation_config'][active_config_name]
-
-        # set chosen config in sequence generator logic
-        self._seq_gen_logic.set_activation_config(active_channel_config)
-        # and update the laser channel combobx
-        self._mw.laserchannel_ComboBox.blockSignals(True)
-        self._mw.laserchannel_ComboBox.clear()
-        self._mw.laserchannel_ComboBox.addItems(active_channel_config)
-        self._mw.laserchannel_ComboBox.blockSignals(False)
-        # set the laser channel in the ComboBox
-        laser_channel = self._seq_gen_logic.laser_channel
-        index = self._mw.laserchannel_ComboBox.findText(laser_channel)
-        self._mw.laserchannel_ComboBox.setCurrentIndex(index)
-
-        # reshape block editor table
-        self.set_block_editor_columns()
-
-        self._mw.block_editor_TableWidget.blockSignals(False)
+        # self._mw.block_editor_TableWidget.blockSignals(True)
+        #
+        # # retreive GUI inputs
+        # active_config_name = self._bs.activation_config_ComboBox.currentText()
+        # active_channel_config = self.get_hardware_constraints()['activation_config'][active_config_name]
+        #
+        # # set chosen config in sequence generator logic
+        # self._seq_gen_logic.set_activation_config(active_channel_config)
+        # # and update the laser channel combobx
+        # self._mw.laserchannel_ComboBox.blockSignals(True)
+        # self._mw.laserchannel_ComboBox.clear()
+        # self._mw.laserchannel_ComboBox.addItems(active_channel_config)
+        # self._mw.laserchannel_ComboBox.blockSignals(False)
+        # # set the laser channel in the ComboBox
+        # laser_channel = self._seq_gen_logic.laser_channel
+        # index = self._mw.laserchannel_ComboBox.findText(laser_channel)
+        # self._mw.laserchannel_ComboBox.setCurrentIndex(index)
+        #
+        # # reshape block editor table
+        # self.set_block_editor_columns()
+        #
+        # self._mw.block_editor_TableWidget.blockSignals(False)
 
         if self._bs.use_saupload_CheckBox.isChecked():
             self._set_visibility_saupload_button_pulse_gen(state=True)
         else:
             self._set_visibility_saupload_button_pulse_gen(state=False)
 
-        self._update_current_pulse_block()
-        self._update_current_pulse_block_ensemble()
+        # self._update_current_pulse_block()
+        # self._update_current_pulse_block_ensemble()
 
 
     def keep_former_block_settings(self):
@@ -460,16 +435,16 @@ class PulsedMeasurementGui(GUIBase):
         else:
             self._bs.use_saupload_CheckBox.setChecked(False)
 
-        config_dict = self.get_hardware_constraints()['activation_config']
-        # get currently active channel config from logic
-        config = self._seq_gen_logic.activation_config
-        # Find the corresponding index in the possible configs
-        for index, config_name in enumerate(config_dict):
-            if config == config_dict[config_name]:
-                # This works!
-                # When the current index is changed the method _update_channel_display is called.
-                self._bs.activation_config_ComboBox.setCurrentIndex(index)
-                break
+        # config_dict = self.get_hardware_constraints()['activation_config']
+        # # get currently active channel config from logic
+        # config = self._seq_gen_logic.activation_config
+        # # Find the corresponding index in the possible configs
+        # for index, config_name in enumerate(config_dict):
+        #     if config == config_dict[config_name]:
+        #         # This works!
+        #         # When the current index is changed the method _update_channel_display is called.
+        #         self._bs.activation_config_ComboBox.setCurrentIndex(index)
+        #         break
 
     def _set_visibility_saupload_button_pulse_gen(self, state):
         """ Set whether the sample Uplaod and load Buttons should be visible or not
@@ -510,16 +485,13 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-        # Apply hardware constraints to input widgets
-        self._apply_hardware_constraints()
-
-        # Fill initial values from logic into input widgets
-        self._init_generator_values()
-
         # connect the signal for a change of the generator parameters
-        self._mw.sample_freq_DSpinBox.editingFinished.connect(self.generator_sample_rate_changed)
-        self._mw.laserchannel_ComboBox.currentIndexChanged.connect(
+        self._mw.gen_sample_freq_DSpinBox.editingFinished.connect(
+            self.generator_sample_rate_changed)
+        self._mw.gen_laserchannel_ComboBox.currentIndexChanged.connect(
             self.generator_laser_channel_changed)
+        self._mw.gen_activation_config_ComboBox.currentIndexChanged.connect(
+            self.generator_activation_config_changed)
 
         # set them to maximum or minimum
         self._mw.curr_block_bins_SpinBox.setMaximum(2**31 -1)
@@ -596,7 +568,6 @@ class PulsedMeasurementGui(GUIBase):
         self._create_save_tag_input()
 
         self.keep_former_block_settings()
-        self._update_channel_display()
 
         self.set_block_editor_columns()
         # self.set_cfg_param_pbe()
@@ -631,6 +602,14 @@ class PulsedMeasurementGui(GUIBase):
                 checkbox.setChecked(self._statusVariables[predefined_method])
 
         self.update_predefined_methods()
+
+        # Apply hardware constraints to input widgets
+        self._apply_hardware_constraints()
+
+        # Fill initial values from logic into input widgets
+        self._init_generator_values()
+        self.generator_activation_config_changed()
+        self.generator_sample_rate_changed()
 
 
         # Modified by me
@@ -697,10 +676,10 @@ class PulsedMeasurementGui(GUIBase):
         sample_step = pulser_constr['sample_rate']['step']
 
         #FIXME: that should be in SI units! ...that will be changed soon
-        self._mw.sample_freq_DSpinBox.setMinimum(sample_min)
-        self._mw.sample_freq_DSpinBox.setMaximum(sample_max)
-        self._mw.sample_freq_DSpinBox.setSingleStep(sample_step)
-        self._mw.sample_freq_DSpinBox.setDecimals( (np.log10(sample_step)* -1) )
+        self._mw.gen_sample_freq_DSpinBox.setMinimum(sample_min)
+        self._mw.gen_sample_freq_DSpinBox.setMaximum(sample_max)
+        self._mw.gen_sample_freq_DSpinBox.setSingleStep(sample_step)
+        self._mw.gen_sample_freq_DSpinBox.setDecimals( (np.log10(sample_step)* -1) )
 
     def _init_generator_values(self):
         """
@@ -712,19 +691,26 @@ class PulsedMeasurementGui(GUIBase):
         laser_channel = self._seq_gen_logic.laser_channel
         activation_config = self._seq_gen_logic.activation_config
         # get hardware constraints
-        constraints = self.get_hardware_constraints()
+        avail_activation_configs = self.get_hardware_constraints()['activation_config']
         # init GUI elements
-        self._mw.sample_freq_DSpinBox.setValue(sample_rate)
-        self._mw.laserchannel_ComboBox.blockSignals(True)
-        self._mw.laserchannel_ComboBox.clear()
-        self._mw.laserchannel_ComboBox.addItems(activation_config)
-        self._mw.laserchannel_ComboBox.blockSignals(False)
-        index = self._mw.laserchannel_ComboBox.findText(laser_channel)
-        self._mw.laserchannel_ComboBox.setCurrentIndex(index)
+        # set sample rate
+        self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate)
+        # set activation_config. This will also update the laser channel from the logic.
+        self._mw.gen_activation_config_ComboBox.blockSignals(True)
+        self._mw.gen_activation_config_ComboBox.clear()
+        self._mw.gen_activation_config_ComboBox.addItems(list(avail_activation_configs))
+        found_config = False
+        for config in avail_activation_configs:
+            if avail_activation_configs[config] is activation_config:
+                index = self._mw.gen_activation_config_ComboBox.findText(config)
+                self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
+                found_config = True
+        if not found_config:
+            self._mw.gen_activation_config_ComboBox.setCurrentIndex(0)
+        self._mw.gen_activation_config_ComboBox.blockSignals(False)
 
     def _create_current_asset_QLabel(self):
         """ Creaate a QLabel Display for the currently loaded asset for the toolbar. """
-
         self._mw.current_loaded_asset_Label = self._create_QLabel(self._mw, '  No Asset Loaded')
         self._mw.current_loaded_asset_Label.setToolTip('Display the currently loaded asset.')
         self._mw.control_ToolBar.addWidget(self._mw.current_loaded_asset_Label)
@@ -790,9 +776,11 @@ class PulsedMeasurementGui(GUIBase):
         """
         Is called whenever the sample rate for the sequence generation has changed in the GUI
         """
-        sample_rate = self._mw.sample_freq_DSpinBox.value()
+        self._mw.gen_sample_freq_DSpinBox.blockSignals(True)
+        sample_rate = self._mw.gen_sample_freq_DSpinBox.value()
         actual_sample_rate = self._seq_gen_logic.set_sample_rate(sample_rate)
-        self._mw.sample_freq_DSpinBox.setValue(actual_sample_rate)
+        self._mw.gen_sample_freq_DSpinBox.setValue(actual_sample_rate)
+        self._mw.gen_sample_freq_DSpinBox.blockSignals(False)
         self._update_current_pulse_block()
         self._update_current_pulse_block_ensemble()
         # self._update_current_pulse_sequence()
@@ -801,12 +789,46 @@ class PulsedMeasurementGui(GUIBase):
         """
         Is called whenever the laser channel for the sequence generation has changed in the GUI
         """
-        self._mw.laserchannel_ComboBox.blockSignals(True)
-        laser_channel = self._mw.laserchannel_ComboBox.currentText()
+        self._mw.gen_laserchannel_ComboBox.blockSignals(True)
+        laser_channel = self._mw.gen_laserchannel_ComboBox.currentText()
         actual_laser_channel = self._seq_gen_logic.set_laser_channel(laser_channel)
-        index = self._mw.laserchannel_ComboBox.findText(actual_laser_channel)
-        self._mw.laserchannel_ComboBox.setCurrentIndex(index)
-        self._mw.laserchannel_ComboBox.blockSignals(False)
+        index = self._mw.gen_laserchannel_ComboBox.findText(actual_laser_channel)
+        self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
+        self._mw.gen_laserchannel_ComboBox.blockSignals(False)
+        self._update_current_pulse_block()
+        self._update_current_pulse_block_ensemble()
+
+    def generator_activation_config_changed(self):
+        """
+        Is called whenever the channel config for the sequence generation has changed in the GUI
+        """
+        self._mw.block_editor_TableWidget.blockSignals(True)
+        # retreive GUI inputs
+        new_config_name = self._mw.gen_activation_config_ComboBox.currentText()
+        new_channel_config = self.get_hardware_constraints()['activation_config'][new_config_name]
+        # set display new config alongside with number of channels
+        num_analogue = len([chnl for chnl in new_channel_config if 'a_ch' in chnl])
+        num_digital = len([chnl for chnl in new_channel_config if 'd_ch' in chnl])
+        self._mw.gen_activation_config_LineEdit.setText(str(new_channel_config))
+        self._mw.gen_analog_channels_SpinBox.setValue(num_analogue)
+        self._mw.gen_digital_channels_SpinBox.setValue(num_digital)
+        # set chosen config in sequence generator logic
+        self._seq_gen_logic.set_activation_config(new_channel_config)
+        # and update the laser channel combobx
+        self._mw.gen_laserchannel_ComboBox.blockSignals(True)
+        self._mw.gen_laserchannel_ComboBox.clear()
+        self._mw.gen_laserchannel_ComboBox.addItems(new_channel_config)
+        # set the laser channel in the ComboBox
+        laser_channel = self._seq_gen_logic.laser_channel
+        index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel)
+        self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
+        self._mw.gen_laserchannel_ComboBox.blockSignals(False)
+
+        # reshape block editor table
+        self.set_block_editor_columns()
+
+        self._mw.block_editor_TableWidget.blockSignals(False)
+
         self._update_current_pulse_block()
         self._update_current_pulse_block_ensemble()
 
@@ -1105,8 +1127,8 @@ class PulsedMeasurementGui(GUIBase):
                             msgType='error')
                 return -1
             # find index of the config inside the ComboBox
-            index_to_set = self._bs.activation_config_ComboBox.findText(config_to_set)
-            self._bs.activation_config_ComboBox.setCurrentIndex(index_to_set)
+            index_to_set = self._mw.gen_activation_config_ComboBox.findText(config_to_set)
+            self._mw.gen_activation_config_ComboBox.setCurrentIndex(index_to_set)
             self.logMsg('Mismatch in number of channels between block to load and chosen '
                         'activation_config. Need {0} digital and {1} analogue channels. '
                         'The following activation_config was chosen: "{2}"'
@@ -1192,9 +1214,9 @@ class PulsedMeasurementGui(GUIBase):
         # determine the digital channel to use
         laser_channel = 'd_ch'+str(channel_indices[block.laser_channel])
         # Find index to set in the ComboBox
-        laser_channel_index = self._mw.laserchannel_ComboBox.findText(laser_channel)
+        laser_channel_index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel)
         # Set ComboBox
-        self._mw.laserchannel_ComboBox.setCurrentIndex(laser_channel_index)
+        self._mw.gen_laserchannel_ComboBox.setCurrentIndex(laser_channel_index)
 
 
     def delete_pulse_block_clicked(self):
