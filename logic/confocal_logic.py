@@ -695,7 +695,7 @@ class ConfocalLogic(GenericLogic):
             line = np.vstack( (image[self._scan_counter, :, 0],
                                image[self._scan_counter, :, 1],
                                image[self._scan_counter, :, 2],
-                               self._AL) )
+                               image[self._scan_counter, :, 3]) )
             # scan of a single line
             line_counts = self._scanning_device.scan_line(line)
             # defines trace of positions for a single return line scan
