@@ -38,67 +38,39 @@
          <layout class="QGridLayout" name="gridLayout_6">
           <item row="1" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
-            <item row="5" column="1">
-             <widget class="QDoubleSpinBox" name="time_param_expected_dur_DoubleSpinBox">
-              <property name="readOnly">
-               <bool>true</bool>
+            <item row="5" column="0" colspan="8">
+             <widget class="QGroupBox" name="second_plot_GroupBox">
+              <property name="title">
+               <string>Fourier Transform</string>
               </property>
-              <property name="buttonSymbols">
-               <enum>QAbstractSpinBox::NoButtons</enum>
-              </property>
-              <property name="decimals">
-               <number>8</number>
-              </property>
-              <property name="maximum">
-               <double>999999999.000000000000000</double>
-              </property>
+              <layout class="QGridLayout" name="gridLayout_23">
+               <item row="0" column="0">
+                <layout class="QGridLayout" name="gridLayout_18">
+                 <item row="0" column="0">
+                  <widget class="PlotWidget" name="pulse_analysis_second_PlotWidget"/>
+                 </item>
+                </layout>
+               </item>
+               <item row="0" column="1">
+                <spacer name="verticalSpacer_2">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>5000</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
              </widget>
             </item>
-            <item row="5" column="2">
+            <item row="6" column="2">
              <widget class="QLabel" name="time_param_elapsed_time_Label">
               <property name="text">
                <string>Elapsed Time (s):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="3">
-             <widget class="QLineEdit" name="time_param_elapsed_time_LineEdit">
-              <property name="text">
-               <string>00:00:00:00</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="4">
-             <widget class="QLabel" name="time_param_elapsed_sweep_Label">
-              <property name="text">
-               <string>Elapsed Sweeps:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="5">
-             <widget class="ScienSpinBox" name="time_param_elapsed_sweep_ScienSpinBox">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-              <property name="buttonSymbols">
-               <enum>QAbstractSpinBox::NoButtons</enum>
-              </property>
-              <property name="maximum">
-               <number>999999999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="time_param_expected_dur_Label">
-              <property name="text">
-               <string>Expected duration (ms):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="6">
-             <widget class="QLabel" name="time_param_ana_periode_Label">
-              <property name="text">
-               <string>Analysis Periode (s):</string>
               </property>
              </widget>
             </item>
@@ -158,6 +130,73 @@
                 </layout>
                </item>
               </layout>
+             </widget>
+            </item>
+            <item row="6" column="3">
+             <widget class="QLineEdit" name="time_param_elapsed_time_LineEdit">
+              <property name="text">
+               <string>00:00:00:00</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="5">
+             <widget class="ScienSpinBox" name="time_param_elapsed_sweep_ScienSpinBox">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="buttonSymbols">
+               <enum>QAbstractSpinBox::NoButtons</enum>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="4">
+             <widget class="QLabel" name="time_param_elapsed_sweep_Label">
+              <property name="text">
+               <string>Elapsed Sweeps:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QDoubleSpinBox" name="time_param_expected_dur_DoubleSpinBox">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="buttonSymbols">
+               <enum>QAbstractSpinBox::NoButtons</enum>
+              </property>
+              <property name="decimals">
+               <number>8</number>
+              </property>
+              <property name="maximum">
+               <double>999999999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="time_param_expected_dur_Label">
+              <property name="text">
+               <string>Expected duration (ms):</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="6">
+             <widget class="QLabel" name="time_param_ana_periode_Label">
+              <property name="text">
+               <string>Analysis Periode (s):</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="7">
+             <widget class="QDoubleSpinBox" name="time_param_ana_periode_DoubleSpinBox">
+              <property name="maximum">
+               <double>999999999.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>3.000000000000000</double>
+              </property>
              </widget>
             </item>
             <item row="0" column="0" rowspan="2" colspan="2">
@@ -263,45 +302,6 @@
                   </widget>
                  </item>
                 </layout>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="5" column="7">
-             <widget class="QDoubleSpinBox" name="time_param_ana_periode_DoubleSpinBox">
-              <property name="maximum">
-               <double>999999999.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>3.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0" colspan="8">
-             <widget class="QGroupBox" name="second_plot_GroupBox">
-              <property name="title">
-               <string>Fourier Transform</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_23">
-               <item row="0" column="0">
-                <layout class="QGridLayout" name="gridLayout_18">
-                 <item row="0" column="0">
-                  <widget class="PlotWidget" name="pulse_analysis_second_PlotWidget"/>
-                 </item>
-                </layout>
-               </item>
-               <item row="0" column="1">
-                <spacer name="verticalSpacer_2">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>5000</height>
-                  </size>
-                 </property>
-                </spacer>
                </item>
               </layout>
              </widget>
@@ -492,7 +492,7 @@
               </layout>
              </widget>
             </item>
-            <item row="3" column="0" colspan="8">
+            <item row="4" column="0" colspan="8">
              <widget class="QGroupBox" name="groupBox_6">
               <property name="title">
                <string>Analysis Trace</string>
@@ -521,7 +521,7 @@
               </layout>
              </widget>
             </item>
-            <item row="2" column="6">
+            <item row="3" column="6">
              <spacer name="horizontalSpacer_3">
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
@@ -533,6 +533,36 @@
                </size>
               </property>
              </spacer>
+            </item>
+            <item row="3" column="0">
+             <widget class="QComboBox" name="meas_activation_config_ComboBox"/>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_40">
+              <property name="text">
+               <string>channel config:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="meas_activation_config_LineEdit">
+              <property name="minimumSize">
+               <size>
+                <width>335</width>
+                <height>20</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="4">
+             <widget class="QDoubleSpinBox" name="meas_sample_freq_DSpinBox"/>
+            </item>
+            <item row="2" column="4">
+             <widget class="QLabel" name="label_41">
+              <property name="text">
+               <string>sample freq (Hz):</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -787,6 +817,103 @@
               </layout>
              </widget>
             </item>
+            <item row="0" column="4">
+             <widget class="QLabel" name="label_20">
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Laserchannel:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="5">
+             <widget class="QDoubleSpinBox" name="gen_sample_freq_DSpinBox">
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0" colspan="3">
+             <widget class="QGroupBox" name="upload_load_GroupBox">
+              <property name="font">
+               <font>
+                <weight>50</weight>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="title">
+               <string>Sample Upload and load on the Device</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_38">
+               <item row="1" column="1">
+                <widget class="QPushButton" name="upload_to_device_PushButton">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>100</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Upload to device</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="sample_ensemble_PushButton">
+                 <property name="text">
+                  <string>Sample Ensemble</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <widget class="QPushButton" name="load_channel_PushButton">
+                 <property name="minimumSize">
+                  <size>
+                   <width>100</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Load to channels</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="0" colspan="3">
+                <widget class="QComboBox" name="upload_ensemble_ComboBox">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block Ensemble for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="1" column="4">
+             <widget class="QLabel" name="label_15">
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Sample Freq. (MHz):</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="5">
+             <widget class="QComboBox" name="gen_laserchannel_ComboBox"/>
+            </item>
             <item row="2" column="5">
              <widget class="QGroupBox" name="groupBox_2">
               <property name="maximumSize">
@@ -1024,103 +1151,6 @@
               </layout>
              </widget>
             </item>
-            <item row="1" column="5">
-             <widget class="QDoubleSpinBox" name="sample_freq_DSpinBox">
-              <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="5">
-             <widget class="QComboBox" name="laserchannel_ComboBox"/>
-            </item>
-            <item row="4" column="0" colspan="3">
-             <widget class="QGroupBox" name="upload_load_GroupBox">
-              <property name="font">
-               <font>
-                <weight>50</weight>
-                <bold>false</bold>
-               </font>
-              </property>
-              <property name="title">
-               <string>Sample Upload and load on the Device</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_38">
-               <item row="1" column="1">
-                <widget class="QPushButton" name="upload_to_device_PushButton">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>100</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Upload to device</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QPushButton" name="sample_ensemble_PushButton">
-                 <property name="text">
-                  <string>Sample Ensemble</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="2">
-                <widget class="QPushButton" name="load_channel_PushButton">
-                 <property name="minimumSize">
-                  <size>
-                   <width>100</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Load to channels</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0" colspan="3">
-                <widget class="QComboBox" name="upload_ensemble_ComboBox">
-                 <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Pulse Block Ensemble for Generation and Upload&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="1" column="4">
-             <widget class="QLabel" name="label_15">
-              <property name="maximumSize">
-               <size>
-                <width>100</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="text">
-               <string>Sample Freq. (MHz):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="4">
-             <widget class="QLabel" name="label_20">
-              <property name="maximumSize">
-               <size>
-                <width>100</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="text">
-               <string>Laserchannel:</string>
-              </property>
-             </widget>
-            </item>
             <item row="3" column="0" colspan="5">
              <widget class="QGroupBox" name="groupBox_3">
               <property name="font">
@@ -1272,8 +1302,8 @@ last</string>
               <layout class="QGridLayout" name="gridLayout_13">
                <item row="0" column="1">
                 <layout class="QGridLayout" name="gridLayout_37">
-                 <item row="2" column="1">
-                  <widget class="QPushButton" name="block_del_last_PushButton">
+                 <item row="5" column="1">
+                  <widget class="QPushButton" name="block_del_sel_PushButton">
                    <property name="maximumSize">
                     <size>
                      <width>35</width>
@@ -1281,11 +1311,11 @@ last</string>
                     </size>
                    </property>
                    <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete the last present row.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete the selected row.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
                    <property name="text">
                     <string>Del.
-last</string>
+sel.</string>
                    </property>
                   </widget>
                  </item>
@@ -1311,23 +1341,6 @@ last</string>
                    <property name="text">
                     <string>Add
 last</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1">
-                  <widget class="QPushButton" name="block_del_sel_PushButton">
-                   <property name="maximumSize">
-                    <size>
-                     <width>35</width>
-                     <height>35</height>
-                    </size>
-                   </property>
-                   <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete the selected row.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                   <property name="text">
-                    <string>Del.
-sel.</string>
                    </property>
                   </widget>
                  </item>
@@ -1361,6 +1374,23 @@ sel.</string>
                    <property name="text">
                     <string>Add
 sel.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QPushButton" name="block_del_last_PushButton">
+                   <property name="maximumSize">
+                    <size>
+                     <width>35</width>
+                     <height>35</height>
+                    </size>
+                   </property>
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete the last present row.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Del.
+last</string>
                    </property>
                   </widget>
                  </item>
@@ -1407,6 +1437,71 @@ sel.</string>
                </size>
               </property>
              </spacer>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_39">
+              <property name="text">
+               <string>channel config:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="gen_activation_config_ComboBox">
+              <property name="minimumSize">
+               <size>
+                <width>150</width>
+                <height>20</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLineEdit" name="gen_activation_config_LineEdit">
+              <property name="minimumSize">
+               <size>
+                <width>335</width>
+                <height>20</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,0,0">
+              <item>
+               <widget class="QLabel" name="label_44">
+                <property name="text">
+                 <string>Analogue channels:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="gen_analog_channels_SpinBox">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="buttonSymbols">
+                 <enum>QAbstractSpinBox::NoButtons</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_43">
+                <property name="text">
+                 <string>Digital channels:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="gen_digital_channels_SpinBox">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="buttonSymbols">
+                 <enum>QAbstractSpinBox::NoButtons</enum>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
