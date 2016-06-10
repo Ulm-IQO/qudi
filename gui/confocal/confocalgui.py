@@ -1279,14 +1279,17 @@ class ConfocalGui(GUIBase):
             self.update_roi_depth(x=x)
             self.update_slider_x(x)
             self.update_input_x(x)
+            self._scanning_logic.set_position('xinput', x=x)
         if y is not None:
             self.update_roi_xy(y=y)
             self.update_slider_y(y)
             self.update_input_y(y)
+            self._scanning_logic.set_position('yinput', y=y)
         if z is not None:
             self.update_roi_depth(z=z)
             self.update_slider_z(z)
             self.update_input_z(z)
+            self._scanning_logic.set_position('zinput', z=z)
 
     def update_from_input_x(self):
         """The user changed the number in the x position spin box, adjust all other GUI elements."""
