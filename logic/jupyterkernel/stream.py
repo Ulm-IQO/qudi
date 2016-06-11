@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Qt-based IPython/jupyter kernel
+Qt-based ZMQ stream
 
 QuDi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,9 +23,16 @@ QtCore.Signal = QtCore.pyqtSignal
 import logging
 
 class QZMQStream(QtCore.QObject):
+    """ Qt based ZMQ stream.
+        QSignal based notifications about arriving ZMQ messages.
+    """
     sigMsgRecvd = QtCore.Signal(object)
 
     def __init__(self, zmqsocket):
+    """ Make a stream from a socket.
+
+      @param socket: ZMQ socket
+    """
         super().__init__()
         self.socket = zmqsocket
         self.readnotifier = QtCore.QSocketNotifier(
@@ -35,6 +42,10 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier.activated.connect(self.checkForMessage)
 
     def checkForMessage(self, socket):
+        """ Check on socket activity if there is a complete ZMQ message.
+
+          @param socket: ZMQ socket
+        """
         logging.debug( "Check: %s" % self.readnotifier.socket())
         self.readnotifier.setEnabled(False)
         check = True
@@ -61,6 +72,8 @@ class QZMQStream(QtCore.QObject):
             self.readnotifier.setEnabled(True)
 
     def close(self):
+        """ Remove all notifiers from socket.
+        """
         self.readnotifier.setEnabled(False)
         self.readnotifier.activated.disconnect()
         self.sigMsgRecvd.disconnect()

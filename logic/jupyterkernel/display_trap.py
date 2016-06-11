@@ -56,12 +56,20 @@ class DisplayTrap:
         self._nested_level = 0
 
     def __enter__(self):
+        """ Enter a code segment where displayhook is set.
+        """
         if self._nested_level == 0:
             self.set()
         self._nested_level += 1
         return self
 
     def __exit__(self, type, value, traceback):
+        """ Leave a code segmen swhere displayhook is unset.
+        
+          @param type:
+          @param value:
+          @param traceback:
+        """
         if self._nested_level == 1:
             self.unset()
         self._nested_level -= 1

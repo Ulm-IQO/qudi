@@ -49,7 +49,7 @@ HideBuiltin = __HideBuiltin()
 
 
 class BuiltinTrap:
-
+    """ Protect builtins from code in some environment. """
     def __init__(self):
         self._orig_builtins = {}
         # We define this to track if a single BuiltinTrap is nested.
@@ -61,6 +61,7 @@ class BuiltinTrap:
                               'quit': HideBuiltin,
                               }
     def __enter__(self):
+        """ Enter a code segment that should not chane builtins """
         if self._nested_level == 0:
             self.activate()
         self._nested_level += 1
@@ -68,6 +69,12 @@ class BuiltinTrap:
         return self
 
     def __exit__(self, type, value, traceback):
+        """ Leave a code segment that should not change builtins
+        
+          @param type:
+          @prarm value:
+          @param traceback:
+        """
         if self._nested_level == 1:
             self.deactivate()
         self._nested_level -= 1

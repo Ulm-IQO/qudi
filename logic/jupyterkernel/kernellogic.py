@@ -96,9 +96,7 @@ class QudiKernelLogic(GenericLogic):
             })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.logMsg('Kernel is {}'.format(kernel.engine_id), msgType="status")
-        QtCore.QMetaObject.invokeMethod(kernel, 'connect')
-        #QtCore.QTimer.singleShot(0, kernel.connect)
-        #kernel.connect()
+        QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
         self.kernellist[kernel.engine_id] = kernel
         self.logMsg('Finished starting Kernel {}'.format(kernel.engine_id), msgType="status")
         self.sigStartKernel.emit(kernel.engine_id)
@@ -112,7 +110,6 @@ class QudiKernelLogic(GenericLogic):
         self.logMsg('Stopping {}'.format(realkernelid), msgType="status")
         kernel = self.kernellist[realkernelid]
         QtCore.QMetaObject.invokeMethod(kernel, 'shutdown')
-        #QtCore.QTimer.singleShot(0, kernel.shutdown)
         
     def cleanupKernel(self, kernelid, external=None):
         """Remove kernel reference and tell rpyc client for that kernel to exit.
