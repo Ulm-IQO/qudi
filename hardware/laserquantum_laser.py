@@ -195,7 +195,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         return self.inst.ask('CURRENT={}'.format(current_percent))
 
-    def get_shutter(self):
+    def get_shutter_state(self):
         """
 
         @return:
@@ -205,7 +205,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             return None
 
-    def set_shutter(self, state):
+    def set_shutter_state(self, state):
         """
 
         @param state:
