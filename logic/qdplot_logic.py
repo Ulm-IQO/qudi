@@ -23,6 +23,8 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 
 class QdplotLogic(GenericLogic):
@@ -95,15 +97,15 @@ class QdplotLogic(GenericLogic):
         """Set the data to plot
         """
         if x is None:
-            self.logMsg('No x-values provided, cannot set plot data.', 
-                        msgType='error', 
+            self.logMsg('No x-values provided, cannot set plot data.',
+                        msgType='error',
                         importance=3
                         )
             return -1
 
         if y is None:
-            self.logMsg('No y-values provided, cannot set plot data.', 
-                        msgType='error', 
+            self.logMsg('No y-values provided, cannot set plot data.',
+                        msgType='error',
                         importance=3
                         )
             return -1
@@ -150,7 +152,7 @@ class QdplotLogic(GenericLogic):
 
         @param string units: symbol for units
         """
-        print('label_in_sethlabel',label)
+        print('label_in_sethlabel', label)
         self.h_label = label
         self.h_units = units
 
@@ -164,7 +166,7 @@ class QdplotLogic(GenericLogic):
 
         @param string units: symbol for units
         """
-        print('label_in_setvlabel',label)
+        print('label_in_setvlabel', label)
         self.v_label = label
         self.v_units = units
 
@@ -176,7 +178,6 @@ class QdplotLogic(GenericLogic):
 
     def get_range(self):
         return self.plot_range
-
 
     def save_data(self, postfix=''):
         """ Save the data to a file.
@@ -197,11 +198,38 @@ class QdplotLogic(GenericLogic):
         else:
             filelabel = postfix
 
+        # Data labels
+        indep_label = self.h_label + ' (' + self.h_units + ')'
+        depen_label = self.v_label + ' (' + self.v_units + ')'
+
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data[self.h_label + ' (' + self.h_units + ')'] = self.indep_vals
-        data[self.v_label + ' (' + self.v_units + ')'] = self.depen_vals
+        data[indep_label] = self.indep_vals
+        data[depen_label] = self.depen_vals
+
+        # Prepare the figure to save as a "data thumbnail"
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        fig, ax1 = plt.subplots()
+
+        ax1.plot(self.indep_vals, self.depen_vals)
+
+        ax1.set_xlabel(indep_label)
+        ax1.set_ylabel(depen_label)
+
+        ax1.set_xlim(self.plot_domain)
+        ax1.set_ylim(self.plot_range)
+
+        fig.tight_layout()
 
         filepath = self._save_logic.get_path_for_module(module_name='qdplot')
-        self._save_logic.save_data(data, filepath, parameters=parameters, filelabel=filelabel, as_text=True)
+
+        # Call save logic to write everything to file
+        self._save_logic.save_data(data,
+                                   filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   as_text=True,
+                                   plotfig=fig
+                                   )
         self.logMsg('Data saved to:\n{0}'.format(filepath), msgType='status', importance=3)
