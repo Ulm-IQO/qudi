@@ -250,9 +250,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         else:
             state = self.inst.ask('STATUS?')
         if 'ENABLED' in state:
-            return LaserState['ENABLED']
+            return LaserState['ON']
         elif 'DISABLED' in state:
-            return LaserState['DISABLED']
+            return LaserState['OFF']
         else:
             return LaserState['UNKNOWN']
 
@@ -264,17 +264,17 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         actstat = self.get_laser_state()
         if actstat != status:
-            if status == LaserState['ENABLED']:
+            if status == LaserState['ON']:
                 self.inst.ask('ON')
-            elif status == LaserState['DISABLED']:
+            elif status == LaserState['OFF']:
                 self.inst.ask('OFF')
         return self.get_laser_state()
 
     def on(self):
-        return self.set_laser_state(LaserState['ENABLED'])
+        return self.set_laser_state(LaserState['ON'])
 
     def off(self):
-        return self.set_laser_state(LaserState['DISABLED'])
+        return self.set_laser_state(LaserState['OFF'])
 
     def get_firmware_version(self):
         """ Ask the laser for ID.
