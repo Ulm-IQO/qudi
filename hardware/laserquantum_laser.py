@@ -21,7 +21,7 @@ Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 from core.base import Base
 from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
-from interface.simple_laser_interface import SimpleLaserInterface, ControlModes
+from interface.simple_laser_interface import *
 from enum import Enum
 import visa
 
@@ -99,15 +99,15 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            return ControlModes['MIXED']
+            return ControlMode['MIXED']
         elif self.psu == PSUTypes['SMD6000']:
             #power = self.inst.ask('POWER?')
             #if '0000' in power:
             #    return ControlModes['CURRENT']
             #else:
-            return ControlModes['POWER']
+            return ControlMode['POWER']
         else:
-            return ControlModes[self.inst.ask('CONTROL?')]
+            return ControlMode[self.inst.ask('CONTROL?')]
 
     def set_control_mode(self, mode):
         """
@@ -116,16 +116,11 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            return ControlModes['MIXED']
+            return ControlMode['MIXED']
         elif self.psu == PSUTypes['SMD6000']:
-            #if mode == ControlModes['POWER']:
-            #    power = self.inst.ask('POWER?')
-            #    self.inst.ask('POWER={}'.format(power))
-            #else:
-            #    self.inst.ask('POWER=0')
-            return ControlModes['POWER']
+            return ControlMode['POWER']
         else:
-            if mode == ControlModes['POWER']:
+            if mode == ControlMode['POWER']:
                 self.inst.ask('PFB=OFF')
                 self.inst.ask('CONTROL=POWER')
             else:
@@ -212,7 +207,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             if state != actstate:
                 if state == ShutterState['OPEN']:
                     self.inst.ask('SHUTTER OPEN')
-                else if state == ShutterState['CLOSED']::
+                elif state == ShutterState['CLOSED']:
                     self.inst.ask('SHUTTER CLOSE')
         return self.get_shutter_state()
 
@@ -291,15 +286,15 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return str: what the laser tells you about itself
         """
         if self.psu == PSUTypes['SMD6000']:
-            self.inst.write'VERSION')
+            self.inst.write('VERSION')
             line1 = self.inst.read()
             line2 = self.inst.read()
-            return line1+line2
+            return line1, line2
         else:
             self.inst.write('SOFTVER?')
             line1 = self.inst.read()
             line2 = self.inst.read()
-            return line1+line2
+            return line1, line2
 
     def dump(self):
         """
@@ -331,11 +326,11 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
     def get_extra_info(self):
         extra = ''
-        extra += get_firmware_version()
-        extra += '\r\n'
-        extra += '\r\n'.join(dump())
-        extra += '\r\n'
-        extra += '\r\n'.join(timers())
-        extra += '\r\n'
+        extra += '\n'.join(self.get_firmware_version())
+        extra += '\n'
+        extra += '\n'.join(self.dump())
+        extra += '\n'
+        extra += '\n'.join(self.timers())
+        extra += '\n'
         return extra
 
