@@ -19,11 +19,10 @@ Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
 """
 
 from core.base import Base
-from pyqtgraph.Qt import QtCore
-from core.util.mutex import Mutex
 from interface.simple_laser_interface import *
 from enum import Enum
 import visa
+
 
 class PSUTypes(Enum):
     FPU = 0
@@ -31,6 +30,7 @@ class PSUTypes(Enum):
     MPC3000 = 2
     SMD12 = 3
     SMD6000 = 4
+
 
 class LaserQuantumLaser(Base, SimpleLaserInterface):
     """
@@ -101,10 +101,6 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         if self.psu == PSUTypes['FPU']:
             return ControlMode['MIXED']
         elif self.psu == PSUTypes['SMD6000']:
-            #power = self.inst.ask('POWER?')
-            #if '0000' in power:
-            #    return ControlModes['CURRENT']
-            #else:
             return ControlMode['POWER']
         else:
             return ControlMode[self.inst.ask('CONTROL?')]
