@@ -80,6 +80,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
                 write_termination='\r\n',
                 read_termination='\r\n',
                 send_end=True)
+            self.inst.timeout = 50
         except visa.VisaIOError as e:
             self.logExc()
             return False
@@ -103,7 +104,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         elif self.psu == PSUTypes['SMD6000']:
             return ControlMode['POWER']
         else:
-            return ControlMode[self.inst.ask('CONTROL?')]
+            return ControlMode[self.inst.query('CONTROL?')]
 
     def set_control_mode(self, mode):
         """
@@ -117,11 +118,11 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             return ControlMode['POWER']
         else:
             if mode == ControlMode['POWER']:
-                self.inst.ask('PFB=OFF')
-                self.inst.ask('CONTROL=POWER')
+                self.inst.query('PFB=OFF')
+                self.inst.query('CONTROL=POWER')
             else:
-                self.inst.ask('PFB=ON')
-                self.inst.ask('CONTROL=CURRENT')
+                self.inst.query('PFB=ON')
+                self.inst.query('CONTROL=CURRENT')
         return self.get_control_mode()
 
     def get_power(self):
@@ -129,7 +130,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        answer = self.inst.ask('POWER?')
+        answer = self.inst.query('POWER?')
         if "mW" in answer:
             return float(answer.split('mW')[0])/1000
         elif 'W' in answer:
@@ -143,7 +144,13 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu != PSUTypes['SMD6000']:
-            return self.inst.ask('SETPOWER?')
+            answer = self.inst.query('SETPOWER?')
+            if "mW" in answer:
+                return float(answer.split('mW')[0]) / 1000
+            elif 'W' in answer:
+                return float(answer.split('W')[0])
+            else:
+                return float(answer)
         else:
             return self.get_power()
 
@@ -154,18 +161,29 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            self.inst.ask('POWER={:f}'.format(power))
+            self.inst.query('POWER={:f}'.format(power))
         else:
-            self.inst.ask('POWER={:f}'.format(power*1000))
+            self.inst.query('POWER={:f}'.format(power*1000))
+
     def get_current(self):
         """
 
         @return:
         """
         if self.psu == PSUTypes['MPC3000'] or self.psu == PSUTypes['MPC6000']:
-            return float(self.inst.ask('SETCURRENT1?').split('%')[0])
+            return float(self.inst.query('SETCURRENT1?').split('%')[0])
         else:
-            return float(self.inst.ask('CURRENT?').split('%')[0])
+            return float(self.inst.query('CURRENT?').split('%')[0])
+
+    def get_current_setpoint(self):
+        """
+
+        @return:
+        """
+        if self.psu == PSUTypes['MPC3000'] or self.psu == PSUTypes['MPC6000']:
+            return float(self.inst.query('SETCURRENT1?').split('%')[0])
+        else:
+            return float(self.inst.query('SETCURRENT?').split('%')[0])
 
     def set_current(self, current_percent):
         """
@@ -173,7 +191,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @param current_percent:
         @return:
         """
-        self.inst.ask('CURRENT={}'.format(current_percent))
+        self.inst.query('CURRENT={}'.format(current_percent))
         return self.get_current()
 
     def get_shutter_state(self):
@@ -182,7 +200,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['FPU']:
-            state = self.inst.ask('SHUTTER?')
+            state = self.inst.query('SHUTTER?')
             if 'OPEN' in state:
                 return ShutterState['OPEN']
             elif 'CLOSED' in state:
@@ -202,9 +220,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
             actstate = self.get_shutter_state()
             if state != actstate:
                 if state == ShutterState['OPEN']:
-                    self.inst.ask('SHUTTER OPEN')
+                    self.inst.query('SHUTTER OPEN')
                 elif state == ShutterState['CLOSED']:
-                    self.inst.ask('SHUTTER CLOSE')
+                    self.inst.query('SHUTTER CLOSE')
         return self.get_shutter_state()
 
     def get_psu_temperature(self):
@@ -212,14 +230,14 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
         @return:
         """
-        return float(self.inst.ask('PSUTEMP?').split('C')[0])
+        return float(self.inst.query('PSUTEMP?').split('C')[0])
 
     def get_laser_temperature(self):
         """
 
         @return:
         """
-        return float(self.inst.ask('LASTEMP?').split('C')[0])
+        return float(self.inst.query('LASTEMP?').split('C')[0])
 
     def get_temperatures(self):
         return {
@@ -238,7 +256,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         if self.psu == PSUTypes['SMD12'] or self.psu == PSUTypes['SMD6000']:
             return ''
         else:
-            return self.inst.ask('STATUSLCD?')
+            return self.inst.query('STATUSLCD?')
 
     def get_laser_state(self):
         """
@@ -246,9 +264,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         @return:
         """
         if self.psu == PSUTypes['SMD6000']:
-            state = self.inst.ask('STAT?')
+            state = self.inst.query('STAT?')
         else:
-            state = self.inst.ask('STATUS?')
+            state = self.inst.query('STATUS?')
         if 'ENABLED' in state:
             return LaserState['ON']
         elif 'DISABLED' in state:
@@ -265,9 +283,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         actstat = self.get_laser_state()
         if actstat != status:
             if status == LaserState['ON']:
-                self.inst.ask('ON')
+                self.inst.query('ON')
             elif status == LaserState['OFF']:
-                self.inst.ask('OFF')
+                self.inst.query('OFF')
         return self.get_laser_state()
 
     def on(self):
@@ -283,14 +301,15 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes['SMD6000']:
             self.inst.write('VERSION')
-            line1 = self.inst.read()
-            line2 = self.inst.read()
-            return line1, line2
         else:
             self.inst.write('SOFTVER?')
-            line1 = self.inst.read()
-            line2 = self.inst.read()
-            return line1, line2
+        lines = []
+        try:
+            while True:
+                lines.append(self.inst.read())
+        except:
+            pass
+        return lines
 
     def dump(self):
         """
