@@ -62,8 +62,6 @@ def make_constant_model(self, prefix=None):
 
         return offset + 0.0 * x
 
-
-
     if prefix is None:
         model = Model(constant_function)
     else:
@@ -206,6 +204,7 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
+    
     error = 0
     # check if parameters make sense
     parameters = [x_axis, data]

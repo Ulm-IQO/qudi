@@ -1834,7 +1834,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # chunkwise.
             self.logMsg('Time needed for sampling and writing to file chunkwise: "{0}" '
                         'sec'.format(str(int(np.rint(time.time()-start_time)))), msgType='status')
-            return analog_samples, digital_samples, created_files, offset_bin
+            return [], [], created_files, offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
             # write_to_file method only once with both flags set to TRUE
@@ -1852,7 +1852,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         'whole: "{0}" sec'.format(str(int(np.rint(time.time()-start_time)))),
                         msgType='status')
 
-            return analog_samples, digital_samples, created_files, offset_bin
+            return [], [], created_files, offset_bin
 
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):

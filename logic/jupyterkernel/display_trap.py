@@ -1,14 +1,29 @@
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 """
 A context manager for handling sys.displayhook.
 
-Authors:
+QuDi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-* Robert Kern
-* Brian Granger
+QuDi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with QuDi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (C) 2016 Jan M. Binder jan.binder@uni-ulm.de
+
 """
 
 #-----------------------------------------------------------------------------
+#  Authors:
+#
+#  * Robert Kern
+#  * Brian Granger
 #  Copyright (C) 2008-2011  The IPython Development Team
 #
 #  Distributed under the terms of the BSD License.  The full license is in
@@ -41,12 +56,20 @@ class DisplayTrap:
         self._nested_level = 0
 
     def __enter__(self):
+        """ Enter a code segment where displayhook is set.
+        """
         if self._nested_level == 0:
             self.set()
         self._nested_level += 1
         return self
 
     def __exit__(self, type, value, traceback):
+        """ Leave a code segmen swhere displayhook is unset.
+        
+          @param type:
+          @param value:
+          @param traceback:
+        """
         if self._nested_level == 1:
             self.unset()
         self._nested_level -= 1

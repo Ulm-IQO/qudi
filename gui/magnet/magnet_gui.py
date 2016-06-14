@@ -27,7 +27,8 @@ from pyqtgraph.Qt import QtCore, QtGui, uic
 import datetime
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colordefs import ColorScaleInferno
 
 
 class MagnetMainWindow(QtGui.QMainWindow):
@@ -212,7 +213,7 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
 
         # Get the colorscales at set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
 
         self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
 

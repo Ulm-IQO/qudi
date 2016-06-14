@@ -28,6 +28,8 @@ from core.util.mutex import Mutex
 from pyqtgraph.Qt import QtCore
 import os
 
+import time
+
 class FastCounterFGAPiP3(Base, FastCounterInterface):
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
@@ -92,6 +94,8 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         tt._Tagger_setBitfilePath(bitfilepath)
         del bitfilepath, thirdpartypath
 
+        self.tt = tt
+
         self._number_of_gates = int(100)
         self._bin_width = 1
         self._record_length = int(4000)
@@ -100,7 +104,10 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         self.count_data = None
 
-        self.stopRequested = False
+        self.timer = None
+        self.timer_interval_s = 1
+
+        # self.stopRequested = False
 
         self.statusvar = 0
 
@@ -197,23 +204,24 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
     def _get_data_next(self):
         """ Read new count_data and add to existing count_data. """
-
-        if self.stopRequested:
-            with self.threadlock:
-                self.stopRequested = False
-                self.unlock()
-                return
-        np.add(self.count_data, self.pulsed.getData())
-
-        self.signal_get_data_next.emit()
+        with self.threadlock:
+            self.count_data = np.add(self.count_data, self.pulsed.getData())
 
     def start_measure(self):
         """ Start the fast counter. """
 
         self.lock()
+
+        # set timer
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(False)
+        self.timer.setInterval(int(1000. * self.timer_interval_s))
+        self.timer.timeout.connect(self._get_data_next)
+
         self.count_data = np.zeros([self._number_of_gates,
-                                    self._record_length])
+                                    self._record_length], dtype='int32')
         self.pulsed.start()
+        self.timer.start()
         self.statusvar = 2
         self.signal_get_data_next.emit()
         return 0
@@ -223,8 +231,11 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
         with self.threadlock:
             if self.getState() == 'locked':
-                self.stopRequested = True
-        self.pulsed.stop()
+                self.timer.stop()
+                self.timer.timeout.disconnect()
+                self.timer = None
+                self.pulsed.stop()
+                self.unlock()
         self.statusvar = 1
         return 0
 
@@ -288,5 +299,5 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds. """
 
-        width_in_seconds = self._binwidth * 1e-9
+        width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds

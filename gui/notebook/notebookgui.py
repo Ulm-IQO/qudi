@@ -18,7 +18,11 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2015-2016 Jan M. Binder jan.binder@uni-ulm.de
 """
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from PyQt4 import QtWebKit
+import sys
+if 'PyQt4' in sys.modules:
+    from PyQt4 import QtWebKit
+else:
+    from PyQt5 import QtWebKit
 from gui.guibase import GUIBase
 import os
 

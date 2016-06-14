@@ -69,8 +69,8 @@ class AWG70K(Base, PulserInterface):
 
         self.sample_rate = 25e9
 
-        self.amplitude_list = {1: 0.5, 2: 0.5}      # for each analog channel one value, the pp-voltage
-        self.offset_list = {1: 0, 2: 0} # for each analog channel one value, the offset voltage
+        self.amplitude_list = {'a_ch1': 0.5, 'a_ch2': 0.5}      # for each analog channel one value, the pp-voltage
+        self.offset_list = {'a_ch1': 0, 'a_ch2': 0} # for each analog channel one value, the offset voltage
 
         self.current_loaded_asset = None
         self.is_output_enabled = True
@@ -336,7 +336,7 @@ class AWG70K(Base, PulserInterface):
             for channel_number in range(analog_samples.shape[0]):
                 # create header
                 header_obj = WFMX_header(self.sample_rate,
-                                         self.amplitude_list[channel_number+1],
+                                         self.amplitude_list['a_ch'+str(channel_number+1)],
                                          0,
                                          int(total_number_of_samples),
                                          temp_dir=self._temp_folder)
@@ -753,10 +753,40 @@ class AWG70K(Base, PulserInterface):
         (amplitude, offset) for analog and (value high, value low) for digital!
         """
 
-        #If you want to check the input use the constraints:
+        #Check the inputs by using the constraints:
         constraints = self.get_constraints()
+        # amplitude sanity check
+        for chnl in amplitude:
+            if amplitude[chnl] < constraints['a_ch_amplitude']['min']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['min']
+                self.logMsg('Minimum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to min value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['min'], amplitude[chnl]),
+                    msgType='warning')
+            elif amplitude[chnl] > constraints['a_ch_amplitude']['max']:
+                amplitude[chnl] = constraints['a_ch_amplitude']['max']
+                self.logMsg('Maximum Vpp for channel "{0}" is {1}. '
+                    'Requested Vpp of {2}V was ignored and instead set to max value.'
+                    ''.format(chnl, constraints['a_ch_amplitude']['max'], amplitude[chnl]),
+                    msgType='warning')
+
+        # offset sanity check
+        for chnl in offset:
+            if offset[chnl] < constraints['a_ch_offset']['min']:
+                offset[chnl] = constraints['a_ch_offset']['min']
+                self.logMsg('Minimum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to min value.'
+                            ''.format(chnl, constraints['a_ch_offset']['min'], offset[chnl]),
+                            msgType='warning')
+            elif offset[chnl] > constraints['a_ch_offset']['max']:
+                offset[chnl] = constraints['a_ch_offset']['max']
+                self.logMsg('Maximum offset for channel "{0}" is {1}. '
+                            'Requested offset of {2}V was ignored and instead set to max value.'
+                            ''.format(chnl, constraints['a_ch_offset']['max'], offset[chnl]),
+                            msgType='warning')
 
         for a_ch in amplitude:
+
             self.amplitude_list[a_ch] = amplitude[a_ch]
             #FIXME: Tell the device the proper amplitude:
             # self.tell('SOURCE{0}:VOLTAGE:AMPLITUDE {1}'.format(a_ch, amplitude[a_ch]))
@@ -965,7 +995,7 @@ class AWG70K(Base, PulserInterface):
         ch2_marker = 0
         for channel in self.active_channel:
             if self.active_channel[channel]:
-                if ('d_ch1' in channel) or ('d_ch1' in channel):
+                if ('d_ch1' in channel) or ('d_ch2' in channel):
                         ch1_marker += 1
                 if ('d_ch3' in channel) or ('d_ch4' in channel):
                         ch2_marker += 1

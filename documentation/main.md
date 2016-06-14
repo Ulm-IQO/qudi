@@ -9,6 +9,7 @@
     * [Get Markdown Plugin for documentation](@ref write-markdown)
 * [Using a Config file](@ref config-explanation)
 * [Graphical User Interface Design Concept](@ref uiguidelines)
+* [Step-by-step guide for pulsed measurements](@ref pulsedmeasurement-explanation)
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)
     * [Manager GUI](@ref managergui)
