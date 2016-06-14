@@ -1232,7 +1232,7 @@ class FitLogic():
 ################################################################################################################################
         def exponentialdecay_testing(self):
             #generation of data for testing
-            x_axis = np.linspace(1, 51, 100)
+            x_axis = np.linspace(1, 51, 20)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_exponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
@@ -1244,7 +1244,7 @@ class FitLogic():
                       params['lifetime'].value,'\n', 'offset', params['offset'].value)
             
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 1* np.random.normal(size=x_axis.shape))
+                              + 10* np.random.normal(size=x_axis.shape))
             result = self.make_exponentialdecay_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             data = data_noisy
             offset = data[-max(1,int(len(x_axis)/10)):].mean()
@@ -1265,22 +1265,22 @@ class FitLogic():
                 plt.plot(x_axis[0:i], linear_result.best_fit,'-r')
                 plt.plot(x_axis[0:i], linear_result.init_fit,'-y')
                 plt.show()
-            except:
+            except:#
                 plt.plot(x_axis, np.log(data_level), 'or')
                 plt.show()
                 print("linear fitting poorly conditioned")
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
-            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
             plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
 
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
 ###########################################################################################
         def bareexponentialdecay_testing(self):
             #generation of data for testing
-            x_axis = np.linspace(1, 51, 100)
+            x_axis = np.linspace(1, 51, 20)
             x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
             mod, params = self.make_bareexponentialdecay_model()
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
@@ -1288,7 +1288,7 @@ class FitLogic():
             print('\n''lifetime',
                       params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                              + 0.05 * np.random.normal(size=x_axis.shape))
+                              + 0.25 * np.random.normal(size=x_axis.shape))
             data = abs(data_noisy)
             for i in range(0, len(x_axis)):
                 if data[i] <= data.std():
@@ -1308,8 +1308,8 @@ class FitLogic():
             plt.plot(x_axis, data_noisy, 'ob')
             plt.plot(x_nice, mod.eval(x=x_nice, params=params), '-g')
             print(result.fit_report())
-            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
             plt.plot(x_axis, result.init_fit, '-y', linewidth=2.0)
+            plt.plot(x_axis, result.best_fit, '-r', linewidth=2.0)
 
                 # plt.plot(x_axis, np.gradient(data_noisy), '-g', linewidth=2.0, )
             plt.show()
@@ -1378,7 +1378,7 @@ class FitLogic():
             print('Parameters of the model', mod.param_names, ' with the independet variable', mod.independent_vars)
 
             params['beta'].value = 2 + abs(np.random.normal(0,0.5))
-            params['amplitude'].value = -10 - abs(np.random.normal(0,20))
+            params['amplitude'].value = 10 #- abs(np.random.normal(0,20))
             params['lifetime'].value =1 + abs(np.random.normal(0,30))
             params['offset'].value = 1 + abs(np.random.normal(0, 20))
             print('\n', 'amplitude', params['amplitude'].value, '\n', 'lifetime',
@@ -1386,7 +1386,7 @@ class FitLogic():
                          params['offset'].value,'\n', 'beta',
                              params['beta'].value)            
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 0.5* np.random.normal(size=x_axis.shape))
+                          + 1.5* np.random.normal(size=x_axis.shape))
             
             result = self.make_stretchedexponentialdecay_fit(axis=x_axis, 
                                                              data=data_noisy, 
@@ -1484,9 +1484,9 @@ test=FitLogic()
 #test.twoD_gaussian_magnet()
 #test.poissonian_testing()
 #test.double_poissonian_testing()
-#test.bareexponentialdecay_testing()
+test.bareexponentialdecay_testing()
 #test.exponentialdecay_testing()
 #test.sineexponentialdecay_testing()
-test.stretchedexponentialdecay_testing()
+#test.stretchedexponentialdecay_testing()
 #test.linear_testing()
 

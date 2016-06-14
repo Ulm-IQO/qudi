@@ -48,7 +48,7 @@ def make_bareexponentialdecay_model(self):
             information about the current value.
 
     """
-    def bareexponentialdecay_function(x,lifetime):
+    def bareexponentialdecay_function(x, lifetime):
         """
         Function of a bare exponential decay.
         @param x: variable variable - e.g. time
@@ -102,24 +102,31 @@ def estimate_bareexponentialdecay(self,x_axis=None, data=None, params=None):
             break
         
     #take the logarithom of data, calculate the life time with linear fit.
+    #Todo: Check if values are apropriate for log conversion, see stretched exp
     data_log = np.log(data)
-
-    linear_result = self.make_linear_fit(axis=x_axis[0:i],
-                                         data= data_log[0:i],
+    try:
+        linear_result = self.make_linear_fit(axis=x_axis[0:i],
+                                             data=data_log[0:i],
                                              add_parameters=None)
-
-    params['lifetime'].value = -1/linear_result.params['slope'].value
-    #bound of parameters    
+    
+        params['lifetime'].value = -1/linear_result.params['slope'].value
+        #bound of parameters    
+    except:
+        params['lifetime'].value = x_axis[i]-x_axis[0]
+        #bound of parameters    
+#        self.logMsg('Linear fit did not work in bare exponential estimator.',
+#                    msgType='error')
+                    
     params['lifetime'].min = 2 * (x_axis[1]-x_axis[0])
 
     return error, params
 
 def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
     """ 
-    This method performes a sine fit on the provided data.
+    This method performes a bare exponential fit on the provided data.
 
     @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array[] data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -151,8 +158,8 @@ def make_bareexponentialdecay_fit(self, axis=None, data=None, add_parameters=Non
 ############################################################################
 
 def make_exponentialdecay_model(self): # exponential decay
-   """
-   This method creates a model of exponential decay.
+    """
+    This method creates a model of exponential decay.
 
     @return tuple: (object model, object params)
 
@@ -167,10 +174,9 @@ def make_exponentialdecay_model(self): # exponential decay
             denoting the parameters as string names and values which are
             lmfit.parameter.Parameter (without s) objects, keeping the
             information about the current value.
-   """
-   
+    """
 
-   def exponentialdecay_function(x,lifetime,amplitude,offset):
+    def exponentialdecay_function(x, lifetime, amplitude, offset):
         """
         Function of a exponential decay.
         @param x: variable variable - e.g. time
@@ -181,10 +187,10 @@ def make_exponentialdecay_model(self): # exponential decay
         @return: sine function: in order to use it as a model
         """
         return amplitude*np.exp(-x/lifetime)+offset
-   model = Model(exponentialdecay_function)
-   params = model.make_params()
+    model = Model(exponentialdecay_function)
+    params = model.make_params()
 
-   return model, params
+    return model, params
 
 def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
     """ 
@@ -247,7 +253,9 @@ def estimate_exponentialdecay(self,x_axis=None, data=None, params=None):
             params['amplitude'].value = np.exp(linear_result.params['offset'].value)
     except:
         print("lifetime too small, beyond resolution")
+        #Fixme: make logmessage
         params['lifetime'].value = x_axis[i]-x_axis[0]
+        params['amplitude'].value = data_level[0]
 
     # values and bound of parameter.
     if data[0] < data[-1]:
@@ -365,33 +373,36 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
     #bound for smplitude 
     offset = data[-max(1,int(len(x_axis)/10)):].mean()
     if data[0]<data[-1]:
-        
         data_sub = offset - data
     else:
-        
-        data_sub = data-offset
+        data_sub = data - offset
     #calculate the absolute value of amplitude
     amplitude = data_sub.max()-data_sub[-max(1,int(len(x_axis)/10)):].mean()-\
                 data_sub[-max(1,int(len(x_axis)/10)):].std()
     #normalization of data
-    data_level = data_sub/amplitude
+    data_norm = data_sub/amplitude
     #remove data that can't under go double log calculation
+    
+# Todo: The estimation of stretched exponantial fit is not very stable and 
+    # needs improvement. But as a first version it works
+    #Todo: Add this search to all estimators
     i = 0    
     b = len(data)
     c = 0
-    for i in range(0,len(data_sub)):
-        if data_level[i]>=1:
-            a=i+1
-        if x_axis[i]==0:
-            c=i
-        if data_level[i] <= data_level.std():
-            b=i
+    a = 0
+    for i in range(0,len(data_norm)):
+        if data_norm[i] >= 1:
+            a = i+1
+        if x_axis[i] < 1e-10:
+            c = i
+        if data_norm[i] <= data_norm.std():
+            b = i
             break
-    a=max(a,c)
+    a = max(a, c)
     try:
         # double log of data is linear to log of x_axis, beta is the slope and 
         # life time should equals exp(-intercept/slope)
-        double_lg_data = np.log(-np.log(data_level[a:b]))
+        double_lg_data = np.log(-np.log(data_norm[a:b]))
 
         #linear fit, see linearmethods.py
         X=np.log(x_axis[a:b])
@@ -403,9 +414,10 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
         params['lifetime'].value = np.exp(-linear_result.params['offset'].value/linear_result.params['slope'].value)
     except:
         print("linear fit failed")
-        #self.logMsg('The linear fit did not work.',
-                    #msgType='warning')
-        params['lifetime'].value = x_axis[i] - x_axis[0]
+#        self.logMsg('The linear fit did not work in estimator of stretched '+
+#                    'exponential decay.',
+#                    msgType='warning')
+        params['lifetime'].value = x_axis[b] - x_axis[0]
         params['beta'].value = 2
     
     
@@ -425,11 +437,11 @@ def estimate_stretchedexponentialdecay(self,x_axis=None, data=None, params=None)
 
 
 def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
-   """ 
-   This method performes a sine fit on the provided data.
+    """
+    This method performes a sine fit on the provided data.
 
     @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array[]  data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -438,22 +450,18 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
                            with best fit with given axis,...
     """
 
-   stretchedexponentialdecay, params = self.make_stretchedexponentialdecay_model()
+    stretchedexponentialdecay, params = self.make_stretchedexponentialdecay_model()
 
-   error, params = self.estimate_stretchedexponentialdecay(axis, data, params)
+    error, params = self.estimate_stretchedexponentialdecay(axis, data, params)
 
-   # params['beta'].value = 2.
-   # params['beta'].vary = False
-
-   if add_parameters is not None:
+    if add_parameters is not None:
        params = self._substitute_parameter(parameters=params,
                                            update_dict=add_parameters)
-   try:
+    try:
        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
-   except:
+    except:
        self.logMsg('The stretchedexponentialdecay fit did not work.'
                    'message: {}'.format(str(result.message)),
                    msgType='warning')
        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
-   return result
-
+    return result
