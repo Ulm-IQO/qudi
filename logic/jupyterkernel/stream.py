@@ -29,10 +29,10 @@ class QZMQStream(QtCore.QObject):
     sigMsgRecvd = QtCore.Signal(object)
 
     def __init__(self, zmqsocket):
-    """ Make a stream from a socket.
-
-      @param socket: ZMQ socket
-    """
+        """ Make a stream from a socket.
+        
+        @param socket: ZMQ socket
+        """
         super().__init__()
         self.socket = zmqsocket
         self.readnotifier = QtCore.QSocketNotifier(
