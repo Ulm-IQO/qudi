@@ -32,6 +32,7 @@ import os
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
+from gui.fitsettings import FitSettingsWidget
 
 
 class ODMRMainWindow(QtGui.QMainWindow):
@@ -70,17 +71,13 @@ class ODMRGui(GUIBase):
     def __init__(self, manager, name, config, **kwargs):
         ## declare actions for state transitions
         c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
-        super().__init__(manager,
-                         name,
-                         config,
-                         c_dict)
+        super().__init__(manager, name, config, c_dict)
 
         self.logMsg('The following configuration was found.', msgType='status')
 
         # checking for the right configuration
         for key in config.keys():
-            self.logMsg('{}: {}'.format(key,config[key]),
-                        msgType='status')
+            self.logMsg('{}: {}'.format(key,config[key]), msgType='status')
 
     def initUI(self, e=None):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -123,10 +120,13 @@ class ODMRGui(GUIBase):
 
         # Get the image from the logic
         self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.ODMR_plot_xy.transpose())
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-                                                     0,
-                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
-                                                     self._odmr_logic.number_of_lines))
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                self._odmr_logic.mw_start,
+                0,
+                self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
+                self._odmr_logic.number_of_lines
+            ))
 
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.ODMR_plot_x,
@@ -140,7 +140,6 @@ class ODMRGui(GUIBase):
         # for the frequencies,  one can choose from the dict obtainable from
         # self.get_unit_prefix_dict():
         self._freq_prefix = 'M'
-
 
         # Add the display item to the xy and xz VieWidget, which was defined in
         # the UI file.
@@ -206,8 +205,17 @@ class ODMRGui(GUIBase):
         self._mw.power_DoubleSpinBox.setValue(self._odmr_logic.mw_power)
         self._mw.runtime_DoubleSpinBox.setValue(self._odmr_logic.run_time)
         self._mw.elapsed_time_DisplayWidget.display(int(self._odmr_logic.elapsed_time))
+
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
+        self._sd.fit_tabs = {}
+        for name, model in self._odmr_logic.fit_models.items():
+            try:
+                self._sd.fit_tabs[name] = FitSettingsWidget(model[1])
+            except:
+                self.logExc('Could not load fitmodel {}'.format(name), msgType='warning')
+            else:
+                self._sd.tabWidget.addTab(self._sd.fit_tabs[name], name)
 
         # Update the inputed/displayed numbers if return key is hit:
 
@@ -236,8 +244,6 @@ class ODMRGui(GUIBase):
         ########################################################################
 
         # Connect the RadioButtons and connect to the events if they are clicked:
-        # self._mw.idle_StateWidget.toggled.connect(self.idle_clicked)
-        # self._mw.run_StateWidget.toggled.connect(self.run_clicked)
         self._mw.action_run_stop.toggled.connect(self.run_stop)
         self._mw.action_resume_odmr.toggled.connect(self.resume_odmr)
         self._mw.action_Save.triggered.connect(self.save_plots_and_data)
@@ -258,7 +264,6 @@ class ODMRGui(GUIBase):
         self._sd.buttonBox.button(QtGui.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self.reject_settings()
         # Connect stop odmr
-        # self._odmr_logic.sigOdmrFinished.connect(self._mw.idle_StateWidget.click)
         self._odmr_logic.sigOdmrFinished.connect(self.odmr_stopped)
         # Combo Widget
         self._mw.mode_ComboBox.activated[str].connect(self.mw_stop)
@@ -280,33 +285,11 @@ class ODMRGui(GUIBase):
         self._mw.close()
         return 0
 
-
     def show(self):
         """Make window visible and put it above all other windows. """
         QtGui.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
-
-#     def idle_clicked(self):
-#         """ Stopp the scan if the state has switched to idle. """
-#         self._odmr_logic.stop_odmr_scan()
-#         self._sd.matrix_lines_SpinBox.setReadOnly(False)
-# #        self._odmr_logic.kill_odmr()
-#
-#
-#     def run_clicked(self, enabled):
-#         """ Manages what happens if odmr scan is started.
-#
-#         @param bool enabled: start scan if that is possible
-#         """
-#
-#         #Firstly stop any scan that might be in progress
-#         self._odmr_logic.stop_odmr_scan()
-# #        self._odmr_logic.kill_odmr()
-#         #Then if enabled. start a new odmr scan.
-#         if enabled:
-#             self._odmr_logic.start_odmr_scan()
-#             self._sd.matrix_lines_SpinBox.setReadOnly(True)
 
     def run_stop(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """
@@ -359,25 +342,22 @@ class ODMRGui(GUIBase):
 
     def refresh_plot(self):
         """ Refresh the xy-plot image """
-        self.odmr_image.setData(self._odmr_logic.ODMR_plot_x,
-                                self._odmr_logic.ODMR_plot_y)
+        self.odmr_image.setData(
+            self._odmr_logic.ODMR_plot_x,
+            self._odmr_logic.ODMR_plot_y)
 
         if not self._mw.fit_methods_ComboBox.currentText() == 'No Fit':
-            self.odmr_fit_image.setData(self._odmr_logic.ODMR_fit_x,
-                                        self._odmr_logic.ODMR_fit_y,
-                                        pen=QtGui.QPen(QtGui.QColor(255,0,255,255)))
+            self.odmr_fit_image.setData(
+                self._odmr_logic.ODMR_fit_x,
+                self._odmr_logic.ODMR_fit_y,
+                pen=QtGui.QPen(QtGui.QColor(255,0,255,255)
+                ))
         else:
             if self.odmr_fit_image in self._mw.odmr_PlotWidget.listDataItems():
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
     def refresh_matrix(self):
         """ Refresh the xy-matrix image """
-#        self.odmr_matrix_image.setImage(self._odmr_logic.ODMR_plot_xy.transpose())
-#        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-#                                                     0,
-#                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,self._odmr_logic.number_of_lines))
-#        self.refresh_odmr_colorbar()
-
         odmr_image_data = self._odmr_logic.ODMR_plot_xy.transpose()
 
         # If "Centiles" is checked, adjust colour scaling automatically to
@@ -417,10 +397,13 @@ class ODMRGui(GUIBase):
     def update_matrix_axes(self):
         """ Adjust the x and y axes in the image according to the input. """
 
-        self.odmr_matrix_image.setRect(QtCore.QRectF(self._odmr_logic.mw_start,
-                                                     0,
-                                                     self._odmr_logic.mw_stop-self._odmr_logic.mw_start,
-                                                     self._odmr_logic.number_of_lines))
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                self._odmr_logic.mw_start,
+                0,
+                self._odmr_logic.mw_stop - self._odmr_logic.mw_start,
+                self._odmr_logic.number_of_lines
+            ))
 
 
     def refresh_odmr_colorbar(self):
@@ -562,12 +545,9 @@ class ODMRGui(GUIBase):
             filename = os.path.join(filepath, '{}_ODMR'.format(timestamp.strftime('%Y%m%d-%H%M-%S'),))
 
         exporter_graph = pg.exporters.SVGExporter(self._mw.odmr_PlotWidget.plotItem.scene())
-        #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
         exporter_graph.export(filename + '_sum' + '.svg')
 
         exporter_matrix = pg.exporters.SVGExporter(self._mw.odmr_matrix_PlotWidget.plotItem.scene())
-        #exporter_matrix = pg.exporters.ImageExporter(self._mw.odmr_matrix_PlotWidget.plotItem)
         exporter_matrix.export(filename + '_matrix' + '.svg')
 
-        # self._save_logic.
         self._odmr_logic.save_ODMR_Data(filetag, timestamp)
