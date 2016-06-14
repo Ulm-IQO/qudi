@@ -260,7 +260,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 # self.odmr_optimize_timer.start()
         return
 
-    def change_fc_binning_for_pulsed_analysis(self,fc_binning):
+    def set_fc_binning(self, fc_binning):
         """ If the FC binning has be changed in the GUI, inform analysis
 
         @param float fc_binning: Binning of fast counter in s
@@ -285,15 +285,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # analyze pulses and get data points for signal plot
 
-            self.signal_plot_y, \
-            self.laser_data,    \
-            self.raw_data,      \
-            self.measuring_error,\
-            self.is_gated        = self._pulse_analysis_logic._analyze_data(norm_start,
-                                                                            norm_end,
-                                                                            sig_start,
-                                                                            sig_end,
-                                                                            self.number_of_lasers)
+            self.signal_plot_y,self.laser_data,self.raw_data,self.measuring_error,self.is_gated = self._pulse_analysis_logic._analyze_data(norm_start,norm_end,sig_start,sig_end,self.number_of_lasers)
             # set x-axis of signal plot
 
 
@@ -439,7 +431,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.lock()
         return 0
 
-    def change_timer_interval(self, interval):
+    def set_timer_interval(self, interval):
         """ Change the interval of the timer
 
         @param int interval: Interval of the timer in s
@@ -451,7 +443,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.timer.setInterval(int(1000. * self.timer_interval))
         return
 
-    def change_confocal_optimize_timer_interval(self, interval):
+    def set_confocal_optimize_timer_interval(self, interval):
         """ Change the timer interval for confocal refocus
 
         @param int interval: Interval of the timer in s
@@ -466,7 +458,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 print('never mind')
         return
 
-    def change_odmr_optimize_timer_interval(self, interval):
+    def set_odmr_optimize_timer_interval(self, interval):
         """ Change the timer interval for odmr refocus
 
         @param int interval: Interval of the timer in s
@@ -567,7 +559,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         temp_arr = np.empty([self.laser_data.shape[1], self.laser_data.shape[0]+1])
         temp_arr[:,1:] = self.laser_data.transpose()
-        temp_arr[:,0] = self.laser_plot_x
+        temp_arr[:,0] = np.arange(0, self.laser_data.shape[1]*self.fast_counter_binwidth, self.fast_counter_binwidth)
         data = OrderedDict()
         data = {'Time (ns), Signal (counts)': temp_arr}
 

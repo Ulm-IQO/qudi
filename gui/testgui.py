@@ -36,7 +36,7 @@ class TestGui(GUIBase):
           @param dict config: configuration dictionary
           @param dict kwargs: further optional arguments
         """
-        c_dict = {'onactivate': self.initUI}
+        c_dict = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
         super().__init__(
                     manager,
                     name,
@@ -66,12 +66,19 @@ class TestGui(GUIBase):
         self.cwdget.setLayout(self.layout)
         self._mw.setCentralWidget(self.cwdget)
         self._mw.show()
+        
+    def deactivation(self, e):
+        """
+          @param object e: Fysom state change
+        """
+        pass
 
     def handleButton(self):
         """Change style of buttons.
         """
-        self.button.setStyleSheet('QPushButton {background-color:'
-                                ' #A3C1DA; color: red;}')
+        self.button.setStyleSheet(
+            'QPushButton {background-color:'
+            ' #A3C1DA; color: red;}')
 
     def handleButtonError(self):
         """ Produce an exception for testing.

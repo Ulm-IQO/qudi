@@ -1454,7 +1454,7 @@ class FitLogic():
             #print('\n', 'beta', params['beta'].value, '\n', 'lifetime',
                   #params['lifetime'].value)
             data_noisy = (mod.eval(x=x_axis, params=params)
-                          + 1 * np.random.normal(size=x_axis.shape))
+                          + 10 * np.random.normal(size=x_axis.shape))
 
             result = self.make_linear_fit(axis=x_axis, data=data_noisy, add_parameters=None)
             plt.plot(x_axis, data_noisy, 'ob')

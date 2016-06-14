@@ -75,7 +75,7 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         if abs(dt) > 10:
             dt = 10*np.sign(dt)
         self.temperature = self.temperature + dt
-        print(self.temperature, self.pwmpower, heatCapacity)
+        # print(self.temperature, self.pwmpower, heatCapacity)
 
     def metalHeatCapacity(self, T):
         NA = 6.02214086 * 10**23  # Avogadro constant

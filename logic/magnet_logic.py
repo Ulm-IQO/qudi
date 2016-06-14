@@ -19,7 +19,7 @@ along with QuDi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from PyQt4 import QtCore
+from pyqtgraph.Qt import QtCore
 import numpy as np
 import time
 import os
@@ -208,7 +208,6 @@ class MagnetLogic(GenericLogic):
         # connect the optimizer signals:
 
         self.sigTest.connect(self._do_premeasurement_proc)
-
 
         # Fluorescence alignment settings:
         self._optimize_pos = False
@@ -1099,23 +1098,23 @@ class MagnetLogic(GenericLogic):
         # odmr_2d_peak_axis1_move_ratio:
         if self._pathway_index > 1:
             # in essence, get the last measurement value for odmr freq:
-            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq'].get('Frequency') is not None:
-                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Frequency']['value']*1e6
-                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Frequency']['value']*1e6
-            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq'].get('Freq. 1') is not None:
-                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq']['Freq. 1']['value']*1e6
-                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq']['Freq. 1']['value']*1e6
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('low_freq_Frequency') is not None:
+                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq_Frequency']['value']*1e6
+                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq_Frequency']['value']*1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('low_freq_Freq. 1') is not None:
+                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq_Freq. 1']['value']*1e6
+                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq_Freq. 1']['value']*1e6
             else:
                 self.logMsg('No previous saved lower odmr freq found in '
                             'ODMR alignment data! Cannot do the ODMR '
                             'Alignment!', msgType='error')
 
-            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq'].get('Frequency') is not None:
-                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Frequency']['value']*1e6
-                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Frequency']['value']*1e6
-            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq'].get('Freq. 1') is not None:
-                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq']['Freq. 1']['value']*1e6
-                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq']['Freq. 1']['value']*1e6
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('high_freq_Frequency') is not None:
+                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq_Frequency']['value']*1e6
+                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq_Frequency']['value']*1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('high_freq_Freq. 1') is not None:
+                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq_Freq. 1']['value']*1e6
+                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq_Freq. 1']['value']*1e6
             else:
                 self.logMsg('No previous saved higher odmr freq found in '
                             'ODMR alignment data! Cannot do the ODMR '
@@ -1129,19 +1128,25 @@ class MagnetLogic(GenericLogic):
                 # update the correction ratio:
                 low_peak_axis0_move_ratio = (low_odmr_freq1 - low_odmr_freq2)/axis0_move
                 high_peak_axis0_move_ratio = (high_odmr_freq1 - high_odmr_freq2)/axis0_move
-                print('low_odmr_freq2', low_odmr_freq2, 'low_odmr_freq1', low_odmr_freq1)
-                print('high_odmr_freq2', high_odmr_freq2, 'high_odmr_freq1', high_odmr_freq1)
+
+                # print('low_odmr_freq2', low_odmr_freq2, 'low_odmr_freq1', low_odmr_freq1)
+                # print('high_odmr_freq2', high_odmr_freq2, 'high_odmr_freq1', high_odmr_freq1)
 
                 # calculate the average shift of the odmr lines for the lower
                 # and the upper transition:
                 self.odmr_2d_peak_axis0_move_ratio = (low_peak_axis0_move_ratio +high_peak_axis0_move_ratio)/2
-                print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
+
+                # print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
             if not np.isclose(axis1_move, 0.0):
                 # update the correction ratio:
                 low_peak_axis1_move_ratio = (low_odmr_freq1 - low_odmr_freq2)/axis1_move
                 high_peak_axis1_move_ratio = (high_odmr_freq1 - high_odmr_freq2)/axis1_move
+
+                # calculate the average shift of the odmr lines for the lower
+                # and the upper transition:
                 self.odmr_2d_peak_axis1_move_ratio = (low_peak_axis1_move_ratio + high_peak_axis1_move_ratio)/2
-                print('new odmr_2d_peak_axis1_move_ratio', self.odmr_2d_peak_axis1_move_ratio/1e12)
+
+                # print('new odmr_2d_peak_axis1_move_ratio', self.odmr_2d_peak_axis1_move_ratio/1e12)
 
         # Measurement of the lower transition:
         # -------------------------------------
@@ -1151,7 +1156,7 @@ class MagnetLogic(GenericLogic):
 
         # correct here the center freq with the estimated corrections:
         self.odmr_2d_low_center_freq += (freq_shift_low_axis0 + freq_shift_low_axis1)
-        print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
+        # print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
 
         # create a unique nametag for the current measurement:
         name_tag = 'low_trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
@@ -1177,7 +1182,9 @@ class MagnetLogic(GenericLogic):
                                                           self.odmr_2d_save_after_measure,
                                                           name_tag)
 
-        store_dict['low_freq'] = param
+        # restructure the output parameters:
+        for entry in param:
+            store_dict['low_freq_'+str(entry)] = param[entry]
 
         # extract the frequency meausure:
         if param.get('Frequency') is not None:
@@ -1222,7 +1229,9 @@ class MagnetLogic(GenericLogic):
                                                           self.odmr_2d_high_fitfunction,
                                                           self.odmr_2d_save_after_measure,
                                                           name_tag)
-        store_dict['high_freq'] = param
+        # restructure the output parameters:
+        for entry in param:
+            store_dict['high_freq_'+str(entry)] = param[entry]
 
         # extract the frequency meausure:
         if param.get('Frequency') is not None:
@@ -1296,7 +1305,7 @@ class MagnetLogic(GenericLogic):
         axes_names = list(self._saved_pos_before_align)
 
 
-        matrix_data['Fluorescence Matrix'] = self._2D_data_matrix
+        matrix_data['Alignment Matrix'] = self._2D_data_matrix
 
         parameters = OrderedDict()
         parameters['Measurement start time'] = self._start_measurement_time
@@ -1313,6 +1322,8 @@ class MagnetLogic(GenericLogic):
         for entry in self._backmap:
             parameters['related_intex_'+str(entry)] = self._backmap[entry]
 
+
+
         self._save_logic.save_data(matrix_data, filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp,
                                    as_text=True)
@@ -1320,6 +1331,30 @@ class MagnetLogic(GenericLogic):
         self.logMsg('Magnet 2D data saved to:\n{0}'.format(filepath),
                     msgType='status', importance=3)
 
+        # prepare the data in a dict or in an OrderedDict:
+        add_data = OrderedDict()
+        axis0_data = np.zeros(len(self._backmap))
+        axis1_data = np.zeros(len(self._backmap))
+        param_data = np.zeros(len(self._backmap), dtype='object')
+
+        for backmap_index in self._backmap:
+            axis0_data[backmap_index] = self._backmap[backmap_index][self._axis0_name]
+            axis1_data[backmap_index] = self._backmap[backmap_index][self._axis1_name]
+            param_data[backmap_index] = str(self._2D_add_data_matrix[self._backmap[backmap_index]['index']])
+
+        constr = self.get_hardware_constraints()
+        units_axis0 = constr[self._axis0_name]['unit']
+        units_axis1 = constr[self._axis1_name]['unit']
+
+        add_data['{0} values ({1})'.format(self._axis0_name, units_axis0)] = axis0_data
+        add_data['{0} values ({1})'.format(self._axis1_name, units_axis1)] = axis1_data
+        add_data['all measured additional parameter'] = param_data
+
+
+
+        self._save_logic.save_data(add_data, filepath,
+                                   filelabel=filelabel2, timestamp=timestamp,
+                                   as_text=True)
         # save also all kinds of data, which are the results during the
         # alignment measurements
 

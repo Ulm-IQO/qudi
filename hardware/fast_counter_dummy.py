@@ -23,7 +23,7 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 import time
 import os
 import numpy as np
-from PyQt4 import QtGui
+from pyqtgraph.Qt import QtGui
 
 from core.base import Base
 from interface.fast_counter_interface import FastCounterInterface

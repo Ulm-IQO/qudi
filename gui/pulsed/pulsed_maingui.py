@@ -21,7 +21,7 @@ Copyright (C) 2016 Nikolas Tomek nikolas.tomek@uni-ulm.de
 Copyright (C) 2016 Simon Schmitt simon.schmitt@uni-ulm.de
 """
 
-from PyQt4 import QtGui, QtCore, uic
+from pyqtgraph.Qt import QtGui, QtCore, uic
 import numpy as np
 import os
 from collections import OrderedDict
@@ -3065,7 +3065,7 @@ class PulsedMeasurementGui(GUIBase):
     def analysis_timing_changed(self):
         """ This method handles the analysis timing"""
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
-        self._pulsed_meas_logic.change_timer_interval(timer_interval)
+        self._pulsed_meas_logic.set_timer_interval(timer_interval)
 
 
     def analysis_fc_binning_changed(self):
@@ -3073,7 +3073,7 @@ class PulsedMeasurementGui(GUIBase):
 
         index = self._mw.ana_param_fc_bins_ComboBox.currentIndex()
         fc_binning = self._binwidth_ref_list[index]
-        self._pulsed_meas_logic.change_fc_binning_for_pulsed_analysis(fc_binning)
+        self._pulsed_meas_logic.set_fc_binning(fc_binning)
         return
 
     #FIXME:

@@ -36,12 +36,7 @@ class TrayIcon(GUIBase):
           @param dict kwargs: further named arguments
         """
         callback = {'onactivate': self.initUI, 'ondeactivate': self.deactivation}
-        super().__init__(
-                    manager,
-                    name,
-                    config,
-                    callback
-                    )
+        super().__init__(manager, name, config, callback)
 
     def initUI(self, e=None):
         """ Set up tray icon UI .
@@ -80,8 +75,11 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
         self.setIcon(QtGui.QApplication.instance().windowIcon())
         self.right_menu = QtGui.QMenu('Quit')
         self.left_menu = QtGui.QMenu('Manager')
-        self.managericon = QtGui.QIcon.fromTheme("go-home")
-        self.exiticon = QtGui.QIcon.fromTheme("application-exit")
+        iconpath = 'artwork/icons/oxygen'
+        self.managericon = QtGui.QIcon()
+        self.managericon.addFile('{0}/22x22/go-home.png'.format(iconpath), QtCore.QSize(16,16))
+        self.exiticon = QtGui.QIcon()
+        self.exiticon.addFile('{0}/22x22/application-exit.png'.format(iconpath), QtCore.QSize(16,16))
         self.quitAction = QtGui.QAction(self.exiticon, "&Quit", self.right_menu)
         self.managerAction = QtGui.QAction(self.managericon, "&Manager", self.left_menu)
         self.left_menu.addAction(self.managerAction)

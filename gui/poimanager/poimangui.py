@@ -19,14 +19,15 @@ Copyright (C) 2015 Lachlan J. Rogers  lachlan.j.rogers@quantum.diamonds
 """
 
 from pyqtgraph.Qt import QtCore, QtGui, uic
-from PyQt4.QtGui import QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import time
 import os
 
 from gui.guibase import GUIBase
-from gui.guiutils import ColorScale, ColorBar
+from gui.guiutils import ColorBar
+from gui.colordefs import ColorScaleInferno
+from gui.colordefs import QudiPalette as palette
 
 # Rather than import the ui*.py file here, the ui*.ui file itself is
 # loaded by uic.loadUI in the QtGui classes below.
@@ -209,6 +210,7 @@ class ReorientRoiDialog(QtGui.QDialog):
 
 
 class PoiManagerGui(GUIBase):
+
     """ This is the GUI Class for PoiManager """
 
     _modclass = 'PoiManagerGui'
@@ -308,7 +310,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_map_ViewWidget.setAspectLocked(lock=True, ratio=1.0)
 
         # Get the colorscales and set LUT
-        my_colors = ColorScale()
+        my_colors = ColorScaleInferno()
 
         self.roi_map_image.setLookupTable(my_colors.lut)
 
@@ -325,15 +327,15 @@ class PoiManagerGui(GUIBase):
         #####################
 
         # Load image in the display
-        self.x_shift_plot = pg.ScatterPlotItem([0], [0], symbol='x', pen='r')
-        self.y_shift_plot = pg.ScatterPlotItem([0], [0], symbol='s', pen='g')
-        self.z_shift_plot = pg.ScatterPlotItem([0], [0], symbol='o', pen='b')
+        self.x_shift_plot = pg.ScatterPlotItem([0], [0], symbol='o', pen=palette.c1, brush=palette.c1)
+        self.y_shift_plot = pg.ScatterPlotItem([0], [0], symbol='s', pen=palette.c2, brush=palette.c2)
+        self.z_shift_plot = pg.ScatterPlotItem([0], [0], symbol='t', pen=palette.c3, brush=palette.c3)
 
         # It seems there is a bug with legends for ScatterPlotItem.
         # as a workaround, here are three plotCurveItems to populate the legend.
-        self.x_legend_plot = pg.PlotCurveItem([0], [0], pen='r', name='x')
-        self.y_legend_plot = pg.PlotCurveItem([0], [0], pen='g', name='y')
-        self.z_legend_plot = pg.PlotCurveItem([0], [0], pen='b', name='z')
+        self.x_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine), name='x')
+        self.y_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine), name='y')
+        self.z_legend_plot = pg.PlotCurveItem([0], [0], pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine), name='z')
         self._mw.sample_shift_ViewWidget.addLegend()
 
         # Add the plot to the ViewWidget defined in the UI file
@@ -853,7 +855,7 @@ class PoiManagerGui(GUIBase):
         '''Load a saved ROI from file.
         '''
 
-        this_file = QFileDialog.getOpenFileName(
+        this_file = QtGui.QFileDialog.getOpenFileName(
             self._mw, str("Open ROI"), None, str("Data files (*.dat)"))
 
         self._poi_manager_logic.load_roi_from_file(filename=this_file)

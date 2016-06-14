@@ -20,7 +20,7 @@ Copyright (C) 2015 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from pyqtgraph import PlotWidget
-from PyQt4 import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore
 
 class PlotWidgetModified(PlotWidget):
     """ Extend the PlotWidget Class with more adjustment possibilities.
