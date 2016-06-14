@@ -24,7 +24,7 @@ Copyright (c) 2016 Ou Wang ou.wang@uni-ulm.de
 from lmfit.models import Model
 import numpy as np
 from lmfit import Parameters
-
+import math
 ############################################################################
 #                                                                          #
 #                              linear fitting                              #
@@ -204,7 +204,7 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
-
+    
     error = 0
     # check if parameters make sense
     parameters = [x_axis, data]
@@ -248,8 +248,8 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
 def make_linear_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a linear fit on the provided data.
 
-    @param array [] axis: axis values
-    @param array [] x_data: data
+    @param array[] axis: axis values
+    @param array[] data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
