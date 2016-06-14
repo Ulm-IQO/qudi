@@ -40,23 +40,20 @@ class Pulse_Block_Element(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_bins, analog_channels, digital_channels,
-                 increment_bins=0, pulse_function=None, marker_active=None,
+    def __init__(self, init_length_bins, increment_bins=0, pulse_function=None, digital_high=None,
                  parameters=[], use_as_tick=False):
         """ The constructor for a Pulse_Block_Element needs to have:
 
         @param int init_length_bins: an initial length of a bins, this
                                  parameters should not be zero but must have a
                                  finite value.
-        @param int analog_channels: number of analog channels
-        @param int digital_channels: number of digital channels
         @param int increment_bins: the number which will be incremented during
                                each repetition of this object
         @param list pulse_function: list of strings with name of the sampling
                                     function how to alter the points, the name
                                     of the function will be one of the sampling
                                     functions
-        @param list marker_active: list of digital channels, which are for the
+        @param list digital_high: list of digital channels, which are for the
                               length of this Pulse_Block_Element are set either
                               to True (high) or to False (low). The length of
                               the marker list depends on the number of (active)
@@ -73,32 +70,38 @@ class Pulse_Block_Element(object):
                            be used as a tick (i.e. the parameter for the x axis)
                            for the later plot in the analysis.
         """
-
+        # FIXME: Sanity checks need to be implemented here
         self.init_length_bins   = init_length_bins
-        self.analog_channels  = analog_channels
-        self.digital_channels   = digital_channels
         self.increment_bins     = increment_bins
         self.pulse_function     = pulse_function
-        self.marker_active      = marker_active
+        self.digital_high       = digital_high
         self.parameters         = parameters
-        self.use_as_tick         = use_as_tick
+        self.use_as_tick        = use_as_tick
+
+        # calculate number of digital and analogue channels
+        if pulse_function is not None:
+            self.analog_channels = len(pulse_function)
+        else:
+            self.analog_channels = 0
+        if digital_high is not None:
+            self.digital_channels = len(digital_high)
+        else:
+            self.digital_channels = 0
 
 
 class Pulse_Block(object):
     """ Collection of Pulse_Block_Elements which is called a Pulse_Block. """
 
-    def __init__(self, name, element_list, laser_channel_index):
+    def __init__(self, name, element_list):
         """ The constructor for a Pulse_Block needs to have:
 
         @param str name: chosen name for the Pulse_Block
         @param list element_list: which contains the Pulse_Block_Element
                              Objects forming a Pulse_Block, e.g.
                              [Pulse_Block_Element, Pulse_Block_Element, ...]
-        @param int laser_channel_index: The index of the digital channel representing the laser
         """
         self.name = name
         self.element_list = element_list
-        self.laser_channel = laser_channel_index
         self.refresh_parameters()
 
     def refresh_parameters(self):
@@ -107,13 +110,11 @@ class Pulse_Block(object):
         The information is gained from all the Pulse_Block_Element objects,
         which are attached in the element_list.
         """
-
         # the Pulse_Block parameter
         self.init_length_bins = 0
         self.increment_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
-        self.number_of_lasers = 0
         self.use_as_tick = False
 
         # calculate the tick value for the whole block. Basically sum all the
@@ -123,17 +124,9 @@ class Pulse_Block(object):
         # number for the block. This facilitates in calculating the measurement tick list.
         self.measurement_tick_increment = 0
 
-        laser_on = False
         for elem in self.element_list:
             self.init_length_bins += elem.init_length_bins
             self.increment_bins += elem.increment_bins
-
-            if elem.marker_active[self.laser_channel]:
-                if not laser_on:
-                    self.number_of_lasers += 1
-                    laser_on = True
-            else:
-                laser_on = False
 
             if elem.use_as_tick:
                 self.use_as_tick = True
@@ -171,28 +164,30 @@ class Pulse_Block_Ensemble(object):
     This object is used as a construction plan to create one sampled file.
     """
 
-    def __init__(self, name, block_list, laser_channel_index, rotating_frame=True):
+    def __init__(self, name, block_list, activation_config, laser_channel=None, rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
         @param str name: chosen name for the Pulse_Block_Ensemble
         @param list block_list: contains the Pulse_Block Objects with their number of repetitions,
                                 e.g.
                                     [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
-        @param int laser_channel_index: the index of the digital channel representing the laser
+        @param list activation_config: A list of strings representing the channel configuration
+                                        e.g. ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2']
+        @param str laser_channel: The string descriptor for the laser channel.
+                                    Must be contained by the passed activation_config.
         @param bool rotating_frame: indicates whether the phase should be preserved for all the
                                     functions.
         """
-
+        # FIXME: Sanity checking needed here
         self.name = name                    # Pulse_Block_Ensemble name
         self.block_list = block_list
-        self.laser_channel = laser_channel_index
+        self.activation_config = activation_config
         self.rotating_frame = rotating_frame
+        if laser_channel in activation_config:
+            self.laser_channel = laser_channel
+        else:
+            self.laser_channel = None
         self.refresh_parameters()
-
-        #TODO: That parameter container should be used to store all Information
-        #      upon creation of the Pulse_Sequence object. Those information
-        #      will also be saved to file.
-        self.param_container = OrderedDict()
 
     def refresh_parameters(self):
         self.length_bins = 0
@@ -203,18 +198,16 @@ class Pulse_Block_Ensemble(object):
         self.measurement_ticks_list = np.array([])
 
         for block, reps in self.block_list:
-            if block.laser_channel != self.laser_channel:
-                block.laser_channel = self.laser_channel
-                block.refresh_parameters()
+            # Get number of channels from the block information
             if block.analog_channels > self.analog_channels:
                 self.analog_channels = block.analog_channels
-                block.refresh_parameters()
             if block.digital_channels > self.digital_channels:
                 self.digital_channels = block.digital_channels
-                block.refresh_parameters()
-            self.number_of_lasers += (reps+1)*block.number_of_lasers
+
+            # Get and set information about the length of the ensemble
             self.length_bins += (block.init_length_bins * (reps+1) + block.increment_bins * (reps*(reps+1)/2))
 
+            # Calculate the measurement ticks list for this ensemble
             if block.use_as_tick:
                 start = block.measurement_tick_start
                 incr = block.measurement_tick_increment
@@ -224,7 +217,33 @@ class Pulse_Block_Ensemble(object):
                     arr = np.arange(start, start+(reps+1)*incr, incr)
                 self.measurement_ticks_list = np.append(self.measurement_ticks_list, arr)
 
-        self.estimated_bytes = self.length_bins * (self.analog_channels * 4 + self.digital_channels)
+            # Calculate the number of laser pulses for this ensemble
+            if self.laser_channel is None:
+                self.number_of_lasers = 0
+            elif 'd_ch' in self.laser_channel:
+                # determine the laser channel index for the corresponding channel
+                digital_chnl_list = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
+                laser_index = digital_chnl_list.index(self.laser_channel)
+                # Iterate through the elements and count laser on state changes (no double counting)
+                laser_on = False
+                for elem in block.element_list:
+                    if elem.digital_high[laser_index] and not laser_on:
+                        self.number_of_lasers += 1
+                        laser_on = True
+                    elif not elem.digital_high[laser_index]:
+                        laser_on = False
+            elif 'a_ch' in self.laser_channel:
+                # determine the laser channel index for the corresponding channel
+                analog_chnl_list = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
+                laser_index = analog_chnl_list.index(self.laser_channel)
+                # Iterate through the elements and count laser on state changes (no double counting)
+                laser_on = False
+                for elem in block.element_list:
+                    if elem.pulse_function[laser_index] == 'DC' and not laser_on:
+                        self.number_of_lasers += 1
+                        laser_on = True
+                    elif elem.pulse_function[laser_index] != 'DC':
+                        laser_on = False
         return
 
     def replace_block(self, position, block):
@@ -696,6 +715,25 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
 # -----------------------------------------------------------------------------
+    def get_saved_asset(self, name):
+        """
+        Returns the data object for a saved Ensemble/Sequence with name "name". Searches in the
+        saved assets for a Sequence object first. If no Sequence by that name could be found search
+        for Ensembles instead. If neither could be found return None.
+        @param name: Name of the Sequence/Ensemble
+        @return: Pulse_Sequence | Pulse_Block_Ensemble | None
+        """
+        if name in self.saved_pulse_sequences:
+            asset_obj = self.get_pulse_sequence(name)
+        elif name in self.saved_pulse_block_ensembles:
+            asset_obj = self.get_pulse_block_ensemble(name)
+        else:
+            asset_obj = None
+            self.logMsg('No Pulse_Sequence or Pulse_Block_Ensemble by the name "{0}" could be '
+                        'found in pulsed_files_directory. Returning None.'.format(name),
+                        msgType='warning')
+        return asset_obj
+
 
     def save_block(self, name, block):
         """ Serialize a Pulse_Block object to a *.blk file.
@@ -932,90 +970,58 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # list of all the pulse block element objects
         pbe_obj_list = [None]*len(block_matrix)
 
-        analog_channels=self.analog_channels
-        digital_channels=self.digital_channels
-
-        # get current activation config
-        activation_config = self.activation_config
         # seperate digital and analogue channels
-        analog_chnl_names = [a_chnl for a_chnl in activation_config if 'a_ch' in a_chnl]
-        digital_chnl_names = [d_chnl for d_chnl in activation_config if 'd_ch' in d_chnl]
-
-        # get the current sample rate from the hardware
-        sample_rate = self.get_sample_rate()
+        analog_chnl_names = [a_chnl for a_chnl in self.activation_config if 'a_ch' in a_chnl]
+        digital_chnl_names = [d_chnl for d_chnl in self.activation_config if 'd_ch' in d_chnl]
 
         for row_index, row in enumerate(block_matrix):
-
-            #FIXME: The output parameters are now in SI units. A conversion to
-            #       bins is still needed.
-
             # check how length is displayed and convert it to bins:
             length_time= row[self.cfg_param_pbe['length']]
-            init_length_bins=int(np.round(length_time*sample_rate))
+            init_length_bins=int(np.round(length_time*self.sample_rate))
 
             # check how increment is displayed and convert it to bins:
             increment_time=row[self.cfg_param_pbe['increment']]
-            increment_bins= int(np.round(increment_time*sample_rate))
+            increment_bins= int(np.round(increment_time*self.sample_rate))
 
             # get the dict with all possible functions and their parameters:
             func_dict = self.get_func_config()
 
             # get the proper pulse_functions and its parameters:
             pulse_function=[None]*self.analog_channels
-
             parameter_list =[None]*self.analog_channels
-
             for num in range(self.analog_channels):
                 # get the number of the analogue channel according to the channel activation_config
                 a_chnl_number = analog_chnl_names[num].split('ch')[-1]
-
                 pulse_function[num] = row[self.cfg_param_pbe['function_'+a_chnl_number]].decode('UTF-8')
 
                 # search for this function in the dictionary and get all the
                 # parameter with their names in list:
                 param_dict = func_dict[pulse_function[num]]
-
                 parameters = {}
                 for entry in list(param_dict):
-
                     # Obtain how the value is displayed in the table:
                     param_value = row[self.cfg_param_pbe[entry+'_'+a_chnl_number]]
-
                     parameters[entry] = param_value
                 parameter_list[num] = parameters
 
-            marker_active = [None]*self.digital_channels
+            digital_high = [None]*self.digital_channels
             for num in range(self.digital_channels):
                 # get the number of the digital channel according to the channel activation_config
                 d_chnl_number = digital_chnl_names[num].split('ch')[-1]
-
-                marker_active[num] = bool(row[self.cfg_param_pbe['digital_'+d_chnl_number]])
+                digital_high[num] = bool(row[self.cfg_param_pbe['digital_'+d_chnl_number]])
 
             use_as_tick = bool(row[self.cfg_param_pbe['use']])
 
             # create here actually the object with all the obtained information:
             pbe_obj_list[row_index] = Pulse_Block_Element(
                         init_length_bins=init_length_bins,
-                        analog_channels=analog_channels,
-                        digital_channels=digital_channels,
                         increment_bins=increment_bins,
                         pulse_function=pulse_function,
-                        marker_active=marker_active,
+                        digital_high=digital_high,
                         parameters=parameter_list,
                         use_as_tick=use_as_tick)
 
-        # determine the index of the laser pulse, i.e. which digital channel is the laser pulse
-        # IMPORTANT:
-        # This is not the same as the description. As an example: if 'd_ch3' is the laser channel
-        # but d_ch1 and d_ch2 are not active, then the laser_channel_index is 0 and not 3 because
-        # d_ch3 is then the first digital channel of the active channels
-        if 'a' in self.laser_channel:
-            self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
-            laser_channel_index = 0
-        else:
-            laser_channel_index = digital_chnl_names.index(self.laser_channel)
-
-        pb_obj = Pulse_Block(pb_name, pbe_obj_list, laser_channel_index)
+        pb_obj = Pulse_Block(pb_name, pbe_obj_list)
         self.save_block(pb_name, pb_obj)
         self.current_block = pb_obj
 
@@ -1040,55 +1046,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         # list of all the pulse block element objects
         pb_obj_list = [None]*len(ensemble_matrix)
 
-        #FIXME: The whole measurement tick array can be created much more convenient using the
-        #       built-in metadata inside the Pulse_Block and Pulse_Block_Ensemble objects.
-        #       Maybe it is even better to automatically calculate the measurement_ticks_list inside
-        #       the objects refresh_parameters() method
-
-        # here the measurement ticks will be saved:
-        measurement_ticks_list = []
-
-        # to make a resonable measurement tick list, the last biggest tick value after all
-        # the repetitions of a block is used as the offset_time for the next
-        # block.
-        offset_tick_bin = 0
-
         for row_index, row in enumerate(ensemble_matrix):
-
             pulse_block_name = row[self.cfg_param_pb['pulse_block']].decode('UTF-8')
             pulse_block_reps = row[self.cfg_param_pb['repetition']]
-
+            # Fetch previously saved block object
             block = self.get_pulse_block(pulse_block_name)
-
-            for num in range(pulse_block_reps+1):
-                measurement_ticks_list.append(offset_tick_bin + block.init_length_bins + num*block.increment_bins)
-
-            # for the next block, add the biggest time as offset_tick_bin.
-            # Otherwise the measurement_ticks_list will be a mess.
-            offset_tick_bin = offset_tick_bin + block.init_length_bins + (pulse_block_reps)*block.increment_bins
+            # Append block object along with repetitions to the block list
             pb_obj_list[row_index] = (block, pulse_block_reps)
 
-        # determine the index of the laser pulse, i.e. which digital channel is the laser pulse
-        # IMPORTANT:
-        # This is not the same as the description. As an example: if 'd_ch3' is the laser channel
-        # but d_ch1 and d_ch2 are not active, then the laser_channel_index is 0 and not 3 because
-        # d_ch3 is then the first digital channel of the active channels
-
-        # get current activation config
-        activation_config = self.activation_config
-        # seperate digital and analogue channels
-        analog_chnl_names = [a_chnl for a_chnl in activation_config if 'a_ch' in a_chnl]
-        digital_chnl_names = [d_chnl for d_chnl in activation_config if 'd_ch' in d_chnl]
-
-        if 'a' in self.laser_channel:
-            self.logMsg('Use of analog channels as laser trigger not implemented yet.', msgType='error')
-            laser_channel_index = 0
-        else:
-            laser_channel_index = digital_chnl_names.index(self.laser_channel)
-
-        pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name,
-                                                    block_list=pb_obj_list,
-                                                    laser_channel_index=laser_channel_index,
+        # Create the Pulse_Block_Ensemble object
+        pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name, block_list=pb_obj_list,
+                                                    activation_config=self.activation_config,
+                                                    laser_channel=self.laser_channel,
                                                     rotating_frame=rotating_frame)
         # set current block ensemble
         self.current_ensemble = pulse_block_ensemble
@@ -1177,11 +1146,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         number_of_samples = ensemble.length_bins
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
-
-        # get the current sample rate from the hardware
-        sample_rate = self.sample_rate
-        # get the current analogue levels from hardware
-        amplitude_list = self.amplitude_list
+        ana_chnl_names = [chnl for chnl in ensemble.activation_config if 'a_ch' in chnl]
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
         # offset_bin = 0
@@ -1210,12 +1175,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                     parameters = block_element.parameters
                     init_length_bins = block_element.init_length_bins
                     increment_bins = block_element.increment_bins
-                    marker_active = block_element.marker_active
+                    digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
                     element_length_bins = init_length_bins + (rep_no*increment_bins)
 
                     # create floating point time array for the current element inside rotating frame
-                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / sample_rate
+                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
 
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
@@ -1229,10 +1194,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         digital_samples = np.empty([dig_channels, element_length_bins], dtype=bool)
 
                         # actually fill the allocated sample arrays with values.
-                        for i, state in enumerate(marker_active):
+                        for i, state in enumerate(digital_high):
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/amplitude_list['a_ch'+str(i+1)])
+                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[ana_chnl_names[i]])
 
                         # write temporary sample array to file
                         created_files = self.write_samples_to_file(ensemble.name+name_tag,
@@ -1242,13 +1207,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
-
                         # if the ensemble should be sampled as a whole (chunkwise = False) fill the
                         # entries in the huge sample arrays
-                        for i, state in enumerate(marker_active):
+                        for i, state in enumerate(digital_high):
                             digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/amplitude_list['a_ch'+str(i+1)])
+                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[ana_chnl_names[i]])
 
                         # increment the index offset of the overall sample array for the next
                         # element
@@ -1266,8 +1230,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         'whole: "{0}" sec'.format(str(int(np.rint(time.time() - start_time)))),
                         msgType='status')
             # return the sample arrays for write_to_file was set to FALSE
-
-
             return analog_samples, digital_samples, created_files, offset_bin
         elif chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble

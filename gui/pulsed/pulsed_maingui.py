@@ -415,7 +415,7 @@ class PulsedMeasurementGui(GUIBase):
         # self._mw.laserchannel_ComboBox.setCurrentIndex(index)
         #
         # # reshape block editor table
-        # self.set_block_editor_columns()
+        # self._set_block_editor_columns()
         #
         # self._mw.block_editor_TableWidget.blockSignals(False)
 
@@ -569,8 +569,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.keep_former_block_settings()
 
-        self.set_block_editor_columns()
-        # self.set_cfg_param_pbe()
+        self._set_block_editor_columns()
         self._set_organizer_columns()
 
         # connect all the needed signal to methods:
@@ -608,9 +607,6 @@ class PulsedMeasurementGui(GUIBase):
 
         # Fill initial values from logic into input widgets
         self._init_generator_values()
-        self.generator_activation_config_changed()
-        self.generator_sample_rate_changed()
-
 
         # Modified by me
         # self._mw.init_block_TableWidget.viewport().setAttribute(QtCore.Qt.WA_Hover)
@@ -670,7 +666,7 @@ class PulsedMeasurementGui(GUIBase):
         and apply these constraints to the GUI elements
         """
 
-        pulser_constr = self.get_hardware_constraints()
+        pulser_constr = self._pulsed_meas_logic.get_pulser_constraints()
         sample_min = pulser_constr['sample_rate']['min']
         sample_max = pulser_constr['sample_rate']['max']
         sample_step = pulser_constr['sample_rate']['step']
@@ -691,7 +687,7 @@ class PulsedMeasurementGui(GUIBase):
         laser_channel = self._seq_gen_logic.laser_channel
         activation_config = self._seq_gen_logic.activation_config
         # get hardware constraints
-        avail_activation_configs = self.get_hardware_constraints()['activation_config']
+        avail_activation_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
         # init GUI elements
         # set sample rate
         self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate)
@@ -708,6 +704,8 @@ class PulsedMeasurementGui(GUIBase):
         if not found_config:
             self._mw.gen_activation_config_ComboBox.setCurrentIndex(0)
         self._mw.gen_activation_config_ComboBox.blockSignals(False)
+        self.generator_activation_config_changed()
+        self.generator_sample_rate_changed()
 
     def _create_current_asset_QLabel(self):
         """ Creaate a QLabel Display for the currently loaded asset for the toolbar. """
@@ -721,7 +719,13 @@ class PulsedMeasurementGui(GUIBase):
         if self._mw.current_loaded_asset_Label is None:
             self._create_current_asset_QLabel()
         label = self._mw.current_loaded_asset_Label
-        asset = self._pulsed_meas_logic.get_loaded_asset()
+        asset_name = self._pulsed_meas_logic.loaded_asset_name
+        if asset_name is None:
+            asset = None
+        else:
+            asset = self._seq_gen_logic.get_saved_asset(asset_name)
+            if asset is None:
+                self._pulsed_meas_logic.clear_pulser()
 
         if asset is None:
             label.setText('  No asset loaded')
@@ -805,7 +809,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_editor_TableWidget.blockSignals(True)
         # retreive GUI inputs
         new_config_name = self._mw.gen_activation_config_ComboBox.currentText()
-        new_channel_config = self.get_hardware_constraints()['activation_config'][new_config_name]
+        new_channel_config = self._pulsed_meas_logic.get_pulser_constraints()['activation_config'][new_config_name]
         # set display new config alongside with number of channels
         num_analogue = len([chnl for chnl in new_channel_config if 'a_ch' in chnl])
         num_digital = len([chnl for chnl in new_channel_config if 'd_ch' in chnl])
@@ -825,7 +829,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_laserchannel_ComboBox.blockSignals(False)
 
         # reshape block editor table
-        self.set_block_editor_columns()
+        self._set_block_editor_columns()
 
         self._mw.block_editor_TableWidget.blockSignals(False)
 
@@ -914,13 +918,6 @@ class PulsedMeasurementGui(GUIBase):
     def clear_device_clicked(self):
         """ Delete all loaded files in the device's current memory. """
         self._pulsed_meas_logic.clear_pulser()
-
-    def get_hardware_constraints(self):
-        """ Request the constrains from the logic, which are coming from the hardware.
-
-        @return: dict where the keys in it are predefined in the interface.
-        """
-        return self._pulsed_meas_logic.get_pulser_constraints()
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
@@ -1104,7 +1101,7 @@ class PulsedMeasurementGui(GUIBase):
         num_analog_chnl = self._seq_gen_logic.analog_channels
         num_digital_chnl = self._seq_gen_logic.digital_channels
         # get currently active activation_config and all possible configs.
-        activation_config = self.get_hardware_constraints()['activation_config']
+        activation_config = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
         current_config = self._seq_gen_logic.activation_config
 
         # check if the currently set activation_config has the same number of channels as
@@ -1378,7 +1375,7 @@ class PulsedMeasurementGui(GUIBase):
 
         return (num_max_param, biggest_func)
 
-    def set_block_editor_columns(self):
+    def _set_block_editor_columns(self):
         """ General function which creates the needed columns in Pulse Block
             Editor according to the currently set channel activation_config.
 
@@ -2460,19 +2457,15 @@ class PulsedMeasurementGui(GUIBase):
         @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-
-
         # Configure the main pulse analysis display:
-        self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x, self._pulsed_meas_logic.signal_plot_y)
+        self.signal_image = pg.PlotDataItem(self._pulsed_meas_logic.signal_plot_x,
+                                            self._pulsed_meas_logic.signal_plot_y)
         self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self._mw.pulse_analysis_PlotWidget.setLabel('left', self._as.ana_param_y_axis_name_LineEdit.text())
-        self._mw.pulse_analysis_PlotWidget.setLabel('bottom', self._as.ana_param_x_axis_name_LineEdit.text())
         self._mw.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the fit of the data in the main pulse analysis display:
         self.fit_image = pg.PlotDataItem()
         self._mw.pulse_analysis_PlotWidget.addItem(self.fit_image, pen='r')
-
 
         # Configure the errorbars of the data in the main pulse analysis display:
         self.signal_image_error_bars=pg.ErrorBarItem(x=self._pulsed_meas_logic.signal_plot_x,
@@ -2485,61 +2478,25 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
         self._mw.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
-
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
         self.errorbars_present = False
 
-        # Initialize  what is visible and what not
-        self._mw.ext_control_mw_freq_Label.setVisible(False)
-        self._mw.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
-        self._mw.ext_control_mw_power_Label.setVisible(False)
-        self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(False)
-
-        self._mw.ana_param_x_axis_start_Label.setVisible(False)
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setVisible(False)
-        self._mw.ana_param_x_axis_inc_Label.setVisible(False)
-        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
-
-
-        # Get the possible binwidth setting from the hardware constraints
-        # in order to keep the full precision (which is not needed in the
-        # display) an reference list variable self._binwidth_ref_list will be
-        # created where the values are stored with the absolute given presicion:
-        self._binwidth_ref_list = self._pulsed_meas_logic.get_fastcounter_constraints()['hardware_binwidth_list']
-        binwidth_str_list = []
-        for entry in self._binwidth_ref_list:
-            binwidth_str_list.append(str(round(entry,12)))
-        self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
-
-        if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
-            self._mw.ana_param_x_axis_defined_CheckBox.setChecked(self._statusVariables['ana_param_x_axis_defined_CheckBox'])
-        if 'ana_param_num_laser_defined_CheckBox' in self._statusVariables:
-            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(self._statusVariables['ana_param_num_laser_defined_CheckBox'])
-
-        self._mw.second_plot_ComboBox.addItem('None')
-        self._mw.second_plot_ComboBox.addItem('unchanged data')
-        self._mw.second_plot_ComboBox.addItem('FFT')
-        self._mw.second_plot_ComboBox.addItem('Log(x)')
-        self._mw.second_plot_ComboBox.addItem('Log(y)')
-        self._mw.second_plot_ComboBox.addItem('Log(x)&Log(y)')
-
-        # Configuration of the fit ComboBox
-        fit_functions=self._pulsed_meas_logic.get_fit_functions()
-        for ii in fit_functions:
-            self._mw.fit_param_fit_func_ComboBox.addItem(ii)
-
-
-        # self._mw.time_param_elapsed_sweep_ScienSpinBox.setOpts(suffix='s')
+        # Initialize External Control GroupBox from logic and saved status variables
+        self._init_external_control()
+        # Initialize Analysis Parameter GroupBox from logic and saved status variables
+        self._init_analysis_parameter()
+        # Initialize Fit Parameter GroupBox from logic and saved status variables
+        self._init_fit_parameter()
+        # Initialize Pulse Generator Control GroupBox from logic and saved status variables
+        self._init_pulse_generator_control()
 
         # ---------------------------------------------------------------------
         #                         Connect signals
         # ---------------------------------------------------------------------
-
         self._mw.action_run_stop.triggered.connect(self.run_stop_clicked)
         self._mw.action_continue_pause.triggered.connect(self.continue_pause_clicked)
         self._mw.action_pull_data.triggered.connect(self.pull_data_clicked)
         self._mw.action_save.triggered.connect(self.save_clicked)
-
 
         self._pulsed_meas_logic.signal_time_updated.connect(self.refresh_elapsed_time)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_signal_plot)
@@ -2547,35 +2504,24 @@ class PulsedMeasurementGui(GUIBase):
 
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
 
-
-        # configure the ticks or x axis viewboxes:
-
-        # configure a bit the display box in the pulse extraction:
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setSingleStep(10e-9) # in s
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setMinimum(0.0)
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setValue(10e-9) # in s
-
-        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setSingleStep(10e-9) # in s
-        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setValue(10e-9) # in s
-
         # Connect the CheckBoxes
         # anaylsis tab
-
-        self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.show_external_mw_source_checked)
-        self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
-        self._mw.ana_param_num_laser_defined_CheckBox.stateChanged.connect(self.measurement_ticks_editor)
-        self.measurement_ticks_editor()
+        self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.toggle_external_mw_source_editor)
+        self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._mw.ana_param_num_laser_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
-
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
-        self.analysis_timing_changed()
         self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_fc_binning_changed)
-        self.analysis_fc_binning_changed()
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
         self._mw.second_plot_ComboBox.currentIndexChanged.connect(self.change_second_plot)
-        self.change_second_plot()
+
+        self._mw.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
+        self._mw.ext_control_mw_power_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
+
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.analysis_xaxis_changed)
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.analysis_xaxis_changed)
 
     def _deactivate_analysis_ui(self, e):
         """ Disconnects the configuration for 'Analysis' Tab.
@@ -2583,15 +2529,152 @@ class PulsedMeasurementGui(GUIBase):
        @param object e: Fysom.event object from Fysom class. A more detailed
                          explanation can be found in the method initUI.
         """
-
         self.run_stop_clicked(False)
 
         self._statusVariables['ana_param_x_axis_defined_CheckBox'] = self._mw.ana_param_x_axis_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_num_laser_defined_CheckBox'] = self._mw.ana_param_num_laser_defined_CheckBox.isChecked()
+        self._statusVariables['ana_param_ignore_first_CheckBox'] = self._mw.ana_param_ignore_first_CheckBox.isChecked()
+        self._statusVariables['ana_param_ignore_last_CheckBox'] = self._mw.ana_param_ignore_last_CheckBox.isChecked()
+        self._statusVariables['ana_param_alternating_CheckBox'] = self._mw.ana_param_alternating_CheckBox.isChecked()
+        self._statusVariables['ana_param_errorbars_CheckBox'] = self._mw.ana_param_errorbars_CheckBox.isChecked()
+        self._statusVariables['second_plot_ComboBox_text'] = self._mw.second_plot_ComboBox.currentText()
+
 
         # disconnect signals
         # self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
         # self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.disconnect()
+
+    def _init_analysis_parameter(self):
+        """
+        This method initializes the input parameters in the Analysis Parameter GroupBox
+        """
+        # Get the possible binwidth setting from the hardware constraints in order to keep the full
+        # precision (which is not needed in the display) a reference variable self._binwidth_list
+        # will be created where the values are stored with the absolute given presicion:
+        self._binwidth_list = self._pulsed_meas_logic.get_fastcounter_constraints()[
+            'hardware_binwidth_list']
+        binwidth_str_list = []
+        for entry in self._binwidth_list:
+            binwidth_str_list.append(str(round(entry, 12)))
+        self._mw.ana_param_fc_bins_ComboBox.addItems(binwidth_str_list)
+        index = self._binwidth_list.index(self._pulsed_meas_logic.fast_counter_binwidth)
+        self._mw.ana_param_fc_bins_ComboBox.setCurrentIndex(index)
+
+        # define num laserpulses checkbox
+        if 'ana_param_num_laser_defined_CheckBox' in self._statusVariables:
+            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(
+                self._statusVariables['ana_param_num_laser_defined_CheckBox'])
+        else:
+            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(True)
+
+        # number of laser pulses
+        self._mw.ana_param_num_laser_pulse_SpinBox.setValue(
+            self._pulsed_meas_logic.number_of_lasers)
+
+        # ignore and alternating checkboxes
+        if 'ana_param_ignore_first_CheckBox' in self._statusVariables:
+            self._mw.ana_param_ignore_first_CheckBox.setChecked(
+                self._statusVariables['ana_param_ignore_first_CheckBox'])
+        else:
+            self._mw.ana_param_ignore_first_CheckBox.setChecked(False)
+        if 'ana_param_ignore_last_CheckBox' in self._statusVariables:
+            self._mw.ana_param_ignore_last_CheckBox.setChecked(
+                self._statusVariables['ana_param_ignore_last_CheckBox'])
+        else:
+            self._mw.ana_param_ignore_last_CheckBox.setChecked(False)
+        if 'ana_param_alternating_CheckBox' in self._statusVariables:
+            self._mw.ana_param_alternating_CheckBox.setChecked(
+                self._statusVariables['ana_param_alternating_CheckBox'])
+        else:
+            self._mw.ana_param_alternating_CheckBox.setChecked(False)
+
+        # define own x-axis checkbox
+        if 'ana_param_x_axis_defined_CheckBox' in self._statusVariables:
+            self._mw.ana_param_x_axis_defined_CheckBox.setChecked(
+                self._statusVariables['ana_param_x_axis_defined_CheckBox'])
+        else:
+            self._mw.ana_param_x_axis_defined_CheckBox.setChecked(True)
+
+        # measurement ticks
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setSingleStep(1e-9)  # in s
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setMinimum(0.0)
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setSingleStep(1e-9)  # in s
+        ticks_list = self._pulsed_meas_logic.measurement_ticks_list
+        if ticks_list is not None and len(ticks_list) > 1:
+            xaxis_start = ticks_list[0]
+            xaxis_incr = ticks_list[1] - ticks_list[0]
+        else:
+            xaxis_start = 1e-9
+            xaxis_incr = 1e-9
+        self._mw.ana_param_x_axis_start_ScienDSpinBox.setValue(xaxis_start)
+        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setValue(xaxis_incr)
+
+        # Show second plot ComboBox
+        second_plot_list = ['None', 'unchanged data', 'FFT', 'Log(x)', 'Log(y)', 'Log(x)&Log(y)']
+        self._mw.second_plot_ComboBox.addItem(second_plot_list)
+        if 'second_plot_ComboBox_text' in self._statusVariables:
+            index = second_plot_list.index(self._statusVariables['second_plot_ComboBox_text'])
+            self._mw.second_plot_ComboBox.setCurrentIndex(index)
+
+        # Error bars CheckBox
+        if 'ana_param_errorbars_CheckBox' in self._statusVariables:
+            self._mw.ana_param_errorbars_CheckBox.setChecked(
+                self._statusVariables['ana_param_errorbars_CheckBox'])
+        else:
+            self._mw.ana_param_errorbars_CheckBox.setChecked(False)
+
+        # Analysis period
+        self._mw.time_param_ana_periode_DoubleSpinBox.setValue(
+            self._pulsed_meas_logic.timer_interval)
+
+        # call update methods to process the init values
+        self.toggle_laser_xaxis_editor()
+        self.analysis_fc_binning_changed()
+        self.change_second_plot()
+        self.num_of_lasers_changed()
+        self.analysis_timing_changed()
+
+
+    def _init_fit_parameter(self):
+        """
+        This method initializes the input parameters in the Fit Parameter GroupBox
+        """
+        # Fit ComboBox
+        fit_functions = self._pulsed_meas_logic.get_fit_functions()
+        for ii in fit_functions:
+            self._mw.fit_param_fit_func_ComboBox.addItem(ii)
+
+    def _init_external_control(self):
+        """
+        This method initializes the input parameters in the External Control GroupBox
+        """
+        # external MW CheckBox
+        self._mw.ext_control_use_mw_CheckBox.setChecked(self._pulsed_meas_logic.use_ext_microwave)
+
+        # MW freq
+        self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(self._pulsed_meas_logic.microwave_freq)
+
+        # MW power
+        self._mw.ext_control_mw_power_DoubleSpinBox.setValue(
+            self._pulsed_meas_logic.microwave_power)
+
+        # call update methods to process the init values
+        self.ext_mw_params_changed()
+
+    def _init_pulse_generator_control(self):
+        """
+        This method initializes the input parameters in the Pulse generator control GroupBox
+        """
+        # Channel config ComboBox
+        avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
+        self._mw.meas_activation_config_ComboBox.addItem(list(avail_configs))
+        config_name_to_set = self._pulsed_meas_logic.current_channel_config_name
+        if config_name_to_set is not None and config_name_to_set in avail_configs.keys():
+            index = self._mw.meas_activation_config_ComboBox.findText(config_name_to_set)
+            self._mw.meas_activation_config_ComboBox.setCurrentIndex(index)
+
+        # Sample rate
+        self._mw.meas_sample_freq_DSpinBox.setValue(self._pulsed_meas_logic.sample_rate)
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
@@ -2602,63 +2685,46 @@ class PulsedMeasurementGui(GUIBase):
         #Firstly stop any scan that might be in progress
         self._pulsed_meas_logic.stop_pulsed_measurement()
 
+        # get currently loaded asset for the parameters
+        asset_obj = self._seq_gen_logic.loaded_asset
+        if asset_obj is None:
+            self.logMsg('Error while trying to run pulsed measurement. '
+                        'No asset is loaded onto the pulse generator. Aborting run.',
+                        msgType='error')
+            return
 
         if isChecked:
+            # infer number of laser pulses from the currently loaded asset if needed.
+            # If they have been manually set in the GUI the changes are already in the logic.
+            if not self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
+                num_laser_pulses = asset_obj.number_of_lasers
+                self._mw.ana_param_num_laser_pulse_SpinBox.setValue(num_laser_pulses)
+                self.num_of_lasers_changed()
+
+            # infer x axis measurement ticks from the currently loaded asset if needed.
+            # If they have been manually set in the GUI the changes are already in the logic.
+            if not self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
+                if asset_obj.measurement_ticks_list is not None:
+                    meas_ticks_list = asset_obj.measurement_ticks_list
+                else:
+                    self.logMsg('Error while trying to run pulsed measurement. '
+                                'No measurement ticks defined in asset. Aborting run.',
+                                msgType='error')
+                    return
+                self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
+
+            #Todo: Should all be set by the logic itself during load of a new sequence
+            # self._pulsed_meas_logic.sequence_length_s = asset_obj.length_bins/self._pulsed_meas_logic.sample_rate
+            # set the parameters from Pulse Extraction:
+            # self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_ScienDSpinBox.value()
+            # self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_ScienDSpinBox.value()
+            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._pulsed_meas_logic.sequence_length_s*1e3) #computed expected duration in ms
+
             # Enable and disable buttons
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(False)
             self._mw.action_pull_data.setEnabled(True)
-
-
-            # ---------------------------------------------------------------------------------
-            #FIXME: A proper transfer of pulse sequence parameters has to be
-            #       arranged from the sequence_generation_logic to the
-            #       pulsed_measurement_logic, and that not just includes the
-            #       number of laser pulses and the measurement ticks list, that
-            #       includes all the parameters related to the sequence, since
-            #       pulsed_measurement_logic is going to save the measured data
-            #       and therefore it needs all information about the sequence.
-            #       Think about using a param_dict or so in the pulse objects
-            #       Pulse_Block_Ensemble and Pulse_Sequence, which can be just
-            #       passed to the pulsed_measurement_logic instead of passing
-            #       the Pulse_Block_Ensemble or Pulse_Sequence object.
-            #FIXME: No! This is actually the proper way to go.
-            # Object oriented programming and not dictionary oriented programming
-
-            # set number of laser pulses:
-            if self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
-                num_laser_pulses = self._mw.ana_param_num_laser_pulse_SpinBox.value()
-            else:
-                asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
-                num_laser_pulses = asset_param['num_laser_pulses']
-
-            if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
-                start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value() # in s
-                step = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()     # in s
-
-                meas_ticks_list = np.arange(start, start + step*num_laser_pulses, step)
-            else:
-                asset_name, asset_type, asset_param = self._seq_gen_logic.get_loaded_asset()
-                meas_ticks_list = asset_param['measurement_ticks_list']/self._pulsed_meas_logic.get_sample_rate()
-            # ---------------------------------------------------------------------------------
-
-            #Todo: This should be converted into a setter mehtod
-            self._pulsed_meas_logic.sequence_length_s = self._seq_gen_logic.loaded_asset.length_bins/self._pulsed_meas_logic.get_sample_rate()
-
-            self._pulsed_meas_logic.set_num_of_lasers(num_laser_pulses)
-            self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
-
-            # set the parameters from Pulse Extraction:
-            self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_ScienDSpinBox.value()
-            self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_ScienDSpinBox.value()
-
-            self.analysis_fc_binning_changed()
-
-            # No need for configuration if fc is changed:
-            # self._pulsed_meas_logic.configure_fast_counter()
-
-            self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._seq_gen_logic.current_ensemble.length_bins/self._pulsed_meas_logic.get_sample_rate()*1e3) #computed expected duration in ms
 
             self._pulsed_meas_logic.start_pulsed_measurement()
             self._mw.action_continue_pause.setEnabled(True)
@@ -2675,7 +2741,6 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
             self._mw.action_pull_data.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(False)
-
 
 
     #ToDo: I think that is not really working yet
@@ -2702,6 +2767,7 @@ class PulsedMeasurementGui(GUIBase):
     def save_clicked(self):
         """Saves the current data"""
         self.save_plots()
+        # FIXME: Also save the data from pulsed_measurement_logic
 
 
     def fit_clicked(self):
@@ -2716,11 +2782,15 @@ class PulsedMeasurementGui(GUIBase):
 
     def refresh_signal_plot(self):
         """ Refreshes the xy-matrix image """
-
-        #### dealing with the error bars
-        #FIXME: Does that belong into the logic?
+        # dealing with the error bars
         if self._mw.ana_param_errorbars_CheckBox.isChecked():
-            beamwidth=self._pulsed_meas_logic.compute_width_of_errorbars()
+            beamwidth = np.inf
+            for i in range(len(self._pulsed_meas_logic.measurement_ticks_list) - 1):
+                width = self._pulsed_meas_logic.measurement_ticks_list[i + 1] - \
+                        self._pulsed_meas_logic.measurement_ticks_list[i]
+                width = width / 3
+                if width <= beamwidth:
+                    beamwidth = width
             # create ErrorBarItem
             self.signal_image_error_bars.setData(x=self._pulsed_meas_logic.signal_plot_x,
                                                  y=self._pulsed_meas_logic.signal_plot_y,
@@ -2730,7 +2800,6 @@ class PulsedMeasurementGui(GUIBase):
             if not self.errorbars_present:
                 self._mw.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
                 self.errorbars_present = True
-
         else:
             if self.errorbars_present:
                 self._mw.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
@@ -2763,7 +2832,7 @@ class PulsedMeasurementGui(GUIBase):
             expected_time = self._mw.time_param_expected_dur_DoubleSpinBox.value()
         self._mw.time_param_elapsed_sweep_ScienSpinBox.setValue(self._pulsed_meas_logic.elapsed_time/(expected_time/1e3))
 
-    def show_external_mw_source_checked(self):
+    def toggle_external_mw_source_editor(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
         if not self._mw.ext_control_use_mw_CheckBox.isChecked():
 
@@ -2778,7 +2847,7 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ext_control_mw_power_DoubleSpinBox.setVisible(True)
         return
 
-    def measurement_ticks_editor(self):
+    def toggle_laser_xaxis_editor(self):
         """ Shows or hides input widgets which are necessary if the x axis id defined or not."""
 
         if self._mw.ana_param_x_axis_defined_CheckBox.isChecked():
@@ -2852,24 +2921,39 @@ class PulsedMeasurementGui(GUIBase):
                 elif self._mw.second_plot_ComboBox.currentText() == 'Log(x)&Log(y)':
                     self._mw.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
-
     def analysis_timing_changed(self):
         """ This method handles the analysis timing"""
         timer_interval = self._mw.time_param_ana_periode_DoubleSpinBox.value()
         self._pulsed_meas_logic.set_timer_interval(timer_interval)
 
-
     def analysis_fc_binning_changed(self):
-        """ If a new binning value is selected, apply the change to the logic. """
-
+        """
+        If a new binning value is selected, apply the change to the logic.
+        """
         index = self._mw.ana_param_fc_bins_ComboBox.currentIndex()
-        fc_binning = self._binwidth_ref_list[index]
+        fc_binning = self._binwidth_list[index]
         self._pulsed_meas_logic.set_fc_binning(fc_binning)
         return
 
-    #FIXME:
-    def check_input_with_samplerate(self):
-        pass
+    def analysis_xaxis_changed(self):
+        """
+        Gets called whenever the user alters manually the x axis start and increment
+        for the pulsed measurement.
+        """
+        xaxis_start = self._mw.ana_param_x_axis_start_ScienDSpinBox.value()
+        xaxis_incr = self._mw.ana_param_x_axis_inc_ScienDSpinBox.value()
+        num_of_lasers = self._pulsed_meas_logic.number_of_lasers
+        xaxis_ticks_list = np.arange(xaxis_start,xaxis_start+(xaxis_incr*num_of_lasers), xaxis_incr)
+        self._pulsed_meas_logic.set_measurement_ticks_list(xaxis_ticks_list)
+
+    def ext_mw_params_changed(self):
+        """
+        Gets called whenever the parameters for the external MW source are altered,
+        i.e. frequency and/or power
+        """
+        freq = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
+        power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
+        self._pulsed_meas_logic.set_microwave_params(frequency=freq, power=power)
 
 
     ###########################################################################
@@ -3580,7 +3664,9 @@ class PulsedMeasurementGui(GUIBase):
         for ii in range(self._mw.ana_param_num_laser_pulse_SpinBox.value()):
             self._mw.laserpulses_ComboBox.addItem(str(1+ii))
 
-        self._mw.laserpulses_ComboBox.blockSignals(True)
+        self._mw.laserpulses_ComboBox.blockSignals(False)
+
+        self.analysis_xaxis_changed()
 
     def analysis_window_values_changed(self):
         """ If the boarders or the lines are changed update the other parameters
