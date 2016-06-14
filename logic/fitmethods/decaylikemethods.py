@@ -290,11 +290,10 @@ def make_exponentialdecay_fit(self, axis=None, data=None, add_parameters=None):
     try:
         result = exponentialdecay.fit(data, x=axis, params=params)
     except:
+        result = exponentialdecay.fit(data, x=axis, params=params)
         self.logMsg('The exponentialdecay fit did not work.'
                     'message: {}'.format(str(result.message)),
                     msgType='warning')
-        result = exponentialdecay.fit(data, x=axis, params=params)
-
     return result
 
 ############################################################################
@@ -460,8 +459,8 @@ def make_stretchedexponentialdecay_fit(self, axis=None, data=None, add_parameter
     try:
        result = stretchedexponentialdecay.fit(data, x=axis, params=params)
     except:
+       result = stretchedexponentialdecay.fit(data, x=axis, params=params)
        self.logMsg('The stretchedexponentialdecay fit did not work.'
                    'message: {}'.format(str(result.message)),
                    msgType='warning')
-       result = stretchedexponentialdecay.fit(data, x=axis, params=params)
     return result
