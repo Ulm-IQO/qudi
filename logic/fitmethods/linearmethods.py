@@ -191,20 +191,21 @@ def make_linear_model(self):
     return model, params
 
 def estimate_linear(self, x_axis=None, data=None, params=None):
-    """ This method provides a estimation of a initial values
+    """
+    This method provides a estimation of a initial values
      for a linear function.
 
     @param array x_axis: x values
     @param array data: value of each data point corresponding to x values
-    @param Parameters object params: object includes parameter dictionary which can be set
+    @param Parameters object params: object includes parameter dictionary
+            which can be set
 
-    @return tuple (error, params):
+    @return: tuple (error, params):
 
     Explanation of the return parameter:
         int error: error code (0:OK, -1:error)
         Parameters object params: set parameters of initial values
     """
-    
     error = 0
     # check if parameters make sense
     parameters = [x_axis, data]
@@ -223,7 +224,7 @@ def estimate_linear(self, x_axis=None, data=None, params=None):
         error = -1
     try:
         """
-        #calculate the parameters using Least-squares estimation of linear 
+        #calculate the parameters using Least-squares estimation of linear
         #regression
         """
         a_1 = 0
@@ -249,7 +250,7 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
     """ This method performes a linear fit on the provided data.
 
     @param array[] axis: axis values
-    @param array[]  x_data: data
+    @param array[] data: data
     @param dict add_parameters: Additional parameters
 
     @return object result: lmfit.model.ModelFit object, all parameters
@@ -262,8 +263,6 @@ def make_linear_fit(self, axis=None, data=None, add_parameters=None):
 
     error, params = self.estimate_linear(axis, data, params)
 
-    # params['slope'].value = 2
-    # params['slope'].vary = False
     # overwrite values of additional parameters
     if add_parameters is not None:
         params = self._substitute_parameter(parameters=params,
