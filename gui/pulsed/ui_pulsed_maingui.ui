@@ -29,7 +29,7 @@
       <item row="0" column="0">
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="Analysis_Generator">
          <attribute name="title">
@@ -38,7 +38,7 @@
          <layout class="QGridLayout" name="gridLayout_6">
           <item row="1" column="0">
            <layout class="QGridLayout" name="gridLayout_4">
-            <item row="5" column="0" colspan="8">
+            <item row="4" column="0" colspan="8">
              <widget class="QGroupBox" name="second_plot_GroupBox">
               <property name="title">
                <string>Fourier Transform</string>
@@ -67,7 +67,7 @@
               </layout>
              </widget>
             </item>
-            <item row="6" column="2">
+            <item row="5" column="2">
              <widget class="QLabel" name="time_param_elapsed_time_Label">
               <property name="text">
                <string>Elapsed Time (s):</string>
@@ -132,14 +132,14 @@
               </layout>
              </widget>
             </item>
-            <item row="6" column="3">
+            <item row="5" column="3">
              <widget class="QLineEdit" name="time_param_elapsed_time_LineEdit">
               <property name="text">
                <string>00:00:00:00</string>
               </property>
              </widget>
             </item>
-            <item row="6" column="5">
+            <item row="5" column="5">
              <widget class="ScienSpinBox" name="time_param_elapsed_sweep_ScienSpinBox">
               <property name="readOnly">
                <bool>true</bool>
@@ -152,14 +152,14 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="4">
+            <item row="5" column="4">
              <widget class="QLabel" name="time_param_elapsed_sweep_Label">
               <property name="text">
                <string>Elapsed Sweeps:</string>
               </property>
              </widget>
             </item>
-            <item row="6" column="1">
+            <item row="5" column="1">
              <widget class="QDoubleSpinBox" name="time_param_expected_dur_DoubleSpinBox">
               <property name="readOnly">
                <bool>true</bool>
@@ -175,21 +175,21 @@
               </property>
              </widget>
             </item>
-            <item row="6" column="0">
+            <item row="5" column="0">
              <widget class="QLabel" name="time_param_expected_dur_Label">
               <property name="text">
                <string>Expected duration (ms):</string>
               </property>
              </widget>
             </item>
-            <item row="6" column="6">
+            <item row="5" column="6">
              <widget class="QLabel" name="time_param_ana_periode_Label">
               <property name="text">
                <string>Analysis Periode (s):</string>
               </property>
              </widget>
             </item>
-            <item row="6" column="7">
+            <item row="5" column="7">
              <widget class="QDoubleSpinBox" name="time_param_ana_periode_DoubleSpinBox">
               <property name="maximum">
                <double>999999999.000000000000000</double>
@@ -207,36 +207,10 @@
               <layout class="QGridLayout" name="gridLayout_26">
                <item row="0" column="1">
                 <layout class="QGridLayout" name="gridLayout_24">
-                 <item row="3" column="1">
-                  <widget class="QDoubleSpinBox" name="ext_control_optimize_interval_DoubleSpinBox">
-                   <property name="maximum">
-                    <double>20000.000000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>500.000000000000000</double>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QDoubleSpinBox" name="ext_control_redo_odmr_DoubleSpinBox">
-                   <property name="maximum">
-                    <double>20000.000000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>500.000000000000000</double>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QDoubleSpinBox" name="ext_control_mw_power_DoubleSpinBox">
-                   <property name="minimum">
-                    <double>-999999.000000000000000</double>
-                   </property>
-                   <property name="maximum">
-                    <double>999999.000000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>-30.000000000000000</double>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="ext_control_mw_freq_Label">
+                   <property name="text">
+                    <string>MW Freq (Hz)</string>
                    </property>
                   </widget>
                  </item>
@@ -244,27 +218,6 @@
                   <widget class="QLabel" name="ext_control_mw_power_Label">
                    <property name="text">
                     <string>MW Power (dBm)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_35">
-                   <property name="text">
-                    <string>Redo ODMR (s):</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="ext_control_mw_freq_Label">
-                   <property name="text">
-                    <string>MW Freq (MHz)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="label_28">
-                   <property name="text">
-                    <string>Optimize Interval (s):</string>
                    </property>
                   </widget>
                  </item>
@@ -281,13 +234,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_34">
-                   <property name="text">
-                    <string>External MW?</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="0" column="1">
                   <widget class="QCheckBox" name="ext_control_use_mw_CheckBox">
                    <property name="layoutDirection">
@@ -298,6 +244,26 @@
                    </property>
                    <property name="tristate">
                     <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QDoubleSpinBox" name="ext_control_mw_power_DoubleSpinBox">
+                   <property name="minimum">
+                    <double>-999999.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>999999.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>-30.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_34">
+                   <property name="text">
+                    <string>External MW?</string>
                    </property>
                   </widget>
                  </item>
@@ -492,7 +458,7 @@
               </layout>
              </widget>
             </item>
-            <item row="4" column="0" colspan="8">
+            <item row="3" column="0" colspan="8">
              <widget class="QGroupBox" name="groupBox_6">
               <property name="title">
                <string>Analysis Trace</string>
@@ -521,47 +487,79 @@
               </layout>
              </widget>
             </item>
-            <item row="3" column="6">
-             <spacer name="horizontalSpacer_3">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>10</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item row="3" column="0">
-             <widget class="QComboBox" name="meas_activation_config_ComboBox"/>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_40">
-              <property name="text">
-               <string>channel config:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLineEdit" name="meas_activation_config_LineEdit">
+            <item row="2" column="0" colspan="5">
+             <widget class="QGroupBox" name="groupBox_15">
               <property name="minimumSize">
                <size>
-                <width>335</width>
-                <height>20</height>
+                <width>100</width>
+                <height>85</height>
                </size>
               </property>
-             </widget>
-            </item>
-            <item row="3" column="4">
-             <widget class="QDoubleSpinBox" name="meas_sample_freq_DSpinBox"/>
-            </item>
-            <item row="2" column="4">
-             <widget class="QLabel" name="label_41">
-              <property name="text">
-               <string>sample freq (Hz):</string>
+              <property name="title">
+               <string>Pulse generator control:</string>
               </property>
+              <widget class="QWidget" name="gridLayoutWidget">
+               <property name="geometry">
+                <rect>
+                 <x>9</x>
+                 <y>19</y>
+                 <width>571</width>
+                 <height>61</height>
+                </rect>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_39">
+                <item row="0" column="3">
+                 <widget class="QLabel" name="label_40">
+                  <property name="text">
+                   <string>Sample rate (Hz):</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <spacer name="horizontalSpacer_3">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>10</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="meas_activation_config_LineEdit">
+                  <property name="minimumSize">
+                   <size>
+                    <width>300</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="4">
+                 <widget class="QDoubleSpinBox" name="meas_sample_freq_DSpinBox">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QComboBox" name="meas_activation_config_ComboBox"/>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_41">
+                  <property name="text">
+                   <string>Channel config:</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </widget>
             </item>
            </layout>
