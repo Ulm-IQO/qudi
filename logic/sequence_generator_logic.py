@@ -762,7 +762,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         @return: Pulse_Block object which belongs to the given name.
         """
-
         if name in self.saved_pulse_blocks:
             with open(os.path.join(self.block_dir, name + '.blk'), 'rb') as infile:
                 block = pickle.load(infile)
