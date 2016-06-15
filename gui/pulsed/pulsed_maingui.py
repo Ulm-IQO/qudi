@@ -395,37 +395,10 @@ class PulsedMeasurementGui(GUIBase):
 
     def apply_block_settings(self):
         """ Write new block settings from the gui to the file. """
-
-        # self._mw.block_editor_TableWidget.blockSignals(True)
-        #
-        # # retreive GUI inputs
-        # active_config_name = self._bs.activation_config_ComboBox.currentText()
-        # active_channel_config = self.get_hardware_constraints()['activation_config'][active_config_name]
-        #
-        # # set chosen config in sequence generator logic
-        # self._seq_gen_logic.set_activation_config(active_channel_config)
-        # # and update the laser channel combobx
-        # self._mw.laserchannel_ComboBox.blockSignals(True)
-        # self._mw.laserchannel_ComboBox.clear()
-        # self._mw.laserchannel_ComboBox.addItems(active_channel_config)
-        # self._mw.laserchannel_ComboBox.blockSignals(False)
-        # # set the laser channel in the ComboBox
-        # laser_channel = self._seq_gen_logic.laser_channel
-        # index = self._mw.laserchannel_ComboBox.findText(laser_channel)
-        # self._mw.laserchannel_ComboBox.setCurrentIndex(index)
-        #
-        # # reshape block editor table
-        # self._set_block_editor_columns()
-        #
-        # self._mw.block_editor_TableWidget.blockSignals(False)
-
         if self._bs.use_saupload_CheckBox.isChecked():
             self._set_visibility_saupload_button_pulse_gen(state=True)
         else:
             self._set_visibility_saupload_button_pulse_gen(state=False)
-
-        # self._update_current_pulse_block()
-        # self._update_current_pulse_block_ensemble()
 
 
     def keep_former_block_settings(self):
@@ -434,17 +407,6 @@ class PulsedMeasurementGui(GUIBase):
             self._bs.use_saupload_CheckBox.setChecked(True)
         else:
             self._bs.use_saupload_CheckBox.setChecked(False)
-
-        # config_dict = self.get_hardware_constraints()['activation_config']
-        # # get currently active channel config from logic
-        # config = self._seq_gen_logic.activation_config
-        # # Find the corresponding index in the possible configs
-        # for index, config_name in enumerate(config_dict):
-        #     if config == config_dict[config_name]:
-        #         # This works!
-        #         # When the current index is changed the method _update_channel_display is called.
-        #         self._bs.activation_config_ComboBox.setCurrentIndex(index)
-        #         break
 
     def _set_visibility_saupload_button_pulse_gen(self, state):
         """ Set whether the sample Uplaod and load Buttons should be visible or not
@@ -462,7 +424,6 @@ class PulsedMeasurementGui(GUIBase):
                  the passed func_config dict from the logic. Depending on the
                  settings, a current function list is generated.
         """
-
         current_functions = []
 
         for index in range(len(self.get_func_config_list())):
@@ -603,7 +564,7 @@ class PulsedMeasurementGui(GUIBase):
         self.update_predefined_methods()
 
         # Apply hardware constraints to input widgets
-        self._apply_hardware_constraints()
+        self._gen_apply_hardware_constraints()
 
         # Fill initial values from logic into input widgets
         self._init_generator_values()
@@ -660,10 +621,10 @@ class PulsedMeasurementGui(GUIBase):
                                                     'from all loaded files.')
         self._mw.control_ToolBar.addWidget(self._mw.clear_device_PushButton)
 
-    def _apply_hardware_constraints(self):
+    def _gen_apply_hardware_constraints(self):
         """
-        Retrieve the constraints from all used hardware (fastcounter, pulser)
-        and apply these constraints to the GUI elements
+        Retrieve the constraints from pulser hardware and apply these constraints to the pulse
+        generator GUI elements.
         """
 
         pulser_constr = self._pulsed_meas_logic.get_pulser_constraints()
@@ -691,7 +652,8 @@ class PulsedMeasurementGui(GUIBase):
         # init GUI elements
         # set sample rate
         self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate)
-        # set activation_config. This will also update the laser channel from the logic.
+        # set activation_config. This will also update the laser channel and number of channels
+        # from the logic.
         self._mw.gen_activation_config_ComboBox.blockSignals(True)
         self._mw.gen_activation_config_ComboBox.clear()
         self._mw.gen_activation_config_ComboBox.addItems(list(avail_activation_configs))
@@ -705,7 +667,6 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.gen_activation_config_ComboBox.setCurrentIndex(0)
         self._mw.gen_activation_config_ComboBox.blockSignals(False)
         self.generator_activation_config_changed()
-        self.generator_sample_rate_changed()
 
     def _create_current_asset_QLabel(self):
         """ Creaate a QLabel Display for the currently loaded asset for the toolbar. """
@@ -810,14 +771,16 @@ class PulsedMeasurementGui(GUIBase):
         # retreive GUI inputs
         new_config_name = self._mw.gen_activation_config_ComboBox.currentText()
         new_channel_config = self._pulsed_meas_logic.get_pulser_constraints()['activation_config'][new_config_name]
-        # set display new config alongside with number of channels
-        num_analogue = len([chnl for chnl in new_channel_config if 'a_ch' in chnl])
-        num_digital = len([chnl for chnl in new_channel_config if 'd_ch' in chnl])
-        self._mw.gen_activation_config_LineEdit.setText(str(new_channel_config))
-        self._mw.gen_analog_channels_SpinBox.setValue(num_analogue)
-        self._mw.gen_digital_channels_SpinBox.setValue(num_digital)
         # set chosen config in sequence generator logic
         self._seq_gen_logic.set_activation_config(new_channel_config)
+        # set display new config alongside with number of channels
+        display_str = ''
+        for chnl in new_channel_config:
+            display_str += chnl + ' | '
+        display_str = display_str[:-3]
+        self._mw.gen_activation_config_LineEdit.setText(display_str)
+        self._mw.gen_analog_channels_SpinBox.setValue(self._seq_gen_logic.analog_channels)
+        self._mw.gen_digital_channels_SpinBox.setValue(self._seq_gen_logic.digital_channels)
         # and update the laser channel combobx
         self._mw.gen_laserchannel_ComboBox.blockSignals(True)
         self._mw.gen_laserchannel_ComboBox.clear()
@@ -1258,96 +1221,6 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.block_organizer_TableWidget.blockSignals(False)
         # after everything is fine, perform the update:
         self._update_current_pulse_block_ensemble()
-
-    # def insert_parameters(self, column):
-    #     """ Insert additional parameters given in the dict add_pbe_param at specified column.
-    #
-    #     @param int column: a column number in the block editor table
-    #     """
-    #
-    #     # insert parameter:
-    #     insert_at_col_pos = column
-    #     for column, parameter in enumerate(self.get_add_pbe_param()):
-    #
-    #         # add the new properties to the whole column through delegate:
-    #         item_dict = self.get_add_pbe_param()[parameter]
-    #
-    #         if 'unit_prefix' in item_dict.keys():
-    #             unit_text = item_dict['unit_prefix'] + item_dict['unit']
-    #         else:
-    #             unit_text = item_dict['unit']
-    #
-    #         self._mw.block_editor_TableWidget.insertColumn(insert_at_col_pos + column)
-    #         self._mw.block_editor_TableWidget.setHorizontalHeaderItem(insert_at_col_pos + column,
-    #                                                                   QtGui.QTableWidgetItem())
-    #         self._mw.block_editor_TableWidget.horizontalHeaderItem(
-    #             insert_at_col_pos + column).setText('{0} ({1})'.format(parameter, unit_text))
-    #         self._mw.block_editor_TableWidget.setColumnWidth(insert_at_col_pos + column, 90)
-    #
-    #         # Use only DoubleSpinBox as delegate:
-    #         if item_dict['unit'] == 'bool':
-    #             delegate = CheckBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-    #         else:
-    #             delegate = DoubleSpinBoxDelegate(self._mw.block_editor_TableWidget, item_dict)
-    #         self._mw.block_editor_TableWidget.setItemDelegateForColumn(insert_at_col_pos + column,
-    #                                                                    delegate)
-    #
-    #         # initialize the whole row with default values:
-    #         for row_num in range(self._mw.block_editor_TableWidget.rowCount()):
-    #             # get the model, here are the data stored:
-    #             model = self._mw.block_editor_TableWidget.model()
-    #             # get the corresponding index of the current element:
-    #             index = model.index(row_num, insert_at_col_pos + column)
-    #             # get the initial values of the delegate class which was
-    #             # uses for this column:
-    #             ini_values = delegate.get_initial_value()
-    #             # set initial values:
-    #             model.setData(index, ini_values[0], ini_values[1])
-
-    # def count_digital_channels(self):
-    #     """ Get the number of currently displayed digital channels.
-    #
-    #     @return int: number of digital channels
-    #
-    #     The number of digital channal are counted and return and additionally
-    #     the internal counter variable _num_d_ch is updated. The counting
-    #     procedure is based on the block_editor_TableWidget.
-    #     """
-    #     count_dch = 0
-    #     for column in range(self._mw.block_editor_TableWidget.columnCount()):
-    #         if 'DCh' in self._mw.block_editor_TableWidget.horizontalHeaderItem(column).text():
-    #             count_dch = count_dch + 1
-    #
-    #     # self._num_d_ch = count_dch
-    #     return count_dch
-    #
-    # def count_analog_channels(self):
-    #     """ Get the number of currently displayed analog channels.
-    #
-    #     @return int: number of analog channels
-    #
-    #     The number of analog channal are counted and return and additionally
-    #     the internal counter variable _num_a_ch is updated. The counting
-    #     procedure is based on the block_editor_TableWidget since it is assumed
-    #     that all operation on the block_editor_TableWidget is also applied on
-    #     block_organizer_TableWidget.
-    #     """
-    #
-    #     count_a_ch = 0
-    #     # there must be definitly less analog channels then available columns
-    #     # in the table, therefore the number of columns can be used as the
-    #     # upper border.
-    #     for poss_a_ch in range(self._mw.block_editor_TableWidget.columnCount()):
-    #         for column in range(self._mw.block_editor_TableWidget.columnCount()):
-    #             if ('ACh' + str(
-    #                     poss_a_ch)) in self._mw.block_editor_TableWidget.horizontalHeaderItem(
-    #                     column).text():
-    #                 # analog channel found, break the inner loop to
-    #                 count_a_ch = count_a_ch + 1
-    #                 break
-    #
-    #     # self._num_a_ch = count_a_ch
-    #     return count_a_ch
 
     def _determine_needed_parameters(self):
         """ Determine the maximal number of needed parameters for desired functions.
@@ -2487,8 +2360,6 @@ class PulsedMeasurementGui(GUIBase):
         self._init_analysis_parameter()
         # Initialize Fit Parameter GroupBox from logic and saved status variables
         self._init_fit_parameter()
-        # Initialize Pulse Generator Control GroupBox from logic and saved status variables
-        self._init_pulse_generator_control()
 
         # ---------------------------------------------------------------------
         #                         Connect signals
@@ -2508,10 +2379,11 @@ class PulsedMeasurementGui(GUIBase):
         # anaylsis tab
         self._mw.ext_control_use_mw_CheckBox.stateChanged.connect(self.toggle_external_mw_source_editor)
         self._mw.ana_param_x_axis_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
-        self._mw.ana_param_num_laser_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
+        self._mw.ana_param_laserpulse_defined_CheckBox.stateChanged.connect(self.toggle_laser_xaxis_editor)
 
         # Connect InputWidgets to events
         self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.connect(self.num_of_lasers_changed)
+        self._mw.ana_param_laser_length_SpinBox.editingFinished.connect(self.laser_length_changed)
         self._mw.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.analysis_timing_changed)
         self._mw.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.analysis_fc_binning_changed)
         self._mw.fit_param_PushButton.clicked.connect(self.fit_clicked)
@@ -2532,7 +2404,7 @@ class PulsedMeasurementGui(GUIBase):
         self.run_stop_clicked(False)
 
         self._statusVariables['ana_param_x_axis_defined_CheckBox'] = self._mw.ana_param_x_axis_defined_CheckBox.isChecked()
-        self._statusVariables['ana_param_num_laser_defined_CheckBox'] = self._mw.ana_param_num_laser_defined_CheckBox.isChecked()
+        self._statusVariables['ana_param_laserpulse_defined_CheckBox'] = self._mw.ana_param_laserpulse_defined_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_first_CheckBox'] = self._mw.ana_param_ignore_first_CheckBox.isChecked()
         self._statusVariables['ana_param_ignore_last_CheckBox'] = self._mw.ana_param_ignore_last_CheckBox.isChecked()
         self._statusVariables['ana_param_alternating_CheckBox'] = self._mw.ana_param_alternating_CheckBox.isChecked()
@@ -2561,15 +2433,18 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ana_param_fc_bins_ComboBox.setCurrentIndex(index)
 
         # define num laserpulses checkbox
-        if 'ana_param_num_laser_defined_CheckBox' in self._statusVariables:
-            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(
-                self._statusVariables['ana_param_num_laser_defined_CheckBox'])
+        if 'ana_param_laserpulse_defined_CheckBox' in self._statusVariables:
+            self._mw.ana_param_laserpulse_defined_CheckBox.setChecked(
+                self._statusVariables['ana_param_laserpulse_defined_CheckBox'])
         else:
-            self._mw.ana_param_num_laser_defined_CheckBox.setChecked(True)
+            self._mw.ana_param_laserpulse_defined_CheckBox.setChecked(True)
 
         # number of laser pulses
         self._mw.ana_param_num_laser_pulse_SpinBox.setValue(
             self._pulsed_meas_logic.number_of_lasers)
+
+        # Laser pulse length
+        self._mw.ana_param_laser_length_SpinBox.setValue(self._pulsed_meas_logic.laser_length_s*1e9)
 
         # ignore and alternating checkboxes
         if 'ana_param_ignore_first_CheckBox' in self._statusVariables:
@@ -2596,9 +2471,6 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_defined_CheckBox.setChecked(True)
 
         # measurement ticks
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setSingleStep(1e-9)  # in s
-        self._mw.ana_param_x_axis_start_ScienDSpinBox.setMinimum(0.0)
-        self._mw.ana_param_x_axis_inc_ScienDSpinBox.setSingleStep(1e-9)  # in s
         ticks_list = self._pulsed_meas_logic.measurement_ticks_list
         if ticks_list is not None and len(ticks_list) > 1:
             xaxis_start = ticks_list[0]
@@ -2611,7 +2483,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Show second plot ComboBox
         second_plot_list = ['None', 'unchanged data', 'FFT', 'Log(x)', 'Log(y)', 'Log(x)&Log(y)']
-        self._mw.second_plot_ComboBox.addItem(second_plot_list)
+        self._mw.second_plot_ComboBox.addItems(second_plot_list)
         if 'second_plot_ComboBox_text' in self._statusVariables:
             index = second_plot_list.index(self._statusVariables['second_plot_ComboBox_text'])
             self._mw.second_plot_ComboBox.setCurrentIndex(index)
@@ -2627,13 +2499,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.time_param_ana_periode_DoubleSpinBox.setValue(
             self._pulsed_meas_logic.timer_interval)
 
-        # call update methods to process the init values
+        # Let the initial values change GUI elements accordingly
         self.toggle_laser_xaxis_editor()
-        self.analysis_fc_binning_changed()
-        self.change_second_plot()
-        self.num_of_lasers_changed()
-        self.analysis_timing_changed()
 
+        self.change_second_plot()
+
+        self._mw.laserpulses_ComboBox.clear()
+        self._mw.laserpulses_ComboBox.addItem('sum')
+        new_num_of_lasers = self._mw.ana_param_num_laser_pulse_SpinBox.value()
+        for ii in range(new_num_of_lasers):
+            self._mw.laserpulses_ComboBox.addItem(str(1 + ii))
 
     def _init_fit_parameter(self):
         """
@@ -2641,8 +2516,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         # Fit ComboBox
         fit_functions = self._pulsed_meas_logic.get_fit_functions()
-        for ii in fit_functions:
-            self._mw.fit_param_fit_func_ComboBox.addItem(ii)
+        self._mw.fit_param_fit_func_ComboBox.addItems(fit_functions)
 
     def _init_external_control(self):
         """
@@ -2650,31 +2524,27 @@ class PulsedMeasurementGui(GUIBase):
         """
         # external MW CheckBox
         self._mw.ext_control_use_mw_CheckBox.setChecked(self._pulsed_meas_logic.use_ext_microwave)
-
         # MW freq
         self._mw.ext_control_mw_freq_DoubleSpinBox.setValue(self._pulsed_meas_logic.microwave_freq)
-
         # MW power
         self._mw.ext_control_mw_power_DoubleSpinBox.setValue(
             self._pulsed_meas_logic.microwave_power)
 
-        # call update methods to process the init values
-        self.ext_mw_params_changed()
-
-    def _init_pulse_generator_control(self):
-        """
-        This method initializes the input parameters in the Pulse generator control GroupBox
-        """
         # Channel config ComboBox
         avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
-        self._mw.meas_activation_config_ComboBox.addItem(list(avail_configs))
+        self._mw.pulser_activation_config_ComboBox.addItems(list(avail_configs))
         config_name_to_set = self._pulsed_meas_logic.current_channel_config_name
         if config_name_to_set is not None and config_name_to_set in avail_configs.keys():
-            index = self._mw.meas_activation_config_ComboBox.findText(config_name_to_set)
-            self._mw.meas_activation_config_ComboBox.setCurrentIndex(index)
+            index = self._mw.pulser_activation_config_ComboBox.findText(config_name_to_set)
+            self._mw.pulser_activation_config_ComboBox.setCurrentIndex(index)
+            display_str = ''
+            for chnl in avail_configs[config_name_to_set]:
+                display_str += chnl + ' | '
+            display_str = display_str[:-3]
+            self._mw.pulser_activation_config_LineEdit.setText(display_str)
 
         # Sample rate
-        self._mw.meas_sample_freq_DSpinBox.setValue(self._pulsed_meas_logic.sample_rate)
+        self._mw.pulser_sample_freq_DSpinBox.setValue(self._pulsed_meas_logic.sample_rate)
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
@@ -2685,21 +2555,24 @@ class PulsedMeasurementGui(GUIBase):
         #Firstly stop any scan that might be in progress
         self._pulsed_meas_logic.stop_pulsed_measurement()
 
-        # get currently loaded asset for the parameters
-        asset_obj = self._seq_gen_logic.loaded_asset
-        if asset_obj is None:
-            self.logMsg('Error while trying to run pulsed measurement. '
-                        'No asset is loaded onto the pulse generator. Aborting run.',
-                        msgType='error')
-            return
-
         if isChecked:
+            # get currently loaded asset for the parameters
+            asset_name = self._pulsed_meas_logic.loaded_asset_name
+            asset_obj = self._seq_gen_logic.get_saved_asset(asset_name)
+            if asset_obj is None:
+                self.logMsg('Error while trying to run pulsed measurement. '
+                            'No asset is loaded onto the pulse generator. Aborting run.',
+                            msgType='error')
+                return
             # infer number of laser pulses from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
-            if not self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
+            if not self._mw.ana_param_laserpulse_defined_CheckBox.isChecked():
                 num_laser_pulses = asset_obj.number_of_lasers
                 self._mw.ana_param_num_laser_pulse_SpinBox.setValue(num_laser_pulses)
                 self.num_of_lasers_changed()
+                laser_length = asset_obj.laser_length_bins/self._pulsed_meas_logic.sample_rate
+                self._mw.ana_param_laser_length_SpinBox.setValue(laser_length)
+                self.laser_length_changed()
 
             # infer x axis measurement ticks from the currently loaded asset if needed.
             # If they have been manually set in the GUI the changes are already in the logic.
@@ -2714,10 +2587,6 @@ class PulsedMeasurementGui(GUIBase):
                 self._pulsed_meas_logic.set_measurement_ticks_list(meas_ticks_list)
 
             #Todo: Should all be set by the logic itself during load of a new sequence
-            # self._pulsed_meas_logic.sequence_length_s = asset_obj.length_bins/self._pulsed_meas_logic.sample_rate
-            # set the parameters from Pulse Extraction:
-            # self._pulsed_meas_logic.aom_delay_s = self._mw.extract_param_aom_delay_ScienDSpinBox.value()
-            # self._pulsed_meas_logic.laser_length_s = self._mw.extract_param_laser_length_ScienDSpinBox.value()
             self._mw.time_param_expected_dur_DoubleSpinBox.setValue(self._pulsed_meas_logic.sequence_length_s*1e3) #computed expected duration in ms
 
             # Enable and disable buttons
@@ -2732,10 +2601,8 @@ class PulsedMeasurementGui(GUIBase):
 
             if not self._mw.action_continue_pause.isChecked():
                 self._mw.action_continue_pause.toggle()
-
         else:
             #Enables and disables buttons
-            self._pulsed_meas_logic.stop_pulsed_measurement()
             self._mw.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._mw.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._mw.ana_param_fc_bins_ComboBox.setEnabled(True)
@@ -2743,21 +2610,17 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.action_continue_pause.setEnabled(False)
 
 
-    #ToDo: I think that is not really working yet
+    #ToDo: I think that is not really working yet. Yeap, true....
     def continue_pause_clicked(self, isChecked):
         """ Continues and pauses the measurement. """
-
         if isChecked:
             #self._mw.action_continue_pause.toggle()
-
             self._mw.action_run_stop.setChecked(True)
             #self._pulsed_meas_logic.continue_pulsed_measurement()
         else:
             #self._mw.action_continue_pause.toggle
             #self._pulsed_meas_logic.pause_pulsed_measurement()
             self._mw.action_run_stop.setChecked(False)
-
-
 
     def pull_data_clicked(self):
         """ Pulls and analysis the data when the 'action_pull_data'-button is clicked. """
@@ -2769,7 +2632,6 @@ class PulsedMeasurementGui(GUIBase):
         self.save_plots()
         # FIXME: Also save the data from pulsed_measurement_logic
 
-
     def fit_clicked(self):
         """Fits the current data"""
         self._mw.fit_param_results_TextBrowser.clear()
@@ -2778,7 +2640,6 @@ class PulsedMeasurementGui(GUIBase):
         self.fit_image.setData(x=fit_x, y=fit_y, pen='r')
         self._mw.fit_param_results_TextBrowser.setPlainText(fit_result)
         return
-
 
     def refresh_signal_plot(self):
         """ Refreshes the xy-matrix image """
@@ -2811,7 +2672,6 @@ class PulsedMeasurementGui(GUIBase):
                                   y=self._pulsed_meas_logic.signal_plot_y)
         self.change_second_plot()
         return
-
 
     def refresh_measuring_error_plot(self):
         self.measuring_error_image.setData(x=self._pulsed_meas_logic.signal_plot_x,
@@ -2861,12 +2721,20 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.ana_param_x_axis_inc_Label.setVisible(False)
             self._mw.ana_param_x_axis_inc_ScienDSpinBox.setVisible(False)
 
-        if self._mw.ana_param_num_laser_defined_CheckBox.isChecked():
+        if self._mw.ana_param_laserpulse_defined_CheckBox.isChecked():
             self._mw.ana_param_num_laserpulses_Label.setVisible(True)
             self._mw.ana_param_num_laser_pulse_SpinBox.setVisible(True)
+            if self._pulsed_meas_logic.fast_counter_gated:
+                self._mw.ana_param_laser_length_Label.setVisible(True)
+                self._mw.ana_param_laser_length_SpinBox.setVisible(True)
+            else:
+                self._mw.ana_param_laser_length_Label.setVisible(False)
+                self._mw.ana_param_laser_length_SpinBox.setVisible(False)
         else:
             self._mw.ana_param_num_laserpulses_Label.setVisible(False)
             self._mw.ana_param_num_laser_pulse_SpinBox.setVisible(False)
+            self._mw.ana_param_laser_length_Label.setVisible(False)
+            self._mw.ana_param_laser_length_SpinBox.setVisible(False)
 
     def change_second_plot(self):
         """ This method handles the second plot"""
@@ -3641,11 +3509,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
 
         self._mw.extract_param_aom_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.aom_delay_s)
-        self._mw.extract_param_laser_length_ScienDSpinBox.setValue(self._pulsed_meas_logic.laser_length_s)
 
         # configure a bit the display box in the pulse extraction:
         self._mw.extract_param_aom_delay_ScienDSpinBox.setSingleStep(10e-9) # in s
-        self._mw.extract_param_laser_length_ScienDSpinBox.setSingleStep(100e-9) # in s
 
     def _deactivate_pulse_extraction_ui(self, e):
         """ Disconnects the configuration for 'Pulse Extraction' Tab.
@@ -3655,18 +3521,30 @@ class PulsedMeasurementGui(GUIBase):
         """
 
     def num_of_lasers_changed(self):
-        """ Handle what happens if number of laser pulses changes. """
-
+        """
+        Handle what happens if number of laser pulses changes.
+        """
         self._mw.laserpulses_ComboBox.blockSignals(True)
 
         self._mw.laserpulses_ComboBox.clear()
         self._mw.laserpulses_ComboBox.addItem('sum')
-        for ii in range(self._mw.ana_param_num_laser_pulse_SpinBox.value()):
+        new_num_of_lasers = self._mw.ana_param_num_laser_pulse_SpinBox.value()
+        for ii in range(new_num_of_lasers):
             self._mw.laserpulses_ComboBox.addItem(str(1+ii))
 
         self._mw.laserpulses_ComboBox.blockSignals(False)
 
+        if self._mw.ana_param_laserpulse_defined_CheckBox.isChecked():
+            self._pulsed_meas_logic.set_num_of_lasers(new_num_of_lasers)
+
         self.analysis_xaxis_changed()
+
+    def laser_length_changed(self):
+        """
+        Handle what happens if length of laser pulses change.
+        """
+        new_laser_length = self._mw.ana_param_laser_length_SpinBox.value()/1e9
+        self._pulsed_meas_logic.set_laser_length(new_laser_length)
 
     def analysis_window_values_changed(self):
         """ If the boarders or the lines are changed update the other parameters
@@ -3716,8 +3594,6 @@ class PulsedMeasurementGui(GUIBase):
 
     def refresh_laser_pulses_display(self):
         """ Refresh the extracted laser pulse display. """
-
-
         current_laser = self._mw.laserpulses_ComboBox.currentText()
 
         if current_laser == 'sum':

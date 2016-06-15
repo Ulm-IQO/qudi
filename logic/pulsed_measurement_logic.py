@@ -25,6 +25,7 @@ from pyqtgraph.Qt import QtCore
 from core.util.mutex import Mutex
 from collections import OrderedDict
 from lmfit import Parameters
+import core.util.numpyhelpers as nphelp
 import numpy as np
 import time
 import datetime
@@ -160,7 +161,8 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'sequence_length_s' in self._statusVariables:
             self.sequence_length_s = self._statusVariables['sequence_length_s']
         if 'measurement_ticks_list' in self._statusVariables:
-            self.measurement_ticks_list = self._statusVariables['measurement_ticks_list']
+            self.measurement_ticks_list = np.array(self._statusVariables['measurement_ticks_list'])
+            print('type of list: ' + str(type(self.measurement_ticks_list)))
         if 'fast_counter_binwidth' in self._statusVariables:
             self.fast_counter_binwidth = self._statusVariables['fast_counter_binwidth']
         if 'microwave_power' in self._statusVariables:
@@ -177,20 +179,20 @@ class PulsedMeasurementLogic(GenericLogic):
             self.timer_interval = self._statusVariables['timer_interval']
 
         # Check and configure pulse generator
+        avail_activation_configs = self.get_pulser_constraints()['activation_config']
         if self.get_sample_rate() != self.sample_rate:
             self.sample_rate = self.set_sample_rate(self.sample_rate)
-        if self.current_channel_config_name not in avail_activation_configs.keys():
+        if self.current_channel_config_name not in avail_activation_configs:
             self.current_channel_config_name = list(avail_activation_configs)[0]
         self.set_activation_config(self.current_channel_config_name)
         self.loaded_asset_name = self._pulse_generator_device.get_loaded_asset()
 
         # Check and configure fast counter
         self.fast_counter_gated = self._fast_counter_device.is_gated()
-        binning_constraints = self.get_fastcounter_constraints['hardware_binwidth_list']
+        binning_constraints = self.get_fastcounter_constraints()['hardware_binwidth_list']
         if self.fast_counter_binwidth not in binning_constraints:
             self.fast_counter_binwidth = binning_constraints[0]
         self.configure_fast_counter()
-        self.update_fast_counter_status()
 
         # Check and configure external microwave
         if self.use_ext_microwave:
@@ -201,7 +203,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_signal_plot()
         self._initialize_laser_plot()
         self._initialize_measuring_error_plot()
-
 
 
     def deactivation(self, e):
@@ -223,7 +224,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['aom_delay_s'] = self.aom_delay_s
         self._statusVariables['laser_length_s'] = self.laser_length_s
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
-        self._statusVariables['measurement_ticks_list'] = self.measurement_ticks_list
+        self._statusVariables['measurement_ticks_list'] = list(self.measurement_ticks_list)
         self._statusVariables['fast_counter_binwidth'] = self.fast_counter_binwidth
         self._statusVariables['microwave_power'] = self.microwave_power
         self._statusVariables['microwave_freq'] = self.microwave_freq
@@ -256,6 +257,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # use the actual parameters returned by the hardware
         self.fast_counter_binwidth = actual_binwidth_s
+        self.update_fast_counter_status()
         return
 
     def set_fc_binning(self, fc_binning):
@@ -341,7 +343,7 @@ class PulsedMeasurementLogic(GenericLogic):
         constraint dictionary of the hardware.
         @return: error code (0: OK, -1: error)
         """
-        avail_activation_configs = self.self.get_pulser_constraints()['activation_config']
+        avail_activation_configs = self.get_pulser_constraints()['activation_config']
         if activation_config_name not in avail_activation_configs:
             self.logMsg('Chosen activation_config "{0}" is not available in the pulser constraints. '
                         'Please select one of the following activation_configs:\n{1}'.format(
@@ -385,7 +387,7 @@ class PulsedMeasurementLogic(GenericLogic):
         Additionally the variables which hold this values are updated in the
         logic.
         """
-        self._pulse_generator_device.get_active_channels()
+        active_channels = self._pulse_generator_device.get_active_channels()
         return active_channels
 
     def clear_pulser(self):
@@ -520,7 +522,6 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Acquires laser pulses from fast counter,
             calculates fluorescence signal and creates plots.
         """
-
         with self.threadlock:
             # calculate analysis windows
             sig_start = self.signal_start_bin
@@ -665,7 +666,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if int_num < 1:
             self.logMsg('Invalid number of laser pulses set in the '
                         'pulsed_measurement_logic! A value of {0} was provided '
-                        'but an interger value in the range [0,inf) is '
+                        'but an interger value in the range [1,inf) is '
                         'expected! Set number_of_pulses to '
                         '1.'.format(int_num), msgType='error')
             self.number_of_lasers = 1
@@ -675,11 +676,22 @@ class PulsedMeasurementLogic(GenericLogic):
         self.configure_fast_counter()
         return
 
-    def get_num_of_lasers(self):
-        """ Retrieve the set number of laser pulses.
-        @return: int, number of laser pulses
+    def set_laser_length(self, laser_length_s):
         """
-        return self.number_of_lasers
+        Sets a new laser length for the measurement and reconfigures the fast counter accordingly
+        if it is gated.
+        @param laser_length_s: float, the laser length in seconds
+        @return:
+        """
+        if laser_length_s > 0.:
+            self.laser_length_s = laser_length_s
+        else:
+            self.logMsg('Invalid laser length. Tried to set a value of {0}s. Setting laser length '
+                        'to 3000ns instead.'.format(laser_length_s), msgType='error')
+            self.laser_length_s = 3e-6
+
+        if self.fast_counter_gated:
+            self.configure_fast_counter()
 
     def set_measurement_ticks_list(self, ticks_array):
         """ Sets the ticks for the x-axis of the pulsed measurement.
@@ -692,19 +704,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measurement_ticks_list = np.array(ticks_array)
         return
 
-    def get_measurement_ticks_list(self):
-        """ Retrieve the set measurement_ticks_list, i.e. the x-axis of the measurement.
-        @return: list, list of the x-axis ticks
-        """
-        return self.measurement_ticks_list
-
     def _initialize_signal_plot(self):
         '''Initializing the signal line plot.
         '''
         self.signal_plot_x = self.measurement_ticks_list
-        self.signal_plot_y = np.zeros(self.measurement_ticks_list.size, dtype=float)
+        self.signal_plot_y = np.zeros(len(self.measurement_ticks_list))
         return
-
 
     def _initialize_laser_plot(self):
         '''Initializing the plot of the laser timetrace.
