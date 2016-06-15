@@ -36,6 +36,7 @@ from gui.guibase import GUIBase
 from core.util.mutex import Mutex
 from .qradiobutton_custom import CustomQRadioButton
 
+from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
 
 #FIXME: Display the Pulse
 #FIXME: save the length in sample points (bins)
@@ -534,8 +535,8 @@ class PulsedMeasurementGui(GUIBase):
         self._set_organizer_columns()
 
         # connect all the needed signal to methods:
-        self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block)
-        self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble)
+        self._mw.curr_block_generate_PushButton.clicked.connect(self.generate_pulse_block_clicked)
+        self._mw.curr_ensemble_generate_PushButton.clicked.connect(self.generate_pulse_block_ensemble_clicked)
         self._mw.block_editor_TableWidget.itemChanged.connect(self._update_current_pulse_block)
 
         self._mw.block_organizer_TableWidget.itemChanged.connect(self._update_current_pulse_block_ensemble)
@@ -659,10 +660,11 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_activation_config_ComboBox.addItems(list(avail_activation_configs))
         found_config = False
         for config in avail_activation_configs:
-            if avail_activation_configs[config] is activation_config:
+            if avail_activation_configs[config] == activation_config:
                 index = self._mw.gen_activation_config_ComboBox.findText(config)
                 self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
                 found_config = True
+                break
         if not found_config:
             self._mw.gen_activation_config_ComboBox.setCurrentIndex(0)
         self._mw.gen_activation_config_ComboBox.blockSignals(False)
@@ -705,22 +707,12 @@ class PulsedMeasurementGui(GUIBase):
         """ Switch off the pulser output. """
         self._pulsed_meas_logic.pulse_generator_off()
 
-    def get_func_config(self):
-        """ Retrieve the function configuration from the Logic.
-
-        @return: dict with keys denoting the function name as a string and the
-                 value of each key is again a dict, which contains as key the
-                 parameter name as a string and for that string key how often
-                 the parameter is used.
-        """
-        return self._seq_gen_logic.get_func_config()
-
     def get_func_config_list(self):
         """ Retrieve the possible math functions as a list of strings.
 
         @return: list[] with string entries as function names.
         """
-        return list(self._seq_gen_logic.get_func_config())
+        return list(self._seq_gen_logic.func_config)
 
     def get_current_pulse_block_list(self):
         """ Retrieve the available Pulse_Block objects from the logic.
@@ -881,6 +873,117 @@ class PulsedMeasurementGui(GUIBase):
     def clear_device_clicked(self):
         """ Delete all loaded files in the device's current memory. """
         self._pulsed_meas_logic.clear_pulser()
+
+    def generate_pulse_block_object(self, pb_name, block_matrix):
+        """ Generates from an given table block_matrix a block_object.
+
+        @param pb_name: string, Name of the created Pulse_Block Object
+        @param block_matrix: structured np.array, matrix, in which the
+                             construction plan for Pulse_Block_Element objects
+                             are displayed as rows.
+
+        Three internal dict where used, to get all the needed information about
+        how parameters, functions are defined (_add_pbe_param,func_config and
+        _unit_prefix).
+        The dict cfg_param_pbe (configuration parameter declaration dict for
+        Pulse_Block_Element) stores how the objects are appearing in the GUI.
+        This dict enables the proper access to the desired element in the GUI.
+        """
+
+        # list of all the pulse block element objects
+        pbe_obj_list = [None] * len(block_matrix)
+
+        # seperate digital and analogue channels
+        activation_config = self._seq_gen_logic.activation_config
+        analog_chnl_names = [chnl for chnl in activation_config if 'a_ch' in chnl]
+        digital_chnl_names = [chnl for chnl in activation_config if 'd_ch' in chnl]
+
+        for row_index, row in enumerate(block_matrix):
+            # check how length is displayed and convert it to bins:
+            length_time = row[self._cfg_param_pbe['length']]
+            init_length_bins = int(np.round(length_time * self._seq_gen_logic.sample_rate))
+
+            # check how increment is displayed and convert it to bins:
+            increment_time = row[self._cfg_param_pbe['increment']]
+            increment_bins = int(np.round(increment_time * self._seq_gen_logic.sample_rate))
+
+            # get the dict with all possible functions and their parameters:
+            func_dict = self._seq_gen_logic.func_config
+
+            # get the proper pulse_functions and its parameters:
+            pulse_function = [None] * self._seq_gen_logic.analog_channels
+            parameter_list = [None] * self._seq_gen_logic.analog_channels
+            for num in range(self._seq_gen_logic.analog_channels):
+                # get the number of the analogue channel according to the channel activation_config
+                a_chnl_number = analog_chnl_names[num].split('ch')[-1]
+                pulse_function[num] = row[self._cfg_param_pbe['function_' + a_chnl_number]].decode(
+                    'UTF-8')
+
+                # search for this function in the dictionary and get all the
+                # parameter with their names in list:
+                param_dict = func_dict[pulse_function[num]]
+                parameters = {}
+                for entry in list(param_dict):
+                    # Obtain how the value is displayed in the table:
+                    param_value = row[self._cfg_param_pbe[entry + '_' + a_chnl_number]]
+                    parameters[entry] = param_value
+                parameter_list[num] = parameters
+
+            digital_high = [None] * self._seq_gen_logic.digital_channels
+            for num in range(self._seq_gen_logic.digital_channels):
+                # get the number of the digital channel according to the channel activation_config
+                d_chnl_number = digital_chnl_names[num].split('ch')[-1]
+                digital_high[num] = bool(row[self._cfg_param_pbe['digital_' + d_chnl_number]])
+
+            use_as_tick = bool(row[self._cfg_param_pbe['use']])
+
+            # create here actually the object with all the obtained information:
+            pbe_obj_list[row_index] = Pulse_Block_Element(init_length_bins=init_length_bins,
+                                                          increment_bins=increment_bins,
+                                                          pulse_function=pulse_function,
+                                                          digital_high=digital_high,
+                                                          parameters=parameter_list,
+                                                          use_as_tick=use_as_tick)
+
+        pb_obj = Pulse_Block(pb_name, pbe_obj_list)
+        # save block
+        self._seq_gen_logic.save_block(pb_name, pb_obj)
+
+    def generate_pulse_block_ensemble_object(self, ensemble_name, ensemble_matrix, rotating_frame=True):
+        """
+        Generates from an given table ensemble_matrix a ensemble object.
+
+        @param str ensemble_name: Name of the created Pulse_Block_Ensemble object
+        @param np.array ensemble_matrix: structured 2D np.array, matrix, in which the construction
+                                         plan for Pulse_Block objects are displayed as rows.
+        @param str laser_channel: the channel controlling the laser
+        @param bool rotating_frame: optional, whether the phase preservation is mentained
+                                    throughout the sequence.
+
+        The dict cfg_param_pb (configuration parameter declaration dict for Pulse_Block) stores how
+        the objects are related to each other in a sequencial way. That relationship is used in the
+        GUI, where the parameters appear in columns.
+        This dict enables the proper access to the desired element in the GUI.
+        """
+
+        # list of all the pulse block element objects
+        pb_obj_list = [None] * len(ensemble_matrix)
+
+        for row_index, row in enumerate(ensemble_matrix):
+            pulse_block_name = row[self._cfg_param_pb['pulse_block']].decode('UTF-8')
+            pulse_block_reps = row[self._cfg_param_pb['repetition']]
+            # Fetch previously saved block object
+            block = self._seq_gen_logic.get_pulse_block(pulse_block_name)
+            # Append block object along with repetitions to the block list
+            pb_obj_list[row_index] = (block, pulse_block_reps)
+
+        # Create the Pulse_Block_Ensemble object
+        pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name, block_list=pb_obj_list,
+                                                    activation_config=self._seq_gen_logic.activation_config,
+                                                    laser_channel=self._seq_gen_logic.laser_channel,
+                                                    rotating_frame=rotating_frame)
+        # save ensemble
+        self._seq_gen_logic.save_ensemble(ensemble_name, pulse_block_ensemble)
 
     # -------------------------------------------------------------------------
     #           Methods for the Pulse Block Editor
@@ -1053,8 +1156,7 @@ class PulsedMeasurementGui(GUIBase):
         else:
             current_block_name = self._mw.saved_blocks_ComboBox.currentText()
 
-        block = self._seq_gen_logic.get_pulse_block(current_block_name,
-                                                    set_as_current_block=True)
+        block = self._seq_gen_logic.get_pulse_block(current_block_name, set_as_current_block=True)
 
         # of no object was found then block has reference to None
         if block is None:
@@ -1106,16 +1208,16 @@ class PulsedMeasurementGui(GUIBase):
         rows = len(block.element_list)  # get amout of rows needed for display
 
         # configuration dict from the logic:
-        block_config_dict = self.get_cfg_param_pbe()
+        block_config_dict = self._cfg_param_pbe
 
         self.block_editor_add_row_after_last(rows - 1)  # since one is already present
 
-        for row_index, pulse_block_element in enumerate(block.element_list):
+        for row_index, elem in enumerate(block.element_list):
 
             # set at first all digital channels:
-            for digital_ch in range(pulse_block_element.digital_channels):
+            for digital_ch in range(elem.digital_channels):
                 column = block_config_dict['digital_' + active_digital[digital_ch].split('ch')[-1]]
-                value = pulse_block_element.marker_active[digital_ch]
+                value = elem.digital_high[digital_ch]
                 if value:
                     value = 2
                 else:
@@ -1123,14 +1225,14 @@ class PulsedMeasurementGui(GUIBase):
                 self.set_element_in_block_table(row_index, column, value)
 
             # now set all parameters for the analog channels:
-            for analog_ch in range(pulse_block_element.analog_channels):
+            for analog_ch in range(elem.analog_channels):
                 # the function text:
                 column = block_config_dict['function_' + active_analog[analog_ch].split('ch')[-1]]
-                func_text = pulse_block_element.pulse_function[analog_ch]
+                func_text = elem.pulse_function[analog_ch]
                 self.set_element_in_block_table(row_index, column, func_text)
 
                 # then the parameter dictionary:
-                parameter_dict = pulse_block_element.parameters[analog_ch]
+                parameter_dict = elem.parameters[analog_ch]
                 for parameter in parameter_dict:
                     column = block_config_dict[parameter + '_' + active_analog[analog_ch].split('ch')[-1]]
                     value = np.float(parameter_dict[parameter])
@@ -1142,7 +1244,7 @@ class PulsedMeasurementGui(GUIBase):
 
             # now set use as tick parameter:
             column = block_config_dict['use']
-            value = pulse_block_element.use_as_tick
+            value = elem.use_as_tick
             # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
             if value:
                 value = 2
@@ -1152,31 +1254,19 @@ class PulsedMeasurementGui(GUIBase):
 
             # and set the init_length_bins:
             column = block_config_dict['length']
-            value = pulse_block_element.init_length_bins / (self._seq_gen_logic.sample_rate)
+            value = elem.init_length_bins / (self._seq_gen_logic.sample_rate)
             # the setter method will handle the proper unit for that value!
             # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
             # and set the increment parameter
             column = block_config_dict['increment']
-            value = pulse_block_element.increment_bins / (self._seq_gen_logic.sample_rate)
+            value = elem.increment_bins / (self._seq_gen_logic.sample_rate)
             # the setter method will handle the proper unit for that value!
             # Just make sure to pass to the function the value in SI units!
             self.set_element_in_block_table(row_index, column, value)
 
         self._mw.curr_block_name_LineEdit.setText(current_block_name)
-
-        # FIXME: Right now only digital channels are supported.
-        # Set the right laser channel in the ComboBox
-        # sort the digital channels according to their index
-        channel_indices = [int(chnl.split('ch')[-1]) for chnl in active_digital]
-        channel_indices.sort()
-        # determine the digital channel to use
-        laser_channel = 'd_ch'+str(channel_indices[block.laser_channel])
-        # Find index to set in the ComboBox
-        laser_channel_index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel)
-        # Set ComboBox
-        self._mw.gen_laserchannel_ComboBox.setCurrentIndex(laser_channel_index)
 
 
     def delete_pulse_block_clicked(self):
@@ -1199,16 +1289,14 @@ class PulsedMeasurementGui(GUIBase):
         self._update_current_pulse_block_ensemble()
         return
 
-    def generate_pulse_block(self):
+    def generate_pulse_block_clicked(self):
         """ Generate a Pulse_Block object."""
-
         objectname = self._mw.curr_block_name_LineEdit.text()
         if objectname == '':
             self.logMsg('No Name for Pulse_Block specified. Generation '
                         'aborted!', importance=7, msgType='warning')
             return
-        self._seq_gen_logic.generate_pulse_block_object(objectname,
-                                                  self.get_pulse_block_table())
+        self.generate_pulse_block_object(objectname, self.get_pulse_block_table())
 
         # update at first the comboboxes within the organizer table and block
         # all the signals which might cause an error, because during the update
@@ -1236,7 +1324,7 @@ class PulsedMeasurementGui(GUIBase):
 
 
         curr_func_list = self.get_current_function_list()
-        complete_func_config = self.get_func_config()
+        complete_func_config = self._seq_gen_logic.func_config
 
         num_max_param = 0
         biggest_func = ''
@@ -1303,10 +1391,10 @@ class PulsedMeasurementGui(GUIBase):
                 column_count += 1
 
                 # fill here all parameter columns for the current analogue channel
-                for parameter in self.get_func_config()[biggest_func]:
+                for parameter in self._seq_gen_logic.func_config[biggest_func]:
                     # initial block:
 
-                    item_dict = self.get_func_config()[biggest_func][parameter]
+                    item_dict = self._seq_gen_logic.func_config[biggest_func][parameter]
 
                     unit_text = item_dict['unit_prefix'] + item_dict['unit']
 
@@ -1462,7 +1550,40 @@ class PulsedMeasurementGui(GUIBase):
                 length_bin = int(length_bin + block_obj.init_length_bins * (reps + 1) +
                              ((reps + 1) * ((reps + 1) + 1) / 2) * block_obj.increment_bins)
 
-                num_laser_pulses = num_laser_pulses + block_obj.number_of_lasers * (reps + 1)
+                # Calculate the number of laser pulses
+                num_laser_pulses_block = 0
+                if self._seq_gen_logic.laser_channel is None:
+                    num_laser_pulses_block = 0
+                elif 'd_ch' in self._seq_gen_logic.laser_channel:
+                    # determine the laser channel index for the corresponding channel
+                    digital_chnl_list = [chnl for chnl in self._seq_gen_logic.activation_config if
+                                         'd_ch' in chnl]
+                    laser_index = digital_chnl_list.index(self._seq_gen_logic.laser_channel)
+                    # Iterate through the elements and count laser on state changes
+                    # (no double counting)
+                    laser_on = False
+                    for elem in block_obj.element_list:
+                        if elem.digital_high[laser_index] and not laser_on:
+                            num_laser_pulses_block += 1
+                            laser_on = True
+                        elif not elem.digital_high[laser_index]:
+                            laser_on = False
+                elif 'a_ch' in self._seq_gen_logic.laser_channel:
+                    # determine the laser channel index for the corresponding channel
+                    analog_chnl_list = [chnl for chnl in self._seq_gen_logic.activation_config if
+                                        'a_ch' in chnl]
+                    laser_index = analog_chnl_list.index(self._seq_gen_logic.laser_channel)
+                    # Iterate through the elements and count laser on state changes
+                    # (no double counting)
+                    laser_on = False
+                    for elem in block_obj.element_list:
+                        if elem.pulse_function[laser_index] == 'DC' and not laser_on:
+                            num_laser_pulses_block += 1
+                            laser_on = True
+                        elif elem.pulse_function[laser_index] != 'DC':
+                            laser_on = False
+                num_laser_pulses += num_laser_pulses_block*(reps+1)
+
 
             length_mu = (length_bin / self._seq_gen_logic.sample_rate) * 1e6  # in microns
 
@@ -1666,7 +1787,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # This dictionary has the information which column number describes
         # which object, it is a configuration dict between GUI and logic
-        organizer_config_dict = self.get_cfg_param_pb()
+        organizer_config_dict = self._cfg_param_pb
 
         # run through all blocks in the block_elements block_list to fill in the
         # row informations
@@ -1757,7 +1878,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
 
-    def generate_pulse_block_ensemble(self):
+    def generate_pulse_block_ensemble_clicked(self):
         """ Generate a Pulse_Block_ensemble object."""
 
         objectname = self._mw.curr_ensemble_name_LineEdit.text()
@@ -1766,19 +1887,8 @@ class PulsedMeasurementGui(GUIBase):
                         'Generation aborted!', importance=7, msgType='warning')
             return
         rotating_frame =  self._mw.curr_ensemble_rot_frame_CheckBox.isChecked()
-        self._seq_gen_logic.generate_pulse_block_ensemble(objectname, self.get_organizer_table(),
-                                                          rotating_frame)
-
-    def get_cfg_param_pbe(self):
-        """ Get the current parameter configuration of Pulse Block Elements.
-
-        @return dict: An abstract dictionary, which tells the logic the
-                      configuration of a Pulse_Block_Element, i.e. how many
-                      parameters are used for a Pulse_Block_Element (pbe)
-                      object. Keys describing the names of the column (as
-                      string) and the items denoting the column number (int).
-        """
-        return self._cfg_param_pbe
+        self.generate_pulse_block_ensemble_object(objectname, self.get_organizer_table(),
+                                                  rotating_frame)
 
     def set_cfg_param_pbe(self):
         """ Set the parameter configuration of the Pulse_Block_Elements
@@ -1798,19 +1908,6 @@ class PulsedMeasurementGui(GUIBase):
                 cfg_param_pbe[split_text[0]] = column
 
         self._cfg_param_pbe = cfg_param_pbe
-        self._seq_gen_logic.cfg_param_pbe = cfg_param_pbe
-
-    def get_cfg_param_pb(self):
-        """ Ask for the current configuration of the Pulse Blocks.
-
-        @return dict: An abstract dictionary, which tells the logic the
-                      configuration of a Pulse_Block, i.e. how many parameters
-                      are used for a Pulse_Block (pb) object. Keys describing
-                      the names of the column (as string) and the items
-                      denoting the column number (int).
-        """
-        return self._cfg_param_pb
-
 
     def set_cfg_param_pb(self):
         """ Set the parameter configuration of the Pulse_Block according to the
@@ -1832,7 +1929,6 @@ class PulsedMeasurementGui(GUIBase):
                 print('text:',text)
                 raise NotImplementedError
         self._cfg_param_pb = cfg_param_pb
-        self._seq_gen_logic.cfg_param_pb = cfg_param_pb
 
     def _set_organizer_columns(self):
 
@@ -2529,6 +2625,7 @@ class PulsedMeasurementGui(GUIBase):
         # MW power
         self._mw.ext_control_mw_power_DoubleSpinBox.setValue(
             self._pulsed_meas_logic.microwave_power)
+        self.toggle_external_mw_source_editor()
 
         # Channel config ComboBox
         avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
