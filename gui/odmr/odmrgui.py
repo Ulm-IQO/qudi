@@ -451,6 +451,19 @@ class ODMRGui(GUIBase):
         self._odmr_logic.number_of_lines = self._sd.matrix_lines_SpinBox.value()
         self._odmr_logic.set_clock_frequency(self._sd.clock_frequency_DoubleSpinBox.value())
         self._odmr_logic.safeRawData = self._sd.save_raw_data_CheckBox.isChecked()
+        for name, tab in self._sd.fit_tabs.items():
+            self._odmr_logic.use_custom_params[name] = tab.updateFitSettings(
+                self._odmr_logic.fit_models[name][1])
+
+    def reject_settings(self):
+        """ Keep the old settings and restores the old settings in the gui. """
+        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
+        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
+        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
+        for name, tab in self._sd.fit_tabs.items():
+            tab.keepFitSettings(
+                self._odmr_logic.fit_models[name][1],
+                self._odmr_logic.use_custom_params[name])
 
     def update_fit_variable(self, txt):
         """ Set current fit function """
@@ -483,13 +496,6 @@ class ODMRGui(GUIBase):
         @return:
         """
         pass
-
-
-    def reject_settings(self):
-        """ Keep the old settings and restores the old settings in the gui. """
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
-        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic._clock_frequency)
-        self._sd.save_raw_data_CheckBox.setChecked(self._odmr_logic.safeRawData)
 
     def mw_stop(self, txt):
         """ Stop frequency sweep and change to CW of off"""
