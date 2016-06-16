@@ -162,7 +162,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sequence_length_s = self._statusVariables['sequence_length_s']
         if 'measurement_ticks_list' in self._statusVariables:
             self.measurement_ticks_list = np.array(self._statusVariables['measurement_ticks_list'])
-            print('type of list: ' + str(type(self.measurement_ticks_list)))
         if 'fast_counter_binwidth' in self._statusVariables:
             self.fast_counter_binwidth = self._statusVariables['fast_counter_binwidth']
         if 'microwave_power' in self._statusVariables:
@@ -357,6 +356,7 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 channel_activation[chnl] = False
         err = self.set_active_channels(channel_activation)
+        self.current_channel_config_name = activation_config_name
         return err
 
     def set_active_channels(self, ch={}):
@@ -723,7 +723,7 @@ class PulsedMeasurementLogic(GenericLogic):
         '''Initializing the plot of the laser timetrace.
         '''
         self.measuring_error_plot_x = self.measurement_ticks_list
-        self.measuring_error_plot_y =  np.zeros(self.number_of_lasers, dtype=float)
+        self.measuring_error_plot_y =  np.zeros(len(self.measurement_ticks_list), dtype=float)
         return
 
 

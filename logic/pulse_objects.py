@@ -154,7 +154,7 @@ class Pulse_Block_Ensemble(object):
     This object is used as a construction plan to create one sampled file.
     """
 
-    def __init__(self, name, block_list, activation_config, laser_channel=None, rotating_frame=True):
+    def __init__(self, name, block_list, activation_config, sample_rate, laser_channel=None, rotating_frame=True):
         """ The constructor for a Pulse_Block_Ensemble needs to have:
 
         @param str name: chosen name for the Pulse_Block_Ensemble
@@ -163,6 +163,7 @@ class Pulse_Block_Ensemble(object):
                                     [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
         @param list activation_config: A list of strings representing the channel configuration
                                         e.g. ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2']
+        @param float sample_rate: The sample rate in Hz the ensemble was created for.
         @param str laser_channel: The string descriptor for the laser channel.
                                     Must be contained by the passed activation_config.
         @param bool rotating_frame: indicates whether the phase should be preserved for all the
@@ -172,7 +173,14 @@ class Pulse_Block_Ensemble(object):
         self.name = name                    # Pulse_Block_Ensemble name
         self.block_list = block_list
         self.activation_config = activation_config
+        self.sample_rate = sample_rate
         self.rotating_frame = rotating_frame
+        self.length_bins = 0
+        self.analog_channels = 0
+        self.digital_channels = 0
+        self.number_of_lasers = 0
+        self.laser_length_bins = 0
+        self.measurement_ticks_list = np.array([])
         if laser_channel in activation_config:
             self.laser_channel = laser_channel
         else:
@@ -184,6 +192,7 @@ class Pulse_Block_Ensemble(object):
         self.analog_channels = 0
         self.digital_channels = 0
         self.number_of_lasers = 0
+        self.laser_length_bins = 0
         # calculate the tick values for the whole block_ensemble.
         self.measurement_ticks_list = np.array([])
 
@@ -210,30 +219,49 @@ class Pulse_Block_Ensemble(object):
             # Calculate the number of laser pulses for this ensemble
             if self.laser_channel is None:
                 self.number_of_lasers = 0
+                self.laser_length_bins = 0
             elif 'd_ch' in self.laser_channel:
                 # determine the laser channel index for the corresponding channel
                 digital_chnl_list = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
                 laser_index = digital_chnl_list.index(self.laser_channel)
                 # Iterate through the elements and count laser on state changes (no double counting)
+                # Also accumulate the length of the laser pulse in bins and determine the longest
                 laser_on = False
+                tmp_laser_length = 0
                 for elem in block.element_list:
-                    if elem.digital_high[laser_index] and not laser_on:
-                        self.number_of_lasers += 1
-                        laser_on = True
-                    elif not elem.digital_high[laser_index]:
+                    if elem.digital_high[laser_index]:
+                        if not laser_on:
+                            self.number_of_lasers += 1 + reps
+                            laser_on = True
+                            tmp_laser_length = elem.init_length_bins + elem.increment_bins * reps
+                        else:
+                            tmp_laser_length += elem.init_length_bins + elem.increment_bins * reps
+                    else:
                         laser_on = False
+                        tmp_laser_length = 0
+                    if self.laser_length_bins < tmp_laser_length:
+                        self.laser_length_bins = tmp_laser_length
             elif 'a_ch' in self.laser_channel:
                 # determine the laser channel index for the corresponding channel
                 analog_chnl_list = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
                 laser_index = analog_chnl_list.index(self.laser_channel)
                 # Iterate through the elements and count laser on state changes (no double counting)
+                # Also accumulate the length of the laser pulse in bins and determine the longest
                 laser_on = False
+                tmp_laser_length = 0
                 for elem in block.element_list:
-                    if elem.pulse_function[laser_index] == 'DC' and not laser_on:
-                        self.number_of_lasers += 1
-                        laser_on = True
-                    elif elem.pulse_function[laser_index] != 'DC':
+                    if elem.pulse_function[laser_index] == 'DC':
+                        if not laser_on:
+                            self.number_of_lasers += 1 + reps
+                            laser_on = True
+                            tmp_laser_length = elem.init_length_bins + elem.increment_bins * reps
+                        else:
+                            tmp_laser_length += elem.init_length_bins + elem.increment_bins * reps
+                    else:
                         laser_on = False
+                        tmp_laser_length = 0
+                    if self.laser_length_bins < tmp_laser_length:
+                        self.laser_length_bins = tmp_laser_length
         return
 
     def replace_block(self, position, block):

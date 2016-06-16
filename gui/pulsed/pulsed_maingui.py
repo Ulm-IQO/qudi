@@ -628,11 +628,10 @@ class PulsedMeasurementGui(GUIBase):
         generator GUI elements.
         """
         pulser_constr = self._pulsed_meas_logic.get_pulser_constraints()
-        sample_min = pulser_constr['sample_rate']['min']
-        sample_max = pulser_constr['sample_rate']['max']
-        sample_step = pulser_constr['sample_rate']['step']
+        sample_min = pulser_constr['sample_rate']['min'] / 1e6
+        sample_max = pulser_constr['sample_rate']['max'] / 1e6
+        sample_step = pulser_constr['sample_rate']['step'] / 1e6
 
-        #FIXME: that should be in SI units! ...that will be changed soon
         self._mw.gen_sample_freq_DSpinBox.setMinimum(sample_min)
         self._mw.gen_sample_freq_DSpinBox.setMaximum(sample_max)
         self._mw.gen_sample_freq_DSpinBox.setSingleStep(sample_step)
@@ -655,7 +654,8 @@ class PulsedMeasurementGui(GUIBase):
         avail_activation_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
         # init GUI elements
         # set sample rate
-        self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate)
+        self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate/1e6)
+        self.generator_sample_rate_changed()
         # set activation_config. This will also update the laser channel and number of channels
         # from the logic.
         self._mw.gen_activation_config_ComboBox.blockSignals(True)
@@ -737,9 +737,9 @@ class PulsedMeasurementGui(GUIBase):
         Is called whenever the sample rate for the sequence generation has changed in the GUI
         """
         self._mw.gen_sample_freq_DSpinBox.blockSignals(True)
-        sample_rate = self._mw.gen_sample_freq_DSpinBox.value()
+        sample_rate = self._mw.gen_sample_freq_DSpinBox.value()*1e6
         actual_sample_rate = self._seq_gen_logic.set_sample_rate(sample_rate)
-        self._mw.gen_sample_freq_DSpinBox.setValue(actual_sample_rate)
+        self._mw.gen_sample_freq_DSpinBox.setValue(actual_sample_rate/1e6)
         self._mw.gen_sample_freq_DSpinBox.blockSignals(False)
         self._update_current_pulse_block()
         self._update_current_pulse_block_ensemble()
@@ -810,10 +810,10 @@ class PulsedMeasurementGui(GUIBase):
         """
         This method is called when the user clicks on "upload to device"
         """
-        # Get the asset name to be uploaded from the ComboBox
-        asset_name = self._mw.upload_ensemble_ComboBox.currentText()
-        # Upload the asset via logic module
-        self._pulsed_meas_logic.upload_asset(asset_name)
+        # Get the ensemble name to be uploaded from the ComboBox
+        ensemble_name = self._mw.upload_ensemble_ComboBox.currentText()
+        # Upload the ensemble waveform via logic module
+        self._pulsed_meas_logic.upload_asset(ensemble_name)
         return
 
     def load_into_channel_clicked(self):
@@ -825,6 +825,27 @@ class PulsedMeasurementGui(GUIBase):
 
         # FIXME: Implement a proper GUI element (upload center) to manually assign assets to channels
         # Right now the default is chosen to invoke channel assignment from the Ensemble/Sequence object
+
+        # configure pulser with the same settings that were chosen during ensemble generation.
+        # This information is stored in the ensemble object.
+        asset_obj = self._seq_gen_logic.get_saved_asset(asset_name)
+
+        # Set proper activation config
+        activation_config = asset_obj.activation_config
+        config_name = None
+        avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
+        for config in avail_configs:
+            if activation_config == avail_configs[config]:
+                config_name = config
+                break
+        if config_name != self._mw.pulser_activation_config_ComboBox.currentText():
+            index = self._mw.pulser_activation_config_ComboBox.findText(config_name)
+            self._mw.pulser_activation_config_ComboBox.setCurrentIndex(index)
+
+        # Set proper sample rate
+        if self._pulsed_meas_logic.sample_rate != asset_obj.sample_rate:
+            self._mw.pulser_sample_freq_DSpinBox.setValue(asset_obj.sample_rate/1e6)
+            self.pulser_sample_rate_changed()
 
         # Load asset into channles via logic module
         self._pulsed_meas_logic.load_asset(asset_name)
@@ -983,6 +1004,7 @@ class PulsedMeasurementGui(GUIBase):
         # Create the Pulse_Block_Ensemble object
         pulse_block_ensemble = Pulse_Block_Ensemble(name=ensemble_name, block_list=pb_obj_list,
                                                     activation_config=self._seq_gen_logic.activation_config,
+                                                    sample_rate=self._seq_gen_logic.sample_rate,
                                                     laser_channel=self._seq_gen_logic.laser_channel,
                                                     rotating_frame=rotating_frame)
         # save ensemble
@@ -1781,6 +1803,45 @@ class PulsedMeasurementGui(GUIBase):
         if ensemble is None:
             return
 
+        # set the activation_config to the one defined in the loaded ensemble
+        avail_configs = self._pulsed_meas_logic.get_pulser_constraints()['activation_config']
+        current_activation_config = self._seq_gen_logic.activation_config
+        activation_config_to_set = ensemble.activation_config
+        config_name_to_set = None
+        if current_activation_config != activation_config_to_set:
+            for config in avail_configs:
+                if activation_config_to_set == avail_configs[config]:
+                    config_name_to_set = config
+                    break
+            if config_name_to_set is not None:
+                index = self._mw.gen_activation_config_ComboBox.findText(config_name_to_set)
+                self._mw.gen_activation_config_ComboBox.setCurrentIndex(index)
+            self.logMsg(
+                'Current generator channel activation config did not match the activation '
+                'config of the Pulse_Block_Ensemble to load. Changed config to "{0}".'
+                ''.format(config_name_to_set), msgType='status')
+
+        # set the sample rate to the one defined in the loaded ensemble
+        current_sample_rate = self._seq_gen_logic.sample_rate
+        sample_rate_to_set = ensemble.sample_rate
+        if current_sample_rate != sample_rate_to_set:
+            self._mw.gen_sample_freq_DSpinBox.setValue(sample_rate_to_set/1e6)
+            self.generator_sample_rate_changed()
+            self.logMsg('Current generator sample rate did not match the sample rate of the '
+                        'Pulse_Block_Ensemble to load. Changed the sample rate to {0}Hz.'
+                        ''.format(sample_rate_to_set), msgType='status')
+
+        # set the laser channel to the one defined in the loaded ensemble
+        current_laser_channel = self._seq_gen_logic.laser_channel
+        laser_channel_to_set = ensemble.laser_channel
+        if current_laser_channel != laser_channel_to_set and laser_channel_to_set is not None:
+            index = self._mw.gen_laserchannel_ComboBox.findText(laser_channel_to_set)
+            self._mw.gen_laserchannel_ComboBox.setCurrentIndex(index)
+            self.logMsg(
+                'Current generator laser channel did not match the laser channel of the '
+                'Pulse_Block_Ensemble to load. Changed the laser channel to "{0}".'
+                ''.format(laser_channel_to_set), msgType='status')
+
         self.block_organizer_clear_table()  # clear the block organizer table
         rows = len(ensemble.block_list)  # get amout of rows needed for display
 
@@ -1803,6 +1864,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # set the ensemble name LineEdit to the current ensemble
         self._mw.curr_ensemble_name_LineEdit.setText(current_ensemble_name)
+
+
 
 
     def block_organizer_add_row_before_selected(self,insert_rows=1):
@@ -2453,6 +2516,8 @@ class PulsedMeasurementGui(GUIBase):
         #FIXME: Is currently needed for the errorbars, but there has to be a better solution
         self.errorbars_present = False
 
+        # apply hardware constraints
+        self._analysis_apply_hardware_constraints()
         # Initialize External Control GroupBox from logic and saved status variables
         self._init_external_control()
         # Initialize Analysis Parameter GroupBox from logic and saved status variables
@@ -2491,6 +2556,9 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
         self._mw.ext_control_mw_power_DoubleSpinBox.editingFinished.connect(self.ext_mw_params_changed)
 
+        self._mw.pulser_sample_freq_DSpinBox.editingFinished.connect(self.pulser_sample_rate_changed)
+        self._mw.pulser_activation_config_ComboBox.currentIndexChanged.connect(self.pulser_activation_config_changed)
+
         self._mw.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.analysis_xaxis_changed)
         self._mw.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.analysis_xaxis_changed)
 
@@ -2514,6 +2582,21 @@ class PulsedMeasurementGui(GUIBase):
         # disconnect signals
         # self._pulsed_meas_logic.sigPulseAnalysisUpdated.disconnect()
         # self._mw.ana_param_num_laser_pulse_SpinBox.editingFinished.disconnect()
+
+    def _analysis_apply_hardware_constraints(self):
+        """
+        Retrieve the constraints from pulser and fast counter hardware and apply these constraints
+        to the analysis tab GUI elements.
+        """
+        pulser_constr = self._pulsed_meas_logic.get_pulser_constraints()
+        sample_min = pulser_constr['sample_rate']['min'] / 1e6
+        sample_max = pulser_constr['sample_rate']['max'] / 1e6
+        sample_step = pulser_constr['sample_rate']['step'] / 1e6
+
+        self._mw.pulser_sample_freq_DSpinBox.setMinimum(sample_min)
+        self._mw.pulser_sample_freq_DSpinBox.setMaximum(sample_max)
+        self._mw.pulser_sample_freq_DSpinBox.setSingleStep(sample_step)
+        self._mw.pulser_sample_freq_DSpinBox.setDecimals((np.log10(sample_step) * -1))
 
     def _init_analysis_parameter(self):
         """
@@ -2644,7 +2727,8 @@ class PulsedMeasurementGui(GUIBase):
             self._mw.pulser_activation_config_LineEdit.setText(display_str)
 
         # Sample rate
-        self._mw.pulser_sample_freq_DSpinBox.setValue(self._pulsed_meas_logic.sample_rate)
+        self._mw.pulser_sample_freq_DSpinBox.setValue(self._pulsed_meas_logic.sample_rate/1e6)
+        self.pulser_sample_rate_changed()
 
     def run_stop_clicked(self, isChecked):
         """ Manages what happens if pulsed measurement is started or stopped.
@@ -2671,7 +2755,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._mw.ana_param_num_laser_pulse_SpinBox.setValue(num_laser_pulses)
                 self.num_of_lasers_changed()
                 laser_length = asset_obj.laser_length_bins/self._pulsed_meas_logic.sample_rate
-                self._mw.ana_param_laser_length_SpinBox.setValue(laser_length)
+                self._mw.ana_param_laser_length_SpinBox.setValue(laser_length*1e9)
                 self.laser_length_changed()
 
             # infer x axis measurement ticks from the currently loaded asset if needed.
@@ -2922,6 +3006,36 @@ class PulsedMeasurementGui(GUIBase):
         freq = self._mw.ext_control_mw_freq_DoubleSpinBox.value()
         power = self._mw.ext_control_mw_power_DoubleSpinBox.value()
         self._pulsed_meas_logic.set_microwave_params(frequency=freq, power=power)
+
+    def pulser_activation_config_changed(self):
+        """
+        Is called whenever the activation config is changed in the Analysis tab.
+        This is actually the activation config that controls the hardware.
+        """
+        # retreive GUI inputs
+        new_config_name = self._mw.pulser_activation_config_ComboBox.currentText()
+        new_channel_config = self._pulsed_meas_logic.get_pulser_constraints()['activation_config'][
+            new_config_name]
+        # set chosen config in pulsed measurement logic
+        self._pulsed_meas_logic.set_activation_config(new_config_name)
+        # set display new config alongside with number of channels
+        display_str = ''
+        for chnl in new_channel_config:
+            display_str += chnl + ' | '
+        display_str = display_str[:-3]
+        self._mw.pulser_activation_config_LineEdit.setText(display_str)
+
+
+    def pulser_sample_rate_changed(self):
+        """
+        Is called whenever the sample rate is changed in the Analysis tab.
+        This is actually the sample rate that is set in the hardware.
+        """
+        self._mw.pulser_sample_freq_DSpinBox.blockSignals(True)
+        sample_rate = self._mw.pulser_sample_freq_DSpinBox.value()*1e6
+        actual_sample_rate = self._pulsed_meas_logic.set_sample_rate(sample_rate)
+        self._mw.pulser_sample_freq_DSpinBox.setValue(actual_sample_rate/1e6)
+        self._mw.pulser_sample_freq_DSpinBox.blockSignals(False)
 
 
     ###########################################################################
