@@ -435,9 +435,14 @@ class OptimizerLogic(GenericLogic):
             result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values, data=self.z_refocus_line, add_parameters=adjusted_param)
         else:
             if self.use_custom_params:
-                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values+self._calc_dz(x=self.optim_pos_x,y=self.optim_pos_y), data=self.z_refocus_line, add_parameters=self.z_params)
+                result = self._fit_logic.make_gaussian_fit(
+                    axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),
+                    data=self.z_refocus_line,
+                    add_parameters=self.z_params)
             else:
-                result = self._fit_logic.make_gaussian_fit(axis=self._zimage_Z_values+self._calc_dz(x=self.optim_pos_x,y=self.optim_pos_y), data=self.z_refocus_line)
+                result = self._fit_logic.make_gaussian_fit(
+                    axis=self._zimage_Z_values + self._calc_dz(x=self.optim_pos_x, y=self.optim_pos_y),
+                    data=self.z_refocus_line)
         self.z_params = result.params
 
         if result.success is False:
