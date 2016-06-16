@@ -105,21 +105,28 @@ class ODMRLogic(GenericLogic):
             ('N15', self._fit_logic.make_multiplelorentzian_model(no_of_lor=2)),
             ('Double Gaussian', self._fit_logic.make_multiplegaussian_model(no_of_gauss=2)) 
             ])
-
+        self.use_custom_params = {
+            'Lorentzian': False,
+            'Double Lorentzian': False,
+            'Double Lorentzian with fixed splitting': False,
+            'N14': False,
+            'N15': False,
+            'Double Gaussian': False
+            }
         # set the prefix, which determines the representation in the viewboxes
         # for the frequencies,  one can choose from the dict obtainable from
         # self.get_unit_prefix_dict(). That is mainly used to save the fitted
         # values with the appropriated magnitude.
         self._freq_prefix = 'M'
 
-        self.mw_frequency = 2870e6    #in Hz
-        self.mw_power = -30.         #in dBm
-        self.mw_start = 2800e6        #in Hz
-        self.mw_stop = 2950e6         #in Hz
-        self.mw_step = 2e6            #in Hz
+        self.mw_frequency = 2870e6  #in Hz
+        self.mw_power = -30.        #in dBm
+        self.mw_start = 2800e6      #in Hz
+        self.mw_stop = 2950e6       #in Hz
+        self.mw_step = 2e6          #in Hz
 
-        self.run_time = 10
-        self.elapsed_time = 0
+        self.run_time = 10          #in s
+        self.elapsed_time = 0       #in s
         self.current_fit_function = 'No Fit'
 
         self.safeRawData = False #flag for saving raw data
@@ -470,6 +477,9 @@ class ODMRLogic(GenericLogic):
             'data': self.ODMR_plot_y,
             'add_parameters': None
         }
+        if self.use_custom_params[self.fit_function]:
+            kwargs['add_parameters'] = self.fit_models[self.fit_function][1]
+            print(kwargs['add_parameters'] )
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
