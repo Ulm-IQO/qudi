@@ -131,6 +131,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.amplitude_list = OrderedDict()
         self.amplitude_list['a_ch1'] = 0.5
         self.amplitude_list['a_ch2'] = 0.5
+        self.amplitude_list['a_ch3'] = 0.5
+        self.amplitude_list['a_ch4'] = 0.5
         self.sample_rate = 25e9
         # The file format for the sampled hardware-compatible waveforms and sequences
         self.waveform_format = 'wfmx' # can be 'wfmx', 'wfm' or 'fpga'
@@ -251,7 +253,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             if not d_ch_present:
                 self.set_laser_channel(activation_config[0])
                 self.logMsg('No digital channel present in sequence generator activation config.',
-                            msgType='error')
+                            msgType='warning')
         return 0
 
     def set_sample_rate(self, sample_rate):
