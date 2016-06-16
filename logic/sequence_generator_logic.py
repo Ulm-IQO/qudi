@@ -32,8 +32,9 @@ import importlib
 from logic.pulse_objects import Pulse_Block_Element, Pulse_Block, Pulse_Block_Ensemble, Pulse_Sequence
 from logic.generic_logic import GenericLogic
 from logic.sampling_functions import SamplingFunctions
+from logic.samples_write_methods import SamplesWriteMethods
 
-class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
+class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethods):
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse (sequence) generation.
 
@@ -80,6 +81,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         # Get all the attributes from the SamplingFunctions module:
         SamplingFunctions.__init__(self)
+        # Get all the attributes from the SamplesWriteMethods module:
+        SamplesWriteMethods.__init__(self)
 
         # here the currently shown data objects of the editors should be stored
         self.current_block = None
@@ -117,31 +120,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
         self.waveform_dir = self._get_dir_for_name('sampled_hardware_files')
-
-
-        # Contains the Sequence parameter, but these are set in during the activation depending on
-        # the hardware configuration
-        self._seq_param = OrderedDict()
-
-        # An abstract dictionary, which tells the logic the configuration of a
-        # Pulse_Block_Element, i.e. how many parameters are used for a
-        # Pulse_Block_Element (pbe) object. In principle, the way how the GUI
-        # is displaying the pbe object should be irrelavent for the logic.
-        # That configuration here will actually not be taken but overwritten,
-        # depending on the attached hardware. It serves as an example for the
-        # logic to show how the cfg_param_pbe is looking like.
-        self.cfg_param_pbe = {'function_0':    0, 'frequency1_0':  1,
-                              'amplitude1_0':  2, 'phase1_0':      3,
-                              'digital_0':     4, 'digital_1':     5,
-                              'function_1':    6, 'frequency1_1':  7,
-                              'amplitude1_1':  8, 'phase1_1':      9,
-                              'digital_2':    10, 'digital_3':     11,
-                              'length':       12, 'increment':     13}
-
-        # the same idea for Pulse_Block (pb) objects:
-        self.cfg_param_pb = {'pulse_block' :    0, 'length':    1}
-
-        self.cfg_param_seq = {'ensemble' : 0}
+        self.temp_dir = self._get_dir_for_name('temporary_files')
 
         # Information on used channel configuration for sequence generation
         # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL SETTINGS ON THE HARDWARE
@@ -153,6 +132,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.amplitude_list['a_ch1'] = 0.5
         self.amplitude_list['a_ch2'] = 0.5
         self.sample_rate = 25e9
+        # The file format for the sampled hardware-compatible waveforms and sequences
+        self.waveform_format = 'wfmx' # can be 'wfmx', 'wfm' or 'fpga'
+        self.sequence_format = 'seqx' # can be 'seqx' or 'seq'
 
     def activation(self, e):
         """ Initialisation performed during activation of the module.
@@ -179,6 +161,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             self.set_amplitude_list(self._statusVariables['amplitude_list'])
         if 'sample_rate' in self._statusVariables:
             self.set_sample_rate(self._statusVariables['sample_rate'])
+        if 'waveform_format' in self._statusVariables:
+            self.waveform_format = self._statusVariables['waveform_format']
+        if 'sequence_format' in self._statusVariables:
+            self.sequence_format = self._statusVariables['sequence_format']
 
     def deactivation(self, e):
         """ Deinitialisation performed during deactivation of the module.
@@ -190,6 +176,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self._statusVariables['laser_channel'] = self.laser_channel
         self._statusVariables['amplitude_list'] = self.amplitude_list
         self._statusVariables['sample_rate'] = self.sample_rate
+        self._statusVariables['waveform_format'] = self.waveform_format
+        self._statusVariables['sequence_format'] = self.sequence_format
 
     def _attach_predefined_methods(self):
         """ Retrieve in the folder all files for predefined methods and attach
@@ -236,32 +224,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             os.makedirs(os.path.abspath(path))
 
         return os.path.abspath(path)
-
-    # ========================================================================
-
-    # def get_func_config(self):
-    #     """ Retrieve func_config dict of the logic, including hardware constraints.
-    #
-    #     @return dict: with all the defined functions and their corresponding
-    #                   parameters and constraints.
-    #
-    #     The contraints from the hardware are now also included in the dict. How
-    #     the returned dict is looking like is defined in the inherited class
-    #     SamplingFunctions.
-    #     """
-    #     func_config = self.func_config
-    #
-    #     # set the max amplitude from the hardware:
-    #     # ampl_max = const['amplitude_analog'][1]
-    #     # FIXME: You see it... below should be the actual amplitude constraint instead of 0.5
-    #     ampl_max = 0.5/2.0
-    #     if ampl_max is not None:
-    #         for func in func_config:
-    #             for param in func_config[func]:
-    #                 if 'amplitude' in param:
-    #                     func_config[func][param]['max'] = ampl_max
-    #
-    #     return func_config
 
     def set_activation_config(self, activation_config):
         """
@@ -570,8 +532,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #---------------------------------------------------------------------------
     #                    BEGIN sequence/block sampling
     #---------------------------------------------------------------------------
-
-
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, chunkwise=True,
                                     offset_bin=0, name_tag=''):
         """ General sampling of a Pulse_Block_Ensemble object, which serves as the construction plan.
@@ -698,10 +658,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                             analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_list[ana_chnl_names[i]])
 
                         # write temporary sample array to file
-                        created_files = self.write_samples_to_file(ensemble.name+name_tag,
-                                                                   analog_samples, digital_samples,
-                                                                   number_of_samples,
-                                                                   is_first_chunk, is_last_chunk)
+                        created_files = self._write_to_file[self.waveform_format](
+                            ensemble.name + name_tag, analog_samples, digital_samples,
+                            number_of_samples, is_first_chunk, is_last_chunk)
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
@@ -740,9 +699,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
             # write_to_file method only once with both flags set to TRUE
             is_first_chunk = True
             is_last_chunk = True
-            created_files = self.write_samples_to_file(ensemble.name+name_tag, analog_samples,
-                                                       digital_samples, number_of_samples,
-                                                       is_first_chunk, is_last_chunk)
+            created_files = self._write_to_file[self.waveform_format](ensemble.name + name_tag,
+                                                                      analog_samples,
+                                                                      digital_samples,
+                                                                      number_of_samples,
+                                                                      is_first_chunk, is_last_chunk)
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
             self.logMsg('Time needed for sampling and writing Pulse_Block_Ensemble to file as a '
@@ -750,7 +711,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
                         msgType='status')
 
             return [], [], created_files, offset_bin
-
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True, chunkwise=True):
         """ Samples the Pulse_Sequence object, which serves as the construction plan.
@@ -776,6 +736,19 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
 
         More sophisticated sequence sampling method can be implemented here.
         """
+
+        if write_to_file:
+            # get sampled filenames on host PC referring to the same ensemble
+            filename_list = [f for f in os.listdir(self.sequence_dir) if
+                             f.startswith(sequence_name + '.seq')]
+            # delete all filenames in the list
+            for file in filename_list:
+                os.remove(os.path.join(self.sequence_dir, file))
+
+            if len(filename_list) != 0:
+                self.logMsg('Found old sequence for name "{0}". '
+                            'Files deleted before sampling: '
+                            '{1}'.format(sequence_name, filename_list), msgType='warning')
 
         start_time = time.time()
         # get ensemble
@@ -860,7 +833,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
         self.save_sequence(sequence_name, sequence_obj)
 
         # pass the whole information to the sequence creation method in the hardware:
-        self.write_seq_to_file(sequence_name, sequence_param_dict_list)
+        self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
 
         self.logMsg('Time needed for sampling and writing Pulse Sequence to file as a whole: "{0}" '
                     'sec'.format(str(int(np.rint(time.time() - start_time)))), msgType='status')
@@ -873,3 +846,28 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions):
     #                    END sequence/block sampling
     #---------------------------------------------------------------------------
 
+    # ========================================================================
+
+    # def get_func_config(self):
+    #     """ Retrieve func_config dict of the logic, including hardware constraints.
+    #
+    #     @return dict: with all the defined functions and their corresponding
+    #                   parameters and constraints.
+    #
+    #     The contraints from the hardware are now also included in the dict. How
+    #     the returned dict is looking like is defined in the inherited class
+    #     SamplingFunctions.
+    #     """
+    #     func_config = self.func_config
+    #
+    #     # set the max amplitude from the hardware:
+    #     # ampl_max = const['amplitude_analog'][1]
+    #     # FIXME: You see it... below should be the actual amplitude constraint instead of 0.5
+    #     ampl_max = 0.5/2.0
+    #     if ampl_max is not None:
+    #         for func in func_config:
+    #             for param in func_config[func]:
+    #                 if 'amplitude' in param:
+    #                     func_config[func][param]['max'] = ampl_max
+    #
+    #     return func_config

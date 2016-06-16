@@ -627,7 +627,6 @@ class PulsedMeasurementGui(GUIBase):
         Retrieve the constraints from pulser hardware and apply these constraints to the pulse
         generator GUI elements.
         """
-
         pulser_constr = self._pulsed_meas_logic.get_pulser_constraints()
         sample_min = pulser_constr['sample_rate']['min']
         sample_max = pulser_constr['sample_rate']['max']
@@ -638,6 +637,10 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.gen_sample_freq_DSpinBox.setMaximum(sample_max)
         self._mw.gen_sample_freq_DSpinBox.setSingleStep(sample_step)
         self._mw.gen_sample_freq_DSpinBox.setDecimals( (np.log10(sample_step)* -1) )
+
+        # configure the sequence generator logic to use the hardware compatible file formats
+        self._seq_gen_logic.waveform_format = pulser_constr['waveform_format']
+        self._seq_gen_logic.sequence_format = pulser_constr['sequence_format']
 
     def _init_generator_values(self):
         """
