@@ -87,9 +87,6 @@ class AWG7122C(Base, PulserInterface):
                         msgType='error')
             self._timeout = 10
 
-        self.sample_mode = {'matlab': 0, 'wfm-file': 1, 'wfmx-file': 2}
-        self.current_sample_mode = self.sample_mode['wfm-file']
-
         self.connected = False
 
         self.loaded_sequence = None
@@ -225,6 +222,11 @@ class AWG7122C(Base, PulserInterface):
         # on the present mode. The the GUI will have to check again the
         # limitations if interleave was selected.
         constraints['sample_rate'] = self._get_sample_rate_constraints()
+
+        # The file formats are hardware specific. The sequence_generator_logic will need this
+        # information to choose the proper output format for waveform and sequence files.
+        constraints['waveform_format'] = 'wfm'
+        constraints['sequence_format'] = 'seq'
 
         #checked
         # the stepsize will be determined by the DAC in combination with the
@@ -400,104 +402,6 @@ class AWG7122C(Base, PulserInterface):
             self._send_file(name)
         return 0
 
-    def write_samples_to_file(self, name, analog_samples, digital_samples,
-                              total_number_of_samples,
-                              is_first_chunk, is_last_chunk):
-        """
-        Appends a sampled chunk of a whole waveform to a file. Create the file
-        if it is the first chunk.
-        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
-        that the whole ensemble is written as a whole in one big chunk.
-
-        @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the samples for the analog channels
-                               that are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples for the digital channels
-                                that are to be written by this function call.
-        @param total_number_of_samples: int, The total number of samples in the entire waveform.
-                                        Has to be known it advance.
-        @param is_first_chunk: bool, indicates if the current chunk is the first write to this
-                               file.
-        @param is_last_chunk: bool, indicates if the current chunk is the last write to this file.
-
-        @return list: the list contains the string names of the created files for the passed
-                      presampled arrays
-        """
-
-        # record the name of the created files
-        created_files = []
-
-        if self.current_sample_mode == self.sample_mode['wfm-file']:
-
-            # IMPORTANT: These numbers build the header in the wfm file. Needed
-            # by the device program to understand wfm file. If it is wrong,
-            # AWG will not be able to understand the written file.
-
-            # The pure waveform has the number 1000, indicating that it is a
-            # *.wfm file. For sequence mode e.g. the number would be 3001 or
-            # 3002, depending on the number of channels in the sequence mode.
-            # (The last number indicates the channel numbers).
-            # Next line after the header tells the number of bins of the
-            # waveform file.
-            # After this number a 14bit binary representation of the channel
-            # and the marker are followed.
-
-
-            for channel_index, channel_arr in enumerate(analog_samples):
-
-                filename = name + '_ch' + str(channel_index + 1) + '.wfm'
-
-                created_files.append(filename)
-
-                filepath = os.path.join(self.host_waveform_directory, filename)
-
-                # delete any previous file by just open it for writing process:
-                if is_first_chunk:
-                    with open(filepath, 'wb') as f:
-                        pass
-
-                with open(filepath, 'ab') as wfm_file:
-
-                    if is_first_chunk:
-                        # write the first line, which is the header file, if first chunk is passed:
-                        num_bytes = str(len(digital_samples[channel_index * 2]) * 5)
-                        num_digits = str(len(num_bytes))
-                        header = str.encode('MAGIC 1000\r\n#' + num_digits + num_bytes)
-                        wfm_file.write(header)
-
-                    # now write at once the whole file in binary representation:
-
-                    # convert the presampled numpy array of the analog channels
-                    # to a float number represented by 8bits:
-                    shape_for_wavetmp = np.shape(channel_arr)[0]
-                    wavetmp = np.zeros(shape_for_wavetmp * 5, dtype='c')
-                    wavetmp = wavetmp.reshape((-1, 5))
-
-                    wavetmp[:, :4] = np.frombuffer(memoryview(channel_arr / 4), dtype='c').reshape(
-                        (-1, 4))
-
-                    # The previously created array wavetmp contains one additional column, where
-                    # the marker states will be written into:
-                    marker = digital_samples[channel_index * 2] + digital_samples[
-                                                                      channel_index * 2 + 1] * 2
-                    marker_byte = np.array([self._marker_byte_dict[m] for m in marker], dtype='c')
-                    wavetmp[:, -1] = marker_byte
-
-                    # now write everything to file:
-                    wfm_file.write(wavetmp.tobytes())
-
-                    if is_last_chunk:
-                        # the footer encodes the sample rate, which was used for that file:
-                        footer = str.encode('CLOCK {:16.10E}\r\n'.format(self.get_sample_rate()))
-                        wfm_file.write(footer)
-
-        else:
-            self.logMsg('Sample mode not defined for the given pulser hardware.'
-                        '\nEither the mode does not exist or the sample mode is'
-                        'not assigned properly. Correct that!', msgType='error')
-
-        return created_files
-
     # TODO: test
     def _send_file(self, filename):
         """ Sends an already hardware specific waveform file to the pulse
@@ -519,82 +423,6 @@ class AWG7122C(Base, PulserInterface):
             with open(filepath, 'rb') as uploaded_file:
                 ftp.storbinary('STOR '+filename, uploaded_file)
         pass
-
-    def write_seq_to_file(self, name, sequence_param):
-        """ Write a sequence to file.
-
-        @param str name: name of the sequence to be created
-        @param list sequence_param: a list of dict, which contains all the information, which
-                                    parameters are to be taken to create a sequence. The dict will
-                                    have at least the entry
-                                        {'name': [<list_of_sampled_file_names>] }
-                                    All other parameters, which can be used in the sequence are
-                                    determined in the get_constraints method in the category
-                                    'sequence_param'.
-
-        In order to write sequence files a completely new method with respect to
-        write_samples_to_file is needed.
-
-        for AWG5000/7000 Series the following parameter will be used (are also present in the
-        hardware constraints for the pulser):
-            { 'name' : [<list_of_str_names>],
-              'repetitions' : 0=infinity reps; int_num in [1:65536],
-              'trigger_wait' : 0=False or 1=True,
-              'go_to': 0=Nothing happens; int_num in [1:8000]
-              'event_jump_to' : -1=to next; 0= nothing happens; int_num in [1:8000]
-        """
-
-        filename = name + '.seq'
-        filepath = os.path.join(self.host_waveform_directory, filename)
-
-        with open(filepath, 'wb') as seq_file:
-
-            # write the header:
-            # determine the used channels according to how much files where created:
-            channels = len(sequence_param[0]['name'])
-            lines = len(sequence_param)
-            seq_file.write('MAGIC 300{0:d}\r\n'.format(channels).encode('UTF-8'))
-            seq_file.write('LINES {0:d}\r\n'.format(lines).encode('UTF-8'))
-
-            # write main part:
-            # in this order: 'waveform_name', repeat, wait, Goto, ejump
-            for seq_param_dict in sequence_param:
-
-                repeat = seq_param_dict['repetitions']
-                trigger_wait = seq_param_dict['trigger_wait']
-                go_to = seq_param_dict['go_to']
-                event_jump_to = seq_param_dict['event_jump_to']
-
-                # for one channel:
-                if len(seq_param_dict['name']) == 1:
-                    seq_file.write(
-                        '"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'.format(seq_param_dict['name'][0],
-                                                                       repeat,
-                                                                       trigger_wait,
-                                                                       go_to,
-                                                                       event_jump_to).encode(
-                            'UTF-8'))
-                # for two channel:
-                else:
-                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'.format(
-                        seq_param_dict['name'][0],
-                        seq_param_dict['name'][1],
-                        repeat,
-                        trigger_wait,
-                        go_to,
-                        event_jump_to).encode('UTF-8'))
-
-            # write the footer:
-            table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
-            logic_jump = 'LOGIC_JUMP -1, -1, -1, -1,\r\n'
-            jump_mode = 'JUMP_MODE TABLE\r\n'
-            jump_timing = 'JUMP_TIMING ASYNC\r\n'
-            strobe_option = 'STROBE 0\r\n'
-
-            footer = table_jump + logic_jump + jump_mode + jump_timing + strobe_option
-
-            seq_file.write(footer.encode('UTF-8'))
-
 
     #TODO: That should actually 'just' load the channels into the AWG and not upload to the device.
     def load_asset(self, asset_name, load_dict={}):
@@ -619,7 +447,6 @@ class AWG7122C(Base, PulserInterface):
         Unused for digital pulse generators without sequence storage capability
         (PulseBlaster, FPGA).
         """
-
         path = self.ftp_path + self.get_asset_dir_on_device()
 
         # Find all files associated with the specified asset name
