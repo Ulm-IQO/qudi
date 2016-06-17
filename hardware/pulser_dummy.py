@@ -21,15 +21,11 @@ Copyright (C) 2015 Nikolas Tomek nikolas.tomek@uni-ulm.de
 """
 
 import os
-import numpy as np
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-import hdf5storage
-
 from core.base import Base
 from interface.pulser_interface import PulserInterface
-from hardware.awg.WFMX_header import WFMX_header
 
 
 class PulserDummy(Base, PulserInterface):

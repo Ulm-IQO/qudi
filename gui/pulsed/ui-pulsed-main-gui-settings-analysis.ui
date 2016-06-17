@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>277</width>
-    <height>296</height>
+    <width>255</width>
+    <height>332</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,17 +29,24 @@
    </item>
    <item row="1" column="0">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>x axis unit:</string>
-       </property>
-      </widget>
-     </item>
      <item row="7" column="0">
       <widget class="QLabel" name="ana_param_second_plot_y_axis_label_Label">
        <property name="text">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Second plot&lt;br/&gt;y axis label:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QLineEdit" name="ana_param_second_plot_y_axis_name_LineEdit">
+       <property name="text">
+        <string>Ft Signal</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>x axis unit:</string>
        </property>
       </widget>
      </item>
@@ -71,10 +78,20 @@
        </property>
       </widget>
      </item>
-     <item row="7" column="1">
-      <widget class="QLineEdit" name="ana_param_second_plot_y_axis_name_LineEdit">
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="ana_param_x_axis_name_LineEdit">
        <property name="text">
-        <string>Ft Signal</string>
+        <string>Tau</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QLineEdit" name="ana_param_second_plot_y_axis_unit_LineEdit"/>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="ana_param_second_plot_x_axis_unit_LineEdit">
+       <property name="text">
+        <string>Hz</string>
        </property>
       </widget>
      </item>
@@ -85,17 +102,10 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="ana_param_x_axis_name_LineEdit">
+     <item row="8" column="0">
+      <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Tau</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="ana_param_x_axis_unit_LineEdit">
-       <property name="text">
-        <string>s</string>
+        <string>y axis unit</string>
        </property>
       </widget>
      </item>
@@ -116,6 +126,13 @@
      <item row="3" column="1">
       <widget class="QLineEdit" name="ana_param_y_axis_unit_LineEdit"/>
      </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="ana_param_x_axis_unit_LineEdit">
+       <property name="text">
+        <string>s</string>
+       </property>
+      </widget>
+     </item>
      <item row="4" column="0" colspan="2">
       <widget class="Line" name="line">
        <property name="orientation">
@@ -123,27 +140,34 @@
        </property>
       </widget>
      </item>
-     <item row="8" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>y axis unit</string>
+     <item row="9" column="1">
+      <widget class="Line" name="line_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="ana_param_second_plot_x_axis_unit_LineEdit">
+     <item row="10" column="1">
+      <widget class="ScienDSpinBox" name="ana_param_lasertrigger_delay_ScienDSpinBox"/>
+     </item>
+     <item row="10" column="0">
+      <widget class="QLabel" name="label_18">
        <property name="text">
-        <string>Hz</string>
+        <string>Laser trigger delay (ns):</string>
        </property>
       </widget>
-     </item>
-     <item row="8" column="1">
-      <widget class="QLineEdit" name="ana_param_second_plot_y_axis_unit_LineEdit"/>
      </item>
     </layout>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>tools.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

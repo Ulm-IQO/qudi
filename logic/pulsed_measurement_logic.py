@@ -89,7 +89,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sample_rate = 25e9
 
         # setup parameters
-        self.aom_delay_s = 0.7e-6
+        self.laser_trigger_delay_s = 0.7e-6
 
         # timer for data analysis
         self.analysis_timer = None
@@ -154,8 +154,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.norm_width_bin = self._statusVariables['norm_width_bin']
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
-        if 'aom_delay_s' in self._statusVariables:
-            self.aom_delay_s = self._statusVariables['aom_delay_s']
+        if 'laser_trigger_delay_s' in self._statusVariables:
+            self.laser_trigger_delay_s = self._statusVariables['laser_trigger_delay_s']
         if 'laser_length_s' in self._statusVariables:
             self.laser_length_s = self._statusVariables['laser_length_s']
         if 'sequence_length_s' in self._statusVariables:
@@ -220,7 +220,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['norm_start_bin'] = self.norm_start_bin
         self._statusVariables['norm_width_bin'] = self.norm_width_bin
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['aom_delay_s'] = self.aom_delay_s
+        self._statusVariables['laser_trigger_delay_s'] = self.laser_trigger_delay_s
         self._statusVariables['laser_length_s'] = self.laser_length_s
         self._statusVariables['sequence_length_s'] = self.sequence_length_s
         self._statusVariables['measurement_ticks_list'] = list(self.measurement_ticks_list)
@@ -246,10 +246,10 @@ class PulsedMeasurementLogic(GenericLogic):
             the class variables.
         """
         if self.fast_counter_gated:
-            record_length_s = self.aom_delay_s + self.laser_length_s
+            record_length_s = self.laser_trigger_delay_s + self.laser_length_s
             number_of_gates = self.number_of_lasers
         else:
-            record_length_s = self.aom_delay_s + self.sequence_length_s
+            record_length_s = self.laser_trigger_delay_s + self.sequence_length_s
             number_of_gates = 0
 
         actual_binwidth_s, actual_recordlength_s, actual_numofgates = self._fast_counter_device.configure(self.fast_counter_binwidth , record_length_s, number_of_gates)
@@ -266,6 +266,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
         """
         self.fast_counter_binwidth = fc_binning
+        self.configure_fast_counter()
+        return
+
+    def set_laser_trigger_delay(self, laser_trigger_delay_s):
+        """
+        Sets the delay between the laser trigger going high and the actual optical laser output
+        rising.
+        @param laser_trigger_delay_s: float, The delay to set in seconds
+        """
+        self.laser_trigger_delay_s = laser_trigger_delay_s
         self.configure_fast_counter()
         return
 

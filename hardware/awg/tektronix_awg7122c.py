@@ -382,20 +382,13 @@ class AWG7122C(Base, PulserInterface):
 
         # create list of filenames to be uploaded
         upload_names = []
-        if self.current_sample_mode == self.sample_mode['wfm-file']:
-            filelist = os.listdir(self.host_waveform_directory)
-            for filename in filelist:
-                is_wfm = filename.endswith('.wfm')
-                if is_wfm and (asset_name + '_ch') in filename:
-                    upload_names.append(filename)
-                if (asset_name + '.seq') in filename:
-                    upload_names.append(filename)
-        else:
-            self.logMsg('Error in file upload:\nInvalid sample mode for '
-                        'this device!\nSet a proper one for sample the '
-                        'real data.',
-                        msgType='error')
-            return -1
+        filelist = os.listdir(self.host_waveform_directory)
+        for filename in filelist:
+            is_wfm = filename.endswith('.wfm')
+            if is_wfm and (asset_name + '_ch') in filename:
+                upload_names.append(filename)
+            if (asset_name + '.seq') in filename:
+                upload_names.append(filename)
 
         # upload files
         for name in upload_names:
