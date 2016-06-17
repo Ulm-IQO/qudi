@@ -416,50 +416,6 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <widget class="QLabel" name="label_9">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Save ImageScene also as png file</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="savePNG_checkBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a png file will be created, which contains the axis and everything, which can be seen in the displayed scan image (except the cursor). This file will be a separate file and will not replace the pure image file (see below).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_8">
      <item>
       <widget class="QLabel" name="label_10">
@@ -472,7 +428,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Save pure Image as png</string>
+        <string>Also save data as raw pixel image (png)</string>
        </property>
       </widget>
      </item>
@@ -533,7 +489,6 @@
   <tabstop>return_slowness_InputWidget</tabstop>
   <tabstop>loop_scan_CheckBox</tabstop>
   <tabstop>fixed_aspect_depth_checkBox</tabstop>
-  <tabstop>savePNG_checkBox</tabstop>
   <tabstop>save_purePNG_checkBox</tabstop>
   <tabstop>hardware_switch</tabstop>
   <tabstop>buttonBox</tabstop>
