@@ -27,11 +27,8 @@ import numpy as np
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-import hdf5storage
-
 from core.base import Base
 from interface.pulser_interface import PulserInterface
-from hardware.awg.WFMX_header import WFMX_header
 
 class AWG70K(Base, PulserInterface):
     """ UNSTABLE: Nikolas
@@ -330,9 +327,9 @@ class AWG70K(Base, PulserInterface):
         filelist = self._get_filenames_on_host()
         upload_names = []
         for filename in filelist:
-            is_wfmx = filename.endswith('.WFMX')
+            is_wfmx = filename.endswith('.wfmx')
             is_mat = filename.endswith(asset_name+'.mat')
-            if is_wfmx and (asset_name + '_Ch') in filename:
+            if is_wfmx and (asset_name + '_ch') in filename:
                 upload_names.append(filename)
             elif is_mat:
                 upload_names.append(filename)
@@ -353,12 +350,12 @@ class AWG70K(Base, PulserInterface):
                                 available channel numbers and items being the
                                 name of the already sampled
                                 waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
+                                Examples:   {1: rabi_ch1, 2: rabi_ch2}
+                                            {1: rabi_ch2, 2: rabi_ch1}
                                 This parameter is optional. If none is given
                                 then the channel association is invoked from
                                 the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
+                                i.e. the filename appendix (_ch1, _ch2 etc.)
 
         @return int: error code (0:OK, -1:error)
 
@@ -375,9 +372,9 @@ class AWG70K(Base, PulserInterface):
         for file in file_list:
             if file == asset_name+'.mat':
                 filename.append(file)
-            elif file == asset_name+'_Ch1.WFMX':
+            elif file == asset_name+'_ch1.wfmx':
                 filename.append(file)
-            elif file == asset_name+'_Ch2.WFMX':
+            elif file == asset_name+'_ch2.wfmx':
                 filename.append(file)
 
         # Check if something could be found
@@ -412,9 +409,9 @@ class AWG70K(Base, PulserInterface):
         if load_dict == {}:
             for asset in filename:
                 # load waveforms into channels
-                name = asset_name + '_Ch1'
+                name = asset_name + '_ch1'
                 self.tell('SOUR1:CASS:WAV "%s"\n' % name)
-                name = asset_name + '_Ch2'
+                name = asset_name + '_ch2'
                 self.tell('SOUR2:CASS:WAV "%s"\n' % name)
                 self.current_loaded_asset = asset_name
                 # self.soc.settimeout(3)
@@ -866,7 +863,7 @@ class AWG70K(Base, PulserInterface):
         uploaded_files = self._get_filenames_on_device()
         name_list = []
         for filename in uploaded_files:
-            if fnmatch(filename, '*_Ch?.WFMX'):
+            if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
                 if asset_name not in name_list:
                     name_list.append(asset_name)
@@ -888,7 +885,7 @@ class AWG70K(Base, PulserInterface):
         # exclude the channel specifier for multiple analog channels and create return list
         saved_assets = []
         for filename in file_list:
-            if fnmatch(filename, '*_Ch?.WFMX'):
+            if fnmatch(filename, '*_ch?.wfmx'):
                 asset_name = filename.rsplit('_', 1)[0]
                 if asset_name not in saved_assets:
                     saved_assets.append(asset_name)
@@ -919,7 +916,7 @@ class AWG70K(Base, PulserInterface):
         # determine files to delete
         for name in asset_name:
             for filename in uploaded_files:
-                if fnmatch(filename, name+'_Ch?.WFMX') or fnmatch(filename, name+'.mat'):
+                if fnmatch(filename, name+'_ch?.wfmx') or fnmatch(filename, name+'.mat'):
                     files_to_delete.append(filename)
 
         # delete files
@@ -1080,7 +1077,7 @@ class AWG70K(Base, PulserInterface):
                     actual_filename = size_filename.split(' ', 1)[1].lstrip()
                     file_list.append(actual_filename)
             for filename in file_list:
-                if (filename.endswith('.WFMX') or filename.endswith('.mat')):
+                if (filename.endswith('.wfmx') or filename.endswith('.mat')):
                     if filename not in filename_list:
                         filename_list.append(filename)
         return filename_list
@@ -1090,5 +1087,5 @@ class AWG70K(Base, PulserInterface):
 
         @return: list, The full filenames of all assets saved on the host PC.
         """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.WFMX') or f.endswith('.mat'))]
+        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat'))]
         return filename_list

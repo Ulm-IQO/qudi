@@ -222,8 +222,8 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_pulse_generator_settings_ui(e)
         self._activate_pulse_generator_ui(e)
 
-        #self._activate_sequence_settings_ui(e)
-        #self._activate_sequence_generator_ui(e)
+        self._activate_sequence_settings_ui(e)
+        self._activate_sequence_generator_ui(e)
 
         self._activate_pulse_extraction_settings_ui(e)
         self._activate_pulse_extraction_ui(e)
@@ -2459,6 +2459,9 @@ class PulsedMeasurementGui(GUIBase):
         if 'ana_param_second_plot_y_axis_unit_LineEdit' in self._statusVariables:
             self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._statusVariables['ana_param_second_plot_y_axis_unit_LineEdit'])
 
+        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.laser_trigger_delay__s*1e9)
+        # configure a bit the laser trigger delay spinbox:
+        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setSingleStep(10)  # in ns
         self.update_analysis_settings()
 
 
@@ -2492,12 +2495,15 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulse_analysis_second_PlotWidget.setLabel(axis='left',
             text=self._as.ana_param_second_plot_y_axis_name_LineEdit.text(),
             units=self._as.ana_param_second_plot_y_axis_unit_LineEdit.text())
+        lasertrig_delay = self._as.ana_param_lasertrigger_delay_ScienDSpinBox.value() / 1e9
+        self._pulsed_meas_logic.set_laser_trigger_delay(lasertrig_delay)
         pass
 
     def keep_former_analysis_settings(self):
         """ Keep the old settings """
         #FIXME: Implement the behaviour
-        pass
+        self._as.ana_param_lasertrigger_delay_ScienDSpinBox.setValue(
+            self._pulsed_meas_logic.laser_trigger_delay_s * 1e9)
 
     def show_analysis_settings(self):
         """ Open the Analysis Settings Window. """
@@ -3117,10 +3123,10 @@ class PulsedMeasurementGui(GUIBase):
             # with that command the saved tab can be again attached to the Tab Widget
             # self._mw.tabWidget.insertTab(2, self._seq_editor_tab_Widget ,'Sequence Editor')
 
+        # make together with the hardware a proper dictionary for the sequence parameter:
+        self._seq_param = self._create_seq_param()
         # create the table according to the passed values from the logic:
-        # self._set_sequence_editor_columns()
-        # set to the logic the current sequence configuration:
-        self.set_cfg_param_seq()
+        self._set_sequence_editor_columns()
         self.update_sequence_list()
 
         # connect the signals for the block editor:
@@ -3142,9 +3148,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.upload_load_seq_to_channel_PushButton.clicked.connect(self.load_seq_into_channel_clicked)
         self._mw.upload_seq_to_device_PushButton.clicked.connect(self.upload_seq_to_device_clicked)
 
-
         self._seq_gen_logic.signal_sequence_list_updated.connect(self.update_sequence_list)
-        self.update_sequence_list()
 
     def _deactivate_sequence_generator_ui(self, e):
         """ Disconnects the configuration for 'Sequence Generator' Tab.
@@ -3154,28 +3158,90 @@ class PulsedMeasurementGui(GUIBase):
         """
         pass
 
-    def get_cfg_param_seq(self):
-        """ Ask for the current configuration of the Pulse Sequence.
+    def _create_seq_param(self):
+        """ Create a dictionary for sequence parameters.
 
-        @return dict: An abstract dictionary, which tells the logic the configuration of a
-                      Pulse_Sequence, i.e. how many parameters are used for a Pulse_Sequence (seq)
-                      object. Keys describing the names of the column (as string) and the items
-                      denoting the column number (int).
+        @return dict: the parameter dictionary for the sequence mode
+
+        Based on the information from the hardware, the logic will create an rather abstract
+        configuration dictionary, so that the GUI has no problems to build from that the proper
+        viewwidgets.
         """
-        return self._cfg_param_seq
+
+        # predefined definition dicts:
+        float_def = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+                     'view_stepsize': 1e-9, 'dec': 8, 'unit_prefix': 'n', 'type': float}
+
+        int_def = {'unit': '#', 'init_val': 0, 'min': 0, 'max': (2 ** 31 - 1),
+                   'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': int}
+
+        bool_def = {'unit': 'bool', 'init_val': 0, 'min': 0, 'max': 1,
+                    'view_stepsize': 1, 'dec': 0, 'unit_prefix': '', 'type': bool}
+
+        seq_param_hardware = self._pulsed_meas_logic.get_pulser_constraints()['sequence_param']
+        seq_param = OrderedDict()
+
+        # What follows now is a converion algorithm, which takes one of the valid above definition
+        # dicts. Then the keywords, which are given by the contraints are replaced with their
+        # proper value from the constraints. Furthermore an bool entry has to be converted to an
+        # integer expression (True=1, False=0). Then the parameter definition is appended to the
+        # sequence configuration parameters
+
+        for entry in seq_param_hardware:
+            param = {}
+
+            # check the type of the sequence parameter:
+            if type(seq_param_hardware[entry]['min']) == bool:
+                dict_def = bool_def
+            elif type(seq_param_hardware[entry]['min']) == int:
+                dict_def = int_def
+            elif type(seq_param_hardware[entry]['min']) == float:
+                dict_def = float_def
+            else:
+                self.logMsg('The configuration dict for sequence parameter could not be created, '
+                            'since the keyword "min" in the parameter {0} does not correspond to '
+                            'type of "bool", "int" nor "float" but has a type {1}. Cannot handle '
+                            'that, therefore this parameter is '
+                            'neglected.'.format(entry, type(seq_param_hardware[entry]['min'])),
+                            msgType='error')
+                dict_def = {}
+
+            # go through the dict_def and replace all given entries by the sequence parameter
+            # constraints from the hardware.
+            for element in dict_def:
+
+                if element == 'view_stepsize':
+                    param['view_stepsize'] = seq_param_hardware[entry]['step']
+                elif element == 'init_value':
+                    # convert an bool value into an integer value:
+                    if type(element) is bool:
+                        param[element] = int(seq_param_hardware[entry]['min'])
+                    else:
+                        param[element] = seq_param_hardware[entry]['min']
+                elif element in seq_param_hardware[entry]:
+                    # convert an bool value into an integer value:
+                    if type(seq_param_hardware[entry][element]) is bool:
+                        param[element] = int(seq_param_hardware[entry][element])
+                    else:
+                        param[element] = seq_param_hardware[entry][element]
+                else:
+                    param[element] = dict_def[element]
+
+            seq_param[entry] = param
+
+        return seq_param
 
     def set_cfg_param_seq(self):
-        """ Set the parameter configuration of the Pulse_Sequence according to the current table
-            configuration and updates the dict in the logic.
         """
-
+        Set the parameter configuration of the Pulse_Sequence according to the current table
+        configuration and updates the dict in the logic.
+        """
         cfg_param_seq = OrderedDict()
 
         for column in range(self._mw.seq_editor_TableWidget.columnCount()):
             # keep in mind that the underscore was deleted for nicer representation during creation
             text = self._mw.seq_editor_TableWidget.horizontalHeaderItem(column).text().replace(' ','_')
             # split_text = text.split()
-
             cfg_param_seq[text] = column
 
         self._cfg_param_seq = cfg_param_seq
@@ -3184,7 +3250,7 @@ class PulsedMeasurementGui(GUIBase):
     def _set_sequence_editor_columns(self):
         """ Depending on the sequence parameters a table witll be created. """
 
-        seq_param = self._cfg_param_seq
+        seq_param = self._seq_param
 
         # Erase the delegate from the column, pass a None reference:
         for column in range(self._mw.seq_editor_TableWidget.columnCount()):
@@ -3393,7 +3459,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # This dictionary has the information which column number describes which object, it is a
         # configuration dict between GUI and logic.
-        seq_config_dict = self.get_cfg_param_seq()
+        seq_config_dict = self._cfg_param_seq
 
         # run through all blocks in the block_elements block_list to fill in the
         # row informations
@@ -3434,12 +3500,67 @@ class PulsedMeasurementGui(GUIBase):
             return
         rotating_frame = self._mw.curr_seq_rot_frame_CheckBox.isChecked()
 
-        self._seq_gen_logic.generate_pulse_sequence(objectname,
-                                                    self.get_sequence_table(),
-                                                    rotating_frame)
+        self.generate_pulse_sequence_object(objectname, self.get_sequence_table(), rotating_frame)
 
-            # skip the option with the number of lasers for now
-            # self._mw.laserchannel_ComboBox.currentText(),
+    def generate_pulse_sequence_object(self, sequence_name, sequence_matrix, rotating_frame=True):
+        """ Generates a Pulse_Sequence object out of the corresponding editor table/matrix.
+
+        @param str sequence_name: name of the created Pulse_Sequence object
+        @param np.array sequence_matrix: structured 2D np.array, matrix, in which the construction
+                                         plan for Pulse_Block_Ensemble objects are displayed as
+                                         rows.
+        @param bool rotating_frame: optional, whether the phase preservation is mentained
+                                    throughout the sequence.
+
+        Creates a collection of Pulse_Block_Ensemble objects.
+        """
+        # list of all the Pulse_Block_Ensemble objects and their parameters
+        ensemble_param_list = [None] * len(sequence_matrix)
+
+        for row_index, row in enumerate(sequence_matrix):
+            # the ensemble entry must be always (!) present, therefore this entry in the
+            # configuration dict for the sequence parameter are taken for granted. Get from the
+            # cfg_param_seq the relative situation to the other parameters (which is in the table
+            # the column number)
+            column_index = self._cfg_param_seq['ensemble']
+            pulse_block_ensemble_name = row[column_index].decode('UTF-8')
+
+            # the rest must be obtained together with the actual sequence configuration parameter
+            # dict cfg_param_seq and the hardware constraints:
+            seq_param_hardware = self._pulsed_meas_logic.get_pulser_constraints()['sequence_param']
+
+            # here the actual configuration will be save:
+            seq_param = dict()
+
+            for param in seq_param_hardware:
+                # get the the relative situation to the other parameters (which is in the table
+                # the column number):
+                column_index = self._cfg_param_seq[param]
+                # save in the sequenc parameter dict:
+                seq_param[param] = row[column_index]
+
+            # small and simple search routine, which tries to extract a repetition parameter
+            # (but the presence of such parameter is not assumed!):
+            # All the sequence parameter keywords are string identifiers.
+            for param in seq_param:
+                if 'reps' in param.lower() or 'repetition' in param.lower():
+                    pulse_block_ensemble_reps = seq_param[param]
+                    break
+                else:
+                    pulse_block_ensemble_reps = 0
+
+            # get the reference on the Pulse_Block_Ensemble object:
+            pulse_block_ensemble = self._seq_gen_logic.get_pulse_block_ensemble(
+                pulse_block_ensemble_name)
+
+            # save in the list the object and sequence parameter
+            ensemble_param_list[row_index] = (pulse_block_ensemble, seq_param)
+
+        pulse_sequence = Pulse_Sequence(name=sequence_name, ensemble_param_list=ensemble_param_list,
+                                        rotating_frame=rotating_frame)
+        # save sequence
+        self._seq_gen_logic.save_sequence(sequence_name, pulse_sequence)
+
 
     def update_sequence_list(self):
         """  Called upon signal_block_list_updated emit of the sequence_generator_logic.
@@ -3743,11 +3864,6 @@ class PulsedMeasurementGui(GUIBase):
 
         self._pulsed_meas_logic.sigSinglePulsesUpdated.connect(self.refresh_laser_pulses_display)
         self._pulsed_meas_logic.sigPulseAnalysisUpdated.connect(self.refresh_laser_pulses_display)
-
-        self._mw.extract_param_aom_delay_ScienDSpinBox.setValue(self._pulsed_meas_logic.aom_delay_s)
-
-        # configure a bit the display box in the pulse extraction:
-        self._mw.extract_param_aom_delay_ScienDSpinBox.setSingleStep(10e-9) # in s
 
     def _deactivate_pulse_extraction_ui(self, e):
         """ Disconnects the configuration for 'Pulse Extraction' Tab.
