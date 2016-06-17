@@ -477,9 +477,8 @@ class ODMRLogic(GenericLogic):
             'data': self.ODMR_plot_y,
             'add_parameters': None
         }
-        if self.use_custom_params[self.fit_function]:
+        if self.fit_function != 'No Fit' and self.use_custom_params[self.fit_function]:
             kwargs['add_parameters'] = self.fit_models[self.fit_function][1]
-            print(kwargs['add_parameters'] )
 
         if self.fit_function == 'No Fit':
             self.ODMR_fit_y = np.zeros(self.ODMR_fit_x.shape)
